@@ -9,7 +9,7 @@
 
 ## 使用云服务
 
-访问 [LangGenius.ai](http://cloug.langgenius.ai)
+访问 [LangGenius.ai](http://cloud.langgenius.ai)
 
 ## 安装社区版
 

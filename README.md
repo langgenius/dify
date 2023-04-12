@@ -10,7 +10,7 @@
 
 ## Use Cloud Services
 
-Visit [LangGenius.ai](http://cloug.langgenius.ai)
+Visit [LangGenius.ai](http://cloud.langgenius.ai)
 
 ## Install the Community Edition
 
