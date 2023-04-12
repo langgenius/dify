@@ -5,7 +5,7 @@
 
 [Website](http://langgenius.ai) • [Docs](https://docs.langgenius.ai) • [Twitter](https://twitter.com/langgeniusai)
 
-**LangGenius** is an easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications. With visual orchestration for various application types, LangGenius offers out-of-the-box, ready-to-use applications that can also serve as Backend-as-a-Service APIs.
+**LangGenius** is an easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications. With visual orchestration for various application types, LangGenius offers out-of-the-box, ready-to-use applications that can also serve as Backend-as-a-Service APIs. Unify your development process with one API for plugins and datasets integration, and streamline your operations using a single interface for prompt engineering, visual analytics, and continuous improvement.
 
 
 ## Use Cloud Services
