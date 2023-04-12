@@ -65,8 +65,3 @@ LangGenius 项目由腾讯云 DevOps 前团队成员创作。我们发现基于 
 - 在我们的 [GitHub Repo](https://github.com/LangGenius) 上提交 Issue 或 PR
 - 在我们的 [Discord 社区](https://discord.gg/AhzKf7dNgk) 上加入讨论
 - 发送邮件至 hello@langgenius.ai
-
-我们非常期待能为您提供帮助，一起打造更多有趣、有用的 AI 应用！
-- Send an email to hello@langgenius.ai
-
-We're eager to assist you and together create more fun and useful AI applications!
