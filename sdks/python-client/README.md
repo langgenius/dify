@@ -3,6 +3,14 @@ A LangGenius App Service-API Client, using for build a webapp by request Service
 
 ## Usage
 
+First, install `langgenius-client` python sdk package:
+
+```
+pip install langgenius-client
+```
+
+Write your code with sdk:
+
 ```
 api_key = "your_api_key"
 
