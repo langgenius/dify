@@ -53,7 +53,7 @@ export class LangGeniusClient {
 }
 
 export class CompletionClient extends LangGeniusClient {
-  createCompletionMessage(inputs, query, responseMode, user) {
+  createCompletionMessage(inputs, query, user, responseMode) {
     const data = {
       inputs,
       query,

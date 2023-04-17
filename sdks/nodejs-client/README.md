@@ -24,7 +24,7 @@ completionClient.createCompletionMessage(inputs, query, responseMode, user)
 // Create a chat client
 const chatClient = new ChatClient(API_KEY)
 // Create a chat message
-chatClient.createChatMessage(inputs, query, user, responseMode, conversationId)
+chatClient.createChatMessage(inputs, query, responseMode, user, conversationId)
 // Fetch conversations
 chatClient.getConversations(user)
 // Fetch conversation messages

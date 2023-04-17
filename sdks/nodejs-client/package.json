@@ -1,6 +1,6 @@
 {
   "name": "langgenius-client",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This is the Node.js SDK for the LangGenius API, which allows you to easily integrate LangGenius into your Node.js applications.",
   "main": "index.js",
   "type": "module",
