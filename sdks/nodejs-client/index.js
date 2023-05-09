@@ -1,7 +1,7 @@
 import axios from 'axios'
 
 export class LangGeniusClient {
-  constructor(apiKey, baseUrl = 'https://api.langgenius.ai/v1') {
+  constructor(apiKey, baseUrl = 'https://api.dify.ai/v1') {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
   }
