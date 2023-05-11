@@ -4,7 +4,7 @@
   <a href="./README_CN.md">简体中文</a>
 </p>
 
-[官方网站](http://langgenius.ai) • [文档](https://docs.langgenius.ai/zh-hans) • [Twitter](https://twitter.com/langgeniusai)
+[官方网站](http://langgenius.ai) • [文档](https://docs.langgenius.ai/zh-hans) • [Twitter](https://twitter.com/dify_ai)
 
 **LangGenius** 是一个易用的 LLMOps 平台，旨在让更多人可以创建可持续运营的原生 AI 应用。LangGenius 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
 
