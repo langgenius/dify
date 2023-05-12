@@ -1,7 +1,41 @@
 import axios from 'axios'
 
+const BASE_URL = 'https://api.dify.ai/v1'
+
+const routes = {
+  application: {
+    method: 'GET',
+    url: () => `parameters`
+  },
+  feedback: {
+    method: 'POST',
+    url: (messageId) => `/messages/${messageId}/feedbacks`,
+  },
+  createCompletionMessage: {
+    method: 'POST',
+    url: () => `/completion-messages`,
+  },
+  createChatMessage: {
+    method: 'POST',
+    url: () => `/chat-message`,
+  },
+  getConversationMessages: {
+    method: 'GET',
+    url: () => '/messages',
+  },
+  getConversations: {
+    method: 'GET',
+    url: () => '/conversations',
+  },
+  renameConversation: {
+    method: 'PATCH',
+    url: (conversationId) => `/conversations/${conversationId}`,
+  }
+ 
+}
+
 export class LangGeniusClient {
-  constructor(apiKey, baseUrl = 'https://api.dify.ai/v1') {
+  constructor(apiKey, baseUrl = BASE_URL) {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
   }
@@ -43,12 +77,12 @@ export class LangGeniusClient {
       rating,
       user,
     }
-    return this.sendRequest('POST', `/messages/${messageId}/feedbacks`, data)
+    return this.sendRequest(routes.feedback.method, routes.feedback.url(messageId), data)
   }
 
   getApplicationParameters(user) {
     const params = { user }
-    return this.sendRequest('GET', '/parameters', null, params)
+    return this.sendRequest(routes.application.method, routes.application.url(), null, params)
   }
 }
 
@@ -60,7 +94,7 @@ export class CompletionClient extends LangGeniusClient {
       responseMode,
       user,
     }
-    return this.sendRequest('POST', '/completion-messages', data, null, responseMode === 'streaming')
+    return this.sendRequest(routes.createCompletionMessage.method, routes.createCompletionMessage.url(), data, null, responseMode === 'streaming')
   }
 }
 
@@ -75,7 +109,7 @@ export class ChatClient extends LangGeniusClient {
     if (conversationId)
       data.conversation_id = conversationId
 
-    return this.sendRequest('POST', '/chat-messages', data, null, responseMode === 'streaming')
+    return this.sendRequest(routes.createChatMessage.method, routes.createChatMessage.url(), data, null, responseMode === 'streaming')
   }
 
   getConversationMessages(user, conversationId = '', firstId = null, limit = null) {
@@ -90,17 +124,17 @@ export class ChatClient extends LangGeniusClient {
     if (limit)
       params.limit = limit
 
-    return this.sendRequest('GET', '/messages', null, params)
+    return this.sendRequest(routes.getConversationMessages.method, routes.getConversationMessages.url(), null, params)
   }
 
   getConversations(user, firstId = null, limit = null, pinned = null) {
     const params = { user, first_id: firstId, limit, pinned }
-    return this.sendRequest('GET', '/conversations', null, params)
+    return this.sendRequest(routes.getConversations.method, routes.getConversations.url(), null, params)
   }
 
   renameConversation(conversationId, name, user) {
     const data = { name, user }
-    return this.sendRequest('PATCH', `/conversations/${conversationId}`, data)
+    return this.sendRequest(routes.renameConversation.method, routes.renameConversation.url(conversationId), data)
   }
 }
 
