@@ -1,6 +1,7 @@
-import axios from 'axios'
+'use strict';
+const axios = require('axios');
 
-const BASE_URL = 'https://api.dify.ai/v1'
+const BASE_URL = 'https://api.dify.ai/v1';
 
 const routes = {
   application: {
@@ -31,7 +32,6 @@ const routes = {
     method: 'PATCH',
     url: (conversationId) => `/conversations/${conversationId}`,
   }
- 
 }
 
 export class LangGeniusClient {
