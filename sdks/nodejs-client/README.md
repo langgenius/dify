@@ -13,8 +13,7 @@ After installing the SDK, you can use it in your project like this:
 import { LangGeniusClient, ChatClient, CompletionClient } from 'langgenius-client'
 
 const API_KEY = 'your-api-key-here';
-const APP_ID = 'your-app-id-here';
-const user = `user_${APP_ID}:user_id`:
+const user = `random-user-id`:
 
 // Create a completion client
 const completionClient = new CompletionClient(API_KEY)
