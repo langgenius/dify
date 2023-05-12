@@ -1,8 +1,8 @@
-import { LangGeniusClient } from '../index';
+import { LangGeniusClient } from "..";
 
-describe('LangGeniusClient', () => {
-  it('should be defined', async () => {
-    const client = new LangGeniusClient('your-api-key');
-    expect(client).toBeDefined();
-  });
+describe('Client', () => {
+    test('should create a client', () => {
+        const client = new LangGeniusClient('test');
+        expect(client).toBeDefined();
+    })
 });
