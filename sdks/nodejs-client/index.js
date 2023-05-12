@@ -134,7 +134,6 @@ export class ChatClient extends LangGeniusClient {
 
   renameConversation(conversationId, name, user) {
     const data = { name, user }
-    // return this.sendRequest('PATCH', `/conversations/${conversationId}`, data)
     return this.sendRequest(routes.renameConversation.method, routes.renameConversation.url(conversationId), data)
   }
 }
