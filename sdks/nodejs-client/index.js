@@ -1,11 +1,11 @@
 import axios from 'axios'
 
-const BASE_URL = 'https://api.dify.ai/v1/'
+const BASE_URL = 'https://api.dify.ai/v1'
 
 const routes = {
   application: {
     method: 'GET',
-    url: () => `parameters`
+    url: () => `/parameters`
   },
   feedback: {
     method: 'POST',
