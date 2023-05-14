@@ -31,10 +31,10 @@ const routes = {
     method: 'PATCH',
     url: (conversationId) => `/conversations/${conversationId}`,
   }
- 
+
 }
 
-export class LangGeniusClient {
+export class DifyClient {
   constructor(apiKey, baseUrl = BASE_URL) {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
@@ -86,7 +86,7 @@ export class LangGeniusClient {
   }
 }
 
-export class CompletionClient extends LangGeniusClient {
+export class CompletionClient extends DifyClient {
   createCompletionMessage(inputs, query, user, responseMode) {
     const data = {
       inputs,
@@ -98,7 +98,7 @@ export class CompletionClient extends LangGeniusClient {
   }
 }
 
-export class ChatClient extends LangGeniusClient {
+export class ChatClient extends DifyClient {
   createChatMessage(inputs, query, user, responseMode = 'blocking', conversationId = null) {
     const data = {
       inputs,
