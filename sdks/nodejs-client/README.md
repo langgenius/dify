@@ -1,20 +1,19 @@
-# LangGenius Node.js SDK
-This is the Node.js SDK for the LangGenius API, which allows you to easily integrate LangGenius into your Node.js applications.
+# Dify Node.js SDK
+This is the Node.js SDK for the Dify API, which allows you to easily integrate Dify into your Node.js applications.
 
 ## Install
 ```bash
-npm install langgenius-client
+npm install dify-client
 ```
 
 ## Usage
 After installing the SDK, you can use it in your project like this:
 
 ```js
-import { LangGeniusClient, ChatClient, CompletionClient } from 'langgenius-client'
+import { DifyClient, ChatClient, CompletionClient } from 'dify-client'
 
 const API_KEY = 'your-api-key-here';
-const APP_ID = 'your-app-id-here';
-const user = `user_${APP_ID}:user_id`:
+const user = `random-user-id`:
 
 // Create a completion client
 const completionClient = new CompletionClient(API_KEY)
@@ -33,15 +32,15 @@ chatClient.getConversationMessages(conversationId, user)
 chatClient.renameConversation(conversationId, name, user)
 
 
-const langGeniusClient = new LangGeniusClient(API_KEY)
+const client = new DifyClient(API_KEY)
 // Fetch application parameters
-langGeniusClient.getApplicationParameters(user)
+client.getApplicationParameters(user)
 // Provide feedback for a message
-langGeniusClient.messageFeedback(messageId, rating, user)
+client.messageFeedback(messageId, rating, user)
 
 ```
 
-Replace 'your-api-key-here' with your actual LangGenius API key.Replace 'your-app-id-here' with your actual LangGenius APP ID.
+Replace 'your-api-key-here' with your actual Dify API key.Replace 'your-app-id-here' with your actual Dify APP ID.
 
 ## License
 This SDK is released under the MIT License.

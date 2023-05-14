@@ -5,7 +5,7 @@ export const BASE_URL = 'https://api.dify.ai/v1'
 export const routes = {
   application: {
     method: 'GET',
-    url: () => `parameters`
+    url: () => `/parameters`
   },
   feedback: {
     method: 'POST',
@@ -33,7 +33,7 @@ export const routes = {
   }
 }
 
-export class LangGeniusClient {
+export class DifyClient {
   constructor(apiKey, baseUrl = BASE_URL) {
     this.apiKey = apiKey
     this.baseUrl = baseUrl
@@ -85,7 +85,7 @@ export class LangGeniusClient {
   }
 }
 
-export class CompletionClient extends LangGeniusClient {
+export class CompletionClient extends DifyClient {
   createCompletionMessage(inputs, query, user, responseMode) {
     const data = {
       inputs,
@@ -97,7 +97,7 @@ export class CompletionClient extends LangGeniusClient {
   }
 }
 
-export class ChatClient extends LangGeniusClient {
+export class ChatClient extends DifyClient {
   createChatMessage(inputs, query, user, responseMode = 'blocking', conversationId = null) {
     const data = {
       inputs,
