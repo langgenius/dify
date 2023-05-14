@@ -1,4 +1,4 @@
-import { LangGeniusClient, BASE_URL } from "..";
+import { LangGeniusClient, BASE_URL, routes } from "..";
 
 import axios from 'axios'
 
@@ -20,7 +20,7 @@ describe('Client', () => {
   })
 });
 
-describe('sendRequest', () => {
+describe('Send Requests', () => {
   let langGeniusClient
 
   beforeEach(() => {
@@ -31,9 +31,9 @@ describe('sendRequest', () => {
     jest.resetAllMocks()
   })
 
-  it('should make a successful request to the API', async () => {
+  it('should make a successful request to the application parameter', async () => {
     const method = 'GET'
-    const endpoint = '/test-endpoint'
+    const endpoint = routes.application.url
     const expectedResponse = { data: 'response' }
     axios.mockResolvedValue(expectedResponse)
 
