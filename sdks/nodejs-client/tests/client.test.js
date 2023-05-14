@@ -1,30 +1,30 @@
-import { LangGeniusClient, BASE_URL, routes } from "..";
+import { DifyClient, BASE_URL, routes } from "..";
 
 import axios from 'axios'
 
 jest.mock('axios')
 
 describe('Client', () => {
-  let langGeniusClient
+  let difyClient
   beforeEach(() => {
-    langGeniusClient = new LangGeniusClient('test')
+    difyClient = new DifyClient('test')
   })
 
   test('should create a client', () => {
-    expect(langGeniusClient).toBeDefined();
+    expect(difyClient).toBeDefined();
   })
   // test updateApiKey
   test('should update the api key', () => {
-    langGeniusClient.updateApiKey('test2');
-    expect(langGeniusClient.apiKey).toBe('test2');
+    difyClient.updateApiKey('test2');
+    expect(difyClient.apiKey).toBe('test2');
   })
 });
 
 describe('Send Requests', () => {
-  let langGeniusClient
+  let difyClient
 
   beforeEach(() => {
-    langGeniusClient = new LangGeniusClient('test')
+    difyClient = new DifyClient('test')
   })
 
   afterEach(() => {
@@ -37,7 +37,7 @@ describe('Send Requests', () => {
     const expectedResponse = { data: 'response' }
     axios.mockResolvedValue(expectedResponse)
 
-    await langGeniusClient.sendRequest(method, endpoint)
+    await difyClient.sendRequest(method, endpoint)
 
     expect(axios).toHaveBeenCalledWith({
       method,
@@ -45,7 +45,7 @@ describe('Send Requests', () => {
       data: null,
       params: null,
       headers: {
-        Authorization: `Bearer ${langGeniusClient.apiKey}`,
+        Authorization: `Bearer ${difyClient.apiKey}`,
         'Content-Type': 'application/json',
       },
       responseType: 'json',
@@ -59,7 +59,7 @@ describe('Send Requests', () => {
     const errorMessage = 'Request failed with status code 404'
     axios.mockRejectedValue(new Error(errorMessage))
 
-    await expect(langGeniusClient.sendRequest(method, endpoint)).rejects.toThrow(
+    await expect(difyClient.sendRequest(method, endpoint)).rejects.toThrow(
       errorMessage
     )
   })
