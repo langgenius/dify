@@ -86,7 +86,7 @@ services:
       - weaviate
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/storage
+      - ./volumes/app/storage:/app/api/storage
 
   # worker service
   # The Celery worker for processing the queue.
@@ -137,7 +137,7 @@ services:
       - weaviate
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/storage
+      - ./volumes/app/storage:/app/api/storage
 
   # Frontend web application.
   web:
