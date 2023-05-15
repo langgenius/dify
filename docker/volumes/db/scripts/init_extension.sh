@@ -1,1 +1,0 @@
-psql -U postgres -d dify -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
