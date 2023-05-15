@@ -43,16 +43,25 @@ services:
       # The configurations of celery broker.
       # Use redis as the broker, and redis db 1 for celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
-      # Specifies the allowed origins for cross-origin requests to the Web API
-      WEB_API_CORS_ALLOW_ORIGINS: http://localhost,*
-      # Specifies the allowed origins for cross-origin requests to the console API
-      CONSOLE_CORS_ALLOW_ORIGINS: http://localhost,*
+      # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
+      WEB_API_CORS_ALLOW_ORIGINS: '*'
+      # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
+      CONSOLE_CORS_ALLOW_ORIGINS: '*'
       # CSRF Cookie settings
       # Controls whether a cookie is sent with cross-site requests,
       # providing some protection against cross-site request forgery attacks
+      #
+      # Default: `SameSite=Lax, Secure=false, HttpOnly=true`
+      # This default configuration supports same-origin requests using either HTTP or HTTPS,
+      # but does not support cross-origin requests. It is suitable for local debugging purposes.
+      #
+      # If you want to enable cross-origin support,
+      # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
+      #
+      # For **production** purposes, please set `SameSite=Lax, Secure=true, HttpOnly=true`.
       COOKIE_HTTPONLY: 'true'
-      COOKIE_SAMESITE: 'None'
-      COOKIE_SECURE: 'true'
+      COOKIE_SAMESITE: 'Lax'
+      COOKIE_SECURE: 'false'
       # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.
