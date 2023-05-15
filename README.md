@@ -4,7 +4,7 @@
   <a href="./README_CN.md">简体中文</a>
 </p>
 
-[Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai)
+[Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
 
 **Dify** is an easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications. With visual orchestration for various application types, Dify offers out-of-the-box, ready-to-use applications that can also serve as Backend-as-a-Service APIs. Unify your development process with one API for plugins and datasets integration, and streamline your operations using a single interface for prompt engineering, visual analytics, and continuous improvement.
 
@@ -86,7 +86,7 @@ A: English and Chinese are currently supported, and you can contribute language 
 If you have any questions, suggestions, or partnership inquiries, feel free to contact us through the following channels:
 
 - Submit an Issue or PR on our GitHub Repo
-- Join the discussion in our [Discord](https://discord.gg/AhzKf7dNgk) Community
+- Join the discussion in our [Discord](https://discord.gg/FngNHpbcY7) Community
 - Send an email to hello@dify.ai
 
 We're eager to assist you and together create more fun and useful AI applications!
