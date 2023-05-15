@@ -1,0 +1,12 @@
+.table td {
+  padding-left: 12px;
+}
+
+.table thead td {
+  height: 33px;
+  line-height: 33px;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}

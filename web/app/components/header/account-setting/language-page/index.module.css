@@ -1,0 +1,24 @@
+.google-icon {
+  background: url(../../assets/google.svg) center center no-repeat;
+  background-size: 16px 16px;
+}
+
+.github-icon {
+  background: url(../../assets/github.svg) center center no-repeat;
+  background-size: 16px 16px;
+}
+
+.twitter-icon {
+  background: url(../../assets/twitter.svg) center center no-repeat;
+  background-size: 16px 16px;
+}
+
+.bitbucket-icon {
+  background: url(../../assets/bitbucket.svg) center center no-repeat;
+  background-size: 16px 16px;
+}
+
+.salesforce-icon {
+  background: url(../../assets/salesforce.svg) center center no-repeat;
+  background-size: 24px auto;
+}

@@ -1,0 +1,37 @@
+.modal {
+  position: relative;
+}
+.modal .icon {
+  width: 48px;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.9) center no-repeat url(../assets/annotation-info.svg);
+  background-size: 24px;
+  border: 0.5px solid #F2F4F7;
+  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08), 0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  border-radius: 12px;
+}
+.modal .close {
+  position: absolute;
+  right: 16px;
+  top: 16px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: center no-repeat url(../assets/close.svg);
+  background-size: 16px;
+  cursor: pointer;
+}
+.modal .title {
+  @apply mt-3 mb-1;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 30px;
+  color: #101828;
+}
+.modal .content {
+  @apply mb-10;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  color: #667085;
+}

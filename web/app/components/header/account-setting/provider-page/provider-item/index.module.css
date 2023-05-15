@@ -1,0 +1,19 @@
+.icon-openai {
+  background: url(../../../assets/gpt.svg) center center no-repeat;
+  background-size: contain;
+}
+
+.icon-azure {
+  background: url(../../../assets/azure.svg) center center no-repeat;
+  background-size: contain;
+}
+
+.icon-anthropic {
+  background: url(../../../assets/anthropic.svg) center center no-repeat;
+  background-size: contain;
+}
+
+.icon-hugging-face {
+  background: url(../../../assets/hugging-face.svg) center center no-repeat;
+  background-size: contain;
+}

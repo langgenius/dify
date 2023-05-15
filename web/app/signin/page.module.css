@@ -1,0 +1,19 @@
+.githubIcon {
+  background: center/contain url('./assets/github.svg');
+}
+
+.googleIcon {
+  background: center/contain url('./assets/google.svg');
+}
+
+.logo {
+  width: 96px;
+  height: 40px;
+  background: url(~@/app/components/share/chat/welcome/icons/logo.png) center center no-repeat;
+  background-size: contain;
+}
+
+.background {
+  background-image: url('./assets/background.png');
+  background-size: cover;
+}

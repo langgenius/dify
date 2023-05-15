@@ -1,0 +1,206 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Completion App API
+
+For high-quality text generation, such as articles, summaries, and translations, use the completion-messages API with user input. Text generation relies on the model parameters and prompt templates set in LangGenius Prompt Engineering.
+
+<Heading
+  url='/completion-messages'
+  method='POST'
+  title='Create Completion Message'
+  name='#Create-Completion-Message'
+/>
+<Row>
+  <Col>
+    Create a Completion Message to support the question-and-answer mode.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='inputs' type='object' key='inputs'>
+        (Optional) Provide user input fields as key-value pairs, corresponding to variables in Prompt Eng. Key is the variable name, Value is the parameter value. If the field type is Select, the submitted Value must be one of the preset choices.
+        <ul>
+         {!!props.variables.length && props.variables.map(
+            val => (
+                <SubProperty name={val.key} type={val.type} key={val.key}>
+                  {val.name ? `${val.name}` : ''}
+                </SubProperty>
+            )
+        )}
+        </ul>
+      </Property>
+      <Property name='query' type='string' key='query'>
+        User input text content.
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        - Blocking type, waiting for execution to complete and returning results. (Requests may be interrupted if the process is long)
+        - streaming returns. Implementation of streaming return based on SSE (**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**).
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "Hi",\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/completion-messages' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "query": "Hi",
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### blocking
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "0b089b9a-24d9-48cc-94f8-762677276261",
+      "answer": "how are you?",
+      "created_at": 1679586667
+    }
+    ```
+    </CodeGroup>
+    ### streaming
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/feedbacks'
+  method='POST'
+  title='Message feedback (like)'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    Rate received messages on behalf of end-users with likes or dislikes. This data is visible in the Logs & Annotations page and used for future model fine-tuning.
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+        like or dislike, null is undo
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "has_more": false,
+      "data": [
+        {
+          "id": "WAz8eIbvDR60rouK",
+          "username": "FrankMcCallister",
+          "phone_number": "1-800-759-3000",
+          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
+          "display_name": null,
+          "conversation_id": "xgQQXg3hrtjh7AvZ",
+          "last_active_at": 705103200,
+          "created_at": 692233200
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='Obtain application parameter information'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    Retrieve configured Input parameters, including variable names, field names, types, and default values. Typically used for displaying these fields in a form or filling in default values after the client loads.
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "introduction": "nice to meet you",
+      "variables": [
+        {
+          "key": "book",
+          "name": "Which book?",
+          "description": null,
+          "type": "string",
+          "default": null,
+          "options": null
+        },
+        {
+          // ...
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

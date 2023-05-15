@@ -1,0 +1,2 @@
+class MoreLikeThisDisabledError(Exception):
+    pass

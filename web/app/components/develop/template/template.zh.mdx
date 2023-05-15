@@ -1,0 +1,206 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+
+# 文本生成型应用 API
+
+可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模版取决于开发者在 LangGenius 提示词编排页的设置。
+
+<Heading
+  url='/completion-messages'
+  method='POST'
+  title='创建文本补全消息'
+  name='#Create-Completion-Message'
+/>
+<Row>
+  <Col>
+    创建文本补全消息，支持一问一答模式。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='inputs' type='object' key='inputs'>
+        （选填）以键值对方式提供用户输入字段，与提示词编排中的变量对应。Key 为变量名称，Value 是参数值。如果字段类型为 Select，传入的 Value 需为预设选项之一。
+        <ul>
+         {!!props.variables.length && props.variables.map(
+            val => (
+                <SubProperty name={val.key} type={val.type} key={val.key}>
+                  {val.name ? `${val.name}` : ''}
+                </SubProperty>
+            )
+        )}
+        </ul>
+      </Property>
+      <Property name='query' type='string' key='query'>
+        用户输入的文本正文。
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        - blocking 阻塞型，等待执行完毕后返回结果。（请求若流程较长可能会被中断）
+        - streaming 流式返回。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现流式返回。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "Hi",\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/completion-messages' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "query": "Hi",
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### blocking
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "0b089b9a-24d9-48cc-94f8-762677276261",
+      "answer": "how are you?",
+      "created_at": 1679586667
+    }
+    ```
+    </CodeGroup>
+    ### streaming
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/feedbacks'
+  method='POST'
+  title='消息反馈（点赞）'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    代表最终用户对返回消息进行评价，可以点赞与点踩，该数据将在“日志与标注”页中可见，并用于后续的模型微调。
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        消息 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+       like 或 dislike， 空值为撤销
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "has_more": false,
+      "data": [
+        {
+          "id": "WAz8eIbvDR60rouK",
+          "username": "FrankMcCallister",
+          "phone_number": "1-800-759-3000",
+          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
+          "display_name": null,
+          "conversation_id": "xgQQXg3hrtjh7AvZ",
+          "last_active_at": 705103200,
+          "created_at": 692233200
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='获取应用配置信息'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    获取已配置的 Input 参数，包括变量名、字段名称、类型与默认值。通常用于客户端加载后显示这些字段的表单或填入默认值。
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "introduction": "nice to meet you",
+      "variables": [
+        {
+          "key": "book",
+          "name": "Which book?",
+          "description": null,
+          "type": "string",
+          "default": null,
+          "options": null
+        },
+        {
+          // ...
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

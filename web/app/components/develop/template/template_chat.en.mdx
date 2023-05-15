@@ -1,0 +1,391 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# Chat App API
+
+For versatile conversational apps using a Q&A format, call the chat-messages API to initiate dialogue. Maintain ongoing conversations by passing the returned conversation_id. Response parameters and templates depend on LangGenius Prompt Eng. settings.
+
+<Heading
+  url='/chat-messages'
+  method='POST'
+  title='Create chat message'
+  name='#Create-Chat-Message'
+/>
+<Row>
+  <Col>
+    Create a new conversation message or continue an existing dialogue.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='inputs' type='object' key='inputs'>
+        (Optional) Provide user input fields as key-value pairs, corresponding to variables in Prompt Eng. Key is the variable name, Value is the parameter value. If the field type is Select, the submitted Value must be one of the preset choices.
+        <ul>
+         {!!props.variables.length && props.variables.map(
+            val => (
+                <SubProperty name={val.key} type={val.type} key={val.key}>
+                  {val.name ? `${val.name}` : ''}
+                </SubProperty>
+            )
+        )}
+        </ul>
+      </Property>
+      <Property name='query' type='string' key='query'>
+        User input/question content
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        - Blocking type, waiting for execution to complete and returning results. (Requests may be interrupted if the process is long)
+        - streaming returns. Implementation of streaming return based on SSE （**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）.
+      </Property>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+       (Optional) Conversation ID: leave empty for first-time conversation; pass conversation_id from context to continue dialogue.
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/chat-messages' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "query": "eh",
+        "response_mode": "streaming",
+        "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    ### blocking
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "answer": "Hi, is there anything I can help you?",
+      "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
+      "created_at": 1679587005,
+      "id": "059f87d9-15c0-473a-870c-fde95cdcc1e4"
+    }
+    ```
+    </CodeGroup>
+    ### streaming
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/feedbacks'
+  method='POST'
+  title='Message terminal user feedback, like'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    Rate received messages on behalf of end-users with likes or dislikes. This data is visible in the Logs & Annotations page and used for future model fine-tuning.
+
+    ### Path Params
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+       Message ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+       like or dislike, null is undo
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "has_more": false,
+      "data": [
+        {
+          "id": "WAz8eIbvDR60rouK",
+          "username": "FrankMcCallister",
+          "phone_number": "1-800-759-3000",
+          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
+          "display_name": null,
+          "conversation_id": "xgQQXg3hrtjh7AvZ",
+          "last_active_at": 705103200,
+          "created_at": 692233200
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages'
+  method='GET'
+  title='Get the chat history message'
+  name='#messages'
+/>
+<Row>
+  <Col>
+    The first page returns the latest `limit` bar, which is in reverse order.
+
+    ### Query
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        Conversation ID
+      </Property>
+      <Property name='first_id' type='string' key='first_id'>
+        ID of the first chat record on the current page. The default is none.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        How many chats are returned in one request
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET 'https://cloud.langgenius.dev/api/messages?user=abc-123&conversation_id='
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "has_more": false,
+      "data": [
+        {
+          "id": "WAz8eIbvDR60rouK",
+          "username": "FrankMcCallister",
+          "phone_number": "1-800-759-3000",
+          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
+          "display_name": null,
+          "conversation_id": "xgQQXg3hrtjh7AvZ",
+          "last_active_at": 705103200,
+          "created_at": 692233200
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations'
+  method='GET'
+  title='Get conversation list'
+  name='#conversations'
+/>
+<Row>
+  <Col>
+    Gets the session list of the current user. By default, the last 20 sessions are returned.
+
+    ### Query
+
+    <Properties>
+      <Property name='last_id' type='string' key='last_id'>
+        The ID of the last record on the current page, default none.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        "How many chats are returned in one request
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET 'https://cloud.langgenius.dev/api/conversations?user=abc-123&last_id=&limit=20' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "limit": 20,
+      "has_more": false,
+      "data": [
+        {
+          "id": "10799fb8-64f7-4296-bbf7-b42bfbe0ae54",
+          "name": "New chat",
+          "inputs": {
+              "book": "book",
+              "myName": "Lucy"
+          },
+          "status": "normal",
+          "created_at": 1679667915
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations/{converation_id}/name'
+  method='POST'
+  title='Conversation renaming'
+  name='#rename'
+/>
+<Row>
+  <Col>
+    Rename conversations; the name is displayed in multi-session client interfaces.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        New name
+      </Property>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/conversations/{converation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --data-raw '{
+        "name": "",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='Obtain application parameter information'
+  name='#rename'
+/>
+<Row>
+  <Col>
+    Retrieve configured Input parameters, including variable names, field names, types, and default values. Typically used for displaying these fields in a form or filling in default values after the client loads.
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "introduction": "nice to meet you",
+      "variables": [
+        {
+          "key": "book",
+          "name": "book",
+          "description": null,
+          "type": "string",
+          "default": null,
+          "options": null
+        },
+        {
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

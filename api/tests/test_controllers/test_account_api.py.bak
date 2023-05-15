@@ -1,0 +1,75 @@
+import json
+import pytest
+from flask import url_for
+
+from models.model import Account
+
+# Sample user data for testing
+sample_user_data = {
+    'name': 'Test User',
+    'email': 'test@example.com',
+    'interface_language': 'en-US',
+    'interface_theme': 'light',
+    'timezone': 'America/New_York',
+    'password': 'testpassword',
+    'new_password': 'newtestpassword',
+    'repeat_new_password': 'newtestpassword'
+}
+
+# Create a test user and log them in
+@pytest.fixture(scope='function')
+def logged_in_user(client, session):
+    # Create test user and add them to the database
+    # Replace this with your actual User model and any required fields
+
+    # todo refer to api.controllers.setup.SetupApi.post() to create a user
+    db_user_data = sample_user_data.copy()
+    db_user_data['password_salt'] = 'testpasswordsalt'
+    del db_user_data['new_password']
+    del db_user_data['repeat_new_password']
+    test_user = Account(**db_user_data)
+    session.add(test_user)
+    session.commit()
+
+    # Log in the test user
+    client.post(url_for('console.loginapi'), data={'email': sample_user_data['email'], 'password': sample_user_data['password']})
+
+    return test_user
+
+def test_account_profile(logged_in_user, client):
+    response = client.get(url_for('console.accountprofileapi'))
+    assert response.status_code == 200
+    assert json.loads(response.data)['name'] == sample_user_data['name']
+
+def test_account_name(logged_in_user, client):
+    new_name = 'New Test User'
+    response = client.post(url_for('console.accountnameapi'), json={'name': new_name})
+    assert response.status_code == 200
+    assert json.loads(response.data)['name'] == new_name
+
+def test_account_interface_language(logged_in_user, client):
+    new_language = 'zh-CN'
+    response = client.post(url_for('console.accountinterfacelanguageapi'), json={'interface_language': new_language})
+    assert response.status_code == 200
+    assert json.loads(response.data)['interface_language'] == new_language
+
+def test_account_interface_theme(logged_in_user, client):
+    new_theme = 'dark'
+    response = client.post(url_for('console.accountinterfacethemeapi'), json={'interface_theme': new_theme})
+    assert response.status_code == 200
+    assert json.loads(response.data)['interface_theme'] == new_theme
+
+def test_account_timezone(logged_in_user, client):
+    new_timezone = 'Asia/Shanghai'
+    response = client.post(url_for('console.accounttimezoneapi'), json={'timezone': new_timezone})
+    assert response.status_code == 200
+    assert json.loads(response.data)['timezone'] == new_timezone
+
+def test_account_password(logged_in_user, client):
+    response = client.post(url_for('console.accountpasswordapi'), json={
+        'password': sample_user_data['password'],
+        'new_password': sample_user_data['new_password'],
+        'repeat_new_password': sample_user_data['repeat_new_password']
+    })
+    assert response.status_code == 200
+    assert json.loads(response.data)['result'] == 'success'

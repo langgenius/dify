@@ -1,0 +1,18 @@
+.logo-icon {
+  background: url(../assets/logo-icon.png) center center no-repeat;
+  background-size: contain;
+  box-shadow: 0px 4px 6px -1px rgba(0, 0, 0, 0.05), 0px 2px 4px -2px rgba(0, 0, 0, 0.05);
+}
+
+.logo-text {
+  width: 74.09px;
+  height: 15.32px;
+  background: url(../assets/logo-text.svg) center center no-repeat;
+  background-size: contain;
+}
+
+.modal {
+  max-width: 480px !important;
+  width: 480px !important;
+  padding: 24px 32px !important;
+}

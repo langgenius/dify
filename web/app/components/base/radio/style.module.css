@@ -1,0 +1,13 @@
+.container {
+    padding: 4px;
+    border-radius: 4px;
+}
+
+.label {
+    position: relative;
+    margin-right: 3px;
+}
+
+.label:last-child {
+    margin-right: 0;
+}

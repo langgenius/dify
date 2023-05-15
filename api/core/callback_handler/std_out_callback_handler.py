@@ -1,0 +1,127 @@
+import sys
+from typing import Any, Dict, List, Optional, Union
+
+from langchain.callbacks.base import BaseCallbackHandler
+from langchain.input import print_text
+from langchain.schema import AgentAction, AgentFinish, LLMResult
+
+
+class DifyStdOutCallbackHandler(BaseCallbackHandler):
+    """Callback Handler that prints to std out."""
+
+    def __init__(self, color: Optional[str] = None) -> None:
+        """Initialize callback handler."""
+        self.color = color
+
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> None:
+        """Print out the prompts."""
+        print_text("\n[on_llm_start]\n", color='blue')
+
+        if 'Chat' in serialized['name']:
+            for prompt in prompts:
+                print_text(prompt + "\n", color='blue')
+        else:
+            print_text(prompts[0] + "\n", color='blue')
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        """Do nothing."""
+        print_text("\n[on_llm_end]\nOutput: " + str(response.generations[0][0].text) + "\nllm_output: " + str(
+            response.llm_output) + "\n", color='blue')
+
+    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
+        """Do nothing."""
+        pass
+
+    def on_llm_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> None:
+        """Do nothing."""
+        print_text("\n[on_llm_error]\nError: " + str(error) + "\n", color='blue')
+
+    def on_chain_start(
+        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
+    ) -> None:
+        """Print out that we are entering a chain."""
+        class_name = serialized["name"]
+        print_text("\n[on_chain_start]\nChain: " + class_name + "\nInputs: " + str(inputs) + "\n", color='pink')
+
+    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
+        """Print out that we finished a chain."""
+        print_text("\n[on_chain_end]\nOutputs: " + str(outputs) + "\n", color='pink')
+
+    def on_chain_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> None:
+        """Do nothing."""
+        print_text("\n[on_chain_error]\nError: " + str(error) + "\n", color='pink')
+
+    def on_tool_start(
+        self,
+        serialized: Dict[str, Any],
+        input_str: str,
+        **kwargs: Any,
+    ) -> None:
+        """Do nothing."""
+        print_text("\n[on_tool_start] " + str(serialized), color='yellow')
+
+    def on_agent_action(
+        self, action: AgentAction, color: Optional[str] = None, **kwargs: Any
+    ) -> Any:
+        """Run on agent action."""
+        tool = action.tool
+        tool_input = action.tool_input
+        action_name_position = action.log.index("\nAction:") + 1 if action.log else -1
+        thought = action.log[:action_name_position].strip() if action.log else ''
+
+        log = f"Thought: {thought}\nTool: {tool}\nTool Input: {tool_input}"
+        print_text("\n[on_agent_action]\n" + log + "\n", color='green')
+
+    def on_tool_end(
+        self,
+        output: str,
+        color: Optional[str] = None,
+        observation_prefix: Optional[str] = None,
+        llm_prefix: Optional[str] = None,
+        **kwargs: Any,
+    ) -> None:
+        """If not the final action, print out observation."""
+        print_text("\n[on_tool_end]\n", color='yellow')
+        if observation_prefix:
+            print_text(f"\n{observation_prefix}")
+        print_text(output, color='yellow')
+        if llm_prefix:
+            print_text(f"\n{llm_prefix}")
+        print_text("\n")
+
+    def on_tool_error(
+        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
+    ) -> None:
+        """Do nothing."""
+        print_text("\n[on_tool_error] Error: " + str(error) + "\n", color='yellow')
+
+    def on_text(
+        self,
+        text: str,
+        color: Optional[str] = None,
+        end: str = "",
+        **kwargs: Optional[str],
+    ) -> None:
+        """Run when agent ends."""
+        print_text("\n[on_text] " + text + "\n", color=color if color else self.color, end=end)
+
+    def on_agent_finish(
+        self, finish: AgentFinish, color: Optional[str] = None, **kwargs: Any
+    ) -> None:
+        """Run on agent end."""
+        print_text("[on_agent_finish] " + finish.return_values['output'] + "\n", color='green', end="\n")
+
+
+class DifyStreamingStdOutCallbackHandler(DifyStdOutCallbackHandler):
+    """Callback handler for streaming. Only works with LLMs that support streaming."""
+
+    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
+        """Run on new LLM token. Only available when streaming is enabled."""
+        sys.stdout.write(token)
+        sys.stdout.flush()

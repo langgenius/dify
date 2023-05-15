@@ -1,0 +1,5 @@
+.modal {
+  padding: 32px !important;
+  width: 480px !important;
+  background: linear-gradient(180deg, rgba(3, 152, 85, 0.05) 0%, rgba(3, 152, 85, 0) 22.44%), #F9FAFB !important;
+}

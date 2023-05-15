@@ -1,0 +1,28 @@
+{
+  "extends": [
+    "@antfu",
+    "plugin:react-hooks/recommended"
+  ],
+  "rules": {
+    "@typescript-eslint/consistent-type-definitions": [
+      "error",
+      "type"
+    ],
+    "no-console": "off",
+    "indent": "off",
+    "@typescript-eslint/indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1,
+        "flatTernaryExpressions": false,
+        "ignoredNodes": [
+          "PropertyDefinition[decorators]",
+          "TSUnionType",
+          "FunctionExpression[params]:has(Identifier[decorators])"
+        ]
+      }
+    ],
+    "react-hooks/exhaustive-deps": "warning"
+  }
+}

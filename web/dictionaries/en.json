@@ -1,0 +1,27 @@
+{
+  "common": {
+    "confrim": "Confirm",
+    "cancel": "Cancel",
+    "refresh": "Refresh"
+  },
+  "index": {
+    "welcome": "Welcome to "
+  },
+  "signin": {},
+  "app": {
+    "overview": {
+      "title": "Overview",
+      "To get started,": "To get started,",
+      "enter your OpenAI API key below": "enter your OpenAI API key below",
+      "Get your API key from OpenAI dashboard": "Get your API key from OpenAI dashboard",
+      "Token Usage": "Token Usage"
+    },
+    "logs": {
+      "title": "Logs",
+      "description": "You can review and annotate the conversation and response text of the LLM, which will be used for subsequent model fine-tuning."
+    },
+    "textGeneration": {
+      "history": "History"
+    }
+  }
+}

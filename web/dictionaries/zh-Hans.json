@@ -1,0 +1,27 @@
+{
+  "common": {
+    "confrim": "确定",
+    "cancel": "取消",
+    "refresh": "刷新"
+  },
+  "index": {
+    "welcome": "欢迎来到 "
+  },
+  "signin": {},
+  "app": {
+    "overview": {
+      "title": "概览",
+      "To get started,": "从这里开始",
+      "enter your OpenAI API key below 👇": "输入你的 OpenAI API 密钥👇",
+      "Get your API key from OpenAI dashboard": "去 OpenAI 管理面板获取",
+      "Token Usage": "Token 消耗"
+    },
+    "logs": {
+      "title": "日志",
+      "description": "日志记录了应用的运行情况，包括用户的输入和 AI 的回复。"
+    },
+    "textGeneration": {
+      "history": "历史"
+    }
+  }
+}

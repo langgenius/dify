@@ -1,0 +1,28 @@
+.slider {
+    position: relative;
+}
+
+.slider-thumb {
+    width: 18px;
+    height: 18px;
+    background-color: white;
+    border-radius: 50%;
+    position: absolute;
+    top: -9px;
+    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+
+}
+
+.slider-thumb:focus {
+    outline: none;
+}
+
+.slider-track {
+    background-color: #9CA3AF;
+    height: 2px;
+}
+
+.slider-track-1 {
+    background-color: #E5E7EB;
+}
