@@ -139,7 +139,7 @@ dmypy.json
 api/.env
 api/storage/*
 
-docker/volumes/app/storage/privkeys/*
+docker/volumes/app/storage/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
