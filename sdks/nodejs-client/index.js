@@ -17,7 +17,7 @@ const routes = {
   },
   createChatMessage: {
     method: 'POST',
-    url: () => `/chat-message`,
+    url: () => `/chat-messages`,
   },
   getConversationMessages: {
     method: 'GET',
