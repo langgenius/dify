@@ -41,7 +41,7 @@ cd docker
 docker-compose up -d
 ```
 
-After running, you can access the Dify console in your browser at [http://localhost](http://localhost) and start the initialization operation.
+After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization installation process.
 
 ### Configuration
 
