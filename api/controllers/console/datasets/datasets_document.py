@@ -210,6 +210,7 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('duplicate', type=bool, nullable=False, location='json')
+        parser.add_argument('original_document_id', type=str, required=False, location='json')
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args['indexing_technique']:
@@ -244,8 +245,8 @@ class DatasetInitApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, required=True,
                             nullable=False, location='json')
-        parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
-        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('data_source', type=dict, required=False, location='json')
+        parser.add_argument('process_rule', type=dict, required=False, location='json')
         args = parser.parse_args()
 
         # validate args
