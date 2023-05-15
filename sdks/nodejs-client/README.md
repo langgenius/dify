@@ -13,7 +13,7 @@ After installing the SDK, you can use it in your project like this:
 import { DifyClient, ChatClient, CompletionClient } from 'dify-client'
 
 const API_KEY = 'your-api-key-here';
-const user = `random-user-id`:
+const user = `random-user-id`;
 
 // Create a completion client
 const completionClient = new CompletionClient(API_KEY)
