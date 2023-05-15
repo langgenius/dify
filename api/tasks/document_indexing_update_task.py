@@ -17,7 +17,7 @@ from models.dataset import Document, Dataset, DocumentSegment
 @shared_task
 def document_indexing_update_task(dataset_id: str, document_id: str):
     """
-    Async process document
+    Async update document
     :param dataset_id:
     :param document_id:
 
@@ -65,7 +65,6 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
     except Exception:
         logging.exception("Cleaned document when document update data source or process rule failed")
-    # start document re_segment
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run(document)
