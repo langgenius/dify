@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react'
-import debounce from 'lodash/debounce'
-import { DebouncedFunc } from 'lodash'
+import debounce from 'lodash-es/debounce'
+import { DebouncedFunc } from 'lodash-es'
 import { validateProviderKey } from '@/service/common'
 
 export enum ValidatedStatus {
