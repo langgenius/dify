@@ -43,7 +43,7 @@ cd docker
 docker-compose up -d
 ```
 
-运行后，可以在浏览器上访问 [http://localhost](http://localhost) 进入 Dify 控制台，并开始初始化操作。
+运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
 
 ### 配置
 
