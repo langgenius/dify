@@ -5,7 +5,7 @@
 </p>
 
 
-[官方网站](http://dify.ai) • [文档](https://docs.dify.ai/v/zh-hans) • [Twitter](https://twitter.com/dify_ai)
+[官方网站](https://dify.ai) • [文档](https://docs.dify.ai/v/zh-hans) • [Twitter](https://twitter.com/dify_ai)
 
 **Dify** 是一个易用的 LLMOps 平台，旨在让更多人可以创建可持续运营的原生 AI 应用。Dify 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
 
@@ -23,7 +23,7 @@ Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前�
 
 ## 使用云服务
 
-访问 [Dify.ai](http://cloud.dify.ai)
+访问 [Dify.ai](https://cloud.dify.ai)
 
 ## 安装社区版
 
