@@ -5,7 +5,7 @@
 </p>
 
 
-[官方网站](https://dify.ai) • [文档](https://docs.dify.ai/v/zh-hans) • [Twitter](https://twitter.com/dify_ai)
+[官方网站](https://dify.ai) • [文档](https://docs.dify.ai/v/zh-hans) • [Twitter](https://twitter.com/dify_ai) •  [Discord](https://discord.gg/FngNHpbcY7)
 
 **Dify** 是一个易用的 LLMOps 平台，旨在让更多人可以创建可持续运营的原生 AI 应用。Dify 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
 
@@ -87,7 +87,7 @@ A: 现已支持英文与中文，你可以为我们贡献语言包。
 如果您有任何问题、建议或合作意向，欢迎通过以下方式联系我们：
 
 - 在我们的 [GitHub Repo](https://github.com/langgenius/dify) 上提交 Issue 或 PR
-- 在我们的 [Discord 社区](https://discord.gg/AhzKf7dNgk) 上加入讨论
+- 在我们的 [Discord 社区](https://discord.gg/FngNHpbcY7) 上加入讨论
 - 发送邮件至 hello@dify.ai
 
 ## 贡献代码
