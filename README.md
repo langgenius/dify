@@ -4,7 +4,7 @@
   <a href="./README_CN.md">简体中文</a>
 </p>
 
-[Website](http://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai)
+[Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai)
 
 **Dify** is an easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications. With visual orchestration for various application types, Dify offers out-of-the-box, ready-to-use applications that can also serve as Backend-as-a-Service APIs. Unify your development process with one API for plugins and datasets integration, and streamline your operations using a single interface for prompt engineering, visual analytics, and continuous improvement.
 
@@ -21,7 +21,7 @@ Dify is compatible with Langchain, meaning we'll gradually support multiple LLMs
 
 ## Use Cloud Services
 
-Visit [Dify.ai](http://dify.ai)
+Visit [Dify.ai](https://dify.ai)
 
 ## Install the Community Edition
 
