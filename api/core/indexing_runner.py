@@ -18,6 +18,7 @@ from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.index.keyword_table_index import KeywordTableIndex
 from core.index.readers.html_parser import HTMLParser
 from core.index.readers.pdf_parser import PDFParser
+from core.index.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
 from core.index.vector_index import VectorIndex
 from core.llm.token_calculator import TokenCalculator
 from extensions.ext_database import db
@@ -267,16 +268,14 @@ class IndexingRunner:
                 raise ValueError("Custom segment length should be between 50 and 1000.")
 
             separator = segmentation["separator"]
-            if not separator:
-                separators = ["\n\n", "。", ".", " ", ""]
-            else:
+            if separator:
                 separator = separator.replace('\\n', '\n')
-                separators = [separator, ""]
 
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            character_splitter = FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
                 chunk_size=segmentation["max_tokens"],
                 chunk_overlap=0,
-                separators=separators
+                fixed_separator=separator,
+                separators=["\n\n", "。", ".", " ", ""]
             )
         else:
             # Automatic segmentation
