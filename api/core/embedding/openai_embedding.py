@@ -113,8 +113,8 @@ class OpenAIEmbedding(BaseEmbedding):
         self.deployment_name = deployment_name
         self.openai_api_key = openai_api_key
         # Use proxy openai base
-        if current_app.config['API_URL'] is not None:
-            openai.api_base = current_app.config['API_URL']
+        if current_app.config['OPENAI_API_BASE'] is not None:
+            openai.api_base = current_app.config['OPENAI_API_BASE']
 
     @handle_llm_exceptions
     def _get_query_embedding(self, query: str) -> List[float]:

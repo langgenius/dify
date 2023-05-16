@@ -3,7 +3,7 @@ from typing import Optional, Union
 
 import openai
 from openai.error import AuthenticationError, OpenAIError
-
+from flask import current_app
 from core.llm.moderation import Moderation
 from core.llm.provider.base import BaseProvider
 from core.llm.provider.errors import ValidateFailedError
@@ -12,6 +12,9 @@ from models.provider import ProviderName
 
 class OpenAIProvider(BaseProvider):
     def get_models(self, model_id: Optional[str] = None) -> list[dict]:
+        # Use proxy openai base
+        if current_app.config['OPENAI_API_BASE'] is not None:
+            openai.api_base = current_app.config['OPENAI_API_BASE']
         credentials = self.get_credentials(model_id)
         response = openai.Model.list(**credentials)
 
