@@ -17,6 +17,8 @@ services:
       API_URL: http://localhost
       # The URL for Web APP, refers to the Web App base URL of WEB service.
       APP_URL: http://localhost
+      # Openai Proxy api base.
+      OPENAI_API_BASE: https://api.openai.com/v1
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
@@ -119,6 +121,8 @@ services:
       API_URL: http://localhost
       # The URL for Web APP, refers to the Web App base URL of WEB service.
       APP_URL: http://localhost
+      # Openai Proxy api base.
+      OPENAI_API_BASE: https://api.openai.com/v1
       # The configurations of postgres database connection.
       # It is consistent with the configuration in the 'db' service below.
       DB_USERNAME: postgres

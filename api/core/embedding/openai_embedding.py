@@ -1,5 +1,6 @@
 from typing import Optional, Any, List
 
+from flask import current_app
 import openai
 from llama_index.embeddings.base import BaseEmbedding
 from llama_index.embeddings.openai import OpenAIEmbeddingMode, OpenAIEmbeddingModelType, _QUERY_MODE_MODEL_DICT, \
@@ -111,6 +112,9 @@ class OpenAIEmbedding(BaseEmbedding):
         self.model = OpenAIEmbeddingModelType(model)
         self.deployment_name = deployment_name
         self.openai_api_key = openai_api_key
+        # Use proxy openai base
+        if current_app.config['API_URL'] is not None:
+            openai.api_base = current_app.config['API_URL']
 
     @handle_llm_exceptions
     def _get_query_embedding(self, query: str) -> List[float]:

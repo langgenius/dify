@@ -29,6 +29,7 @@ DEFAULTS = {
     'CONSOLE_URL': 'https://cloud.dify.ai',
     'API_URL': 'https://api.dify.ai',
     'APP_URL': 'https://udify.app',
+    'OPENAI_API_BASE': 'https://api.openai.com/v1',
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
@@ -74,6 +75,7 @@ class Config:
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
+        self.OPENAI_API_BASE = get_env('OPENAI_API_BASE')
         self.CURRENT_VERSION = "0.2.0"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
