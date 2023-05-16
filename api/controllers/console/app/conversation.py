@@ -45,7 +45,7 @@ message_detail_fields = {
     'message_tokens': fields.Integer,
     'answer': fields.String,
     'answer_tokens': fields.Integer,
-    'provider_response_latency': fields.Integer,
+    'provider_response_latency': fields.Float,
     'from_source': fields.String,
     'from_end_user_id': fields.String,
     'from_account_id': fields.String,
