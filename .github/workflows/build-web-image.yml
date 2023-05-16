@@ -5,8 +5,6 @@ on:
     branches:
       - 'main'
       - 'deploy/dev'
-  pull_request:
-    types: [synchronize, opened, reopened, ready_for_review]
 
 jobs:
   build-and-push:
