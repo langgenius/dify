@@ -1,7 +1,6 @@
 """Functionality for splitting text."""
 from __future__ import annotations
 
-import logging
 from typing import (
     Any,
     List,
@@ -9,8 +8,6 @@ from typing import (
 )
 
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-
-logger = logging.getLogger(__name__)
 
 
 class FixedRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
