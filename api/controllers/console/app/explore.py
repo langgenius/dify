@@ -6,6 +6,8 @@ from flask_restful import Resource, reqparse, fields, marshal_with, abort, input
 from sqlalchemy import and_
 
 from controllers.console import api
+from controllers.console.app.error import AppNotFoundError
+from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from models.model import Tenant, App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
@@ -53,6 +55,7 @@ recommended_app_list_fields = {
 
 class InstalledAppsListResource(Resource):
     @login_required
+    @account_initialization_required
     @marshal_with(installed_app_list_fields)
     def get(self):
         current_tenant_id = Tenant.query.first().id
@@ -73,6 +76,7 @@ class InstalledAppsListResource(Resource):
         return {'installed_apps': installed_apps}
 
     @login_required
+    @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, help='Invalid app_id')
@@ -112,6 +116,7 @@ class InstalledAppsListResource(Resource):
 class InstalledAppResource(Resource):
 
     @login_required
+    @account_initialization_required
     def delete(self, installed_app_id):
 
         installed_app = InstalledApp.query.filter(and_(
@@ -131,6 +136,7 @@ class InstalledAppResource(Resource):
         return {'result': 'success', 'message': 'App uninstalled successfully'}
 
     @login_required
+    @account_initialization_required
     def patch(self, installed_app_id):
         parser = reqparse.RequestParser()
         parser.add_argument('is_pinned', type=inputs.boolean)
@@ -156,8 +162,9 @@ class InstalledAppResource(Resource):
         return {'result': 'success', 'message': 'App info updated successfully'}
 
 
-class RecommendedAppsResource(Resource):
+class RecommendedAppListResource(Resource):
     @login_required
+    @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
         recommended_apps = db.session.query(RecommendedApp).filter(
@@ -204,6 +211,51 @@ class RecommendedAppsResource(Resource):
         return {'recommended_apps': recommended_apps_result, 'categories': list(categories)}
 
 
+class RecommendedAppResource(Resource):
+    model_config_fields = {
+        'opening_statement': fields.String,
+        'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
+        'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
+        'more_like_this': fields.Raw(attribute='more_like_this_dict'),
+        'model': fields.Raw(attribute='model_dict'),
+        'user_input_form': fields.Raw(attribute='user_input_form_list'),
+        'pre_prompt': fields.String,
+        'agent_mode': fields.Raw(attribute='agent_mode_dict'),
+    }
+
+    app_simple_detail_fields = {
+        'id': fields.String,
+        'name': fields.String,
+        'icon': fields.String,
+        'icon_background': fields.String,
+        'mode': fields.String,
+        'app_model_config': fields.Nested(model_config_fields),
+    }
+
+    @login_required
+    @account_initialization_required
+    @marshal_with(app_simple_detail_fields)
+    def get(self, app_id):
+        app_id = str(app_id)
+
+        # is in public recommended list
+        recommended_app = db.session.query(RecommendedApp).filter(
+            RecommendedApp.is_listed == True,
+            RecommendedApp.app_id == app_id
+        ).first()
+
+        if not recommended_app:
+            raise AppNotFoundError
+
+        # get app detail
+        app = db.session.query(App).filter(App.id == app_id).first()
+        if not app:
+            raise AppNotFoundError
+
+        return app
+
+
 api.add_resource(InstalledAppsListResource, '/installed-apps')
 api.add_resource(InstalledAppResource, '/installed-apps/<uuid:installed_app_id>')
-api.add_resource(RecommendedAppsResource, '/explore/apps')
+api.add_resource(RecommendedAppListResource, '/explore/apps')
+api.add_resource(RecommendedAppResource, '/explore/apps/<uuid:app_id>')
