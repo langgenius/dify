@@ -1,5 +1,6 @@
 'use client'
 import React, { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import Item from './app-nav-item'
 
 const list = [
@@ -20,6 +21,8 @@ const DiscoveryIcon = () => (
 )
 
 const SideBar: FC = () => {
+  const { t } = useTranslation()
+
   return (
     <div className='w-[216px] shrink-0 pt-6 px-4 border-r border-gray-200'>
       <div>
@@ -28,12 +31,12 @@ const SideBar: FC = () => {
           style={{boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)'}}
         >
           <DiscoveryIcon />
-          <div className='text-sm text-primary-600 font-semibold'>Discovery</div>
+          <div className='text-sm text-primary-600 font-semibold'>{t('explore.sidebar.discovery')}</div>
         </div>
       </div>
       <div className='mt-10'>
-        <div className='pl-2 text-xs text-gray-500 font-medium'>Workspace</div>
-        <div className='mt-1 space-y-1'>
+        <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
+        <div className='mt-3 space-y-1'>
           {list.map(({id, name}) => {
             return (
               <Item key={id} name={name} id={id} />

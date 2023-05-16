@@ -1,10 +1,10 @@
 'use client'
 
 import React, { FC, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppList } from '@/service/explore'
-
 
 const mockList = [
   {
@@ -28,6 +28,8 @@ const mockCategories = ['music', 'news']
 
 const isMock = true
 const Apps: FC = ({ }) => {
+  const { t } = useTranslation()
+
   const [currCategory, setCurrCategory] = React.useState('')
   const [allList, setAllList] = React.useState(isMock ? mockList : [])
   const currList = (() => {
@@ -47,8 +49,8 @@ const Apps: FC = ({ }) => {
   return (
     <div className='h-full flex flex-col'>
       <div className='shrink-0 pt-6 px-12'>
-        <div className='mb-1 text-primary-600 text-xl font-semibold'>Explore Apps by Dify</div>
-        <div className='text-gray-500 text-sm'>Use these template apps instantly or customize your own apps based on the templates.</div>
+        <div className='mb-1 text-primary-600 text-xl font-semibold'>{t('explore.apps.title')}</div>
+        <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
       </div>
       <Category
         className='mt-6 px-12'

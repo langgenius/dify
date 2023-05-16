@@ -1,5 +1,6 @@
 'use client'
 import React, { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 
 export interface ICategoryProps {
@@ -15,7 +16,9 @@ const Category: FC<ICategoryProps> = ({
   value,
   onChange
 }) => {
-  const itemClassName = (isSelected: boolean) => cn(isSelected ? 'bg-white text-primary-600 border-gray-200 font-semibold' : 'border-transparent font-medium','flex items-center h-7 px-3 border cursor-pointer rounded')
+  const { t } = useTranslation()
+
+  const itemClassName = (isSelected: boolean) => cn(isSelected ? 'bg-white text-primary-600 border-gray-200 font-semibold' : 'border-transparent font-medium','flex items-center h-7 px-3 border cursor-pointer rounded-lg')
   const itemStyle = (isSelected: boolean) => isSelected ? {boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)'} : {}
   return (
     <div className={cn(className, 'flex space-x-1 text-[13px]')}>
@@ -24,7 +27,7 @@ const Category: FC<ICategoryProps> = ({
           style={itemStyle('' === value)}
           onClick={() => onChange('')}
         >
-          All Categories
+          {t('explore.apps.allCategories')}
         </div>
       {list.map(name => (
         <div 
