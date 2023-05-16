@@ -60,7 +60,8 @@ const translation = {
   },
   menus: {
     status: 'beta',
-    apps: 'Apps',
+    explore: 'Explore',
+    apps: 'Build Apps',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Datasets',
