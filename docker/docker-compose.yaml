@@ -154,9 +154,13 @@ services:
     restart: always
     environment:
       EDITION: SELF_HOSTED
-      # The base URL of console application, refers to the Console base URL of WEB service.
+      # The base URL of console application, refers to the Console base URL of WEB service if console domain is
+      # different from api or web app domain.
+      # example: http://cloud.dify.ai
       CONSOLE_URL: ''
-      # The URL for Web APP, refers to the Web App base URL of WEB service.
+      # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
+      # console or api domain.
+      # example: http://udify.app
       APP_URL: ''
 
   # The postgres database.
