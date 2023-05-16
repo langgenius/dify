@@ -1,5 +1,4 @@
 'use client'
-import { useSelectedLayoutSegment } from 'next/navigation'
 import cn from 'classnames'
 import Link from 'next/link'
 
@@ -8,14 +7,14 @@ import s from './style.module.css'
 export default function NavLink({
   name,
   id,
+  isSelected,
 }: {
   name: string
   id: string
+  isSelected: boolean
 }) {
-  const segment = useSelectedLayoutSegment()
   const url = `/explore/installed/${id}`
-  const isActive = id === segment?.toLowerCase()
-
+  
   return (
     <Link
       prefetch
@@ -23,7 +22,7 @@ export default function NavLink({
       href={url}
       className={cn(
         s.item,
-        isActive && s.itemActive,
+        isSelected && s.active,
         'flex h-8 items-center px-2 rounded-lg text-sm font-normal',
       )}
     >
