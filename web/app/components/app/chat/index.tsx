@@ -16,6 +16,7 @@ import type { Annotation, MessageRating } from '@/models/log'
 import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from './loading-anim'
+import { formatNumber } from '@/utils/format'
 
 const stopIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -105,7 +106,7 @@ const MoreInfo: FC<{ more: MessageMore; isQuestion: boolean }> = ({ more, isQues
   const { t } = useTranslation()
   return (<div className={`mt-1 space-x-2 text-xs text-gray-400 ${isQuestion ? 'mr-2 text-right ' : 'ml-2 text-left float-right'}`}>
     <span>{`${t('appLog.detail.timeConsuming')} ${more.latency}${t('appLog.detail.second')}`}</span>
-    <span>{`${t('appLog.detail.tokenCost')} ${more.tokens}`}</span>
+    <span>{`${t('appLog.detail.tokenCost')} ${formatNumber(more.tokens)}`}</span>
     <span>· </span>
     <span>{more.time} </span>
   </div>)

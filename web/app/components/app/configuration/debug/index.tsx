@@ -247,8 +247,8 @@ const Debug: FC<IDebug> = ({
                 ...draft[index],
                 more: {
                   time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
-                  tokens: newResponseItem.answer_tokens,
-                  latency: (newResponseItem.provider_response_latency / 1000).toFixed(2),
+                  tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
+                  latency: newResponseItem.provider_response_latency.toFixed(2),
                 }
               }
             }
