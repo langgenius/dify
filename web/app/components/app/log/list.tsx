@@ -166,7 +166,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     return res
   })?.name ?? 'custom'
 
-  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col'>
+  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
       <div className='flex-1'>
