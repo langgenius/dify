@@ -36,14 +36,18 @@ services:
       # It is consistent with the configuration in the 'redis' service below.
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_USERNAME: ''
       REDIS_PASSWORD: difyai123456
+      REDIS_USE_SSL: 'false'
       # use redis db 0 for redis cache
       REDIS_DB: 0
       # The configurations of session, Supported values are `sqlalchemy`. `redis`
       SESSION_TYPE: redis
       SESSION_REDIS_HOST: redis
       SESSION_REDIS_PORT: 6379
+      SESSION_REDIS_USERNAME: ''
       SESSION_REDIS_PASSWORD: difyai123456
+      SESSION_REDIS_USE_SSL: 'false'
       # use redis db 2 for session store
       SESSION_REDIS_DB: 2
       # The configurations of celery broker.
@@ -129,8 +133,10 @@ services:
       # The configurations of redis cache connection.
       REDIS_HOST: redis
       REDIS_PORT: 6379
+      REDIS_USERNAME: ''
       REDIS_PASSWORD: difyai123456
       REDIS_DB: 0
+      REDIS_USE_SSL: 'false'
       # The configurations of celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
       # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
