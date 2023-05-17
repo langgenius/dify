@@ -1,7 +1,12 @@
+import json
 import urllib.parse
 from dataclasses import dataclass
 
 import requests
+from flask_login import current_user
+
+from extensions.ext_database import db
+from models.data_source import DataSourceBinding
 
 
 @dataclass
@@ -136,34 +141,3 @@ class GoogleOAuth(OAuth):
         )
 
 
-class NotionOAuth(OAuth):
-    _AUTH_URL = 'https://api.notion.com/v1/oauth/authorize'
-    _TOKEN_URL = 'https://api.notion.com/v1/oauth/token'
-
-    def get_authorization_url(self):
-        params = {
-            'client_id': self.client_id,
-            'response_type': 'code',
-            'redirect_uri': self.redirect_uri,
-            'owner': 'user'
-        }
-        return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
-
-    def get_access_token(self, code: str):
-        data = {
-            'code': code,
-            'grant_type': 'authorization_code',
-            'redirect_uri': self.redirect_uri
-        }
-        headers = {'Accept': 'application/json'}
-        response = requests.post(self._TOKEN_URL, data=data, headers=headers)
-
-        response_json = response.json()
-        access_token = response_json.get('access_token')
-        workspace_name = response_json.get('workspace_name')
-        workspace_icon = response_json.get('workspace_icon')
-        workspace_id = response_json.get('workspace_id')
-        if not access_token:
-            raise ValueError(f"Error in Notion OAuth: {response_json}")
-
-        return access_token
