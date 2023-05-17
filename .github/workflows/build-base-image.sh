@@ -3,7 +3,7 @@
 set -eo pipefail
 
 SHA=$(git rev-parse HEAD)
-REPO_NAME=yuhao1118/base
+REPO_NAME=langgenius/base
 API_REPO_NAME="${REPO_NAME}"
 
 if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
