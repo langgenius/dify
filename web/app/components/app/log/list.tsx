@@ -207,7 +207,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       <div className='text-gray-700 font-medium text-sm mt-2'>{detail.model_config?.pre_prompt || emptyText}</div>
     </div>
     {!isChatMode
-      ? <div className="px-2.5 py-4 overflow-y-auto">
+      ? <div className="px-2.5 py-4">
         <Chat
           chatList={getFormattedChatList([detail.message])}
           isHideSendInput={true}
@@ -217,7 +217,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         />
       </div>
       : items.length < 8
-        ? <div className="px-2.5 pt-4 mb-4 overflow-y-auto">
+        ? <div className="px-2.5 pt-4 mb-4">
           <Chat
             chatList={items}
             isHideSendInput={true}
