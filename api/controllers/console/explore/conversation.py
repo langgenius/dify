@@ -49,7 +49,7 @@ class ConversationListApi(InstalledAppResource):
         try:
             return WebConversationService.pagination_by_last_id(
                 app_model=app_model,
-                end_user=current_user,
+                user=current_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
                 pinned=pinned
@@ -86,7 +86,7 @@ class ConversationRenameApi(InstalledAppResource):
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args['name'])
+            return ConversationService.rename(app_model, conversation_id, current_user, args['name'])
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

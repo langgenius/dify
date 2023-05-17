@@ -22,11 +22,12 @@ app_fields = {
 
 installed_app_fields = {
     'id': fields.String,
-    'app': fields.Nested(app_fields, attribute='app'),
+    'app': fields.Nested(app_fields),
     'app_owner_tenant_id': fields.String,
     'is_pinned': fields.Boolean,
     'last_used_at': fields.DateTime,
-    'editable': fields.Boolean
+    'editable': fields.Boolean,
+    'uninstallable': fields.Boolean,
 }
 
 installed_app_list_fields = {
@@ -53,6 +54,7 @@ class InstalledAppsListApi(Resource):
                 'is_pinned': installed_app.is_pinned,
                 'last_used_at': installed_app.last_used_at,
                 "editable": current_user.role in ["owner", "admin"],
+                "uninstallable": current_user.current_tenant_id == installed_app.app_owner_tenant_id
             }
             for installed_app in installed_apps
         ]
