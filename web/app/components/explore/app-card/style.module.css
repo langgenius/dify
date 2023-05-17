@@ -1,0 +1,19 @@
+.wrap {
+  min-width: 312px;
+}
+
+.opWrap {
+  display: flex;
+}
+
+.mode {
+  display: none;
+}
+
+.wrap:hover .mode {
+  display: none;
+}
+
+.wrap:hover .opWrap {
+  display: flex;
+}

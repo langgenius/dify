@@ -1,10 +1,11 @@
 'use client'
-
 import React, { FC, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppList } from '@/service/explore'
+
+import s from './style.module.css'
 
 const mockList = [
   {
@@ -18,6 +19,24 @@ const mockList = [
   },
   {
     id: 2,
+    name: 'Code Translate',
+    mode: 'completion',
+    category: 'news',
+  },
+  {
+    id: 3,
+    name: 'Code Translate',
+    mode: 'completion',
+    category: 'news',
+  },
+  {
+    id: 4,
+    name: 'Code Translate',
+    mode: 'completion',
+    category: 'news',
+  },
+  {
+    id: 5,
     name: 'Code Translate',
     mode: 'completion',
     category: 'news',
@@ -59,7 +78,7 @@ const Apps: FC = ({ }) => {
         onChange={setCurrCategory}
       />
       <div className='flex flex-col overflow-auto bg-gray-100 shrink-0 grow'>
-        <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-6 sm:grid-cols-2 lg:grid-cols-4 grow shrink-0'>
+        <nav className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pt-6 md:grid-cols-2 grow shrink-0`}>
           {currList.map(item => (
             <AppCard key={item.id} app={item as any} />
           ))}
