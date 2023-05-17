@@ -57,9 +57,9 @@ const ColorSelect: FC<IColorSelectProps> = (
   { selectedEmoji, onSelect }
 ) => {
   const [selectBackground, setSelectBackground] = useState(backgroundColors[0]);
-  return <div className='flex flex-col p-3 border-b border-gray-100'>
+  return <div className='flex flex-col p-3'>
 
-    <p className='font-medium uppercase text-xs text-[#101828] mb-1'>Choose Style</p>
+    <p className='font-medium uppercase text-xs text-[#101828] mb-2'>Choose Style</p>
     <div className='w-full h-full grid grid-cols-8 gap-1'>
       {backgroundColors.map((color) => {
         return <div
@@ -97,14 +97,14 @@ const EmojiSelect: FC<IEmojiSelectProps> = ({
 
   const { categories, emojis } = data as any
   console.log(categories, emojis);
-  return <div className="w-full max-h-[200px] overflow-x-hidden overflow-y-auto">
+  return <div className="w-full max-h-[200px] overflow-x-hidden overflow-y-auto px-3">
     {categories.map((category: any) => {
       return <div key={category.id} className='flex flex-col'>
         <p className='font-medium uppercase text-xs text-[#101828] mb-1'>{category.id}</p>
         <div className='w-full h-full grid grid-cols-8 gap-1'>
           {category.emojis.map((emoji: any) => {
             return <div
-              key={emoji.id}
+              key={emoji}
               className='inline-flex w-10 h-10 rounded-lg items-center justify-center'
               onClick={() => {
                 onSelect && onSelect(emoji)
@@ -127,7 +127,7 @@ const EmojiPicker: FC = () => {
   const [selectBackground, setSelectBackground] = useState('')
 
   const Elem = () => {
-    return <div className={cn(s.container, 'gap-2 bg-white')} >
+    return <div className={cn(s.container, 'bg-white')} >
       <div className='flex flex-col items-center w-full p-3'>
         <div className="relative w-full">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -135,10 +135,11 @@ const EmojiPicker: FC = () => {
           </div>
           <input type="search" id="search" className="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 " placeholder="Search" />
         </div>
-        <EmojiSelect onSelect={(itm) => {
+        
+      </div>
+      <EmojiSelect onSelect={(itm) => {
           setSelectedEmoji(itm)
         }} />
-      </div>
       <ColorSelect selectedEmoji={selectedEmoji} onSelect={color => setSelectBackground(color)} />
       <div className='w-full flex items-center justify-center p-3'>
         <Button type="primary" className='w-full' onClick={() => { }}>
