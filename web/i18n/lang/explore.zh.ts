@@ -11,6 +11,11 @@ const translation = {
   appCard: {
     addToWorkspace: '添加到工作区',
     customize: '自定义',
+  },
+  appCustomize: {
+    title: '从 {{name}} 创建应用程序',
+    subTitle: '应用程序图标和名称',
+    nameRequired: '应用程序名称不能为空',
   }
 }
 

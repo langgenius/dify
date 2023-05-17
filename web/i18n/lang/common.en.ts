@@ -6,6 +6,7 @@ const translation = {
     remove: 'Removed',
   },
   operation: {
+    create: 'Create',
     confirm: 'Confirm',
     cancel: 'Cancel',
     clear: 'Clear',

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppList } from '@/service/explore'
+import CreateAppModal from '@/app/components/explore/create-app-modal'
 
 import s from './style.module.css'
 
@@ -65,6 +66,16 @@ const Apps: FC = ({ }) => {
       })()
     }
   }, [])
+
+  const handleAddToWorkspace =  (appId: string) => {
+    console.log('handleAddToWorkspace', appId)
+  }
+
+  const [currApp, setCurrApp] = React.useState<any>(null)
+  const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
+  const onCreate = ({name}: any) => {
+    console.log({id: currApp.id, name})
+  }
   return (
     <div className='h-full flex flex-col'>
       <div className='shrink-0 pt-6 px-12'>
@@ -80,10 +91,27 @@ const Apps: FC = ({ }) => {
       <div className='flex flex-col overflow-auto bg-gray-100 shrink-0 grow'>
         <nav className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pt-6 md:grid-cols-2 grow shrink-0`}>
           {currList.map(item => (
-            <AppCard key={item.id} app={item as any} />
+            <AppCard 
+              key={item.id}
+              app={item as any}
+              onCreate={() => {
+                setCurrApp(item)
+                setIsShowCreateModal(true)
+              }}
+              onAddToWorkspace={handleAddToWorkspace}
+            />
           ))}
         </nav>
       </div>
+
+      {isShowCreateModal && (
+          <CreateAppModal
+            appName={currApp.name}
+            show={isShowCreateModal}
+            onConfirm={onCreate}
+            onHide={() => setIsShowCreateModal(false)}
+          />
+        )}
     </div>
   )
 }

@@ -6,6 +6,7 @@ const translation = {
     remove: '已移除',
   },
   operation: {
+    create: '创建',
     confirm: '确认',
     cancel: '取消',
     clear: '清空',

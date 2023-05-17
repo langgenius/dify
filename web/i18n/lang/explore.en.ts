@@ -11,6 +11,11 @@ const translation = {
   appCard: {
     addToWorkspace: 'Add to Workspace',
     customize: 'Customize',
+  },
+  appCustomize: {
+    title: 'Create app from {{name}}',
+    subTitle: 'App icon & name',
+    nameRequired: 'App name is required',
   }
 }
 
