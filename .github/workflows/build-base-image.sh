@@ -3,8 +3,8 @@
 set -eo pipefail
 
 SHA=$(git rev-parse HEAD)
-REPO_NAME=yuhao1118/dify
-API_REPO_NAME="${REPO_NAME}-api"
+REPO_NAME=yuhao1118/base
+API_REPO_NAME="${REPO_NAME}"
 
 if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
   REFSPEC=$(echo "${GITHUB_HEAD_REF}" | sed 's/[^a-zA-Z0-9]/-/g' | head -c 40)
@@ -45,7 +45,7 @@ EOF
 #
 # Build image
 #
-cd api
+cd docker
 docker buildx build \
   --platform linux/amd64,linux/arm64,linux/arm/v7 \
   ${API_CACHE_FROM_SCRIPT} \
@@ -56,7 +56,8 @@ docker buildx build \
   --label "sha=${SHA}" \
   --label "built_at=$(date)" \
   --label "build_actor=${GITHUB_ACTOR}" \
-  .
+  . \
+  -f Dockfile.base
 
 # push
 docker push --all-tags "${API_REPO_NAME}"

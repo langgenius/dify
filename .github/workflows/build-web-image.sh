@@ -3,7 +3,7 @@
 set -eo pipefail
 
 SHA=$(git rev-parse HEAD)
-REPO_NAME=langgenius/dify
+REPO_NAME=yuhao1118/dify
 WEB_REPO_NAME="${REPO_NAME}-web"
 
 if [[ "${GITHUB_EVENT_NAME}" == "pull_request" ]]; then
@@ -47,6 +47,7 @@ EOF
 #
 cd web
 docker build \
+  --platform linux/amd64,linux/arm64,linux/arm/v7 \
   ${WEB_CACHE_FROM_SCRIPT} \
   --build-arg COMMIT_SHA=${SHA} \
   -t "${WEB_REPO_NAME}:${SHA}" \
