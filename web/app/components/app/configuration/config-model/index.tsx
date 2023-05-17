@@ -11,6 +11,7 @@ import type { CompletionParams } from '@/models/debug'
 import { Cog8ToothIcon, InformationCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { AppType } from '@/types/app'
 import { TONE_LIST } from '@/config'
+import Toast from '@/app/components/base/toast'
 
 export type IConifgModelProps = {
   mode: string
@@ -93,7 +94,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
       key: 'max_tokens',
       tip: t('common.model.params.maxTokenTip'),
       step: 100,
-      max: 4000,
+      max: modelId === 'gpt-4' ? 8000 : 4000,
     },
   ]
 
@@ -113,6 +114,16 @@ const ConifgModel: FC<IConifgModelProps> = ({
         hideOption()
         onShowUseGPT4Confirm()
         return
+      }
+      if(id !== 'gpt-4' && completionParams.max_tokens > 4000) {
+        Toast.notify({
+          type: 'warning',
+          message: t('common.model.params.setToCurrentModelMaxTokenTip')
+        })
+        onCompletionParamsChange({
+          ...completionParams,
+          max_tokens: 4000
+        })
       }
       setModelId(id)
     }

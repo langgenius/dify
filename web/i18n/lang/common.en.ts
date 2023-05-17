@@ -50,6 +50,7 @@ const translation = {
       maxToken: 'Max token',
       maxTokenTip:
         'Max tokens generated is 2,048 or 4,000, depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
+      setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model 4,000.',
     },
     tone: {
       Creative: 'Creative',

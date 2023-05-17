@@ -50,6 +50,7 @@ const translation = {
       maxToken: '最大 Token',
       maxTokenTip:
         '生成的最大令牌数为 2,048 或 4,000，取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 4 个中文字符。',
+      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 4,000。',
     },
     tone: {
       Creative: '创意',
