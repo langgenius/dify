@@ -26,46 +26,46 @@ from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
 
+account_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'email': fields.String
+}
 
-class ChatMessageApi(Resource):
-    account_fields = {
-        'id': fields.String,
-        'name': fields.String,
-        'email': fields.String
-    }
+feedback_fields = {
+    'rating': fields.String,
+    'content': fields.String,
+    'from_source': fields.String,
+    'from_end_user_id': fields.String,
+    'from_account': fields.Nested(account_fields, allow_null=True),
+}
 
-    feedback_fields = {
-        'rating': fields.String,
-        'content': fields.String,
-        'from_source': fields.String,
-        'from_end_user_id': fields.String,
-        'from_account': fields.Nested(account_fields, allow_null=True),
-    }
+annotation_fields = {
+    'content': fields.String,
+    'account': fields.Nested(account_fields, allow_null=True),
+    'created_at': TimestampField
+}
 
-    annotation_fields = {
-        'content': fields.String,
-        'account': fields.Nested(account_fields, allow_null=True),
-        'created_at': TimestampField
-    }
+message_detail_fields = {
+    'id': fields.String,
+    'conversation_id': fields.String,
+    'inputs': fields.Raw,
+    'query': fields.String,
+    'message': fields.Raw,
+    'message_tokens': fields.Integer,
+    'answer': fields.String,
+    'answer_tokens': fields.Integer,
+    'provider_response_latency': fields.Float,
+    'from_source': fields.String,
+    'from_end_user_id': fields.String,
+    'from_account_id': fields.String,
+    'feedbacks': fields.List(fields.Nested(feedback_fields)),
+    'annotation': fields.Nested(annotation_fields, allow_null=True),
+    'created_at': TimestampField
+}
 
-    message_detail_fields = {
-        'id': fields.String,
-        'conversation_id': fields.String,
-        'inputs': fields.Raw,
-        'query': fields.String,
-        'message': fields.Raw,
-        'message_tokens': fields.Integer,
-        'answer': fields.String,
-        'answer_tokens': fields.Integer,
-        'provider_response_latency': fields.Integer,
-        'from_source': fields.String,
-        'from_end_user_id': fields.String,
-        'from_account_id': fields.String,
-        'feedbacks': fields.List(fields.Nested(feedback_fields)),
-        'annotation': fields.Nested(annotation_fields, allow_null=True),
-        'created_at': TimestampField
-    }
 
+class ChatMessageListApi(Resource):
     message_infinite_scroll_pagination_fields = {
         'limit': fields.Integer,
         'has_more': fields.Boolean,
@@ -253,7 +253,8 @@ class MessageMoreLikeThisApi(Resource):
         message_id = str(message_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'], location='args')
+        parser.add_argument('response_mode', type=str, required=True, choices=['blocking', 'streaming'],
+                            location='args')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
@@ -301,7 +302,8 @@ def compact_response(response: Union[dict | Generator]) -> Response:
             except QuotaExceededError:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
-                yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
+                yield "data: " + json.dumps(
+                    api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
             except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, LLMAuthorizationError) as e:
                 yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
@@ -353,9 +355,33 @@ class MessageSuggestedQuestionApi(Resource):
         return {'data': questions}
 
 
+class MessageApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(message_detail_fields)
+    def get(self, app_id, message_id):
+        app_id = str(app_id)
+        message_id = str(message_id)
+
+        # get app info
+        app_model = _get_app(app_id, 'chat')
+
+        message = db.session.query(Message).filter(
+            Message.id == message_id,
+            Message.app_id == app_model.id
+        ).first()
+
+        if not message:
+            raise NotFound("Message Not Exists.")
+
+        return message
+
+
 api.add_resource(MessageMoreLikeThisApi, '/apps/<uuid:app_id>/completion-messages/<uuid:message_id>/more-like-this')
 api.add_resource(MessageSuggestedQuestionApi, '/apps/<uuid:app_id>/chat-messages/<uuid:message_id>/suggested-questions')
-api.add_resource(ChatMessageApi, '/apps/<uuid:app_id>/chat-messages', endpoint='chat_messages')
+api.add_resource(ChatMessageListApi, '/apps/<uuid:app_id>/chat-messages', endpoint='console_chat_messages')
 api.add_resource(MessageFeedbackApi, '/apps/<uuid:app_id>/feedbacks')
 api.add_resource(MessageAnnotationApi, '/apps/<uuid:app_id>/annotations')
 api.add_resource(MessageAnnotationCountApi, '/apps/<uuid:app_id>/annotations/count')
+api.add_resource(MessageApi, '/apps/<uuid:app_id>/messages/<uuid:message_id>', endpoint='console_message')

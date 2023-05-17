@@ -94,8 +94,8 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       isAnswer: true,
       more: {
         time: dayjs.unix(item.created_at).format('hh:mm A'),
-        tokens: item.answer_tokens,
-        latency: (item.provider_response_latency / 1000).toFixed(2),
+        tokens: item.answer_tokens + item.message_tokens,
+        latency: item.provider_response_latency.toFixed(2),
       },
       annotation: item.annotation,
     })
