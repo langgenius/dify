@@ -13,9 +13,9 @@ declare global {
 
 import data from '@emoji-mart/data'
 import { init } from 'emoji-mart'
-
 // import AppIcon from '@/app/components/base/app-icon'
 import cn from 'classnames'
+import Divider from '@/app/components/base/divider'
 
 import Button from '@/app/components/base/button'
 import s from './style.module.css'
@@ -135,12 +135,13 @@ const EmojiPicker: FC = () => {
           </div>
           <input type="search" id="search" className="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 " placeholder="Search" />
         </div>
-        
       </div>
+      <Divider className='m-0 mb-3'/>
       <EmojiSelect onSelect={(itm) => {
           setSelectedEmoji(itm)
         }} />
       <ColorSelect selectedEmoji={selectedEmoji} onSelect={color => setSelectBackground(color)} />
+      <Divider className='m-0'/>
       <div className='w-full flex items-center justify-center p-3'>
         <Button type="primary" className='w-full' onClick={() => { }}>
           OK
