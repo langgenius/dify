@@ -71,7 +71,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <div className='flex flex-col w-full'>
           <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step2`)}</div>
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
-          <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg'>
+          <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
             export const APP_ID = '{appId}'<br />
             export const API_KEY = {`'<Web API Key From Dify>'`}
           </pre>
