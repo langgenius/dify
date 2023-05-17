@@ -21,9 +21,11 @@ DEFAULTS = {
     'REDIS_HOST': 'localhost',
     'REDIS_PORT': '6379',
     'REDIS_DB': '0',
+    'REDIS_USE_SSL': 'False',
     'SESSION_REDIS_HOST': 'localhost',
     'SESSION_REDIS_PORT': '6379',
     'SESSION_REDIS_DB': '2',
+    'SESSION_REDIS_USE_SSL': 'False',
     'OAUTH_REDIRECT_PATH': '/console/api/oauth/authorize',
     'OAUTH_REDIRECT_INDEX_PATH': '/',
     'CONSOLE_URL': 'https://cloud.dify.ai',
@@ -105,14 +107,18 @@ class Config:
         # redis settings
         self.REDIS_HOST = get_env('REDIS_HOST')
         self.REDIS_PORT = get_env('REDIS_PORT')
+        self.REDIS_USERNAME = get_env('REDIS_USERNAME')
         self.REDIS_PASSWORD = get_env('REDIS_PASSWORD')
         self.REDIS_DB = get_env('REDIS_DB')
+        self.REDIS_USE_SSL = get_bool_env('REDIS_USE_SSL')
 
         # session redis settings
         self.SESSION_REDIS_HOST = get_env('SESSION_REDIS_HOST')
         self.SESSION_REDIS_PORT = get_env('SESSION_REDIS_PORT')
+        self.SESSION_REDIS_USERNAME = get_env('SESSION_REDIS_USERNAME')
         self.SESSION_REDIS_PASSWORD = get_env('SESSION_REDIS_PASSWORD')
         self.SESSION_REDIS_DB = get_env('SESSION_REDIS_DB')
+        self.SESSION_REDIS_USE_SSL = get_bool_env('SESSION_REDIS_USE_SSL')
 
         # storage settings
         self.STORAGE_TYPE = get_env('STORAGE_TYPE')
@@ -165,6 +171,7 @@ class Config:
         self.CELERY_BACKEND = get_env('CELERY_BACKEND')
         self.CELERY_RESULT_BACKEND = 'db+{}'.format(self.SQLALCHEMY_DATABASE_URI) \
             if self.CELERY_BACKEND == 'database' else self.CELERY_BROKER_URL
+        self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://')
 
         # hosted provider credentials
         self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
