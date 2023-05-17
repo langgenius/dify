@@ -17,6 +17,7 @@ import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from './loading-anim'
 import { formatNumber } from '@/utils/format'
+import CopyBtn from './copy-btn'
 
 const stopIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -346,6 +347,10 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
               }
             </div>
             <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>
+              <CopyBtn
+                value={content}
+                className={cn(s.copyBtn, 'mr-1')}
+              />
               {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
               {/* Admin feedback is displayed only in the background. */}
               {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}

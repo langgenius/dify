@@ -38,6 +38,14 @@
   background: url(./icons/answer.svg) no-repeat;
 }
 
+.copyBtn {
+  display: none;
+}
+
+.answerWrap:hover .copyBtn {
+  display: block;
+}
+
 .answerWrap .itemOperation {
   display: none;
 }
