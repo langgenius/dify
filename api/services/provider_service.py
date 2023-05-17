@@ -62,6 +62,8 @@ class ProviderService:
 
     @staticmethod
     def validate_provider_configs(tenant, provider_name: ProviderName, configs: Union[dict | str]):
+        if current_app.config['DISABLE_PROVIDER_CONFIG_VALIDATION']:
+            return
         llm_provider_service = LLMProviderService(tenant.id, provider_name.value)
         return llm_provider_service.config_validate(configs)
 
