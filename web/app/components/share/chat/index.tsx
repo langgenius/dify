@@ -23,16 +23,17 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import AppUnavailable from '../../base/app-unavailable'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import { App } from '@/types/app'
+
 export type IMainProps = {
-  params: {
-    locale: string
-    appId: string
-    conversationId: string
-    token: string
-  }
+  isInstalledApp?: boolean,
+  installedAppInfo? : App
 }
 
-const Main: FC<IMainProps> = () => {
+const Main: FC<IMainProps> = ({
+  isInstalledApp,
+  installedAppInfo
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -222,19 +223,39 @@ const Main: FC<IMainProps> = () => {
     return []
   }
 
+  const fetchInitData = () => {
+    if(isInstalledApp) {
+      return new Promise((resolve) => {
+        // TODO: fetchConversations
+        resolve([{
+          app_id: installedAppInfo?.id, 
+          site: {
+            title: installedAppInfo?.name,
+            prompt_public: false,
+            copyright: ''
+          },
+          model_config: installedAppInfo?.app_model_config,
+          plan: 'basic',
+        }, {
+          data: []
+        }, installedAppInfo?.app_model_config])
+      })
+    }
+    return Promise.all([fetchAppInfo(), fetchConversations(), fetchAppParams()])
+  }
+
 
   // init
   useEffect(() => {
     (async () => {
       try {
-        const [appData, conversationData, appParams] = await Promise.all([fetchAppInfo(), fetchConversations(), fetchAppParams()])
+        const [appData, conversationData, appParams]: any = await fetchInitData()
         const { app_id: appId, site: siteInfo, model_config, plan }: any = appData
         setAppId(appId)
         setPlan(plan)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
         const prompt_template = tempIsPublicVersion ? model_config.pre_prompt : ''
-
         // handle current conversation id
         const { data: conversations } = conversationData as { data: ConversationItem[] }
         const _conversationId = getConversationIdFromStorage(appId)
@@ -243,7 +264,9 @@ const Main: FC<IMainProps> = () => {
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
-        changeLanguage(siteInfo.default_language)
+        if(siteInfo.default_language) {
+          changeLanguage(siteInfo.default_language)
+        }
         setNewConversationInfo({
           name: t('share.chat.newChatDefaultName'),
           introduction,

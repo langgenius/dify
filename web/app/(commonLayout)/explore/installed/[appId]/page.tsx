@@ -1,12 +1,15 @@
 import React, { FC } from 'react'
+import Main from '@/app/components/explore/installed-app'
 
-export interface IInstalledAppProps { }
+export interface IInstalledAppProps { 
+  params: {
+    appId: string
+  }
+}
 
-const InstalledApp: FC<IInstalledAppProps> = ({ }) => {
+const InstalledApp: FC<IInstalledAppProps> = ({ params: {appId} }) => {
   return (
-    <div>
-      InstalledApp
-    </div>
+    <Main id={appId} />
   )
 }
 export default React.memo(InstalledApp)
