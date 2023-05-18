@@ -85,7 +85,14 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
     isCreatingRef.current = false
   }, [isWithTemplate, newAppMode, notify, router, templates, selectedTemplateIndex])
 
-  return (
+  return <>
+    {showEmojiPicker && <EmojiPicker
+      onSelect={(emoji, background) => {
+        console.log(emoji, background)
+        setShowEmojiPicker(false)
+      }}
+      onClose={() => setShowEmojiPicker(false)}
+    />}
     <Dialog
       show={show}
       title={t('app.newApp.startToCreate')}
@@ -96,10 +103,7 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
         </>
       }
     >
-      {showEmojiPicker && <EmojiPicker onSelect={(emoji, background) => {
-        console.log(emoji, background)
-        setShowEmojiPicker(false)
-      }} />}
+
 
       <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
 
@@ -195,7 +199,7 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
           )}
       </div>
     </Dialog>
-  )
+  </>
 }
 
 export default NewAppDialog
