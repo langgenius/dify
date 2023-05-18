@@ -46,7 +46,7 @@ EOF
 # Build image
 #
 cd web
-docker build \
+docker buildx build \
   ${WEB_CACHE_FROM_SCRIPT} \
   --build-arg COMMIT_SHA=${SHA} \
   --platform=linux/amd64,linux/arm64,linux/arm/v7 \

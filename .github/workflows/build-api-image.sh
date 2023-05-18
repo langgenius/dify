@@ -46,7 +46,7 @@ EOF
 # Build image
 #
 cd api
-docker build \
+docker buildx build \
   ${API_CACHE_FROM_SCRIPT} \
   --platform=linux/amd64,linux/arm64,linux/arm/v7 \
   --build-arg COMMIT_SHA=${SHA} \
