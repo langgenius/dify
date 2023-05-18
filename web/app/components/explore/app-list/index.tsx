@@ -1,70 +1,34 @@
 'use client'
 import React, { FC, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppList } from '@/service/explore'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import Loading from '@/app/components/base/loading'
 
 import s from './style.module.css'
 
-const mockList = [
-  {
-    id: 1,
-    name: 'Story Bot',
-    mode: 'chat',
-    category: 'music',
-    model_config: {
-      pre_prompt: 'I need you to play the role of a storyteller, and generate creative and vivid short stories based on the keywords I provide.',
-    }
-  },
-  {
-    id: 2,
-    name: 'Code Translate',
-    mode: 'completion',
-    category: 'news',
-  },
-  {
-    id: 3,
-    name: 'Code Translate',
-    mode: 'completion',
-    category: 'news',
-  },
-  {
-    id: 4,
-    name: 'Code Translate',
-    mode: 'completion',
-    category: 'news',
-  },
-  {
-    id: 5,
-    name: 'Code Translate',
-    mode: 'completion',
-    category: 'news',
-  },
-]
-
-const mockCategories = ['music', 'news']
-
-const isMock = true
 const Apps: FC = ({ }) => {
   const { t } = useTranslation()
 
   const [currCategory, setCurrCategory] = React.useState('')
-  const [allList, setAllList] = React.useState(isMock ? mockList : [])
+  const [allList, setAllList] = React.useState<App[]>([])
+  const [isLoaded, setIsLoaded] = React.useState(false)
+
   const currList = (() => {
     if(currCategory === '') return allList
     return allList.filter(item => item.category === currCategory)
   })()
-  const [categories, setCategories] = React.useState(isMock ? mockCategories : [])
+  const [categories, setCategories] = React.useState([])
   useEffect(() => {
-    if(!isMock) {
-      (async () => {
-        const {categories, recommended_apps}:any = await fetchAppList()
-        setCategories(categories)
-        setAllList(recommended_apps)
-      })()
-    }
+    (async () => {
+      const {categories, recommended_apps}:any = await fetchAppList()
+      setCategories(categories)
+      setAllList(recommended_apps)
+      setIsLoaded(true)
+    })()
   }, [])
 
   const handleAddToWorkspace =  (appId: string) => {
@@ -76,6 +40,15 @@ const Apps: FC = ({ }) => {
   const onCreate = ({name}: any) => {
     console.log({id: currApp.id, name})
   }
+
+  if(!isLoaded) {
+    return (
+      <div className='flex h-full items-center'>
+        <Loading type='area' />
+      </div>
+    )
+  }
+
   return (
     <div className='h-full flex flex-col'>
       <div className='shrink-0 pt-6 px-12'>
@@ -88,14 +61,20 @@ const Apps: FC = ({ }) => {
         value={currCategory}
         onChange={setCurrCategory}
       />
-      <div className='flex flex-col overflow-auto bg-gray-100 shrink-0 grow'>
-        <nav className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pt-6 md:grid-cols-2 grow shrink-0`}>
-          {currList.map(item => (
+      <div 
+        className='flex mt-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
+        style={{
+          maxHeight: 'calc(100vh - 243px)'
+        }}
+      >
+        <nav
+          className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pb-10 md:grid-cols-2 grow shrink-0`}>
+          {currList.map(app => (
             <AppCard 
-              key={item.id}
-              app={item as any}
+              key={app.app_id}
+              app={app}
               onCreate={() => {
-                setCurrApp(item)
+                setCurrApp(app)
                 setIsShowCreateModal(true)
               }}
               onAddToWorkspace={handleAddToWorkspace}
