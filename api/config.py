@@ -46,6 +46,7 @@ DEFAULTS = {
     'CELERY_BACKEND': 'database',
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
+    'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
 }
 
 
@@ -176,6 +177,9 @@ class Config:
         # hosted provider credentials
         self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
 
+        # By default it is False
+        # You could disable it for compatibility with certain OpenAPI providers
+        self.DISABLE_PROVIDER_CONFIG_VALIDATION = get_bool_env('DISABLE_PROVIDER_CONFIG_VALIDATION')
 
 class CloudEditionConfig(Config):
 
