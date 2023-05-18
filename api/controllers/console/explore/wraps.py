@@ -27,7 +27,13 @@ def installed_app_required(view=None):
             ).first()
 
             if installed_app is None:
-                NotFound('Installed app not found')
+                raise NotFound('Installed app not found')
+
+            if not installed_app.app:
+                db.session.delete(installed_app)
+                db.session.commit()
+
+                raise NotFound('Installed app not found')
 
             return view(installed_app, *args, **kwargs)
         return decorated
