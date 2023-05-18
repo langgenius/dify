@@ -1,16 +1,4 @@
 'use client'
-
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'em-emoji': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      >;
-    }
-  }
-}
-
 import data from '@emoji-mart/data'
 import { init } from 'emoji-mart'
 // import AppIcon from '@/app/components/base/app-icon'
@@ -24,6 +12,17 @@ import {
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import React from 'react'
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'em-emoji': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      >;
+    }
+  }
+}
 
 init({ data })
 
@@ -122,7 +121,12 @@ const EmojiSelect: FC<IEmojiSelectProps> = ({
   </div>
 }
 
-const EmojiPicker: FC = () => {
+interface IEmojiPickerProps {
+  onSelect?: (emoji: string, background: string) => void
+}
+const EmojiPicker: FC<IEmojiPickerProps> = ({
+  onSelect
+}) => {
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectBackground, setSelectBackground] = useState('')
 
@@ -136,12 +140,15 @@ const EmojiPicker: FC = () => {
           <input type="search" id="search" className="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 " placeholder="Search" />
         </div>
       </div>
-      <Divider className='m-0 mb-3'/>
+      <Divider className='m-0 mb-3' />
       <EmojiSelect onSelect={(itm) => {
-          setSelectedEmoji(itm)
-        }} />
-      <ColorSelect selectedEmoji={selectedEmoji} onSelect={color => setSelectBackground(color)} />
-      <Divider className='m-0'/>
+        setSelectedEmoji(itm)
+      }} />
+      <ColorSelect selectedEmoji={selectedEmoji} onSelect={color => {
+        setSelectBackground(color)
+        onSelect && onSelect(selectedEmoji, color)
+      }} />
+      <Divider className='m-0' />
       <div className='w-full flex items-center justify-center p-3'>
         <Button type="primary" className='w-full' onClick={() => { }}>
           OK
