@@ -17,7 +17,7 @@ function getAction(action: 'get' | 'post' | 'del', isInstalledApp: boolean) {
 }
 
 function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
-  return isInstalledApp ? `installed-apps/${installedAppId}/${url}` : url
+  return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
 export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController }: {

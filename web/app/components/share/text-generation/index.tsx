@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { FC, useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from 'classnames'
@@ -22,8 +22,17 @@ import TabHeader from '../../base/tab-header'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import s from './style.module.css'
 import Button from '../../base/button'
+import { App } from '@/types/app'
 
-const TextGeneration = () => {
+export type IMainProps = {
+  isInstalledApp?: boolean,
+  installedAppInfo? : App
+}
+
+const TextGeneration: FC<IMainProps> = ({
+  isInstalledApp = false,
+  installedAppInfo
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -49,14 +58,14 @@ const TextGeneration = () => {
   })
 
   const handleFeedback = async (feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } })
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
 
   const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage()
+    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
 
@@ -65,13 +74,13 @@ const TextGeneration = () => {
   }, [])
 
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId)
+    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
 
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId)
+    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -151,12 +160,25 @@ const TextGeneration = () => {
       onError() {
         setResponsingFalse()
       }
-    })
+    }, isInstalledApp, installedAppInfo?.id)
+  }
+
+  const fetchInitData = () => {
+    return Promise.all([isInstalledApp ? {
+      app_id: installedAppInfo?.id, 
+      site: {
+        title: installedAppInfo?.name,
+        prompt_public: false,
+        copyright: ''
+      },
+      model_config: installedAppInfo?.app_model_config,
+      plan: 'basic',
+    }: fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await Promise.all([fetchAppInfo(), fetchAppParams()])
+      const [appData, appParams]: any = await fetchInitData()
       const { app_id: appId, site: siteInfo } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)

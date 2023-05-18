@@ -2,6 +2,7 @@
 import React, { FC, useEffect } from 'react'
 import { App } from '@/types/app'
 import ChatApp from '@/app/components/share/chat'
+import TextGenerationApp from '@/app/components/share/text-generation'
 import { fetchAppDetail } from '@/service/explore'
 import Loading from '@/app/components/base/loading'
 
@@ -35,7 +36,12 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   
   return (
     <div className='h-full'>
-      <ChatApp isInstalledApp installedAppInfo={app as App}/>
+      {app?.mode === 'chat' ? (
+        <ChatApp isInstalledApp installedAppInfo={app as App}/>
+      ): (
+        <TextGenerationApp isInstalledApp installedAppInfo={app as App}/>
+      )}
+      
     </div>
   )
 }
