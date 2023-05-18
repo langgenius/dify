@@ -9,6 +9,7 @@ export type AppIconProps = {
   background?: string
   className?: string
   innerIcon?: React.ReactNode
+  onClick?: () => void
 }
 
 const AppIcon: FC<AppIconProps> = ({
@@ -17,6 +18,7 @@ const AppIcon: FC<AppIconProps> = ({
   background,
   className,
   innerIcon,
+  onClick,
 }) => {
   return (
     <span
@@ -29,6 +31,7 @@ const AppIcon: FC<AppIconProps> = ({
       style={{
         background,
       }}
+      onClick={onClick}
     >
       {innerIcon ? innerIcon : <>🤖</>}
     </span>

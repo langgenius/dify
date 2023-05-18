@@ -12,6 +12,7 @@ import {
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
 import React from 'react'
+import Modal from '@/app/components/base/modal'
 
 declare global {
   namespace JSX {
@@ -95,7 +96,6 @@ const EmojiSelect: FC<IEmojiSelectProps> = ({
 }) => {
 
   const { categories, emojis } = data as any
-  console.log(categories, emojis);
   return <div className="w-full max-h-[200px] overflow-x-hidden overflow-y-auto px-3">
     {categories.map((category: any) => {
       return <div key={category.id} className='flex flex-col'>
@@ -122,16 +122,21 @@ const EmojiSelect: FC<IEmojiSelectProps> = ({
 }
 
 interface IEmojiPickerProps {
+  isModal?: boolean
   onSelect?: (emoji: string, background: string) => void
 }
 const EmojiPicker: FC<IEmojiPickerProps> = ({
+  isModal = true,
   onSelect
 }) => {
   const [selectedEmoji, setSelectedEmoji] = useState('')
-  const [selectBackground, setSelectBackground] = useState('')
 
   const Elem = () => {
-    return <div className={cn(s.container, 'bg-white')} >
+    return isModal ? <Modal
+      onClose={() => { }}
+      isShow
+      className={cn(s.container, '!w-[362px] !p-0')}
+    >
       <div className='flex flex-col items-center w-full p-3'>
         <div className="relative w-full">
           <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -145,7 +150,6 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         setSelectedEmoji(itm)
       }} />
       <ColorSelect selectedEmoji={selectedEmoji} onSelect={color => {
-        setSelectBackground(color)
         onSelect && onSelect(selectedEmoji, color)
       }} />
       <Divider className='m-0' />
@@ -154,11 +158,10 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           OK
         </Button>
       </div>
-    </div>
+    </Modal> : <>
+    </>
   }
 
-  return <>
-    <Elem />
-  </>
+  return <Elem />
 }
 export default EmojiPicker

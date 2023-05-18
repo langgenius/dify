@@ -17,6 +17,8 @@ import { createApp, fetchAppTemplates } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
 
+import EmojiPicker from '@/app/components/base/emoji-picker'
+
 type NewAppDialogProps = {
   show: boolean
   onClose?: () => void
@@ -31,6 +33,7 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
   const [newAppMode, setNewAppMode] = useState<AppMode>()
   const [isWithTemplate, setIsWithTemplate] = useState(false)
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState<number>(-1)
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
   const { data: templates, mutate } = useSWR({ url: '/app-templates' }, fetchAppTemplates)
@@ -93,10 +96,15 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
         </>
       }
     >
+      {showEmojiPicker && <EmojiPicker onSelect={(emoji, background) => {
+        console.log(emoji, background)
+        setShowEmojiPicker(false)
+      }} />}
+
       <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
 
       <div className='flex items-center justify-between gap-3 mb-8'>
-        <AppIcon size='large' />
+        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} />
         <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
       </div>
 
