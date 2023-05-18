@@ -40,4 +40,4 @@ class AppParameterApi(InstalledAppResource):
         }
 
 
-api.add_resource(AppParameterApi, '/installed-apps/<uuid:installed_app_id>/parameters')
+api.add_resource(AppParameterApi, '/installed-apps/<uuid:installed_app_id>/parameters', endpoint='installed_app_parameters')

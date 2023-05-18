@@ -134,7 +134,7 @@ def generate_upper_string():
 @click.command('gen-recommended-apps', help='Number of records to generate')
 def generate_recommended_apps():
     print('Generating recommended app data...')
-    apps = App.query.all()
+    apps = App.query.filter(App.is_public == True).all()
     for app in apps:
         recommended_app = RecommendedApp(
             app_id=app.id,

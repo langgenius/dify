@@ -21,4 +21,4 @@ from .datasets import datasets, datasets_document, datasets_segments, file, hit_
 from .workspace import workspace, members, providers, account
 
 # Import explore controllers
-from .explore import installed_app, recommended_app
+from .explore import installed_app, recommended_app, completion, conversation, message, parameter

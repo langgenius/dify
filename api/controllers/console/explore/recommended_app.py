@@ -58,6 +58,10 @@ class RecommendedAppListApi(Resource):
                 )
             ).first() is not None
 
+            app = recommended_app.app
+            if not app or not app.is_public:
+                continue
+
             language_prefix = current_user.interface_language.split('-')[0]
             desc = None
             if recommended_app.description:
@@ -68,7 +72,7 @@ class RecommendedAppListApi(Resource):
 
             recommended_app_result = {
                 'id': recommended_app.id,
-                'app': recommended_app.app,
+                'app': app,
                 'app_id': recommended_app.app_id,
                 'description': desc,
                 'copyright': recommended_app.copyright,
@@ -125,7 +129,7 @@ class RecommendedAppApi(Resource):
 
         # get app detail
         app = db.session.query(App).filter(App.id == app_id).first()
-        if not app:
+        if not app or not app.is_public:
             raise AppNotFoundError
 
         return app

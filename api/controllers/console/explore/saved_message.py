@@ -75,5 +75,5 @@ class SavedMessageApi(InstalledAppResource):
         return {'result': 'success'}
 
 
-api.add_resource(SavedMessageListApi, '/installed-apps/<uuid:installed_app_id>/saved-messages')
-api.add_resource(SavedMessageApi, '/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>')
+api.add_resource(SavedMessageListApi, '/installed-apps/<uuid:installed_app_id>/saved-messages', endpoint='installed_app_saved_messages')
+api.add_resource(SavedMessageApi, '/installed-apps/<uuid:installed_app_id>/saved-messages/<uuid:message_id>', endpoint='installed_app_saved_message')
