@@ -80,7 +80,7 @@ export const DEFAULT_VALUE_MAX_LEN = 48
 
 export const zhRegex = /^[\u4e00-\u9fa5]$/gm
 export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/gm
-export const emailRegex = /^[\w-.]+@([\w-]+.)+[\w-]{2,4}$/gm
+export const emailRegex = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$/gm
 const MAX_ZN_VAR_NAME_LENGHT = 8
 const MAX_EN_VAR_VALUE_LENGHT = 16
 export const getMaxVarNameLength = (value: string) => {
