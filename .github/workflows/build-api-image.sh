@@ -48,7 +48,7 @@ EOF
 cd api
 docker build \
   ${API_CACHE_FROM_SCRIPT} \
-  --platform linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform=linux/amd64,linux/arm64,linux/arm/v7 \
   --build-arg COMMIT_SHA=${SHA} \
   -t "${API_REPO_NAME}:${SHA}" \
   -t "${API_REPO_NAME}:${REFSPEC}" \
