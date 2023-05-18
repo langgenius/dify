@@ -31,7 +31,7 @@ export type IMainProps = {
 }
 
 const Main: FC<IMainProps> = ({
-  isInstalledApp,
+  isInstalledApp = false,
   installedAppInfo
 }) => {
   const { t } = useTranslation()
@@ -130,7 +130,7 @@ const Main: FC<IMainProps> = ({
 
     // update chat list of current conversation 
     if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponsing) {
-      fetchChatList(currConversationId).then((res: any) => {
+      fetchChatList(currConversationId, isInstalledApp, installedAppInfo?.id).then((res: any) => {
         const { data } = res
         const newChatList: IChatItem[] = generateNewChatListWithOpenstatement(notSyncToStateIntroduction, notSyncToStateInputs)
 
@@ -224,24 +224,16 @@ const Main: FC<IMainProps> = ({
   }
 
   const fetchInitData = () => {
-    if(isInstalledApp) {
-      return new Promise((resolve) => {
-        // TODO: fetchConversations
-        resolve([{
-          app_id: installedAppInfo?.id, 
-          site: {
-            title: installedAppInfo?.name,
-            prompt_public: false,
-            copyright: ''
-          },
-          model_config: installedAppInfo?.app_model_config,
-          plan: 'basic',
-        }, {
-          data: []
-        }, installedAppInfo?.app_model_config])
-      })
-    }
-    return Promise.all([fetchAppInfo(), fetchConversations(), fetchAppParams()])
+    return Promise.all([isInstalledApp ? {
+      app_id: installedAppInfo?.id, 
+      site: {
+        title: installedAppInfo?.name,
+        prompt_public: false,
+        copyright: ''
+      },
+      model_config: installedAppInfo?.app_model_config,
+      plan: 'basic',
+    }: fetchAppInfo(), fetchConversations(isInstalledApp, installedAppInfo?.id), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
 
@@ -402,7 +394,7 @@ const Main: FC<IMainProps> = ({
         }
         let currChatList = conversationList
         if (getConversationIdChangeBecauseOfNew()) {
-          const { data: conversations }: any = await fetchConversations()
+          const { data: conversations }: any = await fetchConversations(isInstalledApp, installedAppInfo?.id)
           setConversationList(conversations as ConversationItem[])
           currChatList = conversations
         }
@@ -411,7 +403,7 @@ const Main: FC<IMainProps> = ({
         setChatNotStarted()
         setCurrConversationId(tempNewConversationId, appId, true)
         if (suggestedQuestionsAfterAnswerConfig?.enabled) {
-          const { data }: any = await fetchSuggestedQuestions(responseItem.id)
+          const { data }: any = await fetchSuggestedQuestions(responseItem.id, isInstalledApp, installedAppInfo?.id)
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
@@ -423,11 +415,11 @@ const Main: FC<IMainProps> = ({
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
         }))
       },
-    })
+    }, isInstalledApp, installedAppInfo?.id)
   }
 
   const handleFeedback = async (messageId: string, feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } })
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     const newChatList = chatList.map((item) => {
       if (item.id === messageId) {
         return {

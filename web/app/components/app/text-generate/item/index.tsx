@@ -9,7 +9,7 @@ import Toast from '@/app/components/base/toast'
 import { Feedbacktype } from '@/app/components/app/chat'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
-import { fetcMoreLikeThis, updateFeedback } from '@/service/share'
+import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 
 const MAX_DEPTH = 3
 export interface IGenerationItemProps {
@@ -113,7 +113,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetcMoreLikeThis(messageId as string)
+    const res: any = await fetchMoreLikeThis(messageId as string)
     setCompletionRes(res.answer)
     setChildMessageId(res.id)
     stopQuerying()
