@@ -12,7 +12,7 @@ ENV APP_URL http://127.0.0.1:5001
 EXPOSE 5001
 
 RUN apt-get update && \
-    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev postgresql python-psycopg2 libpq-dev
+    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev postgresql libpq-dev
 
 RUN pip3 install gunicorn
 
