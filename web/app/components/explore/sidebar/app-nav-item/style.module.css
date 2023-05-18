@@ -7,3 +7,7 @@
   color: #344054;
   font-weight: 500;
 }
+
+.item:hover .opBtn {
+  background-color: #F2F4F7;
+}

@@ -1,6 +1,7 @@
 'use client'
 import cn from 'classnames'
 import Link from 'next/link'
+import ItemOperation from '@/app/components/explore/item-operation'
 
 import s from './style.module.css'
 
@@ -23,7 +24,7 @@ export default function NavLink({
       className={cn(
         s.item,
         isSelected && s.active,
-        'flex h-8 items-center px-2 rounded-lg text-sm font-normal',
+        'flex h-8 items-center px-2 rounded-lg text-sm font-normal hover:bg-gray-200',
       )}
     >
       <div
@@ -35,6 +36,9 @@ export default function NavLink({
         }}
       />
       <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
+      <div onClick={e => e.stopPropagation()}>
+        <ItemOperation className={s.opBtn} />
+      </div>
     </Link>
   )
 }
