@@ -2,11 +2,12 @@
   min-width: 312px;
 }
 
-.opWrap {
+.mode {
   display: flex;
+  height: 28px;
 }
 
-.mode {
+.opWrap {
   display: none;
 }
 
