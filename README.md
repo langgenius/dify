@@ -1,7 +1,8 @@
 ![](./images/describe-en.png)
 <p align="center">
   <a href="./README.md">English</a> |
-  <a href="./README_CN.md">简体中文</a>
+  <a href="./README_CN.md">简体中文</a> |
+  <a href="./README_JA.md">日本語</a>
 </p>
 
 [Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
