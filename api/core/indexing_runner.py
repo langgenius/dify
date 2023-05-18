@@ -343,7 +343,7 @@ class IndexingRunner:
 
             # parse document to nodes
             nodes = node_parser.get_nodes_from_documents([text_doc])
-
+            nodes = [node for node in nodes if node.text is not None and node.text.strip()]
             all_nodes.extend(nodes)
 
         return all_nodes
