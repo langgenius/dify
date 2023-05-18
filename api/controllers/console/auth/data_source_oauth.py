@@ -67,4 +67,4 @@ class OAuthDataSourceCallback(Resource):
 
 
 api.add_resource(OAuthDataSource, '/oauth/data-source/<provider>')
-api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/authorize/<provider>')
+api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/callback/<provider>')

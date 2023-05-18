@@ -5,7 +5,7 @@ import requests
 from flask_login import current_user
 
 from extensions.ext_database import db
-from models.data_source import DataSourceBinding
+from models.source import DataSourceBinding
 
 
 class OAuthDataSource:
@@ -58,13 +58,15 @@ class NotionOAuth(OAuthDataSource):
             'workspace_name': workspace_name,
             'workspace_icon': workspace_icon,
             'workspace_id': workspace_id,
-            'pages': pages
+            'pages': pages,
+            'total': len(pages)
         }
         # save data source binding
         data_source_binding = DataSourceBinding(
             tenant_id=current_user.current_tenant_id,
             access_token=access_token,
-            source_info=json.dumps(source_info)
+            source_info=json.dumps(source_info),
+            provider='notion'
         )
         db.session.add(data_source_binding)
         db.session.commit()
