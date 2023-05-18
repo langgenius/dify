@@ -1,4 +1,4 @@
-FROM langgenius/base:1.0.0-bullseye-slim as langgenius-api
+FROM python:3.10.11-slim-bullseye
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -10,6 +10,11 @@ ENV API_URL http://127.0.0.1:5001
 ENV APP_URL http://127.0.0.1:5001
 
 EXPOSE 5001
+
+RUN apt-get update && \
+    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
+
+RUN pip3 install gunicorn
 
 WORKDIR /app/api
 

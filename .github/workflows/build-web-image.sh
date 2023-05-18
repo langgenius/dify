@@ -49,6 +49,7 @@ cd web
 docker build \
   ${WEB_CACHE_FROM_SCRIPT} \
   --build-arg COMMIT_SHA=${SHA} \
+  --platform linux/amd64,linux/arm64,linux/arm/v7 \
   -t "${WEB_REPO_NAME}:${SHA}" \
   -t "${WEB_REPO_NAME}:${REFSPEC}" \
   -t "${WEB_REPO_NAME}:${LATEST_TAG}" \

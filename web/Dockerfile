@@ -1,4 +1,4 @@
-FROM langgenius/base:1.0.0-bullseye-slim
+FROM node:18-bullseye-slim
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -8,6 +8,11 @@ ENV CONSOLE_URL http://127.0.0.1:5001
 ENV APP_URL http://127.0.0.1:5001
 
 EXPOSE 3000
+
+RUN apt-get update && \
+    apt-get install -y bash curl wget vim
+
+RUN npm install pm2 -g
 
 WORKDIR /app/web
 
