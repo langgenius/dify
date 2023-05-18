@@ -91,6 +91,7 @@ class InstalledAppsListApi(Resource):
             new_installed_app = InstalledApp(
                 app_id=args['app_id'],
                 tenant_id=current_tenant_id,
+                app_owner_tenant_id=app.tenant_id,
                 is_pinned=False,
                 last_used_at=datetime.utcnow()
             )
