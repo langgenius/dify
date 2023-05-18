@@ -6,7 +6,8 @@ import ExploreContext from '@/context/explore-context'
 import { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
-import { fetchAppList, installApp } from '@/service/explore'
+import { fetchAppList, installApp, fetchAppDetail } from '@/service/explore'
+import { createApp } from '@/service/apps'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 
@@ -43,10 +44,23 @@ const Apps: FC = ({ }) => {
     setControlUpdateInstalledApps(Date.now())
   }
 
-  const [currApp, setCurrApp] = React.useState<any>(null)
+  const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate = ({name}: any) => {
-    console.log({id: currApp.id, name})
+  const onCreate = async ({name}: any) => {
+    const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
+    
+    createApp({
+      name,
+      icon: '', // TODO
+      icon_background: '', // TODO
+      mode: currApp?.app.mode as any,
+      config: model_config,
+    })
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success'),
+    })
+    setIsShowCreateModal(false)
   }
 
   if(!isLoaded) {
@@ -93,7 +107,7 @@ const Apps: FC = ({ }) => {
 
       {isShowCreateModal && (
           <CreateAppModal
-            appName={currApp.name}
+            appName={currApp?.app.name || ''}
             show={isShowCreateModal}
             onConfirm={onCreate}
             onHide={() => setIsShowCreateModal(false)}
