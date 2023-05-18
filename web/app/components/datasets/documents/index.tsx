@@ -69,7 +69,7 @@ type IDocumentsProps = {
   datasetId: string
 }
 
-export const fetcher = (url: string) => get(url, {}, { isMock: true })
+export const fetcher = (url: string) => get(url, {}, {})
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
