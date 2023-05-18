@@ -40,7 +40,7 @@ class InstalledAppsListApi(Resource):
     @account_initialization_required
     @marshal_with(installed_app_list_fields)
     def get(self):
-        current_tenant_id = Tenant.query.first().id
+        current_tenant_id = current_user.current_tenant_id
         installed_apps = db.session.query(InstalledApp).filter(
             InstalledApp.tenant_id == current_tenant_id
         ).all()
@@ -54,7 +54,7 @@ class InstalledAppsListApi(Resource):
                 'is_pinned': installed_app.is_pinned,
                 'last_used_at': installed_app.last_used_at,
                 "editable": current_user.role in ["owner", "admin"],
-                "uninstallable": current_user.current_tenant_id == installed_app.app_owner_tenant_id
+                "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id
             }
             for installed_app in installed_apps
         ]
@@ -69,8 +69,11 @@ class InstalledAppsListApi(Resource):
         parser.add_argument('app_id', type=str, required=True, help='Invalid app_id')
         args = parser.parse_args()
 
-        current_tenant_id = Tenant.query.first().id
-        app = App.query.get(args['app_id'])
+        current_tenant_id = current_user.current_tenant_id
+        app = db.session.query(App).filter(
+            App.id == args['app_id'],
+            App.tenant_id == current_tenant_id
+        ).first()
         if app is None:
             abort(404, message='App not found')
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
