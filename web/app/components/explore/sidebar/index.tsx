@@ -1,21 +1,12 @@
 'use client'
-import React, { FC } from 'react'
+import React, { FC, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Item from './app-nav-item'
-
-const list = [
-  {
-    id: '1',
-    name: 'Story Bot',
-  },
-  {
-    id: '2',
-    name: 'Fancy title'
-  }
-]
+import { InstalledApp } from '@/models/explore'
+import { fetchInstalledAppList as doFetchInstalledAppList  } from '@/service/explore'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -29,11 +20,29 @@ const DiscoveryIcon = () => (
   </svg>
 )
 
-const SideBar: FC = () => {
+const SideBar: FC<{
+  controlUpdateInstalledApps: number
+}> = ({
+  controlUpdateInstalledApps
+}) => {
   const { t } = useTranslation()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
+  const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([])
+
+  const fetchInstalledAppList = async () => {
+    const {installed_apps} : any = await doFetchInstalledAppList()
+    setInstalledApps(installed_apps)
+  }
+
+  useEffect(() => {
+    fetchInstalledAppList()
+  }, [])
+
+  useEffect(() => {
+    fetchInstalledAppList()
+  }, [controlUpdateInstalledApps])
 
   return (
     <div className='w-[216px] shrink-0 pt-6 px-4 border-r border-gray-200 cursor-pointer'>
@@ -47,11 +56,11 @@ const SideBar: FC = () => {
           <div className='text-sm'>{t('explore.sidebar.discovery')}</div>
         </Link>
       </div>
-      {list.length > 0 && (
+      {installedApps.length > 0 && (
         <div className='mt-10'>
           <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
           <div className='mt-3 space-y-1'>
-            {list.map(({id, name}) => {
+            {installedApps.map(({app : {id, name}}) => {
               return (
                 <Item key={id} name={name} id={id} isSelected={lastSegment?.toLowerCase() === id} />
               )

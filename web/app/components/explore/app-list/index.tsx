@@ -1,18 +1,21 @@
 'use client'
 import React, { FC, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import ExploreContext from '@/context/explore-context'
 import { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
-import { fetchAppList } from '@/service/explore'
+import { fetchAppList, installApp } from '@/service/explore'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 
 import s from './style.module.css'
+import Toast from '../../base/toast'
 
 const Apps: FC = ({ }) => {
   const { t } = useTranslation()
-
+  const { setControlUpdateInstalledApps } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = React.useState('')
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -31,8 +34,13 @@ const Apps: FC = ({ }) => {
     })()
   }, [])
 
-  const handleAddToWorkspace =  (appId: string) => {
-    console.log('handleAddToWorkspace', appId)
+  const handleAddToWorkspace = async (appId: string) => {
+    await installApp(appId)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success'),
+    })
+    setControlUpdateInstalledApps(Date.now())
   }
 
   const [currApp, setCurrApp] = React.useState<any>(null)

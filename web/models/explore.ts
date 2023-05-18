@@ -21,3 +21,9 @@ export type App = {
   installed: boolean;
   editable: boolean;
 }
+
+export type InstalledApp = {
+  app: AppBasicInfo;
+  id: string;
+  uninstallable: boolean
+}

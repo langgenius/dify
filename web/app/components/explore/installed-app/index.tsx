@@ -2,7 +2,6 @@
 import React, { FC, useEffect } from 'react'
 import { App } from '@/types/app'
 import ChatApp from '@/app/components/share/chat'
-
 export interface IInstalledAppProps {
   id: string
 }
