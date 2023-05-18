@@ -16,7 +16,7 @@ import Toast from '../../base/toast'
 
 const Apps: FC = ({ }) => {
   const { t } = useTranslation()
-  const { setControlUpdateInstalledApps } = useContext(ExploreContext)
+  const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = React.useState('')
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
@@ -95,6 +95,7 @@ const Apps: FC = ({ }) => {
             <AppCard 
               key={app.app_id}
               app={app}
+              canCreate={hasEditPermission}
               onCreate={() => {
                 setCurrApp(app)
                 setIsShowCreateModal(true)

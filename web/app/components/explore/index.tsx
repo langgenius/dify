@@ -1,8 +1,9 @@
 'use client'
-import React, { FC } from 'react'
+import React, { FC, useEffect } from 'react'
 import ExploreContext from '@/context/explore-context'
 import Sidebar from '@/app/components/explore/sidebar'
-
+import { useAppContext } from '@/context/app-context'
+import { fetchMembers } from '@/service/common'
 
 export interface IExploreProps {
   children: React.ReactNode
@@ -12,13 +13,26 @@ const Explore: FC<IExploreProps> = ({
   children
 }) => {
   const [controlUpdateInstalledApps, setControlUpdateInstalledApps] = React.useState(0)
+  const { userProfile } = useAppContext()
+  const [hasEditPermission, setHasEditPermission] = React.useState(false)
+
+  useEffect(() => {
+    (async () => {
+      const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {}})
+      if(!accounts) return
+      const currUser = accounts.find(account => account.id === userProfile.id)
+      setHasEditPermission(currUser?.role !== 'normal')
+    })()
+  }, [])
+
   return (
     <div className='flex h-full bg-gray-100 border-t border-gray-200'>
       <ExploreContext.Provider
         value={
           {
             controlUpdateInstalledApps,
-            setControlUpdateInstalledApps
+            setControlUpdateInstalledApps,
+            hasEditPermission
           }
         }
       >

@@ -17,14 +17,16 @@ const CustomizeBtn = (
 
 export type AppCardProps = {
   app: App,
+  canCreate: boolean,
   onCreate: () => void,
   onAddToWorkspace: (appId: string) => void,
 }
 
 const AppCard = ({
   app,
+  canCreate,
   onCreate,
-  onAddToWorkspace
+  onAddToWorkspace,
 }: AppCardProps) => {
   const { t } = useTranslation()
   const {app: appBasicInfo} = app
@@ -47,10 +49,12 @@ const AppCard = ({
               <PlusIcon className='w-4 h-4 mr-1' />
               <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
             </Button>
-            <Button className='grow flex items-center !h-7 space-x-1' onClick={onCreate}>
-              {CustomizeBtn}
-              <span className='text-xs'>{t('explore.appCard.customize')}</span>
-            </Button>
+            {canCreate && (
+              <Button className='grow flex items-center !h-7 space-x-1' onClick={onCreate}>
+                {CustomizeBtn}
+                <span className='text-xs'>{t('explore.appCard.customize')}</span>
+              </Button>
+            )}
           </div>
         </div>
       </div>
