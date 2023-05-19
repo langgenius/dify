@@ -104,7 +104,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     </div>
 
     {/* Color Select */}
-    <div className='flex flex-col p-3'>
+    <div className={cn('flex flex-col p-3 ', selectedEmoji == '' ? 'opacity-25' : '')}>
       <p className='font-medium uppercase text-xs text-[#101828] mb-2'>Choose Style</p>
       <div className='w-full h-full grid grid-cols-8 gap-1'>
         {backgroundColors.map((color) => {
@@ -138,9 +138,13 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       }}>
         Cancel
       </Button>
-      <Button type="primary" className='w-full' onClick={() => {
-        onSelect && onSelect(selectedEmoji, selectedBackground)
-      }}>
+      <Button 
+       disabled={selectedEmoji == ''}
+        type="primary" 
+        className='w-full' 
+        onClick={() => {
+          onSelect && onSelect(selectedEmoji, selectedBackground)
+        }}>
         OK
       </Button>
     </div>
