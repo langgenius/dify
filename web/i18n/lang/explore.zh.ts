@@ -2,6 +2,15 @@ const translation = {
   sidebar: {
     discovery: '发现',
     workspace: '工作区',
+    action: {
+      pin: '置顶',
+      unpin: '取消置顶',
+      delete: '删除',
+    },
+    delete: {
+      title: '删除程序',
+      content: '您确定要删除此程序吗？',
+    }
   },
   apps: {
     title: '探索 Dify 的应用',
@@ -17,13 +26,6 @@ const translation = {
     subTitle: '应用程序图标和名称',
     nameRequired: '应用程序名称不能为空',
   },
-  sideBar: {
-    action: {
-      pin: '置顶',
-      unpin: '取消置顶',
-      delete: '删除',
-    }
-  }
 }
 
 export default translation

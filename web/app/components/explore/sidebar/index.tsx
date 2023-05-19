@@ -1,5 +1,5 @@
 'use client'
-import React, { FC, useEffect } from 'react'
+import React, { FC, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ExploreContext from '@/context/explore-context'
@@ -9,6 +9,7 @@ import Link from 'next/link'
 import Item from './app-nav-item'
 import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus  } from '@/service/explore'
 import Toast from '../../base/toast'
+import Confirm from '@/app/components/base/confirm'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,12 +38,16 @@ const SideBar: FC<{
     const {installed_apps} : any = await doFetchInstalledAppList()
     setInstalledApps(installed_apps)
   }
-
-  const handleDelete = async (id: string) => {
+  
+  const [showConfirm, setShowConfirm] = useState(false)
+  const [currId, setCurrId] = useState('')
+  const handleDelete = async () => {
+    const id = currId
     await uninstallApp(id)
+    setShowConfirm(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.Removed')
+      message: t('common.api.remove')
     })
     fetchInstalledAppList()
   }
@@ -96,13 +101,26 @@ const SideBar: FC<{
                   isPinned={is_pinned}
                   togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
                   uninstallable={uninstallable}
-                  onDelete={handleDelete}
+                  onDelete={(id) => {
+                    setCurrId(id)
+                    setShowConfirm(true)
+                  }}
                 />
               )
             })}
           </div>
         </div>
       )}
+      {showConfirm && (
+          <Confirm
+            title={t('explore.sidebar.delete.title')}
+            content={t('explore.sidebar.delete.content')}
+            isShow={showConfirm}
+            onClose={() => setShowConfirm(false)}
+            onConfirm={handleDelete}
+            onCancel={() => setShowConfirm(false)}
+          />
+        )}
     </div>
   )
 }

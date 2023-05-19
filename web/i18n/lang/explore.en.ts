@@ -2,6 +2,15 @@ const translation = {
   sidebar: {
     discovery: 'Discovery',
     workspace: 'Workspace',
+    action: {
+      pin: 'Pin',
+      unpin: 'Unpin',
+      delete: 'Delete',
+    },
+    delete: {
+      title: 'Delete app',
+      content: 'Are you sure you want to delete this app?',
+    }
   },
   apps: {
     title: 'Explore Apps by Dify',
@@ -17,13 +26,6 @@ const translation = {
     subTitle: 'App icon & name',
     nameRequired: 'App name is required',
   },
-  sideBar: {
-    action: {
-      pin: 'Pin',
-      unpin: 'Unpin',
-      delete: 'Delete',
-    }
-  }
 }
 
 export default translation
