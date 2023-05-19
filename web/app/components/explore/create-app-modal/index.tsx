@@ -1,11 +1,13 @@
 'use client'
-import React from 'react'
+import React, { useState } from 'react'
+import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
+import AppIcon from '@/app/components/base/app-icon'
+import EmojiPicker from '@/app/components/base/emoji-picker'
 
-import cn from 'classnames'
 import s from './style.module.css'
 
 type IProps = {
@@ -25,6 +27,9 @@ const CreateAppModal = ({
 
   const [name, setName] = React.useState('')
 
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [emoji, setEmoji] = useState({ icon: '🍌', icon_background: '#FFEAD5' })
+
   const submit = () => {
     if(!name.trim()) {
       Toast.notify({ type: 'error', message: t('explore.appCustomize.nameRequired') })
@@ -32,11 +37,13 @@ const CreateAppModal = ({
     }
     onConfirm({
       name,
+      ...emoji,
     })
     onHide()
   }
 
   return (
+    <>
     <Modal
       isShow={show}
       onClose={onHide}
@@ -47,7 +54,7 @@ const CreateAppModal = ({
       <div className={s.content}>
         <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
         <div className='flex items-center justify-between space-x-3'>
-          <div className='w-10 h-10 rounded-lg bg-[#EFF1F5]'></div>
+          <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
           <input 
             value={name}
             onChange={e => setName(e.target.value)}
@@ -60,6 +67,19 @@ const CreateAppModal = ({
         <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
       </div>
     </Modal>
+    {showEmojiPicker && <EmojiPicker
+      onSelect={(icon, icon_background) => {
+        console.log(icon, icon_background)
+        setEmoji({ icon, icon_background })
+        setShowEmojiPicker(false)
+      }}
+      onClose={() => {
+        setEmoji({ icon: '🍌', icon_background: '#FFEAD5' })
+        setShowEmojiPicker(false)
+      }}
+    />}
+    </>
+    
   )
 }
 

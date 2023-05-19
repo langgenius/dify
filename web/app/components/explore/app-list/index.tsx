@@ -46,13 +46,13 @@ const Apps: FC = ({ }) => {
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate = async ({name}: any) => {
+  const onCreate = async ({name, icon, icon_background}: any) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
     
     createApp({
       name,
-      icon: '', // TODO
-      icon_background: '', // TODO
+      icon,
+      icon_background,
       mode: currApp?.app.mode as any,
       config: model_config,
     })
