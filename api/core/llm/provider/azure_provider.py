@@ -36,8 +36,7 @@ class AzureProvider(BaseProvider):
         """
         Returns the API credentials for Azure OpenAI as a dictionary.
         """
-        encrypted_config = self.get_provider_api_key(model_id=model_id)
-        config = json.loads(encrypted_config)
+        config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
         config['deployment_name'] = model_id
         return config

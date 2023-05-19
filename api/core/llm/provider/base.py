@@ -14,7 +14,7 @@ class BaseProvider(ABC):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
 
-    def get_provider_api_key(self, model_id: Optional[str] = None, prefer_custom: bool = True) -> str:
+    def get_provider_api_key(self, model_id: Optional[str] = None, prefer_custom: bool = True) -> Union[str | dict]:
         """
         Returns the decrypted API key for the given tenant_id and provider_name.
         If the provider is of type SYSTEM and the quota is exceeded, raises a QuotaExceededError.

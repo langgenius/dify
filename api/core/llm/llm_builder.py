@@ -1,10 +1,13 @@
 from typing import Union, Optional
 
+from flask import current_app
 from langchain.callbacks import CallbackManager
 from langchain.llms.fake import FakeListLLM
 
 from core.constant import llm_constant
 from core.llm.provider.llm_provider_service import LLMProviderService
+from core.llm.streamable_azure_chat_open_ai import StreamableAzureChatOpenAI
+from core.llm.streamable_azure_open_ai import StreamableAzureOpenAI
 from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.llm.streamable_open_ai import StreamableOpenAI
 
@@ -31,12 +34,19 @@ class LLMBuilder:
         if model_name == 'fake':
             return FakeListLLM(responses=[])
 
+        provider = current_app.config.get('DEFAULT_LLM_PROVIDER')
+
         mode = cls.get_mode_by_model(model_name)
         if mode == 'chat':
-            # llm_cls = StreamableAzureChatOpenAI
-            llm_cls = StreamableChatOpenAI
+            if provider == 'openai':
+                llm_cls = StreamableChatOpenAI
+            else:
+                llm_cls = StreamableAzureChatOpenAI
         elif mode == 'completion':
-            llm_cls = StreamableOpenAI
+            if provider == 'openai':
+                llm_cls = StreamableOpenAI
+            else:
+                llm_cls = StreamableAzureOpenAI
         else:
             raise ValueError(f"model name {model_name} is not supported.")
 
@@ -93,11 +103,12 @@ class LLMBuilder:
         """
         if not model_name:
             raise Exception('model name not found')
+        #
+        # if model_name not in llm_constant.models:
+        #     raise Exception('model {} not found'.format(model_name))
 
-        if model_name not in llm_constant.models:
-            raise Exception('model {} not found'.format(model_name))
-
-        model_provider = llm_constant.models[model_name]
+        # model_provider = llm_constant.models[model_name]
+        model_provider = current_app.config.get('DEFAULT_LLM_PROVIDER')
 
         provider_service = LLMProviderService(tenant_id=tenant_id, provider_name=model_provider)
         return provider_service.get_credentials(model_name)
