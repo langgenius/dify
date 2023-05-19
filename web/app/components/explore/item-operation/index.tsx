@@ -8,16 +8,20 @@ import s from './style.module.css'
 
 export interface IItemOperationProps {
   className?: string
+  onDelete: () => void
 }
 
 const ItemOperation: FC<IItemOperationProps> = ({
   className,
+  onDelete
 }) => {
   return (
     <Popover
       htmlContent={
-        <div className='w-full py-1'>
-          <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={() => {}}>
+        <div className='w-full py-1' onClick={(e) => {
+          e.stopPropagation()
+        }}>
+          <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
             <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
             <span className={cn(s.actionName, 'group-hover:text-red-500')}>{'Delete'}</span>
           </div>
@@ -25,9 +29,9 @@ const ItemOperation: FC<IItemOperationProps> = ({
       }
       trigger='click'
       position='br'
-      btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
-      btnClassName={(open) => cn(className, 'h-6 w-6 rounded-md border-none p-1 bg-transparent hover:bg-gray-100', open && '!bg-gray-100 !shadow-none')}
-      className={`!w-[200px] h-fit !z-20`}
+      btnElement={<div />}
+      btnClassName={(open) => cn(className, s.btn, 'h-6 w-6 rounded-md border-none p-1', open && '!bg-gray-100 !shadow-none')}
+      className={`!w-[120px] h-fit !z-20`}
     />
   )
 }

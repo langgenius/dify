@@ -1,4 +1,4 @@
-import { get, post } from './base'
+import { get, post, del } from './base'
 
 export const fetchAppList = () => {
   return get('/explore/apps')
@@ -18,4 +18,8 @@ export const installApp = (id: string) => {
       app_id: id
     }
   })
+}
+
+export const uninstallApp = (id: string) => {
+  return del(`/installed-apps/${id}`)
 }

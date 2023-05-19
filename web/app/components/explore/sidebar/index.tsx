@@ -7,7 +7,7 @@ import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Item from './app-nav-item'
-import { fetchInstalledAppList as doFetchInstalledAppList  } from '@/service/explore'
+import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp  } from '@/service/explore'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,6 +37,11 @@ const SideBar: FC<{
     setInstalledApps(installed_apps)
   }
 
+  const handleDelete = async (id: string) => {
+    await uninstallApp(id)
+    fetchInstalledAppList()
+  }
+
   useEffect(() => {
     fetchInstalledAppList()
   }, [])
@@ -63,7 +68,13 @@ const SideBar: FC<{
           <div className='mt-3 space-y-1'>
             {installedApps.map(({id, app : { name }}) => {
               return (
-                <Item key={id} name={name} id={id} isSelected={lastSegment?.toLowerCase() === id} />
+                <Item 
+                  key={id}
+                  name={name}
+                  id={id}
+                  isSelected={lastSegment?.toLowerCase() === id}
+                  onDelete={handleDelete}
+                />
               )
             })}
           </div>

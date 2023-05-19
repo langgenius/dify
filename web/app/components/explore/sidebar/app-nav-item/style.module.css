@@ -8,6 +8,10 @@
   font-weight: 500;
 }
 
+.opBtn {
+  visibility: hidden;
+}
+
 .item:hover .opBtn {
-  background-color: #F2F4F7;
+  visibility: visible;
 }
