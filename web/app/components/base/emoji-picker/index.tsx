@@ -1,13 +1,13 @@
 'use client'
 import data from '@emoji-mart/data'
-import { init } from 'emoji-mart'
+import { init, SearchIndex } from 'emoji-mart'
 // import AppIcon from '@/app/components/base/app-icon'
 import cn from 'classnames'
 import Divider from '@/app/components/base/divider'
 
 import Button from '@/app/components/base/button'
 import s from './style.module.css'
-import { useState, FC } from 'react'
+import { useState, FC, ChangeEvent } from 'react'
 import {
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
@@ -26,6 +26,16 @@ declare global {
 }
 
 init({ data })
+
+async function search(value: string) {
+  const emojis = await SearchIndex.search(value) || []
+  
+  const results = emojis.map((emoji: any) => {
+    return emoji.skins[0].native
+  })
+
+  console.log(results)
+}
 
 const backgroundColors = [
   '#FFEAD5',
@@ -75,7 +85,15 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
           <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" aria-hidden="true" />
         </div>
-        <input type="search" id="search" className="block w-full p-2 pl-10 text-sm text-gray-900 border border-gray-300 rounded-lg bg-gray-50 " placeholder="Search" />
+        <input
+          type="search" 
+          id="search" 
+          className='block w-full h-10 px-3 pl-10 text-sm font-normal bg-gray-100 rounded-lg'
+          placeholder="Search emojis..." 
+          onChange={(e: ChangeEvent<HTMLInputElement>) => {
+            search(e.target.value)
+          }}
+          />
       </div>
     </div>
     <Divider className='m-0 mb-3' />
