@@ -1,7 +1,10 @@
 'use client'
 import React, { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import exploreI18n from '@/i18n/lang/explore.en'
 import cn from 'classnames'
+
+const categoryI18n = exploreI18n.category
 
 export interface ICategoryProps {
   className?: string
@@ -36,7 +39,7 @@ const Category: FC<ICategoryProps> = ({
           style={itemStyle(name === value)}
           onClick={() => onChange(name)}
         >
-          {name}
+          {(categoryI18n as any)[name] ? t(`explore.category.${name}`) : name}
         </div>
       ))}
     </div>

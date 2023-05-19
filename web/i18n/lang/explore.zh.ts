@@ -26,6 +26,12 @@ const translation = {
     subTitle: '应用程序图标和名称',
     nameRequired: '应用程序名称不能为空',
   },
+  category: {
+    'News': '新闻',
+    'Music': '音乐',
+    'Games': '游戏',
+    'Sports': '体育',
+  }
 }
 
 export default translation

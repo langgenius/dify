@@ -26,6 +26,12 @@ const translation = {
     subTitle: 'App icon & name',
     nameRequired: 'App name is required',
   },
+  category: {
+    'News': 'News',
+    'Music': 'Music',
+    'Games': 'Games',
+    'Sports': 'Sports',
+  }
 }
 
 export default translation
