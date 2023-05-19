@@ -92,7 +92,7 @@ class BaseProvider(ABC):
         try:
             config = self.get_provider_api_key()
         except:
-            config = 'THIS-IS-A-MOCK-TOKEN'
+            config = ''
 
         if obfuscated:
             return self.obfuscated_token(config)
