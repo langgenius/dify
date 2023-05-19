@@ -11,6 +11,8 @@ export type ConversationItem = {
 
 export type SiteInfo = {
   title: string
+  icon: string
+  icon_background: string
   description: string
   default_language: Locale
   prompt_public: boolean
