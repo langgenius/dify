@@ -26,14 +26,7 @@ if [[ "${REFSPEC}" == "main" ]]; then
   CACHE_FROM_TAG="latest"
 fi
 
-echo "Pulling cache image ${API_REPO_NAME}:${CACHE_FROM_TAG}"
-if docker buildx imagetools create cache-image --name=${API_REPO_NAME}:${CACHE_FROM_TAG} -platform=linux/amd64,linux/arm64; then
-  API_CACHE_FROM_SCRIPT="--cache-from cache-image"
-else
-  echo "WARNING: Failed to pull ${API_REPO_NAME}:${CACHE_FROM_TAG}, disable build image cache."
-  API_CACHE_FROM_SCRIPT=""
-fi
-
+docker buildx create --use --driver=docker-container
 
 cat<<EOF
   Rolling with tags:
@@ -47,7 +40,8 @@ EOF
 #
 cd api
 docker buildx build \
-  ${API_CACHE_FROM_SCRIPT} \
+  --cache-to type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
+  --cache-from type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
   --platform=linux/amd64,linux/arm64 \
   --build-arg COMMIT_SHA=${SHA} \
   -t "${API_REPO_NAME}:${SHA}" \
