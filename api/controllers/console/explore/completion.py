@@ -42,7 +42,7 @@ class CompletionApi(InstalledAppResource):
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                from_source='api',
+                from_source='console',
                 streaming=streaming
             )
 
@@ -101,7 +101,7 @@ class ChatApi(InstalledAppResource):
                 app_model=app_model,
                 user=current_user,
                 args=args,
-                from_source='api',
+                from_source='console',
                 streaming=streaming
             )
 
