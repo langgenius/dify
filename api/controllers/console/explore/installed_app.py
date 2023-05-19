@@ -9,6 +9,7 @@ from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
+from libs.helper import TimestampField
 from models.model import Tenant, App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
@@ -25,7 +26,7 @@ installed_app_fields = {
     'app': fields.Nested(app_fields),
     'app_owner_tenant_id': fields.String,
     'is_pinned': fields.Boolean,
-    'last_used_at': fields.DateTime,
+    'last_used_at': TimestampField,
     'editable': fields.Boolean,
     'uninstallable': fields.Boolean,
 }
