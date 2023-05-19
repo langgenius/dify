@@ -2,12 +2,15 @@
 import cn from 'classnames'
 import { useRouter } from 'next/navigation'
 import ItemOperation from '@/app/components/explore/item-operation'
+import AppIcon from '@/app/components/base/app-icon'
 
 import s from './style.module.css'
 
 export interface IAppNavItemProps {
   name: string
   id: string
+  icon: string
+  icon_background: string
   isSelected: boolean
   isPinned: boolean
   togglePin: () => void
@@ -18,11 +21,13 @@ export interface IAppNavItemProps {
 export default function AppNavItem({
   name,
   id,
+  icon,
+  icon_background,
   isSelected,
   isPinned,
   togglePin,
   uninstallable,
-  onDelete
+  onDelete,
 }: IAppNavItemProps) {
   const router = useRouter()
   const url = `/explore/installed/${id}`
@@ -39,15 +44,16 @@ export default function AppNavItem({
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
-      <div className='flex items-center'>
-        <div
+      <div className='flex items-center space-x-2'>
+        {/* <div
           className={cn(
             'shrink-0 mr-2 h-6 w-6 rounded-md border bg-[#D5F5F6]',
           )}
           style={{
             borderColor: '0.5px solid rgba(0, 0, 0, 0.05)'
           }}
-        />
+        /> */}
+        <AppIcon size='tiny'  icon={icon} background={icon_background} />
         <div className='max-w-[110px] overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
       </div>
       {

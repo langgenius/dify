@@ -4,8 +4,8 @@ export type AppBasicInfo = {
   id: string;
   name: string;
   mode: AppMode;
-  icon: null;
-  icon_background: null;
+  icon: string;
+  icon_background: string;
 }
 
 export type App = {

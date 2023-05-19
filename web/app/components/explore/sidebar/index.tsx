@@ -84,11 +84,13 @@ const SideBar: FC<{
               maxHeight: 'calc(100vh - 250px)'
             }}
           >
-            {installedApps.map(({id, is_pinned, uninstallable, app : { name }}) => {
+            {installedApps.map(({id, is_pinned, uninstallable, app : { name, icon, icon_background }}) => {
               return (
                 <Item 
                   key={id}
                   name={name}
+                  icon={icon}
+                  icon_background={icon_background}
                   id={id}
                   isSelected={lastSegment?.toLowerCase() === id}
                   isPinned={is_pinned}
