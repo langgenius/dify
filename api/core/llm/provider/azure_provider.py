@@ -54,7 +54,7 @@ class AzureProvider(BaseProvider):
             config = {
                 'openai_api_type': 'azure',
                 'openai_api_version': '2023-03-15-preview',
-                'openai_api_base': 'https://foo.microsoft.com/bar',
+                'openai_api_base': 'https://<your-domain-prefix>.openai.azure.com/',
                 'openai_api_key': ''
             }
 
@@ -63,7 +63,7 @@ class AzureProvider(BaseProvider):
                 config = {
                     'openai_api_type': 'azure',
                     'openai_api_version': '2023-03-15-preview',
-                    'openai_api_base': 'https://foo.microsoft.com/bar',
+                    'openai_api_base': 'https://<your-domain-prefix>.openai.azure.com/',
                     'openai_api_key': ''
                 }
 
