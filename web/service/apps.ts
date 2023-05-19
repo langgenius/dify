@@ -42,8 +42,8 @@ export const updateAppRateLimit: Fetcher<AppDetailResponse, { url: string; body:
   return post(url, { body }) as Promise<AppDetailResponse>
 }
 
-export const updateAppSiteAccessToken: Fetcher<UpdateAppSiteCodeResponse, { url: string }> = ({ url }) => {
-  return post(url) as Promise<UpdateAppSiteCodeResponse>
+export const updateAppSiteAccessToken: Fetcher<UpdateAppSiteCodeResponse, { url: string, body: Record<string, any> }> = ({ url }) => {
+  return post(url, { body }) as Promise<UpdateAppSiteCodeResponse>
 }
 
 export const updateAppSiteConfig: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
