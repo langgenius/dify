@@ -61,7 +61,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   }
 
   const onGenerateCode = async () => {
-    const [err] = await asyncRunSafe<App>(updateAppSiteAccessToken as any, { url: `/apps/${appId}/site/access-token-reset` }, notify, t)
+    const [err] = await asyncRunSafe<App>(updateAppSiteAccessToken as any, { url: `/apps/${appId}/site/access-token-reset`, body: {} }, notify, t)
     if (!err)
       mutate(detailParams)
   }
