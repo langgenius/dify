@@ -29,9 +29,6 @@ export type IAppCardProps = {
   onGenerateCode?: () => Promise<any>
 }
 
-// todo: get image url from appInfo
-const defaultUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
-
 function AppCard({
   appInfo,
   cardType = 'app',
@@ -104,7 +101,8 @@ function AppCard({
         <div className="mb-2.5 flex flex-row items-start justify-between">
           <AppBasic
             iconType={isApp ? 'app' : 'api'}
-            iconUrl={defaultUrl}
+            icon={appInfo.icon}
+            icon_background={appInfo.icon_background}
             name={basicName}
             type={
               isApp

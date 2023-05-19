@@ -14,7 +14,7 @@ class BaseProvider(ABC):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
 
-    def get_provider_api_key(self, model_id: Optional[str] = None, prefer_custom: bool = True) -> str:
+    def get_provider_api_key(self, model_id: Optional[str] = None, prefer_custom: bool = True) -> Union[str | dict]:
         """
         Returns the decrypted API key for the given tenant_id and provider_name.
         If the provider is of type SYSTEM and the quota is exceeded, raises a QuotaExceededError.
@@ -43,23 +43,35 @@ class BaseProvider(ABC):
         Returns the Provider instance for the given tenant_id and provider_name.
         If both CUSTOM and System providers exist, the preferred provider will be returned based on the prefer_custom flag.
         """
-        providers = db.session.query(Provider).filter(
-            Provider.tenant_id == self.tenant_id,
-            Provider.provider_name == self.get_provider_name().value
-        ).order_by(Provider.provider_type.desc() if prefer_custom else Provider.provider_type).all()
+        return BaseProvider.get_valid_provider(self.tenant_id, self.get_provider_name().value, prefer_custom)
+
+    @classmethod
+    def get_valid_provider(cls, tenant_id: str, provider_name: str = None, prefer_custom: bool = False) -> Optional[Provider]:
+        """
+        Returns the Provider instance for the given tenant_id and provider_name.
+        If both CUSTOM and System providers exist, the preferred provider will be returned based on the prefer_custom flag.
+        """
+        query = db.session.query(Provider).filter(
+            Provider.tenant_id == tenant_id
+        )
+
+        if provider_name:
+            query = query.filter(Provider.provider_name == provider_name)
+
+        providers = query.order_by(Provider.provider_type.desc() if prefer_custom else Provider.provider_type).all()
 
         custom_provider = None
         system_provider = None
 
         for provider in providers:
-            if provider.provider_type == ProviderType.CUSTOM.value:
+            if provider.provider_type == ProviderType.CUSTOM.value and provider.is_valid and provider.encrypted_config:
                 custom_provider = provider
-            elif provider.provider_type == ProviderType.SYSTEM.value:
+            elif provider.provider_type == ProviderType.SYSTEM.value and provider.is_valid:
                 system_provider = provider
 
-        if custom_provider and custom_provider.is_valid and custom_provider.encrypted_config:
+        if custom_provider:
             return custom_provider
-        elif system_provider and system_provider.is_valid:
+        elif system_provider:
             return system_provider
         else:
             return None
@@ -80,7 +92,7 @@ class BaseProvider(ABC):
         try:
             config = self.get_provider_api_key()
         except:
-            config = 'THIS-IS-A-MOCK-TOKEN'
+            config = ''
 
         if obfuscated:
             return self.obfuscated_token(config)

@@ -9,7 +9,6 @@ import NewAppDialog from './NewAppDialog'
 const CreateAppCard = () => {
   const { t } = useTranslation()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
-
   return (
     <a className={classNames(style.listItem, style.newItemCard)} onClick={() => setShowNewAppDialog(true)}>
       <div className={style.listItemTitle}>

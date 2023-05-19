@@ -20,7 +20,7 @@ const AzureProvider = ({
   const [token, setToken] = useState(provider.token as ProviderAzureToken || {})
   const handleFocus = () => {
     if (token === provider.token) {
-      token.azure_api_key = ''
+      token.openai_api_key = ''
       setToken({...token})
       onTokenChange({...token})
     }
@@ -35,31 +35,17 @@ const AzureProvider = ({
     <div className='px-4 py-3'>
       <ProviderInput 
         className='mb-4'
-        name={t('common.provider.azure.resourceName')}
-        placeholder={t('common.provider.azure.resourceNamePlaceholder')}
-        value={token.azure_api_base}
-        onChange={(v) => handleChange('azure_api_base', v)}
-      />
-      <ProviderInput 
-        className='mb-4'
-        name={t('common.provider.azure.deploymentId')}
-        placeholder={t('common.provider.azure.deploymentIdPlaceholder')}
-        value={token.azure_api_type}
-        onChange={v => handleChange('azure_api_type', v)}
-      />
-      <ProviderInput 
-        className='mb-4'
-        name={t('common.provider.azure.apiVersion')}
-        placeholder={t('common.provider.azure.apiVersionPlaceholder')}
-        value={token.azure_api_version}
-        onChange={v => handleChange('azure_api_version', v)}
+        name={t('common.provider.azure.apiBase')}
+        placeholder={t('common.provider.azure.apiBasePlaceholder')}
+        value={token.openai_api_base}
+        onChange={(v) => handleChange('openai_api_base', v)}
       />
       <ProviderValidateTokenInput 
         className='mb-4'
         name={t('common.provider.azure.apiKey')}
         placeholder={t('common.provider.azure.apiKeyPlaceholder')}
-        value={token.azure_api_key}
-        onChange={v => handleChange('azure_api_key', v)}
+        value={token.openai_api_key}
+        onChange={v => handleChange('openai_api_key', v)}
         onFocus={handleFocus}
         onValidatedStatus={onValidatedStatus}
         providerName={provider.provider_name}

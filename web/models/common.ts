@@ -55,10 +55,8 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
 }
 
 export type ProviderAzureToken = {
-  azure_api_base: string
-  azure_api_key: string
-  azure_api_type: string
-  azure_api_version: string
+  openai_api_base: string
+  openai_api_key: string
 }
 export type Provider = {
   provider_name: string
