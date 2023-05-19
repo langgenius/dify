@@ -82,17 +82,17 @@ class ProviderTokenApi(Resource):
 
         args = parser.parse_args()
 
-        if not args['token']:
-            raise ValueError('Token is empty')
-
-        try:
-            ProviderService.validate_provider_configs(
-                tenant=current_user.current_tenant,
-                provider_name=ProviderName(provider),
-                configs=args['token']
-            )
-            token_is_valid = True
-        except ValidateFailedError:
+        if args['token']:
+            try:
+                ProviderService.validate_provider_configs(
+                    tenant=current_user.current_tenant,
+                    provider_name=ProviderName(provider),
+                    configs=args['token']
+                )
+                token_is_valid = True
+            except ValidateFailedError:
+                token_is_valid = False
+        else:
             token_is_valid = False
 
         tenant = current_user.current_tenant
