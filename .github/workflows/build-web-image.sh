@@ -49,13 +49,14 @@ cd web
 docker buildx build \
   ${WEB_CACHE_FROM_SCRIPT} \
   --build-arg COMMIT_SHA=${SHA} \
-  --platform=linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform=linux/amd64,linux/arm64 \
   -t "${WEB_REPO_NAME}:${SHA}" \
   -t "${WEB_REPO_NAME}:${REFSPEC}" \
   -t "${WEB_REPO_NAME}:${LATEST_TAG}" \
   --label "sha=${SHA}" \
   --label "built_at=$(date)" \
   --label "build_actor=${GITHUB_ACTOR}" \
+  --push \
   .
 
-docker push --all-tags "${WEB_REPO_NAME}"
+#docker push --all-tags "${WEB_REPO_NAME}"

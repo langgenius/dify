@@ -48,7 +48,7 @@ EOF
 cd api
 docker buildx build \
   ${API_CACHE_FROM_SCRIPT} \
-  --platform=linux/amd64,linux/arm64,linux/arm/v7 \
+  --platform=linux/amd64,linux/arm64 \
   --build-arg COMMIT_SHA=${SHA} \
   -t "${API_REPO_NAME}:${SHA}" \
   -t "${API_REPO_NAME}:${REFSPEC}" \
@@ -56,7 +56,8 @@ docker buildx build \
   --label "sha=${SHA}" \
   --label "built_at=$(date)" \
   --label "build_actor=${GITHUB_ACTOR}" \
+  --push \
   .
 
 # push
-docker push --all-tags "${API_REPO_NAME}"
+#docker push --all-tags "${API_REPO_NAME}"
