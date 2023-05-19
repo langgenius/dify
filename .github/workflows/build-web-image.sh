@@ -58,5 +58,3 @@ docker buildx build \
   --label "build_actor=${GITHUB_ACTOR}" \
   --push \
   .
-
-#docker push --all-tags "${WEB_REPO_NAME}"
