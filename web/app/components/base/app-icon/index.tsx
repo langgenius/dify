@@ -2,6 +2,11 @@ import type { FC } from 'react'
 import classNames from 'classnames'
 import style from './style.module.css'
 
+import data from '@emoji-mart/data'
+import { init } from 'emoji-mart'
+
+init({ data })
+
 export type AppIconProps = {
   size?: 'tiny' | 'small' | 'medium' | 'large'
   rounded?: boolean
@@ -34,7 +39,7 @@ const AppIcon: FC<AppIconProps> = ({
       }}
       onClick={onClick}
     >
-      {innerIcon ? innerIcon : icon && icon !== '' ? <em-emoji id={icon} /> :  <em-emoji id={'banana'} />}
+      {innerIcon ? innerIcon : icon && icon !== '' ? <em-emoji id={icon} /> : <em-emoji id={'banana'} />}
     </span>
   )
 }
