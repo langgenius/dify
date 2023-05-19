@@ -29,7 +29,7 @@ init({ data })
 
 async function search(value: string) {
   const emojis = await SearchIndex.search(value) || []
-  
+
   const results = emojis.map((emoji: any) => {
     return emoji.skins[0].native
   })
@@ -88,10 +88,10 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" aria-hidden="true" />
         </div>
         <input
-          type="search" 
-          id="search" 
+          type="search"
+          id="search"
           className='block w-full h-10 px-3 pl-10 text-sm font-normal bg-gray-100 rounded-lg'
-          placeholder="Search emojis..." 
+          placeholder="Search emojis..."
           onChange={async (e: ChangeEvent<HTMLInputElement>) => {
             if (e.target.value === '') {
               setIsSearching(false)
@@ -102,7 +102,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
               setSearchedEmojis(emojis)
             }
           }}
-          />
+        />
       </div>
     </div>
     <Divider className='m-0 mb-3' />
@@ -116,19 +116,19 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
               return <div
                 key={`emoji-search-${index}`}
                 className='inline-flex w-10 h-10 rounded-lg items-center justify-center'
-                onClick={() => {  
+                onClick={() => {
                   setSelectedEmoji(emoji)
                 }}
               >
                 <div className='cursor-pointer w-8 h-8 p-1 flex items-center justify-center rounded-lg hover:ring-1 ring-offset-1 ring-gray-300'>
                   <em-emoji id={emoji} />
                 </div>
-            </div>
+              </div>
             })}
           </div>
         </div>
       </>}
-      
+
 
       {categories.map((category: any, index: number) => {
         return <div key={`category-${index}`} className='flex flex-col'>
@@ -188,10 +188,10 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       }}>
         Cancel
       </Button>
-      <Button 
-       disabled={selectedEmoji == ''}
-        type="primary" 
-        className='w-full' 
+      <Button
+        disabled={selectedEmoji == ''}
+        type="primary"
+        className='w-full'
         onClick={() => {
           onSelect && onSelect(selectedEmoji, selectedBackground)
         }}>

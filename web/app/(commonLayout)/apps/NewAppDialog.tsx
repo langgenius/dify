@@ -103,12 +103,10 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
         </>
       }
     >
-
-
       <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
 
       <div className='flex items-center justify-between gap-3 mb-8'>
-        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} />
+        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' />
         <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
       </div>
 
