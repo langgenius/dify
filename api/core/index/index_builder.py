@@ -33,8 +33,11 @@ class IndexBuilder:
             max_chunk_overlap=20
         )
 
+        provider = LLMBuilder.get_default_provider(tenant_id)
+
         model_credentials = LLMBuilder.get_model_credentials(
             tenant_id=tenant_id,
+            model_provider=provider,
             model_name='text-embedding-ada-002'
         )
 

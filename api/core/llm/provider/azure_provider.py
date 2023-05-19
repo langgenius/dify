@@ -38,7 +38,7 @@ class AzureProvider(BaseProvider):
         """
         config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
-        config['deployment_name'] = model_id
+        config['deployment_name'] = model_id.replace('.', '')
         return config
 
     def get_provider_name(self):
@@ -50,7 +50,6 @@ class AzureProvider(BaseProvider):
         """
         try:
             config = self.get_provider_api_key()
-            config = json.loads(config)
         except:
             config = {
                 'openai_api_type': 'azure',
