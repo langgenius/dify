@@ -40,8 +40,8 @@ EOF
 #
 cd api
 docker buildx build \
-  --cache-to type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
-  --cache-from type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
+  --cache-to type=gha,mode=max,scope=$CACHE_FROM_TAG-web-image \
+  --cache-from type=gha,mode=max,scope=$CACHE_FROM_TAG-web-image \
   --platform=linux/amd64,linux/arm64 \
   --build-arg COMMIT_SHA=${SHA} \
   -t "${API_REPO_NAME}:${SHA}" \

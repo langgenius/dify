@@ -40,8 +40,8 @@ EOF
 #
 cd web
 docker buildx build \
-  --cache-to type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
-  --cache-from type=gha,mode=max,scope=$CACHE_FROM_TAG-image \
+  --cache-to type=gha,mode=max,scope=$CACHE_FROM_TAG-api-image \
+  --cache-from type=gha,mode=max,scope=$CACHE_FROM_TAG-api-image \
   --build-arg COMMIT_SHA=${SHA} \
   --platform=linux/amd64,linux/arm64 \
   -t "${WEB_REPO_NAME}:${SHA}" \
