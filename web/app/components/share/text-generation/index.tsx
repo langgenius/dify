@@ -210,9 +210,11 @@ const TextGeneration: FC<IMainProps> = ({
     <div
       ref={resRef}
       className={
-        cn("flex flex-col h-full shrink-0",
+        cn(
+          "flex flex-col h-full shrink-0",
           isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMoble && 'p-4')}
+          isTablet && 'p-6', isMoble && 'p-4')
+        }
     >
       <>
         <div className='shrink-0 flex items-center justify-between'>
@@ -267,7 +269,11 @@ const TextGeneration: FC<IMainProps> = ({
 
   return (
     <>
-      <div className={cn(isPC && 'flex', 'h-screen bg-gray-50')}>
+      <div className={cn(
+        isPC && 'flex',
+        isInstalledApp ? s.installedApp : 'h-screen',
+        'bg-gray-50'
+      )}>
         {/* Left */}
         <div className={cn(isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4', "shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white")}>
           <div className='mb-6'>

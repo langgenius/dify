@@ -25,6 +25,8 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { InstalledApp } from '@/models/explore'
 
+import s from './style.module.css'
+
 export type IMainProps = {
   isInstalledApp?: boolean,
   installedAppInfo? : InstalledApp
@@ -441,6 +443,7 @@ const Main: FC<IMainProps> = ({
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={siteInfo.copyright || siteInfo.title}
+        isInstalledApp={isInstalledApp}
       />
     )
   }
@@ -476,7 +479,11 @@ const Main: FC<IMainProps> = ({
           </div>
         )}
         {/* main */}
-        <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
+        <div className={cn(
+          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          'flex-grow flex flex-col overflow-y-auto'
+          )
+        }>
           <ConfigSence
             conversationName={conversationName}
             hasSetInputs={hasSetInputs}

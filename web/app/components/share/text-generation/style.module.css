@@ -1,3 +1,7 @@
+.installedApp {
+  height: calc(100vh - 72px);
+}
+
 .appIcon {
   width: 32px;
   height: 32px;
