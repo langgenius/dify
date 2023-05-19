@@ -33,8 +33,7 @@ async function search(value: string) {
   const results = emojis.map((emoji: any) => {
     return emoji.skins[0].native
   })
-
-  console.log(results)
+  return results
 }
 
 const backgroundColors = [
@@ -74,6 +73,9 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState(backgroundColors[0])
 
+  const [searchedEmojis, setSearchedEmojis] = useState([])
+  const [isSearching, setIsSearching] = useState(false)
+
   return isModal ? <Modal
     onClose={() => { }}
     isShow
@@ -90,14 +92,44 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           id="search" 
           className='block w-full h-10 px-3 pl-10 text-sm font-normal bg-gray-100 rounded-lg'
           placeholder="Search emojis..." 
-          onChange={(e: ChangeEvent<HTMLInputElement>) => {
-            search(e.target.value)
+          onChange={async (e: ChangeEvent<HTMLInputElement>) => {
+            if (e.target.value === '') {
+              setIsSearching(false)
+              return
+            } else {
+              setIsSearching(true)
+              const emojis = await search(e.target.value)
+              setSearchedEmojis(emojis)
+            }
           }}
           />
       </div>
     </div>
     <Divider className='m-0 mb-3' />
+
     <div className="w-full max-h-[200px] overflow-x-hidden overflow-y-auto px-3">
+      {isSearching && <>
+        <div key={`category-search`} className='flex flex-col'>
+          <p className='font-medium uppercase text-xs text-[#101828] mb-1'>Search</p>
+          <div className='w-full h-full grid grid-cols-8 gap-1'>
+            {searchedEmojis.map((emoji: string, index: number) => {
+              return <div
+                key={`emoji-search-${index}`}
+                className='inline-flex w-10 h-10 rounded-lg items-center justify-center'
+                onClick={() => {  
+                  setSelectedEmoji(emoji)
+                }}
+              >
+                <div className='cursor-pointer w-8 h-8 p-1 flex items-center justify-center rounded-lg hover:ring-1 ring-offset-1 ring-gray-300'>
+                  <em-emoji id={emoji} />
+                </div>
+            </div>
+            })}
+          </div>
+        </div>
+      </>}
+      
+
       {categories.map((category: any, index: number) => {
         return <div key={`category-${index}`} className='flex flex-col'>
           <p className='font-medium uppercase text-xs text-[#101828] mb-1'>{category.id}</p>
