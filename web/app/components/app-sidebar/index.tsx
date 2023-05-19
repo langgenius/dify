@@ -7,6 +7,8 @@ export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset'
   title: string
   desc: string
+  icon: string
+  icon_background: string
   navigation: Array<{
     name: string
     href: string
@@ -16,13 +18,12 @@ export type IAppDetailNavProps = {
   extraInfo?: React.ReactNode
 }
 
-const sampleAppIconUrl = 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-1.2.1&ixid=eyJhcHBfaWQiOjEyMDd9&auto=format&fit=facearea&facepad=2&w=256&h=256&q=80'
 
-const AppDetailNav: FC<IAppDetailNavProps> = ({ title, desc, navigation, extraInfo, iconType = 'app' }) => {
+const AppDetailNav: FC<IAppDetailNavProps> = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }) => {
   return (
     <div className="flex flex-col w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
       <div className="flex flex-shrink-0 p-4">
-        <AppBasic iconType={iconType} iconUrl={sampleAppIconUrl} name={title} type={desc} />
+        <AppBasic iconType={iconType} icon={icon} icon_background={icon_background} name={title} type={desc} />
       </div>
       <nav className="flex-1 p-4 space-y-1 bg-white">
         {navigation.map((item, index) => {

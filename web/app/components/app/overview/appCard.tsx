@@ -104,7 +104,8 @@ function AppCard({
         <div className="mb-2.5 flex flex-row items-start justify-between">
           <AppBasic
             iconType={isApp ? 'app' : 'api'}
-            iconUrl={defaultUrl}
+            icon={appInfo.icon}
+            icon_background={appInfo.icon_background}
             name={basicName}
             type={
               isApp
