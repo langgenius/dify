@@ -27,8 +27,8 @@ if [[ "${REFSPEC}" == "main" ]]; then
 fi
 
 echo "Pulling cache image ${WEB_REPO_NAME}:${CACHE_FROM_TAG}"
-if docker pull "${WEB_REPO_NAME}:${CACHE_FROM_TAG}"; then
-  WEB_CACHE_FROM_SCRIPT="--cache-from ${WEB_REPO_NAME}:${CACHE_FROM_TAG}"
+if docker buildx imagetools create cache-image --name=${WEB_REPO_NAME}:${CACHE_FROM_TAG} -platform=linux/amd64,linux/arm64; then
+  WEB_CACHE_FROM_SCRIPT="--cache-from cache-image"
 else
   echo "WARNING: Failed to pull ${WEB_REPO_NAME}:${CACHE_FROM_TAG}, disable build image cache."
   WEB_CACHE_FROM_SCRIPT=""
