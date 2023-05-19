@@ -1,9 +1,9 @@
 'use client'
-import React, { FC, useEffect } from 'react'
-import { App } from '@/types/app'
+import React, { FC } from 'react'
+import { useContext } from 'use-context-selector'
+import ExploreContext from '@/context/explore-context'
 import ChatApp from '@/app/components/share/chat'
 import TextGenerationApp from '@/app/components/share/text-generation'
-import { fetchAppDetail } from '@/service/explore'
 import Loading from '@/app/components/base/loading'
 
 export interface IInstalledAppProps {
@@ -13,20 +13,15 @@ export interface IInstalledAppProps {
 const InstalledApp: FC<IInstalledAppProps> = ({
   id,
 }) => {
-  const [app, setApp] = React.useState<App | null>(null)
-  const [isLoaded, setIsLoaded] = React.useState(false)
-  useEffect(() => {
-    if(id) {
-      setIsLoaded(false);
-      (async () => {
-        const appDetail = await fetchAppDetail(id)
-        setApp(appDetail)
-        setIsLoaded(true)
-      })()
-    }
-  }, [id])
+  const { installedApps } = useContext(ExploreContext)
+  const installedApp  = installedApps.find(item => item.id === id)
+  const app = installedApp ? {
+    id: installedApp.id,
+    name
+  } : null
+  
 
-  if(!isLoaded) {
+  if(!installedApp) {
     return (
       <div className='flex h-full items-center'>
         <Loading type='area' />
@@ -36,12 +31,11 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   
   return (
     <div className='h-full'>
-      {app?.mode === 'chat' ? (
-        <ChatApp isInstalledApp installedAppInfo={app as App}/>
+      {installedApp?.app.mode === 'chat' ? (
+        <ChatApp isInstalledApp installedAppInfo={installedApp}/>
       ): (
-        <TextGenerationApp isInstalledApp installedAppInfo={app as App}/>
+        <TextGenerationApp isInstalledApp installedAppInfo={installedApp}/>
       )}
-      
     </div>
   )
 }

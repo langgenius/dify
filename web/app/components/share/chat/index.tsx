@@ -23,11 +23,11 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import AppUnavailable from '../../base/app-unavailable'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import { App } from '@/types/app'
+import { InstalledApp } from '@/models/explore'
 
 export type IMainProps = {
   isInstalledApp?: boolean,
-  installedAppInfo? : App
+  installedAppInfo? : InstalledApp
 }
 
 const Main: FC<IMainProps> = ({
@@ -227,11 +227,10 @@ const Main: FC<IMainProps> = ({
     return Promise.all([isInstalledApp ? {
       app_id: installedAppInfo?.id, 
       site: {
-        title: installedAppInfo?.name,
+        title: installedAppInfo?.app.name,
         prompt_public: false,
         copyright: ''
       },
-      model_config: installedAppInfo?.app_model_config,
       plan: 'basic',
     }: fetchAppInfo(), fetchConversations(isInstalledApp, installedAppInfo?.id), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
@@ -242,12 +241,12 @@ const Main: FC<IMainProps> = ({
     (async () => {
       try {
         const [appData, conversationData, appParams]: any = await fetchInitData()
-        const { app_id: appId, site: siteInfo, model_config, plan }: any = appData
+        const { app_id: appId, site: siteInfo, plan }: any = appData
         setAppId(appId)
         setPlan(plan)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
-        const prompt_template = tempIsPublicVersion ? model_config.pre_prompt : ''
+        const prompt_template = ''
         // handle current conversation id
         const { data: conversations } = conversationData as { data: ConversationItem[] }
         const _conversationId = getConversationIdFromStorage(appId)

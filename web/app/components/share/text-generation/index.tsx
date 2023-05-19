@@ -23,10 +23,11 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import s from './style.module.css'
 import Button from '../../base/button'
 import { App } from '@/types/app'
+import { InstalledApp } from '@/models/explore'
 
 export type IMainProps = {
   isInstalledApp?: boolean,
-  installedAppInfo? : App
+  installedAppInfo? : InstalledApp
 }
 
 const TextGeneration: FC<IMainProps> = ({
@@ -167,11 +168,10 @@ const TextGeneration: FC<IMainProps> = ({
     return Promise.all([isInstalledApp ? {
       app_id: installedAppInfo?.id, 
       site: {
-        title: installedAppInfo?.name,
+        title: installedAppInfo?.app.name,
         prompt_public: false,
         copyright: ''
       },
-      model_config: installedAppInfo?.app_model_config,
       plan: 'basic',
     }: fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
@@ -249,6 +249,8 @@ const TextGeneration: FC<IMainProps> = ({
                     feedback={feedback}
                     onSave={handleSaveMessage}
                     isMobile={isMoble}
+                    isInstalledApp={isInstalledApp}
+                    installedAppId={installedAppInfo?.id}
                   />
                 )
               }

@@ -1,11 +1,12 @@
 'use client'
 import React, { FC, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import ExploreContext from '@/context/explore-context'
 import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Item from './app-nav-item'
-import { InstalledApp } from '@/models/explore'
 import { fetchInstalledAppList as doFetchInstalledAppList  } from '@/service/explore'
 
 const SelectedDiscoveryIcon = () => (
@@ -21,15 +22,15 @@ const DiscoveryIcon = () => (
 )
 
 const SideBar: FC<{
-  controlUpdateInstalledApps: number
+  controlUpdateInstalledApps: number,
 }> = ({
-  controlUpdateInstalledApps
+  controlUpdateInstalledApps,
 }) => {
   const { t } = useTranslation()
   const segments = useSelectedLayoutSegments()
   const lastSegment = segments.slice(-1)[0]
   const isDiscoverySelected = lastSegment === 'apps'
-  const [installedApps, setInstalledApps] = React.useState<InstalledApp[]>([])
+  const { installedApps, setInstalledApps } = useContext(ExploreContext)
 
   const fetchInstalledAppList = async () => {
     const {installed_apps} : any = await doFetchInstalledAppList()
@@ -60,7 +61,7 @@ const SideBar: FC<{
         <div className='mt-10'>
           <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
           <div className='mt-3 space-y-1'>
-            {installedApps.map(({app : {id, name}}) => {
+            {installedApps.map(({id, app : { name }}) => {
               return (
                 <Item key={id} name={name} id={id} isSelected={lastSegment?.toLowerCase() === id} />
               )

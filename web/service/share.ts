@@ -31,7 +31,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: true, onError, getAbortController })
+  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController })
 }
 
 export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError }: {
@@ -44,7 +44,7 @@ export const sendCompletionMessage = async (body: Record<string, any>, { onData,
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: true, onError })
+  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError })
 }
 
 export const fetchAppInfo = async () => {
