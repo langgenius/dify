@@ -26,4 +26,5 @@ export type InstalledApp = {
   app: AppBasicInfo;
   id: string;
   uninstallable: boolean
+  is_pinned: boolean
 }

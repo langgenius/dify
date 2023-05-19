@@ -16,6 +16,13 @@ const translation = {
     title: '从 {{name}} 创建应用程序',
     subTitle: '应用程序图标和名称',
     nameRequired: '应用程序名称不能为空',
+  },
+  sideBar: {
+    action: {
+      pin: '置顶',
+      unpin: '取消置顶',
+      delete: '删除',
+    }
   }
 }
 

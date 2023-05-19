@@ -7,7 +7,8 @@ import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Item from './app-nav-item'
-import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp  } from '@/service/explore'
+import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus  } from '@/service/explore'
+import Toast from '../../base/toast'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -39,6 +40,19 @@ const SideBar: FC<{
 
   const handleDelete = async (id: string) => {
     await uninstallApp(id)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.Removed')
+    })
+    fetchInstalledAppList()
+  }
+
+  const handleUpdatePinStatus = async (id: string, isPinned: boolean) => {
+    await updatePinStatus(id, isPinned)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.success')
+    })
     fetchInstalledAppList()
   }
 
@@ -66,13 +80,16 @@ const SideBar: FC<{
         <div className='mt-10'>
           <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
           <div className='mt-3 space-y-1'>
-            {installedApps.map(({id, app : { name }}) => {
+            {installedApps.map(({id, is_pinned, uninstallable, app : { name }}) => {
               return (
                 <Item 
                   key={id}
                   name={name}
                   id={id}
                   isSelected={lastSegment?.toLowerCase() === id}
+                  isPinned={is_pinned}
+                  togglePin={() => handleUpdatePinStatus(id, !is_pinned)}
+                  uninstallable={uninstallable}
                   onDelete={handleDelete}
                 />
               )

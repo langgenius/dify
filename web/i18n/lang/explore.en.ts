@@ -16,6 +16,13 @@ const translation = {
     title: 'Create app from {{name}}',
     subTitle: 'App icon & name',
     nameRequired: 'App name is required',
+  },
+  sideBar: {
+    action: {
+      pin: 'Pin',
+      unpin: 'Unpin',
+      delete: 'Delete',
+    }
   }
 }
 

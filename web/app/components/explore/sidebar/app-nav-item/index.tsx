@@ -5,17 +5,25 @@ import ItemOperation from '@/app/components/explore/item-operation'
 
 import s from './style.module.css'
 
-export default function NavLink({
-  name,
-  id,
-  isSelected,
-  onDelete
-}: {
+export interface IAppNavItemProps {
   name: string
   id: string
   isSelected: boolean
+  isPinned: boolean
+  togglePin: () => void
+  uninstallable: boolean
   onDelete: (id: string) => void
-}) {
+}
+
+export default function AppNavItem({
+  name,
+  id,
+  isSelected,
+  isPinned,
+  togglePin,
+  uninstallable,
+  onDelete
+}: IAppNavItemProps) {
   const router = useRouter()
   const url = `/explore/installed/${id}`
   
@@ -46,7 +54,9 @@ export default function NavLink({
         !isSelected && (
           <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
             <ItemOperation
-              // isShowDelete={}
+              isPinned={isPinned}
+              togglePin={togglePin}
+              isShowDelete={!uninstallable}
               onDelete={() => onDelete(id)}
             />
           </div>
