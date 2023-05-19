@@ -46,6 +46,8 @@ DEFAULTS = {
     'CELERY_BACKEND': 'database',
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
+    'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
+    'DEFAULT_LLM_PROVIDER': 'openai'
 }
 
 
@@ -176,6 +178,13 @@ class Config:
         # hosted provider credentials
         self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
 
+        # By default it is False
+        # You could disable it for compatibility with certain OpenAPI providers
+        self.DISABLE_PROVIDER_CONFIG_VALIDATION = get_bool_env('DISABLE_PROVIDER_CONFIG_VALIDATION')
+
+        # For temp use only
+        # set default LLM provider, default is 'openai', support `azure_openai`
+        self.DEFAULT_LLM_PROVIDER = get_env('DEFAULT_LLM_PROVIDER')
 
 class CloudEditionConfig(Config):
 

@@ -31,9 +31,6 @@ if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PRE
 export const API_PREFIX: string = apiPrefix;
 export const PUBLIC_API_PREFIX: string = publicApiPrefix;
 
-// mock server
-export const MOCK_API_PREFIX = 'http://127.0.0.1:3001'
-
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition')
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 

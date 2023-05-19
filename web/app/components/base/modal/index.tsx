@@ -5,6 +5,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 
 type IModal = {
   className?: string
+  wrapperClassName?: string
   isShow: boolean
   onClose: () => void
   title?: React.ReactNode
@@ -15,6 +16,7 @@ type IModal = {
 
 export default function Modal({
   className,
+  wrapperClassName,
   isShow,
   onClose,
   title,

@@ -149,14 +149,10 @@ const translation = {
     editKey: '编辑',
     invalidApiKey: '无效的 API 密钥',
     azure: {
-      resourceName: 'Resource Name',
-      resourceNamePlaceholder: 'The name of your Azure OpenAI Resource.',
-      deploymentId: 'Deployment ID',
-      deploymentIdPlaceholder: 'The deployment name you chose when you deployed the model.',
-      apiVersion: 'API Version',
-      apiVersionPlaceholder: 'The API version to use for this operation.',
+      apiBase: 'API Base',
+      apiBasePlaceholder: '输入您的 Azure OpenAI API Base 地址',
       apiKey: 'API Key',
-      apiKeyPlaceholder: 'Enter your API key here',
+      apiKeyPlaceholder: '输入你的 API 密钥',
       helpTip: '了解 Azure OpenAI Service',
     },
     openaiHosted: {

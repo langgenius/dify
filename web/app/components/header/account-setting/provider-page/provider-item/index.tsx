@@ -33,12 +33,12 @@ const ProviderItem = ({
   const { notify } = useContext(ToastContext)
   const [token, setToken] = useState<ProviderAzureToken | string>(
     provider.provider_name === 'azure_openai' 
-      ? { azure_api_base: '', azure_api_type: '', azure_api_version: '', azure_api_key: '' } 
+      ? { openai_api_base: '', openai_api_key: '' }
       : ''
     )
   const id = `${provider.provider_name}-${provider.provider_type}`
   const isOpen = id === activeId
-  const providerKey = provider.provider_name === 'azure_openai' ? (provider.token as ProviderAzureToken)?.azure_api_key  : provider.token
+  const providerKey = provider.provider_name === 'azure_openai' ? (provider.token as ProviderAzureToken)?.openai_api_key  : provider.token
   const comingSoon = false
   const isValid = provider.is_valid
 
