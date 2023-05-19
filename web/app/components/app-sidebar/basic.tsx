@@ -45,11 +45,17 @@ const ICON_MAP = {
 export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
   return (
     <div className="flex items-start">
-      {icon && icon_background && (
+      {icon && icon_background && iconType === 'app' && (
         <div className='flex-shrink-0 mr-3'>
-          <AppIcon icon={icon} background={icon_background}/>
+          <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
+      {iconType !== 'app' &&
+        <div className='flex-shrink-0 mr-3'>
+          {ICON_MAP[iconType]}
+        </div>
+
+      }
       <div className="group">
         <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 ${textStyle?.main}`}>
           {name}
