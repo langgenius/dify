@@ -15,6 +15,7 @@ export type AppIconProps = {
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
+  icon,
   background,
   className,
   innerIcon,
@@ -33,7 +34,7 @@ const AppIcon: FC<AppIconProps> = ({
       }}
       onClick={onClick}
     >
-      {innerIcon ? innerIcon : <>🤖</>}
+      {innerIcon ? innerIcon : <em-emoji id={icon} />}
     </span>
   )
 }

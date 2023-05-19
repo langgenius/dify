@@ -18,6 +18,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
 
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import { set } from 'immer/dist/internal'
 
 type NewAppDialogProps = {
   show: boolean
@@ -33,7 +34,11 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
   const [newAppMode, setNewAppMode] = useState<AppMode>()
   const [isWithTemplate, setIsWithTemplate] = useState(false)
   const [selectedTemplateIndex, setSelectedTemplateIndex] = useState<number>(-1)
+
+  // Emoji Picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [emoji, setEmoji] = useState({icon: '', icon_background: ''})
+
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
   const { data: templates, mutate } = useSWR({ url: '/app-templates' }, fetchAppTemplates)
@@ -70,6 +75,8 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
     try {
       const app = await createApp({
         name,
+        icon: emoji.icon,
+        icon_background: emoji.icon_background,
         mode: isWithTemplate ? templates.data[selectedTemplateIndex].mode : newAppMode!,
         config: isWithTemplate ? templates.data[selectedTemplateIndex].model_config : undefined,
       })
@@ -83,15 +90,19 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [isWithTemplate, newAppMode, notify, router, templates, selectedTemplateIndex])
+  }, [isWithTemplate, newAppMode, notify, router, templates, selectedTemplateIndex, emoji])
 
   return <>
     {showEmojiPicker && <EmojiPicker
-      onSelect={(emoji, background) => {
-        console.log(emoji, background)
+      onSelect={(icon, icon_background) => {
+        console.log(icon, icon_background)
+        setEmoji({icon, icon_background})
         setShowEmojiPicker(false)
       }}
-      onClose={() => setShowEmojiPicker(false)}
+      onClose={() => {
+        setEmoji({icon: '', icon_background: ''})
+        setShowEmojiPicker(false)
+      }}
     />}
     <Dialog
       show={show}

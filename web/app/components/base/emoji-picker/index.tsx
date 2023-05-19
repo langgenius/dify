@@ -163,9 +163,9 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
             className={
               cn(
                 'cursor-pointer',
-                `ring-[${color}] hover:ring-1 ring-offset-1`,
+                `hover:ring-1 ring-offset-1`,
                 'inline-flex w-10 h-10 rounded-lg items-center justify-center',
-                color === selectedBackground ? `ring-1 ` : '',
+                color === selectedBackground ? `ring-1 ring-gray-300` : '',
               )}
             onClick={() => {
               setSelectedBackground(color)
