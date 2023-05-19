@@ -16,8 +16,8 @@ export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> =
   return get(url) as Promise<AppTemplatesResponse>
 }
 
-export const createApp: Fetcher<AppDetailResponse, { name: string; mode: AppMode; config?: ModelConfig }> = ({ name, mode, config }) => {
-  return post('apps', { body: { name, mode, model_config: config } }) as Promise<AppDetailResponse>
+export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string, icon_background: string, mode: AppMode; config?: ModelConfig }> = ({ name, icon, icon_background, mode, config }) => {
+  return post('apps', { body: { name, icon, icon_background, mode, model_config: config } }) as Promise<AppDetailResponse>
 }
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {

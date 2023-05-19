@@ -17,6 +17,7 @@ const Apps = () => {
       {apps.map(app => (<AppCard key={app.id} app={app} />))}
       <NewAppCard />
     </nav>
+
   )
 }
 

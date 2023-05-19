@@ -10,6 +10,8 @@ type NavItem = {
   id: string
   name: string
   link: string
+  icon: string
+  icon_background: string
 }
 export interface INavSelectorProps {
   navs: NavItem[]
@@ -66,7 +68,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate }: INavSelectorProps) 
                   <Menu.Item key={nav.id}>
                     <div className={itemClassName} onClick={() => router.push(nav.link)}>
                       <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
-                        <AppIcon size='tiny' />
+                        <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
                         <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>
                           <Indicator />
                         </div>

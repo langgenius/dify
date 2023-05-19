@@ -69,11 +69,13 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
             text={t('common.menus.apps')}
             activeSegment={['apps', 'app']}
             link='/apps'
-            curNav={curApp && { id: curApp.id, name: curApp.name }}
+            curNav={curApp && { id: curApp.id, name: curApp.name ,icon: curApp.icon, icon_background: curApp.icon_background}}
             navs={appItems.map(item => ({
               id: item.id,
               name: item.name,
-              link: `/app/${item.id}/overview`
+              link: `/app/${item.id}/overview`,
+              icon: item.icon,
+              icon_background: item.icon_background
             }))}
             createText={t('common.menus.newApp')}
             onCreate={() => setShowNewAppDialog(true)}
@@ -91,11 +93,13 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
             text={t('common.menus.datasets')}
             activeSegment='datasets'
             link='/datasets'
-            curNav={currentDataset && { id: currentDataset.id, name: currentDataset.name }}
+            curNav={currentDataset && { id: currentDataset.id, name: currentDataset.name, icon: currentDataset.icon, icon_background: currentDataset.icon_background }}
             navs={datasets.map(dataset => ({
               id: dataset.id,
               name: dataset.name,
-              link: `/datasets/${dataset.id}/documents`
+              link: `/datasets/${dataset.id}/documents`,
+              icon: dataset.icon,
+              icon_background: dataset.icon_background
             }))}
             createText={t('common.menus.newDataset')}
             onCreate={() => router.push('/datasets/create')}

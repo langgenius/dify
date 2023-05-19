@@ -15,7 +15,8 @@ export function randomString(length: number) {
 
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset'
-  iconUrl?: string
+  icon?: string,
+  icon_background?: string,
   name: string
   type: string | React.ReactNode
   hoverTip?: string
@@ -41,15 +42,20 @@ const ICON_MAP = {
   'dataset': <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />
 }
 
-export default function AppBasic({ iconUrl, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
   return (
     <div className="flex items-start">
-      {iconUrl && (
+      {icon && icon_background && iconType === 'app' && (
         <div className='flex-shrink-0 mr-3'>
-          {/* <img className="inline-block rounded-lg h-9 w-9" src={iconUrl} alt={name} /> */}
-          {ICON_MAP[iconType]}
+          <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
+      {iconType !== 'app' &&
+        <div className='flex-shrink-0 mr-3'>
+          {ICON_MAP[iconType]}
+        </div>
+
+      }
       <div className="group">
         <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 ${textStyle?.main}`}>
           {name}
