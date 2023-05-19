@@ -69,16 +69,18 @@ class InstalledAppsListApi(Resource):
         parser.add_argument('app_id', type=str, required=True, help='Invalid app_id')
         args = parser.parse_args()
 
-        current_tenant_id = current_user.current_tenant_id
-        app = db.session.query(App).filter(
-            App.id == args['app_id'],
-            App.tenant_id == current_tenant_id
-        ).first()
-        if app is None:
-            abort(404, message='App not found')
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
         if recommended_app is None:
             abort(404, message='App not found')
+
+        current_tenant_id = current_user.current_tenant_id
+        app = db.session.query(App).filter(
+            App.id == args['app_id']
+        ).first()
+
+        if app is None:
+            abort(404, message='App not found')
+
         if not app.is_public:
             abort(403, message="You can't install a non-public app")
 
