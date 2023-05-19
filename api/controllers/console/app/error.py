@@ -47,3 +47,9 @@ class AppMoreLikeThisDisabledError(BaseHTTPException):
     error_code = 'app_more_like_this_disabled'
     description = "More like this disabled."
     code = 403
+
+
+class SiteCodeExistedError(BaseHTTPException):
+    error_code = 'site_code_existed_error'
+    description = 'Site code already existed'
+    code = 400

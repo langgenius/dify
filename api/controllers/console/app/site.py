@@ -5,6 +5,7 @@ from werkzeug.exceptions import NotFound, Forbidden
 
 from controllers.console import api
 from controllers.console.app import _get_app
+from controllers.console.app.error import SiteCodeExistedError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.helper import supported_language
@@ -95,6 +96,10 @@ class AppSiteAccessTokenReset(Resource):
         app_id = str(app_id)
         app_model = _get_app(app_id)
 
+        parser = reqparse.RequestParser()
+        parser.add_argument('code', type=str, location='json')
+        args = parser.parse_args()
+
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
@@ -104,7 +109,11 @@ class AppSiteAccessTokenReset(Resource):
         if not site:
             raise NotFound
 
-        site.code = Site.generate_code(16)
+        code = args.get('code', Site.generate_code(16))
+        if db.session.query(Site).filter(Site.code == code).first():
+            raise SiteCodeExistedError(description=f'Site code already existed: {code}')
+
+        site.code = code
         db.session.commit()
 
         return site
