@@ -14,6 +14,17 @@ import {
 import React from 'react'
 import Modal from '@/app/components/base/modal'
 
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'em-emoji': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
+      >;
+    }
+  }
+}
+
 init({ data })
 
 const backgroundColors = [
