@@ -1,14 +1,17 @@
 import os
 
+from langchain.llms import AzureOpenAI
 from langchain.schema import LLMResult
-from typing import Optional, List, Dict, Any, Mapping
-from langchain import OpenAI
+from typing import Optional, List, Dict, Mapping, Any
+
 from pydantic import root_validator
 
 from core.llm.error_handle_wraps import handle_llm_exceptions, handle_llm_exceptions_async
 
 
-class StreamableOpenAI(OpenAI):
+class StreamableAzureOpenAI(AzureOpenAI):
+    openai_api_type: str = "azure"
+    openai_api_version: str = ""
 
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
@@ -31,9 +34,9 @@ class StreamableOpenAI(OpenAI):
     @property
     def _invocation_params(self) -> Dict[str, Any]:
         return {**super()._invocation_params, **{
-            "api_type": 'openai',
-            "api_base": os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
-            "api_version": None,
+            "api_type": self.openai_api_type,
+            "api_base": self.openai_api_base,
+            "api_version": self.openai_api_version,
             "api_key": self.openai_api_key,
             "organization": self.openai_organization if self.openai_organization else None,
         }}
@@ -41,13 +44,12 @@ class StreamableOpenAI(OpenAI):
     @property
     def _identifying_params(self) -> Mapping[str, Any]:
         return {**super()._identifying_params, **{
-            "api_type": 'openai',
-            "api_base": os.environ.get("OPENAI_API_BASE", "https://api.openai.com/v1"),
-            "api_version": None,
+            "api_type": self.openai_api_type,
+            "api_base": self.openai_api_base,
+            "api_version": self.openai_api_version,
             "api_key": self.openai_api_key,
             "organization": self.openai_organization if self.openai_organization else None,
         }}
-
 
     @handle_llm_exceptions
     def generate(

@@ -36,10 +36,9 @@ class AzureProvider(BaseProvider):
         """
         Returns the API credentials for Azure OpenAI as a dictionary.
         """
-        encrypted_config = self.get_provider_api_key(model_id=model_id)
-        config = json.loads(encrypted_config)
+        config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
-        config['deployment_name'] = model_id
+        config['deployment_name'] = model_id.replace('.', '')
         return config
 
     def get_provider_name(self):
@@ -51,12 +50,11 @@ class AzureProvider(BaseProvider):
         """
         try:
             config = self.get_provider_api_key()
-            config = json.loads(config)
         except:
             config = {
                 'openai_api_type': 'azure',
                 'openai_api_version': '2023-03-15-preview',
-                'openai_api_base': 'https://foo.microsoft.com/bar',
+                'openai_api_base': 'https://<your-domain-prefix>.openai.azure.com/',
                 'openai_api_key': ''
             }
 
@@ -65,7 +63,7 @@ class AzureProvider(BaseProvider):
                 config = {
                     'openai_api_type': 'azure',
                     'openai_api_version': '2023-03-15-preview',
-                    'openai_api_base': 'https://foo.microsoft.com/bar',
+                    'openai_api_base': 'https://<your-domain-prefix>.openai.azure.com/',
                     'openai_api_key': ''
                 }
 
