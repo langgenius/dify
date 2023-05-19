@@ -1,6 +1,5 @@
 from typing import Union, Optional
 
-from flask import current_app
 from langchain.callbacks import CallbackManager
 from langchain.llms.fake import FakeListLLM
 
@@ -8,7 +7,6 @@ from core.constant import llm_constant
 from core.llm.error import ProviderTokenNotInitError
 from core.llm.provider.base import BaseProvider
 from core.llm.provider.llm_provider_service import LLMProviderService
-from core.llm.provider.openai_provider import OpenAIProvider
 from core.llm.streamable_azure_chat_open_ai import StreamableAzureChatOpenAI
 from core.llm.streamable_azure_open_ai import StreamableAzureOpenAI
 from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
