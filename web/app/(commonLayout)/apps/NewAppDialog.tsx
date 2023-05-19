@@ -18,7 +18,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
 
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import { set } from 'immer/dist/internal'
 
 type NewAppDialogProps = {
   show: boolean
@@ -37,7 +36,7 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
 
   // Emoji Picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({icon: '', icon_background: ''})
+  const [emoji, setEmoji] = useState({ icon: '🍌', icon_background: '#FFEAD5' })
 
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
@@ -96,11 +95,11 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
     {showEmojiPicker && <EmojiPicker
       onSelect={(icon, icon_background) => {
         console.log(icon, icon_background)
-        setEmoji({icon, icon_background})
+        setEmoji({ icon, icon_background })
         setShowEmojiPicker(false)
       }}
       onClose={() => {
-        setEmoji({icon: '', icon_background: ''})
+        setEmoji({ icon: '🍌', icon_background: '#FFEAD5' })
         setShowEmojiPicker(false)
       }}
     />}
@@ -117,7 +116,7 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
       <h3 className={style.newItemCaption}>{t('app.newApp.captionName')}</h3>
 
       <div className='flex items-center justify-between gap-3 mb-8'>
-        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' />
+        <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
         <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' />
       </div>
 

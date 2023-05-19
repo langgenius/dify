@@ -34,7 +34,7 @@ const AppIcon: FC<AppIconProps> = ({
       }}
       onClick={onClick}
     >
-      {innerIcon ? innerIcon : <em-emoji id={icon} />}
+      {innerIcon ? innerIcon : icon && <em-emoji id={icon} />}
     </span>
   )
 }
