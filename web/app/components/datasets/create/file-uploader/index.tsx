@@ -190,13 +190,15 @@ const FileUploader = ({ file, onFileUpdate }: IFileUploaderProps) => {
         onChange={fileChangeHandle}
       />
       <div className={s.title}>{t('datasetCreation.stepOne.uploader.title')}</div>
-      {!currentFile && !file && (
-        <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
-          <span>{t('datasetCreation.stepOne.uploader.button')}</span>
-          <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
-          {dragging && <div ref={dragRef} className={s.draggingCover}/>}
-        </div>
-      )}
+      <div ref={dropRef}>
+        {!currentFile && !file && (
+          <div className={cn(s.uploader, dragging && s.dragging)}>
+            <span>{t('datasetCreation.stepOne.uploader.button')}</span>
+            <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+            {dragging && <div ref={dragRef} className={s.draggingCover}/>}
+          </div>
+        )}
+      </div>
       {currentFile && (
         <div className={cn(s.file, uploading && s.uploading)}>
           {uploading && (
