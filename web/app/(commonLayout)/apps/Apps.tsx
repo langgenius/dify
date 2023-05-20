@@ -2,16 +2,16 @@
 
 import { useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
+import { debounce } from 'lodash-es'
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
 import { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useSelector } from '@/context/app-context'
-import { debounce } from 'lodash-es'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
-    return { url: `apps`, params: { page: pageIndex + 1, limit: 30 } }
+    return { url: 'apps', params: { page: pageIndex + 1, limit: 30 } }
   return null
 }
 
