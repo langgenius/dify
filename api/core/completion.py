@@ -125,13 +125,15 @@ class Completion:
         pre_prompt = PromptBuilder.process_template(pre_prompt) if pre_prompt else pre_prompt
         if mode == 'completion':
             prompt_template = OutLinePromptTemplate.from_template(
-                template=("Use the following pieces of [CONTEXT] to answer the question at the end. "
+                template=("Use the following pieces of CONTEXT to answer the question at the end. "
+                          "You MUST refrain from using the word CONTEXT at all, and MUST only consider "
+                          "the information within your original memory as the CONTEXT, "
+                          "without letting the user perceive that you have referenced any CONTEXT!\n"
                           "If you don't know the answer, "
-                          "just say that you don't know, don't try to make up an answer. \n"
-                          "```\n"
+                          "just say that you don't know, don't try to make up an answer. \n\n"
                           "[CONTEXT]\n"
                           "{context}\n"
-                          "```\n" if chain_output else "")
+                          "[/CONTEXT]\n" if chain_output else "")
                          + (pre_prompt + "\n" if pre_prompt else "")
                          + "{query}\n"
             )
@@ -161,12 +163,14 @@ class Completion:
             if chain_output:
                 # append context as system message, currently only use simple stuff prompt
                 context_message = PromptBuilder.to_system_message(
-                    """Use the following pieces of [CONTEXT] to answer the users question. 
+                    """Use the following pieces of CONTEXT to answer the user's question. 
+You MUST refrain from using the word CONTEXT at all, and MUST only consider the information within your \
+original memory as the CONTEXT, without letting the user perceive that you have referenced any CONTEXT!
 If you don't know the answer, just say that you don't know, don't try to make up an answer.
-```
+
 [CONTEXT]
 {context}
-```""",
+[/CONTEXT]""",
                     {'context': chain_output}
                 )
 
