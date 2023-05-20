@@ -4,8 +4,8 @@ import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUse
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
 
-export const fetchAppList: Fetcher<AppListResponse, { params?: Record<string, any> }> = ({ params }) => {
-  return get('apps', params) as Promise<AppListResponse>
+export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Record<string, any> }> = ({ url, params }) => {
+  return get(url, { params }) as Promise<AppListResponse>
 }
 
 export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
