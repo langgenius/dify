@@ -9,7 +9,7 @@ import {
   createDocument,
   fetchFileIndexingEstimate as didFetchFileIndexingEstimate,
 } from '@/service/datasets'
-import type { CreateDocumentReq, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import PreviewItem from './preview-item'
 import Loading from '@/app/components/base/loading'
@@ -22,14 +22,18 @@ import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 
 type StepTwoProps = {
+  isSetting?: boolean,
+  documentDetail?: FullDocumentDetail
   hasSetAPIKEY: boolean,
   onSetting: () => void,
   datasetId?: string,
   indexingType?: string,
   file?: File,
-  onStepChange: (delta: number) => void,
-  updateIndexingTypeCache: (type: string) => void,
-  updateResultCache: (res: createDocumentResponse) => void
+  onStepChange?: (delta: number) => void,
+  updateIndexingTypeCache?: (type: string) => void,
+  updateResultCache?: (res: createDocumentResponse) => void
+  onSave?: () => void
+  onCancel?: () => void
 }
 
 enum SegmentType {
@@ -42,6 +46,8 @@ enum IndexingType {
 }
 
 const StepTwo = ({
+  isSetting,
+  documentDetail,
   hasSetAPIKEY,
   onSetting,
   datasetId,
@@ -50,6 +56,8 @@ const StepTwo = ({
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
+  onSave,
+  onCancel,
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -171,15 +179,23 @@ const StepTwo = ({
   }
 
   const getCreationParams = () => {
-    const params = {
-      data_source: {
-        type: 'upload_file',
-        info: file?.id,
-        name: file?.name,
-      },
-      indexing_technique: getIndexing_technique(),
-      process_rule: getProcessRule(),
-    } as CreateDocumentReq
+    let params
+    if (isSetting) {
+      params = {
+        original_document_id: documentDetail?.id,
+        process_rule: getProcessRule(),
+      } as CreateDocumentReq
+    } else {
+      params = {
+        data_source: {
+          type: 'upload_file',
+          info: file?.id,
+          name: file?.name,
+        },
+        indexing_technique: getIndexing_technique(),
+        process_rule: getProcessRule(),
+      } as CreateDocumentReq
+    }
     return params
   }
 
@@ -196,6 +212,25 @@ const StepTwo = ({
       console.log(err)
     }
   }
+
+  const getRulesFromDetail = () => {
+    if (documentDetail) {
+      const rules = documentDetail.dataset_process_rule.rules
+      const separator = rules.segmentation.separator
+      const max = rules.segmentation.max_tokens
+      setSegmentIdentifier(separator === '\n' ? '\\n' : separator || '\\n')
+      setMax(max)
+      setRules(rules.pre_processing_rules)
+      setDefaultConfig(rules)
+    }
+  }
+
+  const getDefaultMode = () => {
+    if (documentDetail) {
+      setSegmentationType(documentDetail.dataset_process_rule.mode)
+    }
+  }
+
   const createHandle = async () => {
     try {
       let res;
@@ -204,19 +239,20 @@ const StepTwo = ({
         res = await createFirstDocument({
           body: params
         })
-        updateIndexingTypeCache(indexType)
-        updateResultCache(res)
+        updateIndexingTypeCache && updateIndexingTypeCache(indexType)
+        updateResultCache && updateResultCache(res)
       } else {
         res = await createDocument({
           datasetId,
           body: params
         })
-        updateIndexingTypeCache(indexType)
-        updateResultCache({
+        updateIndexingTypeCache && updateIndexingTypeCache(indexType)
+        updateResultCache && updateResultCache({
           document: res,
         })
       }
-      onStepChange(+1)
+      onStepChange && onStepChange(+1)
+      isSetting && onSave && onSave()
     }
     catch (err) {
       Toast.notify({
@@ -228,7 +264,12 @@ const StepTwo = ({
 
   useEffect(() => {
     // fetch rules
-    getRules()
+    if (!isSetting) {
+      getRules()
+    } else {
+      getRulesFromDetail()
+      getDefaultMode()
+    }
   }, [])
 
   useEffect(() => {
@@ -444,11 +485,18 @@ const StepTwo = ({
                 </div>
               </div>
             </div>
-            <div className='flex items-center mt-8 py-2'>
-              <Button onClick={() => onStepChange(-1)}>{t('datasetCreation.stepTwo.lastStep')}</Button>
-              <div className={s.divider} />
-              <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
-            </div>
+            {!isSetting ? (
+              <div className='flex items-center mt-8 py-2'>
+                <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.lastStep')}</Button>
+                <div className={s.divider} />
+                <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+              </div>
+            ) : (
+              <div className='flex items-center mt-8 py-2'>
+                <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
+                <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
+              </div>
+            )}
           </div>
         </div>
       </div>

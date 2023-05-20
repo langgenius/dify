@@ -125,7 +125,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     datasetId: localDatasetId,
     documentId: localDocumentId,
   }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-    refreshInterval: 5000,
+    refreshInterval: 2500,
     revalidateOnFocus: false,
   })
 
