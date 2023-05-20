@@ -21,10 +21,11 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 
 type NewAppDialogProps = {
   show: boolean
+  onSuccess?: () => void
   onClose?: () => void
 }
 
-const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
+const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
   const router = useRouter()
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
@@ -79,6 +80,8 @@ const NewAppDialog = ({ show, onClose }: NewAppDialogProps) => {
         mode: isWithTemplate ? templates.data[selectedTemplateIndex].mode : newAppMode!,
         config: isWithTemplate ? templates.data[selectedTemplateIndex].model_config : undefined,
       })
+      if (onSuccess)
+        onSuccess()
       if (onClose)
         onClose()
       notify({ type: 'success', message: t('app.newApp.appCreated') })
