@@ -182,8 +182,7 @@ Avoid mentioning that you obtained the information from the context.
 And answer according to the language of the user's question.
 
 Q:{query}
-A:
-"""
+A:"""
 
             # construct main prompt
             human_message = PromptBuilder.to_human_message(
