@@ -44,10 +44,10 @@ class InsertExploreAppListApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('desc_en', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('desc_zh', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('copyright', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('privacy_policy', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('desc_en', type=str, location='json')
+        parser.add_argument('desc_zh', type=str, location='json')
+        parser.add_argument('copyright', type=str, location='json')
+        parser.add_argument('privacy_policy', type=str, location='json')
         parser.add_argument('category', type=str, required=True, nullable=False, location='json')
         parser.add_argument('position', type=int, required=True, nullable=False, location='json')
         args = parser.parse_args()
@@ -56,17 +56,27 @@ class InsertExploreAppListApi(Resource):
         if not app:
             raise NotFound('App not found')
 
+        site = app.site
+        if not site:
+            desc = args['desc_en']
+            copy_right = args['copyright']
+            privacy_policy = args['privacy_policy']
+        else:
+            desc = site.description if not args['desc_en'] else args['desc_en']
+            copy_right = site.copyright if not args['copyright'] else args['copyright']
+            privacy_policy = site.privacy_policy if not args['privacy_policy'] else args['privacy_policy']
+
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
 
         if not recommended_app:
             recommended_app = RecommendedApp(
                 app_id=app.id,
                 description={
-                    'en': args['desc_en'],
-                    'zh': args['desc_zh']
+                    'en': desc,
+                    'zh': desc if not args['desc_zh'] else args['desc_zh']
                 },
-                copyright=args['copyright'],
-                privacy_policy=args['privacy_policy'],
+                copyright=copy_right,
+                privacy_policy=privacy_policy,
                 category=args['category'],
                 position=args['position']
             )
