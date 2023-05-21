@@ -594,6 +594,7 @@
 
 .markdown-body table th {
   font-weight: var(--base-text-weight-semibold, 600);
+  white-space: nowrap;
 }
 
 .markdown-body table th,
