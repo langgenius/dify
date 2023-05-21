@@ -157,11 +157,6 @@ And answer according to the language of the user's question.
         else:
             messages: List[BaseMessage] = []
 
-            if pre_prompt:
-                # append pre prompt as system message
-                system_message = PromptBuilder.to_system_message(pre_prompt, inputs)
-                messages.append(system_message)
-
             human_inputs = {
                 "query": query
             }
@@ -170,19 +165,27 @@ And answer according to the language of the user's question.
 
             if chain_output:
                 human_inputs['context'] = chain_output
-                human_message_prompt = """Use the following CONTEXT as your learned knowledge.
+                human_message_instruction = """Use the following CONTEXT as your learned knowledge.
 [CONTEXT]
 {context}
 [END CONTEXT]
 
 When answer to user:
+- Incorporate the conversation history to answer the user.
 - If you don't know, just say that you don't know.
 - If you don't know when you are not sure, ask for clarification. 
 Avoid mentioning that you obtained the information from the context.
 And answer according to the language of the user's question.
+"""
+                if pre_prompt:
+                    human_inputs.update(inputs)
+                    human_message_instruction += pre_prompt + "\n"
 
-Q:{query}
-A:"""
+                human_message_prompt = human_message_instruction + "Q:{query}\nA:"
+            else:
+                if pre_prompt:
+                    human_inputs.update(inputs)
+                    human_message_prompt = pre_prompt + "\n" + human_message_prompt
 
             # construct main prompt
             human_message = PromptBuilder.to_human_message(
