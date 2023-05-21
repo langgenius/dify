@@ -171,7 +171,6 @@ And answer according to the language of the user's question.
 [END CONTEXT]
 
 When answer to user:
-- Incorporate the conversation history to answer the user.
 - If you don't know, just say that you don't know.
 - If you don't know when you are not sure, ask for clarification. 
 Avoid mentioning that you obtained the information from the context.
