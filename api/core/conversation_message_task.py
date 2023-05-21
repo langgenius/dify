@@ -281,6 +281,9 @@ class PubHandler:
 
     @classmethod
     def generate_channel_name(cls, user: Union[Account | EndUser], task_id: str):
+        if not user:
+            raise ValueError("user is required")
+
         user_str = 'account-' + user.id if isinstance(user, Account) else 'end-user-' + user.id
         return "generate_result:{}-{}".format(user_str, task_id)
 
