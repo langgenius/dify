@@ -2,15 +2,16 @@
 from datetime import datetime
 
 from flask_login import login_required, current_user
-from flask_restful import Resource, reqparse, fields, marshal_with, abort, inputs
+from flask_restful import Resource, reqparse, fields, marshal_with, inputs
 from sqlalchemy import and_
+from werkzeug.exceptions import NotFound, Forbidden, BadRequest
 
 from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from models.model import Tenant, App, InstalledApp, RecommendedApp
+from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
 app_fields = {
@@ -73,7 +74,7 @@ class InstalledAppsListApi(Resource):
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
         if recommended_app is None:
-            abort(404, message='App not found')
+            raise NotFound('App not found')
 
         current_tenant_id = current_user.current_tenant_id
         app = db.session.query(App).filter(
@@ -81,10 +82,10 @@ class InstalledAppsListApi(Resource):
         ).first()
 
         if app is None:
-            abort(404, message='App not found')
+            raise NotFound('App not found')
 
         if not app.is_public:
-            abort(403, message="You can't install a non-public app")
+            raise Forbidden('You can\'t install a non-public app')
 
         installed_app = InstalledApp.query.filter(and_(
             InstalledApp.app_id == args['app_id'],
@@ -115,7 +116,7 @@ class InstalledAppApi(InstalledAppResource):
     """
     def delete(self, installed_app):
         if installed_app.app_owner_tenant_id == current_user.current_tenant_id:
-            abort(400, message="You can't uninstall an app owned by the current tenant")
+            raise BadRequest('You can\'t uninstall an app owned by the current tenant')
 
         db.session.delete(installed_app)
         db.session.commit()
