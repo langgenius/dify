@@ -1,18 +1,18 @@
 'use client'
+import React from 'react'
+import { useState, FC, ChangeEvent } from 'react'
 import data from '@emoji-mart/data'
 import { init, SearchIndex } from 'emoji-mart'
-// import AppIcon from '@/app/components/base/app-icon'
 import cn from 'classnames'
 import Divider from '@/app/components/base/divider'
-
 import Button from '@/app/components/base/button'
 import s from './style.module.css'
-import { useState, FC, ChangeEvent } from 'react'
 import {
   MagnifyingGlassIcon
 } from '@heroicons/react/24/outline'
-import React from 'react'
+
 import Modal from '@/app/components/base/modal'
+import { useTranslation } from 'react-i18next'
 
 declare global {
   namespace JSX {
@@ -69,6 +69,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   onClose
 
 }) => {
+  const { t } = useTranslation()
   const { categories } = data as any
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState(backgroundColors[0])
@@ -187,7 +188,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
       <Button type="default" className='w-full' onClick={() => {
         onClose && onClose()
       }}>
-        Cancel
+        {t('app.emoji.cancel')}
       </Button>
       <Button
         disabled={selectedEmoji == ''}
@@ -196,7 +197,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         onClick={() => {
           onSelect && onSelect(selectedEmoji, selectedBackground)
         }}>
-        OK
+        {t('app.emoji.ok')}
       </Button>
     </div>
   </Modal> : <>
