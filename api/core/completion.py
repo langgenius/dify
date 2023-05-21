@@ -125,13 +125,17 @@ class Completion:
         pre_prompt = PromptBuilder.process_template(pre_prompt) if pre_prompt else pre_prompt
         if mode == 'completion':
             prompt_template = OutLinePromptTemplate.from_template(
-                template=("Use the following pieces of [CONTEXT] to answer the question at the end. "
-                          "If you don't know the answer, "
-                          "just say that you don't know, don't try to make up an answer. \n"
-                          "```\n"
-                          "[CONTEXT]\n"
-                          "{context}\n"
-                          "```\n" if chain_output else "")
+                template=("""Use the following CONTEXT as your learned knowledge:
+[CONTEXT]
+{context}
+[END CONTEXT]
+
+When answer to user:
+- If you don't know, just say that you don't know.
+- If you don't know when you are not sure, ask for clarification. 
+Avoid mentioning that you obtained the information from the context.
+And answer according to the language of the user's question.
+""" if chain_output else "")
                          + (pre_prompt + "\n" if pre_prompt else "")
                          + "{query}\n"
             )
@@ -153,38 +157,36 @@ class Completion:
         else:
             messages: List[BaseMessage] = []
 
-            system_message = None
             if pre_prompt:
                 # append pre prompt as system message
                 system_message = PromptBuilder.to_system_message(pre_prompt, inputs)
-
-            if chain_output:
-                # append context as system message, currently only use simple stuff prompt
-                context_message = PromptBuilder.to_system_message(
-                    """Use the following pieces of [CONTEXT] to answer the users question. 
-If you don't know the answer, just say that you don't know, don't try to make up an answer.
-```
-[CONTEXT]
-{context}
-```""",
-                    {'context': chain_output}
-                )
-
-                if not system_message:
-                    system_message = context_message
-                else:
-                    system_message.content = context_message.content + "\n\n" + system_message.content
-
-            if system_message:
                 messages.append(system_message)
 
             human_inputs = {
                 "query": query
             }
 
+            human_message_prompt = "{query}"
+
+            if chain_output:
+                human_inputs['context'] = chain_output
+                human_message_prompt = """Use the following CONTEXT as your learned knowledge.
+[CONTEXT]
+{context}
+[END CONTEXT]
+
+When answer to user:
+- If you don't know, just say that you don't know.
+- If you don't know when you are not sure, ask for clarification. 
+Avoid mentioning that you obtained the information from the context.
+And answer according to the language of the user's question.
+
+Q:{query}
+A:"""
+
             # construct main prompt
             human_message = PromptBuilder.to_human_message(
-                prompt_content="{query}",
+                prompt_content=human_message_prompt,
                 inputs=human_inputs
             )
 
