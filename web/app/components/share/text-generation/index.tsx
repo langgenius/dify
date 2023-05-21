@@ -337,7 +337,10 @@ const TextGeneration: FC<IMainProps> = ({
 
 
           {/* copyright */}
-          <div className='fixed left-8 bottom-4  flex space-x-2 text-gray-400 font-normal text-xs'>
+          <div className={cn(
+            isInstalledApp ? 'left-[248px]' : 'left-8',
+            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs'
+            )}>
             <div className="">© {siteInfo.copyright || siteInfo.title} {(new Date()).getFullYear()}</div>
             {siteInfo.privacy_policy && (
               <>

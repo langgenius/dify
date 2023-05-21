@@ -44,7 +44,7 @@ export default function AppNavItem({
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
-      <div className='flex items-center space-x-2'>
+      <div className='flex items-center space-x-2 w-0 grow'>
         {/* <div
           className={cn(
             'shrink-0 mr-2 h-6 w-6 rounded-md border bg-[#D5F5F6]',
@@ -54,7 +54,7 @@ export default function AppNavItem({
           }}
         /> */}
         <AppIcon size='tiny'  icon={icon} background={icon_background} />
-        <div className='max-w-[110px] overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
+        <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
       </div>
       {
         !isSelected && (
