@@ -26,7 +26,7 @@ export default function Modal({
 }: IModal) {
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={onClose}>
+      <Dialog as="div" className={`relative z-10 ${wrapperClassName}`} onClose={onClose}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
