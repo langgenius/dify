@@ -41,7 +41,7 @@ const PreviewItem: FC<IPreviewItemProps> = ({
         </div>
       </div>
       <div className='mt-2 max-h-[120px] line-clamp-6 overflow-hidden text-sm text-gray-800'>
-        {content}
+        <div style={{ whiteSpace: 'pre-line'}}>{content}</div>
       </div>
     </div>
   )
