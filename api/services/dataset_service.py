@@ -12,7 +12,7 @@ from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
 from models.account import Account
-from models.dataset import Dataset, Document, DatasetQuery, DatasetProcessRule, AppDatasetJoin
+from models.dataset import Dataset, Document, DatasetQuery, DatasetProcessRule, AppDatasetJoin, DocumentSegment
 from models.model import UploadFile
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -481,6 +481,12 @@ class DocumentService:
         document.updated_at = datetime.datetime.utcnow()
         document.created_from = created_from
         db.session.add(document)
+        db.session.commit()
+        # update document segment
+        update_params = {
+            DocumentSegment.status: 're_segment'
+        }
+        DocumentSegment.query.filter_by(document_id=document.id).update(update_params)
         db.session.commit()
         # trigger async task
         document_indexing_update_task.delay(document.dataset_id, document.id)

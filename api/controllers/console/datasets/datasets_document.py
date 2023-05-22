@@ -348,10 +348,12 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         completed_segments = DocumentSegment.query \
             .filter(DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document_id)) \
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
             .count()
         total_segments = DocumentSegment.query \
-            .filter_by(document_id=str(document_id)) \
+            .filter(DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
             .count()
 
         document.completed_segments = completed_segments
