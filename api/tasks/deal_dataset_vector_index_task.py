@@ -6,9 +6,7 @@ from celery import shared_task
 from llama_index.data_structs.node_v2 import DocumentRelationship, Node
 from core.index.vector_index import VectorIndex
 from extensions.ext_database import db
-from models.dataset import DocumentSegment, Document
-from services.dataset_service import DatasetService
-
+from models.dataset import DocumentSegment, Document, Dataset
 
 @shared_task
 def deal_dataset_vector_index_task(dataset_id: str, action: str):
@@ -22,7 +20,9 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
     start_at = time.perf_counter()
 
     try:
-        dataset = DatasetService.get_dataset(dataset_id)
+        dataset = Dataset.query.filter_by(
+            id=dataset_id
+        ).first()
         if not dataset:
             raise Exception('Dataset not found')
         documents = Document.query.filter_by(dataset_id=dataset_id).all()
