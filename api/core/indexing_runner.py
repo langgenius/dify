@@ -201,6 +201,43 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
+    def notion_indexing_estimate(self, notion_info, tmp_processing_rule: dict) -> dict:
+        """
+        Estimate the indexing for the document.
+        """
+        # load data from file
+        text_docs = self._load_data_from_file(file_detail)
+
+        processing_rule = DatasetProcessRule(
+            mode=tmp_processing_rule["mode"],
+            rules=json.dumps(tmp_processing_rule["rules"])
+        )
+
+        # get node parser for splitting
+        node_parser = self._get_node_parser(processing_rule)
+
+        # split to nodes
+        nodes = self._split_to_nodes(
+            text_docs=text_docs,
+            node_parser=node_parser,
+            processing_rule=processing_rule
+        )
+
+        tokens = 0
+        preview_texts = []
+        for node in nodes:
+            if len(preview_texts) < 5:
+                preview_texts.append(node.get_text())
+
+            tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
+
+        return {
+            "total_segments": len(nodes),
+            "tokens": tokens,
+            "total_price": '{:f}'.format(TokenCalculator.get_token_price(self.embedding_model_name, tokens)),
+            "currency": TokenCalculator.get_currency(self.embedding_model_name),
+            "preview": preview_texts
+        }
     def _load_data(self, document: Document) -> List[Document]:
         # load file
         if document.data_source_type != "upload_file":

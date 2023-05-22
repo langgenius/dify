@@ -17,6 +17,7 @@ from controllers.console.datasets.error import NoFileUploadedError, TooManyFiles
     UnsupportedFileTypeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.data_source.notion import NotionPageReader
 from core.index.readers.html_parser import HTMLParser
 from core.index.readers.pdf_parser import PDFParser
 from extensions.ext_storage import storage
@@ -107,7 +108,7 @@ class DataSourceApi(Resource):
         return {'result': 'success'}, 200
 
 
-class DataSourceNotionApi(Resource):
+class DataSourceNotionListApi(Resource):
 
     @setup_required
     @login_required
@@ -157,7 +158,40 @@ class DataSourceNotionApi(Resource):
         }, 200
 
 
+class DataSourceNotionApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, workspace_id, page_id):
+        data_source_binding = DataSourceBinding.query.filter(
+            db.and_(
+                DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBinding.provider == 'notion',
+                DataSourceBinding.disabled == False,
+                DataSourceBinding.source_info['workspace_id'] == workspace_id
+            )
+        ).first()
+        if not data_source_binding:
+            raise NotFound('Data source binding not found.')
+        reader = NotionPageReader(integration_token=data_source_binding.access_token)
+        page_content = reader.read_page(page_id)
+        return {
+            'content': page_content
+        }, 200
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        segment_rule = request.get_json()
+
+        indexing_runner = IndexingRunner()
+        response = indexing_runner.notion_indexing_estimate(file_detail, segment_rule['process_rule'])
+        return response, 200
+
+
 api.add_resource(DataSourceApi, '/oauth/data-source/integrates')
 api.add_resource(DataSourceApi, '/oauth/data-source/integrates/<uuid:binding_id>/<string:action>')
-api.add_resource(DataSourceNotionApi, '/notion/pre-import/pages')
-
+api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
+api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview')
