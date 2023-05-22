@@ -90,8 +90,8 @@ class ProviderTokenApi(Resource):
                     configs=args['token']
                 )
                 token_is_valid = True
-            except ValidateFailedError:
-                token_is_valid = False
+            except ValidateFailedError as ex:
+                raise ValueError(str(ex))
 
             base64_encrypted_token = ProviderService.get_encrypted_token(
                 tenant=current_user.current_tenant,

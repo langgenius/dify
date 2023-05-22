@@ -4,43 +4,45 @@ from libs.exception import BaseHTTPException
 
 class AppUnavailableError(BaseHTTPException):
     error_code = 'app_unavailable'
-    description = "App unavailable."
+    description = "App unavailable, please check your app configurations."
     code = 400
 
 
 class NotCompletionAppError(BaseHTTPException):
     error_code = 'not_completion_app'
-    description = "Not Completion App"
+    description = "Please check if your Completion app mode matches the right API route."
     code = 400
 
 
 class NotChatAppError(BaseHTTPException):
     error_code = 'not_chat_app'
-    description = "Not Chat App"
+    description = "Please check if your Chat app mode matches the right API route."
     code = 400
 
 
 class ConversationCompletedError(BaseHTTPException):
     error_code = 'conversation_completed'
-    description = "Conversation Completed."
+    description = "The conversation has ended. Please start a new conversation."
     code = 400
 
 
 class ProviderNotInitializeError(BaseHTTPException):
     error_code = 'provider_not_initialize'
-    description = "Provider Token not initialize."
+    description = "No valid model provider credentials found. " \
+                  "Please go to Settings -> Model Provider to complete your provider credentials."
     code = 400
 
 
 class ProviderQuotaExceededError(BaseHTTPException):
     error_code = 'provider_quota_exceeded'
-    description = "Provider quota exceeded."
+    description = "Your quota for Dify Hosted OpenAI has been exhausted. " \
+                  "Please go to Settings -> Model Provider to complete your own provider credentials."
     code = 400
 
 
 class ProviderModelCurrentlyNotSupportError(BaseHTTPException):
     error_code = 'model_currently_not_support'
-    description = "GPT-4 currently not support."
+    description = "Dify Hosted OpenAI trial currently not support the GPT-4 model."
     code = 400
 
 

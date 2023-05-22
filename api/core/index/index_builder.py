@@ -46,3 +46,15 @@ class IndexBuilder:
             prompt_helper=prompt_helper,
             embed_model=OpenAIEmbedding(**model_credentials),
         )
+
+    @classmethod
+    def get_fake_llm_service_context(cls, tenant_id: str) -> ServiceContext:
+        llm = LLMBuilder.to_llm(
+            tenant_id=tenant_id,
+            model_name='fake'
+        )
+
+        return ServiceContext.from_defaults(
+            llm_predictor=LLMPredictor(llm=llm),
+            embed_model=OpenAIEmbedding()
+        )
