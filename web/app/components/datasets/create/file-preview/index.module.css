@@ -43,4 +43,7 @@
     background: #f9fafb center no-repeat url(../assets/Loading.svg);
     background-size: contain;
   }
+  .fileContent {
+    white-space: pre-line;
+  }
   

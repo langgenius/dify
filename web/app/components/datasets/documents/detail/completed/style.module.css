@@ -45,6 +45,7 @@
 }
 .segModalContent {
   @apply h-96 text-gray-800 text-base overflow-y-scroll;
+  white-space: pre-line;
 }
 .footer {
   @apply flex items-center justify-between box-border border-t-gray-200 border-t-[0.5px] pt-3 mt-4;
