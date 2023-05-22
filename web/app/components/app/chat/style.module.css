@@ -42,6 +42,23 @@
   display: none;
 }
 
+.answerWrapWrap,
+.questionWrapWrap {
+  width: 0;
+  flex-grow: 1;
+}
+
+.questionWrapWrap {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.answerWrap,
+.question {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .answerWrap:hover .copyBtn {
   display: block;
 }

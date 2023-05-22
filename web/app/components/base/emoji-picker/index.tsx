@@ -80,6 +80,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     onClose={() => { }}
     isShow
     closable={false}
+    wrapperClassName='!z-40'
     className={cn(s.container, '!w-[362px] !p-0')}
   >
     <div className='flex flex-col items-center w-full p-3'>

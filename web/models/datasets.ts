@@ -29,6 +29,10 @@ export type File = {
 
 export type DataSetListResponse = {
   data: DataSet[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type IndexingEstimateResponse = {

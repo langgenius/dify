@@ -291,74 +291,76 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
             </div>
           }
         </div>
-        <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
-          <div className={`${s.answer} relative text-sm text-gray-900`}>
-            <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
-              {item.isOpeningStatement && (
-                <div className='flex items-center mb-1 gap-1'>
-                  <OpeningStatementIcon />
-                  <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
-                </div>
-              )}
-              {(isResponsing && !content) ? (
-                <div className='flex items-center justify-center w-6 h-5'>
-                  <LoadingAnim type='text' />
-                </div>
-              ) : (
-                <Markdown content={content} />
-              )}
-              {!showEdit
-                ? (annotation?.content
-                  && <>
-                    <Divider name={annotation?.account?.name || userProfile?.name} />
-                    {annotation.content}
-                  </>)
-                : <>
-                  <Divider name={annotation?.account?.name || userProfile?.name} />
-                  <AutoHeightTextarea
-                    placeholder={t('appLog.detail.operation.annotationPlaceholder') as string}
-                    value={inputValue}
-                    onChange={e => setInputValue(e.target.value)}
-                    minHeight={58}
-                    className={`${cn(s.textArea)} !py-2 resize-none block w-full !px-3 bg-gray-50 border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700 tracking-[0.2px]`}
-                  />
-                  <div className="mt-2 flex flex-row">
-                    <Button
-                      type='primary'
-                      className='mr-2'
-                      loading={loading}
-                      onClick={async () => {
-                        if (!inputValue)
-                          return
-                        setLoading(true)
-                        const res = await onSubmitAnnotation?.(id, inputValue)
-                        if (res)
-                          setAnnotation({ ...annotation, content: inputValue } as any)
-                        setLoading(false)
-                        setShowEdit(false)
-                      }}>{t('common.operation.confirm')}</Button>
-                    <Button
-                      onClick={() => {
-                        setInputValue(annotation?.content ?? '')
-                        setShowEdit(false)
-                      }}>{t('common.operation.cancel')}</Button>
+        <div className={s.answerWrapWrap}>
+          <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
+            <div className={`${s.answer} relative text-sm text-gray-900`}>
+              <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
+                {item.isOpeningStatement && (
+                  <div className='flex items-center mb-1 gap-1'>
+                    <OpeningStatementIcon />
+                    <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
                   </div>
-                </>
-              }
+                )}
+                {(isResponsing && !content) ? (
+                  <div className='flex items-center justify-center w-6 h-5'>
+                    <LoadingAnim type='text' />
+                  </div>
+                ) : (
+                  <Markdown content={content} />
+                )}
+                {!showEdit
+                  ? (annotation?.content
+                    && <>
+                      <Divider name={annotation?.account?.name || userProfile?.name} />
+                      {annotation.content}
+                    </>)
+                  : <>
+                    <Divider name={annotation?.account?.name || userProfile?.name} />
+                    <AutoHeightTextarea
+                      placeholder={t('appLog.detail.operation.annotationPlaceholder') as string}
+                      value={inputValue}
+                      onChange={e => setInputValue(e.target.value)}
+                      minHeight={58}
+                      className={`${cn(s.textArea)} !py-2 resize-none block w-full !px-3 bg-gray-50 border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700 tracking-[0.2px]`}
+                    />
+                    <div className="mt-2 flex flex-row">
+                      <Button
+                        type='primary'
+                        className='mr-2'
+                        loading={loading}
+                        onClick={async () => {
+                          if (!inputValue)
+                            return
+                          setLoading(true)
+                          const res = await onSubmitAnnotation?.(id, inputValue)
+                          if (res)
+                            setAnnotation({ ...annotation, content: inputValue } as any)
+                          setLoading(false)
+                          setShowEdit(false)
+                        }}>{t('common.operation.confirm')}</Button>
+                      <Button
+                        onClick={() => {
+                          setInputValue(annotation?.content ?? '')
+                          setShowEdit(false)
+                        }}>{t('common.operation.cancel')}</Button>
+                    </div>
+                  </>
+                }
+              </div>
+              <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>
+                <CopyBtn
+                  value={content}
+                  className={cn(s.copyBtn, 'mr-1')}
+                />
+                {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
+                {/* Admin feedback is displayed only in the background. */}
+                {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}
+                {/* User feedback must be displayed */}
+                {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
+              </div>
             </div>
-            <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>
-              <CopyBtn
-                value={content}
-                className={cn(s.copyBtn, 'mr-1')}
-              />
-              {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
-              {/* Admin feedback is displayed only in the background. */}
-              {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}
-              {/* User feedback must be displayed */}
-              {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
-            </div>
+            {more && <MoreInfo more={more} isQuestion={false} />}
           </div>
-          {more && <MoreInfo more={more} isQuestion={false} />}
         </div>
       </div>
     </div>
@@ -372,7 +374,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar 
   const userName = userProfile?.name
   return (
     <div className='flex items-start justify-end' key={id}>
-      <div>
+      <div className={s.questionWrapWrap}>
         <div className={`${s.question} relative text-sm text-gray-900`}>
           <div
             className={'mr-2 py-3 px-4 bg-blue-500 rounded-tl-2xl rounded-b-2xl'}
