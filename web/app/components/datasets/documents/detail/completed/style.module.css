@@ -44,7 +44,7 @@
   @apply h-8 py-0 bg-gray-50 hover:bg-gray-100 rounded-lg shadow-none !important;
 }
 .segModalContent {
-  @apply h-96 text-gray-800 text-base overflow-y-scroll;
+  @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;
   white-space: pre-line;
 }
 .footer {
