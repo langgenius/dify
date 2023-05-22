@@ -157,15 +157,12 @@ And answer according to the language of the user's question.
         else:
             messages: List[BaseMessage] = []
 
-            human_inputs = {
-                "query": query
-            }
-
-            human_message_prompt = "{query}"
+            context_message_inputs = {}
+            context_message_prompt = ""
 
             if chain_output:
-                human_inputs['context'] = chain_output
-                human_message_instruction = """Use the following CONTEXT as your learned knowledge.
+                context_message_inputs['context'] = chain_output
+                context_message_prompt = """Use the following CONTEXT as your learned knowledge.
 [CONTEXT]
 {context}
 [END CONTEXT]
@@ -181,18 +178,29 @@ And answer according to the language of the user's question.
                                     OutLinePromptTemplate.from_template(template=pre_prompt).input_variables
                                     if k in inputs}
                     if extra_inputs:
-                        human_inputs.update(extra_inputs)
-                    human_message_instruction += pre_prompt + "\n"
-
-                human_message_prompt = human_message_instruction + "Q:{query}\nA:"
+                        context_message_inputs.update(extra_inputs)
+                    context_message_prompt += pre_prompt
             else:
                 if pre_prompt:
                     extra_inputs = {k: inputs[k] for k in
                                     OutLinePromptTemplate.from_template(template=pre_prompt).input_variables
                                     if k in inputs}
                     if extra_inputs:
-                        human_inputs.update(extra_inputs)
-                    human_message_prompt = pre_prompt + "\n" + human_message_prompt
+                        context_message_inputs.update(extra_inputs)
+                    context_message_prompt = pre_prompt
+
+            if context_message_prompt:
+                context_message = PromptBuilder.to_human_message(
+                    prompt_content=context_message_prompt,
+                    inputs=context_message_inputs
+                )
+                messages.append(context_message)
+
+            human_inputs = {
+                "query": query
+            }
+
+            human_message_prompt = "{query}"
 
             # construct main prompt
             human_message = PromptBuilder.to_human_message(
