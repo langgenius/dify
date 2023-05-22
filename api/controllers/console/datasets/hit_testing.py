@@ -6,9 +6,12 @@ from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
 
 import services
 from controllers.console import api
+from controllers.console.app.error import ProviderNotInitializeError, ProviderQuotaExceededError, \
+    ProviderModelCurrentlyNotSupportError
 from controllers.console.datasets.error import HighQualityDatasetOnlyError, DatasetNotInitializedError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.llm.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import TimestampField
 from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
@@ -92,6 +95,12 @@ class HitTestingApi(Resource):
             return {"query": response['query'], 'records': marshal(response['records'], hit_testing_record_fields)}
         except services.errors.index.IndexNotInitializedError:
             raise DatasetNotInitializedError()
+        except ProviderTokenNotInitError:
+            raise ProviderNotInitializeError()
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
         except Exception as e:
             logging.exception("Hit testing failed.")
             raise InternalServerError(str(e))
