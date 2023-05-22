@@ -5,6 +5,8 @@ on:
     branches:
       - 'main'
       - 'deploy/dev'
+  release:
+    types: [published]
 
 jobs:
   build-and-push:
