@@ -13,7 +13,7 @@ import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { apiPrefix } from '@/config'
 
-const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,4}$/
+const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
 type IState = {
   formValid: boolean
