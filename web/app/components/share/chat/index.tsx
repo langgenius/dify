@@ -444,6 +444,7 @@ const Main: FC<IMainProps> = ({
         currentId={currConversationId}
         copyRight={siteInfo.copyright || siteInfo.title}
         isInstalledApp={isInstalledApp}
+        siteInfo={siteInfo}
       />
     )
   }
@@ -456,14 +457,17 @@ const Main: FC<IMainProps> = ({
 
   return (
     <div className='bg-gray-100'>
-      <Header
-        title={siteInfo.title}
-        icon={siteInfo.icon || ''}
-        icon_background={siteInfo.icon_background || '#FFEAD5'}
-        isMobile={isMobile}
-        onShowSideBar={showSidebar}
-        onCreateNewChat={() => handleConversationIdChange('-1')}
-      />
+      {!isInstalledApp && (
+        <Header
+          title={siteInfo.title}
+          icon={siteInfo.icon || ''}
+          icon_background={siteInfo.icon_background}
+          isMobile={isMobile}
+          onShowSideBar={showSidebar}
+          onCreateNewChat={() => handleConversationIdChange('-1')}
+        />
+      )}
+      
       {/* {isNewConversation ? 'new' : 'exist'}
         {JSON.stringify(newConversationInputs ? newConversationInputs : {})}
         {JSON.stringify(existConversationInputs ? existConversationInputs : {})} */}

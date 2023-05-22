@@ -7,8 +7,9 @@ import {
 } from '@heroicons/react/24/outline'
 import { ChatBubbleOvalLeftEllipsisIcon as ChatBubbleOvalLeftEllipsisSolidIcon, } from '@heroicons/react/24/solid'
 import Button from '../../../base/button'
+import AppInfo from '@/app/components/share/chat/sidebar/app-info'
 // import Card from './card'
-import type { ConversationItem } from '@/models/share'
+import type { ConversationItem, SiteInfo } from '@/models/share'
 
 function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(' ')
@@ -22,6 +23,7 @@ export type ISidebarProps = {
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
   isInstalledApp: boolean
+  siteInfo: SiteInfo
 }
 
 const Sidebar: FC<ISidebarProps> = ({
@@ -29,18 +31,27 @@ const Sidebar: FC<ISidebarProps> = ({
   currentId,
   onCurrentIdChange,
   list,
-  isInstalledApp
+  isInstalledApp,
+  siteInfo,
 }) => {
   const { t } = useTranslation()
   return (
     <div
       className={
         classNames(
-          isInstalledApp ? 'tablet:h-[calc(100vh_-_120px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
+          isInstalledApp ? 'tablet:h-[calc(100vh_-_58px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
           "shrink-0 flex flex-col overflow-y-auto bg-white pc:w-[244px] tablet:w-[192px] mobile:w-[240px]  border-r border-gray-200 mobile:h-screen"
         )
       }
     >
+      {isInstalledApp && (
+        <AppInfo
+          className='my-4 px-4'
+          name={siteInfo.title || ''}
+          icon={siteInfo.icon || ''}
+          icon_background={siteInfo.icon_background}
+        />
+      )}
       {list.length < MAX_CONVERSATION_LENTH && (
         <div className="flex flex-shrink-0 p-4 !pb-0">
           <Button
