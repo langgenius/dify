@@ -519,3 +519,78 @@ class DocumentService:
 
             if not isinstance(args['process_rule']['rules']['segmentation']['max_tokens'], int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
+
+    @classmethod
+    def notion_estimate_args_validate(cls, args: dict):
+        if 'notion_info_list' not in args or not args['notion_info_list']:
+            raise ValueError("Notion info is required")
+
+        if not isinstance(args['notion_info_list'], dict):
+            raise ValueError("Notion info is invalid")
+
+        if 'process_rule' not in args or not args['process_rule']:
+            raise ValueError("Process rule is required")
+
+        if not isinstance(args['process_rule'], dict):
+            raise ValueError("Process rule is invalid")
+
+        if 'mode' not in args['process_rule'] or not args['process_rule']['mode']:
+            raise ValueError("Process rule mode is required")
+
+        if args['process_rule']['mode'] not in DatasetProcessRule.MODES:
+            raise ValueError("Process rule mode is invalid")
+
+        if args['process_rule']['mode'] == 'automatic':
+            args['process_rule']['rules'] = {}
+        else:
+            if 'rules' not in args['process_rule'] or not args['process_rule']['rules']:
+                raise ValueError("Process rule rules is required")
+
+            if not isinstance(args['process_rule']['rules'], dict):
+                raise ValueError("Process rule rules is invalid")
+
+            if 'pre_processing_rules' not in args['process_rule']['rules'] \
+                    or args['process_rule']['rules']['pre_processing_rules'] is None:
+                raise ValueError("Process rule pre_processing_rules is required")
+
+            if not isinstance(args['process_rule']['rules']['pre_processing_rules'], list):
+                raise ValueError("Process rule pre_processing_rules is invalid")
+
+            unique_pre_processing_rule_dicts = {}
+            for pre_processing_rule in args['process_rule']['rules']['pre_processing_rules']:
+                if 'id' not in pre_processing_rule or not pre_processing_rule['id']:
+                    raise ValueError("Process rule pre_processing_rules id is required")
+
+                if pre_processing_rule['id'] not in DatasetProcessRule.PRE_PROCESSING_RULES:
+                    raise ValueError("Process rule pre_processing_rules id is invalid")
+
+                if 'enabled' not in pre_processing_rule or pre_processing_rule['enabled'] is None:
+                    raise ValueError("Process rule pre_processing_rules enabled is required")
+
+                if not isinstance(pre_processing_rule['enabled'], bool):
+                    raise ValueError("Process rule pre_processing_rules enabled is invalid")
+
+                unique_pre_processing_rule_dicts[pre_processing_rule['id']] = pre_processing_rule
+
+            args['process_rule']['rules']['pre_processing_rules'] = list(unique_pre_processing_rule_dicts.values())
+
+            if 'segmentation' not in args['process_rule']['rules'] \
+                    or args['process_rule']['rules']['segmentation'] is None:
+                raise ValueError("Process rule segmentation is required")
+
+            if not isinstance(args['process_rule']['rules']['segmentation'], dict):
+                raise ValueError("Process rule segmentation is invalid")
+
+            if 'separator' not in args['process_rule']['rules']['segmentation'] \
+                    or not args['process_rule']['rules']['segmentation']['separator']:
+                raise ValueError("Process rule segmentation separator is required")
+
+            if not isinstance(args['process_rule']['rules']['segmentation']['separator'], str):
+                raise ValueError("Process rule segmentation separator is invalid")
+
+            if 'max_tokens' not in args['process_rule']['rules']['segmentation'] \
+                    or not args['process_rule']['rules']['segmentation']['max_tokens']:
+                raise ValueError("Process rule segmentation max_tokens is required")
+
+            if not isinstance(args['process_rule']['rules']['segmentation']['max_tokens'], int):
+                raise ValueError("Process rule segmentation max_tokens is invalid")

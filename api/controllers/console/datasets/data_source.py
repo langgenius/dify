@@ -9,7 +9,7 @@ from pathlib import Path
 from cachetools import TTLCache
 from flask import request, current_app
 from flask_login import login_required, current_user
-from flask_restful import Resource, marshal_with, fields
+from flask_restful import Resource, marshal_with, fields, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
@@ -20,6 +20,7 @@ from controllers.console.wraps import account_initialization_required
 from core.data_source.notion import NotionPageReader
 from core.index.readers.html_parser import HTMLParser
 from core.index.readers.pdf_parser import PDFParser
+from core.indexing_runner import IndexingRunner
 from extensions.ext_storage import storage
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -184,10 +185,15 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        segment_rule = request.get_json()
-
+        notion_import_info = request.get_json()
+        parser = reqparse.RequestParser()
+        parser.add_argument('notion_info_list', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        args = parser.parse_args()
+        # validate args
+        DocumentService.notion_estimate_args_validate(args)
         indexing_runner = IndexingRunner()
-        response = indexing_runner.notion_indexing_estimate(file_detail, segment_rule['process_rule'])
+        response = indexing_runner.notion_indexing_estimate(args['notion_info_list'], args['process_rule'])
         return response, 200
 
 

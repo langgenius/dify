@@ -5,6 +5,8 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Optional, List
+
+from flask_login import current_user
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from llama_index import SimpleDirectoryReader
@@ -14,6 +16,7 @@ from llama_index.node_parser import SimpleNodeParser, NodeParser
 from llama_index.readers.file.base import DEFAULT_FILE_EXTRACTOR
 from llama_index.readers.file.markdown_parser import MarkdownParser
 
+from core.data_source.notion import NotionPageReader
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.index.keyword_table_index import KeywordTableIndex
 from core.index.readers.html_parser import HTMLParser
@@ -26,6 +29,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import Document, Dataset, DocumentSegment, DatasetProcessRule
 from models.model import UploadFile
+from models.source import DataSourceBinding
 
 
 class IndexingRunner:
@@ -201,43 +205,59 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def notion_indexing_estimate(self, notion_info, tmp_processing_rule: dict) -> dict:
+    def notion_indexing_estimate(self, notion_info_list: dict, tmp_processing_rule: dict) -> dict:
         """
         Estimate the indexing for the document.
         """
-        # load data from file
-        text_docs = self._load_data_from_file(file_detail)
-
-        processing_rule = DatasetProcessRule(
-            mode=tmp_processing_rule["mode"],
-            rules=json.dumps(tmp_processing_rule["rules"])
-        )
-
-        # get node parser for splitting
-        node_parser = self._get_node_parser(processing_rule)
-
-        # split to nodes
-        nodes = self._split_to_nodes(
-            text_docs=text_docs,
-            node_parser=node_parser,
-            processing_rule=processing_rule
-        )
-
+        # load data from notion
         tokens = 0
         preview_texts = []
-        for node in nodes:
-            if len(preview_texts) < 5:
-                preview_texts.append(node.get_text())
+        total_segments = 0
+        for notion_info in notion_info_list:
+            data_source_binding = DataSourceBinding.query.filter(
+                db.and_(
+                    DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                    DataSourceBinding.provider == 'notion',
+                    DataSourceBinding.disabled == False,
+                    DataSourceBinding.source_info['workspace_id'] == notion_info['workspace_id']
+                )
+            ).first()
+            if not data_source_binding:
+                raise ValueError('Data source binding not found.')
+            reader = NotionPageReader(integration_token=data_source_binding.access_token)
+            for page in notion_info['pages']:
+                page_ids = [page['page_id']]
+                documents = reader.load_data(page_ids=page_ids)
 
-            tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
+                processing_rule = DatasetProcessRule(
+                    mode=tmp_processing_rule["mode"],
+                    rules=json.dumps(tmp_processing_rule["rules"])
+                )
+
+                # get node parser for splitting
+                node_parser = self._get_node_parser(processing_rule)
+
+                # split to nodes
+                nodes = self._split_to_nodes(
+                    text_docs=documents,
+                    node_parser=node_parser,
+                    processing_rule=processing_rule
+                )
+                total_segments += len(nodes)
+                for node in nodes:
+                    if len(preview_texts) < 5:
+                        preview_texts.append(node.get_text())
+
+                    tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
 
         return {
-            "total_segments": len(nodes),
+            "total_segments": len(total_segments),
             "tokens": tokens,
             "total_price": '{:f}'.format(TokenCalculator.get_token_price(self.embedding_model_name, tokens)),
             "currency": TokenCalculator.get_currency(self.embedding_model_name),
             "preview": preview_texts
         }
+
     def _load_data(self, document: Document) -> List[Document]:
         # load file
         if document.data_source_type != "upload_file":
