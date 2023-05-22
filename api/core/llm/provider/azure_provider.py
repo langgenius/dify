@@ -78,7 +78,7 @@ class AzureProvider(BaseProvider):
 
     def get_token_type(self):
         # TODO: change to dict when implemented
-        return lambda value: value
+        return dict
 
     def config_validate(self, config: Union[dict | str]):
         """
@@ -93,14 +93,14 @@ class AzureProvider(BaseProvider):
 
             self.get_models(credentials=config)
         except AzureAuthenticationError:
-            raise ValidateFailedError('Azure OpenAI Credentials validation failed, please check your API Key.')
-        except requests.ConnectionError:
-            raise ValidateFailedError('Azure OpenAI Credentials validation failed, please check your API Base Endpoint.')
+            raise ValidateFailedError('Validation failed, please check your API Key.')
+        except (requests.ConnectionError, requests.RequestException):
+            raise ValidateFailedError('Validation failed, please check your API Base Endpoint.')
         except AzureRequestFailedError as ex:
-            raise ValidateFailedError('Azure OpenAI Credentials validation failed, error: {}.'.format(str(ex)))
+            raise ValidateFailedError('Validation failed, error: {}.'.format(str(ex)))
         except Exception as ex:
             logging.exception('Azure OpenAI Credentials validation failed')
-            raise ex
+            raise ValidateFailedError('Validation failed, error: {}.'.format(str(ex)))
 
     def get_encrypted_token(self, config: Union[dict | str]):
         """
