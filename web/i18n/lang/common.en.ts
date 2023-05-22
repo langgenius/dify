@@ -50,6 +50,7 @@ const translation = {
       maxToken: 'Max token',
       maxTokenTip:
         'Max tokens generated is 2,048 or 4,000, depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
+      setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model 4,000.',
     },
     tone: {
       Creative: 'Creative',
@@ -147,12 +148,8 @@ const translation = {
     editKey: 'Edit',
     invalidApiKey: 'Invalid API key',
     azure: {
-      resourceName: 'Resource Name',
-      resourceNamePlaceholder: 'The name of your Azure OpenAI Resource.',
-      deploymentId: 'Deployment ID',
-      deploymentIdPlaceholder: 'The deployment name you chose when you deployed the model.',
-      apiVersion: 'API Version',
-      apiVersionPlaceholder: 'The API version to use for this operation.',
+      apiBase: 'API Base',
+      apiBasePlaceholder: 'The API Base URL of your Azure OpenAI Endpoint.',
       apiKey: 'API Key',
       apiKeyPlaceholder: 'Enter your API key here',
       helpTip: 'Learn Azure OpenAI Service',

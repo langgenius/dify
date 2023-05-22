@@ -35,6 +35,10 @@ const translation = {
     appCreated: 'App created',
     appCreateFailed: 'Failed to create app',
   },
+  emoji: {
+    ok: 'OK',
+    cancel: 'Cancel',
+  }
 }
 
 export default translation

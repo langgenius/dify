@@ -3,6 +3,8 @@ import { AppMode } from './app'
 export type DataSet = {
   id: string
   name: string
+  icon: string
+  icon_background: string
   description: string
   permission: 'only_me' | 'all_team_members'
   data_source_type: 'upload_file'
@@ -27,6 +29,10 @@ export type File = {
 
 export type DataSetListResponse = {
   data: DataSet[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
 }
 
 export type IndexingEstimateResponse = {

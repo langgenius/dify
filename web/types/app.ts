@@ -190,6 +190,12 @@ export type App = {
   id: string
   /** Name */
   name: string
+
+  /** Icon */
+  icon: string
+  /** Icon Background */
+  icon_background: string
+  
   /** Mode */
   mode: AppMode
   /** Enable web app */

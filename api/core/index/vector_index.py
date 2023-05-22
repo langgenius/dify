@@ -83,7 +83,7 @@ class VectorIndex:
         if not self._dataset.index_struct_dict:
             return
 
-        service_context = IndexBuilder.get_default_service_context(tenant_id=self._dataset.tenant_id)
+        service_context = IndexBuilder.get_fake_llm_service_context(tenant_id=self._dataset.tenant_id)
 
         index = vector_store.get_index(
             service_context=service_context,
@@ -101,7 +101,7 @@ class VectorIndex:
         if not self._dataset.index_struct_dict:
             return
 
-        service_context = IndexBuilder.get_default_service_context(tenant_id=self._dataset.tenant_id)
+        service_context = IndexBuilder.get_fake_llm_service_context(tenant_id=self._dataset.tenant_id)
 
         index = vector_store.get_index(
             service_context=service_context,

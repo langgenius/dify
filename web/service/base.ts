@@ -1,4 +1,4 @@
-import { API_PREFIX, MOCK_API_PREFIX, PUBLIC_API_PREFIX, IS_CE_EDITION } from '@/config'
+import { API_PREFIX, PUBLIC_API_PREFIX, IS_CE_EDITION } from '@/config'
 import Toast from '@/app/components/base/toast'
 
 const TIME_OUT = 100000
@@ -33,7 +33,6 @@ export type IOnError = (msg: string) => void
 
 type IOtherOptions = {
   isPublicAPI?: boolean
-  isMock?: boolean
   needAllResponseContent?: boolean
   onData?: IOnData // for stream
   onError?: IOnError
@@ -79,7 +78,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
           if (message.startsWith('data: ')) { // check if it starts with data:
             // console.log(message);
             bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
-            if (bufferObj.status === 400) {
+            if (bufferObj.status === 400 || !bufferObj.event) {
               onData('', false, {
                 conversationId: undefined,
                 messageId: '',
@@ -116,7 +115,14 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
   read()
 }
 
-const baseFetch = (url: string, fetchOptions: any, { isPublicAPI = false, isMock = false, needAllResponseContent }: IOtherOptions) => {
+const baseFetch = (
+  url: string,
+  fetchOptions: any,
+  {
+    isPublicAPI = false,
+    needAllResponseContent
+  }: IOtherOptions
+) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
@@ -124,9 +130,6 @@ const baseFetch = (url: string, fetchOptions: any, { isPublicAPI = false, isMock
   }
 
   let urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  if (isMock)
-    urlPrefix = MOCK_API_PREFIX
-
   let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { method, params, body } = options
