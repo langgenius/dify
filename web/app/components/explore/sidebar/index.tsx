@@ -70,7 +70,7 @@ const SideBar: FC<{
   }, [controlUpdateInstalledApps])
 
   return (
-    <div className='w-[216px] shrink-0 pt-6 px-4 border-r border-gray-200 cursor-pointer'>
+    <div className='w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
       <div>
         <Link
           href='/explore/apps'

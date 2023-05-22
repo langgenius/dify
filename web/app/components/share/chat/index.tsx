@@ -471,7 +471,15 @@ const Main: FC<IMainProps> = ({
       {/* {isNewConversation ? 'new' : 'exist'}
         {JSON.stringify(newConversationInputs ? newConversationInputs : {})}
         {JSON.stringify(existConversationInputs ? existConversationInputs : {})} */}
-      <div className="flex rounded-t-2xl bg-white overflow-hidden">
+      <div 
+        className={cn(
+          "flex rounded-t-2xl bg-white overflow-hidden",
+          isInstalledApp && 'rounded-b-2xl',
+        )}
+        style={isInstalledApp ? {
+          boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)'
+        } : {}}
+      >
         {/* sidebar */}
         {!isMobile && renderSidebar()}
         {isMobile && isShowSidebar && (

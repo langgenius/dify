@@ -15,12 +15,7 @@ const InstalledApp: FC<IInstalledAppProps> = ({
 }) => {
   const { installedApps } = useContext(ExploreContext)
   const installedApp  = installedApps.find(item => item.id === id)
-  const app = installedApp ? {
-    id: installedApp.id,
-    name
-  } : null
   
-
   if(!installedApp) {
     return (
       <div className='flex h-full items-center'>
@@ -30,7 +25,7 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   }
   
   return (
-    <div className='h-full'>
+    <div className='h-full p-2'>
       {installedApp?.app.mode === 'chat' ? (
         <ChatApp isInstalledApp installedAppInfo={installedApp}/>
       ): (
