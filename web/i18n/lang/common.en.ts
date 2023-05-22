@@ -149,7 +149,7 @@ const translation = {
     invalidApiKey: 'Invalid API key',
     azure: {
       apiBase: 'API Base',
-      apiBasePlaceholder: 'The API Base URL of your Azure OpenAI Resource.',
+      apiBasePlaceholder: 'The API Base URL of your Azure OpenAI Endpoint.',
       apiKey: 'API Key',
       apiKeyPlaceholder: 'Enter your API key here',
       helpTip: 'Learn Azure OpenAI Service',
