@@ -67,7 +67,7 @@ const ProviderPage = () => {
   const providerHosted = data?.filter(provider => provider.provider_name === 'openai' && provider.provider_type === 'system')?.[0]
 
   return (
-    <div>
+    <div className='pb-7'>
       {
         providerHosted && !IS_CE_EDITION && (
           <>

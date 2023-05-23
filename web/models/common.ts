@@ -54,18 +54,29 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
   role: 'owner' | 'admin' | 'normal'
 }
 
+export enum ProviderName {
+  OPENAI = 'openai',
+  AZURE_OPENAI = 'azure_openai'
+}
 export type ProviderAzureToken = {
-  openai_api_base: string
-  openai_api_key: string
+  openai_api_base?: string
+  openai_api_key?: string
+}
+export type ProviderTokenType = {
+  [ProviderName.OPENAI]: string
+  [ProviderName.AZURE_OPENAI]: ProviderAzureToken
 }
 export type Provider = {
-  provider_name: string
-  provider_type: string
-  is_valid: boolean
-  is_enabled: boolean
-  last_used: string
-  token?: string | ProviderAzureToken
-}
+  [Name in ProviderName]: {
+    provider_name: Name
+  } & {
+    provider_type: 'custom' | 'system'
+    is_valid: boolean
+    is_enabled: boolean
+    last_used: string
+    token?: ProviderTokenType[Name]
+  }
+}[ProviderName]
 
 export type ProviderHosted = Provider & {
   quota_type: string
