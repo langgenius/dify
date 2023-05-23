@@ -123,7 +123,7 @@ class Completion:
     def get_main_llm_prompt(cls, mode: str, llm: BaseLanguageModel, pre_prompt: str, query: str, inputs: dict,
                             chain_output: Optional[str],
                             memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]) -> \
-            Tuple[Union[str | List[BaseMessage]], List[str]]:
+            Tuple[Union[str | List[BaseMessage]], Optional[List[str]]]:
         # disable template string in query
         query_params = OutLinePromptTemplate.from_template(template=query).input_variables
         if query_params:
@@ -165,9 +165,9 @@ And answer according to the language of the user's question.
 
             if isinstance(llm, BaseChatModel):
                 # use chat llm as completion model
-                return [HumanMessage(content=prompt_content)], list()
+                return [HumanMessage(content=prompt_content)], None
             else:
-                return prompt_content, list()
+                return prompt_content, None
         else:
             messages: List[BaseMessage] = []
 
