@@ -151,6 +151,11 @@ And answer according to the language of the user's question.
 
             if chain_output:
                 inputs['context'] = chain_output
+                context_params = OutLinePromptTemplate.from_template(template=chain_output).input_variables
+                if context_params:
+                    for context_param in context_params:
+                        if context_param not in inputs:
+                            inputs[context_param] = '{' + context_param + '}'
 
             prompt_inputs = {k: inputs[k] for k in prompt_template.input_variables if k in inputs}
             prompt_content = prompt_template.format(
@@ -210,8 +215,16 @@ And answer according to the language of the user's question.
                 rest_tokens = llm_constant.max_context_token_length[memory.llm.model_name] \
                               - memory.llm.max_tokens - curr_message_tokens
                 rest_tokens = max(rest_tokens, 0)
-                history_messages = cls.get_history_messages_from_memory(memory, rest_tokens)
-                human_message_prompt += "\n\n" + history_messages
+                histories = cls.get_history_messages_from_memory(memory, rest_tokens)
+
+                # disable template string in query
+                histories_params = OutLinePromptTemplate.from_template(template=histories).input_variables
+                if histories_params:
+                    for histories_param in histories_params:
+                        if histories_param not in human_inputs:
+                            human_inputs[histories_param] = '{' + histories_param + '}'
+
+                human_message_prompt += "\n\n" + histories
 
             human_message_prompt += query_prompt
 
