@@ -1,4 +1,5 @@
 import redis
+from redis.connection import SSLConnection, Connection
 from flask import request
 from flask_session import Session, SqlAlchemySessionInterface, RedisSessionInterface
 from flask_session.sessions import total_seconds
@@ -23,16 +24,21 @@ def init_app(app):
     if session_type == 'sqlalchemy':
         app.session_interface = sqlalchemy_session_interface
     elif session_type == 'redis':
+        connection_class = Connection
+        if app.config.get('SESSION_REDIS_USE_SSL', False):
+            connection_class = SSLConnection
+
         sess_redis_client = redis.Redis()
         sess_redis_client.connection_pool = redis.ConnectionPool(**{
             'host': app.config.get('SESSION_REDIS_HOST', 'localhost'),
             'port': app.config.get('SESSION_REDIS_PORT', 6379),
+            'username': app.config.get('SESSION_REDIS_USERNAME', None),
             'password': app.config.get('SESSION_REDIS_PASSWORD', None),
             'db': app.config.get('SESSION_REDIS_DB', 2),
             'encoding': 'utf-8',
             'encoding_errors': 'strict',
             'decode_responses': False
-        })
+        }, connection_class=connection_class)
 
         app.extensions['session_redis'] = sess_redis_client
 

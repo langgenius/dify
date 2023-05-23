@@ -29,7 +29,7 @@ class WeaviateVectorStoreClient(BaseVectorStoreClient):
         return weaviate.Client(
             url=endpoint,
             auth_client_secret=auth_config,
-            timeout_config=(5, 15),
+            timeout_config=(5, 60),
             startup_period=None
         )
 

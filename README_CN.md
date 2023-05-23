@@ -1,11 +1,15 @@
 ![](./images/describe-cn.jpg)
 <p align="center">
   <a href="./README.md">English</a> |
-  <a href="./README_CN.md">简体中文</a>
+  <a href="./README_CN.md">简体中文</a> |
+  <a href="./README_JA.md">日本語</a>
 </p>
 
 
 [官方网站](https://dify.ai) • [文档](https://docs.dify.ai/v/zh-hans) • [Twitter](https://twitter.com/dify_ai) •  [Discord](https://discord.gg/FngNHpbcY7)
+
+在 Product Hunt 上投我们一票吧 ↓  
+<a href="https://www.producthunt.com/posts/dify-ai"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?sanitize=true&post_id=dify-ai&theme=light" alt="Product Hunt Badge" width="250" height="54"></a>
 
 **Dify** 是一个易用的 LLMOps 平台，旨在让更多人可以创建可持续运营的原生 AI 应用。Dify 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
 

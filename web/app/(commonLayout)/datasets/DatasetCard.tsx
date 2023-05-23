@@ -18,15 +18,15 @@ import classNames from 'classnames'
 
 export type DatasetCardProps = {
   dataset: DataSet
+  onDelete?: () => void
 }
 
 const DatasetCard = ({
   dataset,
+  onDelete
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-
-  const { mutate: mutateDatasets } = useSWR({ url: '/datasets', params: { page: 1 } }, fetchDatasets)
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const onDeleteClick: MouseEventHandler = useCallback((e) => {
@@ -37,7 +37,8 @@ const DatasetCard = ({
     try {
       await deleteDataset(dataset.id)
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
-      mutateDatasets()
+      if (onDelete)
+        onDelete()
     }
     catch (e: any) {
       notify({ type: 'error', message: `${t('dataset.datasetDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}` })

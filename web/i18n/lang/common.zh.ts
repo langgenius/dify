@@ -50,6 +50,7 @@ const translation = {
       maxToken: '最大 Token',
       maxTokenTip:
         '生成的最大令牌数为 2,048 或 4,000，取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 4 个中文字符。',
+      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 4,000。',
     },
     tone: {
       Creative: '创意',
@@ -148,14 +149,10 @@ const translation = {
     editKey: '编辑',
     invalidApiKey: '无效的 API 密钥',
     azure: {
-      resourceName: 'Resource Name',
-      resourceNamePlaceholder: 'The name of your Azure OpenAI Resource.',
-      deploymentId: 'Deployment ID',
-      deploymentIdPlaceholder: 'The deployment name you chose when you deployed the model.',
-      apiVersion: 'API Version',
-      apiVersionPlaceholder: 'The API version to use for this operation.',
+      apiBase: 'API Base',
+      apiBasePlaceholder: '输入您的 Azure OpenAI API Base 地址',
       apiKey: 'API Key',
-      apiKeyPlaceholder: 'Enter your API key here',
+      apiKeyPlaceholder: '输入你的 API 密钥',
       helpTip: '了解 Azure OpenAI Service',
     },
     openaiHosted: {

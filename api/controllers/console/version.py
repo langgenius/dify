@@ -19,6 +19,14 @@ class VersionApi(Resource):
         args = parser.parse_args()
         check_update_url = current_app.config['CHECK_UPDATE_URL']
 
+        if not check_update_url:
+            return {
+                'version': '0.0.0',
+                'release_date': '',
+                'release_notes': '',
+                'can_auto_update': False
+            }
+
         try:
             response = requests.get(check_update_url, {
                 'current_version': args.get('current_version')

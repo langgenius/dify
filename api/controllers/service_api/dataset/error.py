@@ -16,5 +16,5 @@ class DocumentIndexingError(BaseHTTPException):
 
 class DatasetNotInitedError(BaseHTTPException):
     error_code = 'dataset_not_inited'
-    description = "Dataset not inited."
+    description = "The dataset is still being initialized or indexing. Please wait a moment."
     code = 403

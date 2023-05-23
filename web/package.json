@@ -10,6 +10,7 @@
     "fix": "next lint --fix"
   },
   "dependencies": {
+    "@emoji-mart/data": "^1.1.2",
     "@formatjs/intl-localematcher": "^0.2.32",
     "@headlessui/react": "^1.7.13",
     "@heroicons/react": "^2.0.16",
@@ -33,6 +34,7 @@
     "dayjs": "^1.11.7",
     "echarts": "^5.4.1",
     "echarts-for-react": "^3.0.2",
+    "emoji-mart": "^5.5.2",
     "eslint": "8.36.0",
     "eslint-config-next": "13.2.4",
     "i18next": "^22.4.13",

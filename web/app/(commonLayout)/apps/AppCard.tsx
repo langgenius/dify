@@ -16,10 +16,12 @@ import AppsContext from '@/context/app-context'
 
 export type AppCardProps = {
   app: App
+  onDelete?: () => void
 }
 
 const AppCard = ({
   app,
+  onDelete
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -35,6 +37,8 @@ const AppCard = ({
     try {
       await deleteApp(app.id)
       notify({ type: 'success', message: t('app.appDeleted') })
+      if (onDelete)
+        onDelete()
       mutateApps()
     }
     catch (e: any) {
@@ -47,7 +51,7 @@ const AppCard = ({
     <>
       <Link href={`/app/${app.id}/overview`} className={style.listItem}>
         <div className={style.listItemTitle}>
-          <AppIcon size='small' />
+          <AppIcon size='small' icon={app.icon} background={app.icon_background} />
           <div className={style.listItemHeading}>
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>

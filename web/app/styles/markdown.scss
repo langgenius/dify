@@ -54,6 +54,7 @@
   font-weight: 400;
   line-height: 1.5;
   word-wrap: break-word;
+  word-break: break-all;
   user-select: text;
 }
 
@@ -593,6 +594,7 @@
 
 .markdown-body table th {
   font-weight: var(--base-text-weight-semibold, 600);
+  white-space: nowrap;
 }
 
 .markdown-body table th,

@@ -10,13 +10,14 @@ from werkzeug.exceptions import NotFound, Forbidden
 
 import services
 from controllers.console import api
-from controllers.console.app.error import ProviderNotInitializeError
+from controllers.console.app.error import ProviderNotInitializeError, ProviderQuotaExceededError, \
+    ProviderModelCurrentlyNotSupportError
 from controllers.console.datasets.error import DocumentAlreadyFinishedError, InvalidActionError, DocumentIndexingError, \
     InvalidMetadataError, ArchivedDocumentImmutableError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
-from core.llm.error import ProviderTokenNotInitError
+from core.llm.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from extensions.ext_redis import redis_client
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -222,6 +223,10 @@ class DatasetDocumentListApi(Resource):
             document = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
 
         return document
 
@@ -259,6 +264,10 @@ class DatasetInitApi(Resource):
             )
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
 
         response = {
             'dataset': dataset,

@@ -18,6 +18,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.document_indexing_task import document_indexing_task
 
 
@@ -97,7 +98,12 @@ class DatasetService:
     def update_dataset(dataset_id, data, user):
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_permission(dataset, user)
-
+        if dataset.indexing_technique != data['indexing_technique']:
+            # if update indexing_technique
+            if data['indexing_technique'] == 'economy':
+                deal_dataset_vector_index_task.delay(dataset_id, 'remove')
+            elif data['indexing_technique'] == 'high_quality':
+                deal_dataset_vector_index_task.delay(dataset_id, 'add')
         filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
 
         filtered_data['updated_by'] = user.id

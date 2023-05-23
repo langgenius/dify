@@ -441,6 +441,8 @@ const Main: FC<IMainProps> = () => {
     <div className='bg-gray-100'>
       <Header
         title={siteInfo.title}
+        icon={siteInfo.icon || ''}
+        icon_background={siteInfo.icon_background || '#FFEAD5'}
         isMobile={isMobile}
         onShowSideBar={showSidebar}
         onCreateNewChat={() => handleConversationIdChange('-1')}

@@ -82,29 +82,33 @@ class ProviderTokenApi(Resource):
 
         args = parser.parse_args()
 
-        if not args['token']:
-            raise ValueError('Token is empty')
+        if args['token']:
+            try:
+                ProviderService.validate_provider_configs(
+                    tenant=current_user.current_tenant,
+                    provider_name=ProviderName(provider),
+                    configs=args['token']
+                )
+                token_is_valid = True
+            except ValidateFailedError as ex:
+                raise ValueError(str(ex))
 
-        try:
-            ProviderService.validate_provider_configs(
+            base64_encrypted_token = ProviderService.get_encrypted_token(
                 tenant=current_user.current_tenant,
                 provider_name=ProviderName(provider),
                 configs=args['token']
             )
-            token_is_valid = True
-        except ValidateFailedError:
+        else:
+            base64_encrypted_token = None
             token_is_valid = False
 
         tenant = current_user.current_tenant
 
-        base64_encrypted_token = ProviderService.get_encrypted_token(
-            tenant=current_user.current_tenant,
-            provider_name=ProviderName(provider),
-            configs=args['token']
-        )
-
-        provider_model = Provider.query.filter_by(tenant_id=tenant.id, provider_name=provider,
-                                                  provider_type=ProviderType.CUSTOM.value).first()
+        provider_model = db.session.query(Provider).filter(
+                Provider.tenant_id == tenant.id,
+                Provider.provider_name == provider,
+                Provider.provider_type == ProviderType.CUSTOM.value
+            ).first()
 
         # Only allow updating token for CUSTOM provider type
         if provider_model:
@@ -116,6 +120,16 @@ class ProviderTokenApi(Resource):
                                       encrypted_config=base64_encrypted_token,
                                       is_valid=token_is_valid)
             db.session.add(provider_model)
+
+        if provider_model.is_valid:
+            other_providers = db.session.query(Provider).filter(
+                Provider.tenant_id == tenant.id,
+                Provider.provider_name != provider,
+                Provider.provider_type == ProviderType.CUSTOM.value
+            ).all()
+
+            for other_provider in other_providers:
+                other_provider.is_valid = False
 
         db.session.commit()
 
@@ -143,7 +157,7 @@ class ProviderTokenValidateApi(Resource):
         args = parser.parse_args()
 
         # todo: remove this when the provider is supported
-        if provider in [ProviderName.ANTHROPIC.value, ProviderName.AZURE_OPENAI.value, ProviderName.COHERE.value,
+        if provider in [ProviderName.ANTHROPIC.value, ProviderName.COHERE.value,
                         ProviderName.HUGGINGFACEHUB.value]:
             return {'result': 'success', 'warning': 'MOCK: This provider is not supported yet.'}
 

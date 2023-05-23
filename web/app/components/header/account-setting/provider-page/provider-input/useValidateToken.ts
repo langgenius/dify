@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, SetStateAction, Dispatch } from 'react'
 import debounce from 'lodash-es/debounce'
 import { DebouncedFunc } from 'lodash-es'
 import { validateProviderKey } from '@/service/common'
@@ -8,14 +8,24 @@ export enum ValidatedStatus {
   Error = 'error',
   Exceed = 'exceed'
 }
+export type SetValidatedStatus = Dispatch<SetStateAction<ValidatedStatus | undefined>>
+export type ValidateFn = DebouncedFunc<(token: any, config: ValidateFnConfig) => void>
+type ValidateTokenReturn = [
+  boolean, 
+  ValidatedStatus | undefined, 
+  SetValidatedStatus,
+  ValidateFn
+]
+export type ValidateFnConfig = {
+  beforeValidating: (token: any) => boolean
+}
 
-const useValidateToken = (providerName: string): [boolean, ValidatedStatus | undefined, DebouncedFunc<(token: string) => Promise<void>>] => {
+const useValidateToken = (providerName: string): ValidateTokenReturn => {
   const [validating, setValidating] = useState(false)
   const [validatedStatus, setValidatedStatus] = useState<ValidatedStatus | undefined>()
-  const validate = useCallback(debounce(async (token: string) => {
-    if (!token) {
-      setValidatedStatus(undefined)
-      return
+  const validate = useCallback(debounce(async (token: string, config: ValidateFnConfig) => {
+    if (!config.beforeValidating(token)) {
+      return false
     }
     setValidating(true)
     try {
@@ -24,8 +34,10 @@ const useValidateToken = (providerName: string): [boolean, ValidatedStatus | und
     } catch (e: any) {
       if (e.status === 400) {
         e.json().then(({ code }: any) => {
-          if (code === 'provider_request_failed') {
+          if (code === 'provider_request_failed' && providerName === 'openai') {
             setValidatedStatus(ValidatedStatus.Exceed)
+          } else {
+            setValidatedStatus(ValidatedStatus.Error)
           }
         })
       } else {
@@ -39,7 +51,8 @@ const useValidateToken = (providerName: string): [boolean, ValidatedStatus | und
   return [
     validating,
     validatedStatus,
-    validate,
+    setValidatedStatus,
+    validate
   ]
 }
 

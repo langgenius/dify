@@ -75,6 +75,7 @@ export default function AccountSetting({
       isShow
       onClose={() => { }}
       className={s.modal}
+      wrapperClassName='pt-[60px]'
     >
       <div className='flex'>
         <div className='w-[200px] p-4 border border-gray-100'>
