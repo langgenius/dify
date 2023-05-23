@@ -42,7 +42,9 @@ const Datasets = () => {
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-8 sm:grid-cols-2 lg:grid-cols-4 grow shrink-0'>
-      {data?.map(({ data: datasets }) => datasets.map(dataset => (<DatasetCard key={dataset.id} dataset={dataset} />)))}
+      {data?.map(({ data: datasets }) => datasets.map(dataset => (
+        <DatasetCard key={dataset.id} dataset={dataset} onDelete={mutate} />)
+      ))}
       <NewDatasetCard ref={anchorRef} />
     </nav>
   )
