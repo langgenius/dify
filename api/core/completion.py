@@ -190,7 +190,7 @@ And answer according to the language of the user's question.
             if pre_prompt:
                 human_message_prompt += pre_prompt
 
-            query_prompt = "\nHuman:{query}\nAI:"
+            query_prompt = "\nHuman: {query}\nAI: "
 
             if memory:
                 # append chat histories
