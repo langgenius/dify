@@ -66,6 +66,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
   let isFirstMessage = true
   function read() {
     let hasError = false
+    let firstHalfMessage: string
     reader.read().then((result: any) => {
       if (result.done) {
         onCompleted && onCompleted()
@@ -75,9 +76,19 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
       const lines = buffer.split('\n')
       try {
         lines.forEach((message) => {
+          if (firstHalfMessage) {
+            message += firstHalfMessage
+            firstHalfMessage = ''
+          }
           if (message.startsWith('data: ')) { // check if it starts with data:
             // console.log(message);
-            bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
+            try {
+              bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
+            } catch (e) {
+              // JSON has been truncated
+              firstHalfMessage = message
+              return
+            }
             if (bufferObj.status === 400 || !bufferObj.event) {
               onData('', false, {
                 conversationId: undefined,
