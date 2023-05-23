@@ -124,6 +124,13 @@ class Completion:
                             chain_output: Optional[str],
                             memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]) -> \
             Union[str | List[BaseMessage]]:
+        # disable template string in query
+        query_params = OutLinePromptTemplate.from_template(template=query).input_variables
+        if query_params:
+            for query_param in query_params:
+                if query_param not in inputs:
+                    inputs[query_param] = '{' + query_param + '}'
+
         pre_prompt = PromptBuilder.process_template(pre_prompt) if pre_prompt else pre_prompt
         if mode == 'completion':
             prompt_template = OutLinePromptTemplate.from_template(
