@@ -56,6 +56,9 @@ class ConversationMessageTask:
         )
 
     def init(self):
+        provider_name = LLMBuilder.get_default_provider(self.app.tenant_id)
+        self.model_dict['provider'] = provider_name
+
         override_model_configs = None
         if self.is_override:
             override_model_configs = {
