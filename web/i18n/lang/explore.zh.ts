@@ -27,10 +27,11 @@ const translation = {
     nameRequired: '应用程序名称不能为空',
   },
   category: {
-    'News': '新闻',
-    'Music': '音乐',
-    'Games': '游戏',
-    'Sports': '体育',
+    'Assistant': '助手',
+    'Writing': '写作',
+    'Translate': '翻译',
+    'Programming': '编程',
+    'HR': '人力资源',
   }
 }
 

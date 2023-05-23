@@ -27,10 +27,11 @@ const translation = {
     nameRequired: 'App name is required',
   },
   category: {
-    'News': 'News',
-    'Music': 'Music',
-    'Games': 'Games',
-    'Sports': 'Sports',
+    'Assistant': 'Assistant',
+    'Writing': 'Writing',
+    'Translate': 'Translate',
+    'Programming': 'Programming',
+    'HR': 'HR',
   }
 }
 
