@@ -8,6 +8,7 @@ from core.index.vector_index import VectorIndex
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Document, Dataset
 
+
 @shared_task
 def deal_dataset_vector_index_task(dataset_id: str, action: str):
     """
@@ -36,8 +37,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     segments = db.session.query(DocumentSegment).filter(
                         DocumentSegment.document_id == document.id,
                         DocumentSegment.enabled == True
-                    ) \
-                        .order_by(DocumentSegment.position.asc()).all()
+                    ) .order_by(DocumentSegment.position.asc()).all()
 
                     nodes = []
                     previous_node = None
@@ -51,18 +51,17 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
                             previous_node.relationships[DocumentRelationship.NEXT] = segment.index_node_id
 
-                            node = Node(
-                                doc_id=segment.index_node_id,
-                                doc_hash=segment.index_node_hash,
-                                text=segment.content,
-                                extra_info=None,
-                                node_info=None,
-                                relationships=relationships
-                            )
+                        node = Node(
+                            doc_id=segment.index_node_id,
+                            doc_hash=segment.index_node_hash,
+                            text=segment.content,
+                            extra_info=None,
+                            node_info=None,
+                            relationships=relationships
+                        )
 
-                            previous_node = node
-
-                            nodes.append(node)
+                        previous_node = node
+                        nodes.append(node)
                     # save vector index
                     vector_index.add_nodes(
                         nodes=nodes,
