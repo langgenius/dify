@@ -157,7 +157,7 @@ class ProviderTokenValidateApi(Resource):
         args = parser.parse_args()
 
         # todo: remove this when the provider is supported
-        if provider in [ProviderName.ANTHROPIC.value, ProviderName.AZURE_OPENAI.value, ProviderName.COHERE.value,
+        if provider in [ProviderName.ANTHROPIC.value, ProviderName.COHERE.value,
                         ProviderName.HUGGINGFACEHUB.value]:
             return {'result': 'success', 'warning': 'MOCK: This provider is not supported yet.'}
 
