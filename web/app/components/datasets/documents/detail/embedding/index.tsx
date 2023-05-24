@@ -161,6 +161,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const totalCount = indexingStatusDetail?.total_segments || 0
     if (totalCount === 0) return 0
     const percent = Math.round(completedCount * 100 / totalCount)
+    console.log(completedCount, totalCount, percent)
     return percent > 100 ? 100 : percent
   }, [indexingStatusDetail])
 
