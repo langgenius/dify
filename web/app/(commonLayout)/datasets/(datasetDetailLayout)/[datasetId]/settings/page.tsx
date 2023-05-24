@@ -3,7 +3,13 @@ import { getLocaleOnServer } from '@/i18n/server'
 import { useTranslation } from '@/i18n/i18next-serverside-config'
 import Form from '@/app/components/datasets/settings/form'
 
-const Settings = async () => {
+type Props = {
+  params: { datasetId: string }
+}
+
+const Settings = async ({
+  params: { datasetId },
+}: Props) => {
   const locale = getLocaleOnServer()
   const { t } = await useTranslation(locale, 'dataset-settings')
 
@@ -14,7 +20,7 @@ const Settings = async () => {
         <div className='text-sm text-gray-500'>{t('desc')}</div>
       </div>
       <div>
-        <Form />
+        <Form datasetId={datasetId} />
       </div>
     </div>
   )
