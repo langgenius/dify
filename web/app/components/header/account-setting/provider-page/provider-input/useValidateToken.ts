@@ -8,11 +8,16 @@ export enum ValidatedStatus {
   Error = 'error',
   Exceed = 'exceed'
 }
-export type SetValidatedStatus = Dispatch<SetStateAction<ValidatedStatus | undefined>>
+export type ValidatedStatusState = {
+  status?: ValidatedStatus,
+  message?: string
+}
+// export type ValidatedStatusState = ValidatedStatus | undefined | ValidatedError
+export type SetValidatedStatus = Dispatch<SetStateAction<ValidatedStatusState>>
 export type ValidateFn = DebouncedFunc<(token: any, config: ValidateFnConfig) => void>
 type ValidateTokenReturn = [
   boolean, 
-  ValidatedStatus | undefined, 
+  ValidatedStatusState, 
   SetValidatedStatus,
   ValidateFn
 ]
@@ -22,7 +27,7 @@ export type ValidateFnConfig = {
 
 const useValidateToken = (providerName: string): ValidateTokenReturn => {
   const [validating, setValidating] = useState(false)
-  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatus | undefined>()
+  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatusState>({})
   const validate = useCallback(debounce(async (token: string, config: ValidateFnConfig) => {
     if (!config.beforeValidating(token)) {
       return false
@@ -30,19 +35,12 @@ const useValidateToken = (providerName: string): ValidateTokenReturn => {
     setValidating(true)
     try {
       const res = await validateProviderKey({ url: `/workspaces/current/providers/${providerName}/token-validate`, body: { token } })
-      setValidatedStatus(res.result === 'success' ? ValidatedStatus.Success : ValidatedStatus.Error)
+      setValidatedStatus(
+        res.result === 'success' 
+          ? { status: ValidatedStatus.Success } 
+          : { status: ValidatedStatus.Error, message: res.error })
     } catch (e: any) {
-      if (e.status === 400) {
-        e.json().then(({ code }: any) => {
-          if (code === 'provider_request_failed' && providerName === 'openai') {
-            setValidatedStatus(ValidatedStatus.Exceed)
-          } else {
-            setValidatedStatus(ValidatedStatus.Error)
-          }
-        })
-      } else {
-        setValidatedStatus(ValidatedStatus.Error)
-      }
+      setValidatedStatus({ status: ValidatedStatus.Error, message: e.message })
     } finally {
       setValidating(false)
     }
