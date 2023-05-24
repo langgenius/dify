@@ -38,42 +38,43 @@ class IndexingRunner:
         self.storage = storage
         self.embedding_model_name = embedding_model_name
 
-    def run(self, document: Document):
+    def run(self, documents: List[Document]):
         """Run the indexing process."""
-        # get dataset
-        dataset = Dataset.query.filter_by(
-            id=document.dataset_id
-        ).first()
+        for document in documents:
+            # get dataset
+            dataset = Dataset.query.filter_by(
+                id=document.dataset_id
+            ).first()
 
-        if not dataset:
-            raise ValueError("no dataset found")
+            if not dataset:
+                raise ValueError("no dataset found")
 
-        # load file
-        text_docs = self._load_data(document)
+            # load file
+            text_docs = self._load_data(document)
 
-        # get the process rule
-        processing_rule = db.session.query(DatasetProcessRule). \
-            filter(DatasetProcessRule.id == document.dataset_process_rule_id). \
-            first()
+            # get the process rule
+            processing_rule = db.session.query(DatasetProcessRule). \
+                filter(DatasetProcessRule.id == document.dataset_process_rule_id). \
+                first()
 
-        # get node parser for splitting
-        node_parser = self._get_node_parser(processing_rule)
+            # get node parser for splitting
+            node_parser = self._get_node_parser(processing_rule)
 
-        # split to nodes
-        nodes = self._step_split(
-            text_docs=text_docs,
-            node_parser=node_parser,
-            dataset=dataset,
-            document=document,
-            processing_rule=processing_rule
-        )
+            # split to nodes
+            nodes = self._step_split(
+                text_docs=text_docs,
+                node_parser=node_parser,
+                dataset=dataset,
+                document=document,
+                processing_rule=processing_rule
+            )
 
-        # build index
-        self._build_index(
-            dataset=dataset,
-            document=document,
-            nodes=nodes
-        )
+            # build index
+            self._build_index(
+                dataset=dataset,
+                document=document,
+                nodes=nodes
+            )
 
     def run_in_splitting_status(self, document: Document):
         """Run the indexing process when the index_status is splitting."""
@@ -362,7 +363,7 @@ class IndexingRunner:
             embedding_model_name=self.embedding_model_name,
             document_id=document.id
         )
-
+        # add document segments
         doc_store.add_documents(nodes)
 
         # update document status to indexing

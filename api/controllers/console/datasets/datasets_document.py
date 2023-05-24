@@ -220,7 +220,7 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            document = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:
@@ -228,7 +228,7 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return document
+        return documents
 
 
 class DatasetInitApi(Resource):
@@ -257,7 +257,7 @@ class DatasetInitApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            dataset, document = DocumentService.save_document_without_dataset_id(
+            dataset, documents = DocumentService.save_document_without_dataset_id(
                 tenant_id=current_user.current_tenant_id,
                 document_data=args,
                 account=current_user
@@ -271,7 +271,7 @@ class DatasetInitApi(Resource):
 
         response = {
             'dataset': dataset,
-            'document': document
+            'documents': documents
         }
 
         return response

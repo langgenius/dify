@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, Document, DatasetQuery, DatasetProcessRule, AppDatasetJoin
 from models.model import UploadFile
+from models.source import DataSourceBinding
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -374,47 +375,85 @@ class DocumentService:
                 )
             db.session.add(dataset_process_rule)
             db.session.commit()
-
-        file_name = ''
-        data_source_info = {}
-        if document_data["data_source"]["type"] == "upload_file":
-            file_id = document_data["data_source"]["info"]
-            file = db.session.query(UploadFile).filter(
-                UploadFile.tenant_id == dataset.tenant_id,
-                UploadFile.id == file_id
-            ).first()
-
-            # raise error if file not found
-            if not file:
-                raise FileNotExistsError()
-
-            file_name = file.name
-            data_source_info = {
-                "upload_file_id": file_id,
-            }
-
-        # save document
         position = DocumentService.get_documents_position(dataset.id)
+        document_ids = []
+        documents = []
+        if document_data["data_source"]["type"] == "upload_file":
+            upload_file_list = document_data["data_source"]["info"]
+            for upload_file in upload_file_list:
+                file_id = upload_file["upload_file_id"]
+                file = db.session.query(UploadFile).filter(
+                    UploadFile.tenant_id == dataset.tenant_id,
+                    UploadFile.id == file_id
+                ).first()
+
+                # raise error if file not found
+                if not file:
+                    raise FileNotExistsError()
+
+                file_name = file.name
+                data_source_info = {
+                    "upload_file_id": file_id,
+                }
+                document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                                                         document_data["data_source"]["type"],
+                                                         data_source_info, created_from, position,
+                                                         account, file_name)
+                db.session.add(document)
+                db.session.flush()
+                document_ids.append(document.id)
+                documents.append(document)
+                position += 1
+        elif document_data["data_source"]["type"] == "notion_import":
+            notion_info_list = document_data["data_source"]['info']
+            for notion_info in notion_info_list:
+                workspace_id = notion_info['workspace_id']
+                data_source_binding = DataSourceBinding.query.filter(
+                    db.and_(
+                        DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                        DataSourceBinding.provider == 'notion',
+                        DataSourceBinding.disabled == False,
+                        DataSourceBinding.source_info['workspace_id'] == workspace_id
+                    )
+                ).first()
+                if not data_source_binding:
+                    raise ValueError('Data source binding not found.')
+                for page in notion_info['pages']:
+                    data_source_info = {
+                        "notion_page_id": page['page_id'],
+                    }
+                    document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                                                             document_data["data_source"]["type"],
+                                                             data_source_info, created_from, position,
+                                                             account, page['page_name'])
+                    db.session.add(document)
+                    db.session.flush()
+                    document_ids.append(document.id)
+                    documents.append(document)
+                    position += 1
+
+        db.session.commit()
+
+        # trigger async task
+        document_indexing_task.delay(dataset.id, document_ids)
+
+        return documents
+
+    @staticmethod
+    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, data_source_info: dict,
+                      created_from: str, position: int, account: Account, name: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             position=position,
-            data_source_type=document_data["data_source"]["type"],
+            data_source_type=data_source_type,
             data_source_info=json.dumps(data_source_info),
-            dataset_process_rule_id=dataset_process_rule.id,
+            dataset_process_rule_id=process_rule_id,
             batch=time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999)),
-            name=file_name,
+            name=name,
             created_from=created_from,
             created_by=account.id,
-            # created_api_request_id = db.Column(UUID, nullable=True)
         )
-
-        db.session.add(document)
-        db.session.commit()
-
-        # trigger async task
-        document_indexing_task.delay(document.dataset_id, document.id)
-
         return document
 
     @staticmethod
@@ -431,15 +470,15 @@ class DocumentService:
         db.session.add(dataset)
         db.session.flush()
 
-        document = DocumentService.save_document_with_dataset_id(dataset, document_data, account)
+        documents = DocumentService.save_document_with_dataset_id(dataset, document_data, account)
 
         cut_length = 18
-        cut_name = document.name[:cut_length]
-        dataset.name = cut_name + '...' if len(document.name) > cut_length else cut_name
-        dataset.description = 'useful for when you want to answer queries about the ' + document.name
+        cut_name = documents[0].name[:cut_length]
+        dataset.name = cut_name + '...' if len(documents[0].name) > cut_length else cut_name
+        dataset.description = 'useful for when you want to answer queries about the ' + documents[0].name
         db.session.commit()
 
-        return dataset, document
+        return dataset, documents
 
     @classmethod
     def document_create_args_validate(cls, args: dict):
