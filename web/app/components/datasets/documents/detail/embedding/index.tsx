@@ -1,4 +1,4 @@
-import { FC, useCallback, useMemo, useState } from 'react'
+import { FC, useCallback, useMemo, useState, useEffect } from 'react'
 import React from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
@@ -14,7 +14,7 @@ import { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { fetchProcessRule, fetchIndexingEstimate, fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
+import { fetchProcessRule, fetchIndexingEstimate, fetchIndexingStatus as doFetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import SegmentCard from '../completed/SegmentCard'
 import { FieldInfo } from '../metadata'
 import s from './style.module.css'
@@ -23,6 +23,7 @@ import { DocumentContext } from '../index'
 import DatasetDetailContext from '@/context/dataset-detail'
 import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
+import { useGetState } from 'ahooks'
 
 type Props = {
   detail?: FullDocumentDetail
@@ -120,14 +121,46 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const localDocumentId = docId ?? documentId
   const localIndexingTechnique = indexingType ?? indexingTechnique
 
-  const { data: indexingStatusDetail, error: indexingStatusErr, mutate: statusMutate } = useSWR({
-    action: 'fetchIndexingStatus',
-    datasetId: localDatasetId,
-    documentId: localDocumentId,
-  }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-    refreshInterval: 2500,
-    revalidateOnFocus: false,
-  })
+  // const { data: indexingStatusDetailFromApi, error: indexingStatusErr, mutate: statusMutate } = useSWR({
+  //   action: 'fetchIndexingStatus',
+  //   datasetId: localDatasetId,
+  //   documentId: localDocumentId,
+  // }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
+  //   refreshInterval: 2500,
+  //   revalidateOnFocus: false,
+  // })
+
+  const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
+  const fetchIndexingStatus = async () => {
+    const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
+    setIndexingStatusDetail(status)
+    return
+  }
+
+  const [runId, setRunId, getRunId] = useGetState<any>(null)
+  const startQueryStatus = () => {
+    const runId = setInterval(() => {
+      const indexingStatusDetail = getIndexingStatusDetail()
+      if(indexingStatusDetail?.indexing_status === 'completed') {
+        stopQueryStatus()
+        return
+      }
+      fetchIndexingStatus()
+    }, 2500) 
+    setRunId(runId)
+  }
+  const stopQueryStatus = () => {
+    clearInterval(getRunId())
+  }
+
+  useEffect(() => {
+    fetchIndexingStatus()
+    startQueryStatus()
+    return () => {
+      stopQueryStatus()
+    }
+  }, [])
+
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
     action: 'fetchIndexingEstimate',
@@ -161,7 +194,6 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const totalCount = indexingStatusDetail?.total_segments || 0
     if (totalCount === 0) return 0
     const percent = Math.round(completedCount * 100 / totalCount)
-    console.log(completedCount, totalCount, percent)
     return percent > 100 ? 100 : percent
   }, [indexingStatusDetail])
 
@@ -170,7 +202,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId: localDatasetId, documentId: localDocumentId }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      statusMutate()
+      setIndexingStatusDetail(null)
     } else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
     }
