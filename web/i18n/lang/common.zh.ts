@@ -141,6 +141,7 @@ const translation = {
     apiKey: "API 密钥",
     enterYourKey: "输入你的 API 密钥",
     invalidKey: '无效的 OpenAI API 密钥',
+    validatedError: "校验失败：",
     validating: "验证密钥中...",
     saveFailed: "API 密钥保存失败",
     apiKeyExceedBill: "此 API KEY 已没有可用配额，请阅读",

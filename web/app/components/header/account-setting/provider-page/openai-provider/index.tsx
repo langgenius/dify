@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import ProviderInput from '../provider-input'
 import Link from 'next/link'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
-import useValidateToken, { ValidatedStatus } from '../provider-input/useValidateToken'
+import useValidateToken, { ValidatedStatus, ValidatedStatusState } from '../provider-input/useValidateToken'
 import { 
   ValidatedErrorIcon, 
   ValidatedSuccessIcon,
@@ -15,7 +15,7 @@ import {
 
 interface IOpenaiProviderProps {
   provider: Provider
-  onValidatedStatus: (status?: ValidatedStatus) => void
+  onValidatedStatus: (status?: ValidatedStatusState) => void
   onTokenChange: (token: string) => void
 }
 
@@ -31,7 +31,7 @@ const OpenaiProvider = ({
     if (token === provider.token) {
       setToken('')
       onTokenChange('')
-      setValidatedStatus(undefined)
+      setValidatedStatus({})
     }
   }
   const handleChange = (v: string) => {
@@ -40,7 +40,7 @@ const OpenaiProvider = ({
     validate(v, {
       beforeValidating: () => {
         if (!v) {
-          setValidatedStatus(undefined)
+          setValidatedStatus({})
           return false
         }
         return true
@@ -54,10 +54,10 @@ const OpenaiProvider = ({
   }, [validatedStatus])
 
   const getValidatedIcon = () => {
-    if (validatedStatus === ValidatedStatus.Error || validatedStatus === ValidatedStatus.Exceed) {
+    if (validatedStatus?.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed) {
       return <ValidatedErrorIcon />
     }
-    if (validatedStatus === ValidatedStatus.Success) {
+    if (validatedStatus.status === ValidatedStatus.Success) {
       return <ValidatedSuccessIcon />
     }
   }
@@ -65,11 +65,11 @@ const OpenaiProvider = ({
     if (validating) {
       return <ValidatingTip />
     }
-    if (validatedStatus === ValidatedStatus.Exceed) {
+    if (validatedStatus?.status === ValidatedStatus.Success) {
       return <ValidatedExceedOnOpenaiTip />
     }
-    if (validatedStatus === ValidatedStatus.Error) {
-      return <ValidatedErrorOnOpenaiTip />
+    if (validatedStatus?.status === ValidatedStatus.Error) {
+      return <ValidatedErrorOnOpenaiTip errorMessage={validatedStatus.message ?? ''} />
     }
   }
 

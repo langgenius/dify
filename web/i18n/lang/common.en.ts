@@ -140,6 +140,7 @@ const translation = {
     apiKey: "API Key",
     enterYourKey: "Enter your API key here",
     invalidKey: "Invalid OpenAI API key",
+    validatedError: "Validation failed: ",
     validating: "Validating key...",
     saveFailed: "Save api key failed",
     apiKeyExceedBill: "This API KEY has no quota available, please read",

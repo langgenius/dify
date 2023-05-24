@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useState, useEffect } from 'react'
 import ProviderInput from '../provider-input'
-import useValidateToken, { ValidatedStatus } from '../provider-input/useValidateToken'
+import useValidateToken, { ValidatedStatus, ValidatedStatusState } from '../provider-input/useValidateToken'
 import { 
   ValidatedErrorIcon, 
   ValidatedSuccessIcon,
@@ -15,7 +15,7 @@ import {
 
 interface IAzureProviderProps {
   provider: Provider
-  onValidatedStatus: (status?: ValidatedStatus) => void
+  onValidatedStatus: (status?: ValidatedStatusState) => void
   onTokenChange: (token: ProviderAzureToken) => void
 }
 const AzureProvider = ({
@@ -31,7 +31,7 @@ const AzureProvider = ({
       token[type] = ''
       setToken({...token})
       onTokenChange({...token})
-      setValidatedStatus(undefined)
+      setValidatedStatus({})
     }
   }
   const handleChange = (type: keyof ProviderAzureToken, v: string, validate: any) => {
@@ -41,7 +41,7 @@ const AzureProvider = ({
     validate({...token}, {
       beforeValidating: () => {
         if (!token.openai_api_base || !token.openai_api_key) {
-          setValidatedStatus(undefined)
+          setValidatedStatus({})
           return false
         }
         return true
@@ -49,10 +49,10 @@ const AzureProvider = ({
     })
   }
   const getValidatedIcon = () => {
-    if (validatedStatus === ValidatedStatus.Error || validatedStatus === ValidatedStatus.Exceed) {
+    if (validatedStatus.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed) {
       return <ValidatedErrorIcon />
     }
-    if (validatedStatus === ValidatedStatus.Success) {
+    if (validatedStatus.status === ValidatedStatus.Success) {
       return <ValidatedSuccessIcon />
     }
   }
@@ -60,8 +60,8 @@ const AzureProvider = ({
     if (validating) {
       return <ValidatingTip />
     }
-    if (validatedStatus === ValidatedStatus.Error) {
-      return <ValidatedErrorOnAzureOpenaiTip />
+    if (validatedStatus.status === ValidatedStatus.Error) {
+      return <ValidatedErrorOnAzureOpenaiTip errorMessage={validatedStatus.message ?? ''} />
     }
   }
   useEffect(() => {

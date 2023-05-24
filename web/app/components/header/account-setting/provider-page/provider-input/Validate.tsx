@@ -38,22 +38,22 @@ export const ValidatedExceedOnOpenaiTip = () => {
   )
 }
 
-export const ValidatedErrorOnOpenaiTip = () => {
+export const ValidatedErrorOnOpenaiTip = ({ errorMessage }: { errorMessage: string }) => {
   const { t } = useTranslation()
 
   return (
     <div className={`mt-2 text-[#D92D20] text-xs font-normal`}>
-      {t('common.provider.invalidKey')}
+      {t('common.provider.validatedError')}{errorMessage}
     </div>
   )
 }
 
-export const ValidatedErrorOnAzureOpenaiTip = () => {
+export const ValidatedErrorOnAzureOpenaiTip = ({ errorMessage }: { errorMessage: string }) => {
   const { t } = useTranslation()
 
   return (
     <div className={`mt-2 text-[#D92D20] text-xs font-normal`}>
-      {t('common.provider.invalidApiKey')}
+      {t('common.provider.validatedError')}{errorMessage}
     </div>
   )
 }
