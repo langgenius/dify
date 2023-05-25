@@ -33,7 +33,7 @@ jobs:
         tags: |
           type=raw,value=latest,enable={{is_default_branch}}
           type=ref,event=branch
-          type=sha,format=long
+          type=sha,enable=true,priority=100,prefix=,suffix=,format=long
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
