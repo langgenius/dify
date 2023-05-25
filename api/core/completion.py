@@ -1,14 +1,17 @@
+import logging
 from typing import Optional, List, Union, Tuple
 
 from langchain.callbacks import CallbackManager
 from langchain.chat_models.base import BaseChatModel
 from langchain.llms import BaseLLM
 from langchain.schema import BaseMessage, BaseLanguageModel, HumanMessage
+from requests.exceptions import ChunkedEncodingError
+
 from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, \
     DifyStdOutCallbackHandler
-from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
+from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, PubHandler
 from core.llm.error import LLMBadRequestError
 from core.llm.llm_builder import LLMBuilder
 from core.chain.main_chain_builder import MainChainBuilder
@@ -83,6 +86,11 @@ class Completion:
                 streaming=streaming
             )
         except ConversationTaskStoppedException:
+            return
+        except ChunkedEncodingError as e:
+            # Interrupt by LLM (like OpenAI), handle it.
+            logging.warning(f'ChunkedEncodingError: {e}')
+            conversation_message_task.end()
             return
 
     @classmethod
