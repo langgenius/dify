@@ -54,7 +54,10 @@ const Sidebar: FC<ISidebarProps> = ({
     },
     {
       target: listRef,
-      isNoMore: () => isNoMore,
+      isNoMore: () => {
+        return isNoMore
+      },
+      reloadDeps: [isNoMore]
     },
   )
 
