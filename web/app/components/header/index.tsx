@@ -71,14 +71,14 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
           </div>
         </div>
         <div className='flex items-center'>
-          {/* <Link href="/explore/apps" className={classNames(
+          <Link href="/explore/apps" className={classNames(
             navClassName, 'group',
             isExplore && 'bg-white shadow-[0_2px_5px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]',
             isExplore ? 'text-primary-600' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-700'
           )}>
             <Squares2X2Icon className='mr-1 w-[18px] h-[18px]' />
             {t('common.menus.explore')}
-          </Link> */}
+          </Link>
           <Nav
             icon={<BuildAppsIcon isSelected={['apps', 'app'].includes(selectedSegment || '')} />}
             text={t('common.menus.apps')}
