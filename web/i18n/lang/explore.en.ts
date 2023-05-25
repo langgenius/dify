@@ -1,4 +1,5 @@
 const translation = {
+  title: 'My Apps',
   sidebar: {
     discovery: 'Discovery',
     workspace: 'Workspace',

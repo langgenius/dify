@@ -1,4 +1,5 @@
 const translation = {
+  title: '我的应用',
   sidebar: {
     discovery: '发现',
     workspace: '工作区',
