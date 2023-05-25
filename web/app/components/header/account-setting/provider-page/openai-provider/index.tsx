@@ -65,9 +65,6 @@ const OpenaiProvider = ({
     if (validating) {
       return <ValidatingTip />
     }
-    if (validatedStatus?.status === ValidatedStatus.Success) {
-      return <ValidatedExceedOnOpenaiTip />
-    }
     if (validatedStatus?.status === ValidatedStatus.Error) {
       return <ValidatedErrorOnOpenaiTip errorMessage={validatedStatus.message ?? ''} />
     }
