@@ -75,7 +75,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               <div
                 className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
                 dangerouslySetInnerHTML={{
-                  __html: format(replaceStringWithValuesWithFormat(promptTemplate, promptVariables, inputs)),
+                  __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
                 }}
               >
               </div>
