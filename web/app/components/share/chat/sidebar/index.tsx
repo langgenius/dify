@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useRef } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,12 +10,12 @@ import Button from '../../../base/button'
 import AppInfo from '@/app/components/share/chat/sidebar/app-info'
 // import Card from './card'
 import type { ConversationItem, SiteInfo } from '@/models/share'
+import { useInfiniteScroll } from 'ahooks'
+import { fetchConversations } from '@/service/share'
 
 function classNames(...classes: any[]) {
   return classes.filter(Boolean).join(' ')
 }
-
-const MAX_CONVERSATION_LENTH = 20
 
 export type ISidebarProps = {
   copyRight: string
@@ -23,7 +23,10 @@ export type ISidebarProps = {
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
   isInstalledApp: boolean
+  installedAppId?: string
   siteInfo: SiteInfo
+  onMoreLoaded: (res: {data: ConversationItem[], has_more: boolean}) => void
+  isNoMore: boolean
 }
 
 const Sidebar: FC<ISidebarProps> = ({
@@ -32,15 +35,35 @@ const Sidebar: FC<ISidebarProps> = ({
   onCurrentIdChange,
   list,
   isInstalledApp,
+  installedAppId,
   siteInfo,
+  onMoreLoaded,
+  isNoMore,
 }) => {
   const { t } = useTranslation()
+  const listRef = useRef<HTMLDivElement>(null)
+
+  useInfiniteScroll(
+    async () => {
+      if(!isNoMore) {
+        const lastId = list[list.length - 1].id
+        const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId)
+        onMoreLoaded({ data: conversations, has_more })
+      }
+      return {list: []}
+    },
+    {
+      target: listRef,
+      isNoMore: () => isNoMore,
+    },
+  )
+
   return (
     <div
       className={
         classNames(
           isInstalledApp ? 'tablet:h-[calc(100vh_-_74px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
-          "shrink-0 flex flex-col overflow-y-auto bg-white pc:w-[244px] tablet:w-[192px] mobile:w-[240px]  border-r border-gray-200 mobile:h-screen"
+          "shrink-0 flex flex-col bg-white pc:w-[244px] tablet:w-[192px] mobile:w-[240px]  border-r border-gray-200 mobile:h-screen"
         )
       }
     >
@@ -52,17 +75,18 @@ const Sidebar: FC<ISidebarProps> = ({
           icon_background={siteInfo.icon_background}
         />
       )}
-      {list.length < MAX_CONVERSATION_LENTH && (
-        <div className="flex flex-shrink-0 p-4 !pb-0">
-          <Button
-            onClick={() => { onCurrentIdChange('-1') }}
-            className="group block w-full flex-shrink-0 !justify-start !h-9 text-primary-600 items-center text-sm">
-            <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
-          </Button>
-        </div>
-      )}
+      <div className="flex flex-shrink-0 p-4 !pb-0">
+        <Button
+          onClick={() => { onCurrentIdChange('-1') }}
+          className="group block w-full flex-shrink-0 !justify-start !h-9 text-primary-600 items-center text-sm">
+          <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
+        </Button>
+      </div>
 
-      <nav className="mt-4 flex-1 space-y-1 bg-white p-4 !pt-0">
+      <nav
+        ref={listRef}
+        className="mt-4 flex-1 space-y-1 bg-white p-4 !pt-0 overflow-y-auto"
+      >
         {list.map((item) => {
           const isCurrent = item.id === currentId
           const ItemIcon
