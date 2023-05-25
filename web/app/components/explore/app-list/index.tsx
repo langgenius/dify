@@ -11,6 +11,7 @@ import { fetchAppList, installApp, fetchAppDetail } from '@/service/explore'
 import { createApp } from '@/service/apps'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
 import s from './style.module.css'
 import Toast from '../../base/toast'
@@ -64,6 +65,7 @@ const Apps: FC = ({ }) => {
         type: 'success',
         message: t('app.newApp.appCreated'),
       })
+      localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       router.push(`/app/${app.id}/overview`)
     } catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
