@@ -1,5 +1,6 @@
 'use client'
 import React, { FC, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import ExploreContext from '@/context/explore-context'
@@ -16,6 +17,7 @@ import Toast from '../../base/toast'
 
 const Apps: FC = ({ }) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
   const [currCategory, setCurrCategory] = React.useState('')
   const [allList, setAllList] = React.useState<App[]>([])
@@ -49,18 +51,23 @@ const Apps: FC = ({ }) => {
   const onCreate = async ({name, icon, icon_background}: any) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
     
-    createApp({
-      name,
-      icon,
-      icon_background,
-      mode: currApp?.app.mode as any,
-      config: model_config,
-    })
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.success'),
-    })
-    setIsShowCreateModal(false)
+    try {
+      const app = await createApp({
+        name,
+        icon,
+        icon_background,
+        mode: currApp?.app.mode as any,
+        config: model_config,
+      })
+      setIsShowCreateModal(false)
+      Toast.notify({
+        type: 'success',
+        message: t('app.newApp.appCreated'),
+      })
+      router.push(`/app/${app.id}/overview`)
+    } catch (e) {
+      Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+    }
   }
 
   if(!isLoaded) {
