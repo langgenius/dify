@@ -1,4 +1,5 @@
 const translation = {
+  title: '应用',
   createApp: '创建应用',
   modes: {
     completion: '文本生成型',

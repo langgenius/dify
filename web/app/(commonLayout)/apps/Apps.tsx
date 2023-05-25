@@ -9,6 +9,7 @@ import { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useSelector } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useTranslation } from 'react-i18next'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -17,12 +18,14 @@ const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
 }
 
 const Apps = () => {
+  const { t } = useTranslation()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
   const anchorRef = useRef<HTMLAnchorElement>(null)
 
   useEffect(() => {
+    document.title = `${t('app.title')} -  Dify`;
     if(localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
