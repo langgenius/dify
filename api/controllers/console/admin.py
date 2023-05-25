@@ -44,10 +44,11 @@ class InsertExploreAppListApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('desc_en', type=str, location='json')
-        parser.add_argument('desc_zh', type=str, location='json')
+        parser.add_argument('desc', type=str, location='json')
         parser.add_argument('copyright', type=str, location='json')
         parser.add_argument('privacy_policy', type=str, location='json')
+        parser.add_argument('language', type=str, required=True, nullable=False, choices=['en-US', 'zh-Hans'],
+                            location='json')
         parser.add_argument('category', type=str, required=True, nullable=False, location='json')
         parser.add_argument('position', type=int, required=True, nullable=False, location='json')
         args = parser.parse_args()
@@ -58,25 +59,24 @@ class InsertExploreAppListApi(Resource):
 
         site = app.site
         if not site:
-            desc = args['desc_en']
-            copy_right = args['copyright']
-            privacy_policy = args['privacy_policy']
+            desc = args['desc'] if args['desc'] else ''
+            copy_right = args['copyright'] if args['copyright'] else ''
+            privacy_policy = args['privacy_policy'] if args['privacy_policy'] else ''
         else:
-            desc = site.description if not args['desc_en'] else args['desc_en']
-            copy_right = site.copyright if not args['copyright'] else args['copyright']
-            privacy_policy = site.privacy_policy if not args['privacy_policy'] else args['privacy_policy']
+            desc = site.description if (site.description if not args['desc'] else args['desc']) else ''
+            copy_right = site.copyright if (site.copyright if not args['copyright'] else args['copyright']) else ''
+            privacy_policy = site.privacy_policy \
+                if (site.privacy_policy if not args['privacy_policy'] else args['privacy_policy']) else ''
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
 
         if not recommended_app:
             recommended_app = RecommendedApp(
                 app_id=app.id,
-                description={
-                    'en': desc,
-                    'zh': desc if not args['desc_zh'] else args['desc_zh']
-                },
+                description=desc,
                 copyright=copy_right,
                 privacy_policy=privacy_policy,
+                language=args['language'],
                 category=args['category'],
                 position=args['position']
             )
@@ -88,13 +88,10 @@ class InsertExploreAppListApi(Resource):
 
             return {'result': 'success'}, 201
         else:
-            recommended_app.description = {
-                'en': desc,
-                'zh': desc if not args['desc_zh'] else args['desc_zh']
-            }
-
+            recommended_app.description = desc
             recommended_app.copyright = copy_right
             recommended_app.privacy_policy = privacy_policy
+            recommended_app.language = args['language']
             recommended_app.category = args['category']
             recommended_app.position = args['position']
 
