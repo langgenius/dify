@@ -14,11 +14,6 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
-    - name: "Checkout ${{ github.ref }} ( ${{ github.sha }} )"
-      uses: actions/checkout@v2
-      with:
-        persist-credentials: false
-
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v2
 
@@ -37,6 +32,7 @@ jobs:
       with:
         images: langgenius/dify-api
         tags: |
+          type=ref,event=branch
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
@@ -44,7 +40,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        context: api
+        context: "{{defaultContext}}:api"
         platforms: linux/amd64
         build-args: |
           COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
