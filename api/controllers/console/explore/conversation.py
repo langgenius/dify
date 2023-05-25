@@ -1,11 +1,12 @@
 # -*- coding:utf-8 -*-
+from flask_login import current_user
 from flask_restful import fields, reqparse, marshal_with
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import NotFound
 
-from controllers.web import api
-from controllers.web.error import NotChatAppError
-from controllers.web.wraps import WebApiResource
+from controllers.console import api
+from controllers.console.explore.error import NotChatAppError
+from controllers.console.explore.wraps import InstalledAppResource
 from libs.helper import TimestampField, uuid_value
 from services.conversation_service import ConversationService
 from services.errors.conversation import LastConversationNotExistsError, ConversationNotExistsError
@@ -27,10 +28,11 @@ conversation_infinite_scroll_pagination_fields = {
 }
 
 
-class ConversationListApi(WebApiResource):
+class ConversationListApi(InstalledAppResource):
 
     @marshal_with(conversation_infinite_scroll_pagination_fields)
-    def get(self, app_model, end_user):
+    def get(self, installed_app):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -47,7 +49,7 @@ class ConversationListApi(WebApiResource):
         try:
             return WebConversationService.pagination_by_last_id(
                 app_model=app_model,
-                user=end_user,
+                user=current_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
                 pinned=pinned
@@ -56,22 +58,24 @@ class ConversationListApi(WebApiResource):
             raise NotFound("Last Conversation Not Exists.")
 
 
-class ConversationApi(WebApiResource):
-    def delete(self, app_model, end_user, c_id):
+class ConversationApi(InstalledAppResource):
+    def delete(self, installed_app, c_id):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        ConversationService.delete(app_model, conversation_id, end_user)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        ConversationService.delete(app_model, conversation_id, current_user)
+        WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}, 204
 
 
-class ConversationRenameApi(WebApiResource):
+class ConversationRenameApi(InstalledAppResource):
 
     @marshal_with(conversation_fields)
-    def post(self, app_model, end_user, c_id):
+    def post(self, installed_app, c_id):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
@@ -82,40 +86,42 @@ class ConversationRenameApi(WebApiResource):
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args['name'])
+            return ConversationService.rename(app_model, conversation_id, current_user, args['name'])
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
 
-class ConversationPinApi(WebApiResource):
+class ConversationPinApi(InstalledAppResource):
 
-    def patch(self, app_model, end_user, c_id):
+    def patch(self, installed_app, c_id):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
         conversation_id = str(c_id)
 
         try:
-            WebConversationService.pin(app_model, conversation_id, end_user)
+            WebConversationService.pin(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
         return {"result": "success"}
 
 
-class ConversationUnPinApi(WebApiResource):
-    def patch(self, app_model, end_user, c_id):
+class ConversationUnPinApi(InstalledAppResource):
+    def patch(self, installed_app, c_id):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
         conversation_id = str(c_id)
-        WebConversationService.unpin(app_model, conversation_id, end_user)
+        WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}
 
 
-api.add_resource(ConversationRenameApi, '/conversations/<uuid:c_id>/name', endpoint='web_conversation_name')
-api.add_resource(ConversationListApi, '/conversations')
-api.add_resource(ConversationApi, '/conversations/<uuid:c_id>')
-api.add_resource(ConversationPinApi, '/conversations/<uuid:c_id>/pin')
-api.add_resource(ConversationUnPinApi, '/conversations/<uuid:c_id>/unpin')
+api.add_resource(ConversationRenameApi, '/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/name', endpoint='installed_app_conversation_rename')
+api.add_resource(ConversationListApi, '/installed-apps/<uuid:installed_app_id>/conversations', endpoint='installed_app_conversations')
+api.add_resource(ConversationApi, '/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>', endpoint='installed_app_conversation')
+api.add_resource(ConversationPinApi, '/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/pin', endpoint='installed_app_conversation_pin')
+api.add_resource(ConversationUnPinApi, '/installed-apps/<uuid:installed_app_id>/conversations/<uuid:c_id>/unpin', endpoint='installed_app_conversation_unpin')
