@@ -31,8 +31,17 @@ class DatasetIndexToolCallbackHandler(IndexToolCallbackHandler):
             index_node_id = node.node.doc_id
 
             # add hit count to document segment
-            db.session.query(DocumentSegment).filter(
-                DocumentSegment.dataset_id == self.dataset_id,
-                DocumentSegment.index_node_id == index_node_id
-            ).update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+            update_stmt = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.dataset_id == self.dataset_id,
+                    DocumentSegment.index_node_id == index_node_id
+                )
+                .update(
+                    {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                    synchronize_session=False
+                )
+            )
 
+            db.session.execute(update_stmt)
+            db.session.commit()
