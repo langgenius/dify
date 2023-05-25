@@ -43,8 +43,11 @@ class RecommendedAppListApi(Resource):
     @account_initialization_required
     @marshal_with(recommended_app_list_fields)
     def get(self):
+        language_prefix = current_user.interface_language if current_user.interface_language else 'en-US'
+
         recommended_apps = db.session.query(RecommendedApp).filter(
-            RecommendedApp.is_listed == True
+            RecommendedApp.is_listed == True,
+            RecommendedApp.language == language_prefix
         ).all()
 
         categories = set()
@@ -62,21 +65,17 @@ class RecommendedAppListApi(Resource):
             if not app or not app.is_public:
                 continue
 
-            language_prefix = current_user.interface_language.split('-')[0]
-            desc = None
-            if recommended_app.description:
-                if language_prefix in recommended_app.description:
-                    desc = recommended_app.description[language_prefix]
-                elif 'en' in recommended_app.description:
-                    desc = recommended_app.description['en']
+            site = app.site
+            if not site:
+                continue
 
             recommended_app_result = {
                 'id': recommended_app.id,
                 'app': app,
                 'app_id': recommended_app.app_id,
-                'description': desc,
-                'copyright': recommended_app.copyright,
-                'privacy_policy': recommended_app.privacy_policy,
+                'description': site.description,
+                'copyright': site.copyright,
+                'privacy_policy': site.privacy_policy,
                 'category': recommended_app.category,
                 'position': recommended_app.position,
                 'is_listed': recommended_app.is_listed,
