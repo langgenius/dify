@@ -33,8 +33,8 @@ export const fetchAppInfo = async () => {
   return get('/site')
 }
 
-export const fetchConversations = async () => {
-  return get('conversations', { params: { limit: 20, first_id: '' } })
+export const fetchConversations = async (last_id?: string) => {
+  return get('conversations', { params: {...{ limit: 20 }, ...(last_id ? { last_id } : {}) } })
 }
 
 export const fetchChatList = async (conversationId: string) => {

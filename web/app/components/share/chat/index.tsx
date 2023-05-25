@@ -80,6 +80,11 @@ const Main: FC<IMainProps> = () => {
     setNewConversationInfo,
     setExistConversationInfo
   } = useConversation()
+  const [hasMore, setHasMore] = useState<boolean>(false)
+  const onMoreLoaded = ({ data: conversations, has_more }: any) => {
+    setHasMore(has_more)
+    setConversationList([...conversationList, ...conversations])
+  }
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
@@ -236,10 +241,10 @@ const Main: FC<IMainProps> = () => {
         const prompt_template = tempIsPublicVersion ? model_config.pre_prompt : ''
 
         // handle current conversation id
-        const { data: conversations } = conversationData as { data: ConversationItem[] }
+        const { data: conversations, has_more } = conversationData as { data: ConversationItem[], has_more: boolean }
         const _conversationId = getConversationIdFromStorage(appId)
         const isNotNewConversation = conversations.some(item => item.id === _conversationId)
-
+        setHasMore(has_more)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
@@ -379,7 +384,8 @@ const Main: FC<IMainProps> = () => {
         }
         let currChatList = conversationList
         if (getConversationIdChangeBecauseOfNew()) {
-          const { data: conversations }: any = await fetchConversations()
+          const { data: conversations, has_more }: any = await fetchConversations()
+          setHasMore(has_more)
           setConversationList(conversations as ConversationItem[])
           currChatList = conversations
         }
@@ -424,6 +430,8 @@ const Main: FC<IMainProps> = () => {
     return (
       <Sidebar
         list={conversationList}
+        onMoreLoaded={onMoreLoaded}
+        isNoMore={!hasMore}
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={siteInfo.copyright || siteInfo.title}
