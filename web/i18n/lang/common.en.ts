@@ -6,6 +6,7 @@ const translation = {
     remove: 'Removed',
   },
   operation: {
+    create: 'Create',
     confirm: 'Confirm',
     cancel: 'Cancel',
     clear: 'Clear',
@@ -61,7 +62,8 @@ const translation = {
   },
   menus: {
     status: 'beta',
-    apps: 'Apps',
+    explore: 'Explore',
+    apps: 'Build Apps',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Datasets',

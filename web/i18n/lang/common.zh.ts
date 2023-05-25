@@ -6,6 +6,7 @@ const translation = {
     remove: '已移除',
   },
   operation: {
+    create: '创建',
     confirm: '确认',
     cancel: '取消',
     clear: '清空',
@@ -61,7 +62,8 @@ const translation = {
   },
   menus: {
     status: 'beta',
-    apps: '应用',
+    explore: '探索',
+    apps: '构建应用',
     plugins: '插件',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
     datasets: '数据集',

@@ -23,16 +23,19 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import AppUnavailable from '../../base/app-unavailable'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import { SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import { InstalledApp } from '@/models/explore'
+
+import s from './style.module.css'
+
 export type IMainProps = {
-  params: {
-    locale: string
-    appId: string
-    conversationId: string
-    token: string
-  }
+  isInstalledApp?: boolean,
+  installedAppInfo? : InstalledApp
 }
 
-const Main: FC<IMainProps> = () => {
+const Main: FC<IMainProps> = ({
+  isInstalledApp = false,
+  installedAppInfo
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -80,6 +83,11 @@ const Main: FC<IMainProps> = () => {
     setNewConversationInfo,
     setExistConversationInfo
   } = useConversation()
+  const [hasMore, setHasMore] = useState<boolean>(false)
+  const onMoreLoaded = ({ data: conversations, has_more }: any) => {
+    setHasMore(has_more)
+    setConversationList([...conversationList, ...conversations])
+  }
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
@@ -129,7 +137,7 @@ const Main: FC<IMainProps> = () => {
 
     // update chat list of current conversation 
     if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponsing) {
-      fetchChatList(currConversationId).then((res: any) => {
+      fetchChatList(currConversationId, isInstalledApp, installedAppInfo?.id).then((res: any) => {
         const { data } = res
         const newChatList: IChatItem[] = generateNewChatListWithOpenstatement(notSyncToStateIntroduction, notSyncToStateInputs)
 
@@ -222,28 +230,41 @@ const Main: FC<IMainProps> = () => {
     return []
   }
 
+  const fetchInitData = () => {
+    return Promise.all([isInstalledApp ? {
+      app_id: installedAppInfo?.id, 
+      site: {
+        title: installedAppInfo?.app.name,
+        prompt_public: false,
+        copyright: ''
+      },
+      plan: 'basic',
+    }: fetchAppInfo(), fetchConversations(isInstalledApp, installedAppInfo?.id), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+  }
+
 
   // init
   useEffect(() => {
     (async () => {
       try {
-        const [appData, conversationData, appParams] = await Promise.all([fetchAppInfo(), fetchConversations(), fetchAppParams()])
-        const { app_id: appId, site: siteInfo, model_config, plan }: any = appData
+        const [appData, conversationData, appParams]: any = await fetchInitData()
+        const { app_id: appId, site: siteInfo, plan }: any = appData
         setAppId(appId)
         setPlan(plan)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
-        const prompt_template = tempIsPublicVersion ? model_config.pre_prompt : ''
-
+        const prompt_template = ''
         // handle current conversation id
-        const { data: conversations } = conversationData as { data: ConversationItem[] }
+        const { data: conversations, has_more } = conversationData as { data: ConversationItem[], has_more: boolean }
         const _conversationId = getConversationIdFromStorage(appId)
         const isNotNewConversation = conversations.some(item => item.id === _conversationId)
-
+        setHasMore(has_more)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
-        changeLanguage(siteInfo.default_language)
+        if(siteInfo.default_language) {
+          changeLanguage(siteInfo.default_language)
+        }
         setNewConversationInfo({
           name: t('share.chat.newChatDefaultName'),
           introduction,
@@ -379,7 +400,8 @@ const Main: FC<IMainProps> = () => {
         }
         let currChatList = conversationList
         if (getConversationIdChangeBecauseOfNew()) {
-          const { data: conversations }: any = await fetchConversations()
+          const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppInfo?.id)
+          setHasMore(has_more)
           setConversationList(conversations as ConversationItem[])
           currChatList = conversations
         }
@@ -388,7 +410,7 @@ const Main: FC<IMainProps> = () => {
         setChatNotStarted()
         setCurrConversationId(tempNewConversationId, appId, true)
         if (suggestedQuestionsAfterAnswerConfig?.enabled) {
-          const { data }: any = await fetchSuggestedQuestions(responseItem.id)
+          const { data }: any = await fetchSuggestedQuestions(responseItem.id, isInstalledApp, installedAppInfo?.id)
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
@@ -400,11 +422,11 @@ const Main: FC<IMainProps> = () => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
         }))
       },
-    })
+    }, isInstalledApp, installedAppInfo?.id)
   }
 
   const handleFeedback = async (messageId: string, feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } })
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     const newChatList = chatList.map((item) => {
       if (item.id === messageId) {
         return {
@@ -424,9 +446,14 @@ const Main: FC<IMainProps> = () => {
     return (
       <Sidebar
         list={conversationList}
+        onMoreLoaded={onMoreLoaded}
+        isNoMore={!hasMore}
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={siteInfo.copyright || siteInfo.title}
+        isInstalledApp={isInstalledApp}
+        installedAppId={installedAppInfo?.id}
+        siteInfo={siteInfo}
       />
     )
   }
@@ -439,18 +466,29 @@ const Main: FC<IMainProps> = () => {
 
   return (
     <div className='bg-gray-100'>
-      <Header
-        title={siteInfo.title}
-        icon={siteInfo.icon || ''}
-        icon_background={siteInfo.icon_background || '#FFEAD5'}
-        isMobile={isMobile}
-        onShowSideBar={showSidebar}
-        onCreateNewChat={() => handleConversationIdChange('-1')}
-      />
+      {!isInstalledApp && (
+        <Header
+          title={siteInfo.title}
+          icon={siteInfo.icon || ''}
+          icon_background={siteInfo.icon_background}
+          isMobile={isMobile}
+          onShowSideBar={showSidebar}
+          onCreateNewChat={() => handleConversationIdChange('-1')}
+        />
+      )}
+      
       {/* {isNewConversation ? 'new' : 'exist'}
         {JSON.stringify(newConversationInputs ? newConversationInputs : {})}
         {JSON.stringify(existConversationInputs ? existConversationInputs : {})} */}
-      <div className="flex rounded-t-2xl bg-white overflow-hidden">
+      <div 
+        className={cn(
+          "flex rounded-t-2xl bg-white overflow-hidden",
+          isInstalledApp && 'rounded-b-2xl',
+        )}
+        style={isInstalledApp ? {
+          boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)'
+        } : {}}
+      >
         {/* sidebar */}
         {!isMobile && renderSidebar()}
         {isMobile && isShowSidebar && (
@@ -464,7 +502,11 @@ const Main: FC<IMainProps> = () => {
           </div>
         )}
         {/* main */}
-        <div className='flex-grow flex flex-col h-[calc(100vh_-_3rem)] overflow-y-auto'>
+        <div className={cn(
+          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          'flex-grow flex flex-col overflow-y-auto'
+          )
+        }>
           <ConfigSence
             conversationName={conversationName}
             hasSetInputs={hasSetInputs}

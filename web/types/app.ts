@@ -210,6 +210,7 @@ export type App = {
   is_demo: boolean
   /** Model configuration */
   model_config: ModelConfig
+  app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
   /** Web Application Configuration */

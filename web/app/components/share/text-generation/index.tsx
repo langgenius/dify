@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { FC, useEffect, useState, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from 'classnames'
@@ -22,8 +22,18 @@ import TabHeader from '../../base/tab-header'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import s from './style.module.css'
 import Button from '../../base/button'
+import { App } from '@/types/app'
+import { InstalledApp } from '@/models/explore'
 
-const TextGeneration = () => {
+export type IMainProps = {
+  isInstalledApp?: boolean,
+  installedAppInfo? : InstalledApp
+}
+
+const TextGeneration: FC<IMainProps> = ({
+  isInstalledApp = false,
+  installedAppInfo
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -49,14 +59,14 @@ const TextGeneration = () => {
   })
 
   const handleFeedback = async (feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } })
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
 
   const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage()
+    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
 
@@ -65,13 +75,13 @@ const TextGeneration = () => {
   }, [])
 
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId)
+    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
 
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId)
+    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -151,12 +161,24 @@ const TextGeneration = () => {
       onError() {
         setResponsingFalse()
       }
-    })
+    }, isInstalledApp, installedAppInfo?.id)
+  }
+
+  const fetchInitData = () => {
+    return Promise.all([isInstalledApp ? {
+      app_id: installedAppInfo?.id, 
+      site: {
+        title: installedAppInfo?.app.name,
+        prompt_public: false,
+        copyright: ''
+      },
+      plan: 'basic',
+    }: fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await Promise.all([fetchAppInfo(), fetchAppParams()])
+      const [appData, appParams]: any = await fetchInitData()
       const { app_id: appId, site: siteInfo } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
@@ -188,9 +210,11 @@ const TextGeneration = () => {
     <div
       ref={resRef}
       className={
-        cn("flex flex-col h-full shrink-0",
+        cn(
+          "flex flex-col h-full shrink-0",
           isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMoble && 'p-4')}
+          isTablet && 'p-6', isMoble && 'p-4')
+        }
     >
       <>
         <div className='shrink-0 flex items-center justify-between'>
@@ -227,6 +251,8 @@ const TextGeneration = () => {
                     feedback={feedback}
                     onSave={handleSaveMessage}
                     isMobile={isMoble}
+                    isInstalledApp={isInstalledApp}
+                    installedAppId={installedAppInfo?.id}
                   />
                 )
               }
@@ -243,9 +269,17 @@ const TextGeneration = () => {
 
   return (
     <>
-      <div className={cn(isPC && 'flex', 'h-screen bg-gray-50')}>
+      <div className={cn(
+        isPC && 'flex',
+        isInstalledApp ? s.installedApp : 'h-screen',
+        'bg-gray-50'
+      )}>
         {/* Left */}
-        <div className={cn(isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4', "shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white")}>
+        <div className={cn(
+          isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
+          isInstalledApp && 'rounded-l-2xl',
+          "shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white"
+        )}>
           <div className='mb-6'>
             <div className='flex justify-between items-center'>
               <div className='flex items-center space-x-3'>
@@ -307,7 +341,10 @@ const TextGeneration = () => {
 
 
           {/* copyright */}
-          <div className='fixed left-8 bottom-4  flex space-x-2 text-gray-400 font-normal text-xs'>
+          <div className={cn(
+            isInstalledApp ? 'left-[248px]' : 'left-8',
+            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs'
+            )}>
             <div className="">© {siteInfo.copyright || siteInfo.title} {(new Date()).getFullYear()}</div>
             {siteInfo.privacy_policy && (
               <>

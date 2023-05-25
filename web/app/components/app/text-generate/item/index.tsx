@@ -9,7 +9,7 @@ import Toast from '@/app/components/base/toast'
 import { Feedbacktype } from '@/app/components/app/chat'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
-import { fetcMoreLikeThis, updateFeedback } from '@/service/share'
+import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 
 const MAX_DEPTH = 3
 export interface IGenerationItemProps {
@@ -24,6 +24,8 @@ export interface IGenerationItemProps {
   onFeedback?: (feedback: Feedbacktype) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
+  isInstalledApp: boolean,
+  installedAppId?: string,
 }
 
 export const SimpleBtn = ({ className, onClick, children }: {
@@ -75,7 +77,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   onFeedback,
   onSave,
   depth = 1,
-  isMobile
+  isMobile,
+  isInstalledApp,
+  installedAppId,
 }) => {
   const { t } = useTranslation()
   const isTop = depth === 1
@@ -88,7 +92,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   })
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } })
+    await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
     setChildFeedback(childFeedback)
   }
 
@@ -104,7 +108,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isLoading: isQuerying,
     feedback: childFeedback,
     onSave,
-    isMobile
+    isMobile,
+    isInstalledApp,
+    installedAppId,
   }
 
   const handleMoreLikeThis = async () => {
@@ -113,7 +119,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       return
     }
     startQuerying()
-    const res: any = await fetcMoreLikeThis(messageId as string)
+    const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
     setCompletionRes(res.answer)
     setChildMessageId(res.id)
     stopQuerying()
