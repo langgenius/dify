@@ -133,7 +133,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
 
 
       {categories.map((category: any, index: number) => {
-        return <div key={`category-${index}`} className=''>
+        return <div key={`category-${index}`} className='flex flex-col'>
           <p className='font-medium uppercase text-xs text-[#101828] mb-1'>{category.id}</p>
           <div className='w-full h-full grid grid-cols-8 gap-1'>
             {category.emojis.map((emoji: string, index: number) => {
@@ -156,7 +156,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     </div>
 
     {/* Color Select */}
-    <div className={cn('flex flex-col p-3 ', selectedEmoji == '' ? 'opacity-25' : '')}>
+    <div className={cn('p-3 ', selectedEmoji == '' ? 'opacity-25' : '')}>
       <p className='font-medium uppercase text-xs text-[#101828] mb-2'>Choose Style</p>
       <div className='w-full h-full grid grid-cols-8 gap-1'>
         {backgroundColors.map((color) => {
