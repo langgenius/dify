@@ -75,9 +75,9 @@ export const LOCALE_COOKIE_NAME = 'locale'
 
 export const DEFAULT_VALUE_MAX_LEN = 48
 
-export const zhRegex = /^[\u4e00-\u9fa5]$/gm
-export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/gm
-export const emailRegex = /^(([^<>()[\]\\.,;:\s@\"]+(\.[^<>()[\]\\.,;:\s@\"]+)*)|(\".+\"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/
+export const zhRegex = /^[\u4e00-\u9fa5]$/m
+export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/m
+export const emailRegex = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGHT = 8
 const MAX_EN_VAR_VALUE_LENGHT = 16
 export const getMaxVarNameLength = (value: string) => {

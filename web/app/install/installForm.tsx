@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import Toast from '../components/base/toast'
 import { setup } from '@/service/common'
 
-const validEmailReg = /^([a-zA-Z0-9_-])+@([a-zA-Z0-9_-])+(\.[a-zA-Z0-9_-])+/
+const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const InstallForm = () => {

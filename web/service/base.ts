@@ -78,7 +78,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
           if (message.startsWith('data: ')) { // check if it starts with data:
             // console.log(message);
             bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
-            if (bufferObj.status === 400) {
+            if (bufferObj.status === 400 || !bufferObj.event) {
               onData('', false, {
                 conversationId: undefined,
                 messageId: '',

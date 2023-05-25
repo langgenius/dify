@@ -90,8 +90,8 @@ class ProviderTokenApi(Resource):
                     configs=args['token']
                 )
                 token_is_valid = True
-            except ValidateFailedError:
-                token_is_valid = False
+            except ValidateFailedError as ex:
+                raise ValueError(str(ex))
 
             base64_encrypted_token = ProviderService.get_encrypted_token(
                 tenant=current_user.current_tenant,
@@ -157,7 +157,7 @@ class ProviderTokenValidateApi(Resource):
         args = parser.parse_args()
 
         # todo: remove this when the provider is supported
-        if provider in [ProviderName.ANTHROPIC.value, ProviderName.AZURE_OPENAI.value, ProviderName.COHERE.value,
+        if provider in [ProviderName.ANTHROPIC.value, ProviderName.COHERE.value,
                         ProviderName.HUGGINGFACEHUB.value]:
             return {'result': 'success', 'warning': 'MOCK: This provider is not supported yet.'}
 

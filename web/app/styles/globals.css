@@ -132,3 +132,9 @@ button:focus-within {
   background-clip: text;
   text-fill-color: transparent;
 }
+
+/* overwrite paging active dark model style  */
+[class*=style_paginatio] li .text-primary-600 {
+  color: rgb(28 100 242);
+  background-color: rgb(235 245 255);
+}

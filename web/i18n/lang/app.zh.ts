@@ -34,6 +34,10 @@ const translation = {
     appCreated: '应用已创建',
     appCreateFailed: '应用创建失败',
   },
+  emoji: {
+    ok: '确认',
+    cancel: '取消',
+  }
 }
 
 export default translation

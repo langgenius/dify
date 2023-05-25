@@ -21,7 +21,7 @@ class TimestampField(fields.Raw):
 
 def email(email):
     # Define a regex pattern for email addresses
-    pattern = r"^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$"
+    pattern = r"^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$"
     # Check if the email matches the pattern
     if re.match(pattern, email) is not None:
         return email
