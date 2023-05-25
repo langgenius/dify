@@ -90,12 +90,61 @@ class NotionPageReader(BaseReader):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
+    def _read_parent_blocks(self, block_id: str, num_tabs: int = 0) -> List[str]:
+        """Read a block."""
+        done = False
+        result_lines_arr = []
+        cur_block_id = block_id
+        while not done:
+            block_url = BLOCK_CHILD_URL_TMPL.format(block_id=cur_block_id)
+            query_dict: Dict[str, Any] = {}
+
+            res = requests.request(
+                "GET", block_url, headers=self.headers, json=query_dict
+            )
+            data = res.json()
+
+            for result in data["results"]:
+                result_type = result["type"]
+                result_obj = result[result_type]
+
+                cur_result_text_arr = []
+                if "rich_text" in result_obj:
+                    for rich_text in result_obj["rich_text"]:
+                        # skip if doesn't have text object
+                        if "text" in rich_text:
+                            text = rich_text["text"]["content"]
+                            prefix = "\t" * num_tabs
+                            cur_result_text_arr.append(prefix + text)
+
+                result_block_id = result["id"]
+                has_children = result["has_children"]
+                if has_children:
+                    children_text = self._read_block(
+                        result_block_id, num_tabs=num_tabs + 1
+                    )
+                    cur_result_text_arr.append(children_text)
+
+                cur_result_text = "\n".join(cur_result_text_arr)
+                result_lines_arr.append(cur_result_text)
+
+            if data["next_cursor"] is None:
+                done = True
+                break
+            else:
+                cur_block_id = data["next_cursor"]
+        return result_lines_arr
+
     def read_page(self, page_id: str) -> str:
         """Read a page."""
         return self._read_block(page_id)
 
+    def read_page_as_documents(self, page_id: str) -> List[str]:
+        """Read a page as documents."""
+        return self._read_block(page_id)
+
     def query_database(
-        self, database_id: str, query_dict: Dict[str, Any] = {}
+            self, database_id: str, query_dict: Dict[str, Any] = {}
     ) -> List[str]:
         """Get all the pages from a Notion database."""
         res = requests.post(
@@ -136,7 +185,7 @@ class NotionPageReader(BaseReader):
         return page_ids
 
     def load_data(
-        self, page_ids: List[str] = [], database_id: Optional[str] = None
+            self, page_ids: List[str] = [], database_id: Optional[str] = None
     ) -> List[Document]:
         """Load data from the input directory.
 

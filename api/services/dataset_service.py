@@ -420,6 +420,7 @@ class DocumentService:
                     raise ValueError('Data source binding not found.')
                 for page in notion_info['pages']:
                     data_source_info = {
+                        "notion_workspace_id": workspace_id,
                         "notion_page_id": page['page_id'],
                     }
                     document = DocumentService.save_document(dataset, dataset_process_rule.id,
