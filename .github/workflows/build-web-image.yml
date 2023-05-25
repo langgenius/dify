@@ -32,6 +32,7 @@ jobs:
       with:
         images: langgenius/dify-web
         tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
           type=ref,event=branch
           type=semver,pattern={{major}}.{{minor}}.{{patch}}
           type=semver,pattern={{major}}.{{minor}}
