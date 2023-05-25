@@ -89,12 +89,12 @@ class InsertExploreAppListApi(Resource):
             return {'result': 'success'}, 201
         else:
             recommended_app.description = {
-                'en': args['desc_en'],
-                'zh': args['desc_zh']
+                'en': desc,
+                'zh': desc if not args['desc_zh'] else args['desc_zh']
             }
 
-            recommended_app.copyright = args['copyright']
-            recommended_app.privacy_policy = args['privacy_policy']
+            recommended_app.copyright = copy_right
+            recommended_app.privacy_policy = privacy_policy
             recommended_app.category = args['category']
             recommended_app.position = args['position']
 
