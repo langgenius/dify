@@ -37,7 +37,7 @@ const Nav = ({
       <Link href={link}>
         <div
           className={classNames(`
-            flex items-center h-8 pl-2.5 pr-2
+            flex items-center h-7 pl-2.5 pr-2
             font-semibold cursor-pointer rounded-[10px]
             ${isActived ? 'text-[#1C64F2]' : 'text-gray-500 hover:bg-gray-200'}
             ${curNav && isActived && 'hover:bg-[#EBF5FF]'}
