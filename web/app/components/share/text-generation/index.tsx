@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
-import { useContext } from 'use-context-selector'
 import ConfigScence from '@/app/components/share/text-generation/config-scence'
 import NoData from '@/app/components/share/text-generation/no-data'
 // import History from '@/app/components/share/text-generation/history'
@@ -12,6 +11,7 @@ import { fetchAppInfo, fetchAppParams, sendCompletionMessage, updateFeedback, sa
 import type { SiteInfo } from '@/models/share'
 import type { PromptConfig, MoreLikeThisConfig, SavedMessage } from '@/models/debug'
 import Toast from '@/app/components/base/toast'
+import AppIcon from '@/app/components/base/app-icon'
 import { Feedbacktype } from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
@@ -24,6 +24,7 @@ import s from './style.module.css'
 import Button from '../../base/button'
 import { App } from '@/types/app'
 import { InstalledApp } from '@/models/explore'
+import { appDefaultIconBackground } from '@/config'
 
 export type IMainProps = {
   isInstalledApp?: boolean,
@@ -283,7 +284,7 @@ const TextGeneration: FC<IMainProps> = ({
           <div className='mb-6'>
             <div className='flex justify-between items-center'>
               <div className='flex items-center space-x-3'>
-                <div className={cn(s.appIcon, 'shrink-0')}></div>
+                <AppIcon size="small" icon={siteInfo.icon} background={siteInfo.icon_background || appDefaultIconBackground} />
                 <div className='text-lg text-gray-800 font-semibold'>{siteInfo.title}</div>
               </div>
               {!isPC && (
