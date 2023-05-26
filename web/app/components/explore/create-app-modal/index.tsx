@@ -28,7 +28,7 @@ const CreateAppModal = ({
   const [name, setName] = React.useState('')
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({ icon: '🍌', icon_background: '#FFEAD5' })
+  const [emoji, setEmoji] = useState({ icon: '🤖️', icon_background: '#FFEAD5' })
 
   const submit = () => {
     if(!name.trim()) {
@@ -74,7 +74,7 @@ const CreateAppModal = ({
         setShowEmojiPicker(false)
       }}
       onClose={() => {
-        setEmoji({ icon: '🍌', icon_background: '#FFEAD5' })
+        setEmoji({ icon: '🤖️', icon_background: '#FFEAD5' })
         setShowEmojiPicker(false)
       }}
     />}

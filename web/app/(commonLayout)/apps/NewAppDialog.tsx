@@ -37,7 +37,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
 
   // Emoji Picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({ icon: '🍌', icon_background: '#FFEAD5' })
+  const [emoji, setEmoji] = useState({ icon: '🤖️', icon_background: '#FFEAD5' })
 
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
@@ -102,7 +102,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         setShowEmojiPicker(false)
       }}
       onClose={() => {
-        setEmoji({ icon: '🍌', icon_background: '#FFEAD5' })
+        setEmoji({ icon: '🤖️', icon_background: '#FFEAD5' })
         setShowEmojiPicker(false)
       }}
     />}
