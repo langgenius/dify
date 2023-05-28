@@ -141,7 +141,7 @@ class NotionPageReader(BaseReader):
 
     def read_page_as_documents(self, page_id: str) -> List[str]:
         """Read a page as documents."""
-        return self._read_block(page_id)
+        return self._read_parent_blocks(page_id)
 
     def query_database(
             self, database_id: str, query_dict: Dict[str, Any] = {}
@@ -209,6 +209,26 @@ class NotionPageReader(BaseReader):
             for page_id in page_ids:
                 page_text = self.read_page(page_id)
                 docs.append(Document(page_text, extra_info={"page_id": page_id}))
+
+        return docs
+
+    def load_data_as_documents(
+            self, page_ids: List[str] = [], database_id: Optional[str] = None
+    ) -> List[Document]:
+        if not page_ids and not database_id:
+            raise ValueError("Must specify either `page_ids` or `database_id`.")
+        docs = []
+        if database_id is not None:
+            # get all the pages in the database
+            page_ids = self.query_database(database_id)
+            for page_id in page_ids:
+                page_text = self.read_page(page_id)
+                docs.append(Document(page_text, extra_info={"page_id": page_id}))
+        else:
+            for page_id in page_ids:
+                page_text_list = self.read_page_as_documents(page_id)
+                for page_text in page_text_list:
+                    docs.append(Document(page_text, extra_info={"page_id": page_id}))
 
         return docs
 

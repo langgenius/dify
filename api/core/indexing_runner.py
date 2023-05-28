@@ -332,7 +332,7 @@ class IndexingRunner:
             raise ValueError('Data source binding not found.')
         page_ids = [page_id]
         reader = NotionPageReader(integration_token=data_source_binding.access_token)
-        text_docs = reader.load_data(page_ids=page_ids)
+        text_docs = reader.load_data_as_documents(page_ids=page_ids)
         return text_docs
 
     def _get_node_parser(self, processing_rule: DatasetProcessRule) -> NodeParser:

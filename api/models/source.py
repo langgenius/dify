@@ -6,7 +6,7 @@ from sqlalchemy.dialects.postgresql import JSONB
 class DataSourceBinding(db.Model):
     __tablename__ = 'data_source_bindings'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='app_pkey'),
+        db.PrimaryKeyConstraint('id', name='source_binding_pkey'),
         db.Index('app_tenant_id_idx', 'tenant_id')
     )
 

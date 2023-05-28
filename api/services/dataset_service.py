@@ -3,7 +3,7 @@ import logging
 import datetime
 import time
 import random
-from typing import Optional
+from typing import Optional, List
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 
@@ -278,6 +278,15 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_batch_documents(dataset_id: str, batch: str) -> List[Document]:
+        documents = db.session.query(Document).filter(
+            Document.batch == batch,
+            Document.dataset_id == dataset_id,
+            Document.tenant_id == current_user.current_tenant_id
+        ).all()
+
+        return documents
+    @staticmethod
     def get_document_file_detail(file_id: str):
         file_detail = db.session.query(UploadFile). \
             filter(UploadFile.id == file_id). \
@@ -376,6 +385,7 @@ class DocumentService:
             db.session.add(dataset_process_rule)
             db.session.commit()
         position = DocumentService.get_documents_position(dataset.id)
+        batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
         document_ids = []
         documents = []
         if document_data["data_source"]["type"] == "upload_file":
@@ -398,7 +408,7 @@ class DocumentService:
                 document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                          document_data["data_source"]["type"],
                                                          data_source_info, created_from, position,
-                                                         account, file_name)
+                                                         account, file_name, batch)
                 db.session.add(document)
                 db.session.flush()
                 document_ids.append(document.id)
@@ -426,7 +436,7 @@ class DocumentService:
                     document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
                                                              data_source_info, created_from, position,
-                                                             account, page['page_name'])
+                                                             account, page['page_name'], batch)
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
@@ -442,7 +452,7 @@ class DocumentService:
 
     @staticmethod
     def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, data_source_info: dict,
-                      created_from: str, position: int, account: Account, name: str):
+                      created_from: str, position: int, account: Account, name: str, batch: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -450,7 +460,7 @@ class DocumentService:
             data_source_type=data_source_type,
             data_source_info=json.dumps(data_source_info),
             dataset_process_rule_id=process_rule_id,
-            batch=time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999)),
+            batch=batch,
             name=name,
             created_from=created_from,
             created_by=account.id,

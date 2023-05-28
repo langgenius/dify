@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import random
 from datetime import datetime
+from typing import List
 
 from flask import request
 from flask_login import login_required, current_user
@@ -83,6 +84,22 @@ class DocumentResource(Resource):
 
         return document
 
+    def get_batch_documents(self, dataset_id: str, batch: str) -> List[Document]:
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        documents = DocumentService.get_batch_documents(dataset_id, batch)
+
+        if not documents:
+            raise NotFound('Documents not found.')
+
+        return documents
 
 class GetProcessRuleApi(Resource):
     @setup_required
@@ -340,23 +357,25 @@ class DocumentIndexingStatusApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, dataset_id, document_id):
+    def get(self, dataset_id, batch):
         dataset_id = str(dataset_id)
-        document_id = str(document_id)
-        document = self.get_document(dataset_id, document_id)
+        batch = str(batch)
+        documents = self.get_batch_documents(dataset_id, batch)
+        documents_status = []
+        for document in documents:
+            completed_segments = DocumentSegment.query \
+                .filter(DocumentSegment.completed_at.isnot(None),
+                        DocumentSegment.document_id == str(document.id)) \
+                .count()
+            total_segments = DocumentSegment.query \
+                .filter_by(document_id=str(document.id)) \
+                .count()
 
-        completed_segments = DocumentSegment.query \
-            .filter(DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document_id)) \
-            .count()
-        total_segments = DocumentSegment.query \
-            .filter_by(document_id=str(document_id)) \
-            .count()
+            document.completed_segments = completed_segments
+            document.total_segments = total_segments
+            documents_status.append(marshal(document, self.document_status_fields))
 
-        document.completed_segments = completed_segments
-        document.total_segments = total_segments
-
-        return marshal(document, self.document_status_fields)
+        return documents_status
 
 
 class DocumentDetailApi(DocumentResource):
@@ -676,7 +695,7 @@ api.add_resource(DatasetInitApi,
 api.add_resource(DocumentIndexingEstimateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate')
 api.add_resource(DocumentIndexingStatusApi,
-                 '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status')
+                 '/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status')
 api.add_resource(DocumentDetailApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>')
 api.add_resource(DocumentProcessingApi,
