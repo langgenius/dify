@@ -7,7 +7,7 @@ class DataSourceBinding(db.Model):
     __tablename__ = 'data_source_bindings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='source_binding_pkey'),
-        db.Index('app_tenant_id_idx', 'tenant_id')
+        db.Index('source_binding_tenant_id_idx', 'tenant_id')
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
