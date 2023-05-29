@@ -76,6 +76,7 @@ const CommonLayout: FC<ICommonLayoutProps> = ({ children }) => {
         <DatasetsContext.Provider value={{ datasets: datasetList?.data || [], mutateDatasets, currentDataset }}>
           <div ref={pageContainerRef} className='relative flex flex-col h-full overflow-auto bg-gray-100'>
             <Header isBordered={['/apps', '/datasets'].includes(pathname)} curApp={curApp as any} appItems={appList.data} userProfile={userProfile} onLogout={onLogout} langeniusVersionInfo={langeniusVersionInfo} />
+            <button onClick={() => ddfdfd()}>Break the world</button>
             {children}
           </div>
         </DatasetsContext.Provider>

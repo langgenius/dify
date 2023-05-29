@@ -17,6 +17,7 @@
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
     "@next/mdx": "^13.2.4",
+    "@sentry/nextjs": "^7.53.1",
     "@tailwindcss/line-clamp": "^0.4.2",
     "@types/crypto-js": "^4.1.1",
     "@types/lodash-es": "^4.17.7",
