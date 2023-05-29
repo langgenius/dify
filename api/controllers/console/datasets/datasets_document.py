@@ -251,7 +251,7 @@ class DatasetDocumentListApi(Resource):
 class DatasetInitApi(Resource):
     dataset_and_document_fields = {
         'dataset': fields.Nested(dataset_fields),
-        'document': fields.Nested(document_fields)
+        'documents': fields.List(fields.Nested(document_fields))
     }
 
     @setup_required

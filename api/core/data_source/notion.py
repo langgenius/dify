@@ -126,6 +126,7 @@ class NotionPageReader(BaseReader):
                     cur_result_text_arr.append(children_text)
 
                 cur_result_text = "\n".join(cur_result_text_arr)
+                cur_result_text += "\n\n"
                 result_lines_arr.append(cur_result_text)
 
             if data["next_cursor"] is None:
@@ -204,11 +205,11 @@ class NotionPageReader(BaseReader):
             page_ids = self.query_database(database_id)
             for page_id in page_ids:
                 page_text = self.read_page(page_id)
-                docs.append(Document(page_text, extra_info={"page_id": page_id}))
+                docs.append(Document(page_text))
         else:
             for page_id in page_ids:
                 page_text = self.read_page(page_id)
-                docs.append(Document(page_text, extra_info={"page_id": page_id}))
+                docs.append(Document(page_text))
 
         return docs
 
@@ -223,12 +224,12 @@ class NotionPageReader(BaseReader):
             page_ids = self.query_database(database_id)
             for page_id in page_ids:
                 page_text = self.read_page(page_id)
-                docs.append(Document(page_text, extra_info={"page_id": page_id}))
+                docs.append(Document(page_text))
         else:
             for page_id in page_ids:
                 page_text_list = self.read_page_as_documents(page_id)
                 for page_text in page_text_list:
-                    docs.append(Document(page_text, extra_info={"page_id": page_id}))
+                    docs.append(Document(page_text))
 
         return docs
 

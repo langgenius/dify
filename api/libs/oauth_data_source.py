@@ -65,7 +65,7 @@ class NotionOAuth(OAuthDataSource):
         data_source_binding = DataSourceBinding(
             tenant_id=current_user.current_tenant_id,
             access_token=access_token,
-            source_info=json.dumps(source_info),
+            source_info=source_info,
             provider='notion'
         )
         db.session.add(data_source_binding)

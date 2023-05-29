@@ -9,7 +9,7 @@ from flask_login import current_user, login_required
 from flask_restful import Resource
 from werkzeug.exceptions import Forbidden
 from libs.oauth_data_source import NotionOAuth
-from .. import api
+from controllers.console import api
 from ..setup import setup_required
 from ..wraps import account_initialization_required
 
@@ -29,9 +29,6 @@ def get_oauth_providers():
 
 
 class OAuthDataSource(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     def get(self, provider: str):
         # The role of the current user in the table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
@@ -66,5 +63,5 @@ class OAuthDataSourceCallback(Resource):
         return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
 
 
-api.add_resource(OAuthDataSource, '/oauth/data-source/<provider>')
-api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/callback/<provider>')
+api.add_resource(OAuthDataSource, '/oauth/data-source/<string:provider>')
+api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/callback/<string:provider>')

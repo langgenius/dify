@@ -190,7 +190,7 @@ class Document(db.Model):
     doc_type = db.Column(db.String(40), nullable=True)
     doc_metadata = db.Column(db.JSON, nullable=True)
 
-    DATA_SOURCES = ['upload_file']
+    DATA_SOURCES = ['upload_file', 'notion_import']
 
     @property
     def display_status(self):

@@ -1,32 +1,22 @@
 import datetime
-import hashlib
 import json
-import tempfile
-import time
-import uuid
-from pathlib import Path
+
 
 from cachetools import TTLCache
 from flask import request, current_app
 from flask_login import login_required, current_user
-from flask_restful import Resource, marshal_with, fields, reqparse
+from flask_restful import Resource, marshal_with, fields, reqparse, marshal
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
-from controllers.console.datasets.error import NoFileUploadedError, TooManyFilesError, FileTooLargeError, \
-    UnsupportedFileTypeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.data_source.notion import NotionPageReader
-from core.index.readers.html_parser import HTMLParser
-from core.index.readers.pdf_parser import PDFParser
 from core.indexing_runner import IndexingRunner
-from extensions.ext_storage import storage
-from libs.helper import TimestampField
 from extensions.ext_database import db
+from libs.helper import TimestampField
 from libs.oauth_data_source import NotionOAuth
 from models.dataset import Document
-from models.model import UploadFile
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
 
@@ -39,9 +29,35 @@ PREVIEW_WORDS_LIMIT = 3000
 
 class DataSourceApi(Resource):
 
+    integrate_page_fields = {
+        'page_name': fields.String,
+        'page_id': fields.String,
+        'page_icon': fields.String,
+        'total': fields.Integer
+    }
+    integrate_workspace_fields = {
+        'workspace_name': fields.String,
+        'workspace_id': fields.String,
+        'workspace_icon': fields.String,
+        'pages': fields.List(fields.Nested(integrate_page_fields))
+    }
+    integrate_fields = {
+        'id': fields.String,
+        'provider': fields.String,
+        'created_at': TimestampField,
+        'is_bound': fields.Boolean,
+        'disabled': fields.Boolean,
+        'link': fields.String,
+        'source_info': fields.Nested(integrate_workspace_fields)
+    }
+    integrate_list_fields = {
+        'data': fields.List(fields.Nested(integrate_fields)),
+    }
+
     @setup_required
     @login_required
     @account_initialization_required
+    @marshal_with(integrate_list_fields)
     def get(self):
         # get workspace data source integrates
         data_source_integrates = db.session.query(DataSourceBinding).filter(
@@ -76,8 +92,7 @@ class DataSourceApi(Resource):
                     'disabled': None,
                     'link': f'{base_url}{data_source_oauth_base_path}/{provider}'
                 })
-
-        return {'data': integrate_data}
+        return {'data': integrate_data}, 200
 
     @setup_required
     @login_required
@@ -110,10 +125,25 @@ class DataSourceApi(Resource):
 
 
 class DataSourceNotionListApi(Resource):
+    integrate_page_fields = {
+        'page_name': fields.String,
+        'page_id': fields.String,
+        'page_icon': fields.String
+    }
+    integrate_workspace_fields = {
+        'workspace_name': fields.String,
+        'workspace_id': fields.String,
+        'workspace_icon': fields.String,
+        'pages': fields.List(fields.Nested(integrate_page_fields))
+    }
+    integrate_notion_info_list_fields = {
+        'notion_info': fields.List(fields.Nested(integrate_workspace_fields)),
+    }
 
     @setup_required
     @login_required
     @account_initialization_required
+    @marshal_with(integrate_notion_info_list_fields)
     def get(self):
         dataset_id = request.args.get('dataset_id', default=None, type=str)
         exist_page_ids = []
@@ -143,9 +173,14 @@ class DataSourceNotionListApi(Resource):
             raise NotFound('Data source binding not found.')
         pre_import_info_list = []
         for data_source_binding in data_source_bindings:
-            pages = NotionOAuth.get_authorized_pages(data_source_binding.access_token)
+            notion_oauth = NotionOAuth(client_id=current_app.config.get('NOTION_CLIENT_ID'),
+                                       client_secret=current_app.config.get(
+                                           'NOTION_CLIENT_SECRET'),
+                                       redirect_uri=current_app.config.get(
+                                           'CONSOLE_URL') + '/console/api/oauth/data-source/authorize/notion')
+            pages = notion_oauth.get_authorized_pages(data_source_binding.access_token)
             # Filter out already bound pages
-            filter_pages = filter(lambda page: page['page_id'] not in exist_page_ids, pages)
+            filter_pages = [page for page in pages if page['page_id'] not in exist_page_ids]
             source_info = json.loads(data_source_binding.source_info)
             pre_import_info = {
                 'workspace_name': source_info['workspace_name'],
@@ -165,12 +200,14 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, workspace_id, page_id):
+        workspace_id = str(workspace_id)
+        page_id = str(page_id)
         data_source_binding = DataSourceBinding.query.filter(
             db.and_(
                 DataSourceBinding.tenant_id == current_user.current_tenant_id,
                 DataSourceBinding.provider == 'notion',
                 DataSourceBinding.disabled == False,
-                DataSourceBinding.source_info['workspace_id'] == workspace_id
+                DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
             )
         ).first()
         if not data_source_binding:
@@ -185,9 +222,8 @@ class DataSourceNotionApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        notion_import_info = request.get_json()
         parser = reqparse.RequestParser()
-        parser.add_argument('notion_info_list', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('notion_info_list', type=list, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         args = parser.parse_args()
         # validate args
@@ -197,7 +233,7 @@ class DataSourceNotionApi(Resource):
         return response, 200
 
 
-api.add_resource(DataSourceApi, '/oauth/data-source/integrates')
-api.add_resource(DataSourceApi, '/oauth/data-source/integrates/<uuid:binding_id>/<string:action>')
+api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integrates/<uuid:binding_id>/<string:action>')
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
-api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview')
+api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview',
+                 '/datasets/notion-indexing-estimate')

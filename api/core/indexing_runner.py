@@ -215,12 +215,13 @@ class IndexingRunner:
         preview_texts = []
         total_segments = 0
         for notion_info in notion_info_list:
+            workspace_id = notion_info['workspace_id']
             data_source_binding = DataSourceBinding.query.filter(
                 db.and_(
                     DataSourceBinding.tenant_id == current_user.current_tenant_id,
                     DataSourceBinding.provider == 'notion',
                     DataSourceBinding.disabled == False,
-                    DataSourceBinding.source_info['workspace_id'] == notion_info['workspace_id']
+                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
                 )
             ).first()
             if not data_source_binding:
@@ -228,7 +229,7 @@ class IndexingRunner:
             reader = NotionPageReader(integration_token=data_source_binding.access_token)
             for page in notion_info['pages']:
                 page_ids = [page['page_id']]
-                documents = reader.load_data(page_ids=page_ids)
+                documents = reader.load_data_as_documents(page_ids=page_ids)
 
                 processing_rule = DatasetProcessRule(
                     mode=tmp_processing_rule["mode"],
@@ -279,7 +280,7 @@ class IndexingRunner:
             if not data_source_info or 'notion_page_id' not in data_source_info \
                     or 'notion_workspace_id' not in data_source_info:
                 raise ValueError("no notion page found")
-            text_docs = self._load_data_from_notion(data_source_info['notion_workspace_id'], data_source_info['notion_page_id'])
+            text_docs = self._load_data_from_notion(data_source_info['notion_workspace_id'], data_source_info['notion_page_id'], document.tenant_id)
         # update document status to splitting
         self._update_document_index_status(
             document_id=document.id,
@@ -319,13 +320,13 @@ class IndexingRunner:
 
             return text_docs
 
-    def _load_data_from_notion(self, workspace_id: str, page_id: str) -> List[Document]:
+    def _load_data_from_notion(self, workspace_id: str, page_id: str, tenant_id: str) -> List[Document]:
         data_source_binding = DataSourceBinding.query.filter(
             db.and_(
-                DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBinding.tenant_id == tenant_id,
                 DataSourceBinding.provider == 'notion',
                 DataSourceBinding.disabled == False,
-                DataSourceBinding.source_info['workspace_id'] == workspace_id
+                DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
             )
         ).first()
         if not data_source_binding:

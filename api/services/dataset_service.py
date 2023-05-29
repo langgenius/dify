@@ -423,7 +423,7 @@ class DocumentService:
                         DataSourceBinding.tenant_id == current_user.current_tenant_id,
                         DataSourceBinding.provider == 'notion',
                         DataSourceBinding.disabled == False,
-                        DataSourceBinding.source_info['workspace_id'] == workspace_id
+                        DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
                     )
                 ).first()
                 if not data_source_binding:
@@ -581,7 +581,7 @@ class DocumentService:
         if 'notion_info_list' not in args or not args['notion_info_list']:
             raise ValueError("Notion info is required")
 
-        if not isinstance(args['notion_info_list'], dict):
+        if not isinstance(args['notion_info_list'], list):
             raise ValueError("Notion info is invalid")
 
         if 'process_rule' not in args or not args['process_rule']:
