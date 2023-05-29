@@ -1,3 +1,5 @@
+const { withSentryConfig } = require("@sentry/nextjs")
+
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {
@@ -29,6 +31,7 @@ const nextConfig = {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
+  sentry: {},
   async redirects() {
     return [
       {
@@ -40,4 +43,17 @@ const nextConfig = {
   },
 }
 
-module.exports = withMDX(nextConfig)
+// https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup
+const sentryWebpackPluginOptions = {
+  org: "perfectworld",
+  project: "javascript-nextjs",
+  silent: true, // Suppresses all logs
+  sourcemaps: {
+    assets: "./**",
+    ignore: ["./node_modules/**"],
+  },
+
+  // https://github.com/getsentry/sentry-webpack-plugin#options.
+}
+
+module.exports = withMDX(withSentryConfig(nextConfig, sentryWebpackPluginOptions))
