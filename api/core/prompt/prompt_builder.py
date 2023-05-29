@@ -32,6 +32,6 @@ class PromptBuilder:
 
     @classmethod
     def process_template(cls, template: str):
-        processed_template = re.sub(r'\{(.+?)\}', r'\1', template)
-        processed_template = re.sub(r'\{\{(.+?)\}\}', r'{\1}', processed_template)
+        processed_template = re.sub(r'\{([a-zA-Z_]\w+?)\}', r'\1', template)
+        processed_template = re.sub(r'\{\{([a-zA-Z_]\w+?)\}\}', r'{\1}', processed_template)
         return processed_template
