@@ -31,7 +31,9 @@ const nextConfig = {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
   },
-  sentry: {},
+  sentry: {
+    hideSourceMaps: true
+  },
   async redirects() {
     return [
       {
