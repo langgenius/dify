@@ -48,8 +48,12 @@ const sentryWebpackPluginOptions = {
   org: "perfectworld",
   project: "javascript-nextjs",
   silent: true, // Suppresses all logs
+  sourcemaps: {
+    assets: "./**",
+    ignore: ["./node_modules/**"],
+  },
 
   // https://github.com/getsentry/sentry-webpack-plugin#options.
 }
 
-module.exports = withSentryConfig(withMDX(nextConfig), sentryWebpackPluginOptions)
+module.exports = withMDX(withSentryConfig(nextConfig, sentryWebpackPluginOptions))
