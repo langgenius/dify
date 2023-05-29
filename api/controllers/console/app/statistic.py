@@ -59,7 +59,9 @@ class DailyConversationStatistic(Resource):
             arg_dict['end'] = end_datetime_utc
 
         sql_query += ' GROUP BY date order by date'
-        rs = db.session.execute(sql_query, arg_dict)
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
 
         response_date = []
 
@@ -119,7 +121,9 @@ class DailyTerminalsStatistic(Resource):
             arg_dict['end'] = end_datetime_utc
 
         sql_query += ' GROUP BY date order by date'
-        rs = db.session.execute(sql_query, arg_dict)
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
 
         response_date = []
 
@@ -180,7 +184,9 @@ class DailyTokenCostStatistic(Resource):
             arg_dict['end'] = end_datetime_utc
 
         sql_query += ' GROUP BY date order by date'
-        rs = db.session.execute(sql_query, arg_dict)
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
 
         response_date = []
 
