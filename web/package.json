@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "fix": "next lint --fix",
+    "eslint-fix": "eslint --fix",
     "prepare": "cd ../ && husky install ./web/.husky"
   },
   "dependencies": {
