@@ -90,7 +90,7 @@ class MultiDatasetRouterChain(Chain):
             callback_manager=llm_callback_manager
         )
 
-        destinations = [f"{d.id}: {d.description}" for d in datasets]
+        destinations = ["{}: {}".format(d.id, d.description.replace('\n', ' ')) for d in datasets]
         destinations_str = "\n".join(destinations)
         router_template = MULTI_PROMPT_ROUTER_TEMPLATE.format(
             destinations=destinations_str
