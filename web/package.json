@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "next lint",
     "fix": "next lint --fix",
-    "prepare": "cd ../ && husky install"
+    "prepare": "cd ../ && husky install ./web/.husky"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
@@ -84,5 +84,13 @@
     "miragejs": "^0.1.47",
     "postcss": "^8.4.21",
     "tailwindcss": "^3.2.7"
+  },
+  "lint-staged": {
+    "**/*.js?(x)": [
+      "eslint --fix"
+    ],
+    "**/*.ts?(x)": [
+      "eslint --fix"
+    ]
   }
 }
