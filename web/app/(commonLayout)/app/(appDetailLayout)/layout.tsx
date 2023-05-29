@@ -8,7 +8,7 @@ export type IAppDetail = {
 const AppDetail: FC<IAppDetail> = ({ children }) => {
   return (
       <>
-            {children}
+          {children}
         </>
   )
 }
