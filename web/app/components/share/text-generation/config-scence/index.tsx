@@ -60,8 +60,9 @@ const ConfigSence: FC<IConfigSenceProps> = ({
               </div>
             </div>
           ))}
-
-          <div className='mt-6 h-[1px] bg-gray-100'></div>
+          {promptConfig.prompt_variables.length > 0 && (
+            <div className='mt-6 h-[1px] bg-gray-100'></div>
+          )}
           <div className='w-full mt-5'>
             <label className='text-gray-900 text-sm font-medium'>{t('share.generation.queryTitle')}</label>
             <div className="mt-2 overflow-hidden rounded-lg bg-gray-50 ">
