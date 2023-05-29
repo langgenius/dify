@@ -130,7 +130,6 @@ dmypy.json
 .idea/'
 
 .DS_Store
-.vscode
 
 # Intellij IDEA Files
 .idea/

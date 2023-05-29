@@ -23,6 +23,6 @@
         ]
       }
     ],
-    "react-hooks/exhaustive-deps": "warning"
+    "react-hooks/exhaustive-deps": "warn"
   }
 }
