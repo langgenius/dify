@@ -8,6 +8,8 @@ import { UserCircleIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import { randomString } from '../../app-sidebar/basic'
 import s from './style.module.css'
+import LoadingAnim from './loading-anim'
+import CopyBtn from './copy-btn'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
@@ -15,9 +17,8 @@ import Button from '@/app/components/base/button'
 import type { Annotation, MessageRating } from '@/models/log'
 import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
-import LoadingAnim from './loading-anim'
 import { formatNumber } from '@/utils/format'
-import CopyBtn from './copy-btn'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const stopIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -285,8 +286,8 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
     <div key={id}>
       <div className='flex items-start'>
         <div className={`${s.answerIcon} w-10 h-10 shrink-0`}>
-          {isResponsing &&
-            <div className={s.typeingIcon}>
+          {isResponsing
+            && <div className={s.typeingIcon}>
               <LoadingAnim type='avatar' />
             </div>
           }
@@ -301,13 +302,15 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                     <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
                   </div>
                 )}
-                {(isResponsing && !content) ? (
-                  <div className='flex items-center justify-center w-6 h-5'>
-                    <LoadingAnim type='text' />
-                  </div>
-                ) : (
-                  <Markdown content={content} />
-                )}
+                {(isResponsing && !content)
+                  ? (
+                    <div className='flex items-center justify-center w-6 h-5'>
+                      <LoadingAnim type='text' />
+                    </div>
+                  )
+                  : (
+                    <Markdown content={content} />
+                  )}
                 {!showEdit
                   ? (annotation?.content
                     && <>
@@ -384,13 +387,15 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar 
         </div>
         {more && <MoreInfo more={more} isQuestion={true} />}
       </div>
-      {useCurrentUserAvatar ? (
-        <div className='w-10 h-10 shrink-0 leading-10 text-center mr-2 rounded-full bg-primary-600 text-white'>
-          {userName?.[0].toLocaleUpperCase()}
-        </div>
-      ) : (
-        <div className={`${s.questionIcon} w-10 h-10 shrink-0 `}></div>
-      )}
+      {useCurrentUserAvatar
+        ? (
+          <div className='w-10 h-10 shrink-0 leading-10 text-center mr-2 rounded-full bg-primary-600 text-white'>
+            {userName?.[0].toLocaleUpperCase()}
+          </div>
+        )
+        : (
+          <div className={`${s.questionIcon} w-10 h-10 shrink-0 `}></div>
+        )}
     </div>
   )
 }
@@ -411,7 +416,7 @@ const Chat: FC<IChatProps> = ({
   controlClearQuery,
   controlFocus,
   isShowSuggestion,
-  suggestionList
+  suggestionList,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -436,27 +441,24 @@ const Chat: FC<IChatProps> = ({
   }
 
   useEffect(() => {
-    if (controlClearQuery) {
+    if (controlClearQuery)
       setQuery('')
-    }
   }, [controlClearQuery])
 
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
     onSend(query)
-    if (!isResponsing) {
+    if (!isResponsing)
       setQuery('')
-    }
   }
 
   const handleKeyUp = (e: any) => {
     if (e.code === 'Enter') {
       e.preventDefault()
       // prevent send message when using input method enter
-      if (!e.shiftKey && !isUseInputMethod.current) {
+      if (!e.shiftKey && !isUseInputMethod.current)
         handleSend()
-      }
     }
   }
 
@@ -467,6 +469,10 @@ const Chat: FC<IChatProps> = ({
       e.preventDefault()
     }
   }
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={handleSend}></div>
 
   return (
     <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
@@ -506,7 +512,7 @@ const Chat: FC<IChatProps> = ({
                   <div className='flex items-center justify-center mb-2.5'>
                     <div className='grow h-[1px]'
                       style={{
-                        background: 'linear-gradient(270deg, #F3F4F6 0%, rgba(243, 244, 246, 0) 100%)'
+                        background: 'linear-gradient(270deg, #F3F4F6 0%, rgba(243, 244, 246, 0) 100%)',
                       }}></div>
                     <div className='shrink-0 flex items-center px-3 space-x-1'>
                       {TryToAskIcon}
@@ -514,7 +520,7 @@ const Chat: FC<IChatProps> = ({
                     </div>
                     <div className='grow h-[1px]'
                       style={{
-                        background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)'
+                        background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)',
                       }}></div>
                   </div>
                   <div className='flex justify-center overflow-x-scroll pb-2'>
@@ -544,17 +550,21 @@ const Chat: FC<IChatProps> = ({
               />
               <div className="absolute top-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
-                <Tooltip
-                  selector='send-tip'
-                  htmlContent={
-                    <div>
-                      <div>{t('common.operation.send')} Enter</div>
-                      <div>{t('common.operation.lineBreak')} Shift Enter</div>
-                    </div>
-                  }
-                >
-                  <div className={`${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`} onClick={handleSend}></div>
-                </Tooltip>
+                {isMobile
+                  ? sendBtn
+                  : (
+                    <Tooltip
+                      selector='send-tip'
+                      htmlContent={
+                        <div>
+                          <div>{t('common.operation.send')} Enter</div>
+                          <div>{t('common.operation.lineBreak')} Shift Enter</div>
+                        </div>
+                      }
+                    >
+                      {sendBtn}
+                    </Tooltip>
+                  )}
               </div>
             </div>
           </div>
