@@ -15,8 +15,8 @@ export function randomString(length: number) {
 
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset'
-  icon?: string,
-  icon_background?: string,
+  icon?: string
+  icon_background?: string
   name: string
   type: string | React.ReactNode
   hoverTip?: string
@@ -24,12 +24,12 @@ export type IAppBasicProps = {
 }
 
 const AlgorithmSvg = <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <path d="M8.5 3.5C8.5 4.60457 9.39543 5.5 10.5 5.5C11.6046 5.5 12.5 4.60457 12.5 3.5C12.5 2.39543 11.6046 1.5 10.5 1.5C9.39543 1.5 8.5 2.39543 8.5 3.5Z" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M12.5 9C12.5 10.1046 13.3954 11 14.5 11C15.6046 11 16.5 10.1046 16.5 9C16.5 7.89543 15.6046 7 14.5 7C13.3954 7 12.5 7.89543 12.5 9Z" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M8.5 3.5H5.5L3.5 6.5" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M8.5 14.5C8.5 15.6046 9.39543 16.5 10.5 16.5C11.6046 16.5 12.5 15.6046 12.5 14.5C12.5 13.3954 11.6046 12.5 10.5 12.5C9.39543 12.5 8.5 13.3954 8.5 14.5Z" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M8.5 14.5H5.5L3.5 11.5" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-  <path d="M12.5 9H1.5" stroke="#5850EC" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M8.5 3.5C8.5 4.60457 9.39543 5.5 10.5 5.5C11.6046 5.5 12.5 4.60457 12.5 3.5C12.5 2.39543 11.6046 1.5 10.5 1.5C9.39543 1.5 8.5 2.39543 8.5 3.5Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M12.5 9C12.5 10.1046 13.3954 11 14.5 11C15.6046 11 16.5 10.1046 16.5 9C16.5 7.89543 15.6046 7 14.5 7C13.3954 7 12.5 7.89543 12.5 9Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M8.5 3.5H5.5L3.5 6.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M8.5 14.5C8.5 15.6046 9.39543 16.5 10.5 16.5C11.6046 16.5 12.5 15.6046 12.5 14.5C12.5 13.3954 11.6046 12.5 10.5 12.5C9.39543 12.5 8.5 13.3954 8.5 14.5Z" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M8.5 14.5H5.5L3.5 11.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  <path d="M12.5 9H1.5" stroke="#5850EC" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
 </svg>
 
 const DatasetSvg = <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -37,9 +37,9 @@ const DatasetSvg = <svg width="20" height="20" viewBox="0 0 20 20" fill="none" x
 </svg>
 
 const ICON_MAP = {
-  'app': <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
-  'api': <AppIcon innerIcon={AlgorithmSvg} className='border !bg-purple-50 !border-purple-200' />,
-  'dataset': <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />
+  app: <AppIcon className='border !border-[rgba(0,0,0,0.05)]' />,
+  api: <AppIcon innerIcon={AlgorithmSvg} className='border !bg-purple-50 !border-purple-200' />,
+  dataset: <AppIcon innerIcon={DatasetSvg} className='!border-[0.5px] !border-indigo-100 !bg-indigo-25' />,
 }
 
 export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
@@ -50,8 +50,8 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
           <AppIcon icon={icon} background={icon_background} />
         </div>
       )}
-      {iconType !== 'app' &&
-        <div className='flex-shrink-0 mr-3'>
+      {iconType !== 'app'
+        && <div className='flex-shrink-0 mr-3'>
           {ICON_MAP[iconType]}
         </div>
 
