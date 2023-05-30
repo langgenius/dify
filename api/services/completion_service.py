@@ -33,6 +33,10 @@ class CompletionService:
         # is streaming mode
         inputs = args['inputs']
         query = args['query']
+
+        if not query:
+            raise ValueError('query is required')
+
         conversation_id = args['conversation_id'] if 'conversation_id' in args else None
 
         conversation = None
