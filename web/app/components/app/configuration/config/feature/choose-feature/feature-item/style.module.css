@@ -1,0 +1,12 @@
+.preview {
+  position: fixed;
+  transform: translate(410px, -54px);
+  width: 280px;
+  height: 360px;
+  background: center center no-repeat;
+  background-size: contain;
+}
+
+.openingStatementPreview {
+  background-image: url(./preview-imgs/opening-statement.svg);
+}
