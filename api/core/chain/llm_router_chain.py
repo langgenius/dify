@@ -84,6 +84,7 @@ class RouterOutputParser(BaseOutputParser[Dict[str, str]]):
 
     def parse_json_markdown(self, json_string: str) -> dict:
         # Remove the triple backticks if present
+        json_string = json_string.strip()
         start_index = json_string.find("```json")
         end_index = json_string.find("```", start_index + len("```json"))
 
@@ -92,6 +93,9 @@ class RouterOutputParser(BaseOutputParser[Dict[str, str]]):
 
             # Parse the JSON string into a Python dictionary
             parsed = json.loads(extracted_content)
+        elif json_string.startswith("{"):
+            # Parse the JSON string into a Python dictionary
+            parsed = json.loads(json_string)
         else:
             raise Exception("Could not find JSON block in the output.")
 
