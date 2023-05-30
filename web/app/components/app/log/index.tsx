@@ -31,7 +31,7 @@ const limit = 10
 
 const ThreeDotsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 }
 
@@ -63,9 +63,9 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
     limit,
     ...(queryParams.period !== 'all'
       ? {
-          start: dayjs().subtract(queryParams.period as number, 'day').format('YYYY-MM-DD HH:mm'),
-          end: dayjs().format('YYYY-MM-DD HH:mm'),
-        }
+        start: dayjs().subtract(queryParams.period as number, 'day').format('YYYY-MM-DD HH:mm'),
+        end: dayjs().format('YYYY-MM-DD HH:mm'),
+      }
       : {}),
     ...omit(queryParams, ['period']),
   }
@@ -77,16 +77,16 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
     ? {
-        url: `/apps/${appId}/chat-conversations`,
-        params: query,
-      }
+      url: `/apps/${appId}/chat-conversations`,
+      params: query,
+    }
     : null, fetchChatConversations)
 
   const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
     ? {
-        url: `/apps/${appId}/completion-conversations`,
-        params: query,
-      }
+      url: `/apps/${appId}/completion-conversations`,
+      params: query,
+    }
     : null, fetchCompletionConversations)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
