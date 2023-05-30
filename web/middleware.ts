@@ -23,11 +23,12 @@ export const getLocale = (request: NextRequest): Locale => {
   }
 
   // match locale
-  let matchedLocale:Locale  = i18n.defaultLocale
+  let matchedLocale: Locale = i18n.defaultLocale
   try {
     // If languages is ['*'], Error would happen in match function.
     matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
-  } catch(e) {}
+  }
+  catch (e) {}
   return matchedLocale
 }
 
