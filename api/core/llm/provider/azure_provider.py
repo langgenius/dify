@@ -110,6 +110,8 @@ class AzureProvider(BaseProvider):
 
             if missing_model_ids:
                 raise ValidateFailedError("Please add deployments for '{}'.".format(", ".join(missing_model_ids)))
+        except ValidateFailedError as e:
+            raise e
         except AzureAuthenticationError:
             raise ValidateFailedError('Validation failed, please check your API Key.')
         except (requests.ConnectionError, requests.RequestException):
