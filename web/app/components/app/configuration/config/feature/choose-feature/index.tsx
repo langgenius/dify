@@ -63,6 +63,7 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
               />
               <FeatureItem
                 icon={<SuggestedQuestionsAfterAnswerIcon />}
+                previewImgClassName='suggestedQuestionsAfterAnswerPreview'
                 title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
                 description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
                 value={config.suggestedQuestionsAfterAnswer}
@@ -78,6 +79,7 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
             <>
               <FeatureItem
                 icon={<MoreLikeThisIcon />}
+                previewImgClassName='moreLikeThisPreview'
                 title={t('appDebug.feature.moreLikeThis.title')}
                 description={t('appDebug.feature.moreLikeThis.description')}
                 value={config.moreLikeThis}

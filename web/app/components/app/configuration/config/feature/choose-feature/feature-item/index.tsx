@@ -23,7 +23,7 @@ const FeatureItem: FC<IFeatureItemProps> = ({
   onChange,
 }) => {
   return (
-    <div className='relative flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer'>
+    <div className={cn(s.wrap, 'relative flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer')}>
       <div className='flex space-x-3 mr-2'>
         {/* icon */}
         <div
