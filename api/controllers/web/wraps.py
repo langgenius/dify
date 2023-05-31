@@ -16,7 +16,7 @@ def validate_token(view=None):
         def decorated(*args, **kwargs):
             site = validate_and_get_site()
 
-            app_model = db.session.query(App).get(site.app_id)
+            app_model = db.session.query(App).filter(App.id == site.app_id).first()
             if not app_model:
                 raise NotFound()
 

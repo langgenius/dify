@@ -304,6 +304,10 @@ class Conversation(db.Model):
     def app(self):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
+    @property
+    def in_debug_mode(self):
+        return self.override_model_configs is not None
+
 
 class Message(db.Model):
     __tablename__ = 'messages'
@@ -369,6 +373,10 @@ class Message(db.Model):
                 AppModelConfig.id == conversation.app_model_config_id).first()
 
         return None
+
+    @property
+    def in_debug_mode(self):
+        return self.override_model_configs is not None
 
 
 class MessageFeedback(db.Model):
