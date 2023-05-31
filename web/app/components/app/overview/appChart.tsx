@@ -323,8 +323,7 @@ export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
     valueKey='rate'
     chartType='endUsers'
     isAvg
-    unit='%'
-    {...(noDataFlag && { yMax: 1 })}
+    {...(noDataFlag && { yMax: 1000 })}
   />
 }
 
