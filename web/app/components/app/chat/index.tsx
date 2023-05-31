@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
@@ -474,6 +474,16 @@ const Chat: FC<IChatProps> = ({
   const isMobile = media === MediaType.mobile
   const sendBtn = <div className={cn(!(!query || query.trim() === '') && s.sendBtnActive, `${s.sendBtn} w-8 h-8 cursor-pointer rounded-md`)} onClick={handleSend}></div>
 
+  const suggestionListRef = useRef<HTMLDivElement>(null)
+  const [hasScrollbar, setHasScrollbar] = useState(false)
+  useLayoutEffect(() => {
+    if (suggestionListRef.current) {
+      const listDom = suggestionListRef.current
+      const hasScrollbar = listDom.scrollWidth > listDom.clientWidth
+      setHasScrollbar(hasScrollbar)
+    }
+  }, [suggestionList])
+
   return (
     <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
       {/* Chat List */}
@@ -523,7 +533,8 @@ const Chat: FC<IChatProps> = ({
                         background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, #F3F4F6 100%)',
                       }}></div>
                   </div>
-                  <div className='flex justify-center overflow-x-scroll pb-2'>
+                  {/* has scrollbar would hide part of first item */}
+                  <div ref={suggestionListRef} className={cn(!hasScrollbar && 'justify-center', 'flex overflow-x-auto pb-2')}>
                     {suggestionList?.map((item, index) => (
                       <div className='shrink-0 flex justify-center mr-2'>
                         <Button
