@@ -286,11 +286,12 @@ class UserSatisfactionRateStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = '''
-                SELECT date(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-                    COUNT(m.id) as message_count, COUNT(mf.id) as feedback_count 
-                    FROM messages m
-                    LEFT JOIN message_feedbacks mf on mf.message_id=m.id
-                    WHERE m.app_id = :app_id 
+                WITH numbered_messages AS (
+                  SELECT m.id, m.created_at, mf.id AS feedback_id,
+                         ROW_NUMBER() OVER (ORDER BY m.created_at) AS message_number
+                  FROM messages m
+                  LEFT JOIN message_feedbacks mf ON mf.message_id = m.id
+                  WHERE m.app_id = :app_id 
                 '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
@@ -317,7 +318,13 @@ class UserSatisfactionRateStatistic(Resource):
             sql_query += ' and m.created_at < :end'
             arg_dict['end'] = end_datetime_utc
 
-        sql_query += ' GROUP BY date order by date'
+        sql_query += ''')
+            SELECT date(DATE_TRUNC('day', nm.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+                   FLOOR((COUNT(nm.feedback_id) + 999) / 1000) AS feedback_count_per_1000_messages
+            FROM numbered_messages nm
+            GROUP BY date, FLOOR((nm.message_number - 1) / 1000)
+            ORDER BY date;
+        '''
 
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
@@ -327,7 +334,7 @@ class UserSatisfactionRateStatistic(Resource):
         for i in rs:
             response_data.append({
                 'date': str(i.date),
-                'rate': round((i.feedback_count * 1000 / i.message_count) if i.message_count > 0 else 0, 2),
+                'rate': round(i.feedback_count_per_1000_messages / 1000, 5),
             })
 
         return jsonify({
