@@ -11,6 +11,8 @@ from langchain.chains import LLMChain
 from langchain.prompts import BasePromptTemplate
 from langchain.schema import BaseOutputParser, OutputParserException, BaseLanguageModel
 
+from libs.json_in_md_parser import parse_and_check_json_markdown
+
 
 class Route(NamedTuple):
     destination: Optional[str]
@@ -82,42 +84,10 @@ class RouterOutputParser(BaseOutputParser[Dict[str, str]]):
     next_inputs_type: Type = str
     next_inputs_inner_key: str = "input"
 
-    def parse_json_markdown(self, json_string: str) -> dict:
-        # Remove the triple backticks if present
-        json_string = json_string.strip()
-        start_index = json_string.find("```json")
-        end_index = json_string.find("```", start_index + len("```json"))
-
-        if start_index != -1 and end_index != -1:
-            extracted_content = json_string[start_index + len("```json"):end_index].strip()
-
-            # Parse the JSON string into a Python dictionary
-            parsed = json.loads(extracted_content)
-        elif json_string.startswith("{"):
-            # Parse the JSON string into a Python dictionary
-            parsed = json.loads(json_string)
-        else:
-            raise Exception("Could not find JSON block in the output.")
-
-        return parsed
-
-    def parse_and_check_json_markdown(self, text: str, expected_keys: List[str]) -> dict:
-        try:
-            json_obj = self.parse_json_markdown(text)
-        except json.JSONDecodeError as e:
-            raise OutputParserException(f"Got invalid JSON object. Error: {e}")
-        for key in expected_keys:
-            if key not in json_obj:
-                raise OutputParserException(
-                    f"Got invalid return object. Expected key `{key}` "
-                    f"to be present, but got {json_obj}"
-                )
-        return json_obj
-
     def parse(self, text: str) -> Dict[str, Any]:
         try:
             expected_keys = ["destination", "next_inputs"]
-            parsed = self.parse_and_check_json_markdown(text, expected_keys)
+            parsed = parse_and_check_json_markdown(text, expected_keys)
             if not isinstance(parsed["destination"], str):
                 raise ValueError("Expected 'destination' to be a string.")
             if not isinstance(parsed["next_inputs"], self.next_inputs_type):
@@ -135,5 +105,5 @@ class RouterOutputParser(BaseOutputParser[Dict[str, str]]):
             return parsed
         except Exception as e:
             raise OutputParserException(
-                f"Parsing text\n{text}\n raised following error:\n{e}"
+                f"Parsing text\n{text}\n of llm router raised following error:\n{e}"
             )
