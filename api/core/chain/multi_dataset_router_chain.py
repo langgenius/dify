@@ -110,7 +110,10 @@ class MultiDatasetRouterChain(Chain):
                 response_mode='no_synthesizer',  # "compact"
                 callback_handler=DatasetToolCallbackHandler(conversation_message_task)
             )
-            dataset_tools[dataset.id] = dataset_tool
+
+            if dataset_tool:
+                dataset_tools[dataset.id] = dataset_tool
+
         return cls(
             router_chain=router_chain,
             dataset_tools=dataset_tools,
