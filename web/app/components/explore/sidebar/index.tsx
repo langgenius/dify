@@ -1,14 +1,15 @@
 'use client'
-import React, { FC, useEffect, useState } from 'react'
+import type { FC } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import ExploreContext from '@/context/explore-context'
 import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
-import Item from './app-nav-item'
-import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus  } from '@/service/explore'
 import Toast from '../../base/toast'
+import Item from './app-nav-item'
+import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus } from '@/service/explore'
+import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
 
 const SelectedDiscoveryIcon = () => (
@@ -19,12 +20,12 @@ const SelectedDiscoveryIcon = () => (
 
 const DiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8.74786 9.89676L12.0003 14.6669M7.25269 9.89676L4.00027 14.6669M9.3336 8.80031C9.3336 9.53669 8.73665 10.1336 8.00027 10.1336C7.26389 10.1336 6.66694 9.53669 6.66694 8.80031C6.66694 8.06393 7.26389 7.46698 8.00027 7.46698C8.73665 7.46698 9.3336 8.06393 9.3336 8.80031ZM11.4326 3.02182L3.57641 5.12689C3.39609 5.1752 3.30593 5.19936 3.24646 5.25291C3.19415 5.30001 3.15809 5.36247 3.14345 5.43132C3.12681 5.5096 3.15097 5.59976 3.19929 5.78008L3.78595 7.96951C3.83426 8.14984 3.85842 8.24 3.91197 8.29947C3.95907 8.35178 4.02153 8.38784 4.09038 8.40248C4.16866 8.41911 4.25882 8.39496 4.43914 8.34664L12.2953 6.24158L11.4326 3.02182ZM14.5285 6.33338C13.8072 6.52665 13.4466 6.62328 13.1335 6.55673C12.8581 6.49819 12.6082 6.35396 12.4198 6.14471C12.2056 5.90682 12.109 5.54618 11.9157 4.82489L11.8122 4.43852C11.6189 3.71722 11.5223 3.35658 11.5889 3.04347C11.6474 2.76805 11.7916 2.51823 12.0009 2.32982C12.2388 2.11563 12.5994 2.019 13.3207 1.82573C13.501 1.77741 13.5912 1.75325 13.6695 1.76989C13.7383 1.78452 13.8008 1.82058 13.8479 1.87289C13.9014 1.93237 13.9256 2.02253 13.9739 2.20285L14.9057 5.68018C14.954 5.86051 14.9781 5.95067 14.9615 6.02894C14.9469 6.0978 14.9108 6.16025 14.8585 6.20736C14.799 6.2609 14.7088 6.28506 14.5285 6.33338ZM2.33475 8.22033L3.23628 7.97876C3.4166 7.93044 3.50676 7.90628 3.56623 7.85274C3.61854 7.80563 3.6546 7.74318 3.66924 7.67433C3.68588 7.59605 3.66172 7.50589 3.6134 7.32556L3.37184 6.42403C3.32352 6.24371 3.29936 6.15355 3.24581 6.09408C3.19871 6.04176 3.13626 6.00571 3.0674 5.99107C2.98912 5.97443 2.89896 5.99859 2.71864 6.04691L1.81711 6.28847C1.63678 6.33679 1.54662 6.36095 1.48715 6.4145C1.43484 6.4616 1.39878 6.52405 1.38415 6.59291C1.36751 6.67119 1.39167 6.76135 1.43998 6.94167L1.68155 7.8432C1.72987 8.02352 1.75402 8.11369 1.80757 8.17316C1.85467 8.22547 1.91713 8.26153 1.98598 8.27616C2.06426 8.2928 2.15442 8.26864 2.33475 8.22033Z" stroke="#344054" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M8.74786 9.89676L12.0003 14.6669M7.25269 9.89676L4.00027 14.6669M9.3336 8.80031C9.3336 9.53669 8.73665 10.1336 8.00027 10.1336C7.26389 10.1336 6.66694 9.53669 6.66694 8.80031C6.66694 8.06393 7.26389 7.46698 8.00027 7.46698C8.73665 7.46698 9.3336 8.06393 9.3336 8.80031ZM11.4326 3.02182L3.57641 5.12689C3.39609 5.1752 3.30593 5.19936 3.24646 5.25291C3.19415 5.30001 3.15809 5.36247 3.14345 5.43132C3.12681 5.5096 3.15097 5.59976 3.19929 5.78008L3.78595 7.96951C3.83426 8.14984 3.85842 8.24 3.91197 8.29947C3.95907 8.35178 4.02153 8.38784 4.09038 8.40248C4.16866 8.41911 4.25882 8.39496 4.43914 8.34664L12.2953 6.24158L11.4326 3.02182ZM14.5285 6.33338C13.8072 6.52665 13.4466 6.62328 13.1335 6.55673C12.8581 6.49819 12.6082 6.35396 12.4198 6.14471C12.2056 5.90682 12.109 5.54618 11.9157 4.82489L11.8122 4.43852C11.6189 3.71722 11.5223 3.35658 11.5889 3.04347C11.6474 2.76805 11.7916 2.51823 12.0009 2.32982C12.2388 2.11563 12.5994 2.019 13.3207 1.82573C13.501 1.77741 13.5912 1.75325 13.6695 1.76989C13.7383 1.78452 13.8008 1.82058 13.8479 1.87289C13.9014 1.93237 13.9256 2.02253 13.9739 2.20285L14.9057 5.68018C14.954 5.86051 14.9781 5.95067 14.9615 6.02894C14.9469 6.0978 14.9108 6.16025 14.8585 6.20736C14.799 6.2609 14.7088 6.28506 14.5285 6.33338ZM2.33475 8.22033L3.23628 7.97876C3.4166 7.93044 3.50676 7.90628 3.56623 7.85274C3.61854 7.80563 3.6546 7.74318 3.66924 7.67433C3.68588 7.59605 3.66172 7.50589 3.6134 7.32556L3.37184 6.42403C3.32352 6.24371 3.29936 6.15355 3.24581 6.09408C3.19871 6.04176 3.13626 6.00571 3.0674 5.99107C2.98912 5.97443 2.89896 5.99859 2.71864 6.04691L1.81711 6.28847C1.63678 6.33679 1.54662 6.36095 1.48715 6.4145C1.43484 6.4616 1.39878 6.52405 1.38415 6.59291C1.36751 6.67119 1.39167 6.76135 1.43998 6.94167L1.68155 7.8432C1.72987 8.02352 1.75402 8.11369 1.80757 8.17316C1.85467 8.22547 1.91713 8.26153 1.98598 8.27616C2.06426 8.2928 2.15442 8.26864 2.33475 8.22033Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
 
 const SideBar: FC<{
-  controlUpdateInstalledApps: number,
+  controlUpdateInstalledApps: number
 }> = ({
   controlUpdateInstalledApps,
 }) => {
@@ -35,10 +36,10 @@ const SideBar: FC<{
   const { installedApps, setInstalledApps } = useContext(ExploreContext)
 
   const fetchInstalledAppList = async () => {
-    const {installed_apps} : any = await doFetchInstalledAppList()
+    const { installed_apps }: any = await doFetchInstalledAppList()
     setInstalledApps(installed_apps)
   }
-  
+
   const [showConfirm, setShowConfirm] = useState(false)
   const [currId, setCurrId] = useState('')
   const handleDelete = async () => {
@@ -47,7 +48,7 @@ const SideBar: FC<{
     setShowConfirm(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.remove')
+      message: t('common.api.remove'),
     })
     fetchInstalledAppList()
   }
@@ -56,7 +57,7 @@ const SideBar: FC<{
     await updatePinStatus(id, isPinned)
     Toast.notify({
       type: 'success',
-      message: t('common.api.success')
+      message: t('common.api.success'),
     })
     fetchInstalledAppList()
   }
@@ -74,8 +75,8 @@ const SideBar: FC<{
       <div>
         <Link
           href='/explore/apps'
-          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium','flex items-center h-9 pl-3 space-x-2 rounded-lg')}
-          style={isDiscoverySelected ? {boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)'} : {}}
+          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium', 'flex items-center h-9 pl-3 space-x-2 rounded-lg')}
+          style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
           <div className='text-sm'>{t('explore.sidebar.discovery')}</div>
@@ -86,12 +87,12 @@ const SideBar: FC<{
           <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
           <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden pb-20'
             style={{
-              maxHeight: 'calc(100vh - 250px)'
+              maxHeight: 'calc(100vh - 250px)',
             }}
           >
-            {installedApps.map(({id, is_pinned, uninstallable, app : { name, icon, icon_background }}) => {
+            {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon, icon_background } }) => {
               return (
-                <Item 
+                <Item
                   key={id}
                   name={name}
                   icon={icon}
@@ -112,15 +113,15 @@ const SideBar: FC<{
         </div>
       )}
       {showConfirm && (
-          <Confirm
-            title={t('explore.sidebar.delete.title')}
-            content={t('explore.sidebar.delete.content')}
-            isShow={showConfirm}
-            onClose={() => setShowConfirm(false)}
-            onConfirm={handleDelete}
-            onCancel={() => setShowConfirm(false)}
-          />
-        )}
+        <Confirm
+          title={t('explore.sidebar.delete.title')}
+          content={t('explore.sidebar.delete.content')}
+          isShow={showConfirm}
+          onClose={() => setShowConfirm(false)}
+          onConfirm={handleDelete}
+          onCancel={() => setShowConfirm(false)}
+        />
+      )}
     </div>
   )
 }
