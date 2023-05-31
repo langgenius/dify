@@ -23,7 +23,8 @@ think that revising it will ultimately lead to a better response from the langua
 model.
 
 << FORMATTING >>
-Return a markdown code snippet with a JSON object formatted to look like:
+Return a markdown code snippet with a JSON object formatted to look like, \
+no any other string out of markdown code snippet:
 ```json
 {{{{
     "destination": string \\ name of the prompt to use or "DEFAULT"

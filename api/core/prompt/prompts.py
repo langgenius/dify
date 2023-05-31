@@ -71,7 +71,8 @@ If you believe revising the original input will result in a better response from
 suggest revisions.
 
 << FORMATTING >>
-MUST return a markdown code snippet with a JSON object formatted to look like:
+Return a markdown code snippet with a JSON object formatted to look like, \
+no any other string out of markdown code snippet:
 ```json
 {{{{
     "prompt": string \\ generated prompt
