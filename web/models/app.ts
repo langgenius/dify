@@ -83,6 +83,10 @@ export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
 }
 
+export type AppStatisticsResponse = {
+  data: Array<{ date: string }>
+}
+
 export type AppDailyEndUsersResponse = {
   data: Array<{ date: string; terminal_count: number }>
 }
