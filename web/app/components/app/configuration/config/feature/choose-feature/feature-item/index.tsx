@@ -1,9 +1,13 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
+import cn from 'classnames'
+import s from './style.module.css'
 import Switch from '@/app/components/base/switch'
 
-export interface IFeatureItemProps {
+export type IFeatureItemProps = {
   icon: React.ReactNode
+  previewImgClassName?: string
   title: string
   description: string
   value: boolean
@@ -12,13 +16,14 @@ export interface IFeatureItemProps {
 
 const FeatureItem: FC<IFeatureItemProps> = ({
   icon,
+  previewImgClassName,
   title,
   description,
   value,
-  onChange
+  onChange,
 }) => {
   return (
-    <div className='flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer'>
+    <div className={cn(s.wrap, 'relative flex justify-between p-3 rounded-xl border border-transparent bg-gray-50 hover:border-gray-200  cursor-pointer')}>
       <div className='flex space-x-3 mr-2'>
         {/* icon */}
         <div
@@ -36,6 +41,11 @@ const FeatureItem: FC<IFeatureItemProps> = ({
       </div>
 
       <Switch onChange={onChange} defaultValue={value} />
+      {
+        previewImgClassName && (
+          <div className={cn(s.preview, s[previewImgClassName])}>
+          </div>)
+      }
     </div>
   )
 }

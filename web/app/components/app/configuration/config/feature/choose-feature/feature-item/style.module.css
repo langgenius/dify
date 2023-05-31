@@ -1,0 +1,25 @@
+.preview {
+  display: none;
+  position: fixed;
+  transform: translate(410px, -54px);
+  width: 280px;
+  height: 360px;
+  background: center center no-repeat;
+  background-size: contain;
+}
+
+.wrap:hover .preview {
+  display: block;
+}
+
+.openingStatementPreview {
+  background-image: url(./preview-imgs/opening-statement.svg);
+}
+
+.suggestedQuestionsAfterAnswerPreview {
+  background-image: url(./preview-imgs/suggested-questions-after-answer.svg);
+}
+
+.moreLikeThisPreview {
+  background-image: url(./preview-imgs/more-like-this.svg);
+}
