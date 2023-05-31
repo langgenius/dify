@@ -71,6 +71,7 @@ const translation = {
   },
   analysis: {
     title: 'Analysis',
+    ms: 'ms',
     totalMessages: {
       title: 'Total Messages',
       explanation: 'Daily AI interactions count; prompt engineering/debugging excluded.',
