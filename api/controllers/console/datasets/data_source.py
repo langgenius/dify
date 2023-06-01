@@ -1,7 +1,6 @@
 import datetime
 import json
 
-
 from cachetools import TTLCache
 from flask import request, current_app
 from flask_login import login_required, current_user
@@ -28,7 +27,6 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 class DataSourceApi(Resource):
-
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
@@ -233,7 +231,25 @@ class DataSourceNotionApi(Resource):
         return response, 200
 
 
+class DataSourceNotionSyncApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
+        for document in documents:
+
+        return 200
+
+
 api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integrates/<uuid:binding_id>/<string:action>')
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
 api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview',
                  '/datasets/notion-indexing-estimate')
+api.add_resource(DataSourceNotionSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')

@@ -1,6 +1,7 @@
 """Notion reader."""
 import logging
 import os
+from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 import requests  # type: ignore
@@ -12,6 +13,7 @@ INTEGRATION_TOKEN_NAME = "NOTION_INTEGRATION_TOKEN"
 BLOCK_CHILD_URL_TMPL = "https://api.notion.com/v1/blocks/{block_id}/children"
 DATABASE_URL_TMPL = "https://api.notion.com/v1/databases/{database_id}/query"
 SEARCH_URL = "https://api.notion.com/v1/search"
+RETRIEVE_PAGE_URL_TMPL = "https://api.notion.com/v1/pages/{page_id}"
 
 logger = logging.getLogger(__name__)
 
@@ -232,6 +234,17 @@ class NotionPageReader(BaseReader):
                     docs.append(Document(page_text))
 
         return docs
+
+    def get_page_last_edited_time(self, page_id: str) -> str:
+        retrieve_page_url = RETRIEVE_PAGE_URL_TMPL.format(page_id=page_id)
+        query_dict: Dict[str, Any] = {}
+
+        res = requests.request(
+            "GET", retrieve_page_url, headers=self.headers, json=query_dict
+        )
+        data = res.json()
+        # last_edited_time = datetime.fromisoformat(data["last_edited_time"])
+        return data["last_edited_time"]
 
 
 if __name__ == "__main__":

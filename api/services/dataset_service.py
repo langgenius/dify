@@ -278,6 +278,15 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_document_by_dataset_id(dataset_id: str) -> List[Document]:
+        documents = db.session.query(Document).filter(
+            Document.dataset_id == dataset_id,
+            Document.enabled == True
+        ).all()
+
+        return documents
+
+    @staticmethod
     def get_batch_documents(dataset_id: str, batch: str) -> List[Document]:
         documents = db.session.query(Document).filter(
             Document.batch == batch,

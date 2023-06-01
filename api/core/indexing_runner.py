@@ -280,7 +280,21 @@ class IndexingRunner:
             if not data_source_info or 'notion_page_id' not in data_source_info \
                     or 'notion_workspace_id' not in data_source_info:
                 raise ValueError("no notion page found")
-            text_docs = self._load_data_from_notion(data_source_info['notion_workspace_id'], data_source_info['notion_page_id'], document.tenant_id)
+            workspace_id = data_source_info['notion_workspace_id']
+            page_id = data_source_info['notion_page_id']
+            data_source_binding = DataSourceBinding.query.filter(
+                db.and_(
+                    DataSourceBinding.tenant_id == document.tenant_id,
+                    DataSourceBinding.provider == 'notion',
+                    DataSourceBinding.disabled == False,
+                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                )
+            ).first()
+            if not data_source_binding:
+                raise ValueError('Data source binding not found.')
+            # add page last_edited_time to data_source_info
+            self._get_notion_page_last_edited_time(page_id, data_source_binding.access_token, document)
+            text_docs = self._load_data_from_notion(page_id, data_source_binding.access_token)
         # update document status to splitting
         self._update_document_index_status(
             document_id=document.id,
@@ -320,21 +334,23 @@ class IndexingRunner:
 
             return text_docs
 
-    def _load_data_from_notion(self, workspace_id: str, page_id: str, tenant_id: str) -> List[Document]:
-        data_source_binding = DataSourceBinding.query.filter(
-            db.and_(
-                DataSourceBinding.tenant_id == tenant_id,
-                DataSourceBinding.provider == 'notion',
-                DataSourceBinding.disabled == False,
-                DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
-            )
-        ).first()
-        if not data_source_binding:
-            raise ValueError('Data source binding not found.')
+    def _load_data_from_notion(self, page_id: str, access_token: str) -> List[Document]:
         page_ids = [page_id]
-        reader = NotionPageReader(integration_token=data_source_binding.access_token)
+        reader = NotionPageReader(integration_token=access_token)
         text_docs = reader.load_data_as_documents(page_ids=page_ids)
         return text_docs
+
+    def _get_notion_page_last_edited_time(self, page_id: str, access_token: str, document: Document):
+        reader = NotionPageReader(integration_token=access_token)
+        last_edited_time = reader.get_page_last_edited_time(page_id)
+        data_source_info = document.data_source_info_dict
+        data_source_info['last_edited_time'] = last_edited_time
+        update_params = {
+            Document.data_source_info: json.dumps(data_source_info)
+        }
+
+        Document.query.filter_by(id=document.id).update(update_params)
+        db.session.commit()
 
     def _get_node_parser(self, processing_rule: DatasetProcessRule) -> NodeParser:
         """

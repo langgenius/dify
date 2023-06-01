@@ -62,14 +62,27 @@ class NotionOAuth(OAuthDataSource):
             'total': len(pages)
         }
         # save data source binding
-        data_source_binding = DataSourceBinding(
-            tenant_id=current_user.current_tenant_id,
-            access_token=access_token,
-            source_info=source_info,
-            provider='notion'
-        )
-        db.session.add(data_source_binding)
-        db.session.commit()
+        data_source_binding = DataSourceBinding.query.filter(
+            db.and_(
+                DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBinding.provider == 'notion',
+                DataSourceBinding.access_token == access_token
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            db.session.add(data_source_binding)
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceBinding(
+                tenant_id=current_user.current_tenant_id,
+                access_token=access_token,
+                source_info=source_info,
+                provider='notion'
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
 
     def get_authorized_pages(self, access_token: str):
         pages = []
