@@ -37,23 +37,23 @@ const SetTarget: FC<ISetTargetProps> = ({
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='min-w-[1120px]'
+      className='min-w-[1120px] min-h-[680px]'
     >
       <div className='flex'>
-        <div className='w-[480px] shrink-0'>
+        <div className='w-[480px] shrink-0 pr-8 h-full border-r border-gray-100'>
           <div>
-            <div className='text-lg font-semibold text-primary-600'>{t('appDebug.automatic.title')}</div>
-            <div className='text-lg font-semibold text-primary-600'>{t('appDebug.automatic.description')}</div>
+            <div className='mb-1 text-xl font-semibold text-primary-600'>{t('appDebug.automatic.title')}</div>
+            <div className='text-[13px] font-normal text-gray-500'>{t('appDebug.automatic.description')}</div>
           </div>
           {/* inputs */}
-          <div className='mt-2 space-y-5'>
-            <div className='space-x-2'>
-              <div className='text-lg font-semibold text-primary-600'>{t('appDebug.automatic.intendedAudience')}</div>
-              <input className="h-10 px-3 text-sm font-normal bg-gray-50 rounded-lg" value="" />
+          <div className='mt-12 space-y-5'>
+            <div className='space-y-2'>
+              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.intendedAudience')}</div>
+              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" value="" />
             </div>
-            <div className='space-x-2'>
-              <div className='text-lg font-semibold text-primary-600'>{t('appDebug.automatic.solveProblem')}</div>
-              <input className="h-10 px-3 text-sm font-normal bg-gray-50 rounded-lg" value="" />
+            <div className='space-y-2'>
+              <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.solveProblem')}</div>
+              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" value="" />
             </div>
 
             <div className='mt-6 flex justify-end'>
