@@ -11,7 +11,7 @@ const translation = {
     delete: {
       title: 'Delete app',
       content: 'Are you sure you want to delete this app?',
-    }
+    },
   },
   apps: {
     title: 'Explore Apps by Dify',
@@ -28,12 +28,12 @@ const translation = {
     nameRequired: 'App name is required',
   },
   category: {
-    'Assistant': 'Assistant',
-    'Writing': 'Writing',
-    'Translate': 'Translate',
-    'Programming': 'Programming',
-    'HR': 'HR',
-  }
+    Assistant: 'Assistant',
+    Writing: 'Writing',
+    Translate: 'Translate',
+    Programming: 'Programming',
+    HR: 'HR',
+  },
 }
 
 export default translation

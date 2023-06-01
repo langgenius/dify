@@ -56,7 +56,7 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
 
 export enum ProviderName {
   OPENAI = 'openai',
-  AZURE_OPENAI = 'azure_openai'
+  AZURE_OPENAI = 'azure_openai',
 }
 export type ProviderAzureToken = {
   openai_api_base?: string
@@ -91,7 +91,7 @@ export type AccountIntegrate = {
   link: string
 }
 
-export interface IWorkspace {
+export type IWorkspace = {
   id: string
   name: string
   plan: string

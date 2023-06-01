@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useClickAway } from 'ahooks'
+import { ChevronDownIcon, Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import ParamItem from './param-item'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
-import { Cog8ToothIcon, InformationCircleIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
 import { AppType } from '@/types/app'
 import { TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
@@ -51,7 +51,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
 }) => {
   const { t } = useTranslation()
   const isChatApp = mode === AppType.chat
-  const availableModels = options.filter((item) => item.type === mode)
+  const availableModels = options.filter(item => item.type === mode)
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const configContentRef = React.useRef(null)
   useClickAway(() => {
@@ -116,14 +116,14 @@ const ConifgModel: FC<IConifgModelProps> = ({
         onShowUseGPT4Confirm()
         return
       }
-      if(id !== 'gpt-4' && completionParams.max_tokens > 4000) {
+      if (id !== 'gpt-4' && completionParams.max_tokens > 4000) {
         Toast.notify({
           type: 'warning',
-          message: t('common.model.params.setToCurrentModelMaxTokenTip')
+          message: t('common.model.params.setToCurrentModelMaxTokenTip'),
         })
         onCompletionParamsChange({
           ...completionParams,
-          max_tokens: 4000
+          max_tokens: 4000,
         })
       }
       setModelId(id)
@@ -153,7 +153,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
       setToneId(id)
       onCompletionParamsChange({
         ...tone.config,
-        max_tokens: completionParams.max_tokens
+        max_tokens: completionParams.max_tokens,
       } as CompletionParams)
     }
   }
@@ -178,7 +178,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
   return (
     <div className='relative' ref={configContentRef}>
       <div
-        className={cn(`flex items-center border h-8 px-2.5 space-x-2 rounded-lg`, disabled ? diabledStyle : ableStyle)}
+        className={cn('flex items-center border h-8 px-2.5 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
         <ModelIcon />
@@ -206,14 +206,14 @@ const ConifgModel: FC<IConifgModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               {/* model selector */}
-              <div className="relative" style={{zIndex: 30}}>
-                <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', "flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ")}>
+              <div className="relative" style={{ zIndex: 30 }}>
+                <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
                   <ModelIcon />
                   <div className="text-sm gray-900">{selectedModel?.name}</div>
                   {!selectModelDisabled && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
                 </div>
                 {isShowOption && (
-                  <div className={cn(isChatApp ? 'w-[159px]' : 'w-[179px]', "absolute right-0 bg-gray-50 rounded-lg shadow")}>
+                  <div className={cn(isChatApp ? 'w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
                     {availableModels.map(item => (
                       <div key={item.id} onClick={handleSelectModel(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
                         <ModelIcon className='mr-2' />

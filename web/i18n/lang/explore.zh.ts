@@ -11,7 +11,7 @@ const translation = {
     delete: {
       title: '删除程序',
       content: '您确定要删除此程序吗？',
-    }
+    },
   },
   apps: {
     title: '探索 Dify 的应用',
@@ -28,12 +28,12 @@ const translation = {
     nameRequired: '应用程序名称不能为空',
   },
   category: {
-    'Assistant': '助手',
-    'Writing': '写作',
-    'Translate': '翻译',
-    'Programming': '编程',
-    'HR': '人力资源',
-  }
+    Assistant: '助手',
+    Writing: '写作',
+    Translate: '翻译',
+    Programming: '编程',
+    HR: '人力资源',
+  },
 }
 
 export default translation

@@ -1,13 +1,14 @@
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import Main from '@/app/components/explore/installed-app'
 
-export interface IInstalledAppProps { 
+export type IInstalledAppProps = {
   params: {
     appId: string
   }
 }
 
-const InstalledApp: FC<IInstalledAppProps> = ({ params: {appId} }) => {
+const InstalledApp: FC<IInstalledAppProps> = ({ params: { appId } }) => {
   return (
     <Main id={appId} />
   )

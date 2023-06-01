@@ -1,11 +1,13 @@
+/* eslint-disable multiline-ternary */
 'use client'
-import React, { FC, useEffect, useRef, useState } from 'react'
+import type { FC } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
-import ConfigContext from '@/context/debug-configuration'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import ConfigContext from '@/context/debug-configuration'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Button from '@/app/components/base/button'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
@@ -14,7 +16,7 @@ import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/conf
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
 
-export interface IOpeningStatementProps {
+export type IOpeningStatementProps = {
   promptTemplate: string
   value: string
   onChange: (value: string) => void
@@ -25,7 +27,7 @@ const regex = /\{\{([^}]+)\}\}/g
 
 const OpeningStatement: FC<IOpeningStatementProps> = ({
   value = '',
-  onChange
+  onChange,
 }) => {
   const { t } = useTranslation()
   const {
@@ -60,8 +62,6 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     .replace(/>/g, '&gt;')
     .replace(regex, varHighlightHTML({ name: '$1' })) // `<span class="${highLightClassName}">{{$1}}</span>`
     .replace(/\n/g, '<br />')
-    
-
 
   const handleEdit = () => {
     setFocus()
@@ -76,15 +76,15 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
 
   const handleConfirm = () => {
     const keys = getInputKeys(tempValue)
-    const promptKeys = promptVariables.map((item) => item.key)
+    const promptKeys = promptVariables.map(item => item.key)
     let notIncludeKeys: string[] = []
 
     if (promptKeys.length === 0) {
-      if (keys.length > 0) {
+      if (keys.length > 0)
         notIncludeKeys = keys
-      }
-    } else {
-      notIncludeKeys = keys.filter((key) => !promptKeys.includes(key))
+    }
+    else {
+      notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
     }
 
     if (notIncludeKeys.length > 0) {
@@ -104,7 +104,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
 
   const autoAddVar = () => {
     const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...notIncludeKeys.map((key) => getNewVar(key))]
+      draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...notIncludeKeys.map(key => getNewVar(key))]
     })
     onChange(tempValue)
     setModelConfig(newModelConfig)
@@ -130,26 +130,30 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       isFocus={isFocus}
     >
       <div className='text-gray-700 text-sm'>
-        {(hasValue || (!hasValue && isFocus)) ? (
-          <>
-            {isFocus ? (
-              <textarea
-                ref={inputRef}
-                value={tempValue}
-                rows={3}
-                onChange={e => setTempValue(e.target.value)}
-                className="w-full px-0 text-sm  border-0 bg-transparent  focus:outline-none "
-                placeholder={t('appDebug.openingStatement.placeholder') as string}
-              >
-              </textarea>
-            ) : (
-              <div dangerouslySetInnerHTML={{
-                __html: coloredContent
-              }}></div>
-            )}
+        {(hasValue || (!hasValue && isFocus))
+          ? (
+            <>
+              {isFocus
+                ? (
+                  <textarea
+                    ref={inputRef}
+                    value={tempValue}
+                    rows={3}
+                    onChange={e => setTempValue(e.target.value)}
+                    className="w-full px-0 text-sm  border-0 bg-transparent  focus:outline-none "
+                    placeholder={t('appDebug.openingStatement.placeholder') as string}
+                  >
+                  </textarea>
+                )
+                : (
+                  <div dangerouslySetInnerHTML={{
+                    __html: coloredContent,
+                  }}></div>
+                )}
 
-            {/* Operation Bar */}
-            {isFocus && (
+              {/* Operation Bar */}
+              {isFocus
+            && (
               <div className='mt-2 flex items-center justify-between'>
                 <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.varTip')}</div>
 
@@ -160,9 +164,9 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
               </div>
             )}
 
-          </>) : (
-          <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
-        )}
+            </>) : (
+            <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
+          )}
 
         {isShowConfirmAddVar && (
           <ConfirmAddVar

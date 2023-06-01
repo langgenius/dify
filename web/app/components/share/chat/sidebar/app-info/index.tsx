@@ -1,10 +1,11 @@
 'use client'
-import React, { FC } from 'react'
-import cn  from 'classnames'
+import type { FC } from 'react'
+import React from 'react'
+import cn from 'classnames'
 import { appDefaultIconBackground } from '@/config/index'
 import AppIcon from '@/app/components/base/app-icon'
 
-export interface IAppInfoProps {
+export type IAppInfoProps = {
   className?: string
   icon: string
   icon_background?: string
@@ -15,7 +16,7 @@ const AppInfo: FC<IAppInfoProps> = ({
   className,
   icon,
   icon_background,
-  name
+  name,
 }) => {
   return (
     <div className={cn(className, 'flex items-center space-x-3')}>

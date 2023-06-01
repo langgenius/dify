@@ -76,6 +76,8 @@ const translation = {
     fileName: 'Preprocess document',
     lastStep: 'Last step',
     nextStep: 'Save & Process',
+    save: 'Save & Process',
+    cancel: 'Cancel',
     sideTipTitle: 'Why segment and preprocess?',
     sideTipP1: 'When processing text data, segmentation and cleaning are two important preprocessing steps.',
     sideTipP2: 'Segmentation splits long text into paragraphs so models can understand better. This improves the quality and relevance of model results.',

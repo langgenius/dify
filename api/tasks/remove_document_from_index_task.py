@@ -42,8 +42,7 @@ def remove_document_from_index_task(document_id: str):
         keyword_table_index = KeywordTableIndex(dataset=dataset)
 
         # delete from vector index
-        if dataset.indexing_technique == "high_quality":
-            vector_index.del_doc(document.id)
+        vector_index.del_doc(document.id)
 
         # delete from keyword index
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).all()

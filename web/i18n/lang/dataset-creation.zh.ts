@@ -76,6 +76,8 @@ const translation = {
     fileName: '预处理文档',
     lastStep: '上一步',
     nextStep: '保存并处理',
+    save: '保存并处理',
+    cancel: '取消',
     sideTipTitle: '为什么要分段和预处理？',
     sideTipP1: '在处理文本数据时，分段和清洗是两个重要的预处理步骤。',
     sideTipP2: '分段的目的是将长文本拆分成较小的段落，以便模型更有效地处理和理解。这有助于提高模型生成的结果的质量和相关性。',

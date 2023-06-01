@@ -19,7 +19,7 @@ import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { fetchIndexingEstimate, fetchIndexingStatus, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
+import { fetchIndexingEstimate, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
 
@@ -118,14 +118,45 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const localDocumentId = docId ?? documentId
   const localIndexingTechnique = indexingType ?? indexingTechnique
 
-  const { data: indexingStatusDetail, error: indexingStatusErr, mutate: statusMutate } = useSWR({
-    action: 'fetchIndexingStatus',
-    datasetId: localDatasetId,
-    documentId: localDocumentId,
-  }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-    refreshInterval: 5000,
-    revalidateOnFocus: false,
-  })
+  // const { data: indexingStatusDetailFromApi, error: indexingStatusErr, mutate: statusMutate } = useSWR({
+  //   action: 'fetchIndexingStatus',
+  //   datasetId: localDatasetId,
+  //   documentId: localDocumentId,
+  // }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
+  //   refreshInterval: 2500,
+  //   revalidateOnFocus: false,
+  // })
+
+  const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
+  const fetchIndexingStatus = async () => {
+    const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
+    setIndexingStatusDetail(status)
+  }
+
+  const [runId, setRunId, getRunId] = useGetState<any>(null)
+  const startQueryStatus = () => {
+    const runId = setInterval(() => {
+      const indexingStatusDetail = getIndexingStatusDetail()
+      if (indexingStatusDetail?.indexing_status === 'completed') {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        stopQueryStatus()
+        return
+      }
+      fetchIndexingStatus()
+    }, 2500)
+    setRunId(runId)
+  }
+  const stopQueryStatus = () => {
+    clearInterval(getRunId())
+  }
+
+  useEffect(() => {
+    fetchIndexingStatus()
+    startQueryStatus()
+    return () => {
+      stopQueryStatus()
+    }
+  }, [])
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
     action: 'fetchIndexingEstimate',
@@ -168,7 +199,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId: localDatasetId, documentId: localDocumentId }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      statusMutate()
+      setIndexingStatusDetail(null)
     }
     else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })

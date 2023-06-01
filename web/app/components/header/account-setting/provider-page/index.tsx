@@ -1,15 +1,15 @@
 import { useState } from 'react'
 import useSWR from 'swr'
-import { fetchProviders } from '@/service/common'
-import ProviderItem from './provider-item'
-import OpenaiHostedProvider from './openai-hosted-provider'
-import type { ProviderHosted } from '@/models/common'
 import { LockClosedIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import ProviderItem from './provider-item'
+import OpenaiHostedProvider from './openai-hosted-provider'
+import type { ProviderHosted } from '@/models/common'
+import { fetchProviders } from '@/service/common'
 import { IS_CE_EDITION } from '@/config'
 
-const providersMap: {[k: string]: any} = {
+const providersMap: { [k: string]: any } = {
   'openai-custom': {
     icon: 'openai',
     name: 'OpenAI',
@@ -17,7 +17,7 @@ const providersMap: {[k: string]: any} = {
   'azure_openai-custom': {
     icon: 'azure',
     name: 'Azure OpenAI Service',
-  }
+  },
 }
 
 // const providersList = [
@@ -56,7 +56,7 @@ const ProviderPage = () => {
   const { t } = useTranslation()
   const [activeProviderId, setActiveProviderId] = useState('')
   const { data, mutate } = useSWR({ url: '/workspaces/current/providers' }, fetchProviders)
-  const providers = data?.filter(provider => providersMap[`${provider.provider_name}-${provider.provider_type}`])?.map(provider => {
+  const providers = data?.filter(provider => providersMap[`${provider.provider_name}-${provider.provider_type}`])?.map((provider) => {
     const providerKey = `${provider.provider_name}-${provider.provider_type}`
     return {
       provider,
