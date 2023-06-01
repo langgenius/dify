@@ -1,10 +1,10 @@
-import { get, post, del, patch } from './base'
+import { del, get, patch, post } from './base'
 
 export const fetchAppList = () => {
   return get('/explore/apps')
 }
 
-export const fetchAppDetail = (id: string) : Promise<any> => {
+export const fetchAppDetail = (id: string): Promise<any> => {
   return get(`/explore/apps/${id}`)
 }
 
@@ -15,8 +15,8 @@ export const fetchInstalledAppList = () => {
 export const installApp = (id: string) => {
   return post('/installed-apps', {
     body: {
-      app_id: id
-    }
+      app_id: id,
+    },
   })
 }
 
@@ -27,7 +27,7 @@ export const uninstallApp = (id: string) => {
 export const updatePinStatus = (id: string, isPinned: boolean) => {
   return patch(`/installed-apps/${id}`, {
     body: {
-      is_pinned: isPinned
-    }
+      is_pinned: isPinned,
+    },
   })
 }

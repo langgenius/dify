@@ -1,12 +1,11 @@
 'use client'
 import cn from 'classnames'
 import { useRouter } from 'next/navigation'
+import s from './style.module.css'
 import ItemOperation from '@/app/components/explore/item-operation'
 import AppIcon from '@/app/components/base/app-icon'
 
-import s from './style.module.css'
-
-export interface IAppNavItemProps {
+export type IAppNavItemProps = {
   name: string
   id: string
   icon: string
@@ -31,7 +30,7 @@ export default function AppNavItem({
 }: IAppNavItemProps) {
   const router = useRouter()
   const url = `/explore/installed/${id}`
-  
+
   return (
     <div
       key={id}
@@ -40,7 +39,7 @@ export default function AppNavItem({
         isSelected ? s.active : 'hover:bg-gray-200',
         'flex h-8 justify-between px-2 rounded-lg text-sm font-normal ',
       )}
-      onClick={() => { 
+      onClick={() => {
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
@@ -53,7 +52,7 @@ export default function AppNavItem({
             borderColor: '0.5px solid rgba(0, 0, 0, 0.05)'
           }}
         /> */}
-        <AppIcon size='tiny'  icon={icon} background={icon_background} />
+        <AppIcon size='tiny' icon={icon} background={icon_background} />
         <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
       </div>
       {

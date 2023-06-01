@@ -1,11 +1,12 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Popover from '@/app/components/base/popover'
 import { TrashIcon } from '@heroicons/react/24/outline'
 
 import s from './style.module.css'
+import Popover from '@/app/components/base/popover'
 
 const PinIcon = (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -13,7 +14,7 @@ const PinIcon = (
   </svg>
 )
 
-export interface IItemOperationProps {
+export type IItemOperationProps = {
   className?: string
   isPinned: boolean
   isShowDelete: boolean
@@ -26,7 +27,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
   isPinned,
   isShowDelete,
   togglePin,
-  onDelete
+  onDelete,
 }) => {
   const { t } = useTranslation()
 
@@ -42,18 +43,18 @@ const ItemOperation: FC<IItemOperationProps> = ({
           </div>
           {isShowDelete && (
             <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
-            <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
-            <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('explore.sidebar.action.delete')}</span>
-          </div>
+              <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
+              <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('explore.sidebar.action.delete')}</span>
+            </div>
           )}
-          
+
         </div>
       }
       trigger='click'
       position='br'
       btnElement={<div />}
-      btnClassName={(open) => cn(className, s.btn, 'h-6 w-6 rounded-md border-none p-1', open && '!bg-gray-100 !shadow-none')}
-      className={`!w-[120px] h-fit !z-20`}
+      btnClassName={open => cn(className, s.btn, 'h-6 w-6 rounded-md border-none p-1', open && '!bg-gray-100 !shadow-none')}
+      className={'!w-[120px] h-fit !z-20'}
     />
   )
 }

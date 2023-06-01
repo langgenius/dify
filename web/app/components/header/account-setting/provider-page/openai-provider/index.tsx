@@ -1,19 +1,19 @@
-import type { Provider } from '@/models/common'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ProviderInput from '../provider-input'
 import Link from 'next/link'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
-import useValidateToken, { ValidatedStatus, ValidatedStatusState } from '../provider-input/useValidateToken'
-import { 
-  ValidatedErrorIcon, 
+import ProviderInput from '../provider-input'
+import type { ValidatedStatusState } from '../provider-input/useValidateToken'
+import useValidateToken, { ValidatedStatus } from '../provider-input/useValidateToken'
+import {
+  ValidatedErrorIcon,
+  ValidatedErrorOnOpenaiTip,
   ValidatedSuccessIcon,
   ValidatingTip,
-  ValidatedExceedOnOpenaiTip,
-  ValidatedErrorOnOpenaiTip
 } from '../provider-input/Validate'
+import type { Provider } from '@/models/common'
 
-interface IOpenaiProviderProps {
+type IOpenaiProviderProps = {
   provider: Provider
   onValidatedStatus: (status?: ValidatedStatusState) => void
   onTokenChange: (token: string) => void
@@ -22,11 +22,11 @@ interface IOpenaiProviderProps {
 const OpenaiProvider = ({
   provider,
   onValidatedStatus,
-  onTokenChange
+  onTokenChange,
 }: IOpenaiProviderProps) => {
   const { t } = useTranslation()
   const [token, setToken] = useState(provider.token as string || '')
-  const [ validating, validatedStatus, setValidatedStatus, validate ] = useValidateToken(provider.provider_name)
+  const [validating, validatedStatus, setValidatedStatus, validate] = useValidateToken(provider.provider_name)
   const handleFocus = () => {
     if (token === provider.token) {
       setToken('')
@@ -44,35 +44,32 @@ const OpenaiProvider = ({
           return false
         }
         return true
-      }
+      },
     })
   }
   useEffect(() => {
-    if (typeof onValidatedStatus === 'function') {
+    if (typeof onValidatedStatus === 'function')
       onValidatedStatus(validatedStatus)
-    }
   }, [validatedStatus])
 
   const getValidatedIcon = () => {
-    if (validatedStatus?.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed) {
+    if (validatedStatus?.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed)
       return <ValidatedErrorIcon />
-    }
-    if (validatedStatus.status === ValidatedStatus.Success) {
+
+    if (validatedStatus.status === ValidatedStatus.Success)
       return <ValidatedSuccessIcon />
-    }
   }
   const getValidatedTip = () => {
-    if (validating) {
+    if (validating)
       return <ValidatingTip />
-    }
-    if (validatedStatus?.status === ValidatedStatus.Error) {
+
+    if (validatedStatus?.status === ValidatedStatus.Error)
       return <ValidatedErrorOnOpenaiTip errorMessage={validatedStatus.message ?? ''} />
-    }
   }
 
   return (
     <div className='px-4 pt-3 pb-4'>
-      <ProviderInput 
+      <ProviderInput
         value={token}
         name={t('common.provider.apiKey')}
         placeholder={t('common.provider.enterYourKey')}

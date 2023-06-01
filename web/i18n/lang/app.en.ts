@@ -39,7 +39,7 @@ const translation = {
   emoji: {
     ok: 'OK',
     cancel: 'Cancel',
-  }
+  },
 }
 
 export default translation

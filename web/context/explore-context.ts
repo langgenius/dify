@@ -1,5 +1,5 @@
 import { createContext } from 'use-context-selector'
-import { InstalledApp } from '@/models/explore'
+import type { InstalledApp } from '@/models/explore'
 
 type IExplore = {
   controlUpdateInstalledApps: number

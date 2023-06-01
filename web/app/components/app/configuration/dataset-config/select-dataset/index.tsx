@@ -1,19 +1,19 @@
 'use client'
-import React, { FC, useEffect } from 'react'
+import type { FC } from 'react'
+import React, { useEffect } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import { DataSet } from '@/models/datasets'
+import Link from 'next/link'
 import TypeIcon from '../type-icon'
+import s from './style.module.css'
+import Modal from '@/app/components/base/modal'
+import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
 import { formatNumber } from '@/utils/format'
-import Link from 'next/link'
 
-import s from './style.module.css'
-
-export interface ISelectDataSetProps {
+export type ISelectDataSetProps = {
   isShow: boolean
   onClose: () => void
   selectedIds: string[]
@@ -37,20 +37,19 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       const { data } = await fetchDatasets({ url: '/datasets', params: { page: 1 } })
       setDataSets(data)
       setLoaded(true)
-      setSelected(data.filter((item) => selectedIds.includes(item.id)))
+      setSelected(data.filter(item => selectedIds.includes(item.id)))
     })()
   }, [])
   const toggleSelect = (dataSet: DataSet) => {
-    const isSelected = selected.some((item) => item.id === dataSet.id)
+    const isSelected = selected.some(item => item.id === dataSet.id)
     if (isSelected) {
-      setSelected(selected.filter((item) => item.id !== dataSet.id))
+      setSelected(selected.filter(item => item.id !== dataSet.id))
     }
     else {
-      if (canSelectMulti) {
+      if (canSelectMulti)
         setSelected([...selected, dataSet])
-      } else {
+      else
         setSelected([dataSet])
-      }
     }
   }
 
@@ -74,7 +73,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         <div className='flex items-center justify-center mt-6 rounded-lg space-x-1  h-[128px] text-[13px] border'
           style={{
             background: 'rgba(0, 0, 0, 0.02)',
-            borderColor: 'rgba(0, 0, 0, 0.02'
+            borderColor: 'rgba(0, 0, 0, 0.02',
           }}
         >
           <span className='text-gray-500'>{t('appDebug.feature.dataSet.noDataSet')}</span>
@@ -85,7 +84,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       {datasets && datasets?.length > 0 && (
         <>
           <div className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
-            {datasets.map((item) => (
+            {datasets.map(item => (
               <div
                 key={item.id}
                 className={cn(s.item, selected.some(i => i.id === item.id) && s.selected, 'flex justify-between items-center h-10 px-2 rounded-lg bg-white border border-gray-200  cursor-pointer')}

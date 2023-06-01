@@ -38,25 +38,27 @@ const ConfigSence: FC<IConfigSenceProps> = ({
             <div className='w-full mt-4' key={item.key}>
               <label className='text-gray-900 text-sm font-medium'>{item.name}</label>
               <div className='mt-2'>
-                {item.type === 'select' ? (
-                  <Select
-                    className='w-full'
-                    defaultValue={inputs[item.key]}
-                    onSelect={(i) => { onInputsChange({ ...inputs, [item.key]: i.value }) }}
-                    items={(item.options || []).map(i => ({ name: i, value: i }))}
-                    allowSearch={false}
-                    bgClassName='bg-gray-50'
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
-                    placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                    value={inputs[item.key]}
-                    onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
-                    maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
-                  />
-                )}
+                {item.type === 'select'
+                  ? (
+                    <Select
+                      className='w-full'
+                      defaultValue={inputs[item.key]}
+                      onSelect={(i) => { onInputsChange({ ...inputs, [item.key]: i.value }) }}
+                      items={(item.options || []).map(i => ({ name: i, value: i }))}
+                      allowSearch={false}
+                      bgClassName='bg-gray-50'
+                    />
+                  )
+                  : (
+                    <input
+                      type="text"
+                      className="block w-full p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                      placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                      value={inputs[item.key]}
+                      onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
+                      maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                    />
+                  )}
               </div>
             </div>
           ))}
