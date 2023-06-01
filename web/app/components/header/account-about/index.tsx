@@ -67,7 +67,7 @@ export default function AccountAbout({
           <div className='flex items-center'>
             <Link
               className={classNames(buttonClassName, 'mr-2')}
-              href={'https://github.com/langgenius'}
+              href={'https://github.com/langgenius/dify/releases'}
               target='_blank'
             >
               {t('common.about.changeLog')}

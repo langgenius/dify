@@ -16,7 +16,7 @@ def validate_token(view=None):
         def decorated(*args, **kwargs):
             site = validate_and_get_site()
 
-            app_model = db.session.query(App).get(site.app_id)
+            app_model = db.session.query(App).filter(App.id == site.app_id).first()
             if not app_model:
                 raise NotFound()
 
@@ -42,13 +42,16 @@ def validate_and_get_site():
     """
     auth_header = request.headers.get('Authorization')
     if auth_header is None:
-        raise Unauthorized()
+        raise Unauthorized('Authorization header is missing.')
+
+    if ' ' not in auth_header:
+        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
 
     auth_scheme, auth_token = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
 
     if auth_scheme != 'bearer':
-        raise Unauthorized()
+        raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
 
     site = db.session.query(Site).filter(
         Site.code == auth_token,

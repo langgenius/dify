@@ -47,7 +47,7 @@ class ConversationListApi(WebApiResource):
         try:
             return WebConversationService.pagination_by_last_id(
                 app_model=app_model,
-                end_user=end_user,
+                user=end_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
                 pinned=pinned

@@ -38,16 +38,16 @@ export type PromptVariable = {
 }
 
 export type TextTypeFormItem = {
-  label: string,
-  variable: string,
+  label: string
+  variable: string
   required: boolean
   max_length: number
 }
 
 export type SelectTypeFormItem = {
-  label: string,
-  variable: string,
-  required: boolean,
+  label: string
+  variable: string
+  required: boolean
   options: string[]
 }
 /**
@@ -58,7 +58,6 @@ export type UserInputFormItem = {
 } | {
   'select': SelectTypeFormItem
 }
-
 
 export type ToolItem = {
   dataset: {
@@ -195,7 +194,7 @@ export type App = {
   icon: string
   /** Icon Background */
   icon_background: string
-  
+
   /** Mode */
   mode: AppMode
   /** Enable web app */
@@ -210,6 +209,7 @@ export type App = {
   is_demo: boolean
   /** Model configuration */
   model_config: ModelConfig
+  app_model_config: ModelConfig
   /** Timestamp of creation */
   created_at: number
   /** Web Application Configuration */

@@ -1,5 +1,4 @@
 import datetime
-import json
 import random
 import string
 
@@ -9,7 +8,7 @@ from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
 from models.account import InvitationCode
-from models.model import Account, AppModelConfig, ApiToken, Site, App, RecommendedApp
+from models.model import Account
 import secrets
 import base64
 
@@ -131,30 +130,7 @@ def generate_upper_string():
     return result
 
 
-@click.command('gen-recommended-apps', help='Number of records to generate')
-def generate_recommended_apps():
-    print('Generating recommended app data...')
-    apps = App.query.all()
-    for app in apps:
-        recommended_app = RecommendedApp(
-            app_id=app.id,
-            description={
-                'en': 'Description for ' + app.name,
-                'zh': '描述 ' + app.name
-            },
-            copyright='Copyright ' + str(random.randint(1990, 2020)),
-            privacy_policy='https://privacypolicy.example.com',
-            category=random.choice(['Games', 'News', 'Music', 'Sports']),
-            position=random.randint(1, 100),
-            install_count=random.randint(100, 100000)
-        )
-        db.session.add(recommended_app)
-    db.session.commit()
-    print('Done!')
-
-
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(generate_invitation_codes)
-    app.cli.add_command(generate_recommended_apps)

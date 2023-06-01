@@ -1,13 +1,15 @@
 {
   "name": "dify-web",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "fix": "next lint --fix"
+    "fix": "next lint --fix",
+    "eslint-fix": "eslint --fix",
+    "prepare": "cd ../ && husky install ./web/.husky"
   },
   "dependencies": {
     "@emoji-mart/data": "^1.1.2",
@@ -17,6 +19,7 @@
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
     "@next/mdx": "^13.2.4",
+    "@sentry/nextjs": "^7.53.1",
     "@tailwindcss/line-clamp": "^0.4.2",
     "@types/crypto-js": "^4.1.1",
     "@types/lodash-es": "^4.17.7",
@@ -77,8 +80,18 @@
     "@types/qs": "^6.9.7",
     "autoprefixer": "^10.4.14",
     "eslint-plugin-react-hooks": "^4.6.0",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",
     "postcss": "^8.4.21",
     "tailwindcss": "^3.2.7"
+  },
+  "lint-staged": {
+    "**/*.js?(x)": [
+      "eslint --fix"
+    ],
+    "**/*.ts?(x)": [
+      "eslint --fix"
+    ]
   }
 }

@@ -22,7 +22,7 @@ import type { AppDetailResponse } from '@/models/app'
 export type IAppCardProps = {
   className?: string
   appInfo: AppDetailResponse
-  cardType?: 'app' | 'api'
+  cardType?: 'app' | 'api' | 'webapp'
   customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<any>
   onSaveSiteConfig?: (params: any) => Promise<any>
@@ -46,15 +46,16 @@ function AppCard({
   const { t } = useTranslation()
 
   const OPERATIONS_MAP = {
-    app: [
+    webapp: [
       { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
       { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
       { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
     ],
     api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
+    app: [],
   }
 
-  const isApp = cardType === 'app'
+  const isApp = cardType === 'app' || cardType === 'webapp'
   const basicName = isApp ? appInfo?.site?.title : t('appOverview.overview.apiInfo.title')
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
@@ -100,7 +101,7 @@ function AppCard({
       <div className={`px-6 py-4 ${customBgColor ?? bgColor} rounded-lg`}>
         <div className="mb-2.5 flex flex-row items-start justify-between">
           <AppBasic
-            iconType={isApp ? 'app' : 'api'}
+            iconType={cardType}
             icon={appInfo.icon}
             icon_background={appInfo.icon_background}
             name={basicName}
@@ -129,7 +130,7 @@ function AppCard({
         </div>
         <div
           className={`pt-2 flex flex-row items-center ${!isApp ? 'mb-[calc(2rem_+_1px)]' : ''
-            }`}
+          }`}
         >
           {OPERATIONS_MAP[cardType].map((op) => {
             return (

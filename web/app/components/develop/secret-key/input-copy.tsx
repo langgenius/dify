@@ -1,9 +1,9 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
-import Tooltip from '@/app/components/base/tooltip'
+import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import s from './style.module.css'
+import Tooltip from '@/app/components/base/tooltip'
 
 type IInputCopyProps = {
   value?: string
@@ -18,7 +18,6 @@ const InputCopy = ({
   readOnly = true,
   children,
 }: IInputCopyProps) => {
-  const [_, copy] = useCopyToClipboard()
   const [isCopied, setIsCopied] = useState(false)
 
   useEffect(() => {

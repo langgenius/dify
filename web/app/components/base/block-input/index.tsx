@@ -3,11 +3,11 @@
 import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import classNames from 'classnames'
-import { checkKeys } from '@/utils/var'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 import Toast from '../toast'
 import { varHighlightHTML } from '../../app/configuration/base/var-highlight'
+import Button from '@/app/components/base/button'
+import { checkKeys } from '@/utils/var'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -55,9 +55,9 @@ const BlockInput: FC<IBlockInputProps> = ({
   useEffect(() => {
     if (isEditing && contentEditableRef.current) {
       // TODO: Focus at the click positon
-      if (currentValue) {
+      if (currentValue)
         contentEditableRef.current.setSelectionRange(currentValue.length, currentValue.length)
-      }
+
       contentEditableRef.current.focus()
     }
   }, [isEditing])
@@ -68,6 +68,8 @@ const BlockInput: FC<IBlockInputProps> = ({
   })
 
   const coloredContent = (currentValue || '')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(regex, varHighlightHTML({ name: '$1' })) // `<span class="${highLightClassName}">{{$1}}</span>`
     .replace(/\n/g, '<br />')
 
@@ -80,7 +82,7 @@ const BlockInput: FC<IBlockInputProps> = ({
       if (!isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey })
+          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
         })
         return
       }
@@ -122,9 +124,9 @@ const BlockInput: FC<IBlockInputProps> = ({
             value={currentValue}
             onBlur={() => {
               blur()
-              if (!isContentChanged) {
+              if (!isContentChanged)
                 setIsEditing(false)
-              }
+
               // click confirm also make blur. Then outter value is change. So below code has problem.
               // setTimeout(() => {
               //   handleCancel()
@@ -140,31 +142,33 @@ const BlockInput: FC<IBlockInputProps> = ({
       {textAreaContent}
       {/* footer */}
       <div className='flex item-center h-14 px-4'>
-        {isContentChanged ? (
-          <div className='flex items-center justify-between w-full'>
-            <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue.length}</div>
-            <div className='flex space-x-2'>
-              <Button
-                onClick={handleCancel}
-                className='w-20 !h-8 !text-[13px]'
-              >
-                {t('common.operation.cancel')}
-              </Button>
-              <Button
-                onClick={handleSubmit}
-                type="primary"
-                className='w-20 !h-8 !text-[13px]'
-              >
-                {t('common.operation.confirm')}
-              </Button>
-            </div>
+        {isContentChanged
+          ? (
+            <div className='flex items-center justify-between w-full'>
+              <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue.length}</div>
+              <div className='flex space-x-2'>
+                <Button
+                  onClick={handleCancel}
+                  className='w-20 !h-8 !text-[13px]'
+                >
+                  {t('common.operation.cancel')}
+                </Button>
+                <Button
+                  onClick={handleSubmit}
+                  type="primary"
+                  className='w-20 !h-8 !text-[13px]'
+                >
+                  {t('common.operation.confirm')}
+                </Button>
+              </div>
 
-          </div>
-        ) : (
-          <p className="leading-5 text-xs text-gray-500">
-            {t('appDebug.promptTip')}
-          </p>
-        )}
+            </div>
+          )
+          : (
+            <p className="leading-5 text-xs text-gray-500">
+              {t('appDebug.promptTip')}
+            </p>
+          )}
       </div>
 
     </div>

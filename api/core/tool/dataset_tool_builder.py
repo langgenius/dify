@@ -10,24 +10,14 @@ from core.index.keyword_table_index import KeywordTableIndex
 from core.index.vector_index import VectorIndex
 from core.prompt.prompts import QUERY_KEYWORD_EXTRACT_TEMPLATE
 from core.tool.llama_index_tool import EnhanceLlamaIndexTool
-from extensions.ext_database import db
 from models.dataset import Dataset
 
 
 class DatasetToolBuilder:
     @classmethod
-    def build_dataset_tool(cls, tenant_id: str, dataset_id: str,
+    def build_dataset_tool(cls, dataset: Dataset,
                            response_mode: str = "no_synthesizer",
                            callback_handler: Optional[DatasetToolCallbackHandler] = None):
-        # get dataset from dataset id
-        dataset = db.session.query(Dataset).filter(
-            Dataset.tenant_id == tenant_id,
-            Dataset.id == dataset_id
-        ).first()
-
-        if not dataset:
-            return None
-
         if dataset.indexing_technique == "economy":
             # use keyword table query
             index = KeywordTableIndex(dataset=dataset).query_index
@@ -65,7 +55,7 @@ class DatasetToolBuilder:
 
         index_tool_config = IndexToolConfig(
             index=index,
-            name=f"dataset-{dataset_id}",
+            name=f"dataset-{dataset.id}",
             description=description,
             index_query_kwargs=query_kwargs,
             tool_kwargs={
@@ -75,7 +65,7 @@ class DatasetToolBuilder:
             # return_direct: Whether to return LLM results directly or process the output data with an Output Parser
         )
 
-        index_callback_handler = DatasetIndexToolCallbackHandler(dataset_id=dataset_id)
+        index_callback_handler = DatasetIndexToolCallbackHandler(dataset_id=dataset.id)
 
         return EnhanceLlamaIndexTool.from_tool_config(
             tool_config=index_tool_config,

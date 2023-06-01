@@ -1,17 +1,19 @@
 import { useState } from 'react'
 import cn from 'classnames'
-import s from './index.module.css'
 import { useContext } from 'use-context-selector'
-import Indicator from '../../../indicator'
 import { useTranslation } from 'react-i18next'
-import type { Provider, ProviderAzureToken } from '@/models/common'
-import OpenaiProvider from '../openai-provider/provider'
+import Indicator from '../../../indicator'
+import OpenaiProvider from '../openai-provider'
 import AzureProvider from '../azure-provider'
+import type { ValidatedStatusState } from '../provider-input/useValidateToken'
 import { ValidatedStatus } from '../provider-input/useValidateToken'
+import s from './index.module.css'
+import type { Provider, ProviderAzureToken } from '@/models/common'
+import { ProviderName } from '@/models/common'
 import { updateProviderAIKey } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 
-interface IProviderItemProps {
+type IProviderItemProps = {
   icon: string
   name: string
   provider: Provider
@@ -25,34 +27,48 @@ const ProviderItem = ({
   name,
   provider,
   onActive,
-  onSave
+  onSave,
 }: IProviderItemProps) => {
   const { t } = useTranslation()
-  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatus>()
+  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatusState>()
   const [loading, setLoading] = useState(false)
   const { notify } = useContext(ToastContext)
   const [token, setToken] = useState<ProviderAzureToken | string>(
-    provider.provider_name === 'azure_openai' 
+    provider.provider_name === 'azure_openai'
       ? { openai_api_base: '', openai_api_key: '' }
-      : ''
-    )
+      : '',
+  )
   const id = `${provider.provider_name}-${provider.provider_type}`
   const isOpen = id === activeId
-  const providerKey = provider.provider_name === 'azure_openai' ? (provider.token as ProviderAzureToken)?.openai_api_key  : provider.token
   const comingSoon = false
   const isValid = provider.is_valid
 
+  const providerTokenHasSetted = () => {
+    if (provider.provider_name === ProviderName.AZURE_OPENAI) {
+      return (provider.token && provider.token.openai_api_base && provider.token.openai_api_key)
+        ? {
+          openai_api_base: provider.token.openai_api_base,
+          openai_api_key: provider.token.openai_api_key,
+        }
+        : undefined
+    }
+    if (provider.provider_name === ProviderName.OPENAI)
+      return provider.token
+  }
   const handleUpdateToken = async () => {
-    if (loading) return
-    if (validatedStatus === ValidatedStatus.Success || !token) {
+    if (loading)
+      return
+    if (validatedStatus?.status === ValidatedStatus.Success) {
       try {
         setLoading(true)
         await updateProviderAIKey({ url: `/workspaces/current/providers/${provider.provider_name}/token`, body: { token } })
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         onActive('')
-      } catch (e) {
+      }
+      catch (e) {
         notify({ type: 'error', message: t('common.provider.saveFailed') })
-      } finally {
+      }
+      finally {
         setLoading(false)
         onSave()
       }
@@ -65,7 +81,7 @@ const ProviderItem = ({
         <div className={cn(s[`icon-${icon}`], 'mr-3 w-6 h-6 rounded-md')} />
         <div className='grow text-sm font-medium text-gray-800'>{name}</div>
         {
-          providerKey && !comingSoon && !isOpen && (
+          providerTokenHasSetted() && !comingSoon && !isOpen && (
             <div className='flex items-center mr-4'>
               {!isValid && <div className='text-xs text-[#D92D20]'>{t('common.provider.invalidApiKey')}</div>}
               <Indicator color={!isValid ? 'red' : 'green'} className='ml-2' />
@@ -78,7 +94,7 @@ const ProviderItem = ({
               px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
               text-xs font-medium text-gray-700 flex items-center
             ' onClick={() => onActive(id)}>
-              {providerKey ? t('common.provider.editKey') : t('common.provider.addKey')}
+              {providerTokenHasSetted() ? t('common.provider.editKey') : t('common.provider.addKey')}
             </div>
           )
         }
@@ -114,19 +130,19 @@ const ProviderItem = ({
         }
       </div>
       {
-        provider.provider_name === 'openai' && isOpen && (
-          <OpenaiProvider 
-            provider={provider} 
-            onValidatedStatus={v => setValidatedStatus(v)} 
+        provider.provider_name === ProviderName.OPENAI && isOpen && (
+          <OpenaiProvider
+            provider={provider}
+            onValidatedStatus={v => setValidatedStatus(v)}
             onTokenChange={v => setToken(v)}
           />
         )
       }
       {
-        provider.provider_name === 'azure_openai' && isOpen && (
-          <AzureProvider 
-            provider={provider} 
-            onValidatedStatus={v => setValidatedStatus(v)} 
+        provider.provider_name === ProviderName.AZURE_OPENAI && isOpen && (
+          <AzureProvider
+            provider={provider}
+            onValidatedStatus={v => setValidatedStatus(v)}
             onTokenChange={v => setToken(v)}
           />
         )

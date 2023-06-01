@@ -1,4 +1,5 @@
 const translation = {
+  title: 'Apps',
   createApp: 'Create new App',
   modes: {
     completion: 'Text Generator',
@@ -38,7 +39,7 @@ const translation = {
   emoji: {
     ok: 'OK',
     cancel: 'Cancel',
-  }
+  },
 }
 
 export default translation

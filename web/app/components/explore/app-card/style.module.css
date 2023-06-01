@@ -1,0 +1,20 @@
+.wrap {
+  min-width: 312px;
+}
+
+.mode {
+  display: flex;
+  height: 28px;
+}
+
+.opWrap {
+  display: none;
+}
+
+.wrap:hover .mode {
+  display: none;
+}
+
+.wrap:hover .opWrap {
+  display: flex;
+}

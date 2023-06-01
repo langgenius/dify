@@ -1,32 +1,29 @@
 'use client'
 
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import Link from 'next/link'
-import useSWR from 'swr'
 import type { MouseEventHandler } from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import classNames from 'classnames'
 import style from '../list.module.css'
-import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteDataset, fetchDatasets } from '@/service/datasets'
+import { deleteDataset } from '@/service/datasets'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext from '@/context/app-context'
-import { DataSet } from '@/models/datasets'
-import classNames from 'classnames'
+import type { DataSet } from '@/models/datasets'
 
 export type DatasetCardProps = {
   dataset: DataSet
+  onDelete?: () => void
 }
 
 const DatasetCard = ({
   dataset,
+  onDelete,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-
-  const { mutate: mutateDatasets } = useSWR({ url: '/datasets', params: { page: 1 } }, fetchDatasets)
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const onDeleteClick: MouseEventHandler = useCallback((e) => {
@@ -37,7 +34,8 @@ const DatasetCard = ({
     try {
       await deleteDataset(dataset.id)
       notify({ type: 'success', message: t('dataset.datasetDeleted') })
-      mutateDatasets()
+      if (onDelete)
+        onDelete()
     }
     catch (e: any) {
       notify({ type: 'error', message: `${t('dataset.datasetDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}` })

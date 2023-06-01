@@ -34,5 +34,9 @@ class DatasetIndexToolCallbackHandler(IndexToolCallbackHandler):
             db.session.query(DocumentSegment).filter(
                 DocumentSegment.dataset_id == self.dataset_id,
                 DocumentSegment.index_node_id == index_node_id
-            ).update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+            ).update(
+                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1},
+                synchronize_session=False
+            )
 
+            db.session.commit()

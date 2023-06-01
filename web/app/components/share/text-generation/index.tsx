@@ -1,29 +1,40 @@
 'use client'
-import React, { useEffect, useState, useRef } from 'react'
+import type { FC } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import TabHeader from '../../base/tab-header'
+import Button from '../../base/button'
+import s from './style.module.css'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import ConfigScence from '@/app/components/share/text-generation/config-scence'
 import NoData from '@/app/components/share/text-generation/no-data'
 // import History from '@/app/components/share/text-generation/history'
-import { fetchAppInfo, fetchAppParams, sendCompletionMessage, updateFeedback, saveMessage, fetchSavedMessage as doFetchSavedMessage, removeMessage } from '@/service/share'
+import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage, sendCompletionMessage, updateFeedback } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
-import type { PromptConfig, MoreLikeThisConfig, SavedMessage } from '@/models/debug'
+import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
 import Toast from '@/app/components/base/toast'
-import { Feedbacktype } from '@/app/components/app/chat'
+import AppIcon from '@/app/components/base/app-icon'
+import type { Feedbacktype } from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
-import TabHeader from '../../base/tab-header'
-import { XMarkIcon } from '@heroicons/react/24/outline'
-import s from './style.module.css'
-import Button from '../../base/button'
+import type { InstalledApp } from '@/models/explore'
+import { appDefaultIconBackground } from '@/config'
 
-const TextGeneration = () => {
+export type IMainProps = {
+  isInstalledApp?: boolean
+  installedAppInfo?: InstalledApp
+}
+
+const TextGeneration: FC<IMainProps> = ({
+  isInstalledApp = false,
+  installedAppInfo,
+}) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
@@ -45,18 +56,18 @@ const TextGeneration = () => {
 
   const [messageId, setMessageId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<Feedbacktype>({
-    rating: null
+    rating: null,
   })
 
   const handleFeedback = async (feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } })
+    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
     setFeedback(feedback)
   }
 
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
 
   const fetchSavedMessage = async () => {
-    const res: any = await doFetchSavedMessage()
+    const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
 
@@ -65,13 +76,13 @@ const TextGeneration = () => {
   }, [])
 
   const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId)
+    await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
 
   const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId)
+    await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
@@ -82,21 +93,20 @@ const TextGeneration = () => {
 
   const checkCanSend = () => {
     const prompt_variables = promptConfig?.prompt_variables
-    if (!prompt_variables || prompt_variables?.length === 0) {
+    if (!prompt_variables || prompt_variables?.length === 0)
       return true
-    }
+
     let hasEmptyInput = false
     const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) || [] // compatible with old version
     requiredVars.forEach(({ key }) => {
-      if (hasEmptyInput) {
+      if (hasEmptyInput)
         return
-      }
-      if (!inputs[key]) {
+
+      if (!inputs[key])
         hasEmptyInput = true
-      }
     })
 
     if (hasEmptyInput) {
@@ -127,16 +137,17 @@ const TextGeneration = () => {
 
     setMessageId(null)
     setFeedback({
-      rating: null
+      rating: null,
     })
     setCompletionRes('')
 
     const res: string[] = []
     let tempMessageId = ''
 
-    if (!isPC) {
+    if (!isPC)
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
       showResSidebar()
-    }
+
     setResponsingTrue()
     sendCompletionMessage(data, {
       onData: (data: string, _isFirstMessage: boolean, { messageId }: any) => {
@@ -150,13 +161,27 @@ const TextGeneration = () => {
       },
       onError() {
         setResponsingFalse()
+      },
+    }, isInstalledApp, installedAppInfo?.id)
+  }
+
+  const fetchInitData = () => {
+    return Promise.all([isInstalledApp
+      ? {
+        app_id: installedAppInfo?.id,
+        site: {
+          title: installedAppInfo?.app.name,
+          prompt_public: false,
+          copyright: '',
+        },
+        plan: 'basic',
       }
-    })
+      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
   useEffect(() => {
     (async () => {
-      const [appData, appParams]: any = await Promise.all([fetchAppInfo(), fetchAppParams()])
+      const [appData, appParams]: any = await fetchInitData()
       const { app_id: appId, site: siteInfo } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
@@ -172,7 +197,7 @@ const TextGeneration = () => {
     })()
   }, [])
 
-  // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client. 
+  // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title)
       document.title = `${siteInfo.title} - Powered by Dify`
@@ -181,16 +206,18 @@ const TextGeneration = () => {
   const [isShowResSidebar, { setTrue: showResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
   const resRef = useRef<HTMLDivElement>(null)
   useClickAway(() => {
-    hideResSidebar();
+    hideResSidebar()
   }, resRef)
 
   const renderRes = (
     <div
       ref={resRef}
       className={
-        cn("flex flex-col h-full shrink-0",
+        cn(
+          'flex flex-col h-full shrink-0',
           isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMoble && 'p-4')}
+          isTablet && 'p-6', isMoble && 'p-4')
+      }
     >
       <>
         <div className='shrink-0 flex items-center justify-between'>
@@ -208,30 +235,34 @@ const TextGeneration = () => {
           )}
         </div>
 
-        <div className='grow'>
-          {(isResponsing && !completionRes) ? (
-            <div className='flex h-full w-full justify-center items-center'>
-              <Loading type='area' />
-            </div>) : (
-            <>
-              {isNoData
-                ? <NoData />
-                : (
-                  <TextGenerationRes
-                    className='mt-3'
-                    content={completionRes}
-                    messageId={messageId}
-                    isInWebApp
-                    moreLikeThis={moreLikeThisConifg?.enabled}
-                    onFeedback={handleFeedback}
-                    feedback={feedback}
-                    onSave={handleSaveMessage}
-                    isMobile={isMoble}
-                  />
-                )
-              }
-            </>
-          )}
+        <div className='grow overflow-y-auto'>
+          {(isResponsing && !completionRes)
+            ? (
+              <div className='flex h-full w-full justify-center items-center'>
+                <Loading type='area' />
+              </div>)
+            : (
+              <>
+                {isNoData
+                  ? <NoData />
+                  : (
+                    <TextGenerationRes
+                      className='mt-3'
+                      content={completionRes}
+                      messageId={messageId}
+                      isInWebApp
+                      moreLikeThis={moreLikeThisConifg?.enabled}
+                      onFeedback={handleFeedback}
+                      feedback={feedback}
+                      onSave={handleSaveMessage}
+                      isMobile={isMoble}
+                      isInstalledApp={isInstalledApp}
+                      installedAppId={installedAppInfo?.id}
+                    />
+                  )
+                }
+              </>
+            )}
         </div>
       </>
     </div>
@@ -240,16 +271,23 @@ const TextGeneration = () => {
   if (!appId || !siteInfo || !promptConfig)
     return <Loading type='app' />
 
-
   return (
     <>
-      <div className={cn(isPC && 'flex', 'h-screen bg-gray-50')}>
+      <div className={cn(
+        isPC && 'flex',
+        isInstalledApp ? s.installedApp : 'h-screen',
+        'bg-gray-50',
+      )}>
         {/* Left */}
-        <div className={cn(isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4', "shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white")}>
+        <div className={cn(
+          isPC ? 'w-[600px] max-w-[50%] p-8' : 'p-4',
+          isInstalledApp && 'rounded-l-2xl',
+          'shrink-0 relative flex flex-col pb-10 h-full border-r border-gray-100 bg-white',
+        )}>
           <div className='mb-6'>
             <div className='flex justify-between items-center'>
               <div className='flex items-center space-x-3'>
-                <div className={cn(s.appIcon, 'shrink-0')}></div>
+                <AppIcon size="small" icon={siteInfo.icon} background={siteInfo.icon_background || appDefaultIconBackground} />
                 <div className='text-lg text-gray-800 font-semibold'>{siteInfo.title}</div>
               </div>
               {!isPC && (
@@ -272,12 +310,16 @@ const TextGeneration = () => {
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
               {
-                id: 'saved', name: t('share.generation.tabs.saved'), extra: savedMessages.length > 0 ? (
-                  <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
-                    {savedMessages.length}
-                  </div>
-                ) : null
-              }
+                id: 'saved',
+                name: t('share.generation.tabs.saved'),
+                extra: savedMessages.length > 0
+                  ? (
+                    <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                      {savedMessages.length}
+                    </div>
+                  )
+                  : null,
+              },
             ]}
             value={currTab}
             onChange={setCurrTab}
@@ -305,9 +347,11 @@ const TextGeneration = () => {
             )}
           </div>
 
-
           {/* copyright */}
-          <div className='fixed left-8 bottom-4  flex space-x-2 text-gray-400 font-normal text-xs'>
+          <div className={cn(
+            isInstalledApp ? 'left-[248px]' : 'left-8',
+            'fixed  bottom-4  flex space-x-2 text-gray-400 font-normal text-xs',
+          )}>
             <div className="">© {siteInfo.copyright || siteInfo.title} {(new Date()).getFullYear()}</div>
             {siteInfo.privacy_policy && (
               <>
@@ -335,7 +379,7 @@ const TextGeneration = () => {
           <div
             className={cn('fixed z-50 inset-0', isTablet ? 'pl-[128px]' : 'pl-6')}
             style={{
-              background: 'rgba(35, 56, 118, 0.2)'
+              background: 'rgba(35, 56, 118, 0.2)',
             }}
           >
             {renderRes}

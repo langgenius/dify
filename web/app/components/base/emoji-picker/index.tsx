@@ -1,26 +1,28 @@
+/* eslint-disable multiline-ternary */
 'use client'
-import React from 'react'
-import { useState, FC, ChangeEvent } from 'react'
+import type { ChangeEvent, FC } from 'react'
+import React, { useState } from 'react'
 import data from '@emoji-mart/data'
-import { init, SearchIndex } from 'emoji-mart'
+import { SearchIndex, init } from 'emoji-mart'
 import cn from 'classnames'
+import {
+  MagnifyingGlassIcon,
+} from '@heroicons/react/24/outline'
+import { useTranslation } from 'react-i18next'
+import s from './style.module.css'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
-import s from './style.module.css'
-import {
-  MagnifyingGlassIcon
-} from '@heroicons/react/24/outline'
 
 import Modal from '@/app/components/base/modal'
-import { useTranslation } from 'react-i18next'
 
 declare global {
   namespace JSX {
+    // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface IntrinsicElements {
       'em-emoji': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      >;
+      React.HTMLAttributes<HTMLElement>,
+      HTMLElement
+      >
     }
   }
 }
@@ -57,7 +59,7 @@ const backgroundColors = [
   '#ECE9FE',
   '#FFE4E8',
 ]
-interface IEmojiPickerProps {
+type IEmojiPickerProps = {
   isModal?: boolean
   onSelect?: (emoji: string, background: string) => void
   onClose?: () => void
@@ -66,7 +68,7 @@ interface IEmojiPickerProps {
 const EmojiPicker: FC<IEmojiPickerProps> = ({
   isModal = true,
   onSelect,
-  onClose
+  onClose,
 
 }) => {
   const { t } = useTranslation()
@@ -97,8 +99,8 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           onChange={async (e: ChangeEvent<HTMLInputElement>) => {
             if (e.target.value === '') {
               setIsSearching(false)
-              return
-            } else {
+            }
+            else {
               setIsSearching(true)
               const emojis = await search(e.target.value)
               setSearchedEmojis(emojis)
@@ -111,7 +113,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
 
     <div className="w-full max-h-[200px] overflow-x-hidden overflow-y-auto px-3">
       {isSearching && <>
-        <div key={`category-search`} className='flex flex-col'>
+        <div key={'category-search'} className='flex flex-col'>
           <p className='font-medium uppercase text-xs text-[#101828] mb-1'>Search</p>
           <div className='w-full h-full grid grid-cols-8 gap-1'>
             {searchedEmojis.map((emoji: string, index: number) => {
@@ -130,7 +132,6 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
           </div>
         </div>
       </>}
-
 
       {categories.map((category: any, index: number) => {
         return <div key={`category-${index}`} className='flex flex-col'>
@@ -156,7 +157,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     </div>
 
     {/* Color Select */}
-    <div className={cn('flex flex-col p-3 ', selectedEmoji == '' ? 'opacity-25' : '')}>
+    <div className={cn('p-3 ', selectedEmoji === '' ? 'opacity-25' : '')}>
       <p className='font-medium uppercase text-xs text-[#101828] mb-2'>Choose Style</p>
       <div className='w-full h-full grid grid-cols-8 gap-1'>
         {backgroundColors.map((color) => {
@@ -165,9 +166,9 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
             className={
               cn(
                 'cursor-pointer',
-                `hover:ring-1 ring-offset-1`,
+                'hover:ring-1 ring-offset-1',
                 'inline-flex w-10 h-10 rounded-lg items-center justify-center',
-                color === selectedBackground ? `ring-1 ring-gray-300` : '',
+                color === selectedBackground ? 'ring-1 ring-gray-300' : '',
               )}
             onClick={() => {
               setSelectedBackground(color)
@@ -191,7 +192,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         {t('app.emoji.cancel')}
       </Button>
       <Button
-        disabled={selectedEmoji == ''}
+        disabled={selectedEmoji === ''}
         type="primary"
         className='w-full'
         onClick={() => {

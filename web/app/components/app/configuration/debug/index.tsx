@@ -1,36 +1,36 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import { useContext } from 'use-context-selector'
+import dayjs from 'dayjs'
+import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
+import FormattingChanged from '../base/warning-mask/formatting-changed'
+import GroupName from '../base/group-name'
 import { AppType } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat'
 import Chat from '@/app/components/app/chat'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
-import { sendChatMessage, sendCompletionMessage, fetchSuggestedQuestions, fetchConvesationMessages } from '@/service/debug'
+import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage } from '@/service/debug'
 import Button from '@/app/components/base/button'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
-import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
-import FormattingChanged from '../base/warning-mask/formatting-changed'
 import TextGeneration from '@/app/components/app/text-generate/item'
-import GroupName from '../base/group-name'
-import dayjs from 'dayjs'
 import { IS_CE_EDITION } from '@/config'
 
-interface IDebug {
+type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
 }
 
 const Debug: FC<IDebug> = ({
   hasSetAPIKEY = true,
-  onSetting
+  onSetting,
 }) => {
   const { t } = useTranslation()
   const {
@@ -51,14 +51,12 @@ const Debug: FC<IDebug> = ({
     completionParams,
   } = useContext(ConfigContext)
 
-
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     // scroll to bottom
-    if (chatListDomRef.current) {
+    if (chatListDomRef.current)
       chatListDomRef.current.scrollTop = chatListDomRef.current.scrollHeight
-    }
   }, [chatList])
 
   const getIntroduction = () => replaceStringWithValues(introduction, modelConfig.configs.prompt_variables, inputs)
@@ -68,7 +66,7 @@ const Debug: FC<IDebug> = ({
         id: `${Date.now()}`,
         content: getIntroduction(),
         isAnswer: true,
-        isOpeningStatement: true
+        isOpeningStatement: true,
       }])
     }
   }, [introduction, modelConfig.configs.prompt_variables, inputs])
@@ -76,11 +74,12 @@ const Debug: FC<IDebug> = ({
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
+  const [isShowSuggestion, setIsShowSuggestion] = useState(false)
 
   useEffect(() => {
-    if (formattingChanged && chatList.some(item => !item.isAnswer)) {
+    if (formattingChanged && chatList.some(item => !item.isAnswer))
       setIsShowFormattingChangeConfirm(true)
-    }
+
     setFormattingChanged(false)
   }, [formattingChanged])
 
@@ -88,12 +87,14 @@ const Debug: FC<IDebug> = ({
     setConversationId(null)
     abortController?.abort()
     setResponsingFalse()
-    setChatList(introduction ? [{
-      id: `${Date.now()}`,
-      content: getIntroduction(),
-      isAnswer: true,
-      isOpeningStatement: true
-    }] : [])
+    setChatList(introduction
+      ? [{
+        id: `${Date.now()}`,
+        content: getIntroduction(),
+        isAnswer: true,
+        isOpeningStatement: true,
+      }]
+      : [])
     setIsShowSuggestion(false)
   }
 
@@ -119,12 +120,11 @@ const Debug: FC<IDebug> = ({
     }) // compatible with old version
     // debugger
     requiredVars.forEach(({ key }) => {
-      if (hasEmptyInput) {
+      if (hasEmptyInput)
         return
-      }
-      if (!inputs[key]) {
+
+      if (!inputs[key])
         hasEmptyInput = true
-      }
     })
 
     if (hasEmptyInput) {
@@ -134,7 +134,6 @@ const Debug: FC<IDebug> = ({
     return !hasEmptyInput
   }
 
-  const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const onSend = async (message: string) => {
@@ -147,7 +146,7 @@ const Debug: FC<IDebug> = ({
       dataset: {
         enabled: true,
         id,
-      }
+      },
     }))
 
     const postModelConfig: BackendModelConfig = {
@@ -155,17 +154,17 @@ const Debug: FC<IDebug> = ({
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       opening_statement: introduction,
       more_like_this: {
-        enabled: false
+        enabled: false,
       },
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       agent_mode: {
         enabled: true,
-        tools: [...postDatasets]
+        tools: [...postDatasets],
       },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
-        completion_params: completionParams as any
+        completion_params: completionParams as any,
       },
     }
 
@@ -215,32 +214,32 @@ const Debug: FC<IDebug> = ({
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
-        if (messageId) {
+        if (messageId)
           responseItem.id = messageId
-        }
+
         // closesure new list is outdated.
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
-            if (!draft.find(item => item.id === questionId)) {
+            if (!draft.find(item => item.id === questionId))
               draft.push({ ...questionItem })
-            }
+
             draft.push({ ...responseItem })
           })
         setChatList(newListWithAnswer)
       },
       async onCompleted(hasError?: boolean) {
         setResponsingFalse()
-        if (hasError) {
+        if (hasError)
           return
-        }
+
         if (_newConversationId) {
           const { data }: any = await fetchConvesationMessages(appId, _newConversationId as string)
           const newResponseItem = data.find((item: any) => item.id === responseItem.id)
-          if (!newResponseItem) {
+          if (!newResponseItem)
             return
-          }
-          setChatList(produce(getChatList(), draft => {
+
+          setChatList(produce(getChatList(), (draft) => {
             const index = draft.findIndex(item => item.id === responseItem.id)
             if (index !== -1) {
               draft[index] = {
@@ -249,7 +248,7 @@ const Debug: FC<IDebug> = ({
                   time: dayjs.unix(newResponseItem.created_at).format('hh:mm A'),
                   tokens: newResponseItem.answer_tokens + newResponseItem.message_tokens,
                   latency: newResponseItem.provider_response_latency.toFixed(2),
-                }
+                },
               }
             }
           }))
@@ -263,10 +262,10 @@ const Debug: FC<IDebug> = ({
       onError() {
         setResponsingFalse()
         // role back placeholder answer
-        setChatList(produce(getChatList(), draft => {
+        setChatList(produce(getChatList(), (draft) => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
         }))
-      }
+      },
     })
     return true
   }
@@ -277,7 +276,7 @@ const Debug: FC<IDebug> = ({
   }, [controlClearChatMessage])
 
   const [completionQuery, setCompletionQuery] = useState('')
-  const [completionRes, setCompletionRes] = useState(``)
+  const [completionRes, setCompletionRes] = useState('')
 
   const sendTextCompletion = async () => {
     if (isResponsing) {
@@ -297,7 +296,7 @@ const Debug: FC<IDebug> = ({
       dataset: {
         enabled: true,
         id,
-      }
+      },
     }))
 
     const postModelConfig: BackendModelConfig = {
@@ -308,15 +307,14 @@ const Debug: FC<IDebug> = ({
       more_like_this: moreLikeThisConifg,
       agent_mode: {
         enabled: true,
-        tools: [...postDatasets]
+        tools: [...postDatasets],
       },
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
-        completion_params: completionParams as any
+        completion_params: completionParams as any,
       },
     }
-
 
     const data = {
       inputs,
@@ -338,10 +336,9 @@ const Debug: FC<IDebug> = ({
       },
       onError() {
         setResponsingFalse()
-      }
+      },
     })
   }
-
 
   return (
     <>
@@ -368,7 +365,7 @@ const Debug: FC<IDebug> = ({
         {/* Chat */}
         {mode === AppType.chat && (
           <div className="mt-[34px] h-full flex flex-col">
-            <div className={cn(doShowSuggestion ? 'pb-[140px]' : 'pb-[66px]', "relative mt-1.5 grow h-[200px] overflow-hidden")}>
+            <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[66px]'), 'relative mt-1.5 grow h-[200px] overflow-hidden')}>
               <div className="h-full overflow-y-auto" ref={chatListDomRef}>
                 {/* {JSON.stringify(chatList)} */}
                 <Chat

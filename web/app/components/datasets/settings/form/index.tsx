@@ -1,14 +1,15 @@
 'use client'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
-import { ToastContext } from '@/app/components/base/toast'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { useDatasetsContext } from '@/context/datasets-context'
-import { updateDatasetSetting } from '@/service/datasets'
+import { fetchDataDetail, updateDatasetSetting } from '@/service/datasets'
+import type { DataSet } from '@/models/datasets'
 
 const rowClass = `
   flex justify-between py-4
@@ -19,19 +20,31 @@ const labelClass = `
 const inputClass = `
   w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
+const useInitialValue = (depend: any, dispatch: any) => {
+  useEffect(() => {
+    dispatch(depend)
+  }, [depend])
+}
 
-const Form = () => {
+type Props = {
+  datasetId: string
+}
+
+const Form = ({
+  datasetId,
+}: Props) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { currentDataset, mutateDatasets } = useDatasetsContext()
+  const { data: currentDataset, mutate: mutateDatasets } = useSWR(datasetId, fetchDataDetail)
   const [loading, setLoading] = useState(false)
-  const [name, setName] = useState(currentDataset?.name)
-  const [description, setDescription] = useState(currentDataset?.description)
+  const [name, setName] = useState(currentDataset?.name ?? '')
+  const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
 
   const handleSave = async () => {
-    if (loading) return
+    if (loading)
+      return
     if (!name?.trim()) {
       notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
@@ -44,17 +57,24 @@ const Form = () => {
           name,
           description,
           permission,
-          indexing_technique: indexMethod
-        }
+          indexing_technique: indexMethod,
+        },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutateDatasets()
-    } catch (e) {
+      await mutateDatasets()
+    }
+    catch (e) {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
-    } finally {
+    }
+    finally {
       setLoading(false)
     }
   }
+
+  useInitialValue<string>(currentDataset?.name ?? '', setName)
+  useInitialValue<string>(currentDataset?.description ?? '', setDescription)
+  useInitialValue<DataSet['permission'] | undefined>(currentDataset?.permission, setPermission)
+  useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
   return (
     <div className='w-[800px] px-16 py-6'>

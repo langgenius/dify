@@ -102,6 +102,10 @@
   background: url(./icons/send.svg) center center no-repeat;
 }
 
+.sendBtnActive {
+  background-image: url(./icons/send-active.svg);
+}
+
 .sendBtn:hover {
   background-image: url(./icons/send-active.svg);
   background-color: #EBF5FF;

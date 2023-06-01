@@ -31,6 +31,8 @@ import datasetSettingsEn from './lang/dataset-settings.en'
 import datasetSettingsZh from './lang/dataset-settings.zh'
 import datasetCreationEn from './lang/dataset-creation.en'
 import datasetCreationZh from './lang/dataset-creation.zh'
+import exploreEn from './lang/explore.en'
+import exploreZh from './lang/explore.zh'
 import { getLocaleOnClient } from '@/i18n/client'
 
 const resources = {
@@ -53,6 +55,7 @@ const resources = {
       datasetHitTesting: datasetHitTestingEn,
       datasetSettings: datasetSettingsEn,
       datasetCreation: datasetCreationEn,
+      explore: exploreEn,
     },
   },
   'zh-Hans': {
@@ -74,6 +77,7 @@ const resources = {
       datasetHitTesting: datasetHitTestingZh,
       datasetSettings: datasetSettingsZh,
       datasetCreation: datasetCreationZh,
+      explore: exploreZh,
     },
   },
 }
