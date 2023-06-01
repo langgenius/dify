@@ -4,6 +4,8 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Toast from '@/app/components/base/toast'
+import { generateRule } from '@/service/debug'
 
 type AutomaticRes = {
   prompt: string
@@ -13,6 +15,7 @@ type AutomaticRes = {
 export type ISetTargetProps = {
   isShow: boolean
   onClose: () => void
+  // appId: string
   onFinished: (res: AutomaticRes) => void
 }
 
@@ -27,20 +30,48 @@ const genIcon = (
 const SetTarget: FC<ISetTargetProps> = ({
   isShow,
   onClose,
+  // appId,
   onFinished,
 }) => {
   const { t } = useTranslation()
 
-  const onGenerate = () => {}
+  const [audiences, setAudiences] = React.useState<string>('')
+  const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
+  const isValid = () => {
+    if (audiences.trim() === '') {
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.automatic.audiencesRequired'),
+      })
+      return false
+    }
+    if (hopingToSolve.trim() === '') {
+      Toast.notify({
+        type: 'error',
+        message: t('appDebug.automatic.problemRequired'),
+      })
+      return false
+    }
+    return true
+  }
+  const onGenerate = async () => {
+    if (!isValid())
+      return
+
+    await generateRule({
+      audiences,
+      hoping_to_solve: hopingToSolve,
+    })
+  }
 
   return (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='min-w-[1120px] min-h-[680px]'
+      className='min-w-[1120px] !p-0'
     >
-      <div className='flex'>
-        <div className='w-[480px] shrink-0 pr-8 h-full border-r border-gray-100'>
+      <div className='flex h-[680px]'>
+        <div className='w-[480px] shrink-0 px-8 py-6 h-full overflow-y-auto border-r border-gray-100'>
           <div>
             <div className='mb-1 text-xl font-semibold text-primary-600'>{t('appDebug.automatic.title')}</div>
             <div className='text-[13px] font-normal text-gray-500'>{t('appDebug.automatic.description')}</div>
@@ -49,11 +80,11 @@ const SetTarget: FC<ISetTargetProps> = ({
           <div className='mt-12 space-y-5'>
             <div className='space-y-2'>
               <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.intendedAudience')}</div>
-              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" value="" />
+              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" value={audiences} onChange={e => setAudiences(e.target.value)} />
             </div>
             <div className='space-y-2'>
               <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.solveProblem')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" value="" />
+              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
             </div>
 
             <div className='mt-6 flex justify-end'>

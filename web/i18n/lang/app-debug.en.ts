@@ -59,6 +59,8 @@ const translation = {
     intendedAudience: 'Who is the intended audience?',
     solveProblem: 'What problems do they hope AI can solve for them?',
     generate: 'Generate',
+    audiencesRequired: 'Audiences required',
+    problemRequired: 'Problem required',
   },
   resetConfig: {
     title: 'Confirm reset?',
