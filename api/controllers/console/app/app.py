@@ -9,18 +9,13 @@ from werkzeug.exceptions import Unauthorized, Forbidden
 
 from constants.model_template import model_templates, demo_model_templates
 from controllers.console import api
-from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError, ProviderQuotaExceededError, \
-    CompletionRequestError, ProviderModelCurrentlyNotSupportError
+from controllers.console.app.error import AppNotFoundError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.generator.llm_generator import LLMGenerator
-from core.llm.error import ProviderTokenNotInitError, QuotaExceededError, LLMBadRequestError, LLMAPIConnectionError, \
-    LLMAPIUnavailableError, LLMRateLimitError, LLMAuthorizationError, ModelCurrentlyNotSupportError
 from events.app_event import app_was_created, app_was_deleted
 from libs.helper import TimestampField
 from extensions.ext_database import db
-from models.model import App, AppModelConfig, Site, InstalledApp
-from services.account_service import TenantService
+from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
 
 model_config_fields = {
@@ -478,35 +473,6 @@ class AppExport(Resource):
         pass
 
 
-class IntroductionGenerateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('prompt_template', type=str, required=True, location='json')
-        args = parser.parse_args()
-
-        account = current_user
-
-        try:
-            answer = LLMGenerator.generate_introduction(
-                account.current_tenant_id,
-                args['prompt_template']
-            )
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
-
-        return {'introduction': answer}
-
-
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppTemplateApi, '/app-templates')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
@@ -515,4 +481,3 @@ api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
 api.add_resource(AppRateLimit, '/apps/<uuid:app_id>/rate-limit')
-api.add_resource(IntroductionGenerateApi, '/introduction-generate')

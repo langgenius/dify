@@ -56,8 +56,11 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }, [value])
 
   const coloredContent = (tempValue || '')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
     .replace(regex, varHighlightHTML({ name: '$1' })) // `<span class="${highLightClassName}">{{$1}}</span>`
     .replace(/\n/g, '<br />')
+    
 
 
   const handleEdit = () => {

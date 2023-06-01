@@ -123,7 +123,7 @@ class RecommendedApp(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='recommended_app_pkey'),
         db.Index('recommended_app_app_id_idx', 'app_id'),
-        db.Index('recommended_app_is_listed_idx', 'is_listed')
+        db.Index('recommended_app_is_listed_idx', 'is_listed', 'language')
     )
 
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
@@ -135,6 +135,7 @@ class RecommendedApp(db.Model):
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
     install_count = db.Column(db.Integer, nullable=False, default=0)
+    language = db.Column(db.String(255), nullable=False, server_default=db.text("'en-US'::character varying"))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -142,17 +143,6 @@ class RecommendedApp(db.Model):
     def app(self):
         app = db.session.query(App).filter(App.id == self.app_id).first()
         return app
-
-    # def set_description(self, lang, desc):
-    #     if self.description is None:
-    #         self.description = {}
-    #     self.description[lang] = desc
-
-    def get_description(self, lang):
-        if self.description and lang in self.description:
-            return self.description[lang]
-        else:
-            return self.description.get('en')
 
 
 class InstalledApp(db.Model):
@@ -314,6 +304,10 @@ class Conversation(db.Model):
     def app(self):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
+    @property
+    def in_debug_mode(self):
+        return self.override_model_configs is not None
+
 
 class Message(db.Model):
     __tablename__ = 'messages'
@@ -379,6 +373,10 @@ class Message(db.Model):
                 AppModelConfig.id == conversation.app_model_config_id).first()
 
         return None
+
+    @property
+    def in_debug_mode(self):
+        return self.override_model_configs is not None
 
 
 class MessageFeedback(db.Model):

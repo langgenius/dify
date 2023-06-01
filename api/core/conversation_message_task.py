@@ -80,7 +80,10 @@ class ConversationMessageTask:
             if introduction:
                 prompt_template = OutLinePromptTemplate.from_template(template=PromptBuilder.process_template(introduction))
                 prompt_inputs = {k: self.inputs[k] for k in prompt_template.input_variables if k in self.inputs}
-                introduction = prompt_template.format(**prompt_inputs)
+                try:
+                    introduction = prompt_template.format(**prompt_inputs)
+                except KeyError:
+                    pass
 
             if self.app_model_config.pre_prompt:
                 pre_prompt = PromptBuilder.process_template(self.app_model_config.pre_prompt)
@@ -171,7 +174,7 @@ class ConversationMessageTask:
         )
 
         if not by_stopped:
-            self._pub_handler.pub_end()
+            self.end()
 
     def update_provider_quota(self):
         llm_provider_service = LLMProviderService(
@@ -267,6 +270,9 @@ class ConversationMessageTask:
 
         total_price = message_tokens_per_1k * message_unit_price + answer_tokens_per_1k * answer_unit_price
         return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+
+    def end(self):
+        self._pub_handler.pub_end()
 
 
 class PubHandler:

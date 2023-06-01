@@ -127,7 +127,7 @@ class MessageService:
             message_id=message_id
         )
 
-        feedback = message.user_feedback
+        feedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
 
         if not rating and feedback:
             db.session.delete(feedback)

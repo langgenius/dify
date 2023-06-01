@@ -8,7 +8,7 @@ import type { Provider, ProviderAzureToken } from '@/models/common'
 import { ProviderName } from '@/models/common'
 import OpenaiProvider from '../openai-provider'
 import AzureProvider from '../azure-provider'
-import { ValidatedStatus } from '../provider-input/useValidateToken'
+import { ValidatedStatus, ValidatedStatusState } from '../provider-input/useValidateToken'
 import { updateProviderAIKey } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
 
@@ -29,7 +29,7 @@ const ProviderItem = ({
   onSave
 }: IProviderItemProps) => {
   const { t } = useTranslation()
-  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatus>()
+  const [validatedStatus, setValidatedStatus] = useState<ValidatedStatusState>()
   const [loading, setLoading] = useState(false)
   const { notify } = useContext(ToastContext)
   const [token, setToken] = useState<ProviderAzureToken | string>(
@@ -55,7 +55,7 @@ const ProviderItem = ({
   }
   const handleUpdateToken = async () => {
     if (loading) return
-    if (validatedStatus === ValidatedStatus.Success) {
+    if (validatedStatus?.status === ValidatedStatus.Success) {
       try {
         setLoading(true)
         await updateProviderAIKey({ url: `/workspaces/current/providers/${provider.provider_name}/token`, body: { token } })

@@ -5,16 +5,19 @@ on:
     branches:
       - 'main'
       - 'deploy/dev'
+  release:
+    types: [published]
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
-    - name: "Checkout ${{ github.ref }} ( ${{ github.sha }} )"
-      uses: actions/checkout@v2
-      with:
-        persist-credentials: false
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v2
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
 
     - name: Login to Docker Hub
       uses: docker/login-action@v2
@@ -22,13 +25,29 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - name: Build and push Docker image
-      shell: bash
-      env:
-        DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-        DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-      run: |
-        /bin/bash .github/workflows/build-api-image.sh
+    - name: Extract metadata (tags, labels) for Docker
+      id: meta
+      uses: docker/metadata-action@v4
+      with:
+        images: langgenius/dify-api
+        tags: |
+          type=raw,value=latest,enable={{is_default_branch}}
+          type=ref,event=branch
+          type=sha,enable=true,priority=100,prefix=,suffix=,format=long
+          type=semver,pattern={{major}}.{{minor}}.{{patch}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=semver,pattern={{major}}
+
+    - name: Build and push
+      uses: docker/build-push-action@v4
+      with:
+        context: "{{defaultContext}}:api"
+        platforms: linux/amd64,linux/arm64
+        build-args: |
+          COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
 
     - name: Deploy to server
       if: github.ref == 'refs/heads/deploy/dev'

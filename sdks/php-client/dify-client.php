@@ -11,7 +11,7 @@ class DifyClient {
 
     public function __construct($api_key) {
         $this->api_key = $api_key;
-        $this->base_url = "https://api.dify.ai/v1";
+        $this->base_url = "https://api.dify.ai/v1/";
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
@@ -37,12 +37,12 @@ class DifyClient {
             'rating' => $rating,
             'user' => $user,
         ];
-        return $this->send_request('POST', "/messages/{$message_id}/feedbacks", $data);
+        return $this->send_request('POST', "messages/{$message_id}/feedbacks", $data);
     }
 
     public function get_application_parameters($user) {
         $params = ['user' => $user];
-        return $this->send_request('GET', '/parameters', null, $params);
+        return $this->send_request('GET', 'parameters', null, $params);
     }
 }
 
@@ -54,7 +54,7 @@ class CompletionClient extends DifyClient {
             'response_mode' => $response_mode,
             'user' => $user,
         ];
-        return $this->send_request('POST', '/completion-messages', $data, null, $response_mode === 'streaming');
+        return $this->send_request('POST', 'completion-messages', $data, null, $response_mode === 'streaming');
     }
 }
 
@@ -70,7 +70,7 @@ class ChatClient extends DifyClient {
             $data['conversation_id'] = $conversation_id;
         }
 
-        return $this->send_request('POST', '/chat-messages', $data, null, $response_mode === 'streaming');
+        return $this->send_request('POST', 'chat-messages', $data, null, $response_mode === 'streaming');
     }
 
     public function get_conversation_messages($user, $conversation_id = null, $first_id = null, $limit = null) {
@@ -86,7 +86,7 @@ class ChatClient extends DifyClient {
             $params['limit'] = $limit;
         }
 
-        return $this->send_request('GET', '/messages', null, $params);
+        return $this->send_request('GET', 'messages', null, $params);
     }
 
     public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
@@ -96,7 +96,7 @@ class ChatClient extends DifyClient {
             'limit' => $limit,
             'pinned'=> $pinned,
         ];
-        return $this->send_request('GET', '/conversations', null, $params);
+        return $this->send_request('GET', 'conversations', null, $params);
     }
 
     public function rename_conversation($conversation_id, $name, $user) {
@@ -104,6 +104,6 @@ class ChatClient extends DifyClient {
             'name' => $name,
             'user' => $user,
         ];
-        return $this->send_request('PATCH', "/conversations/{$conversation_id}", $data);
+        return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
     }
 }

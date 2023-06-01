@@ -29,6 +29,7 @@ const options = [
   { id: 'gpt-4', name: 'gpt-4', type: AppType.chat }, // 8k version
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.completion },
   { id: 'text-davinci-003', name: 'text-davinci-003', type: AppType.completion },
+  { id: 'gpt-4', name: 'gpt-4', type: AppType.completion }, // 8k version
 ]
 
 const ModelIcon = ({ className }: { className?: string }) => (
@@ -205,14 +206,14 @@ const ConifgModel: FC<IConifgModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               {/* model selector */}
-              <div className="relative">
+              <div className="relative" style={{zIndex: 30}}>
                 <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', "flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ")}>
                   <ModelIcon />
                   <div className="text-sm gray-900">{selectedModel?.name}</div>
                   {!selectModelDisabled && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
                 </div>
                 {isShowOption && (
-                  <div className={cn(isChatApp ? 'w-[159px]' : 'w-[179px]', "absolute right-0 bg-gray-50 rounded-lg")}>
+                  <div className={cn(isChatApp ? 'w-[159px]' : 'w-[179px]', "absolute right-0 bg-gray-50 rounded-lg shadow")}>
                     {availableModels.map(item => (
                       <div key={item.id} onClick={handleSelectModel(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
                         <ModelIcon className='mr-2' />

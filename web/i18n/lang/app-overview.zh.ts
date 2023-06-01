@@ -71,6 +71,7 @@ const translation = {
   },
   analysis: {
     title: '分析',
+    ms: '毫秒',
     totalMessages: {
       title: '全部消息数',
       explanation: '反映 AI 每天的互动总次数，每回答用户一个问题算一条 Message。提示词编排和调试的消息不计入。',

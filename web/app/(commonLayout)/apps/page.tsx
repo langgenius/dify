@@ -14,23 +14,19 @@ const AppList = async () => {
       <footer className='px-12 py-6 grow-0 shrink-0'>
         <h3 className='text-xl font-semibold leading-tight text-gradient'>{t('join')}</h3>
         <p className='mt-1 text-sm font-normal leading-tight text-gray-700'>{t('communityIntro')}</p>
-        {/*<p className='mt-3 text-sm'>*/}
-        {/*  <a className='inline-flex items-center gap-1 link' target='_blank' href={`https://docs.dify.ai${locale === 'en' ? '' : '/v/zh-hans'}/community/product-roadmap`}>*/}
-        {/*    {t('roadmap')}*/}
-        {/*    <span className={style.linkIcon} />*/}
-        {/*  </a>*/}
-        {/*</p>*/}
+        {/* <p className='mt-3 text-sm'> */}
+        {/*  <a className='inline-flex items-center gap-1 link' target='_blank' href={`https://docs.dify.ai${locale === 'en' ? '' : '/v/zh-hans'}/community/product-roadmap`}> */}
+        {/*    {t('roadmap')} */}
+        {/*    <span className={style.linkIcon} /> */}
+        {/*  </a> */}
+        {/* </p> */}
         <div className='flex items-center gap-2 mt-3'>
-          <a className={style.socialMediaLink} target='_blank' href='https://github.com/langgenius'><span className={classNames(style.socialMediaIcon, style.githubIcon)} /></a>
-          <a className={style.socialMediaLink} target='_blank' href='https://discord.gg/AhzKf7dNgk'><span className={classNames(style.socialMediaIcon, style.discordIcon)} /></a>
+          <a className={style.socialMediaLink} target='_blank' href='https://github.com/langgenius/dify'><span className={classNames(style.socialMediaIcon, style.githubIcon)} /></a>
+          <a className={style.socialMediaLink} target='_blank' href='https://discord.gg/FngNHpbcY7'><span className={classNames(style.socialMediaIcon, style.discordIcon)} /></a>
         </div>
       </footer>
     </div >
   )
-}
-
-export const metadata = {
-  title: 'Apps - Dify',
 }
 
 export default AppList

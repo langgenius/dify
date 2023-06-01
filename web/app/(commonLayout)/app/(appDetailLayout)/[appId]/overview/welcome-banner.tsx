@@ -19,16 +19,16 @@ import I18n from '@/context/i18n'
 type IStatusType = 'normal' | 'verified' | 'error' | 'error-api-key-exceed-bill'
 
 const STATUS_COLOR_MAP = {
-  normal: { color: '', bgColor: 'bg-primary-50', borderColor: 'border-primary-100' },
-  error: { color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-100' },
-  verified: { color: '', bgColor: 'bg-green-50', borderColor: 'border-green-100' },
+  'normal': { color: '', bgColor: 'bg-primary-50', borderColor: 'border-primary-100' },
+  'error': { color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-100' },
+  'verified': { color: '', bgColor: 'bg-green-50', borderColor: 'border-green-100' },
   'error-api-key-exceed-bill': { color: 'text-red-600', bgColor: 'bg-red-50', borderColor: 'border-red-100' },
 }
 
 const CheckCircleIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <rect width="20" height="20" rx="10" fill="#DEF7EC" />
-    <path fill-rule="evenodd" clip-rule="evenodd" d="M14.6947 6.70495C14.8259 6.83622 14.8996 7.01424 14.8996 7.19985C14.8996 7.38547 14.8259 7.56348 14.6947 7.69475L9.0947 13.2948C8.96343 13.426 8.78541 13.4997 8.5998 13.4997C8.41418 13.4997 8.23617 13.426 8.1049 13.2948L5.3049 10.4948C5.17739 10.3627 5.10683 10.1859 5.10842 10.0024C5.11002 9.81883 5.18364 9.64326 5.31342 9.51348C5.44321 9.38369 5.61878 9.31007 5.80232 9.30848C5.98585 9.30688 6.16268 9.37744 6.2947 9.50495L8.5998 11.8101L13.7049 6.70495C13.8362 6.57372 14.0142 6.5 14.1998 6.5C14.3854 6.5 14.5634 6.57372 14.6947 6.70495Z" fill="#046C4E" />
+    <path fillRule="evenodd" clipRule="evenodd" d="M14.6947 6.70495C14.8259 6.83622 14.8996 7.01424 14.8996 7.19985C14.8996 7.38547 14.8259 7.56348 14.6947 7.69475L9.0947 13.2948C8.96343 13.426 8.78541 13.4997 8.5998 13.4997C8.41418 13.4997 8.23617 13.426 8.1049 13.2948L5.3049 10.4948C5.17739 10.3627 5.10683 10.1859 5.10842 10.0024C5.11002 9.81883 5.18364 9.64326 5.31342 9.51348C5.44321 9.38369 5.61878 9.31007 5.80232 9.30848C5.98585 9.30688 6.16268 9.37744 6.2947 9.50495L8.5998 11.8101L13.7049 6.70495C13.8362 6.57372 14.0142 6.5 14.1998 6.5C14.3854 6.5 14.5634 6.57372 14.6947 6.70495Z" fill="#046C4E" />
   </svg>
 }
 
@@ -81,11 +81,11 @@ const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, on
     catch (err: any) {
       if (err.status === 400) {
         err.json().then(({ code }: any) => {
-          if (code === 'provider_request_failed') {
+          if (code === 'provider_request_failed')
             setEditStatus('error-api-key-exceed-bill')
-          }
         })
-      } else {
+      }
+      else {
         setEditStatus('error')
       }
     }
@@ -96,19 +96,19 @@ const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, on
   const renderErrorMessage = () => {
     if (validating) {
       return (
-        <div className={`text-primary-600 mt-2 text-xs`}>
+        <div className={'text-primary-600 mt-2 text-xs'}>
           {t('common.provider.validating')}
         </div>
       )
     }
     if (editStatus === 'error-api-key-exceed-bill') {
       return (
-        <div className={`text-[#D92D20] mt-2 text-xs`}>
+        <div className={'text-[#D92D20] mt-2 text-xs'}>
           {t('common.provider.apiKeyExceedBill')}
           {locale === 'en' ? ' ' : ''}
-          <Link 
+          <Link
             className='underline'
-            href="https://platform.openai.com/account/api-keys" 
+            href="https://platform.openai.com/account/api-keys"
             target={'_blank'}>
             {locale === 'en' ? 'this link' : '这篇文档'}
           </Link>
@@ -117,7 +117,7 @@ const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, on
     }
     if (editStatus === 'error') {
       return (
-        <div className={`text-[#D92D20] mt-2 text-xs`}>
+        <div className={'text-[#D92D20] mt-2 text-xs'}>
           {t('common.provider.invalidKey')}
         </div>
       )

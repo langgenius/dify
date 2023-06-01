@@ -1,28 +1,27 @@
-import { FC, useCallback, useMemo, useState } from 'react'
-import React from 'react'
+import type { FC } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
 import cn from 'classnames'
+import { ArrowRightIcon } from '@heroicons/react/24/solid'
+import SegmentCard from '../completed/SegmentCard'
+import { FieldInfo } from '../metadata'
+import style from '../completed/style.module.css'
+import { DocumentContext } from '../index'
+import s from './style.module.css'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
-import { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
+import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { fetchProcessRule, fetchIndexingEstimate, fetchIndexingStatus, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
-import SegmentCard from '../completed/SegmentCard'
-import { FieldInfo } from '../metadata'
-import s from './style.module.css'
-import style from '../completed/style.module.css'
-import { DocumentContext } from '../index'
+import { fetchIndexingEstimate, fetchIndexingStatus, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
-import { ArrowRightIcon } from '@heroicons/react/24/solid'
 
 type Props = {
   detail?: FullDocumentDetail
@@ -35,7 +34,7 @@ type Props = {
 const StopIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <g clip-path="url(#clip0_2328_2798)">
-      <path d="M1.5 3.9C1.5 3.05992 1.5 2.63988 1.66349 2.31901C1.8073 2.03677 2.03677 1.8073 2.31901 1.66349C2.63988 1.5 3.05992 1.5 3.9 1.5H8.1C8.94008 1.5 9.36012 1.5 9.68099 1.66349C9.96323 1.8073 10.1927 2.03677 10.3365 2.31901C10.5 2.63988 10.5 3.05992 10.5 3.9V8.1C10.5 8.94008 10.5 9.36012 10.3365 9.68099C10.1927 9.96323 9.96323 10.1927 9.68099 10.3365C9.36012 10.5 8.94008 10.5 8.1 10.5H3.9C3.05992 10.5 2.63988 10.5 2.31901 10.3365C2.03677 10.1927 1.8073 9.96323 1.66349 9.68099C1.5 9.36012 1.5 8.94008 1.5 8.1V3.9Z" stroke="#344054" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M1.5 3.9C1.5 3.05992 1.5 2.63988 1.66349 2.31901C1.8073 2.03677 2.03677 1.8073 2.31901 1.66349C2.63988 1.5 3.05992 1.5 3.9 1.5H8.1C8.94008 1.5 9.36012 1.5 9.68099 1.66349C9.96323 1.8073 10.1927 2.03677 10.3365 2.31901C10.5 2.63988 10.5 3.05992 10.5 3.9V8.1C10.5 8.94008 10.5 9.36012 10.3365 9.68099C10.1927 9.96323 9.96323 10.1927 9.68099 10.3365C9.36012 10.5 8.94008 10.5 8.1 10.5H3.9C3.05992 10.5 2.63988 10.5 2.31901 10.3365C2.03677 10.1927 1.8073 9.96323 1.66349 9.68099C1.5 9.36012 1.5 8.94008 1.5 8.1V3.9Z" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </g>
     <defs>
       <clipPath id="clip0_2328_2798">
@@ -47,9 +46,8 @@ const StopIcon: FC<{ className?: string }> = ({ className }) => {
 
 const ResumeIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M10 3.5H5C3.34315 3.5 2 4.84315 2 6.5C2 8.15685 3.34315 9.5 5 9.5H10M10 3.5L8 1.5M10 3.5L8 5.5" stroke="#344054" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M10 3.5H5C3.34315 3.5 2 4.84315 2 6.5C2 8.15685 3.34315 9.5 5 9.5H10M10 3.5L8 1.5M10 3.5L8 5.5" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
-
 }
 
 const RuleDetail: FC<{ sourceData?: ProcessRuleResponse; docName?: string }> = ({ sourceData, docName }) => {
@@ -61,42 +59,42 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse; docName?: string }> = (
     segmentLength: t('datasetDocuments.embedding.segmentLength'),
     textCleaning: t('datasetDocuments.embedding.textCleaning'),
   }
+
+  const getRuleName = (key: string) => {
+    if (key === 'remove_extra_spaces')
+      return t('datasetCreation.stepTwo.removeExtraSpaces')
+
+    if (key === 'remove_urls_emails')
+      return t('datasetCreation.stepTwo.removeUrlEmails')
+
+    if (key === 'remove_stopwords')
+      return t('datasetCreation.stepTwo.removeStopwords')
+  }
+
   const getValue = useCallback((field: string) => {
-    let value: string | number | undefined = '-';
+    let value: string | number | undefined = '-'
     switch (field) {
       case 'docName':
         value = docName
-        break;
+        break
       case 'mode':
-        value = sourceData?.mode === 'automatic' ? (t('datasetDocuments.embedding.automatic') as string) : (t('datasetDocuments.embedding.custom') as string);
-        break;
+        value = sourceData?.mode === 'automatic' ? (t('datasetDocuments.embedding.automatic') as string) : (t('datasetDocuments.embedding.custom') as string)
+        break
       case 'segmentLength':
         value = sourceData?.rules?.segmentation?.max_tokens
-        break;
+        break
       default:
-        value = sourceData?.mode === 'automatic' ?
-          (t('datasetDocuments.embedding.automatic') as string) :
-          sourceData?.rules?.pre_processing_rules?.map(rule => {
-            if (rule.enabled) {
+        value = sourceData?.mode === 'automatic'
+          ? (t('datasetDocuments.embedding.automatic') as string)
+          // eslint-disable-next-line array-callback-return
+          : sourceData?.rules?.pre_processing_rules?.map((rule) => {
+            if (rule.enabled)
               return getRuleName(rule.id)
-            }
           }).filter(Boolean).join(';')
-        break;
+        break
     }
     return value
   }, [sourceData, docName])
-
-  const getRuleName = (key: string) => {
-    if (key === 'remove_extra_spaces') {
-      return t('datasetCreation.stepTwo.removeExtraSpaces')
-    }
-    if (key === 'remove_urls_emails') {
-      return t('datasetCreation.stepTwo.removeUrlEmails')
-    }
-    if (key === 'remove_stopwords') {
-      return t('datasetCreation.stepTwo.removeStopwords')
-    }
-  }
 
   return <div className='flex flex-col pt-8 pb-10 first:mt-0'>
     {Object.keys(segmentationRuleMap).map((field) => {
@@ -134,12 +132,12 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     datasetId: localDatasetId,
     documentId: localDocumentId,
   }, apiParams => fetchIndexingEstimate(omit(apiParams, 'action')), {
-    revalidateOnFocus: false
+    revalidateOnFocus: false,
   })
 
   const { data: ruleDetail, error: ruleError } = useSWR({
     action: 'fetchProcessRule',
-    params: { documentId: localDocumentId }
+    params: { documentId: localDocumentId },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
@@ -159,7 +157,8 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const percent = useMemo(() => {
     const completedCount = indexingStatusDetail?.completed_segments || 0
     const totalCount = indexingStatusDetail?.total_segments || 0
-    if (totalCount === 0) return 0
+    if (totalCount === 0)
+      return 0
     const percent = Math.round(completedCount * 100 / totalCount)
     return percent > 100 ? 100 : percent
   }, [indexingStatusDetail])
@@ -170,7 +169,8 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       statusMutate()
-    } else {
+    }
+    else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
     }
   }
@@ -211,7 +211,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
             (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
             indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md')
         }
-          style={{ width: `${percent}%` }}
+        style={{ width: `${percent}%` }}
         />
       </div>
       <div className={s.progressData}>
@@ -255,7 +255,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
         <Divider />
         <div className={s.previewTip}>{t('datasetDocuments.embedding.previewTip')}</div>
         <div className={style.cardWrapper}>
-          {[1, 2, 3].map((v) => (
+          {[1, 2, 3].map(v => (
             <SegmentCard loading={true} detail={{ position: v } as any} />
           ))}
         </div>

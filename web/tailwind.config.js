@@ -50,21 +50,20 @@ module.exports = {
         indigo: {
           25: '#F5F8FF',
           100: '#E0EAFF',
-          600: '#444CE7'
-        }
+          600: '#444CE7',
+        },
       },
       screens: {
-        'mobile': '100px',
+        mobile: '100px',
         // => @media (min-width: 100px) { ... }
-        'tablet': '640px', // 391
+        tablet: '640px', // 391
         // => @media (min-width: 600px) { ... }
-        'pc': '769px',
+        pc: '769px',
         // => @media (min-width: 769px) { ... }
       },
     },
   },
   plugins: [
     require('@tailwindcss/typography'),
-    require('@tailwindcss/line-clamp'),
   ],
 }

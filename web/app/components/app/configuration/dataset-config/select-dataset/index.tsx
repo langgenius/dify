@@ -12,7 +12,6 @@ import { formatNumber } from '@/utils/format'
 import Link from 'next/link'
 
 import s from './style.module.css'
-import Toast from '@/app/components/base/toast'
 
 export interface ISelectDataSetProps {
   isShow: boolean
@@ -32,8 +31,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const hasNoData = !datasets || datasets?.length === 0
-  // Only one dataset can be selected. Historical data retains data and supports multiple selections, but when saving, only one can be selected. This is based on considerations of performance and accuracy. 
-  const canSelectMulti = selectedIds.length > 1
+  const canSelectMulti = true
   useEffect(() => {
     (async () => {
       const { data } = await fetchDatasets({ url: '/datasets', params: { page: 1 } })
@@ -57,13 +55,6 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   }
 
   const handleSelect = () => {
-    if (selected.length > 1) {
-      Toast.notify({
-        type: 'error',
-        message: t('appDebug.feature.dataSet.notSupportSelectMulti')
-      })
-      return
-    }
     onSelect(selected)
   }
   return (

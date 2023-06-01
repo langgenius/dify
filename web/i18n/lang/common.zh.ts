@@ -6,6 +6,7 @@ const translation = {
     remove: '已移除',
   },
   operation: {
+    create: '创建',
     confirm: '确认',
     cancel: '取消',
     clear: '清空',
@@ -49,7 +50,7 @@ const translation = {
         'Frequency penalty 是根据重复词在目前文本中的出现频率来对其进行惩罚。正值将不太可能重复常用单词和短语。',
       maxToken: '最大 Token',
       maxTokenTip:
-        '生成的最大令牌数为 2,048 或 4,000，取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 4 个中文字符。',
+        '生成的最大令牌数为 2,048 或 4,000，取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 半个中文字符。',
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 4,000。',
     },
     tone: {
@@ -61,7 +62,8 @@ const translation = {
   },
   menus: {
     status: 'beta',
-    apps: '应用',
+    explore: '探索',
+    apps: '构建应用',
     plugins: '插件',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
     datasets: '数据集',
@@ -80,11 +82,11 @@ const translation = {
   settings: {
     accountGroup: '账户',
     workplaceGroup: '工作空间',
-    account: "我的账户",
-    members: "成员",
-    integrations: "集成",
-    language: "语言",
-    provider: "模型供应商"
+    account: '我的账户',
+    members: '成员',
+    integrations: '集成',
+    language: '语言',
+    provider: '模型供应商',
   },
   account: {
     avatar: '头像',
@@ -98,7 +100,7 @@ const translation = {
   },
   members: {
     team: '团队',
-    invite: '邀请',
+    invite: '添加',
     name: '姓名',
     lastActive: '上次活动时间',
     role: '角色',
@@ -108,14 +110,14 @@ const translation = {
     adminTip: '能够建立应用程序和管理团队设置',
     normal: '正常人',
     normalTip: '只能使用应用程序，不能建立应用程序',
-    inviteTeamMember: '邀请团队成员',
-    inviteTeamMemberTip: '对方会收到一封邮件。如果他已经是 Dify 用户则可直接在登录后访问你的团队数据。',
+    inviteTeamMember: '添加团队成员',
+    inviteTeamMemberTip: '对方在登录后可以访问你的团队数据。',
     email: '邮箱',
     emailInvalid: '邮箱格式无效',
     emailPlaceholder: '输入邮箱',
-    sendInvite: '发送邀请',
-    invitationSent: '邀请已发送',
-    invitationSentTip: '邀请已发送，对方登录 Dify 后即可访问你的团队数据。',
+    sendInvite: '添加',
+    invitationSent: '已添加',
+    invitationSentTip: '已添加，对方登录 Dify 后即可访问你的团队数据。',
     ok: '好的',
     removeFromTeam: '移除团队',
     removeFromTeamTip: '将取消团队访问',
@@ -131,19 +133,20 @@ const translation = {
     googleAccount: 'Google 账号登录',
     github: 'GitHub',
     githubAccount: 'GitHub 账号登录',
-    connect: '绑定'
+    connect: '绑定',
   },
   language: {
     displayLanguage: '界面语言',
     timezone: '时区',
   },
   provider: {
-    apiKey: "API 密钥",
-    enterYourKey: "输入你的 API 密钥",
+    apiKey: 'API 密钥',
+    enterYourKey: '输入你的 API 密钥',
     invalidKey: '无效的 OpenAI API 密钥',
-    validating: "验证密钥中...",
-    saveFailed: "API 密钥保存失败",
-    apiKeyExceedBill: "此 API KEY 已没有可用配额，请阅读",
+    validatedError: '校验失败：',
+    validating: '验证密钥中...',
+    saveFailed: 'API 密钥保存失败',
+    apiKeyExceedBill: '此 API KEY 已没有可用配额，请阅读',
     addKey: '添加 密钥',
     comingSoon: '即将推出',
     editKey: '编辑',
@@ -168,7 +171,7 @@ const translation = {
     encrypted: {
       front: '密钥将使用 ',
       back: ' 技术进行加密和存储。',
-    }
+    },
   },
   about: {
     changeLog: '更新日志',
