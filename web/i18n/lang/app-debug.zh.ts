@@ -53,6 +53,13 @@ const translation = {
       notSupportSelectMulti: '目前只支持引用一个数据集',
     },
   },
+  automatic: {
+    title: '自动编排',
+    description: '描述您的场景，Dify 将为您编排一个应用。',
+    intendedAudience: '目标用户是谁？',
+    solveProblem: '希望 AI 为他们解决什么问题？',
+    generate: '生成',
+  },
   resetConfig: {
     title: '确认重置？',
     message: '重置将丢失当前页面所有修改，恢复至上次发布时的配置',

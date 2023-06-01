@@ -10,6 +10,7 @@ import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import AddFeatureBtn from './feature/add-feature-btn'
 import AutomaticBtn from './automatic/automatic-btn'
+import SetTargetModal from './automatic/set-target'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
 import ConfigContext from '@/context/debug-configuration'
@@ -81,7 +82,7 @@ const Config: FC = () => {
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer)
   const hasToolbox = false
 
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
+  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(true)
 
   return (
     <>
@@ -98,6 +99,13 @@ const Config: FC = () => {
             isChatApp={isChatApp}
             config={featureConfig}
             onChange={handleFeatureChange}
+          />
+        )}
+        {showAutomatic && (
+          <SetTargetModal
+            isShow={showAutomatic}
+            onClose={showAutomaticFalse}
+            onFinished={showAutomaticFalse}
           />
         )}
         {/* Template */}

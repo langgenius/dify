@@ -53,6 +53,13 @@ const translation = {
       notSupportSelectMulti: 'Currently only support one dataset',
     },
   },
+  automatic: {
+    title: 'Automated application orchestration',
+    description: 'Describe your scenario, Dify will orchestrate an application for you.',
+    intendedAudience: 'Who is the intended audience?',
+    solveProblem: 'What problems do they hope AI can solve for them?',
+    generate: 'Generate',
+  },
   resetConfig: {
     title: 'Confirm reset?',
     message:
