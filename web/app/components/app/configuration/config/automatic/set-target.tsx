@@ -6,6 +6,8 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
+import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
+import type { AppType } from '@/types/app'
 
 type AutomaticRes = {
   prompt: string
@@ -13,9 +15,9 @@ type AutomaticRes = {
   opening_statement: string
 }
 export type ISetTargetProps = {
+  mode: AppType
   isShow: boolean
   onClose: () => void
-  // appId: string
   onFinished: (res: AutomaticRes) => void
 }
 
@@ -28,6 +30,7 @@ const genIcon = (
 )
 
 const SetTarget: FC<ISetTargetProps> = ({
+  mode,
   isShow,
   onClose,
   // appId,
@@ -64,11 +67,18 @@ const SetTarget: FC<ISetTargetProps> = ({
     })
   }
 
+  const [res, setRes] = React.useState<AutomaticRes | null>({
+    prompt: '测试',
+    variables: [],
+    opening_statement: '测试',
+  })
+
   return (
     <Modal
       isShow={isShow}
       onClose={onClose}
       className='min-w-[1120px] !p-0'
+      closable
     >
       <div className='flex h-[680px]'>
         <div className='w-[480px] shrink-0 px-8 py-6 h-full overflow-y-auto border-r border-gray-100'>
@@ -100,8 +110,15 @@ const SetTarget: FC<ISetTargetProps> = ({
           </div>
         </div>
 
-        <div className='grow'>
-          right
+        <div className='grow px-8 pt-6'>
+          <div className='mb-4 w-1/2 text-lg font-medium text-gray-900'>{t('appDebug.automatic.resTitle')}</div>
+
+          <ConfigPrompt
+            mode={mode}
+            promptTemplate={res?.prompt || ''}
+            promptVariables={[]}
+            readonly
+          />
         </div>
       </div>
     </Modal>

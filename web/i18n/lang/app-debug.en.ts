@@ -61,6 +61,7 @@ const translation = {
     generate: 'Generate',
     audiencesRequired: 'Audiences required',
     problemRequired: 'Problem required',
+    resTitle: 'We have orchestrated the following application for you.',
   },
   resetConfig: {
     title: 'Confirm reset?',
