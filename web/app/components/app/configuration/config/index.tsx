@@ -103,6 +103,7 @@ const Config: FC = () => {
         )}
         {showAutomatic && (
           <SetTargetModal
+            mode={mode as AppType}
             isShow={showAutomatic}
             onClose={showAutomaticFalse}
             onFinished={showAutomaticFalse}
