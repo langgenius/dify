@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR, { useSWRConfig } from 'swr'
-import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import { ArrowTopRightOnSquareIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { debounce } from 'lodash-es'
 import Popover from '@/app/components/base/popover'
@@ -15,6 +15,8 @@ import { ToastContext } from '@/app/components/base/toast'
 import { updateOpenAIKey, validateOpenAIKey } from '@/service/apps'
 import { fetchTenantInfo } from '@/service/common'
 import I18n from '@/context/i18n'
+import Tooltip from '@/app/components/base/tooltip'
+import { randomString } from '@/app/components/app-sidebar/basic'
 
 type IStatusType = 'normal' | 'verified' | 'error' | 'error-api-key-exceed-bill'
 
@@ -42,6 +44,7 @@ type IEditKeyDiv = {
 const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, onClose, getTenantInfo }) => {
   const [inputValue, setInputValue] = useState<string | undefined>()
   const [editStatus, setEditStatus] = useState<IStatusType>('normal')
+  const [tokenErrorMsg, setTokenErrorMsg] = useState<string>()
   const [loading, setLoading] = useState(false)
   const [validating, setValidating] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -77,6 +80,7 @@ const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, on
       setValidating(true)
       const res = await validateOpenAIKey({ url: '/providers/openai/token-validate', body: { token: value ?? '' } })
       setEditStatus(res.result === 'success' ? 'verified' : 'error')
+      setTokenErrorMsg(res.result === 'success' ? '' : res.error)
     }
     catch (err: any) {
       if (err.status === 400) {
@@ -117,8 +121,15 @@ const EditKeyDiv: FC<IEditKeyDiv> = ({ className = '', showInPopover = false, on
     }
     if (editStatus === 'error') {
       return (
-        <div className={'text-[#D92D20] mt-2 text-xs'}>
+        <div className={'text-[#D92D20] mt-2 text-xs flex items-center'}>
           {t('common.provider.invalidKey')}
+          <Tooltip
+            position='right'
+            htmlContent={<div className='max-w-xs' >{tokenErrorMsg}</div>}
+            selector={`user-feedback-${randomString(16)}`}
+          >
+            <InformationCircleIcon className='w-4 h-4 ml-1 cursor-pointer ' />
+          </Tooltip>
         </div>
       )
     }
