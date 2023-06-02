@@ -13,6 +13,7 @@ import ConfigVar from '@/app/components/app/configuration/config-var'
 import OpeningStatement from '@/app/components/app/configuration/features/chat-group/opening-statement'
 import GroupName from '@/app/components/app/configuration/base/group-name'
 import Loading from '@/app/components/base/loading'
+import Confirm from '@/app/components/base/confirm'
 
 const noDataIcon = (
   <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -104,6 +105,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     }
   }
 
+  const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
+
   return (
     <Modal
       isShow={isShow}
@@ -175,13 +178,26 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <div className='sticky bottom-0 flex justify-end right-0 py-4'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button type='primary' className='ml-2' onClick={() => {
-                onFinished(res as AutomaticRes)
+                setShowConfirmOverwrite(true)
               }}>{t('appDebug.automatic.apply')}</Button>
             </div>
           </div>
         )}
         {isLoading && renderLoading}
         {(!isLoading && !res) && renderNoData}
+        {showConfirmOverwrite && (
+          <Confirm
+            title={t('appDebug.automatic.overwriteTitle')}
+            content={t('appDebug.automatic.overwriteMessage')}
+            isShow={showConfirmOverwrite}
+            onClose={() => setShowConfirmOverwrite(false)}
+            onConfirm={() => {
+              setShowConfirmOverwrite(false)
+              onFinished(res as AutomaticRes)
+            }}
+            onCancel={() => setShowConfirmOverwrite(false)}
+          />
+        )}
       </div>
     </Modal>
   )

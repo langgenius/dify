@@ -65,6 +65,8 @@ const translation = {
     apply: 'Apply this orchestration',
     noData: 'Describe your use case on the left, the orchestration preview will show here.',
     loading: 'Orchestrating the application for you...',
+    overwriteTitle: 'Override existing configuration?',
+    overwriteMessage: 'Applying this orchestration will override existing configuration.',
   },
   resetConfig: {
     title: 'Confirm reset?',
