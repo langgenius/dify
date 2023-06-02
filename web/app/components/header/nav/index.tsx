@@ -24,6 +24,7 @@ const Nav = ({
   navs,
   createText,
   onCreate,
+  onLoadmore,
 }: INavProps) => {
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
@@ -62,6 +63,7 @@ const Nav = ({
               navs={navs}
               createText={createText}
               onCreate={onCreate}
+              onLoadmore={onLoadmore}
             />
           </>
         )

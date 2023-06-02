@@ -1,8 +1,9 @@
 'use client'
-import { Fragment } from 'react'
+import { useEffect, useRef } from 'react'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
 import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
+import { debounce } from 'lodash-es'
 import Indicator from '../../indicator'
 import AppIcon from '@/app/components/base/app-icon'
 
@@ -13,11 +14,12 @@ type NavItem = {
   icon: string
   icon_background: string
 }
-export interface INavSelectorProps {
+export type INavSelectorProps = {
   navs: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
   onCreate: () => void
+  onLoadmore?: () => void
 }
 
 const itemClassName = `
@@ -25,8 +27,25 @@ const itemClassName = `
   rounded-lg font-normal hover:bg-gray-100 cursor-pointer
 `
 
-const NavSelector = ({ curNav, navs, createText, onCreate }: INavSelectorProps) => {
+const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
   const router = useRouter()
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const scrollDom = scrollRef.current
+
+  useEffect(() => {
+    const handleScroll = debounce(() => {
+      if (typeof onLoadmore === 'function' && scrollDom) {
+        const { clientHeight, scrollHeight, scrollTop } = scrollDom
+        console.log(clientHeight, scrollHeight, scrollTop)
+        if (clientHeight + scrollTop > scrollHeight - 50)
+          onLoadmore()
+      }
+    }, 50)
+
+    scrollDom?.addEventListener('scroll', handleScroll)
+
+    return () => scrollDom?.removeEventListener('scroll', handleScroll)
+  }, [scrollDom])
 
   return (
     <div className="">
@@ -47,7 +66,6 @@ const NavSelector = ({ curNav, navs, createText, onCreate }: INavSelectorProps) 
           </Menu.Button>
         </div>
         <Transition
-          as={Fragment}
           enter="transition ease-out duration-100"
           enterFrom="transform opacity-0 scale-95"
           enterTo="transform opacity-100 scale-100"
@@ -62,9 +80,9 @@ const NavSelector = ({ curNav, navs, createText, onCreate }: INavSelectorProps) 
               shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
             "
           >
-            <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }}>
+            <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }} ref={scrollRef}>
               {
-                navs.map((nav) => (
+                navs.map(nav => (
                   <Menu.Item key={nav.id}>
                     <div className={itemClassName} onClick={() => router.push(nav.link)}>
                       <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
