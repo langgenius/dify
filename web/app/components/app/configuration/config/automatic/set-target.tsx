@@ -140,6 +140,12 @@ const SetTarget: FC<ISetTargetProps> = ({
             </div>
           )}
 
+          <div className='sticky bottom-0 flex justify-end right-0 py-4'>
+            <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+            <Button type='primary' className='ml-2' onClick={() => {
+              onFinished(res as AutomaticRes)
+            }}>{t('appDebug.automatic.apply')}</Button>
+          </div>
         </div>
       </div>
     </Modal>

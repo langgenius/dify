@@ -62,6 +62,7 @@ const translation = {
     audiencesRequired: '目标用户必填',
     problemRequired: '解决问题必填',
     resTitle: '我们为您编排了以下应用程序',
+    apply: '应用',
   },
   resetConfig: {
     title: '确认重置？',

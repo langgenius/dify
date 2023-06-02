@@ -62,6 +62,7 @@ const translation = {
     audiencesRequired: 'Audiences required',
     problemRequired: 'Problem required',
     resTitle: 'We have orchestrated the following application for you.',
+    apply: 'Apply this orchestration',
   },
   resetConfig: {
     title: 'Confirm reset?',
