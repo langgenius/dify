@@ -20,12 +20,13 @@ const noDataIcon = (
   </svg>
 )
 
-type AutomaticRes = {
+export type AutomaticRes = {
   prompt: string
   variables: string[]
   opening_statement: string
 }
-export type ISetTargetProps = {
+
+export type IGetAutomaticResProps = {
   mode: AppType
   isShow: boolean
   onClose: () => void
@@ -40,7 +41,7 @@ const genIcon = (
   </svg>
 )
 
-const SetTarget: FC<ISetTargetProps> = ({
+const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   mode,
   isShow,
   onClose,
@@ -49,8 +50,8 @@ const SetTarget: FC<ISetTargetProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [audiences, setAudiences] = React.useState<string>('')
-  const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
+  const [audiences, setAudiences] = React.useState<string>('学生')
+  const [hopingToSolve, setHopingToSolve] = React.useState<string>('评估学业水平')
   const isValid = () => {
     if (audiences.trim() === '') {
       Toast.notify({
@@ -87,6 +88,8 @@ const SetTarget: FC<ISetTargetProps> = ({
 
   const onGenerate = async () => {
     if (!isValid())
+      return
+    if (isLoading)
       return
     setLoadingTrue()
     try {
@@ -130,6 +133,7 @@ const SetTarget: FC<ISetTargetProps> = ({
                 className='flex space-x-2 items-center !h-8'
                 type='primary'
                 onClick={onGenerate}
+                disabled={isLoading}
               >
                 {genIcon}
                 <span className='text-xs font-semibold text-white uppercase'>{t('appDebug.automatic.generate')}</span>
@@ -149,12 +153,14 @@ const SetTarget: FC<ISetTargetProps> = ({
               readonly
             />
 
-            {(res?.variables?.length && res?.variables?.length > 0) && (
-              <ConfigVar
-                promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
-                readonly
-              />
-            )}
+            {(res?.variables?.length && res?.variables?.length > 0)
+              ? (
+                <ConfigVar
+                  promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
+                  readonly
+                />
+              )
+              : ''}
 
             {mode === AppType.chat && (
               <div className='mt-7'>
@@ -180,4 +186,4 @@ const SetTarget: FC<ISetTargetProps> = ({
     </Modal>
   )
 }
-export default React.memo(SetTarget)
+export default React.memo(GetAutomaticRes)

@@ -10,7 +10,8 @@ import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import AddFeatureBtn from './feature/add-feature-btn'
 import AutomaticBtn from './automatic/automatic-btn'
-import SetTargetModal from './automatic/set-target'
+import type { AutomaticRes } from './automatic/get-automatic-res'
+import GetAutomaticResModal from './automatic/get-automatic-res'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
 import ConfigContext from '@/context/debug-configuration'
@@ -83,7 +84,17 @@ const Config: FC = () => {
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(true)
-
+  const handleAutomaticRes = (res: AutomaticRes) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_template = res.prompt
+      draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
+    })
+    setModelConfig(newModelConfig)
+    setPrevPromptConfig(modelConfig.configs)
+    if (mode === AppType.chat)
+      setIntroduction(res.opening_statement)
+    showAutomaticFalse()
+  }
   return (
     <>
       <div className="pb-[20px]">
@@ -102,11 +113,11 @@ const Config: FC = () => {
           />
         )}
         {showAutomatic && (
-          <SetTargetModal
+          <GetAutomaticResModal
             mode={mode as AppType}
             isShow={showAutomatic}
             onClose={showAutomaticFalse}
-            onFinished={showAutomaticFalse}
+            onFinished={handleAutomaticRes}
           />
         )}
         {/* Template */}
@@ -133,7 +144,6 @@ const Config: FC = () => {
               isShowOpeningStatement={featureConfig.openingStatement}
               openingStatementConfig={
                 {
-                  promptTemplate,
                   value: introduction,
                   onChange: setIntroduction,
                 }
