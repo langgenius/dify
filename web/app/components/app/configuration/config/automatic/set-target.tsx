@@ -7,8 +7,10 @@ import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
-import type { AppType } from '@/types/app'
+import { AppType } from '@/types/app'
 import ConfigVar from '@/app/components/app/configuration/config-var'
+import OpeningStatement from '@/app/components/app/configuration/features/chat-group/opening-statement'
+import GroupName from '@/app/components/app/configuration/base/group-name'
 
 type AutomaticRes = {
   prompt: string
@@ -71,7 +73,7 @@ const SetTarget: FC<ISetTargetProps> = ({
   const [res, setRes] = React.useState<AutomaticRes | null>({
     prompt: 'Please read the official OpenAI documentation and provide detailed information and solutions for using the {{serviceName}} related services, including API calls, ',
     variables: ['serviceName'],
-    opening_statement: '测试',
+    opening_statement: 'Hi {{name}}, I am {{serviceName}} assistant. I can help you with {{hopingToSolve}}.',
   })
 
   return (
@@ -111,7 +113,7 @@ const SetTarget: FC<ISetTargetProps> = ({
           </div>
         </div>
 
-        <div className='grow px-8 pt-6'>
+        <div className='grow px-8 pt-6 h-full overflow-y-auto'>
           <div className='mb-4 w-1/2 text-lg font-medium text-gray-900'>{t('appDebug.automatic.resTitle')}</div>
 
           <ConfigPrompt
@@ -126,6 +128,16 @@ const SetTarget: FC<ISetTargetProps> = ({
               promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
               readonly
             />
+          )}
+
+          {mode === AppType.chat && (
+            <div className='mt-7'>
+              <GroupName name={t('appDebug.feature.groupChat.title')} />
+              <OpeningStatement
+                value={res?.opening_statement || ''}
+                readonly
+              />
+            </div>
           )}
 
         </div>
