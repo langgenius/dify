@@ -148,7 +148,7 @@ const BlockInput: FC<IBlockInputProps> = ({
           {isContentChanged
             ? (
               <div className='flex items-center justify-between w-full'>
-                <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue.length}</div>
+                <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue?.length}</div>
                 <div className='flex space-x-2'>
                   <Button
                     onClick={handleCancel}

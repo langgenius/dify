@@ -51,8 +51,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [audiences, setAudiences] = React.useState<string>('学生')
-  const [hopingToSolve, setHopingToSolve] = React.useState<string>('评估学业水平')
+  const [audiences, setAudiences] = React.useState<string>('')
+  const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
   const isValid = () => {
     if (audiences.trim() === '') {
       Toast.notify({
