@@ -63,6 +63,8 @@ const translation = {
     problemRequired: '解决问题必填',
     resTitle: '我们为您编排了以下应用程序',
     apply: '应用',
+    noData: '在左侧描述您的用例，编排预览将在此处显示。',
+    loading: '为您编排应用程序中…',
   },
   resetConfig: {
     title: '确认重置？',

@@ -63,6 +63,8 @@ const translation = {
     problemRequired: 'Problem required',
     resTitle: 'We have orchestrated the following application for you.',
     apply: 'Apply this orchestration',
+    noData: 'Describe your use case on the left, the orchestration preview will show here.',
+    loading: 'Orchestrating the application for you...',
   },
   resetConfig: {
     title: 'Confirm reset?',
