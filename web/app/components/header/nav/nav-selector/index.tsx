@@ -1,7 +1,7 @@
 'use client'
-import { useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
-import { Menu, Transition } from '@headlessui/react'
+import { Menu } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
 import Indicator from '../../indicator'
@@ -30,27 +30,34 @@ const itemClassName = `
 const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
   const router = useRouter()
   const scrollRef = useRef<HTMLDivElement>(null)
-  const scrollDom = scrollRef.current
+  const [open, setOpen] = useState(false)
+
+  const handleClose = useCallback(() => {
+    setOpen(false)
+  }, [])
+  const handleScroll = useCallback(debounce(() => {
+    if (typeof onLoadmore === 'function' && scrollRef.current) {
+      const { clientHeight, scrollHeight, scrollTop } = scrollRef.current
+
+      if (clientHeight + scrollTop > scrollHeight - 50)
+        onLoadmore()
+    }
+  }, 50), [])
+  useEffect(() => {
+    document.body.addEventListener('click', handleClose)
+    return () => document.body.removeEventListener('click', handleClose)
+  }, [])
 
   useEffect(() => {
-    const handleScroll = debounce(() => {
-      if (typeof onLoadmore === 'function' && scrollDom) {
-        const { clientHeight, scrollHeight, scrollTop } = scrollDom
-        console.log(clientHeight, scrollHeight, scrollTop)
-        if (clientHeight + scrollTop > scrollHeight - 50)
-          onLoadmore()
-      }
-    }, 50)
+    scrollRef.current?.addEventListener('scroll', handleScroll)
 
-    scrollDom?.addEventListener('scroll', handleScroll)
-
-    return () => scrollDom?.removeEventListener('scroll', handleScroll)
-  }, [scrollDom])
+    return () => scrollRef.current?.removeEventListener('scroll', handleScroll)
+  }, [open])
 
   return (
     <div className="">
       <Menu as="div" className="relative inline-block text-left">
-        <div>
+        <div onClick={() => setOpen(!open)}>
           <Menu.Button
             className="
               inline-flex items-center w-full h-7 justify-center
@@ -65,58 +72,53 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
             />
           </Menu.Button>
         </div>
-        <Transition
-          enter="transition ease-out duration-100"
-          enterFrom="transform opacity-0 scale-95"
-          enterTo="transform opacity-100 scale-100"
-          leave="transition ease-in duration-75"
-          leaveFrom="transform opacity-100 scale-100"
-          leaveTo="transform opacity-0 scale-95"
-        >
-          <Menu.Items
-            className="
-              absolute -left-11 right-0 mt-1.5 w-60 max-w-80
-              divide-y divide-gray-100 origin-top-right rounded-lg bg-white
-              shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
-            "
-          >
-            <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }} ref={scrollRef}>
-              {
-                navs.map(nav => (
-                  <Menu.Item key={nav.id}>
-                    <div className={itemClassName} onClick={() => router.push(nav.link)}>
-                      <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
-                        <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
-                        <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>
-                          <Indicator />
+        {
+          open && (
+            <Menu.Items
+              className="
+                absolute -left-11 right-0 mt-1.5 w-60 max-w-80
+                divide-y divide-gray-100 origin-top-right rounded-lg bg-white
+                shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
+              "
+            >
+              <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }} ref={scrollRef}>
+                {
+                  navs.map(nav => (
+                    <Menu.Item key={nav.id}>
+                      <div className={itemClassName} onClick={() => router.push(nav.link)}>
+                        <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
+                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
+                          <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>
+                            <Indicator />
+                          </div>
                         </div>
+                        {nav.name}
                       </div>
-                      {nav.name}
-                    </div>
-                  </Menu.Item>
-                ))
-              }
-            </div>
-            <Menu.Item>
-              <div className='p-1' onClick={onCreate}>
-                <div
-                  className='flex items-center h-12 rounded-lg cursor-pointer hover:bg-gray-100'
-                >
-                  <div
-                    className='
-                      flex justify-center items-center
-                      ml-4 mr-2 w-6 h-6 bg-gray-100 rounded-[6px]
-                      border-[0.5px] border-gray-200 border-dashed
-                    '
-                  >
-                    <PlusIcon className='w-4 h-4 text-gray-500' />
-                  </div>
-                  <div className='font-normal text-[14px] text-gray-700'>{createText}</div>
-                </div>
+                    </Menu.Item>
+                  ))
+                }
               </div>
-            </Menu.Item>
-          </Menu.Items>
-        </Transition>
+              <Menu.Item>
+                <div className='p-1' onClick={onCreate}>
+                  <div
+                    className='flex items-center h-12 rounded-lg cursor-pointer hover:bg-gray-100'
+                  >
+                    <div
+                      className='
+                        flex justify-center items-center
+                        ml-4 mr-2 w-6 h-6 bg-gray-100 rounded-[6px]
+                        border-[0.5px] border-gray-200 border-dashed
+                      '
+                    >
+                      <PlusIcon className='w-4 h-4 text-gray-500' />
+                    </div>
+                    <div className='font-normal text-[14px] text-gray-700'>{createText}</div>
+                  </div>
+                </div>
+              </Menu.Item>
+            </Menu.Items>
+          )
+        }
       </Menu>
     </div>
   )

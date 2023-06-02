@@ -1,3 +1,4 @@
+'use client'
 import { useCallback, useState } from 'react'
 import type { FC } from 'react'
 import useSWRInfinite from 'swr/infinite'
