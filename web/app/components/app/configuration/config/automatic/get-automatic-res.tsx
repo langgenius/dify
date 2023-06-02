@@ -124,11 +124,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='mt-12 space-y-5'>
             <div className='space-y-2'>
               <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.intendedAudience')}</div>
-              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" value={audiences} onChange={e => setAudiences(e.target.value)} />
+              <input className="w-full h-8 px-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.automatic.intendedAudiencePlaceHolder') as string} value={audiences} onChange={e => setAudiences(e.target.value)} />
             </div>
             <div className='space-y-2'>
               <div className='text-[13px] font-medium text-gray-900'>{t('appDebug.automatic.solveProblem')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
+              <textarea className="w-full h-[200px] overflow-y-auto p-3 text-[13px] font-normal bg-gray-50 rounded-lg" placeholder={t('appDebug.automatic.solveProblemPlaceHolder') as string} value={hopingToSolve} onChange={e => setHopingToSolve(e.target.value)} />
             </div>
 
             <div className='mt-6 flex justify-end'>
@@ -165,7 +165,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               )
               : ''}
 
-            {mode === AppType.chat && (
+            {(mode === AppType.chat && res?.opening_statement) && (
               <div className='mt-7'>
                 <GroupName name={t('appDebug.feature.groupChat.title')} />
                 <OpeningStatement
