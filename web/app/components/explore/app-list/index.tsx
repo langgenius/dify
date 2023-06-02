@@ -1,22 +1,22 @@
 'use client'
-import React, { FC, useEffect } from 'react'
+import type { FC } from 'react'
+import React, { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import Toast from '../../base/toast'
+import s from './style.module.css'
 import ExploreContext from '@/context/explore-context'
-import { App } from '@/models/explore'
+import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
-import { fetchAppList, installApp, fetchAppDetail } from '@/service/explore'
+import { fetchAppDetail, fetchAppList, installApp } from '@/service/explore'
 import { createApp } from '@/service/apps'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
-import s from './style.module.css'
-import Toast from '../../base/toast'
-
-const Apps: FC = ({ }) => {
+const Apps: FC = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
@@ -25,13 +25,14 @@ const Apps: FC = ({ }) => {
   const [isLoaded, setIsLoaded] = React.useState(false)
 
   const currList = (() => {
-    if(currCategory === '') return allList
+    if (currCategory === '')
+      return allList
     return allList.filter(item => item.category === currCategory)
   })()
   const [categories, setCategories] = React.useState([])
   useEffect(() => {
     (async () => {
-      const {categories, recommended_apps}:any = await fetchAppList()
+      const { categories, recommended_apps }: any = await fetchAppList()
       setCategories(categories)
       setAllList(recommended_apps)
       setIsLoaded(true)
@@ -49,9 +50,9 @@ const Apps: FC = ({ }) => {
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate = async ({name, icon, icon_background}: any) => {
+  const onCreate = async ({ name, icon, icon_background }: any) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
-    
+
     try {
       const app = await createApp({
         name,
@@ -67,12 +68,13 @@ const Apps: FC = ({ }) => {
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       router.push(`/app/${app.id}/overview`)
-    } catch (e) {
+    }
+    catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
 
-  if(!isLoaded) {
+  if (!isLoaded) {
     return (
       <div className='flex h-full items-center'>
         <Loading type='area' />
@@ -92,16 +94,16 @@ const Apps: FC = ({ }) => {
         value={currCategory}
         onChange={setCurrCategory}
       />
-      <div 
+      <div
         className='flex mt-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
         style={{
-          maxHeight: 'calc(100vh - 243px)'
+          maxHeight: 'calc(100vh - 243px)',
         }}
       >
         <nav
           className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pb-10grow shrink-0`}>
           {currList.map(app => (
-            <AppCard 
+            <AppCard
               key={app.app_id}
               app={app}
               canCreate={hasEditPermission}
@@ -116,13 +118,13 @@ const Apps: FC = ({ }) => {
       </div>
 
       {isShowCreateModal && (
-          <CreateAppModal
-            appName={currApp?.app.name || ''}
-            show={isShowCreateModal}
-            onConfirm={onCreate}
-            onHide={() => setIsShowCreateModal(false)}
-          />
-        )}
+        <CreateAppModal
+          appName={currApp?.app.name || ''}
+          show={isShowCreateModal}
+          onConfirm={onCreate}
+          onHide={() => setIsShowCreateModal(false)}
+        />
+      )}
     </div>
   )
 }

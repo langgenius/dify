@@ -61,3 +61,60 @@ QUERY_KEYWORD_EXTRACT_TEMPLATE_TMPL = (
 QUERY_KEYWORD_EXTRACT_TEMPLATE = QueryKeywordExtractPrompt(
     QUERY_KEYWORD_EXTRACT_TEMPLATE_TMPL
 )
+
+RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
+the model prompt that best suits the input. 
+You will be provided with the prompt, variables, and an opening statement. 
+Only the content enclosed in double curly braces, such as {{variable}}, in the prompt can be considered as a variable; \
+otherwise, it cannot exist as a variable in the variables.
+If you believe revising the original input will result in a better response from the language model, you may \
+suggest revisions.
+
+<< FORMATTING >>
+Return a markdown code snippet with a JSON object formatted to look like, \
+no any other string out of markdown code snippet:
+```json
+{{{{
+    "prompt": string \\ generated prompt
+    "variables": list of string \\ variables
+    "opening_statement": string \\ an opening statement to guide users on how to ask questions with generated prompt \
+and fill in variables, with a welcome sentence, and keep TLDR.
+}}}}
+```
+
+<< EXAMPLES >>
+[EXAMPLE A]
+```json
+{
+  "prompt": "Write a letter about love",
+  "variables": [],
+  "opening_statement": "Hi! I'm your love letter writer AI."
+}
+```
+
+[EXAMPLE B]
+```json
+{
+  "prompt": "Translate from {{lanA}} to {{lanB}}",
+  "variables": ["lanA", "lanB"],
+  "opening_statement": "Welcome to use translate app"
+}
+```
+
+[EXAMPLE C]
+```json
+{
+  "prompt": "Write a story about {{topic}}",
+  "variables": ["topic"],
+  "opening_statement": "I'm your story writer"
+}
+```
+
+<< MY INTENDED AUDIENCES >>
+{audiences}
+
+<< HOPING TO SOLVE >>
+{hoping_to_solve}
+
+<< OUTPUT >>
+"""

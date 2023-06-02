@@ -76,6 +76,8 @@ const translation = {
     fileName: 'Preprocess document',
     lastStep: 'Last step',
     nextStep: 'Save & Process',
+    save: 'Save & Process',
+    cancel: 'Cancel',
     sideTipTitle: 'Why segment and preprocess?',
     sideTipP1: 'When processing text data, segmentation and cleaning are two important preprocessing steps.',
     sideTipP2: 'Segmentation splits long text into paragraphs so models can understand better. This improves the quality and relevance of model results.',
@@ -100,8 +102,8 @@ const translation = {
     sideTipContent: 'After the document finishes indexing, the dataset can be integrated into the application as context, you can find the context setting in the prompt orchestration page. You can also create it as an independent ChatGPT indexing plugin for release.',
     modelTitle: 'Are you sure to stop embedding?',
     modelContent: 'If you need to resume processing later, you will continue from where you left off.',
-    modelButtonConfirm: "Confirm",
-    modelButtonCancel: 'Cancel'
+    modelButtonConfirm: 'Confirm',
+    modelButtonCancel: 'Cancel',
   },
 }
 

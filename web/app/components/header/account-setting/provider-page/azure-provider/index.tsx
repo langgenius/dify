@@ -1,92 +1,90 @@
-import type { Provider, ProviderAzureToken } from '@/models/common'
-import { ProviderName } from '@/models/common'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import ProviderInput from '../provider-input'
-import useValidateToken, { ValidatedStatus, ValidatedStatusState } from '../provider-input/useValidateToken'
-import { 
-  ValidatedErrorIcon, 
+import type { ValidatedStatusState } from '../provider-input/useValidateToken'
+import useValidateToken, { ValidatedStatus } from '../provider-input/useValidateToken'
+import {
+  ValidatedErrorIcon,
+  ValidatedErrorOnAzureOpenaiTip,
   ValidatedSuccessIcon,
   ValidatingTip,
-  ValidatedErrorOnAzureOpenaiTip
 } from '../provider-input/Validate'
+import { ProviderName } from '@/models/common'
+import type { Provider, ProviderAzureToken } from '@/models/common'
 
-interface IAzureProviderProps {
+type IAzureProviderProps = {
   provider: Provider
   onValidatedStatus: (status?: ValidatedStatusState) => void
   onTokenChange: (token: ProviderAzureToken) => void
 }
 const AzureProvider = ({
-  provider, 
+  provider,
   onTokenChange,
-  onValidatedStatus
+  onValidatedStatus,
 }: IAzureProviderProps) => {
   const { t } = useTranslation()
-  const [token, setToken] = useState<ProviderAzureToken>(provider.provider_name === ProviderName.AZURE_OPENAI ? {...provider.token}: {})
-  const [ validating, validatedStatus, setValidatedStatus, validate ] = useValidateToken(provider.provider_name)
+  const [token, setToken] = useState<ProviderAzureToken>(provider.provider_name === ProviderName.AZURE_OPENAI ? { ...provider.token } : {})
+  const [validating, validatedStatus, setValidatedStatus, validate] = useValidateToken(provider.provider_name)
   const handleFocus = (type: keyof ProviderAzureToken) => {
     if (token[type] === (provider?.token as ProviderAzureToken)[type]) {
       token[type] = ''
-      setToken({...token})
-      onTokenChange({...token})
+      setToken({ ...token })
+      onTokenChange({ ...token })
       setValidatedStatus({})
     }
   }
   const handleChange = (type: keyof ProviderAzureToken, v: string, validate: any) => {
     token[type] = v
-    setToken({...token})
-    onTokenChange({...token})
-    validate({...token}, {
+    setToken({ ...token })
+    onTokenChange({ ...token })
+    validate({ ...token }, {
       beforeValidating: () => {
         if (!token.openai_api_base || !token.openai_api_key) {
           setValidatedStatus({})
           return false
         }
         return true
-      }
+      },
     })
   }
   const getValidatedIcon = () => {
-    if (validatedStatus.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed) {
+    if (validatedStatus.status === ValidatedStatus.Error || validatedStatus.status === ValidatedStatus.Exceed)
       return <ValidatedErrorIcon />
-    }
-    if (validatedStatus.status === ValidatedStatus.Success) {
+
+    if (validatedStatus.status === ValidatedStatus.Success)
       return <ValidatedSuccessIcon />
-    }
   }
   const getValidatedTip = () => {
-    if (validating) {
+    if (validating)
       return <ValidatingTip />
-    }
-    if (validatedStatus.status === ValidatedStatus.Error) {
+
+    if (validatedStatus.status === ValidatedStatus.Error)
       return <ValidatedErrorOnAzureOpenaiTip errorMessage={validatedStatus.message ?? ''} />
-    }
   }
   useEffect(() => {
-    if (typeof onValidatedStatus === 'function') {
+    if (typeof onValidatedStatus === 'function')
       onValidatedStatus(validatedStatus)
-    }
   }, [validatedStatus])
 
   return (
     <div className='px-4 py-3'>
-      <ProviderInput 
+      <ProviderInput
         className='mb-4'
         name={t('common.provider.azure.apiBase')}
         placeholder={t('common.provider.azure.apiBasePlaceholder')}
         value={token.openai_api_base}
-        onChange={(v) => handleChange('openai_api_base', v, validate)}
+        onChange={v => handleChange('openai_api_base', v, validate)}
         onFocus={() => handleFocus('openai_api_base')}
         validatedIcon={getValidatedIcon()}
       />
-      <ProviderInput 
+      <ProviderInput
         className='mb-4'
         name={t('common.provider.azure.apiKey')}
         placeholder={t('common.provider.azure.apiKeyPlaceholder')}
         value={token.openai_api_key}
-        onChange={(v) => handleChange('openai_api_key', v, validate)}
+        onChange={v => handleChange('openai_api_key', v, validate)}
         onFocus={() => handleFocus('openai_api_key')}
         validatedIcon={getValidatedIcon()}
         validatedTip={getValidatedTip()}

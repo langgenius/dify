@@ -1,18 +1,19 @@
 'use client'
-import React, { FC, useState } from 'react'
+import type { FC } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { Markdown } from '@/app/components/base/markdown'
-import Loading from '@/app/components/base/loading'
 import copy from 'copy-to-clipboard'
-import Toast from '@/app/components/base/toast'
-import { Feedbacktype } from '@/app/components/app/chat'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
+import { Markdown } from '@/app/components/base/markdown'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import type { Feedbacktype } from '@/app/components/app/chat'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 
 const MAX_DEPTH = 3
-export interface IGenerationItemProps {
+export type IGenerationItemProps = {
   className?: string
   content: string
   messageId?: string | null
@@ -24,13 +25,13 @@ export interface IGenerationItemProps {
   onFeedback?: (feedback: Feedbacktype) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
-  isInstalledApp: boolean,
-  installedAppId?: string,
+  isInstalledApp: boolean
+  installedAppId?: string
 }
 
 export const SimpleBtn = ({ className, onClick, children }: {
   className?: string
-  onClick?: () => void,
+  onClick?: () => void
   children: React.ReactNode
 }) => (
   <div
@@ -88,7 +89,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const hasChild = !!childMessageId
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
-    rating: null
+    rating: null,
   })
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
@@ -126,115 +127,120 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const mainStyle = (() => {
-    const res: any = !isTop ? {
-      background: depth % 2 === 0 ? 'linear-gradient(90.07deg, #F9FAFB 0.05%, rgba(249, 250, 251, 0) 99.93%)' : '#fff'
-    } : {}
+    const res: any = !isTop
+      ? {
+        background: depth % 2 === 0 ? 'linear-gradient(90.07deg, #F9FAFB 0.05%, rgba(249, 250, 251, 0) 99.93%)' : '#fff',
+      }
+      : {}
 
-    if (hasChild) {
+    if (hasChild)
       res.boxShadow = '0px 1px 2px rgba(16, 24, 40, 0.05)'
-    }
+
     return res
   })()
   return (
     <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
-      style={isTop ? {
-        boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)'
-      } : {}}
+      style={isTop
+        ? {
+          boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
+        }
+        : {}}
     >
-      {isLoading ? (
-        <div className='flex items-center h-10'><Loading type='area' /></div>
-      ) : (
-        <div
-          className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4')}
-          style={mainStyle}
-        >
-          <Markdown content={content} />
-          {messageId && (
-            <div className='flex items-center justify-between mt-3'>
-              <div className='flex items-center'>
-                <SimpleBtn
-                  className={cn(isMobile && '!px-1.5', 'space-x-1')}
-                  onClick={() => {
-                    copy(content)
-                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                  }}>
-                  {copyIcon}
-                  {!isMobile && <div>{t('common.operation.copy')}</div>}
-                </SimpleBtn>
-                {isInWebApp && (
-                  <>
-                    <SimpleBtn
-                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                      onClick={() => { onSave?.(messageId as string) }}
-                    >
-                      {saveIcon}
-                      {!isMobile && <div>{t('common.operation.save')}</div>}
-                    </SimpleBtn>
-                    {(moreLikeThis && depth < MAX_DEPTH) && (
+      {isLoading
+        ? (
+          <div className='flex items-center h-10'><Loading type='area' /></div>
+        )
+        : (
+          <div
+            className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4')}
+            style={mainStyle}
+          >
+            <Markdown content={content} />
+            {messageId && (
+              <div className='flex items-center justify-between mt-3'>
+                <div className='flex items-center'>
+                  <SimpleBtn
+                    className={cn(isMobile && '!px-1.5', 'space-x-1')}
+                    onClick={() => {
+                      copy(content)
+                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                    }}>
+                    {copyIcon}
+                    {!isMobile && <div>{t('common.operation.copy')}</div>}
+                  </SimpleBtn>
+                  {isInWebApp && (
+                    <>
                       <SimpleBtn
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                        onClick={handleMoreLikeThis}
+                        onClick={() => { onSave?.(messageId as string) }}
                       >
-                        {moreLikeThisIcon}
-                        {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
-                      </SimpleBtn>)}
-                    <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
-                    {!feedback?.rating && (
-                      <SimpleBtn className="!px-0">
-                        <>
-                          <div
-                            onClick={() => {
-                              onFeedback?.({
-                                rating: 'like'
-                              })
-                            }}
-                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                            <HandThumbUpIcon width={16} height={16} />
-                          </div>
-                          <div
-                            onClick={() => {
-                              onFeedback?.({
-                                rating: 'dislike'
-                              })
-                            }}
-                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                            <HandThumbDownIcon width={16} height={16} />
-                          </div>
-                        </>
+                        {saveIcon}
+                        {!isMobile && <div>{t('common.operation.save')}</div>}
                       </SimpleBtn>
-                    )}
-                    {feedback?.rating === 'like' && (
-                      <div
-                        onClick={() => {
-                          onFeedback?.({
-                            rating: null
-                          })
-                        }}
-                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
-                        <HandThumbUpIcon width={16} height={16} />
-                      </div>
-                    )}
-                    {feedback?.rating === 'dislike' && (
-                      <div
-                        onClick={() => {
-                          onFeedback?.({
-                            rating: null
-                          })
-                        }}
-                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
-                        <HandThumbDownIcon width={16} height={16} />
-                      </div>
-                    )}
-                  </>
-                )}
+                      {(moreLikeThis && depth < MAX_DEPTH) && (
+                        <SimpleBtn
+                          className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                          onClick={handleMoreLikeThis}
+                        >
+                          {moreLikeThisIcon}
+                          {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
+                        </SimpleBtn>)}
+                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
+                      {!feedback?.rating && (
+                        <SimpleBtn className="!px-0">
+                          <>
+                            <div
+                              onClick={() => {
+                                onFeedback?.({
+                                  rating: 'like',
+                                })
+                              }}
+                              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+                              <HandThumbUpIcon width={16} height={16} />
+                            </div>
+                            <div
+                              onClick={() => {
+                                onFeedback?.({
+                                  rating: 'dislike',
+                                })
+                              }}
+                              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+                              <HandThumbDownIcon width={16} height={16} />
+                            </div>
+                          </>
+                        </SimpleBtn>
+                      )}
+                      {feedback?.rating === 'like' && (
+                        <div
+                          onClick={() => {
+                            onFeedback?.({
+                              rating: null,
+                            })
+                          }}
+                          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
+                          <HandThumbUpIcon width={16} height={16} />
+                        </div>
+                      )}
+                      {feedback?.rating === 'dislike' && (
+                        <div
+                          onClick={() => {
+                            onFeedback?.({
+                              rating: null,
+                            })
+                          }}
+                          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
+                          <HandThumbDownIcon width={16} height={16} />
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+                <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
               </div>
-              <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
-            </div>
-          )}
+            )}
 
-        </div>
-      )}
-
+          </div>
+        )}
 
       {((childMessageId || isQuerying) && depth < 3) && (
         <div className='pl-4'>

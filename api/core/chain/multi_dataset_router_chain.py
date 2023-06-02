@@ -23,7 +23,8 @@ think that revising it will ultimately lead to a better response from the langua
 model.
 
 << FORMATTING >>
-Return a markdown code snippet with a JSON object formatted to look like:
+Return a markdown code snippet with a JSON object formatted to look like, \
+no any other string out of markdown code snippet:
 ```json
 {{{{
     "destination": string \\ name of the prompt to use or "DEFAULT"
@@ -110,7 +111,10 @@ class MultiDatasetRouterChain(Chain):
                 response_mode='no_synthesizer',  # "compact"
                 callback_handler=DatasetToolCallbackHandler(conversation_message_task)
             )
-            dataset_tools[dataset.id] = dataset_tool
+
+            if dataset_tool:
+                dataset_tools[dataset.id] = dataset_tool
+
         return cls(
             router_chain=router_chain,
             dataset_tools=dataset_tools,

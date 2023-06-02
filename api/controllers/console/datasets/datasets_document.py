@@ -208,9 +208,10 @@ class DatasetDocumentListApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
                             location='json')
-        parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
-        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('data_source', type=dict, required=False, location='json')
+        parser.add_argument('process_rule', type=dict, required=False, location='json')
         parser.add_argument('duplicate', type=bool, nullable=False, location='json')
+        parser.add_argument('original_document_id', type=str, required=False, location='json')
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args['indexing_technique']:
@@ -347,10 +348,12 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         completed_segments = DocumentSegment.query \
             .filter(DocumentSegment.completed_at.isnot(None),
-                    DocumentSegment.document_id == str(document_id)) \
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
             .count()
         total_segments = DocumentSegment.query \
-            .filter_by(document_id=str(document_id)) \
+            .filter(DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
             .count()
 
         document.completed_segments = completed_segments

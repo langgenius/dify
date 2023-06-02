@@ -9,7 +9,7 @@ api = ExternalApi(bp)
 from . import setup, version, apikey, admin
 
 # Import app controllers
-from .app import app, site, completion, model_config, statistic, conversation, message
+from .app import app, site, completion, model_config, statistic, conversation, message, generator
 
 # Import auth controllers
 from .auth import login, oauth

@@ -164,7 +164,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         extraInfo={<ExtraInfo />}
         iconType='dataset'
       />}
-      <DatasetDetailContext.Provider value={{ indexingTechnique: datasetRes?.indexing_technique }}>
+      <DatasetDetailContext.Provider value={{
+        indexingTechnique: datasetRes?.indexing_technique,
+        dataset: datasetRes,
+      }}>
         <div className="bg-white grow">{children}</div>
       </DatasetDetailContext.Provider>
     </div>

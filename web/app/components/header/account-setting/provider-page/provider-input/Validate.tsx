@@ -15,7 +15,7 @@ export const ValidatedSuccessIcon = () => {
 export const ValidatingTip = () => {
   const { t } = useTranslation()
   return (
-    <div className={`mt-2 text-primary-600 text-xs font-normal`}>
+    <div className={'mt-2 text-primary-600 text-xs font-normal'}>
       {t('common.provider.validating')}
     </div>
   )
@@ -26,11 +26,11 @@ export const ValidatedExceedOnOpenaiTip = () => {
   const { locale } = useContext(I18n)
 
   return (
-    <div className={`mt-2 text-[#D92D20] text-xs font-normal`}>
+    <div className={'mt-2 text-[#D92D20] text-xs font-normal'}>
       {t('common.provider.apiKeyExceedBill')}&nbsp;
-      <Link 
+      <Link
         className='underline'
-        href="https://platform.openai.com/account/api-keys" 
+        href="https://platform.openai.com/account/api-keys"
         target={'_blank'}>
         {locale === 'en' ? 'this link' : '这篇文档'}
       </Link>
@@ -42,7 +42,7 @@ export const ValidatedErrorOnOpenaiTip = ({ errorMessage }: { errorMessage: stri
   const { t } = useTranslation()
 
   return (
-    <div className={`mt-2 text-[#D92D20] text-xs font-normal`}>
+    <div className={'mt-2 text-[#D92D20] text-xs font-normal'}>
       {t('common.provider.validatedError')}{errorMessage}
     </div>
   )
@@ -52,7 +52,7 @@ export const ValidatedErrorOnAzureOpenaiTip = ({ errorMessage }: { errorMessage:
   const { t } = useTranslation()
 
   return (
-    <div className={`mt-2 text-[#D92D20] text-xs font-normal`}>
+    <div className={'mt-2 text-[#D92D20] text-xs font-normal'}>
       {t('common.provider.validatedError')}{errorMessage}
     </div>
   )

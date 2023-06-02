@@ -95,6 +95,7 @@ export const OperationAction: FC<{
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
+  const router = useRouter()
 
   const isListScene = scene === 'list'
 
@@ -166,15 +167,19 @@ export const OperationAction: FC<{
             </div>
             <Divider />
           </>}
-          {/* <div className={s.actionItem}>
-            <SettingsIcon />
-            <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
-          </div>
-          <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/create`)}>
-            <FilePlusIcon />
-            <span className={s.actionName}>{t('datasetDocuments.list.action.uploadFile')}</span>
-          </div>
-          <Divider className='my-1' /> */}
+          {!archived && (
+            <>
+              <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
+                <SettingsIcon />
+                <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
+              </div>
+              {/* <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/create`)}>
+                <FilePlusIcon />
+                <span className={s.actionName}>{t('datasetDocuments.list.action.uploadFile')}</span>
+              </div> */}
+              <Divider className='my-1' />
+            </>
+          )}
           {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
             <ArchiveIcon />
             <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>

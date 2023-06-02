@@ -1,7 +1,7 @@
-import { ChangeEvent } from 'react'
-import { ReactElement } from 'react-markdown/lib/react-markdown'
+import type { ChangeEvent } from 'react'
+import type { ReactElement } from 'react-markdown/lib/react-markdown'
 
-interface IProviderInputProps {
+type IProviderInputProps = {
   value?: string
   name: string
   placeholder: string
@@ -20,9 +20,8 @@ const ProviderInput = ({
   onChange,
   onFocus,
   validatedIcon,
-  validatedTip
+  validatedTip,
 }: IProviderInputProps) => {
-
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const inputValue = e.target.value
     onChange(inputValue)
@@ -35,12 +34,12 @@ const ProviderInput = ({
         flex items-center px-3 bg-white rounded-lg
         shadow-[0_1px_2px_rgba(16,24,40,0.05)]
       '>
-        <input 
+        <input
           className='
             w-full py-[9px]
             text-xs font-medium text-gray-700 leading-[18px]
-            appearance-none outline-none bg-transparent 
-          ' 
+            appearance-none outline-none bg-transparent
+          '
           value={value}
           placeholder={placeholder}
           onChange={handleChange}

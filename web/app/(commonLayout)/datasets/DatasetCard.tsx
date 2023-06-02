@@ -1,20 +1,17 @@
 'use client'
 
-import { useContext, useContextSelector } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import Link from 'next/link'
-import useSWR from 'swr'
 import type { MouseEventHandler } from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import classNames from 'classnames'
 import style from '../list.module.css'
-import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteDataset, fetchDatasets } from '@/service/datasets'
+import { deleteDataset } from '@/service/datasets'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext from '@/context/app-context'
-import { DataSet } from '@/models/datasets'
-import classNames from 'classnames'
+import type { DataSet } from '@/models/datasets'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -23,7 +20,7 @@ export type DatasetCardProps = {
 
 const DatasetCard = ({
   dataset,
-  onDelete
+  onDelete,
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)

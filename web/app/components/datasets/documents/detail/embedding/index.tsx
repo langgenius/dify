@@ -1,12 +1,13 @@
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
-import cn from 'classnames'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
+import { useGetState } from 'ahooks'
+import cn from 'classnames'
 import SegmentCard from '../completed/SegmentCard'
 import { FieldInfo } from '../metadata'
 import style from '../completed/style.module.css'
@@ -19,7 +20,7 @@ import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { fetchIndexingEstimate, fetchIndexingStatus, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
+import { fetchIndexingStatus as doFetchIndexingStatus, fetchIndexingEstimate, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
 
@@ -118,14 +119,46 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   const localDocumentId = docId ?? documentId
   const localIndexingTechnique = indexingType ?? indexingTechnique
 
-  const { data: indexingStatusDetail, error: indexingStatusErr, mutate: statusMutate } = useSWR({
-    action: 'fetchIndexingStatus',
-    datasetId: localDatasetId,
-    documentId: localDocumentId,
-  }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
-    refreshInterval: 5000,
-    revalidateOnFocus: false,
-  })
+  // const { data: indexingStatusDetailFromApi, error: indexingStatusErr, mutate: statusMutate } = useSWR({
+  //   action: 'fetchIndexingStatus',
+  //   datasetId: localDatasetId,
+  //   documentId: localDocumentId,
+  // }, apiParams => fetchIndexingStatus(omit(apiParams, 'action')), {
+  //   refreshInterval: 2500,
+  //   revalidateOnFocus: false,
+  // })
+
+  const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
+  const fetchIndexingStatus = async () => {
+    const status = await doFetchIndexingStatus({ datasetId: localDatasetId, documentId: localDocumentId })
+    setIndexingStatusDetail(status)
+  }
+
+  const [runId, setRunId, getRunId] = useGetState<any>(null)
+
+  const stopQueryStatus = () => {
+    clearInterval(getRunId())
+  }
+
+  const startQueryStatus = () => {
+    const runId = setInterval(() => {
+      const indexingStatusDetail = getIndexingStatusDetail()
+      if (indexingStatusDetail?.indexing_status === 'completed') {
+        stopQueryStatus()
+        return
+      }
+      fetchIndexingStatus()
+    }, 2500)
+    setRunId(runId)
+  }
+
+  useEffect(() => {
+    fetchIndexingStatus()
+    startQueryStatus()
+    return () => {
+      stopQueryStatus()
+    }
+  }, [])
 
   const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
     action: 'fetchIndexingEstimate',
@@ -168,7 +201,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId: localDatasetId, documentId: localDocumentId }) as Promise<CommonResponse>)
     if (!e) {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      statusMutate()
+      setIndexingStatusDetail(null)
     }
     else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
@@ -204,14 +237,15 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
           key={idx}
           className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
         />)}
-        <div className={
-          cn('rounded-l-md',
+        <div
+          className={cn(
+            'rounded-l-md',
             s.progressBar,
             (isEmbedding || isEmbeddingCompleted) && s.barProcessing,
             (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
-            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md')
-        }
-        style={{ width: `${percent}%` }}
+            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md',
+          )}
+          style={{ width: `${percent}%` }}
         />
       </div>
       <div className={s.progressData}>

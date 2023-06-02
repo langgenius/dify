@@ -71,6 +71,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
       <AppCard
         className='mr-3 flex-1'
         appInfo={response}
+        cardType='webapp'
         onChangeStatus={onChangeSiteStatus}
         onGenerateCode={onGenerateCode}
         onSaveSiteConfig={onSaveSiteConfig} />
