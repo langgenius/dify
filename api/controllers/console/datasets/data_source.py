@@ -18,6 +18,7 @@ from libs.oauth_data_source import NotionOAuth
 from models.dataset import Document
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
+from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 cache = TTLCache(maxsize=None, ttl=30)
 
@@ -231,7 +232,7 @@ class DataSourceNotionApi(Resource):
         return response, 200
 
 
-class DataSourceNotionSyncApi(Resource):
+class DataSourceNotionDatasetSyncApi(Resource):
 
     @setup_required
     @login_required
@@ -244,7 +245,26 @@ class DataSourceNotionSyncApi(Resource):
 
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
+            document_indexing_sync_task.delay(dataset_id, document.id)
+        return 200
 
+
+class DataSourceNotionDocumentSyncApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id_str = str(dataset_id)
+        document_id_str = str(document_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        document = DocumentService.get_document(dataset_id_str, document_id_str)
+        if document is None:
+            raise NotFound("Document not found.")
+        document_indexing_sync_task.delay(dataset_id, document.id)
         return 200
 
 
@@ -252,4 +272,5 @@ api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integra
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
 api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview',
                  '/datasets/notion-indexing-estimate')
-api.add_resource(DataSourceNotionSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')
+api.add_resource(DataSourceNotionDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')
+api.add_resource(DataSourceNotionDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync')

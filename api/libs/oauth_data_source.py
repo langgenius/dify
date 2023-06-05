@@ -84,6 +84,29 @@ class NotionOAuth(OAuthDataSource):
             db.session.add(new_data_source_binding)
             db.session.commit()
 
+    def sync_data_source(self, binding_id: str):
+        # save data source binding
+        data_source_binding = DataSourceBinding.query.filter(
+            db.and_(
+                DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBinding.provider == 'notion',
+                DataSourceBinding.id == binding_id,
+                DataSourceBinding.disabled == False
+            )
+        ).first()
+        if data_source_binding:
+            # get all authorized pages
+            pages = self.get_authorized_pages(data_source_binding.access_token)
+            source_info = json.loads(data_source_binding.source_info)
+            source_info['pages'] = pages
+            source_info['total'] = len(pages)
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            db.session.add(data_source_binding)
+            db.session.commit()
+        else:
+            raise ValueError('Data source binding not found')
+
     def get_authorized_pages(self, access_token: str):
         pages = []
         data = {

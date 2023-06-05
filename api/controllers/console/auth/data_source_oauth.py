@@ -63,5 +63,25 @@ class OAuthDataSourceCallback(Resource):
         return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
 
 
+class OAuthDataSourceSync(Resource):
+    def get(self, provider, binding_id):
+        provider = str(provider)
+        binding_id = str(binding_id)
+        OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
+        with current_app.app_context():
+            oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
+        if not oauth_provider:
+            return {'error': 'Invalid provider'}, 400
+        try:
+            oauth_provider.sync_data_source(binding_id)
+        except requests.exceptions.HTTPError as e:
+            logging.exception(
+                f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
+            return {'error': 'OAuth data source process failed'}, 400
+
+        return {'result': 'success'}, 200
+
+
 api.add_resource(OAuthDataSource, '/oauth/data-source/<string:provider>')
 api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/callback/<string:provider>')
+api.add_resource(OAuthDataSourceSync, '/oauth/data-source/<string:provider>/<uuid:binding_id>/sync')
