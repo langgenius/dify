@@ -1,9 +1,10 @@
 const { withSentryConfig } = require('@sentry/nextjs')
 
-const EDITION = process.env.NEXT_PUBLIC_EDITION
-const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 const isDevelopment = process.env.NODE_ENV === 'development'
-const isHideSentry = isDevelopment || IS_CE_EDITION
+const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
+const SENTRY_ORG = process.env.NEXT_PUBLIC_SENTRY_ORG
+const SENTRY_PROJECT = process.env.NEXT_PUBLIC_SENTRY_PROJECT
+const isHideSentry = isDevelopment || !SENTRY_DSN || !SENTRY_ORG || !SENTRY_PROJECT
 
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
@@ -56,8 +57,8 @@ const nextConfig = {
 
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/manual-setup
 const sentryWebpackPluginOptions = {
-  org: 'perfectworld',
-  project: 'javascript-nextjs',
+  org: SENTRY_ORG,
+  project: SENTRY_PROJECT,
   silent: true, // Suppresses all logs
   sourcemaps: {
     assets: './**',
