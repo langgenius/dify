@@ -101,6 +101,7 @@ class DocumentResource(Resource):
 
         return documents
 
+
 class GetProcessRuleApi(Resource):
     @setup_required
     @login_required
@@ -364,16 +365,11 @@ class DocumentIndexingStatusApi(DocumentResource):
         documents = self.get_batch_documents(dataset_id, batch)
         documents_status = []
         for document in documents:
-            completed_segments = DocumentSegment.query \
-                .filter(DocumentSegment.completed_at.isnot(None),
-                        DocumentSegment.document_id == str(document.id),
-                        DocumentSegment.status != 're_segment') \
-                    )
-                .count()
-            total_segments = DocumentSegment.query \
-                .filter_by(document_id=str(document.id)) \
-                .count()
-
+            completed_segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+                                                              DocumentSegment.document_id == str(document.id),
+                                                              DocumentSegment.status != 're_segment').count()
+            total_segments = DocumentSegment.query.filter(DocumentSegment.document_id == str(document.id),
+                                                          DocumentSegment.status != 're_segment').count()
             document.completed_segments = completed_segments
             document.total_segments = total_segments
             documents_status.append(marshal(document, self.document_status_fields))
@@ -427,7 +423,7 @@ class DocumentDetailApi(DocumentResource):
                 'disabled_by': document.disabled_by,
                 'archived': document.archived,
                 'segment_count': document.segment_count,
-                'average_segment_length':   document.average_segment_length,
+                'average_segment_length': document.average_segment_length,
                 'hit_count': document.hit_count,
                 'display_status': document.display_status
             }
@@ -447,7 +443,7 @@ class DocumentDetailApi(DocumentResource):
                 'created_at': document.created_at.timestamp(),
                 'tokens': document.tokens,
                 'indexing_status': document.indexing_status,
-                'completed_at': int(document.completed_at.timestamp())if document.completed_at else None,
+                'completed_at': int(document.completed_at.timestamp()) if document.completed_at else None,
                 'updated_at': int(document.updated_at.timestamp()) if document.updated_at else None,
                 'indexing_latency': document.indexing_latency,
                 'error': document.error,

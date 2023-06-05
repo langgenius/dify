@@ -382,90 +382,92 @@ class DocumentService:
 
         if dataset.indexing_technique == 'high_quality':
             IndexBuilder.get_default_service_context(dataset.tenant_id)
+        documents = []
         if 'original_document_id' in document_data and document_data["original_document_id"]:
             document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
-        # save process rule
-        if not dataset_process_rule:
-            process_rule = document_data["process_rule"]
-            if process_rule["mode"] == "custom":
-                dataset_process_rule = DatasetProcessRule(
-                    dataset_id=dataset.id,
-                    mode=process_rule["mode"],
-                    rules=json.dumps(process_rule["rules"]),
-                    created_by=account.id
-                )
-            elif process_rule["mode"] == "automatic":
-                dataset_process_rule = DatasetProcessRule(
-                    dataset_id=dataset.id,
-                    mode=process_rule["mode"],
-                    rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
-                    created_by=account.id
-                )
-            db.session.add(dataset_process_rule)
-            db.session.commit()
-        position = DocumentService.get_documents_position(dataset.id)
-        batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
-        document_ids = []
-        documents = []
-        if document_data["data_source"]["type"] == "upload_file":
-            upload_file_list = document_data["data_source"]["info"]
-            for upload_file in upload_file_list:
-                file_id = upload_file["upload_file_id"]
-                file = db.session.query(UploadFile).filter(
-                    UploadFile.tenant_id == dataset.tenant_id,
-                    UploadFile.id == file_id
-                ).first()
-
-                # raise error if file not found
-                if not file:
-                    raise FileNotExistsError()
-
-                file_name = file.name
-                data_source_info = {
-                    "upload_file_id": file_id,
-                }
-                document = DocumentService.save_document(dataset, dataset_process_rule.id,
-                                                         document_data["data_source"]["type"],
-                                                         data_source_info, created_from, position,
-                                                         account, file_name, batch)
-                db.session.add(document)
-                db.session.flush()
-                document_ids.append(document.id)
-                documents.append(document)
-                position += 1
-        elif document_data["data_source"]["type"] == "notion_import":
-            notion_info_list = document_data["data_source"]['info']
-            for notion_info in notion_info_list:
-                workspace_id = notion_info['workspace_id']
-                data_source_binding = DataSourceBinding.query.filter(
-                    db.and_(
-                        DataSourceBinding.tenant_id == current_user.current_tenant_id,
-                        DataSourceBinding.provider == 'notion',
-                        DataSourceBinding.disabled == False,
-                        DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+            documents.append(document)
+        else:
+            # save process rule
+            if not dataset_process_rule:
+                process_rule = document_data["process_rule"]
+                if process_rule["mode"] == "custom":
+                    dataset_process_rule = DatasetProcessRule(
+                        dataset_id=dataset.id,
+                        mode=process_rule["mode"],
+                        rules=json.dumps(process_rule["rules"]),
+                        created_by=account.id
                     )
-                ).first()
-                if not data_source_binding:
-                    raise ValueError('Data source binding not found.')
-                for page in notion_info['pages']:
+                elif process_rule["mode"] == "automatic":
+                    dataset_process_rule = DatasetProcessRule(
+                        dataset_id=dataset.id,
+                        mode=process_rule["mode"],
+                        rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
+                        created_by=account.id
+                    )
+                db.session.add(dataset_process_rule)
+                db.session.commit()
+            position = DocumentService.get_documents_position(dataset.id)
+            batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
+            document_ids = []
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info"]
+                for upload_file in upload_file_list:
+                    file_id = upload_file["upload_file_id"]
+                    file = db.session.query(UploadFile).filter(
+                        UploadFile.tenant_id == dataset.tenant_id,
+                        UploadFile.id == file_id
+                    ).first()
+
+                    # raise error if file not found
+                    if not file:
+                        raise FileNotExistsError()
+
+                    file_name = file.name
                     data_source_info = {
-                        "notion_workspace_id": workspace_id,
-                        "notion_page_id": page['page_id'],
+                        "upload_file_id": file_id,
                     }
                     document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
                                                              data_source_info, created_from, position,
-                                                             account, page['page_name'], batch)
+                                                             account, file_name, batch)
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
                     documents.append(document)
                     position += 1
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_info_list = document_data["data_source"]['info']
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info['workspace_id']
+                    data_source_binding = DataSourceBinding.query.filter(
+                        db.and_(
+                            DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceBinding.provider == 'notion',
+                            DataSourceBinding.disabled == False,
+                            DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError('Data source binding not found.')
+                    for page in notion_info['pages']:
+                        data_source_info = {
+                            "notion_workspace_id": workspace_id,
+                            "notion_page_id": page['page_id'],
+                        }
+                        document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                                                                 document_data["data_source"]["type"],
+                                                                 data_source_info, created_from, position,
+                                                                 account, page['page_name'], batch)
+                        db.session.add(document)
+                        db.session.flush()
+                        document_ids.append(document.id)
+                        documents.append(document)
+                        position += 1
 
-        db.session.commit()
+            db.session.commit()
 
-        # trigger async task
-        document_indexing_task.delay(dataset.id, document_ids)
+            # trigger async task
+            document_indexing_task.delay(dataset.id, document_ids)
 
         return documents
 
@@ -486,76 +488,97 @@ class DocumentService:
         )
         return document
 
-@staticmethod
-def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
-                                    account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
-                                    created_from: str = 'web'):
-    document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
-    if document.display_status != 'available':
-        raise ValueError("Document is not available")
-    # save process rule
-    if 'process_rule' in document_data and document_data['process_rule']:
-        process_rule = document_data["process_rule"]
-        if process_rule["mode"] == "custom":
-            dataset_process_rule = DatasetProcessRule(
-                dataset_id=dataset.id,
-                mode=process_rule["mode"],
-                rules=json.dumps(process_rule["rules"]),
-                created_by=account.id
-            )
-        elif process_rule["mode"] == "automatic":
-            dataset_process_rule = DatasetProcessRule(
-                dataset_id=dataset.id,
-                mode=process_rule["mode"],
-                rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
-                created_by=account.id
-            )
-        db.session.add(dataset_process_rule)
+    @staticmethod
+    def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
+                                        account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
+                                        created_from: str = 'web'):
+        document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
+        if document.display_status != 'available':
+            raise ValueError("Document is not available")
+        # save process rule
+        if 'process_rule' in document_data and document_data['process_rule']:
+            process_rule = document_data["process_rule"]
+            if process_rule["mode"] == "custom":
+                dataset_process_rule = DatasetProcessRule(
+                    dataset_id=dataset.id,
+                    mode=process_rule["mode"],
+                    rules=json.dumps(process_rule["rules"]),
+                    created_by=account.id
+                )
+            elif process_rule["mode"] == "automatic":
+                dataset_process_rule = DatasetProcessRule(
+                    dataset_id=dataset.id,
+                    mode=process_rule["mode"],
+                    rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
+                    created_by=account.id
+                )
+            db.session.add(dataset_process_rule)
+            db.session.commit()
+            document.dataset_process_rule_id = dataset_process_rule.id
+        # update document data source
+        if 'data_source' in document_data and document_data['data_source']:
+            file_name = ''
+            data_source_info = {}
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info"]
+                for upload_file in upload_file_list:
+                    file_id = upload_file["upload_file_id"]
+                    file = db.session.query(UploadFile).filter(
+                        UploadFile.tenant_id == dataset.tenant_id,
+                        UploadFile.id == file_id
+                    ).first()
+
+                    # raise error if file not found
+                    if not file:
+                        raise FileNotExistsError()
+
+                    file_name = file.name
+                    data_source_info = {
+                        "upload_file_id": file_id,
+                    }
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_info_list = document_data["data_source"]['info']
+                for notion_info in notion_info_list:
+                    workspace_id = notion_info['workspace_id']
+                    data_source_binding = DataSourceBinding.query.filter(
+                        db.and_(
+                            DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceBinding.provider == 'notion',
+                            DataSourceBinding.disabled == False,
+                            DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError('Data source binding not found.')
+                    for page in notion_info['pages']:
+                        data_source_info = {
+                            "notion_workspace_id": workspace_id,
+                            "notion_page_id": page['page_id'],
+                        }
+            document.data_source_type = document_data["data_source"]["type"]
+            document.data_source_info = json.dumps(data_source_info)
+            document.name = file_name
+        # update document to be waiting
+        document.indexing_status = 'waiting'
+        document.completed_at = None
+        document.processing_started_at = None
+        document.parsing_completed_at = None
+        document.cleaning_completed_at = None
+        document.splitting_completed_at = None
+        document.updated_at = datetime.datetime.utcnow()
+        document.created_from = created_from
+        db.session.add(document)
         db.session.commit()
-        document.dataset_process_rule_id = dataset_process_rule.id
-    # update document data source
-    if 'data_source' in document_data and document_data['data_source']:
-        file_name = ''
-        data_source_info = {}
-        if document_data["data_source"]["type"] == "upload_file":
-            file_id = document_data["data_source"]["info"]
-            file = db.session.query(UploadFile).filter(
-                UploadFile.tenant_id == dataset.tenant_id,
-                UploadFile.id == file_id
-            ).first()
+        # update document segment
+        update_params = {
+            DocumentSegment.status: 're_segment'
+        }
+        DocumentSegment.query.filter_by(document_id=document.id).update(update_params)
+        db.session.commit()
+        # trigger async task
+        document_indexing_update_task.delay(document.dataset_id, document.id)
 
-            # raise error if file not found
-            if not file:
-                raise FileNotExistsError()
-
-            file_name = file.name
-            data_source_info = {
-                "upload_file_id": file_id,
-            }
-        document.data_source_type = document_data["data_source"]["type"]
-        document.data_source_info = json.dumps(data_source_info)
-        document.name = file_name
-    # update document to be waiting
-    document.indexing_status = 'waiting'
-    document.completed_at = None
-    document.processing_started_at = None
-    document.parsing_completed_at = None
-    document.cleaning_completed_at = None
-    document.splitting_completed_at = None
-    document.updated_at = datetime.datetime.utcnow()
-    document.created_from = created_from
-    db.session.add(document)
-    db.session.commit()
-    # update document segment
-    update_params = {
-        DocumentSegment.status: 're_segment'
-    }
-    DocumentSegment.query.filter_by(document_id=document.id).update(update_params)
-    db.session.commit()
-    # trigger async task
-    document_indexing_update_task.delay(document.dataset_id, document.id)
-
-    return document
+        return document
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
