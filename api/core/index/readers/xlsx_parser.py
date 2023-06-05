@@ -22,6 +22,8 @@ class XLSXParser(BaseParser):
             # loop over all sheets
             for sheet in wb:
                 for row in sheet.iter_rows(values_only=True):
+                    if all(v is None for v in row):
+                        continue
                     if keys == []:
                         keys = row
                     else:
