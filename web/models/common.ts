@@ -99,3 +99,7 @@ export type IWorkspace = {
   created_at: number
   current: boolean
 }
+
+export type GithubRepo = {
+  stargazers_count: number
+}

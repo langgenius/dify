@@ -16,9 +16,10 @@
 }
 
 .github-icon {
-  width: 16px;
-  height: 16px;
-  background: url(./assets/github.svg) center center no-repeat;
+  width: 18px;
+  height: 18px;
+  background: url(./assets/github-icon.svg) center center no-repeat;
+  background-size: contain;
 }
 
 .alpha {

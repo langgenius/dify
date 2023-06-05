@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSelectedLayoutSegment } from 'next/navigation'
 import classNames from 'classnames'
@@ -10,7 +10,7 @@ import AccountDropdown from './account-dropdown'
 import Nav from './nav'
 import s from './index.module.css'
 import type { AppDetailResponse } from '@/models/app'
-import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { GithubRepo, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useDatasetsContext } from '@/context/datasets-context'
@@ -47,6 +47,14 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
   const isExplore = selectedSegment === 'explore'
+  const [starCount, setStarCount] = useState(0)
+
+  useEffect(() => {
+    globalThis.fetch('https://api.github.com/repos/langgenius/dify').then(res => res.json()).then((data: GithubRepo) => {
+      setStarCount(data.stargazers_count)
+    })
+  }, [])
+
   return (
     <div className={classNames(
       'sticky top-0 left-0 right-0 z-20 flex bg-gray-100 grow-0 shrink-0 basis-auto h-14',
@@ -58,17 +66,20 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
         'flex flex-1 items-center justify-between px-4',
       )}>
         <div className='flex items-center'>
-          <Link href="/apps" className='flex items-center mr-3'>
+          <Link href="/apps" className='flex items-center mr-4'>
             <div className={s.logo} />
           </Link>
-          {/* Add it when has many stars */}
-          <div className='
-            flex items-center h-[26px] px-2 bg-white
-            border border-solid border-[#E5E7EB] rounded-l-[6px] rounded-r-[6px]
-          '>
-            <div className={s.alpha} />
-            <div className='ml-1 text-xs font-semibold text-gray-700'>{t('common.menus.status')}</div>
-          </div>
+          {
+            starCount > 0 && (
+              <div className='flex items-center leading-[18px] border border-gray-200 rounded-md text-xs text-gray-700 font-semibold overflow-hidden'>
+                <div className='flex items-center px-2 py-1 bg-gray-100'>
+                  <div className={`${s['github-icon']} mr-1 rounded-full`} />
+                  Star
+                </div>
+                <div className='px-2 py-1 bg-white border-l border-gray-200'>{starCount}</div>
+              </div>
+            )
+          }
         </div>
         <div className='flex items-center'>
           <Link href="/explore/apps" className={classNames(
