@@ -25,6 +25,5 @@ class XLSXParser(BaseParser):
                     if keys == []:
                         keys = row
                     else:
-                        data.append(dict(zip(keys, row)))
-        res = json.dumps(data, default=str, ensure_ascii=False)
-        return res
+                        data.append(json.dumps(dict(zip(keys, row)), ensure_ascii=False))
+        return data
