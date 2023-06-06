@@ -13,7 +13,7 @@ from core.indexing_runner import IndexingRunner
 from libs.helper import TimestampField
 from extensions.ext_database import db
 from models.model import UploadFile
-from services.dataset_service import DatasetService
+from services.dataset_service import DatasetService, DocumentService
 
 dataset_detail_fields = {
     'id': fields.String,
@@ -217,17 +217,30 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        segment_rule = request.get_json()
-        file_detail = db.session.query(UploadFile).filter(
-            UploadFile.tenant_id == current_user.current_tenant_id,
-            UploadFile.id == segment_rule["file_id"]
-        ).first()
+        parser = reqparse.RequestParser()
+        parser.add_argument('info_list', type=list, required=True, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        args = parser.parse_args()
+        # validate args
+        DocumentService.estimate_args_validate(args)
+        if args['info_list']['data_source_type'] == 'upload_file':
+            file_details = db.session.query(UploadFile).filter(
+                UploadFile.tenant_id == current_user.current_tenant_id,
+                UploadFile.id in args['info_list']['file_info_list']['file_ids']
+            ).all()
 
-        if file_detail is None:
-            raise NotFound("File not found.")
+            if file_details is None:
+                raise NotFound("File not found.")
 
-        indexing_runner = IndexingRunner()
-        response = indexing_runner.indexing_estimate(file_detail, segment_rule['process_rule'])
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.file_indexing_estimate(file_details, args['process_rule'])
+        elif args['info_list']['data_source_type'] == 'notion_import':
+
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],
+                                                                args['process_rule'])
+        else:
+            raise ValueError('Data source type not support')
         return response, 200
 
 
@@ -277,5 +290,5 @@ class DatasetRelatedAppListApi(Resource):
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
-api.add_resource(DatasetIndexingEstimateApi, '/datasets/file-indexing-estimate')
+api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')

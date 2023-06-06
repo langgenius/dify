@@ -707,11 +707,11 @@ class DocumentService:
                 raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @classmethod
-    def notion_estimate_args_validate(cls, args: dict):
-        if 'notion_info_list' not in args or not args['notion_info_list']:
-            raise ValueError("Notion info is required")
+    def estimate_args_validate(cls, args: dict):
+        if 'info_list' not in args or not args['info_list']:
+            raise ValueError("Data source info is required")
 
-        if not isinstance(args['notion_info_list'], list):
+        if not isinstance(args['info_list'], dict):
             raise ValueError("Notion info is invalid")
 
         if 'process_rule' not in args or not args['process_rule']:

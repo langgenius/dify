@@ -335,7 +335,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise NotFound('File not found.')
 
                 indexing_runner = IndexingRunner()
-                response = indexing_runner.indexing_estimate(file, data_process_rule_dict)
+
+                response = indexing_runner.file_indexing_estimate(list(file), data_process_rule_dict)
 
         return response
 
