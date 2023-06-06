@@ -17,9 +17,9 @@ import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
 
 export type IOpeningStatementProps = {
-  promptTemplate: string
   value: string
-  onChange: (value: string) => void
+  readonly?: boolean
+  onChange?: (value: string) => void
 }
 
 // regex to match the {{}} and replace it with a span
@@ -27,6 +27,7 @@ const regex = /\{\{([^}]+)\}\}/g
 
 const OpeningStatement: FC<IOpeningStatementProps> = ({
   value = '',
+  readonly,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -64,6 +65,8 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     .replace(/\n/g, '<br />')
 
   const handleEdit = () => {
+    if (readonly)
+      return
     setFocus()
   }
 
@@ -93,11 +96,11 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       return
     }
     setBlur()
-    onChange(tempValue)
+    onChange?.(tempValue)
   }
 
   const cancelAutoAddVar = () => {
-    onChange(tempValue)
+    onChange?.(tempValue)
     hideConfirmAddVar()
     setBlur()
   }
@@ -106,15 +109,15 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...notIncludeKeys.map(key => getNewVar(key))]
     })
-    onChange(tempValue)
+    onChange?.(tempValue)
     setModelConfig(newModelConfig)
     hideConfirmAddVar()
     setBlur()
   }
 
-  const headerRight = (
+  const headerRight = !readonly ? (
     <OperationBtn type='edit' actionName={hasValue ? '' : t('appDebug.openingStatement.writeOpner') as string} onClick={handleEdit} />
-  )
+  ) : null
 
   return (
     <Panel
@@ -130,30 +133,28 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
       isFocus={isFocus}
     >
       <div className='text-gray-700 text-sm'>
-        {(hasValue || (!hasValue && isFocus))
-          ? (
-            <>
-              {isFocus
-                ? (
-                  <textarea
-                    ref={inputRef}
-                    value={tempValue}
-                    rows={3}
-                    onChange={e => setTempValue(e.target.value)}
-                    className="w-full px-0 text-sm  border-0 bg-transparent  focus:outline-none "
-                    placeholder={t('appDebug.openingStatement.placeholder') as string}
-                  >
-                  </textarea>
-                )
-                : (
-                  <div dangerouslySetInnerHTML={{
-                    __html: coloredContent,
-                  }}></div>
-                )}
+        {(hasValue || (!hasValue && isFocus)) ? (
+          <>
+            {isFocus
+              ? (
+                <textarea
+                  ref={inputRef}
+                  value={tempValue}
+                  rows={3}
+                  onChange={e => setTempValue(e.target.value)}
+                  className="w-full px-0 text-sm  border-0 bg-transparent  focus:outline-none "
+                  placeholder={t('appDebug.openingStatement.placeholder') as string}
+                >
+                </textarea>
+              )
+              : (
+                <div dangerouslySetInnerHTML={{
+                  __html: coloredContent,
+                }}></div>
+              )}
 
-              {/* Operation Bar */}
-              {isFocus
-            && (
+            {/* Operation Bar */}
+            {isFocus && (
               <div className='mt-2 flex items-center justify-between'>
                 <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.varTip')}</div>
 
@@ -164,9 +165,9 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
               </div>
             )}
 
-            </>) : (
-            <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
-          )}
+          </>) : (
+          <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.openingStatement.noDataPlaceHolder')}</div>
+        )}
 
         {isShowConfirmAddVar && (
           <ConfirmAddVar

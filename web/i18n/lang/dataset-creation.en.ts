@@ -102,8 +102,8 @@ const translation = {
     sideTipContent: 'After the document finishes indexing, the dataset can be integrated into the application as context, you can find the context setting in the prompt orchestration page. You can also create it as an independent ChatGPT indexing plugin for release.',
     modelTitle: 'Are you sure to stop embedding?',
     modelContent: 'If you need to resume processing later, you will continue from where you left off.',
-    modelButtonConfirm: "Confirm",
-    modelButtonCancel: 'Cancel'
+    modelButtonConfirm: 'Confirm',
+    modelButtonCancel: 'Cancel',
   },
 }
 
