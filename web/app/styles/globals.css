@@ -138,3 +138,11 @@ button:focus-within {
   color: rgb(28 100 242);
   background-color: rgb(235 245 255);
 }
+
+/* support safari 14 and below */
+.inset-0 {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
