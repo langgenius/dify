@@ -127,7 +127,8 @@ class DataSourceNotionListApi(Resource):
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.String
+        'page_icon': fields.String,
+        'is_bound': fields.Boolean
     }
     integrate_workspace_fields = {
         'workspace_name': fields.String,
@@ -160,8 +161,9 @@ class DataSourceNotionListApi(Resource):
                 enabled=True
             ).all()
             if documents:
-                page_ids = list(map(lambda item: item.data_source_info, documents))
-                exist_page_ids.append(page_ids)
+                for document in documents:
+                    data_source_info = json.loads(document.data_source_info)
+                    exist_page_ids.append(data_source_info['notion_page_id'])
         # get all authorized pages
         data_source_bindings = DataSourceBinding.query.filter_by(
             tenant_id=current_user.current_tenant_id,
@@ -179,13 +181,17 @@ class DataSourceNotionListApi(Resource):
                                            'CONSOLE_URL') + '/console/api/oauth/data-source/authorize/notion')
             pages = notion_oauth.get_authorized_pages(data_source_binding.access_token)
             # Filter out already bound pages
-            filter_pages = [page for page in pages if page['page_id'] not in exist_page_ids]
+            for page in pages:
+                if page['page_id'] in exist_page_ids:
+                    page['is_bound'] = True
+                else:
+                    page['is_bound'] = False
             source_info = json.loads(data_source_binding.source_info)
             pre_import_info = {
                 'workspace_name': source_info['workspace_name'],
                 'workspace_icon': source_info['workspace_icon'],
                 'workspace_id': source_info['workspace_id'],
-                'pages': filter_pages,
+                'pages': pages,
             }
             pre_import_info_list.append(pre_import_info)
         return {
@@ -226,7 +232,7 @@ class DataSourceNotionApi(Resource):
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         args = parser.parse_args()
         # validate args
-        DocumentService.notion_estimate_args_validate(args)
+        DocumentService.estimate_args_validate(args)
         indexing_runner = IndexingRunner()
         response = indexing_runner.notion_indexing_estimate(args['notion_info_list'], args['process_rule'])
         return response, 200

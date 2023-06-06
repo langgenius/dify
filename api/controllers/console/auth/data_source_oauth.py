@@ -64,6 +64,9 @@ class OAuthDataSourceCallback(Resource):
 
 
 class OAuthDataSourceSync(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
     def get(self, provider, binding_id):
         provider = str(provider)
         binding_id = str(binding_id)
