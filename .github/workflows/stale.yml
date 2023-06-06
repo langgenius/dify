@@ -10,8 +10,7 @@ on:
   - cron: '0 3 * * *'
 
 jobs:
-  stale
-
+  stale:
     runs-on: ubuntu-latest
     permissions:
       issues: write
