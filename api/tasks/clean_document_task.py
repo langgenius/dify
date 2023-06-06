@@ -43,7 +43,7 @@ def clean_document_task(document_id: str, dataset_id: str):
 
         for segment in segments:
             db.session.delete(segment)
-
+        db.session.commit()
         end_at = time.perf_counter()
         logging.info(
             click.style('Cleaned document when document deleted: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
