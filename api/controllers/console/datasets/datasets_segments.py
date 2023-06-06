@@ -78,12 +78,14 @@ class DatasetDocumentSegmentListApi(Resource):
         parser.add_argument('hit_count_gte', type=int,
                             default=None, location='args')
         parser.add_argument('enabled', type=str, default='all', location='args')
+        parser.add_argument('keyword', type=str, default=None, location='args')
         args = parser.parse_args()
 
         last_id = args['last_id']
         limit = min(args['limit'], 100)
         status_list = args['status']
         hit_count_gte = args['hit_count_gte']
+        keyword = args['keyword']
 
         query = DocumentSegment.query.filter(
             DocumentSegment.document_id == str(document_id),
@@ -103,6 +105,9 @@ class DatasetDocumentSegmentListApi(Resource):
 
         if hit_count_gte is not None:
             query = query.filter(DocumentSegment.hit_count >= hit_count_gte)
+
+        if keyword:
+            query = query.where(DocumentSegment.content.ilike(f'%{keyword}%'))
 
         if args['enabled'].lower() != 'all':
             if args['enabled'].lower() == 'true':
