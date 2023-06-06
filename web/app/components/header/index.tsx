@@ -71,13 +71,16 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
           </Link>
           {
             starCount > 0 && (
-              <div className='flex items-center leading-[18px] border border-gray-200 rounded-md text-xs text-gray-700 font-semibold overflow-hidden'>
+              <Link
+                href='https://github.com/langgenius/dify'
+                target='_blank'
+                className='flex items-center leading-[18px] border border-gray-200 rounded-md text-xs text-gray-700 font-semibold overflow-hidden'>
                 <div className='flex items-center px-2 py-1 bg-gray-100'>
                   <div className={`${s['github-icon']} mr-1 rounded-full`} />
                   Star
                 </div>
-                <div className='px-2 py-1 bg-white border-l border-gray-200'>{starCount}</div>
-              </div>
+                <div className='px-2 py-1 bg-white border-l border-gray-200'>{`${starCount}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+              </Link>
             )
           }
         </div>
