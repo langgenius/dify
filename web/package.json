@@ -12,6 +12,7 @@
     "prepare": "cd ../ && husky install ./web/.husky"
   },
   "dependencies": {
+    "@babel/runtime": "^7.22.3",
     "@emoji-mart/data": "^1.1.2",
     "@formatjs/intl-localematcher": "^0.2.32",
     "@headlessui/react": "^1.7.13",
@@ -20,6 +21,7 @@
     "@mdx-js/react": "^2.3.0",
     "@next/mdx": "^13.2.4",
     "@sentry/nextjs": "^7.53.1",
+    "@sentry/utils": "^7.54.0",
     "@tailwindcss/line-clamp": "^0.4.2",
     "@types/crypto-js": "^4.1.1",
     "@types/lodash-es": "^4.17.7",
