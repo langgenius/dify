@@ -43,7 +43,7 @@ Dify サーバーを起動する最も簡単な方法は、[docker-compose.yml](
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose up -d
 ```
 
 実行後、ブラウザで [http://localhost/install](http://localhost/install) にアクセスし、初期化インストール作業を開始することができます。
