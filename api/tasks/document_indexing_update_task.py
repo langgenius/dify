@@ -59,7 +59,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
         for segment in segments:
             db.session.delete(segment)
-
+        db.session.commit()
         end_at = time.perf_counter()
         logging.info(
             click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
