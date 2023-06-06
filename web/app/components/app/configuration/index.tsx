@@ -70,6 +70,10 @@ const Configuration: FC = () => {
       prompt_template: '',
       prompt_variables: [] as PromptVariable[],
     },
+    opening_statement: '',
+    more_like_this: null,
+    suggested_questions_after_answer: null,
+    dataSets: [],
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -77,18 +81,28 @@ const Configuration: FC = () => {
   }
 
   const setModelId = (modelId: string) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: any) => {
       draft.model_id = modelId
     })
     setModelConfig(newModelConfig)
   }
 
+  const [dataSets, setDataSets] = useState<DataSet[]>([])
+
   const syncToPublishedConfig = (_publishedConfig: any) => {
+    const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
     setCompletionParams(_publishedConfig.completionParams)
+    setDataSets(modelConfig.dataSets || [])
+    // feature
+    setIntroduction(modelConfig.opening_statement)
+    setMoreLikeThisConfig(modelConfig.more_like_this || {
+      enabled: false,
+    })
+    setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer || {
+      enabled: false,
+    })
   }
-
-  const [dataSets, setDataSets] = useState<DataSet[]>([])
 
   const [hasSetCustomAPIKEY, setHasSetCustomerAPIKEY] = useState(true)
   const [isTrailFinished, setIsTrailFinished] = useState(false)
@@ -124,6 +138,14 @@ const Configuration: FC = () => {
         datasets = dataSetsWithDetail
         setDataSets(datasets)
       }
+
+      setIntroduction(modelConfig.opening_statement)
+      if (modelConfig.more_like_this)
+        setMoreLikeThisConfig(modelConfig.more_like_this)
+
+      if (modelConfig.suggested_questions_after_answer)
+        setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -132,17 +154,15 @@ const Configuration: FC = () => {
             prompt_template: modelConfig.pre_prompt,
             prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form),
           },
+          opening_statement: modelConfig.opening_statement,
+          more_like_this: modelConfig.more_like_this,
+          suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
+          dataSets: datasets || [],
         },
         completionParams: model.completion_params,
       }
       syncToPublishedConfig(config)
       setPublishedConfig(config)
-      setIntroduction(modelConfig.opening_statement)
-      if (modelConfig.more_like_this)
-        setMoreLikeThisConfig(modelConfig.more_like_this)
-
-      if (modelConfig.suggested_questions_after_answer)
-        setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer)
 
       setHasFetchedDetail(true)
     })
@@ -152,13 +172,6 @@ const Configuration: FC = () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
-
-    // not save empty key adn name
-    // const missingNameItem = promptVariables.find(item => item.name.trim() === '')
-    // if (missingNameItem) {
-    //   notify({ type: 'error', message: t('appDebug.errorMessage.nameOfKeyRequired', { key: missingNameItem.key }) })
-    //   return
-    // }
 
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
@@ -186,8 +199,14 @@ const Configuration: FC = () => {
     }
 
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body: data })
+    const newModelConfig = produce(modelConfig, (draft: any) => {
+      draft.opening_statement = introduction
+      draft.more_like_this = moreLikeThisConfig
+      draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
+      draft.dataSets = dataSets
+    })
     setPublishedConfig({
-      modelConfig,
+      modelConfig: newModelConfig,
       completionParams,
     })
     notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
@@ -195,7 +214,6 @@ const Configuration: FC = () => {
 
   const [showConfirm, setShowConfirm] = useState(false)
   const resetAppConfig = () => {
-    // debugger
     syncToPublishedConfig(publishedConfig)
     setShowConfirm(false)
   }
