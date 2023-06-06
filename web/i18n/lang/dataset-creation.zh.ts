@@ -101,9 +101,9 @@ const translation = {
     sideTipTitle: '接下来做什么',
     sideTipContent: '当文档完成索引处理后，数据集即可集成至应用内作为上下文使用，你可以在提示词编排页找到上下文设置。你也可以创建成可独立使用的 ChatGPT 索引插件发布。',
     modelTitle: '确认停止索引过程吗？',
-    modelContent:'如果您需要稍后恢复处理，则从停止处继续。',
-    modelButtonConfirm: "确认停止",
-    modelButtonCancel: '取消'
+    modelContent: '如果您需要稍后恢复处理，则从停止处继续。',
+    modelButtonConfirm: '确认停止',
+    modelButtonCancel: '取消',
   },
 }
 
