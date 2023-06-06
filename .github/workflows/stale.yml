@@ -11,6 +11,7 @@ on:
 
 jobs:
   stale:
+
     runs-on: ubuntu-latest
     permissions:
       issues: write
@@ -20,7 +21,7 @@ jobs:
     - uses: actions/stale@v5
       with:
         repo-token: ${{ secrets.GITHUB_TOKEN }}
-        stale-issue-message: 'Close due to it's no longer active, if you have any questions, you can reopen it.'
-        stale-pr-message: 'Close due to it's no longer active, if you have any questions, you can reopen it.'
+        stale-issue-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
+        stale-pr-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
         stale-issue-label: 'no-issue-activity'
         stale-pr-label: 'no-pr-activity'
