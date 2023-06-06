@@ -5,7 +5,10 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
-import type { CompletionParams, Inputs, ModelConfig, PromptConfig, PromptVariable, MoreLikeThisConfig } from '@/models/debug'
+import { useBoolean } from 'ahooks'
+import Button from '../../base/button'
+import Loading from '../../base/loading'
+import type { CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -17,12 +20,9 @@ import type { AppDetailResponse } from '@/models/app'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchTenantInfo } from '@/service/common'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
-import { userInputsFormToPromptVariables, promptVariablesToUserInputsForm } from '@/utils/model-config'
+import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
-import { useBoolean } from 'ahooks'
-import Button from '../../base/button'
-import Loading from '../../base/loading'
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
@@ -35,8 +35,8 @@ const Configuration: FC = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState('')
-  const [pusblisedConfig, setPusblisedConfig] = useState<{
-    modelConfig: ModelConfig,
+  const [publishedConfig, setPublishedConfig] = useState<{
+    modelConfig: ModelConfig
     completionParams: CompletionParams
   } | null>(null)
 
@@ -47,7 +47,7 @@ const Configuration: FC = () => {
     prompt_template: '',
     prompt_variables: [],
   })
-  const [moreLikeThisConifg, setMoreLikeThisConifg] = useState<MoreLikeThisConfig>({
+  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<MoreLikeThisConfig>({
@@ -83,9 +83,9 @@ const Configuration: FC = () => {
     setModelConfig(newModelConfig)
   }
 
-  const syncToPublishedConfig = (_pusblisedConfig: any) => {
-    setModelConfig(_pusblisedConfig.modelConfig)
-    setCompletionParams(_pusblisedConfig.completionParams)
+  const syncToPublishedConfig = (_publishedConfig: any) => {
+    setModelConfig(_publishedConfig.modelConfig)
+    setCompletionParams(_publishedConfig.completionParams)
   }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
@@ -116,9 +116,8 @@ const Configuration: FC = () => {
       const model = res.model_config.model
 
       let datasets: any = null
-      if (modelConfig.agent_mode?.enabled) {
+      if (modelConfig.agent_mode?.enabled)
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
-      }
 
       if (dataSets && datasets?.length && datasets?.length > 0) {
         const { data: dataSetsWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasets.map(({ dataset }: any) => dataset.id) } })
@@ -131,20 +130,20 @@ const Configuration: FC = () => {
           model_id: model.name,
           configs: {
             prompt_template: modelConfig.pre_prompt,
-            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form)
+            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form),
           },
         },
         completionParams: model.completion_params,
       }
       syncToPublishedConfig(config)
-      setPusblisedConfig(config)
+      setPublishedConfig(config)
       setIntroduction(modelConfig.opening_statement)
-      if (modelConfig.more_like_this) {
-        setMoreLikeThisConifg(modelConfig.more_like_this)
-      }
-      if (modelConfig.suggested_questions_after_answer) {
+      if (modelConfig.more_like_this)
+        setMoreLikeThisConfig(modelConfig.more_like_this)
+
+      if (modelConfig.suggested_questions_after_answer)
         setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer)
-      }
+
       setHasFetchedDetail(true)
     })
   }, [appId])
@@ -154,7 +153,7 @@ const Configuration: FC = () => {
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
-    // not save empty key adn name 
+    // not save empty key adn name
     // const missingNameItem = promptVariables.find(item => item.name.trim() === '')
     // if (missingNameItem) {
     //   notify({ type: 'error', message: t('appDebug.errorMessage.nameOfKeyRequired', { key: missingNameItem.key }) })
@@ -165,7 +164,7 @@ const Configuration: FC = () => {
       dataset: {
         enabled: true,
         id,
-      }
+      },
     }))
 
     // new model config data struct
@@ -173,11 +172,11 @@ const Configuration: FC = () => {
       pre_prompt: promptTemplate,
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
       opening_statement: introduction || '',
-      more_like_this: moreLikeThisConifg,
+      more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       agent_mode: {
         enabled: true,
-        tools: [...postDatasets]
+        tools: [...postDatasets],
       },
       model: {
         provider: modelConfig.provider,
@@ -187,7 +186,7 @@ const Configuration: FC = () => {
     }
 
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body: data })
-    setPusblisedConfig({
+    setPublishedConfig({
       modelConfig,
       completionParams,
     })
@@ -197,7 +196,7 @@ const Configuration: FC = () => {
   const [showConfirm, setShowConfirm] = useState(false)
   const resetAppConfig = () => {
     // debugger
-    syncToPublishedConfig(pusblisedConfig)
+    syncToPublishedConfig(publishedConfig)
     setShowConfirm(false)
   }
 
@@ -224,8 +223,8 @@ const Configuration: FC = () => {
       setControlClearChatMessage,
       prevPromptConfig,
       setPrevPromptConfig,
-      moreLikeThisConifg,
-      setMoreLikeThisConifg,
+      moreLikeThisConfig,
+      setMoreLikeThisConfig,
       suggestedQuestionsAfterAnswerConfig,
       setSuggestedQuestionsAfterAnswerConfig,
       formattingChanged,
@@ -239,7 +238,7 @@ const Configuration: FC = () => {
       modelConfig,
       setModelConfig,
       dataSets,
-      setDataSets
+      setDataSets,
     }}
     >
       <>
