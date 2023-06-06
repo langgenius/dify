@@ -1,13 +1,13 @@
 import type { Fetcher } from 'swr'
-import { get, post, del, put } from './base'
+import { del, get, post, put } from './base'
 import type {
-  CommonResponse, LangGeniusVersionResponse, OauthResponse,
-  TenantInfoResponse, UserProfileOriginResponse, Member,
-  AccountIntegrate, Provider, ProviderAzureToken, IWorkspace
+  AccountIntegrate, CommonResponse, IWorkspace,
+  LangGeniusVersionResponse, Member, OauthResponse,
+  Provider, ProviderAzureToken, TenantInfoResponse, UserProfileOriginResponse,
 } from '@/models/common'
 import type {
+  UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
-  UpdateOpenAIKeyResponse
 } from '@/models/app'
 
 export const login: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -73,7 +73,7 @@ export const updateMemberRole: Fetcher<CommonResponse, { url: string; body: Reco
   return put(url, { body }) as Promise<CommonResponse>
 }
 
-export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: string; }> = ({ url }) => {
+export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
   return del(url) as Promise<CommonResponse>
 }
 
@@ -88,4 +88,3 @@ export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: strin
 export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { new_tenant: IWorkspace }>
 }
-

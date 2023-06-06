@@ -1,5 +1,5 @@
 'use client'
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
@@ -12,8 +12,8 @@ import Link from 'next/link'
 import AccountDropdown from './account-dropdown'
 import Nav from './nav'
 import s from './index.module.css'
+import type { GithubRepo, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import type { AppListResponse } from '@/models/app'
-import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useDatasetsContext } from '@/context/datasets-context'
@@ -62,6 +62,13 @@ const Header: FC<IHeaderProps> = ({
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
   const isExplore = selectedSegment === 'explore'
+  const [starCount, setStarCount] = useState(0)
+
+  useEffect(() => {
+    globalThis.fetch('https://api.github.com/repos/langgenius/dify').then(res => res.json()).then((data: GithubRepo) => {
+      setStarCount(data.stargazers_count)
+    })
+  }, [])
   const appItems = flatten(appsData?.map(appData => appData.data))
 
   const handleLoadmore = useCallback(() => {
@@ -82,17 +89,23 @@ const Header: FC<IHeaderProps> = ({
         'flex flex-1 items-center justify-between px-4',
       )}>
         <div className='flex items-center'>
-          <Link href="/apps" className='flex items-center mr-3'>
+          <Link href="/apps" className='flex items-center mr-4'>
             <div className={s.logo} />
           </Link>
-          {/* Add it when has many stars */}
-          <div className='
-            flex items-center h-[26px] px-2 bg-white
-            border border-solid border-[#E5E7EB] rounded-l-[6px] rounded-r-[6px]
-          '>
-            <div className={s.alpha} />
-            <div className='ml-1 text-xs font-semibold text-gray-700'>{t('common.menus.status')}</div>
-          </div>
+          {
+            starCount > 0 && (
+              <Link
+                href='https://github.com/langgenius/dify'
+                target='_blank'
+                className='flex items-center leading-[18px] border border-gray-200 rounded-md text-xs text-gray-700 font-semibold overflow-hidden'>
+                <div className='flex items-center px-2 py-1 bg-gray-100'>
+                  <div className={`${s['github-icon']} mr-1 rounded-full`} />
+                  Star
+                </div>
+                <div className='px-2 py-1 bg-white border-l border-gray-200'>{`${starCount}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+              </Link>
+            )
+          }
         </div>
         <div className='flex items-center'>
           <Link href="/explore/apps" className={classNames(
