@@ -1,6 +1,6 @@
 'use client'
-import { FC, useRef } from 'react'
-import React, { useEffect, useState } from 'react'
+import type { FC } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { usePathname, useRouter, useSelectedLayoutSegments } from 'next/navigation'
 import useSWR, { SWRConfig } from 'swr'
 import Header from '../components/header'
@@ -50,7 +50,7 @@ const CommonLayout: FC<ICommonLayoutProps> = ({ children }) => {
   if (!appList || !userProfile || !langeniusVersionInfo)
     return <Loading type='app' />
 
-  const curApp = appList?.data.find(opt => opt.id === appId)
+  const curAppId = segments[0] === 'app' && segments[2]
   const currentDatasetId = segments[0] === 'datasets' && segments[2]
   const currentDataset = datasetList?.data?.find(opt => opt.id === currentDatasetId)
 
@@ -70,12 +70,18 @@ const CommonLayout: FC<ICommonLayoutProps> = ({ children }) => {
 
   return (
     <SWRConfig value={{
-      shouldRetryOnError: false
+      shouldRetryOnError: false,
     }}>
       <AppContextProvider value={{ apps: appList.data, mutateApps, userProfile, mutateUserProfile, pageContainerRef }}>
         <DatasetsContext.Provider value={{ datasets: datasetList?.data || [], mutateDatasets, currentDataset }}>
           <div ref={pageContainerRef} className='relative flex flex-col h-full overflow-auto bg-gray-100'>
-            <Header isBordered={['/apps', '/datasets'].includes(pathname)} curApp={curApp as any} appItems={appList.data} userProfile={userProfile} onLogout={onLogout} langeniusVersionInfo={langeniusVersionInfo} />
+            <Header
+              isBordered={['/apps', '/datasets'].includes(pathname)}
+              curAppId={curAppId || ''}
+              userProfile={userProfile}
+              onLogout={onLogout}
+              langeniusVersionInfo={langeniusVersionInfo}
+            />
             {children}
           </div>
         </DatasetsContext.Provider>
