@@ -20,7 +20,7 @@ def get_oauth_providers():
                                    client_secret=current_app.config.get(
                                        'NOTION_CLIENT_SECRET'),
                                    redirect_uri=current_app.config.get(
-                                       'CONSOLE_URL') + '/console/api/oauth/data-source/authorize/notion')
+                                       'CONSOLE_URL') + '/console/api/oauth/data-source/callback/notion')
 
         OAUTH_PROVIDERS = {
             'notion': notion_oauth
