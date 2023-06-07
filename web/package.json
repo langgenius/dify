@@ -22,6 +22,7 @@
     "@next/mdx": "^13.2.4",
     "@sentry/nextjs": "^7.53.1",
     "@sentry/utils": "^7.54.0",
+    "@tailwindcss/typography": "^0.5.9",
     "@tailwindcss/line-clamp": "^0.4.2",
     "@types/crypto-js": "^4.1.1",
     "@types/lodash-es": "^4.17.7",
@@ -32,6 +33,7 @@
     "@types/react-syntax-highlighter": "^15.5.6",
     "@types/react-window": "^1.8.5",
     "@types/react-window-infinite-loader": "^1.0.6",
+    "autoprefixer": "^10.4.14",
     "ahooks": "^3.7.5",
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
@@ -42,6 +44,7 @@
     "emoji-mart": "^5.5.2",
     "eslint": "8.36.0",
     "eslint-config-next": "13.2.4",
+    "husky": "^8.0.3",
     "i18next": "^22.4.13",
     "i18next-resources-to-backend": "^1.1.3",
     "immer": "^9.0.19",
@@ -71,23 +74,20 @@
     "scheduler": "^0.23.0",
     "server-only": "^0.0.1",
     "swr": "^2.1.0",
+    "tailwindcss": "^3.2.7",
     "typescript": "4.9.5",
     "use-context-selector": "^1.4.1"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.36.0",
     "@faker-js/faker": "^7.6.0",
-    "@tailwindcss/typography": "^0.5.9",
     "@types/js-cookie": "^3.0.3",
     "@types/negotiator": "^0.6.1",
     "@types/qs": "^6.9.7",
-    "autoprefixer": "^10.4.14",
     "eslint-plugin-react-hooks": "^4.6.0",
-    "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",
-    "postcss": "^8.4.21",
-    "tailwindcss": "^3.2.7"
+    "postcss": "^8.4.21"
   },
   "lint-staged": {
     "**/*.js?(x)": [
