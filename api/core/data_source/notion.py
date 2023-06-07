@@ -14,7 +14,7 @@ BLOCK_CHILD_URL_TMPL = "https://api.notion.com/v1/blocks/{block_id}/children"
 DATABASE_URL_TMPL = "https://api.notion.com/v1/databases/{database_id}/query"
 SEARCH_URL = "https://api.notion.com/v1/search"
 RETRIEVE_PAGE_URL_TMPL = "https://api.notion.com/v1/pages/{page_id}"
-
+HEADING_TYPE = ['heading_1', 'heading_2', 'heading_3']
 logger = logging.getLogger(__name__)
 
 
@@ -58,30 +58,38 @@ class NotionPageReader(BaseReader):
                 "GET", block_url, headers=self.headers, json=query_dict
             )
             data = res.json()
-
+            heading = ''
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]
-
                 cur_result_text_arr = []
-                if "rich_text" in result_obj:
-                    for rich_text in result_obj["rich_text"]:
-                        # skip if doesn't have text object
-                        if "text" in rich_text:
-                            text = rich_text["text"]["content"]
-                            prefix = "\t" * num_tabs
-                            cur_result_text_arr.append(prefix + text)
+                if result_type == 'table':
+                    result_block_id = result["id"]
+                    text = self._read_table_rows(result_block_id)
+                    result_lines_arr.append(text)
+                else:
+                    if "rich_text" in result_obj:
+                        for rich_text in result_obj["rich_text"]:
+                            # skip if doesn't have text object
+                            if "text" in rich_text:
+                                text = rich_text["text"]["content"]
+                                prefix = "\t" * num_tabs
+                                cur_result_text_arr.append(prefix + text)
+                                if result_type in HEADING_TYPE:
+                                    heading = text
+                    result_block_id = result["id"]
+                    has_children = result["has_children"]
+                    if has_children:
+                        children_text = self._read_block(
+                            result_block_id, num_tabs=num_tabs + 1
+                        )
+                        cur_result_text_arr.append(children_text)
 
-                result_block_id = result["id"]
-                has_children = result["has_children"]
-                if has_children:
-                    children_text = self._read_block(
-                        result_block_id, num_tabs=num_tabs + 1
-                    )
-                    cur_result_text_arr.append(children_text)
-
-                cur_result_text = "\n".join(cur_result_text_arr)
-                result_lines_arr.append(cur_result_text)
+                    cur_result_text = "\n".join(cur_result_text_arr)
+                    if result_type in HEADING_TYPE:
+                        result_lines_arr.append(cur_result_text)
+                    else:
+                        result_lines_arr.append(f'{heading}\n{cur_result_text}')
 
             if data["next_cursor"] is None:
                 done = True
@@ -92,6 +100,49 @@ class NotionPageReader(BaseReader):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
+    def _read_table_rows(self, block_id: str) -> str:
+        """Read table rows."""
+        done = False
+        result_lines_arr = []
+        cur_block_id = block_id
+        while not done:
+            block_url = BLOCK_CHILD_URL_TMPL.format(block_id=cur_block_id)
+            query_dict: Dict[str, Any] = {}
+
+            res = requests.request(
+                "GET", block_url, headers=self.headers, json=query_dict
+            )
+            data = res.json()
+            # get table headers text
+            table_header_cell_texts = []
+            tabel_header_cells = data["results"][0]['table_row']['cells']
+            for tabel_header_cell in tabel_header_cells:
+                if tabel_header_cell:
+                    for table_header_cell_text in tabel_header_cell:
+                        text = table_header_cell_text["text"]["content"]
+                        table_header_cell_texts.append(text)
+            # get table columns text and format
+            results = data["results"]
+            for i in range(len(results-1)):
+                column_texts = []
+                tabel_column_cells = data["results"][i+1]['table_row']['cells']
+                for j in range(len(tabel_column_cells)):
+                    if tabel_column_cells[j]:
+                        for table_column_cell_text in tabel_column_cells[j]:
+                            column_text = table_column_cell_text["text"]["content"]
+                            column_texts.append(f'{table_header_cell_texts[j]}:{column_text}')
+
+                cur_result_text = "\n".join(column_texts)
+                result_lines_arr.append(cur_result_text)
+
+            if data["next_cursor"] is None:
+                done = True
+                break
+            else:
+                cur_block_id = data["next_cursor"]
+
+        result_lines = "\n".join(result_lines_arr)
+        return result_lines
     def _read_parent_blocks(self, block_id: str, num_tabs: int = 0) -> List[str]:
         """Read a block."""
         done = False
@@ -105,31 +156,41 @@ class NotionPageReader(BaseReader):
                 "GET", block_url, headers=self.headers, json=query_dict
             )
             data = res.json()
-
+            # current block's heading
+            heading = ''
             for result in data["results"]:
                 result_type = result["type"]
                 result_obj = result[result_type]
-
                 cur_result_text_arr = []
-                if "rich_text" in result_obj:
-                    for rich_text in result_obj["rich_text"]:
-                        # skip if doesn't have text object
-                        if "text" in rich_text:
-                            text = rich_text["text"]["content"]
-                            prefix = "\t" * num_tabs
-                            cur_result_text_arr.append(prefix + text)
+                if result_type == 'table':
+                    result_block_id = result["id"]
+                    text = self._read_table_rows(result_block_id)
+                    text += "\n\n"
+                    result_lines_arr.append(text)
+                else:
+                    if "rich_text" in result_obj:
+                        for rich_text in result_obj["rich_text"]:
+                            # skip if doesn't have text object
+                            if "text" in rich_text:
+                                text = rich_text["text"]["content"]
+                                cur_result_text_arr.append(text)
+                                if result_type in HEADING_TYPE:
+                                    heading = text
 
-                result_block_id = result["id"]
-                has_children = result["has_children"]
-                if has_children:
-                    children_text = self._read_block(
-                        result_block_id, num_tabs=num_tabs + 1
-                    )
-                    cur_result_text_arr.append(children_text)
+                    result_block_id = result["id"]
+                    has_children = result["has_children"]
+                    if has_children:
+                        children_text = self._read_block(
+                            result_block_id, num_tabs=num_tabs + 1
+                        )
+                        cur_result_text_arr.append(children_text)
 
-                cur_result_text = "\n".join(cur_result_text_arr)
-                cur_result_text += "\n\n"
-                result_lines_arr.append(cur_result_text)
+                    cur_result_text = "\n".join(cur_result_text_arr)
+                    cur_result_text += "\n\n"
+                    if result_type in HEADING_TYPE:
+                        result_lines_arr.append(cur_result_text)
+                    else:
+                        result_lines_arr.append(f'{heading}\n{cur_result_text}')
 
             if data["next_cursor"] is None:
                 done = True
