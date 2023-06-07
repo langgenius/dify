@@ -97,7 +97,7 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)
-            source_info = json.loads(data_source_binding.source_info)
+            source_info = data_source_binding.source_info
             source_info['pages'] = pages
             source_info['total'] = len(pages)
             data_source_binding.source_info = source_info

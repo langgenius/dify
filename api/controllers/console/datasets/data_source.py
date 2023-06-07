@@ -78,7 +78,7 @@ class DataSourceApi(Resource):
                     'created_at': existing_integrate.created_at,
                     'is_bound': True,
                     'disabled': existing_integrate.disabled,
-                    'source_info': json.loads(existing_integrate.source_info),
+                    'source_info': existing_integrate.source_info,
                     'link': f'{base_url}{data_source_oauth_base_path}/{provider}'
                 })
             else:
@@ -186,7 +186,7 @@ class DataSourceNotionListApi(Resource):
                     page['is_bound'] = True
                 else:
                     page['is_bound'] = False
-            source_info = json.loads(data_source_binding.source_info)
+            source_info = data_source_binding.source_info
             pre_import_info = {
                 'workspace_name': source_info['workspace_name'],
                 'workspace_icon': source_info['workspace_icon'],
