@@ -123,7 +123,7 @@ class NotionPageReader(BaseReader):
                         table_header_cell_texts.append(text)
             # get table columns text and format
             results = data["results"]
-            for i in range(len(results-1)):
+            for i in range(len(results)-1):
                 column_texts = []
                 tabel_column_cells = data["results"][i+1]['table_row']['cells']
                 for j in range(len(tabel_column_cells)):
