@@ -100,6 +100,10 @@
   background-image: url(../assets/unknow.svg);
   background-size: 32px;
 }
+.fileIcon.xlsx,
+.fileIcon.xls {
+  /* background-image: url(../assets/xlsx.svg); */
+}
 .fileIcon.pdf {
   background-image: url(../assets/pdf.svg);
 }

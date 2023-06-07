@@ -75,6 +75,9 @@
 .markdownIcon {
   background-image: url(./assets/md.svg);
 }
+.xlsxIcon {
+  /* background-image: url(./assets/xlsx.svg); */
+}
 .statusItemDetail {
   @apply h-8 font-medium border border-gray-200 inline-flex items-center rounded-lg pl-3 pr-4 mr-2;
 }

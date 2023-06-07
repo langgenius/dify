@@ -291,6 +291,10 @@
 .fileIcon.pdf {
   background-image: url(../assets/pdf.svg);
 }
+.fileIcon.xlsx,
+.fileIcon.xls {
+  /* background-image: url(../assets/xlsx.svg); */
+}
 
 .fileIcon.html,
 .fileIcon.htm {
