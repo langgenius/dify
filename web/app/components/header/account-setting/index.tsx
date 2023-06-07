@@ -1,19 +1,31 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
-import { AtSymbolIcon, GlobeAltIcon, UserIcon, XMarkIcon, CubeTransparentIcon, UsersIcon } from '@heroicons/react/24/outline'
+import { AtSymbolIcon, CubeTransparentIcon, GlobeAltIcon, UserIcon, UsersIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { GlobeAltIcon as GlobalAltIconSolid, UserIcon as UserIconSolid, UsersIcon as UsersIconSolid } from '@heroicons/react/24/solid'
+import cn from 'classnames'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
 import ProviderPage from './provider-page'
+import DataSourcePage from './data-source-page'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 
 const iconClassName = `
-  w-[18px] h-[18px] ml-3 mr-2
+  w-4 h-4 ml-3 mr-2
 `
+
+type IconProps = {
+  className?: string
+}
+const DataSourceIcon = ({ className }: IconProps) => (
+  <div className={cn(s['data-source-icon'], className)} />
+)
+const DataSourceSolidIcon = ({ className }: IconProps) => (
+  <div className={cn(s['data-source-solid-icon'], className)} />
+)
 
 type IAccountSettingProps = {
   onCancel: () => void
@@ -48,7 +60,7 @@ export default function AccountSetting({
           icon: <GlobeAltIcon className={iconClassName} />,
           activeIcon: <GlobalAltIconSolid className={iconClassName} />,
         },
-      ]
+      ],
     },
     {
       key: 'workspace-group',
@@ -66,8 +78,14 @@ export default function AccountSetting({
           icon: <CubeTransparentIcon className={iconClassName} />,
           activeIcon: <CubeTransparentIcon className={iconClassName} />,
         },
-      ]
-    }
+        {
+          key: 'data-source',
+          name: t('common.settings.dataSource'),
+          icon: <DataSourceIcon className={iconClassName} />,
+          activeIcon: <DataSourceSolidIcon className={iconClassName} />,
+        },
+      ],
+    },
   ]
 
   return (
@@ -125,6 +143,9 @@ export default function AccountSetting({
           }
           {
             activeMenu === 'provider' && <ProviderPage />
+          }
+          {
+            activeMenu === 'data-source' && <DataSourcePage />
           }
         </div>
       </div>

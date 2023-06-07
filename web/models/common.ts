@@ -99,3 +99,20 @@ export type IWorkspace = {
   created_at: number
   current: boolean
 }
+
+export type DataSourceNotion = {
+  id: string
+  provider: string
+  is_bound: boolean
+  source_info: {
+    workspace_name: string
+    workspace_id: string
+    workspace_icon: string | null
+    total: number
+    pages: {
+      page_icon: string | null
+      page_id: string
+      page_name: string
+    }[]
+  }
+}

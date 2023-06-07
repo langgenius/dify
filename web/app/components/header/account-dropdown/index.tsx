@@ -9,9 +9,9 @@ import { Menu, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
 import AccountSetting from '../account-setting'
 import AccountAbout from '../account-about'
+import WorkplaceSelector from './workplace-selector'
 import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import I18n from '@/context/i18n'
-import WorkplaceSelector from './workplace-selector'
 import Avatar from '@/app/components/base/avatar'
 
 type IAppSelectorProps = {

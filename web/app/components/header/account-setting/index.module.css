@@ -3,3 +3,13 @@
   padding: 0 !important;
   overflow-y: auto;
 }
+
+.data-source-icon {
+  background: url(../assets/data-source.svg) center center no-repeat;
+  background-size: cover;
+}
+
+.data-source-solid-icon {
+  background: url(../assets/data-source-blue.svg) center center no-repeat;
+  background-size: cover;
+}
