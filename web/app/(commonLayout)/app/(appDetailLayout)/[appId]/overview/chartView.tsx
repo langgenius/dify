@@ -29,7 +29,7 @@ export default function ChartView({ appId }: IChartViewProps) {
   const [period, setPeriod] = useState<PeriodParams>({ name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').format(queryDateFormat), end: today.format(queryDateFormat) } })
 
   const onSelect = (item: Item) => {
-    setPeriod({ name: item.name, query: { start: today.subtract(item.value as number, 'day').format(queryDateFormat), end: today.format(queryDateFormat) } })
+    setPeriod({ name: item.name, query: item.value === 'all' ? undefined : { start: today.subtract(item.value as number, 'day').format(queryDateFormat), end: today.format(queryDateFormat) } })
   }
 
   if (!response)
