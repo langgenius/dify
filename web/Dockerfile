@@ -13,7 +13,7 @@ WORKDIR /app/web
 
 COPY package.json /app/web/package.json
 
-RUN npm install
+RUN npm install --only=prod
 
 COPY . /app/web/
 
