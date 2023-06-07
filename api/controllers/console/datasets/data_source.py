@@ -70,16 +70,18 @@ class DataSourceApi(Resource):
 
         integrate_data = []
         for provider in providers:
-            existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
-            if existing_integrate:
-                integrate_data.append({
-                    'id': existing_integrate.id,
-                    'provider': provider,
-                    'created_at': existing_integrate.created_at,
-                    'is_bound': True,
-                    'disabled': existing_integrate.disabled,
-                    'source_info': existing_integrate.source_info,
-                    'link': f'{base_url}{data_source_oauth_base_path}/{provider}'
+            # existing_integrate = next((ai for ai in data_source_integrates if ai.provider == provider), None)
+            existing_integrates = filter(lambda item: item.provider == provider, data_source_integrates)
+            if existing_integrates:
+                for existing_integrate in list(existing_integrates):
+                    integrate_data.append({
+                        'id': existing_integrate.id,
+                        'provider': provider,
+                        'created_at': existing_integrate.created_at,
+                        'is_bound': True,
+                        'disabled': existing_integrate.disabled,
+                        'source_info': existing_integrate.source_info,
+                        'link': f'{base_url}{data_source_oauth_base_path}/{provider}'
                 })
             else:
                 integrate_data.append({
