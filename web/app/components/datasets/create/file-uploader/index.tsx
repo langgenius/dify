@@ -24,6 +24,7 @@ const ACCEPTS = [
   '.txt',
   '.xls',
   '.xlsx',
+  '.csv',
 ]
 
 const MAX_SIZE = 15 * 1024 * 1024

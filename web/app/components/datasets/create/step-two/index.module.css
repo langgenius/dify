@@ -291,6 +291,11 @@
 .fileIcon.pdf {
   background-image: url(../assets/pdf.svg);
 }
+
+.fileIcon.csv {
+  background-image: url(../assets/csv.svg);
+}
+
 .fileIcon.xlsx,
 .fileIcon.xls {
   background-image: url(../assets/xlsx.svg);
