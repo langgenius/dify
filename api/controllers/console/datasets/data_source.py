@@ -31,14 +31,14 @@ class DataSourceApi(Resource):
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.String,
-        'total': fields.Integer
+        'page_icon': fields.String
     }
     integrate_workspace_fields = {
         'workspace_name': fields.String,
         'workspace_id': fields.String,
         'workspace_icon': fields.String,
-        'pages': fields.List(fields.Nested(integrate_page_fields))
+        'pages': fields.List(fields.Nested(integrate_page_fields)),
+        'total': fields.Integer
     }
     integrate_fields = {
         'id': fields.String,

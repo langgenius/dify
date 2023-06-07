@@ -125,7 +125,7 @@ class NotionOAuth(OAuthDataSource):
         results = response_json['results']
         for result in results:
             page_id = result['id']
-            page_name = result['properties']['title']['title'][0]['plain_text']
+            page_name = result['properties']['Name']['title'][0]['plain_text']
             page_icon = result['icon']
             page = {
                 'page_id': page_id,
