@@ -102,7 +102,7 @@
 }
 .fileIcon.xlsx,
 .fileIcon.xls {
-  /* background-image: url(../assets/xlsx.svg); */
+  background-image: url(../assets/xlsx.svg);
 }
 .fileIcon.pdf {
   background-image: url(../assets/pdf.svg);

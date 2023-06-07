@@ -293,7 +293,7 @@
 }
 .fileIcon.xlsx,
 .fileIcon.xls {
-  /* background-image: url(../assets/xlsx.svg); */
+  background-image: url(../assets/xlsx.svg);
 }
 
 .fileIcon.html,
