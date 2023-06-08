@@ -187,6 +187,12 @@ const translation = {
       pagesAuthorized: 'Pages authorized',
       sync: 'Sync',
       remove: 'Remove',
+      selector: {
+        pageSelected: 'Pages Selected',
+        searchPages: 'Search pages...',
+        noSerachResult: 'No search resluts',
+        addPages: 'Add pages',
+      },
     },
   },
   about: {
