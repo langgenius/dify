@@ -44,7 +44,7 @@ Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前�
 
 ```bash
 cd docker
-docker-compose up -d
+docker compose up -d
 ```
 
 运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。

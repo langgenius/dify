@@ -47,7 +47,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [moreLikeThisConifg, setMoreLikeThisConifg] = useState<MoreLikeThisConfig | null>(null)
+  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [query, setQuery] = useState('')
   const [completionRes, setCompletionRes] = useState('')
@@ -193,7 +193,7 @@ const TextGeneration: FC<IMainProps> = ({
         prompt_template: '', // placeholder for feture
         prompt_variables,
       } as PromptConfig)
-      setMoreLikeThisConifg(more_like_this)
+      setMoreLikeThisConfig(more_like_this)
     })()
   }, [])
 
@@ -251,7 +251,7 @@ const TextGeneration: FC<IMainProps> = ({
                       content={completionRes}
                       messageId={messageId}
                       isInWebApp
-                      moreLikeThis={moreLikeThisConifg?.enabled}
+                      moreLikeThis={moreLikeThisConfig?.enabled}
                       onFeedback={handleFeedback}
                       feedback={feedback}
                       onSave={handleSaveMessage}

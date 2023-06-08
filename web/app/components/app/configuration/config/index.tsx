@@ -29,8 +29,8 @@ const Config: FC = () => {
     setModelConfig,
     setPrevPromptConfig,
     setFormattingChanged,
-    moreLikeThisConifg,
-    setMoreLikeThisConifg,
+    moreLikeThisConfig,
+    setMoreLikeThisConfig,
     suggestedQuestionsAfterAnswerConfig,
     setSuggestedQuestionsAfterAnswerConfig,
   } = useContext(ConfigContext)
@@ -66,9 +66,9 @@ const Config: FC = () => {
   const { featureConfig, handleFeatureChange } = useFeature({
     introduction,
     setIntroduction,
-    moreLikeThis: moreLikeThisConifg.enabled,
+    moreLikeThis: moreLikeThisConfig.enabled,
     setMoreLikeThis: (value) => {
-      setMoreLikeThisConifg(produce(moreLikeThisConifg, (draft) => {
+      setMoreLikeThisConfig(produce(moreLikeThisConfig, (draft) => {
         draft.enabled = value
       }))
     },
@@ -154,7 +154,7 @@ const Config: FC = () => {
         }
 
         {/* TextnGeneration config */}
-        {moreLikeThisConifg.enabled && (
+        {moreLikeThisConfig.enabled && (
           <ExperienceEnchanceGroup />
         )}
 

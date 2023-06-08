@@ -38,7 +38,7 @@ const Debug: FC<IDebug> = ({
     mode,
     introduction,
     suggestedQuestionsAfterAnswerConfig,
-    moreLikeThisConifg,
+    moreLikeThisConfig,
     inputs,
     // setInputs,
     formattingChanged,
@@ -304,7 +304,7 @@ const Debug: FC<IDebug> = ({
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      more_like_this: moreLikeThisConifg,
+      more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
