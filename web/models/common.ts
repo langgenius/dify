@@ -100,19 +100,23 @@ export type IWorkspace = {
   current: boolean
 }
 
+export type DataSourceNotionPage = {
+  page_icon: string | null
+  page_id: string
+  page_name: string
+}
+
+export type DataSourceNotionWorkspace = {
+  workspace_name: string
+  workspace_id: string
+  workspace_icon: string | null
+  total: number
+  pages: DataSourceNotionPage[]
+}
+
 export type DataSourceNotion = {
   id: string
   provider: string
   is_bound: boolean
-  source_info: {
-    workspace_name: string
-    workspace_id: string
-    workspace_icon: string | null
-    total: number
-    pages: {
-      page_icon: string | null
-      page_id: string
-      page_name: string
-    }[]
-  }
+  source_info: DataSourceNotionWorkspace
 }

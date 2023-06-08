@@ -3,10 +3,22 @@ import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
 import { Menu, Transition } from '@headlessui/react'
 import cn from 'classnames'
+import NotionIcon from '../../notion-icon'
 import s from './index.module.css'
+import type { DataSourceNotion } from '@/models/common'
 
-export default function WorkspaceSelector() {
+type WorkspaceSelectorProps = {
+  value: string
+  items: DataSourceNotion[]
+  onSelect: (v: string) => void
+}
+export default function WorkspaceSelector({
+  value,
+  items,
+  onSelect,
+}: WorkspaceSelectorProps) {
   const { t } = useTranslation()
+  const currentWorkspace = items.find(item => item.id === value)?.source_info
 
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -14,9 +26,13 @@ export default function WorkspaceSelector() {
         ({ open }) => (
           <>
             <Menu.Button className={`flex items-center justify-center h-7 rounded-md hover:bg-gray-50 ${open && 'bg-gray-50'} cursor-pointer`}>
-              <div className='ml-1 mr-2 w-5 h-5 rounded'></div>
-              <div className='mr-1 w-[90px] truncate'>Stylezhang's workspace</div>
-              <div className='mr-1 w-5 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>4</div>
+              <NotionIcon
+                className='ml-1 mr-2'
+                src={currentWorkspace?.workspace_icon}
+                name={currentWorkspace?.workspace_name}
+              />
+              <div className='mr-1 w-[90px] text-left text-sm font-medium text-gray-700 truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
+              <div className='mr-1 w-5 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.total}</div>
               <div className={cn(s['down-arrow'], 'mr-2 w-3 h-3')} />
             </Menu.Button>
             <Transition
@@ -36,25 +52,27 @@ export default function WorkspaceSelector() {
                   border-[0.5px] border-gray-200`,
                 )}
               >
-                <div className="p-1">
-                  <Menu.Item>
-                    <div className='flex items-center px-3 h-9 hover:bg-gray-50 cursor-pointer'>
-                      <div className='mr-2 w-5 h-5 rounded'></div>
-                      <div className='grow mr-2 text-sm text-gray-700'>LangGenius</div>
-                      <div className='text-xs font-medium text-primary-600'>
-                        {4} {t('common.dataSource.notion.selector.pageSelected')}
-                      </div>
-                    </div>
-                  </Menu.Item>
-                  <Menu.Item>
-                    <div className='flex items-center px-3 h-9 hover:bg-gray-50 cursor-pointer'>
-                      <div className='mr-2 w-5 h-5 rounded'></div>
-                      <div className='grow mr-2 text-sm text-gray-700'>LangGenius</div>
-                      <div className='text-xs font-medium text-primary-600'>
-                        {4} {t('common.dataSource.notion.selector.pageSelected')}
-                      </div>
-                    </div>
-                  </Menu.Item>
+                <div className="p-1 max-h-50 overflow-auto">
+                  {
+                    items.map(item => (
+                      <Menu.Item key={item.id}>
+                        <div
+                          className='flex items-center px-3 h-9 hover:bg-gray-50 cursor-pointer'
+                          onClick={() => onSelect(item.id)}
+                        >
+                          <NotionIcon
+                            className='shrink-0 mr-2'
+                            src={item.source_info.workspace_icon}
+                            name={item.source_info.workspace_name}
+                          />
+                          <div className='grow mr-2 text-sm text-gray-700 truncate' title={item.source_info.workspace_name}>{item.source_info.workspace_name}</div>
+                          <div className='shrink-0 text-xs font-medium text-primary-600'>
+                            {item.source_info.total} {t('common.dataSource.notion.selector.pageSelected')}
+                          </div>
+                        </div>
+                      </Menu.Item>
+                    ))
+                  }
                 </div>
               </Menu.Items>
             </Transition>

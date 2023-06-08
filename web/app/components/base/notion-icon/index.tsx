@@ -1,9 +1,10 @@
 import cn from 'classnames'
+import s from './index.module.css'
 
 type NotionIconProps = {
   type?: 'workspace' | 'page'
-  src: string
-  name: string
+  src?: string | null
+  name?: string | null
   className?: string
 }
 
@@ -29,12 +30,28 @@ const NotionIcon = ({
       )
     }
     return (
-      <div className={cn('flex items-center justify-center w-5 h-5 bg-gray-200 text-xs font-medium text-gray-500 rounded', className)}>{name[0].toLocaleUpperCase()}</div>
+      <div className={cn('flex items-center justify-center w-5 h-5 bg-gray-200 text-xs font-medium text-gray-500 rounded', className)}>{name?.[0].toLocaleUpperCase()}</div>
+    )
+  }
+
+  if (src) {
+    return (
+      <img
+        alt='workspace icon'
+        src={src}
+        className={cn('block object-cover w-5 h-5', className)}
+      />
+    )
+  }
+
+  if (name) {
+    return (
+      <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src}</div>
     )
   }
 
   return (
-    <div></div>
+    <div className={cn(s['default-page-icon'], className)} />
   )
 }
 

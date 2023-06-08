@@ -47,6 +47,7 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
   const isExplore = selectedSegment === 'explore'
+
   return (
     <div className={classNames(
       'sticky top-0 left-0 right-0 z-20 flex bg-gray-100 grow-0 shrink-0 basis-auto h-14',
