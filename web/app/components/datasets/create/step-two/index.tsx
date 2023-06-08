@@ -8,7 +8,7 @@ import cn from 'classnames'
 import Link from 'next/link'
 import PreviewItem from './preview-item'
 import s from './index.module.css'
-import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, DataSourceType, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -28,7 +28,9 @@ type StepTwoProps = {
   onSetting: () => void
   datasetId?: string
   indexingType?: string
+  dataSourceType: DataSourceType
   file?: File
+  notionPages?: any[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -52,6 +54,7 @@ const StepTwo = ({
   onSetting,
   datasetId,
   indexingType,
+  dataSourceType,
   file,
   onStepChange,
   updateIndexingTypeCache,
@@ -170,8 +173,14 @@ const StepTwo = ({
   }
 
   const getFileIndexingEstimateParams = () => {
+    // TODO
     const params = {
-      file_id: file?.id,
+      info_list: {
+        data_source_type: dataSourceType,
+        file_info_list: [{
+          file_id: file?.id,
+        }],
+      },
       dataset_id: datasetId,
       indexing_technique: getIndexing_technique(),
       process_rule: getProcessRule(),
@@ -190,9 +199,11 @@ const StepTwo = ({
     else {
       params = {
         data_source: {
-          type: 'upload_file',
-          info: file?.id,
-          name: file?.name,
+          type: dataSourceType,
+          // name: file?.name,
+          info: [{
+            upload_file_id: file?.id,
+          }],
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
@@ -250,7 +261,7 @@ const StepTwo = ({
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType)
         updateResultCache && updateResultCache({
-          document: res,
+          documents: [res],
         })
       }
       onStepChange && onStepChange(+1)

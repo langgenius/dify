@@ -1,7 +1,7 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, put, patch } from './base'
 import qs from 'qs'
-import type { RelatedAppResponse, DataSet, HitTestingResponse, HitTestingRecordsResponse, DataSetListResponse, CreateDocumentReq, InitialDocumentDetail, DocumentDetailResponse, DocumentListResponse, IndexingEstimateResponse, FileIndexingEstimateResponse, IndexingStatusResponse, ProcessRuleResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
+import { del, get, patch, post, put } from './base'
+import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusResponse, InitialDocumentDetail, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
 // apis for documents in a dataset
@@ -19,17 +19,17 @@ export const fetchDataDetail: Fetcher<DataSet, string> = (datasetId: string) => 
   return get(`/datasets/${datasetId}`) as Promise<DataSet>
 }
 
-export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string, body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>>}> = ({ datasetId, body }) => {
-  return patch(`/datasets/${datasetId}`, { body } ) as Promise<DataSet>
+export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string; body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>> }> = ({ datasetId, body }) => {
+  return patch(`/datasets/${datasetId}`, { body }) as Promise<DataSet>
 }
 
 export const fetchDatasetRelatedApps: Fetcher<RelatedAppResponse, string> = (datasetId: string) => {
   return get(`/datasets/${datasetId}/related-apps`) as Promise<RelatedAppResponse>
 }
 
-export const fetchDatasets: Fetcher<DataSetListResponse, { url: string, params: { page: number, ids?: string[], limit?: number } }> = ({ url, params }) => {
+export const fetchDatasets: Fetcher<DataSetListResponse, { url: string; params: { page: number; ids?: string[]; limit?: number } }> = ({ url, params }) => {
   const urlParams = qs.stringify(params, { indices: false })
-  return get(`${url}?${urlParams}`,) as Promise<DataSetListResponse>
+  return get(`${url}?${urlParams}`) as Promise<DataSetListResponse>
 }
 
 export const createEmptyDataset: Fetcher<DataSet, { name: string }> = ({ name }) => {
@@ -52,7 +52,7 @@ export const fetchDocuments: Fetcher<DocumentListResponse, { datasetId: string; 
 }
 
 export const createFirstDocument: Fetcher<createDocumentResponse, { body: CreateDocumentReq }> = ({ body }) => {
-  return post(`/datasets/init`, { body }) as Promise<createDocumentResponse>
+  return post('/datasets/init', { body }) as Promise<createDocumentResponse>
 }
 
 export const createDocument: Fetcher<InitialDocumentDetail, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
@@ -123,5 +123,5 @@ export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId
 }
 
 export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, any> = (body: any) => {
-  return post(`/datasets/file-indexing-estimate`, { body }) as Promise<FileIndexingEstimateResponse>
+  return post('/datasets/indexing-estimate', { body }) as Promise<FileIndexingEstimateResponse>
 }

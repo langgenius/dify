@@ -1,16 +1,16 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { createDocumentResponse } from '@/models/datasets'
+import cn from 'classnames'
 import EmbeddingDetail from '../../documents/detail/embedding'
 
-import cn from 'classnames'
 import s from './index.module.css'
+import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 
 type StepThreeProps = {
-  datasetId?: string,
-  datasetName?: string,
-  indexingType?: string,
+  datasetId?: string
+  datasetName?: string
+  indexingType?: string
   creationCache?: createDocumentResponse
 }
 
@@ -38,12 +38,13 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
               <div className={s.content}>{`${t('datasetCreation.stepThree.additionP1')} ${datasetName || creationCache?.dataset?.name} ${t('datasetCreation.stepThree.additionP2')}`}</div>
             </div>
           )}
+          {/* TODO multi doc display */}
           <EmbeddingDetail
             datasetId={datasetId || creationCache?.dataset?.id}
-            documentId={creationCache?.document.id}
+            documentId={creationCache?.documents[0].id}
             indexingType={indexingType || creationCache?.dataset?.indexing_technique}
             stopPosition='bottom'
-            detail={creationCache?.document}
+            detail={creationCache?.documents[0] as FullDocumentDetail}
           />
         </div>
       </div>
@@ -58,4 +59,4 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
   )
 }
 
-export default StepThree;
+export default StepThree

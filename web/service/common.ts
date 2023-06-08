@@ -90,8 +90,8 @@ export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace 
   return post(url, { body }) as Promise<CommonResponse & { new_tenant: IWorkspace }>
 }
 
-export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<{ data: DataSourceNotion[] }>
+export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string }> = ({ url }) => {
+  return get(url) as Promise<{ data: DataSourceNotion[] }>
 }
 
 export const syncDataSourceNotion: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
