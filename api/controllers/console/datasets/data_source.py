@@ -99,6 +99,8 @@ class DataSourceApi(Resource):
     @login_required
     @account_initialization_required
     def patch(self, binding_id, action):
+        binding_id = str(binding_id)
+        action = str(action)
         data_source_binding = DataSourceBinding.query.filter_by(
             id=binding_id
         ).first()
