@@ -75,6 +75,15 @@
 .markdownIcon {
   background-image: url(./assets/md.svg);
 }
+.xlsIcon {
+  background-image: url(./assets/xlsx.svg);
+}
+.xlsxIcon {
+  background-image: url(./assets/xlsx.svg);
+}
+.csvIcon {
+  background-image: url(./assets/csv.svg);
+}
 .statusItemDetail {
   @apply h-8 font-medium border border-gray-200 inline-flex items-center rounded-lg pl-3 pr-4 mr-2;
 }
