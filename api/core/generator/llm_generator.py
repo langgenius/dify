@@ -1,7 +1,7 @@
 import logging
 
 from langchain.chat_models.base import BaseChatModel
-from langchain.schema import HumanMessage
+from langchain.schema import HumanMessage, OutputParserException
 
 from core.constant import llm_constant
 from core.llm.llm_builder import LLMBuilder
@@ -153,6 +153,8 @@ class LLMGenerator:
         try:
             output = llm(query)
             rule_config = output_parser.parse(output)
+        except OutputParserException:
+            raise ValueError('Please give a valid input for intended audience or hoping to solve problems.')
         except Exception:
             logging.exception("Error generating prompt")
             rule_config = {

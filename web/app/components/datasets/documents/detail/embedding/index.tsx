@@ -1,12 +1,13 @@
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { omit } from 'lodash-es'
-import cn from 'classnames'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
+import { useGetState } from 'ahooks'
+import cn from 'classnames'
 import SegmentCard from '../completed/SegmentCard'
 import { FieldInfo } from '../metadata'
 import style from '../completed/style.module.css'
@@ -19,7 +20,7 @@ import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { fetchIndexingEstimate, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
+import { fetchIndexingStatus as doFetchIndexingStatus, fetchIndexingEstimate, fetchProcessRule, pauseDocIndexing, resumeDocIndexing } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import StopEmbeddingModal from '@/app/components/datasets/create/stop-embedding-modal'
 
@@ -134,20 +135,21 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
   }
 
   const [runId, setRunId, getRunId] = useGetState<any>(null)
+
+  const stopQueryStatus = () => {
+    clearInterval(getRunId())
+  }
+
   const startQueryStatus = () => {
     const runId = setInterval(() => {
       const indexingStatusDetail = getIndexingStatusDetail()
       if (indexingStatusDetail?.indexing_status === 'completed') {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         stopQueryStatus()
         return
       }
       fetchIndexingStatus()
     }, 2500)
     setRunId(runId)
-  }
-  const stopQueryStatus = () => {
-    clearInterval(getRunId())
   }
 
   useEffect(() => {
@@ -235,14 +237,15 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
           key={idx}
           className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
         />)}
-        <div className={
-          cn('rounded-l-md',
+        <div
+          className={cn(
+            'rounded-l-md',
             s.progressBar,
             (isEmbedding || isEmbeddingCompleted) && s.barProcessing,
             (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
-            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md')
-        }
-        style={{ width: `${percent}%` }}
+            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md',
+          )}
+          style={{ width: `${percent}%` }}
         />
       </div>
       <div className={s.progressData}>

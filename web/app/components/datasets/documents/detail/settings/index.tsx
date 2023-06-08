@@ -1,5 +1,5 @@
 'use client'
-import React, { useState, useCallback, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { fetchTenantInfo } from '@/service/common'
-import { fetchDocumentDetail, MetadataType } from '@/service/datasets'
+import type { MetadataType } from '@/service/datasets'
+import { fetchDocumentDetail } from '@/service/datasets'
 
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
@@ -15,8 +16,8 @@ import AccountSetting from '@/app/components/header/account-setting'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 
 type DocumentSettingsProps = {
-  datasetId: string;
-  documentId: string;
+  datasetId: string
+  documentId: string
 }
 
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
@@ -48,18 +49,18 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         const detail = await fetchDocumentDetail({
           datasetId,
           documentId,
-          params: { metadata: 'without' as MetadataType }
+          params: { metadata: 'without' as MetadataType },
         })
         setDocumentDetail(detail)
-      } catch (e) {
+      }
+      catch (e) {
         setHasError(true)
       }
     })()
   }, [datasetId, documentId])
 
-  if (hasError) {
+  if (hasError)
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
-  }
 
   return (
     <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>

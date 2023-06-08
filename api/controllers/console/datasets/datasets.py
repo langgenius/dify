@@ -50,8 +50,8 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 200:
-        raise ValueError('Description cannot exceed 200 characters.')
+    if len(description) > 400:
+        raise ValueError('Description cannot exceed 400 characters.')
     return description
 
 

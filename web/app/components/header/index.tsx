@@ -1,6 +1,9 @@
+'use client'
+import { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
-import { useState } from 'react'
+import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
+import { flatten } from 'lodash-es'
 import { useRouter, useSelectedLayoutSegment } from 'next/navigation'
 import classNames from 'classnames'
 import { CircleStackIcon, PuzzlePieceIcon } from '@heroicons/react/24/outline'
@@ -9,11 +12,12 @@ import Link from 'next/link'
 import AccountDropdown from './account-dropdown'
 import Nav from './nav'
 import s from './index.module.css'
-import type { AppDetailResponse } from '@/models/app'
-import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { GithubRepo, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { AppListResponse } from '@/models/app'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useDatasetsContext } from '@/context/datasets-context'
+import { fetchAppList } from '@/service/apps'
 
 const BuildAppsIcon = ({ isSelected }: { isSelected: boolean }) => (
   <svg className='mr-1' width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -22,8 +26,7 @@ const BuildAppsIcon = ({ isSelected }: { isSelected: boolean }) => (
 )
 
 export type IHeaderProps = {
-  appItems: AppDetailResponse[]
-  curApp: AppDetailResponse
+  curAppId?: string
   userProfile: UserProfileResponse
   onLogout: () => void
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -38,15 +41,42 @@ const headerEnvClassName: { [k: string]: string } = {
   DEVELOPMENT: 'bg-[#FEC84B] border-[#FDB022] text-[#93370D]',
   TESTING: 'bg-[#A5F0FC] border-[#67E3F9] text-[#164C63]',
 }
-const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, langeniusVersionInfo, isBordered }) => {
+const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
+  if (!pageIndex || previousPageData.has_more)
+    return { url: 'apps', params: { page: pageIndex + 1, limit: 30 } }
+  return null
+}
+const Header: FC<IHeaderProps> = ({
+  curAppId,
+  userProfile,
+  onLogout,
+  langeniusVersionInfo,
+  isBordered,
+}) => {
   const { t } = useTranslation()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
+  const { data: appsData, isLoading, setSize } = useSWRInfinite(curAppId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
   const { datasets, currentDataset } = useDatasetsContext()
   const router = useRouter()
   const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
   const isExplore = selectedSegment === 'explore'
+  const [starCount, setStarCount] = useState(0)
+
+  useEffect(() => {
+    globalThis.fetch('https://api.github.com/repos/langgenius/dify').then(res => res.json()).then((data: GithubRepo) => {
+      setStarCount(data.stargazers_count)
+    })
+  }, [])
+  const appItems = flatten(appsData?.map(appData => appData.data))
+
+  const handleLoadmore = useCallback(() => {
+    if (isLoading)
+      return
+
+    setSize(size => size + 1)
+  }, [setSize, isLoading])
 
   return (
     <div className={classNames(
@@ -59,17 +89,23 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
         'flex flex-1 items-center justify-between px-4',
       )}>
         <div className='flex items-center'>
-          <Link href="/apps" className='flex items-center mr-3'>
+          <Link href="/apps" className='flex items-center mr-4'>
             <div className={s.logo} />
           </Link>
-          {/* Add it when has many stars */}
-          <div className='
-            flex items-center h-[26px] px-2 bg-white
-            border border-solid border-[#E5E7EB] rounded-l-[6px] rounded-r-[6px]
-          '>
-            <div className={s.alpha} />
-            <div className='ml-1 text-xs font-semibold text-gray-700'>{t('common.menus.status')}</div>
-          </div>
+          {
+            starCount > 0 && (
+              <Link
+                href='https://github.com/langgenius/dify'
+                target='_blank'
+                className='flex items-center leading-[18px] border border-gray-200 rounded-md text-xs text-gray-700 font-semibold overflow-hidden'>
+                <div className='flex items-center px-2 py-1 bg-gray-100'>
+                  <div className={`${s['github-icon']} mr-1 rounded-full`} />
+                  Star
+                </div>
+                <div className='px-2 py-1 bg-white border-l border-gray-200'>{`${starCount}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</div>
+              </Link>
+            )
+          }
         </div>
         <div className='flex items-center'>
           <Link href="/explore/apps" className={classNames(
@@ -85,7 +121,7 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
             text={t('common.menus.apps')}
             activeSegment={['apps', 'app']}
             link='/apps'
-            curNav={curApp && { id: curApp.id, name: curApp.name, icon: curApp.icon, icon_background: curApp.icon_background }}
+            curNav={appItems.find(appItem => appItem.id === curAppId)}
             navs={appItems.map(item => ({
               id: item.id,
               name: item.name,
@@ -95,6 +131,7 @@ const Header: FC<IHeaderProps> = ({ appItems, curApp, userProfile, onLogout, lan
             }))}
             createText={t('common.menus.newApp')}
             onCreate={() => setShowNewAppDialog(true)}
+            onLoadmore={handleLoadmore}
           />
           <Link href="/plugins-coming-soon" className={classNames(
             navClassName, 'group',

@@ -120,3 +120,7 @@ export type DataSourceNotion = {
   is_bound: boolean
   source_info: DataSourceNotionWorkspace
 }
+
+export type GithubRepo = {
+  stargazers_count: number
+}

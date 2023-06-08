@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import classNames from 'classnames'
 import { Switch as OriginalSwitch } from '@headlessui/react'
 
@@ -12,25 +12,29 @@ type SwitchProps = {
 
 const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false }: SwitchProps) => {
   const [enabled, setEnabled] = useState(defaultValue)
+  useEffect(() => {
+    setEnabled(defaultValue)
+  }, [defaultValue])
   const wrapStyle = {
     lg: 'h-6 w-11',
-    md: 'h-4 w-7'
+    md: 'h-4 w-7',
   }
 
   const circleStyle = {
     lg: 'h-5 w-5',
-    md: 'h-3 w-3'
+    md: 'h-3 w-3',
   }
 
   const translateLeft = {
     lg: 'translate-x-5',
-    md: 'translate-x-3'
+    md: 'translate-x-3',
   }
   return (
     <OriginalSwitch
       checked={enabled}
       onChange={(checked: boolean) => {
-        if (disabled) return;
+        if (disabled)
+          return
         setEnabled(checked)
         onChange(checked)
       }}
