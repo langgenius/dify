@@ -23,7 +23,6 @@ const ACCEPTS = [
   '.md',
   '.markdown',
   '.txt',
-  '.xlsx',
 ]
 
 const MAX_SIZE = 15 * 1024 *1024
