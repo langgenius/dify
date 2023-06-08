@@ -231,29 +231,30 @@ class IndexingRunner:
                 raise ValueError('Data source binding not found.')
             reader = NotionPageReader(integration_token=data_source_binding.access_token)
             for page in notion_info['pages']:
-                page_ids = [page['page_id']]
-                documents = reader.load_data_as_documents(page_ids=page_ids)
+                if page['type'] == 'page':
+                    page_ids = [page['page_id']]
+                    documents = reader.load_data_as_documents(page_ids=page_ids)
 
-                processing_rule = DatasetProcessRule(
-                    mode=tmp_processing_rule["mode"],
-                    rules=json.dumps(tmp_processing_rule["rules"])
-                )
+                    processing_rule = DatasetProcessRule(
+                        mode=tmp_processing_rule["mode"],
+                        rules=json.dumps(tmp_processing_rule["rules"])
+                    )
 
-                # get node parser for splitting
-                node_parser = self._get_node_parser(processing_rule)
+                    # get node parser for splitting
+                    node_parser = self._get_node_parser(processing_rule)
 
-                # split to nodes
-                nodes = self._split_to_nodes(
-                    text_docs=documents,
-                    node_parser=node_parser,
-                    processing_rule=processing_rule
-                )
-                total_segments += len(nodes)
-                for node in nodes:
-                    if len(preview_texts) < 5:
-                        preview_texts.append(node.get_text())
+                    # split to nodes
+                    nodes = self._split_to_nodes(
+                        text_docs=documents,
+                        node_parser=node_parser,
+                        processing_rule=processing_rule
+                    )
+                    total_segments += len(nodes)
+                    for node in nodes:
+                        if len(preview_texts) < 5:
+                            preview_texts.append(node.get_text())
 
-                    tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
+                        tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
 
         return {
             "total_segments": total_segments,

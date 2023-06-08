@@ -109,6 +109,68 @@ class NotionOAuth(OAuthDataSource):
 
     def get_authorized_pages(self, access_token: str):
         pages = []
+        page_results = self.notion_page_search(access_token)
+        database_results = self.notion_database_search(access_token)
+        # get page detail
+        for page_result in page_results:
+            page_id = page_result['id']
+            if 'Name' in page_result['properties']:
+                if len(page_result['properties']['Name']['title']) > 0:
+                    page_name = page_result['properties']['Name']['title'][0]['plain_text']
+                else:
+                    page_name = 'Untitled'
+            elif 'title' in page_result['properties']:
+                if len(page_result['properties']['title']['title']) > 0:
+                    page_name = page_result['properties']['title']['title'][0]['plain_text']
+                else:
+                    page_name = 'Untitled'
+            else:
+                page_name = 'Untitled'
+            page_icon = page_result['icon']
+            if page_icon:
+                icon_type = page_icon['type']
+                icon = page_icon[icon_type]
+            else:
+                icon = None
+            parent = page_result['parent']
+            parent_type = parent['type']
+            if parent_type == 'workspace':
+                parent_id = 'root'
+            else:
+                parent_id = parent[parent_type]
+            page = {
+                'page_id': page_id,
+                'page_name': page_name,
+                'page_icon': icon,
+                'parent_id': parent_id,
+                'type': 'page'
+            }
+            pages.append(page)
+            # get database detail
+            for database_result in database_results:
+                page_id = database_result['id']
+                if len(database_result['title']) > 0:
+                    page_name = database_result['title'][0]['plain_text']
+                else:
+                    page_name = 'Untitled'
+                page_icon = database_result['icon']
+                parent = database_result['parent']
+                parent_type = parent['type']
+                if parent_type == 'workspace':
+                    parent_id = 'root'
+                else:
+                    parent_id = parent[parent_type]
+                page = {
+                    'page_id': page_id,
+                    'page_name': page_name,
+                    'page_icon': page_icon,
+                    'parent_id': parent_id,
+                    'type': 'database'
+                }
+                pages.append(page)
+        return pages
+
+    def notion_page_search(self, access_token: str):
         data = {
             'filter': {
                 "value": "page",
@@ -123,25 +185,21 @@ class NotionOAuth(OAuthDataSource):
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
         results = response_json['results']
-        for result in results:
-            page_id = result['id']
-            if 'Name' in result['properties']:
-                if len(result['properties']['Name']['title']) > 0:
-                    page_name = result['properties']['Name']['title'][0]['plain_text']
-                else:
-                    page_name = 'Untitled'
-            elif 'title' in result['properties']:
-                if len(result['properties']['title']['title']) > 0:
-                    page_name = result['properties']['title']['title'][0]['plain_text']
-                else:
-                    page_name = 'Untitled'
-            else:
-                page_name = 'Untitled'
-            page_icon = result['icon']
-            page = {
-                'page_id': page_id,
-                'page_name': page_name,
-                'page_icon': page_icon
+        return results
+
+    def notion_database_search(self, access_token: str):
+        data = {
+            'filter': {
+                "value": "database",
+                "property": "object"
             }
-            pages.append(page)
-        return pages
+        }
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {access_token}",
+            'Notion-Version': '2022-06-28',
+        }
+        response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
+        response_json = response.json()
+        results = response_json['results']
+        return results

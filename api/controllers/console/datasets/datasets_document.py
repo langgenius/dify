@@ -357,6 +357,9 @@ class DocumentIndexingStatusApi(DocumentResource):
         'total_segments': fields.Integer,
     }
 
+    document_status_fields_list = {
+        'data': fields.List(fields.Nested(document_status_fields))
+    }
     @setup_required
     @login_required
     @account_initialization_required
@@ -374,8 +377,10 @@ class DocumentIndexingStatusApi(DocumentResource):
             document.completed_segments = completed_segments
             document.total_segments = total_segments
             documents_status.append(marshal(document, self.document_status_fields))
-
-        return documents_status
+        data = {
+            'data': documents_status
+        }
+        return data
 
 
 class DocumentDetailApi(DocumentResource):

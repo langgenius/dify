@@ -652,9 +652,15 @@ class DocumentService:
         if args['data_source']['type'] not in Document.DATA_SOURCES:
             raise ValueError("Data source type is invalid")
 
+        if 'info_list' not in args['data_source'] or not args['data_source']['info_list']:
+            raise ValueError("Data source info is required")
+
         if args['data_source']['type'] == 'upload_file':
-            if 'info' not in args['data_source'] or not args['data_source']['info']:
-                raise ValueError("Data source info is required")
+            if 'file_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list']['file_info_list']:
+                raise ValueError("File source info is required")
+        if args['data_source']['type'] == 'notion_import':
+            if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list']['notion_info_list']:
+                raise ValueError("Notion source info is required")
 
     @classmethod
     def process_rule_args_validate(cls, args: dict):
@@ -731,7 +737,7 @@ class DocumentService:
             raise ValueError("Data source info is required")
 
         if not isinstance(args['info_list'], dict):
-            raise ValueError("Notion info is invalid")
+            raise ValueError("Data info is invalid")
 
         if 'process_rule' not in args or not args['process_rule']:
             raise ValueError("Process rule is required")

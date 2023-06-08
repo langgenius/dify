@@ -218,7 +218,7 @@ class DatasetIndexingEstimateApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('info_list', type=list, required=True, nullable=True, location='json')
+        parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         args = parser.parse_args()
         # validate args
