@@ -130,9 +130,10 @@ class NotionOAuth(OAuthDataSource):
             if page_icon:
                 icon_type = page_icon['type']
                 if icon_type == 'external' or icon_type == 'file':
+                    url = page_icon[icon_type]['url']
                     icon = {
                         'type': 'url',
-                        'url': page_icon[icon_type]['url']
+                        'url': url if url.startswith('http') else f'https://www.notion.so{url}'
                     }
                 else:
                     icon = {
@@ -166,9 +167,10 @@ class NotionOAuth(OAuthDataSource):
                 if page_icon:
                     icon_type = page_icon['type']
                     if icon_type == 'external' or icon_type == 'file':
+                        url = page_icon[icon_type]['url']
                         icon = {
                             'type': 'url',
-                            'url': page_icon[icon_type]['url']
+                            'url': url if url.startswith('http') else f'https://www.notion.so{url}'
                         }
                     else:
                         icon = {
