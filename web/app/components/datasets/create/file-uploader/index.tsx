@@ -22,7 +22,7 @@ const ACCEPTS = [
   '.md',
   '.markdown',
   '.txt',
-  '.xls',
+  // '.xls',
   '.xlsx',
   '.csv',
 ]
