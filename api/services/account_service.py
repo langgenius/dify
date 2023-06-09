@@ -267,9 +267,10 @@ class TenantService:
         }
         if action not in ['add', 'remove', 'update']:
             raise InvalidActionError("Invalid action.")
-
-        if operator.id == member.id:
-            raise CannotOperateSelfError("Cannot operate self.")
+        
+        if member:
+            if operator.id == member.id:
+                raise CannotOperateSelfError("Cannot operate self.")
 
         ta_operator = TenantAccountJoin.query.filter_by(
             tenant_id=tenant.id,
@@ -365,6 +366,7 @@ class RegisterService:
         account = Account.query.filter_by(email=email).first()
 
         if not account:
+            TenantService.check_member_permission(tenant, inviter, None, 'add')
             name = email.split('@')[0]
             account = AccountService.create_account(email, name)
             account.status = AccountStatus.PENDING.value
