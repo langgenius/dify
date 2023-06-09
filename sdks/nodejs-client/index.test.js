@@ -48,7 +48,7 @@ describe('Send Requests', () => {
         Authorization: `Bearer ${difyClient.apiKey}`,
         'Content-Type': 'application/json',
       },
-      responseType: 'stream',
+      responseType: 'json',
     })
 
   })

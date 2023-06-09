@@ -1,5 +1,4 @@
 import axios from "axios";
-
 export const BASE_URL = "https://api.dify.ai/v1";
 
 export const routes = {
@@ -57,7 +56,7 @@ export class DifyClient {
 
     const url = `${this.baseUrl}${endpoint}`;
     let response;
-    if (!stream) {
+    if (stream) {
       response = await axios({
         method,
         url,
@@ -67,10 +66,13 @@ export class DifyClient {
         responseType: "stream",
       });
     } else {
-      response = await fetch(url, {
-        headers,
+      response = await axios({
         method,
-        body: JSON.stringify(data),
+        url,
+        data,
+        params,
+        headers,
+        responseType: "json",
       });
     }
 
@@ -132,14 +134,14 @@ export class ChatClient extends DifyClient {
       user,
       response_mode: stream ? "streaming" : "blocking",
     };
-    if (conversationId) data.conversation_id = conversation_id;
+    if (conversation_id) data.conversation_id = conversation_id;
 
     return this.sendRequest(
       routes.createChatMessage.method,
       routes.createChatMessage.url(),
       data,
       null,
-      response_mode === "streaming"
+      stream
     );
   }
 
