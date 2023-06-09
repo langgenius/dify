@@ -28,4 +28,4 @@ class XLSXParser(BaseParser):
                         keys = list(map(str, row))
                     else:
                         data.append(json.dumps(dict(zip(keys, list(map(str, row)))), ensure_ascii=False))
-        return '\n'.join(data)
+        return '\n\n'.join(data)
