@@ -154,6 +154,11 @@ class NotionOAuth(OAuthDataSource):
                 else:
                     page_name = 'Untitled'
                 page_icon = database_result['icon']
+                if page_icon:
+                    icon_type = page_icon['type']
+                    icon = page_icon[icon_type]
+                else:
+                    icon = None
                 parent = database_result['parent']
                 parent_type = parent['type']
                 if parent_type == 'workspace':
@@ -163,7 +168,7 @@ class NotionOAuth(OAuthDataSource):
                 page = {
                     'page_id': page_id,
                     'page_name': page_name,
-                    'page_icon': page_icon,
+                    'page_icon': icon,
                     'parent_id': parent_id,
                     'type': 'database'
                 }
