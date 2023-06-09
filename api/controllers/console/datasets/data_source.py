@@ -28,10 +28,15 @@ PREVIEW_WORDS_LIMIT = 3000
 
 
 class DataSourceApi(Resource):
+    integrate_icon_fields = {
+        'type': fields.String,
+        'url': fields.String,
+        'emoji': fields.String
+    }
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.String,
+        'page_icon': fields.Nested(integrate_icon_fields),
         'parent_id': fields.String,
         'type': fields.String
     }
@@ -130,10 +135,15 @@ class DataSourceApi(Resource):
 
 
 class DataSourceNotionListApi(Resource):
+    integrate_icon_fields = {
+        'type': fields.String,
+        'url': fields.String,
+        'emoji': fields.String
+    }
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.String,
+        'page_icon': fields.Nested(integrate_icon_fields),
         'is_bound': fields.Boolean,
         'parent_id': fields.String,
         'type': fields.String

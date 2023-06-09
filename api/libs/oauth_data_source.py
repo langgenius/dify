@@ -129,7 +129,16 @@ class NotionOAuth(OAuthDataSource):
             page_icon = page_result['icon']
             if page_icon:
                 icon_type = page_icon['type']
-                icon = page_icon[icon_type]
+                if icon_type == 'external':
+                    icon = {
+                        'type': 'url',
+                        'url': page_icon[icon_type]['url']
+                    }
+                else:
+                    icon = {
+                        'type': 'emoji',
+                        'emoji': page_icon[icon_type]
+                    }
             else:
                 icon = None
             parent = page_result['parent']
@@ -156,7 +165,16 @@ class NotionOAuth(OAuthDataSource):
                 page_icon = database_result['icon']
                 if page_icon:
                     icon_type = page_icon['type']
-                    icon = page_icon[icon_type]
+                    if icon_type == 'external':
+                        icon = {
+                            'type': 'url',
+                            'url': page_icon[icon_type]['url']
+                        }
+                    else:
+                        icon = {
+                            'type': icon_type,
+                            icon_type: page_icon[icon_type]
+                        }
                 else:
                     icon = None
                 parent = database_result['parent']
