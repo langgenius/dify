@@ -120,7 +120,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
 const PageSelector = ({
   list,
   onSelect,
-  canPreview,
+  canPreview = true,
   onPreview,
 }: PageSelectorProps) => {
   const [dataList, setDataList] = useState<NotionPageItem[]>(

@@ -6,6 +6,7 @@ import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
 import { fetchDataSource } from '@/service/common'
+import AccountSetting from '@/app/components/header/account-setting'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type NotionPageSelectorProps = {
@@ -20,6 +21,7 @@ const NotionPageSelector = ({
   onPreview,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
+  const [showDataSourceSetting, setShowDataSourceSetting] = useState(false)
   const { data } = useSWR({ url: 'data-source/integrates' }, fetchDataSource)
   const notionWorkspaces = data?.data.filter(item => item.provider === 'notion') || []
   const firstWorkspace = notionWorkspaces[0]?.id
@@ -61,7 +63,10 @@ const NotionPageSelector = ({
           onSelect={handleSelectWorkspace}
         />
         <div className='mx-1 w-[1px] h-3 bg-gray-200' />
-        <div className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')} />
+        <div
+          className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
+          onClick={() => setShowDataSourceSetting(true)}
+        />
         <div className='grow' />
         <SearchInput
           value={searchValue}
@@ -80,6 +85,13 @@ const NotionPageSelector = ({
           )
         }
       </div>
+      {
+        showDataSourceSetting && (
+          <AccountSetting activeTab='data-source' onCancel={() => {
+            setShowDataSourceSetting(false)
+          }} />
+        )
+      }
     </div>
   )
 }
