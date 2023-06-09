@@ -129,7 +129,7 @@ class NotionOAuth(OAuthDataSource):
             page_icon = page_result['icon']
             if page_icon:
                 icon_type = page_icon['type']
-                if icon_type == 'external':
+                if icon_type == 'external' or icon_type == 'file':
                     icon = {
                         'type': 'url',
                         'url': page_icon[icon_type]['url']
@@ -165,7 +165,7 @@ class NotionOAuth(OAuthDataSource):
                 page_icon = database_result['icon']
                 if page_icon:
                     icon_type = page_icon['type']
-                    if icon_type == 'external':
+                    if icon_type == 'external' or icon_type == 'file':
                         icon = {
                             'type': 'url',
                             'url': page_icon[icon_type]['url']
