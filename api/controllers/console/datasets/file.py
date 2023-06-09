@@ -18,6 +18,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.index.readers.html_parser import HTMLParser
 from core.index.readers.pdf_parser import PDFParser
+from core.index.readers.xlsx_parser import XLSXParser
 from extensions.ext_storage import storage
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -26,7 +27,7 @@ from models.model import UploadFile
 cache = TTLCache(maxsize=None, ttl=30)
 
 FILE_SIZE_LIMIT = 15 * 1024 * 1024  # 15MB
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx']
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -133,6 +134,9 @@ class FilePreviewApi(Resource):
                 # Use BeautifulSoup to extract text
                 parser = HTMLParser()
                 text = parser.parse_file(Path(filepath))
+            elif extension == 'xlsx':
+                parser = XLSXParser()
+                text = parser.parse_file(filepath)
             else:
                 # ['txt', 'markdown', 'md']
                 with open(filepath, "rb") as fp:

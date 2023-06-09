@@ -12,6 +12,8 @@ from llama_index.data_structs import Node
 from llama_index.data_structs.node_v2 import DocumentRelationship
 from llama_index.node_parser import SimpleNodeParser, NodeParser
 from llama_index.readers.file.base import DEFAULT_FILE_EXTRACTOR
+from llama_index.readers.file.markdown_parser import MarkdownParser
+from core.index.readers.xlsx_parser import XLSXParser
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.index.keyword_table_index import KeywordTableIndex
 from core.index.readers.html_parser import HTMLParser
@@ -250,6 +252,7 @@ class IndexingRunner:
             file_extractor[".html"] = HTMLParser()
             file_extractor[".htm"] = HTMLParser()
             file_extractor[".pdf"] = PDFParser({'upload_file': upload_file})
+            file_extractor[".xlsx"] = XLSXParser()
 
             loader = SimpleDirectoryReader(input_files=[filepath], file_extractor=file_extractor)
             text_docs = loader.load_data()
