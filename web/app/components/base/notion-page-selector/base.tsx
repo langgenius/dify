@@ -10,12 +10,14 @@ import AccountSetting from '@/app/components/header/account-setting'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type NotionPageSelectorProps = {
+  value?: string[]
   onSelect: (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => void
   canPreview?: boolean
   onPreview?: (selectedPage: DataSourceNotionPage & { workspace_id: string }) => void
 }
 
 const NotionPageSelector = ({
+  value,
   onSelect,
   canPreview,
   onPreview,
@@ -77,6 +79,9 @@ const NotionPageSelector = ({
         {
           currentWorkspace?.source_info.pages.length && (
             <PageSelector
+              key={currentWorkspaceId}
+              value={value}
+              searchValue={searchValue}
               list={currentWorkspace?.source_info.pages}
               onSelect={handleSelecPages}
               canPreview={canPreview}

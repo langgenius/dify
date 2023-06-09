@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
@@ -9,6 +9,8 @@ import s from './index.module.css'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type PageSelectorProps = {
+  value?: string[]
+  searchValue: string
   list: DataSourceNotionPage[]
   onSelect: (selectedPages: DataSourceNotionPage[]) => void
   canPreview?: boolean
@@ -19,6 +21,7 @@ type NotionPageTreeItem = {
   children: Set<string>
   descendants: Set<string>
   deepth: number
+  ancestors: string[]
 } & DataSourceNotionPage
 type NotionPageTreeMap = Record<string, NotionPageTreeItem>
 type NotionPageItem = {
@@ -45,6 +48,7 @@ const recursivePushInParentDescendants = (
         children,
         descendants,
         deepth: 0,
+        ancestors: [],
       }
     }
     else {
@@ -53,6 +57,7 @@ const recursivePushInParentDescendants = (
       listTreeMap[parentId].descendants.add(leafItem.page_id)
     }
     leafItem.deepth++
+    leafItem.ancestors.unshift(listTreeMap[parentId].page_name)
 
     if (listTreeMap[parentId].parent_id !== 'root')
       recursivePushInParentDescendants(listMap, listTreeMap, listTreeMap[parentId], leafItem)
@@ -66,10 +71,16 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
   handleCheck: (index: number) => void
   canPreview?: boolean
   handlePreview: (index: number) => void
+  listMapWithChildrenAndDescendants: NotionPageTreeMap
+  searchValue: string
 }>) => {
   const { t } = useTranslation()
-  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview } = data
+  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue } = data
   const current = dataList[index]
+  const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
+  const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
+  const ancestors = currentWithChildrenAndDescendants.ancestors
+  const breadCrumbs = ancestors.length ? [...ancestors, current.page_name] : [current.page_name]
   let iconSrc
 
   if (current.page_icon && current.page_icon.type === 'url')
@@ -77,6 +88,20 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
 
   if (current.page_icon && current.page_icon.type === 'emoji')
     iconSrc = current.page_icon.emoji
+
+  const renderArrow = () => {
+    return hasChild
+      ? (
+        <div
+          className={cn(s.arrow, current.expand && s['arrow-expand'], 'shrink-0 mr-1 w-5 h-5 hover:bg-gray-200 rounded-md')}
+          style={{ marginLeft: current.deepth * 8 }}
+          onClick={() => handleToggle(index)}
+        />
+      )
+      : (
+        <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.deepth * 8 }} />
+      )
+  }
 
   return (
     <div
@@ -88,11 +113,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
         checked={checkedIds.has(current.page_id)}
         onCheck={() => handleCheck(index)}
       />
-      <div
-        className={cn(s.arrow, current.expand && s['arrow-expand'], 'shrink-0 mr-1 w-5 h-5 hover:bg-gray-200 rounded-md')}
-        style={{ marginLeft: current.deepth * 8 }}
-        onClick={() => handleToggle(index)}
-      />
+      {!searchValue && renderArrow()}
       <NotionIcon
         className='shrink-0 mr-1'
         type='page'
@@ -107,9 +128,19 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
       {
         canPreview && (
           <div
-            className='shrink-0 hidden group-hover:flex items-center ml-4 px-2 h-6 rounded-md text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50'
+            className='shrink-0 hidden group-hover:flex items-center ml-1 px-2 h-6 rounded-md text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50'
             onClick={() => handlePreview(index)}>
             {t('common.dataSource.notion.selector.preview')}
+          </div>
+        )
+      }
+      {
+        searchValue && (
+          <div
+            className='shrink-0 ml-1 max-w-[120px] text-xs text-gray-400 truncate'
+            title={breadCrumbs.join(' / ')}
+          >
+            {breadCrumbs.join(' / ')}
           </div>
         )
       }
@@ -118,6 +149,8 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
 }, areEqual)
 
 const PageSelector = ({
+  value,
+  searchValue,
   list,
   onSelect,
   canPreview = true,
@@ -132,7 +165,8 @@ const PageSelector = ({
       }
     }),
   )
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set())
+  const [searchDataList, setSearchDataList] = useState<NotionPageItem[]>([])
+  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set(value || []))
   const listMap = list.reduce((prev: NotionPageMap, next: DataSourceNotionPage) => {
     prev[next.page_id] = next
 
@@ -141,7 +175,7 @@ const PageSelector = ({
   const listMapWithChildrenAndDescendants = list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
     const pageId = next.page_id
     if (!prev[pageId])
-      prev[pageId] = { ...next, children: new Set(), descendants: new Set(), deepth: 0 }
+      prev[pageId] = { ...next, children: new Set(), descendants: new Set(), deepth: 0, ancestors: [] }
 
     recursivePushInParentDescendants(listMap, prev, prev[pageId], prev[pageId])
     return prev
@@ -176,18 +210,24 @@ const PageSelector = ({
   }
 
   const handleCheck = (index: number) => {
-    const current = dataList[index]
+    const current = searchValue ? searchDataList[index] : dataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
     if (checkedIds.has(pageId)) {
-      for (const item of currentWithChildrenAndDescendants.descendants)
-        checkedIds.delete(item)
+      if (!searchValue) {
+        for (const item of currentWithChildrenAndDescendants.descendants)
+          checkedIds.delete(item)
+      }
+
       checkedIds.delete(pageId)
     }
     else {
-      for (const item of currentWithChildrenAndDescendants.descendants)
-        checkedIds.add(item)
+      if (!searchValue) {
+        for (const item of currentWithChildrenAndDescendants.descendants)
+          checkedIds.add(item)
+      }
+
       checkedIds.add(pageId)
     }
 
@@ -203,20 +243,35 @@ const PageSelector = ({
     }
   }
 
+  useEffect(() => {
+    setSearchDataList(list.filter((item) => {
+      return item.page_name.includes(searchValue)
+    }).map((item) => {
+      return {
+        ...item,
+        expand: false,
+        deepth: 0,
+      }
+    }))
+  }, [searchValue])
+
   return (
     <List
       className='py-2'
       height={296}
-      itemCount={dataList.length}
+      itemCount={searchValue ? searchDataList.length : dataList.length}
       itemSize={28}
       width='100%'
+      itemKey={(index, data) => data.dataList[index].page_id}
       itemData={{
-        dataList,
+        dataList: searchValue ? searchDataList : dataList,
         handleToggle,
         checkedIds,
         handleCheck,
         canPreview,
         handlePreview,
+        listMapWithChildrenAndDescendants,
+        searchValue,
       }}
     >
       {Item}
