@@ -9,9 +9,9 @@ import { fetchDataSource } from '@/service/common'
 import type { DataSourceNotionPage } from '@/models/common'
 
 type NotionPageSelectorProps = {
-  onSelect: (selectedPages: DataSourceNotionPage[]) => void
+  onSelect: (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => void
   canPreview?: boolean
-  onPreview?: (selectedPage: DataSourceNotionPage) => void
+  onPreview?: (selectedPage: DataSourceNotionPage & { workspace_id: string }) => void
 }
 
 const NotionPageSelector = ({
@@ -32,6 +32,22 @@ const NotionPageSelector = ({
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
+  const handleSelecPages = (selectedPages: DataSourceNotionPage[]) => {
+    onSelect(selectedPages.map((item) => {
+      return {
+        ...item,
+        workspace_id: currentWorkspace?.source_info.workspace_id || '',
+      }
+    }))
+  }
+  const handlePreviewPage = (previewPage: DataSourceNotionPage) => {
+    if (onPreview) {
+      onPreview({
+        ...previewPage,
+        workspace_id: currentWorkspace?.source_info.workspace_id || '',
+      })
+    }
+  }
 
   useEffect(() => {
     setCurrentWorkspaceId(firstWorkspace)
@@ -57,9 +73,9 @@ const NotionPageSelector = ({
           currentWorkspace?.source_info.pages.length && (
             <PageSelector
               list={currentWorkspace?.source_info.pages}
-              onSelect={onSelect}
+              onSelect={handleSelecPages}
               canPreview={canPreview}
-              onPreview={onPreview}
+              onPreview={handlePreviewPage}
             />
           )
         }
