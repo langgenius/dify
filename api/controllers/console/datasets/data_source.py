@@ -31,7 +31,9 @@ class DataSourceApi(Resource):
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.String
+        'page_icon': fields.String,
+        'parent_id': fields.String,
+        'type': fields.String
     }
     integrate_workspace_fields = {
         'workspace_name': fields.String,
@@ -132,7 +134,9 @@ class DataSourceNotionListApi(Resource):
         'page_name': fields.String,
         'page_id': fields.String,
         'page_icon': fields.String,
-        'is_bound': fields.Boolean
+        'is_bound': fields.Boolean,
+        'parent_id': fields.String,
+        'type': fields.String
     }
     integrate_workspace_fields = {
         'workspace_name': fields.String,
@@ -178,19 +182,14 @@ class DataSourceNotionListApi(Resource):
             raise NotFound('Data source binding not found.')
         pre_import_info_list = []
         for data_source_binding in data_source_bindings:
-            notion_oauth = NotionOAuth(client_id=current_app.config.get('NOTION_CLIENT_ID'),
-                                       client_secret=current_app.config.get(
-                                           'NOTION_CLIENT_SECRET'),
-                                       redirect_uri=current_app.config.get(
-                                           'CONSOLE_URL') + '/console/api/oauth/data-source/authorize/notion')
-            pages = notion_oauth.get_authorized_pages(data_source_binding.access_token)
+            source_info = data_source_binding.source_info
+            pages = source_info['pages']
             # Filter out already bound pages
             for page in pages:
                 if page['page_id'] in exist_page_ids:
                     page['is_bound'] = True
                 else:
                     page['is_bound'] = False
-            source_info = data_source_binding.source_info
             pre_import_info = {
                 'workspace_name': source_info['workspace_name'],
                 'workspace_icon': source_info['workspace_icon'],
