@@ -36,7 +36,7 @@ class DataSourceApi(Resource):
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.Nested(integrate_icon_fields, allow_none=True),
+        'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
         'parent_id': fields.String,
         'type': fields.String
     }
@@ -143,7 +143,7 @@ class DataSourceNotionListApi(Resource):
     integrate_page_fields = {
         'page_name': fields.String,
         'page_id': fields.String,
-        'page_icon': fields.Nested(integrate_icon_fields, allow_none=True),
+        'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
         'is_bound': fields.Boolean,
         'parent_id': fields.String,
         'type': fields.String
