@@ -1,6 +1,6 @@
 {
   "name": "dify-client",
-  "version": "1.0.3",
+  "version": "2.0.0",
   "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
   "main": "index.js",
   "type": "module",
