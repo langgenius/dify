@@ -192,6 +192,7 @@ const translation = {
         searchPages: 'Search pages...',
         noSerachResult: 'No search resluts',
         addPages: 'Add pages',
+        preview: 'PREVIEW',
       },
     },
   },

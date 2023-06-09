@@ -35,16 +35,15 @@ const NotionIcon = ({
   }
 
   if (src) {
-    return (
-      <img
-        alt='workspace icon'
-        src={src}
-        className={cn('block object-cover w-5 h-5', className)}
-      />
-    )
-  }
-
-  if (name) {
+    if (src.includes('https://')) {
+      return (
+        <img
+          alt='page icon'
+          src={src}
+          className={cn('block object-cover w-5 h-5', className)}
+        />
+      )
+    }
     return (
       <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src}</div>
     )

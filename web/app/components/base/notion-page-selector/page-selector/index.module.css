@@ -3,8 +3,9 @@
   height: 20px;
   background: url(../assets/down-arrow.svg) center center no-repeat;
   background-size: 16px 16px;
+  transform: rotate(-90deg);
 }
 
-.arrow-collapse {
-  transform: rotate(-90deg);
+.arrow-expand {
+  transform: rotate(0);
 }

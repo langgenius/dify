@@ -193,6 +193,7 @@ const translation = {
         searchPages: '搜索页面...',
         noSerachResult: '无搜索结果',
         addPages: '添加页面',
+        preview: '预览',
       },
     },
   },

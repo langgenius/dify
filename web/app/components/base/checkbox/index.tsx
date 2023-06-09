@@ -1,4 +1,5 @@
 import cn from 'classnames'
+import s from './index.module.css'
 
 type CheckboxProps = {
   checked?: boolean
@@ -9,7 +10,7 @@ type CheckboxProps = {
 const Checkbox = ({ checked, onCheck, className }: CheckboxProps) => {
   return (
     <div
-      className={cn('w-4 h-4 border rounded', checked ? 'border-primary-600 bg-primary-600' : 'border-gray-300', className)}
+      className={cn(s.wrapper, checked && s.checked, 'w-4 h-4 border rounded border-gray-300', className)}
       onClick={onCheck}
     />
   )

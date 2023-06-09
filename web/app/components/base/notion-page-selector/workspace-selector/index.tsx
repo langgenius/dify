@@ -32,7 +32,7 @@ export default function WorkspaceSelector({
                 name={currentWorkspace?.workspace_name}
               />
               <div className='mr-1 w-[90px] text-left text-sm font-medium text-gray-700 truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
-              <div className='mr-1 w-5 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.total}</div>
+              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.total}</div>
               <div className={cn(s['down-arrow'], 'mr-2 w-3 h-3')} />
             </Menu.Button>
             <Transition

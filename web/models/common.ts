@@ -101,9 +101,14 @@ export type IWorkspace = {
 }
 
 export type DataSourceNotionPage = {
-  page_icon: string | null
+  page_icon: null | {
+    type: string | null
+    url: string | null
+    emoji: string | null
+  }
   page_id: string
   page_name: string
+  parent_id: string
 }
 
 export type DataSourceNotionWorkspace = {

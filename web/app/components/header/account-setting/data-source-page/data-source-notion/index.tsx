@@ -16,6 +16,7 @@ const DataSourceNotion = ({
   workspaces,
 }: DataSourceNotionProps) => {
   const { t } = useTranslation()
+  const connected = !!workspaces.length
 
   return (
     <div className='mb-2 border-[0.5px] border-gray-200 bg-gray-50 rounded-xl'>
@@ -26,7 +27,7 @@ const DataSourceNotion = ({
             {t('common.dataSource.notion.title')}
           </div>
           {
-            !workspaces.length && (
+            !connected && (
               <div className='leading-5 text-xs text-gray-500'>
                 {t('common.dataSource.notion.description')}
               </div>
@@ -34,7 +35,7 @@ const DataSourceNotion = ({
           }
         </div>
         {
-          !workspaces.length
+          !connected
             ? (
               <Link
                 className='flex items-center ml-3 px-3 h-7 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-700 cursor-pointer'
@@ -52,40 +53,48 @@ const DataSourceNotion = ({
             )
         }
       </div>
-      <div className='flex items-center px-3 h-[18px]'>
-        <div className='text-xs font-medium text-gray-500'>
-          {t('common.dataSource.notion.connectedWorkspace')}
-        </div>
-        <div className='grow ml-3 border-t border-t-gray-100' />
-      </div>
-      <div className='px-3 pt-2 pb-3'>
-        {
-          workspaces.map(workspace => (
-            <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={workspace.id}>
-              <NotionIcon
-                className='ml-3 mr-[6px]'
-                src={workspace.source_info.workspace_icon || ''}
-                name={workspace.source_info.workspace_name}
-              />
-              <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700'>{workspace.source_info.workspace_name}</div>
-              {
-                workspace.is_bound
-                  ? <Indicator className='mr-[6px]' />
-                  : <Indicator className='mr-[6px]' color='yellow' />
-              }
-              <div className='mr-3 text-xs font-medium'>
-                {
-                  workspace.is_bound
-                    ? t('common.dataSource.notion.connected')
-                    : t('common.dataSource.notion.disconnected')
-                }
-              </div>
-              <div className='mr-2 w-[1px] h-3 bg-gray-100' />
-              <Operate workspace={workspace} />
+      {
+        connected && (
+          <div className='flex items-center px-3 h-[18px]'>
+            <div className='text-xs font-medium text-gray-500'>
+              {t('common.dataSource.notion.connectedWorkspace')}
             </div>
-          ))
-        }
-      </div>
+            <div className='grow ml-3 border-t border-t-gray-100' />
+          </div>
+        )
+      }
+      {
+        connected && (
+          <div className='px-3 pt-2 pb-3'>
+            {
+              workspaces.map(workspace => (
+                <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={workspace.id}>
+                  <NotionIcon
+                    className='ml-3 mr-[6px]'
+                    src={workspace.source_info.workspace_icon || ''}
+                    name={workspace.source_info.workspace_name}
+                  />
+                  <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700'>{workspace.source_info.workspace_name}</div>
+                  {
+                    workspace.is_bound
+                      ? <Indicator className='mr-[6px]' />
+                      : <Indicator className='mr-[6px]' color='yellow' />
+                  }
+                  <div className='mr-3 text-xs font-medium'>
+                    {
+                      workspace.is_bound
+                        ? t('common.dataSource.notion.connected')
+                        : t('common.dataSource.notion.disconnected')
+                    }
+                  </div>
+                  <div className='mr-2 w-[1px] h-3 bg-gray-100' />
+                  <Operate workspace={workspace} />
+                </div>
+              ))
+            }
+          </div>
+        )
+      }
     </div>
   )
 }

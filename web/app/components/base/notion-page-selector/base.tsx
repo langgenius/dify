@@ -6,8 +6,19 @@ import WorkspaceSelector from './workspace-selector'
 import SearchInput from './search-input'
 import PageSelector from './page-selector'
 import { fetchDataSource } from '@/service/common'
+import type { DataSourceNotionPage } from '@/models/common'
 
-const NotionPageSelector = () => {
+type NotionPageSelectorProps = {
+  onSelect: (selectedPages: DataSourceNotionPage[]) => void
+  canPreview?: boolean
+  onPreview?: (selectedPage: DataSourceNotionPage) => void
+}
+
+const NotionPageSelector = ({
+  onSelect,
+  canPreview,
+  onPreview,
+}: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
   const { data } = useSWR({ url: 'data-source/integrates' }, fetchDataSource)
   const notionWorkspaces = data?.data.filter(item => item.provider === 'notion') || []
@@ -42,7 +53,16 @@ const NotionPageSelector = () => {
         />
       </div>
       <div className='rounded-b-xl overflow-hidden'>
-        <PageSelector list={currentWorkspace?.source_info.pages || []} />
+        {
+          currentWorkspace?.source_info.pages.length && (
+            <PageSelector
+              list={currentWorkspace?.source_info.pages}
+              onSelect={onSelect}
+              canPreview={canPreview}
+              onPreview={onPreview}
+            />
+          )
+        }
       </div>
     </div>
   )
