@@ -1,140 +1,188 @@
-import axios from 'axios'
-
-export const BASE_URL = 'https://api.dify.ai/v1'
+import axios from "axios";
+export const BASE_URL = "https://api.dify.ai/v1";
 
 export const routes = {
   application: {
-    method: 'GET',
-    url: () => `/parameters`
+    method: "GET",
+    url: () => `/parameters`,
   },
   feedback: {
-    method: 'POST',
-    url: (messageId) => `/messages/${messageId}/feedbacks`,
+    method: "POST",
+    url: (message_id) => `/messages/${message_id}/feedbacks`,
   },
   createCompletionMessage: {
-    method: 'POST',
+    method: "POST",
     url: () => `/completion-messages`,
   },
   createChatMessage: {
-    method: 'POST',
+    method: "POST",
     url: () => `/chat-messages`,
   },
   getConversationMessages: {
-    method: 'GET',
-    url: () => '/messages',
+    method: "GET",
+    url: () => "/messages",
   },
   getConversations: {
-    method: 'GET',
-    url: () => '/conversations',
+    method: "GET",
+    url: () => "/conversations",
   },
   renameConversation: {
-    method: 'PATCH',
-    url: (conversationId) => `/conversations/${conversationId}`,
-  }
-
-}
+    method: "PATCH",
+    url: (conversation_id) => `/conversations/${conversation_id}`,
+  },
+};
 
 export class DifyClient {
   constructor(apiKey, baseUrl = BASE_URL) {
-    this.apiKey = apiKey
-    this.baseUrl = baseUrl
+    this.apiKey = apiKey;
+    this.baseUrl = baseUrl;
   }
 
   updateApiKey(apiKey) {
-    this.apiKey = apiKey
+    this.apiKey = apiKey;
   }
 
-  async sendRequest(method, endpoint, data = null, params = null, stream = false) {
+  async sendRequest(
+    method,
+    endpoint,
+    data = null,
+    params = null,
+    stream = false
+  ) {
     const headers = {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
-    }
+      Authorization: `Bearer ${this.apiKey}`,
+      "Content-Type": "application/json",
+    };
 
-    const url = `${this.baseUrl}${endpoint}`
-    let response
-    if (!stream) {
+    const url = `${this.baseUrl}${endpoint}`;
+    let response;
+    if (stream) {
       response = await axios({
         method,
         url,
         data,
         params,
         headers,
-        responseType: stream ? 'stream' : 'json',
-      })
+        responseType: "stream",
+      });
     } else {
-      response = await fetch(url, {
-        headers,
+      response = await axios({
         method,
-        body: JSON.stringify(data),
-      })
+        url,
+        data,
+        params,
+        headers,
+        responseType: "json",
+      });
     }
 
-    return response
+    return response;
   }
 
-  messageFeedback(messageId, rating, user) {
+  messageFeedback(message_id, rating, user) {
     const data = {
       rating,
       user,
-    }
-    return this.sendRequest(routes.feedback.method, routes.feedback.url(messageId), data)
+    };
+    return this.sendRequest(
+      routes.feedback.method,
+      routes.feedback.url(message_id),
+      data
+    );
   }
 
   getApplicationParameters(user) {
-    const params = { user }
-    return this.sendRequest(routes.application.method, routes.application.url(), null, params)
+    const params = { user };
+    return this.sendRequest(
+      routes.application.method,
+      routes.application.url(),
+      null,
+      params
+    );
   }
 }
 
 export class CompletionClient extends DifyClient {
-  createCompletionMessage(inputs, query, user, responseMode) {
+  createCompletionMessage(inputs, query, user, stream = false) {
     const data = {
       inputs,
       query,
-      responseMode,
       user,
-    }
-    return this.sendRequest(routes.createCompletionMessage.method, routes.createCompletionMessage.url(), data, null, responseMode === 'streaming')
+      response_mode: stream ? "streaming" : "blocking",
+    };
+    return this.sendRequest(
+      routes.createCompletionMessage.method,
+      routes.createCompletionMessage.url(),
+      data,
+      null,
+      stream
+    );
   }
 }
 
 export class ChatClient extends DifyClient {
-  createChatMessage(inputs, query, user, responseMode = 'blocking', conversationId = null) {
+  createChatMessage(
+    inputs,
+    query,
+    user,
+    stream = false,
+    conversation_id = null
+  ) {
     const data = {
       inputs,
       query,
       user,
-      responseMode,
-    }
-    if (conversationId)
-      data.conversation_id = conversationId
+      response_mode: stream ? "streaming" : "blocking",
+    };
+    if (conversation_id) data.conversation_id = conversation_id;
 
-    return this.sendRequest(routes.createChatMessage.method, routes.createChatMessage.url(), data, null, responseMode === 'streaming')
+    return this.sendRequest(
+      routes.createChatMessage.method,
+      routes.createChatMessage.url(),
+      data,
+      null,
+      stream
+    );
   }
 
-  getConversationMessages(user, conversationId = '', firstId = null, limit = null) {
-    const params = { user }
+  getConversationMessages(
+    user,
+    conversation_id = "",
+    first_id = null,
+    limit = null
+  ) {
+    const params = { user };
 
-    if (conversationId)
-      params.conversation_id = conversationId
+    if (conversation_id) params.conversation_id = conversation_id;
 
-    if (firstId)
-      params.first_id = firstId
+    if (first_id) params.first_id = first_id;
 
-    if (limit)
-      params.limit = limit
+    if (limit) params.limit = limit;
 
-    return this.sendRequest(routes.getConversationMessages.method, routes.getConversationMessages.url(), null, params)
+    return this.sendRequest(
+      routes.getConversationMessages.method,
+      routes.getConversationMessages.url(),
+      null,
+      params
+    );
   }
 
-  getConversations(user, firstId = null, limit = null, pinned = null) {
-    const params = { user, first_id: firstId, limit, pinned }
-    return this.sendRequest(routes.getConversations.method, routes.getConversations.url(), null, params)
+  getConversations(user, first_id = null, limit = null, pinned = null) {
+    const params = { user, first_id: first_id, limit, pinned };
+    return this.sendRequest(
+      routes.getConversations.method,
+      routes.getConversations.url(),
+      null,
+      params
+    );
   }
 
-  renameConversation(conversationId, name, user) {
-    const data = { name, user }
-    return this.sendRequest(routes.renameConversation.method, routes.renameConversation.url(conversationId), data)
+  renameConversation(conversation_id, name, user) {
+    const data = { name, user };
+    return this.sendRequest(
+      routes.renameConversation.method,
+      routes.renameConversation.url(conversation_id),
+      data
+    );
   }
 }
-
