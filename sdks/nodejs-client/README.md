@@ -12,8 +12,12 @@ After installing the SDK, you can use it in your project like this:
 ```js
 import { DifyClient, ChatClient, CompletionClient } from 'dify-client'
 
-const API_KEY = 'your-api-key-here';
-const user = `random-user-id`;
+const API_KEY = 'your-api-key-here'
+const user = `random-user-id`
+const inputs = {
+  name: 'test name a'
+}
+const query = "Please tell me a short story in 10 words or less."
 
 // Create a completion client
 const completionClient = new CompletionClient(API_KEY)
@@ -22,8 +26,15 @@ completionClient.createCompletionMessage(inputs, query, responseMode, user)
 
 // Create a chat client
 const chatClient = new ChatClient(API_KEY)
-// Create a chat message
-chatClient.createChatMessage(inputs, query, responseMode, user, conversationId)
+// Create a chat message in stream mode
+const response = await chatClient.createChatMessage(inputs, query, user, true, null)
+const stream = response.data;
+stream.on('data', data => {
+    console.log(data);
+});
+stream.on('end', () => {
+    console.log("stream done");
+});
 // Fetch conversations
 chatClient.getConversations(user)
 // Fetch conversation messages
