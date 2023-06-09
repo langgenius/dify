@@ -137,8 +137,9 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
               <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
               <div className='overflow-auto flex-1'>
                 <div className={s.cardWrapper}>
-                  {hitResult?.records.map((record) => {
+                  {hitResult?.records.map((record, idx) => {
                     return <SegmentCard
+                      key={idx}
                       loading={false}
                       detail={record.segment as any}
                       score={record.score}
