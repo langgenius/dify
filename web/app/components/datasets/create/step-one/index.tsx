@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
+import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import s from './index.module.css'
 import type { File } from '@/models/datasets'
+import type { DataSourceNotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
@@ -24,6 +26,8 @@ type IStepOneProps = {
   changeType: (type: DataSourceType) => void
 }
 
+type Page = DataSourceNotionPage & { workspace_id: string }
+
 const StepOne = ({
   datasetId,
   dataSourceType,
@@ -34,9 +38,11 @@ const StepOne = ({
   file,
   updateFile,
   notionPages = [],
+  updateNotionPages,
 }: IStepOneProps) => {
   const [showModal, setShowModal] = useState(false)
   const [showFilePreview, setShowFilePreview] = useState(true)
+  const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
   const { t } = useTranslation()
 
   const hidePreview = () => setShowFilePreview(false)
@@ -44,6 +50,14 @@ const StepOne = ({
   const modalShowHandle = () => setShowModal(true)
 
   const modalCloseHandle = () => setShowModal(false)
+
+  const updateCurrentPage = (page: Page) => {
+    setCurrentNotionPage(page)
+  }
+
+  const hideNotionPagePreview = () => {
+    setCurrentNotionPage(undefined)
+  }
 
   return (
     <div className='flex w-full h-full'>
@@ -53,14 +67,20 @@ const StepOne = ({
           <div className={s.dataSourceTypeList}>
             <div
               className={cn(s.dataSourceItem, dataSourceType === DataSourceType.FILE && s.active)}
-              onClick={() => changeType(DataSourceType.FILE)}
+              onClick={() => {
+                changeType(DataSourceType.FILE)
+                hidePreview()
+              }}
             >
               <span className={cn(s.datasetIcon)} />
               {t('datasetCreation.stepOne.dataSourceType.file')}
             </div>
             <div
               className={cn(s.dataSourceItem, dataSourceType === DataSourceType.NOTION && s.active)}
-              onClick={() => changeType(DataSourceType.NOTION)}
+              onClick={() => {
+                changeType(DataSourceType.NOTION)
+                hidePreview()
+              }}
             >
               <span className={cn(s.datasetIcon, s.notion)} />
               {t('datasetCreation.stepOne.dataSourceType.notion')}
@@ -85,16 +105,16 @@ const StepOne = ({
               {!hasConnection && (
                 <div className={s.notionConnectionTip}>
                   <span className={s.notionIcon}/>
-                  <div className={s.title}>Notion is not connected</div>
-                  <div className={s.tip}>To sync with Notion, connection to Notion must be established first.</div>
-                  <Button className='h-8' type='primary' onClick={onSetting}>Go to connect</Button>
+                  <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
+                  <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
+                  <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
                 </div>
               )}
               {hasConnection && (
                 <>
                   {/* TODO */}
                   <div className='mb-8 w-[640px]'>
-                    <NotionPageSelector />
+                    <NotionPageSelector onSelect={updateNotionPages} onPreview={updateCurrentPage} />
                   </div>
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
@@ -111,7 +131,7 @@ const StepOne = ({
         <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
       </div>
       {file && showFilePreview && <FilePreview file={file} hidePreview={hidePreview} />}
-      {/* TODO notion page preview */}
+      {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
     </div>
   )
 }

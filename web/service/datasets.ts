@@ -125,3 +125,7 @@ export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId
 export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, any> = (body: any) => {
   return post('/datasets/indexing-estimate', { body }) as Promise<FileIndexingEstimateResponse>
 }
+
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string }> = ({ workspaceID, pageID }) => {
+  return get(`notion/workspaces/${workspaceID}/pages/${pageID}/preview`) as Promise<{ content: string }>
+}

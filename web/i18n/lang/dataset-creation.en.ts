@@ -13,6 +13,7 @@ const translation = {
   },
   stepOne: {
     filePreview: 'File Preview',
+    pagePreview: 'Page Preview',
     dataSourceType: {
       file: 'Import from text file',
       notion: 'Sync from Notion',
@@ -32,6 +33,9 @@ const translation = {
       change: 'Change',
       failed: 'Upload failed',
     },
+    notionSyncTitle: 'Notion is not connected',
+    notionSyncTip: 'To sync with Notion, connection to Notion must be established first.',
+    connect: 'Go to connect',
     button: 'next',
     emptyDatasetCreation: 'I want to create an empty dataset',
     modal: {

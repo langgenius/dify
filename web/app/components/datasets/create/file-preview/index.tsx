@@ -2,12 +2,14 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from './index.module.css'
 import type { File } from '@/models/datasets'
 import { fetchFilePreview } from '@/service/common'
 
 type IProps = {
   file?: File
+  notionPage?: any
   hidePreview: () => void
 }
 
@@ -46,9 +48,9 @@ const FilePreview = ({
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title)}>
           <span>{t('datasetCreation.stepOne.filePreview')}</span>
-          {false && (
-            <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}></div>
-          )}
+          <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+            <XMarkIcon className='h-4 w-4'></XMarkIcon>
+          </div>
         </div>
         <div className={cn(s.fileName)}>
           <span>{getFileName(file)}</span><span className={cn(s.filetype)}>.{file?.extension}</span>
