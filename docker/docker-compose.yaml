@@ -3,14 +3,15 @@ services:
   # API service
   api:
     image: langgenius/dify-api:0.3.1
+    container_name: api
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
       MODE: api
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
-      SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+      SECRET_KEY: sk-9f73xxxxLK7U
       # The base URL of console application, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
@@ -37,7 +38,7 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_USERNAME: ''
-      REDIS_PASSWORD: difyai123456
+      # REDIS_PASSWORD: difyai123456
       REDIS_USE_SSL: 'false'
       # use redis db 0 for redis cache
       REDIS_DB: 0
@@ -46,13 +47,14 @@ services:
       SESSION_REDIS_HOST: redis
       SESSION_REDIS_PORT: 6379
       SESSION_REDIS_USERNAME: ''
-      SESSION_REDIS_PASSWORD: difyai123456
+      # SESSION_REDIS_PASSWORD: difyai123456
       SESSION_REDIS_USE_SSL: 'false'
       # use redis db 2 for session store
       SESSION_REDIS_DB: 2
       # The configurations of celery broker.
       # Use redis as the broker, and redis db 1 for celery broker.
-      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      # CELERY_BROKER_URL: redis://:difyai123456@redis-dify:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/1
       # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
       WEB_API_CORS_ALLOW_ORIGINS: '*'
       # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
@@ -110,6 +112,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
+    container_name: worker
     image: langgenius/dify-api:0.3.1
     restart: always
     environment:
@@ -119,10 +122,10 @@ services:
       # --- All the configurations below are the same as those in the 'api' service. ---
 
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       # same as the API service
-      SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
+      SECRET_KEY: sk-9f73xxxxLK7U
       # The configurations of postgres database connection.
       # It is consistent with the configuration in the 'db' service below.
       DB_USERNAME: postgres
@@ -134,11 +137,12 @@ services:
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_USERNAME: ''
-      REDIS_PASSWORD: difyai123456
+      # REDIS_PASSWORD: difyai123456
       REDIS_DB: 0
       REDIS_USE_SSL: 'false'
       # The configurations of celery broker.
-      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      # CELERY_BROKER_URL: redis://:difyai123456@redis-dify:6379/1
+      CELERY_BROKER_URL: redis://redis:6379/1
       # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
@@ -156,6 +160,7 @@ services:
 
   # Frontend web application.
   web:
+    container_name: web
     image: langgenius/dify-web:0.3.1
     restart: always
     environment:
@@ -171,6 +176,7 @@ services:
 
   # The postgres database.
   db:
+    container_name: db
     image: postgres:15-alpine
     restart: always
     environment:
@@ -187,16 +193,19 @@ services:
 
   # The redis cache.
   redis:
+    container_name: redis
     image: redis:6-alpine
     restart: always
     volumes:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
-    command: redis-server --requirepass difyai123456
+    # command: redis-server --requirepass difyai123456
+    command: redis-server
 
   # The Weaviate vector store.
   weaviate:
+    container_name: weaviate
     image: semitechnologies/weaviate:1.18.4
     restart: always
     volumes:
@@ -219,6 +228,7 @@ services:
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
+    container_name: nginx
     image: nginx:latest
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
