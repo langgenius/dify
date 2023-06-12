@@ -16,7 +16,7 @@ import type { IChatItem } from '@/app/components/app/chat'
 import Chat from '@/app/components/app/chat'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
-import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage } from '@/service/debug'
+import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage, stopChatMessageResponding } from '@/service/debug'
 import Button from '@/app/components/base/button'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
@@ -136,6 +136,7 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
+  const [messageTaskId, setMessageTaskId] = useState('')
   const onSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -208,12 +209,13 @@ const Debug: FC<IDebug> = ({
       getAbortController: (abortController) => {
         setAbortController(abortController)
       },
-      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId }: any) => {
+      onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
         responseItem.content = responseItem.content + message
         if (isFirstMessage && newConversationId) {
           setConversationId(newConversationId)
           _newConversationId = newConversationId
         }
+        setMessageTaskId(taskId)
         if (messageId)
           responseItem.id = messageId
 
@@ -375,8 +377,10 @@ const Debug: FC<IDebug> = ({
                   feedbackDisabled
                   useCurrentUserAvatar
                   isResponsing={isResponsing}
-                  abortResponsing={() => {
+                  canStopResponsing={!!messageTaskId}
+                  abortResponsing={async () => {
                     abortController?.abort()
+                    await stopChatMessageResponding(appId, messageTaskId)
                     setResponsingFalse()
                   }}
                   isShowSuggestion={doShowSuggestion}
