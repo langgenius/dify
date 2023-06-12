@@ -109,6 +109,7 @@ export type DataSourceNotionPage = {
   page_id: string
   page_name: string
   parent_id: string
+  type: string
 }
 
 export type DataSourceNotionWorkspace = {

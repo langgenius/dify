@@ -19,7 +19,7 @@ const SearchInput = ({
   }, [onChange])
 
   return (
-    <div className={cn(s['input-wrapper'], 'flex items-center px-2 h-7 border border-gray-300 rounded-md', `${value ? 'bg-white' : 'bg-gray-100'}`)}>
+    <div className={cn(s['input-wrapper'], 'flex items-center px-2 h-7 rounded-md', `${value ? 'bg-white' : 'bg-gray-100'}`)}>
       <div className={cn(s['search-icon'], 'mr-[6px] w-4 h-4')} />
       <input
         className='grow text-[13px] bg-inherit border-0 outline-0 appearance-none'

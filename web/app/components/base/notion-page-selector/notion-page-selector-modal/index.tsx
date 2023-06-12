@@ -11,11 +11,13 @@ type NotionPageSelectorModalProps = {
   isShow: boolean
   onClose: () => void
   onSave: (selectedPages: DataSourceNotionPage[]) => void
+  value?: string[]
 }
 const NotionPageSelectorModal = ({
   isShow,
   onClose,
   onSave,
+  value,
 }: NotionPageSelectorModalProps) => {
   const { t } = useTranslation()
   const [selectedPages, setSelectedPages] = useState<DataSourceNotionPage[]>([])
@@ -45,6 +47,7 @@ const NotionPageSelectorModal = ({
         </div>
       </div>
       <NotionPageSelector
+        value={value}
         onSelect={handleSelectPage}
         canPreview={false}
       />

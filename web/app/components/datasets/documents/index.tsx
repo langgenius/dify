@@ -14,7 +14,11 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Pagination from '@/app/components/base/pagination'
 import { get } from '@/service/base'
-import { fetchDocuments } from '@/service/datasets'
+import { createDocument, fetchDocuments } from '@/service/datasets'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
+import type { DataSourceNotionPage } from '@/models/common'
+import type { CreateDocumentReq } from '@/models/datasets'
 
 // Custom page count is not currently supported.
 const limit = 15
@@ -75,6 +79,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [searchValue, setSearchValue] = useState<string>('')
   const [currPage, setCurrPage] = React.useState<number>(0)
   const router = useRouter()
+  const { dataset } = useDatasetDetailContext()
+  const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
 
   const query = useMemo(() => {
     return { page: currPage + 1, limit, keyword: searchValue }
@@ -89,12 +95,50 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
+    if (dataset?.data_source_type === 'notion_import') {
+      setNotionPageSelectorModalVisible(true)
+      return
+    }
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
   router.prefetch(`/datasets/${datasetId}/documents/create`)
 
   const isLoading = !documentsRes && !error
+
+  const handleSaveNotionPageSelected = async (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => {
+    const params = {
+      data_source: {
+        type: dataset?.data_source_type,
+        info_list: {
+          data_source_type: dataset?.data_source_type,
+          notion_info_list: {
+            workspace_id: selectedPages[0].workspace_id,
+            pages: selectedPages.map((selectedPage) => {
+              const { page_id, page_name, page_icon, type } = selectedPage
+              return {
+                page_id,
+                page_name,
+                page_icon,
+                type,
+              }
+            }),
+          },
+        },
+      },
+      indexing_technique: dataset?.indexing_technique,
+      process_rule: {
+        rules: {},
+        mode: 'automatic',
+      },
+    } as CreateDocumentReq
+
+    await createDocument({
+      datasetId,
+      body: params,
+    })
+    mutate()
+  }
 
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
@@ -113,7 +157,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           />
           <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
             <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-            {t('datasetDocuments.list.addFile')}
+            {
+              dataset?.data_source_type === 'notion_import'
+                ? t('datasetDocuments.list.addPages')
+                : t('datasetDocuments.list.addFile')
+            }
           </Button>
         </div>
         {isLoading
@@ -126,6 +174,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {(total && total > limit)
           ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
           : null}
+        <NotionPageSelectorModal
+          value={(documentsRes?.data || []).map((doc) => {
+            return doc.data_source_info.notion_page_id
+          })}
+          isShow={notionPageSelectorModalVisible}
+          onClose={() => setNotionPageSelectorModalVisible(false)}
+          onSave={handleSaveNotionPageSelected}
+        />
       </div>
     </div>
   )
