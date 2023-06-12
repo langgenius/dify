@@ -84,6 +84,29 @@ A: 现已支持英文与中文，你可以为我们贡献语言包。
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
+
+## 贡献
+
+我们欢迎你为 Dify 作出贡献帮助 Dify 变得更好。我们欢迎各种方式的贡献，提交代码、问题、新想法、或者分享你基于 Dify 创建出的各种有趣有用的 AI 应用。同时，我们也欢迎你在不同的活动、研讨会、社交媒体上分享 Dify。
+
+### 贡献代码
+为了确保正确审查，所有代码贡献 - 包括来自具有直接提交更改权限的贡献者 - 都必须提交 PR 请求并在合并分支之前得到核心开发人员的批准。
+
+我们欢迎所有人提交 PR！如果您愿意提供帮助，可以在 [贡献指南](CONTRIBUTING_CN.md) 中了解有关如何为项目做出代码贡献的更多信息。
+
+### 提交问题或想法
+你可以通过 Dify 代码仓库新增 issues 来提交你的问题或想法。如遇到问题，请尽可能描述你遇到问题的操作步骤，以便我们更好地发现它。如果你对我们的产品有任何新想法，也欢迎向我们反馈，请尽可能多地分享你的见解，以便我们在社区中获得更多反馈和进一步讨论。
+
+### 分享你的应用
+我们鼓励所有社区成员分享他们基于 Dify 创造出的 AI 应用，它们可以是应用于不同情景或不同用户，这将有助于为希望基于 AI 能力创造的人们提供强大灵感！你可以通过 [Dify-user-case 仓库项目提交 issue](https://github.com/langgenius/dify-user-case) 来分享你的应用案例。
+
+### 向别人分享 Dify
+我们鼓励社区贡献者们积极展示你使用 Dify 的不同角度。你可以通过线下研讨会、博客或社交媒体上谈论或分享你使用 Dify 的任意功能，相信你独特的使用分享会给别人带来非常大的帮助！如果你需要任何指导帮助，欢迎联系我们 support@dify.ai ,你也可以在 twitter @Dify.AI 或在 [Discord 社区](https://discord.gg/FngNHpbcY7)交流来帮助你传播信息。
+
+### 帮助别人
+你还可以在 Discord、GitHub issues或其他社交平台上帮助需要帮助的人，指导别人解决使用过程中遇到的问题和分享使用经验。这也是个非常了不起的贡献！如果你希望成为 Dify 社区的维护者，请通过[Discord 社区](https://discord.gg/FngNHpbcY7) 联系官方团队或邮件联系我们 support@dify.ai.
+
+
 ## 联系我们
 
 如果您有任何问题、建议或合作意向，欢迎通过以下方式联系我们：
@@ -91,12 +114,6 @@ A: 现已支持英文与中文，你可以为我们贡献语言包。
 - 在我们的 [GitHub Repo](https://github.com/langgenius/dify) 上提交 Issue 或 PR
 - 在我们的 [Discord 社区](https://discord.gg/FngNHpbcY7) 上加入讨论
 - 发送邮件至 hello@dify.ai
-
-## 贡献代码
-
-为了确保正确审查，所有代码贡献 - 包括来自具有直接提交更改权限的贡献者 - 都必须提交 PR 请求并在合并分支之前得到核心开发人员的批准。
-
-我们欢迎所有人提交 PR！如果您愿意提供帮助，可以在 [贡献指南](CONTRIBUTING_CN.md) 中了解有关如何为项目做出贡献的更多信息。
 
 ## 安全
 
