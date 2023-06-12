@@ -379,8 +379,8 @@ const Debug: FC<IDebug> = ({
                   isResponsing={isResponsing}
                   canStopResponsing={!!messageTaskId}
                   abortResponsing={async () => {
-                    abortController?.abort()
                     await stopChatMessageResponding(appId, messageTaskId)
+                    abortController?.abort()
                     setResponsingFalse()
                   }}
                   isShowSuggestion={doShowSuggestion}
