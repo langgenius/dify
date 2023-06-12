@@ -15,6 +15,10 @@ export const sendChatMessage = async (appId: string, body: Record<string, any>, 
   }, { onData, onCompleted, onError, getAbortController })
 }
 
+export const stopChatMessageResponding = async (appId: string, taskId: string) => {
+  return post(`apps/${appId}/chat-messages/${taskId}/stop`)
+}
+
 export const sendCompletionMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError }: {
   onData: IOnData
   onCompleted: IOnCompleted

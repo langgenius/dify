@@ -53,6 +53,7 @@ export type IChatProps = {
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
   isResponsing?: boolean
+  canStopResponsing?: boolean
   abortResponsing?: () => void
   controlClearQuery?: number
   controlFocus?: number
@@ -412,6 +413,7 @@ const Chat: FC<IChatProps> = ({
   displayScene,
   useCurrentUserAvatar,
   isResponsing,
+  canStopResponsing,
   abortResponsing,
   controlClearQuery,
   controlFocus,
@@ -508,7 +510,7 @@ const Chat: FC<IChatProps> = ({
       {
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
-            {isResponsing && (
+            {(isResponsing && canStopResponsing) && (
               <div className='flex justify-center mb-4'>
                 <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
                   {stopIcon}

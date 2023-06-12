@@ -23,7 +23,8 @@ const baseOptions = {
 }
 
 export type IOnDataMoreInfo = {
-  conversationId: string | undefined
+  conversationId?: string
+  taskId?: string
   messageId: string
   errorMessage?: string
 }
@@ -101,6 +102,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
             // can not use format here. Because message is splited.
             onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
               conversationId: bufferObj.conversation_id,
+              taskId: bufferObj.task_id,
               messageId: bufferObj.id,
             })
             isFirstMessage = false
