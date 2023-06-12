@@ -190,7 +190,7 @@ const translation = {
       selector: {
         pageSelected: 'Pages Selected',
         searchPages: 'Search pages...',
-        noSerachResult: 'No search resluts',
+        noSearchResult: 'No search resluts',
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },

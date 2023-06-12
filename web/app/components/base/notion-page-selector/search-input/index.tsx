@@ -16,7 +16,7 @@ const SearchInput = ({
 
   const handleClear = useCallback(() => {
     onChange('')
-  }, [])
+  }, [onChange])
 
   return (
     <div className={cn(s['input-wrapper'], 'flex items-center px-2 h-7 border border-gray-300 rounded-md', `${value ? 'bg-white' : 'bg-gray-100'}`)}>

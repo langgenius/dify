@@ -1,4 +1,4 @@
-import { memo, useEffect, useState } from 'react'
+import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
@@ -14,6 +14,7 @@ type PageSelectorProps = {
   list: DataSourceNotionPage[]
   onSelect: (selectedPages: DataSourceNotionPage[]) => void
   canPreview?: boolean
+  previewPageId?: string
   onPreview?: (selectedPage: DataSourceNotionPage) => void
 }
 type NotionPageMap = Record<string, DataSourceNotionPage>
@@ -73,9 +74,10 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
   handlePreview: (index: number) => void
   listMapWithChildrenAndDescendants: NotionPageTreeMap
   searchValue: string
+  previewPageId: string
 }>) => {
   const { t } = useTranslation()
-  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue } = data
+  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
@@ -105,7 +107,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
 
   return (
     <div
-      className='group flex items-center pl-2 pr-[2px] rounded-md hover:bg-gray-100 cursor-pointer'
+      className={cn('group flex items-center pl-2 pr-[2px] rounded-md border border-transparent hover:bg-gray-100 cursor-pointer', previewPageId === current.page_id && s['preview-item'])}
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
       <Checkbox
@@ -128,7 +130,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
       {
         canPreview && (
           <div
-            className='shrink-0 hidden group-hover:flex items-center ml-1 px-2 h-6 rounded-md text-xs font-medium text-gray-700 cursor-pointer hover:bg-gray-50'
+            className='shrink-0 hidden group-hover:flex items-center ml-1 px-2 h-6 rounded-md text-xs font-medium text-gray-500 cursor-pointer hover:bg-gray-50 hover:text-gray-700'
             onClick={() => handlePreview(index)}>
             {t('common.dataSource.notion.selector.preview')}
           </div>
@@ -154,8 +156,10 @@ const PageSelector = ({
   list,
   onSelect,
   canPreview = true,
+  previewPageId,
   onPreview,
 }: PageSelectorProps) => {
+  const { t } = useTranslation()
   const [dataList, setDataList] = useState<NotionPageItem[]>(
     list.filter(item => item.parent_id === 'root').map((item) => {
       return {
@@ -165,8 +169,20 @@ const PageSelector = ({
       }
     }),
   )
-  const [searchDataList, setSearchDataList] = useState<NotionPageItem[]>([])
+  const searchDataList = list.filter((item) => {
+    return item.page_name.includes(searchValue)
+  }).map((item) => {
+    return {
+      ...item,
+      expand: false,
+      deepth: 0,
+    }
+  })
+  const currentDataList = searchValue ? searchDataList : dataList
   const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set(value || []))
+  const [localPreviewPageId, setLocalPreviewPageId] = useState('')
+  const currentPreviewPageId = previewPageId === undefined ? localPreviewPageId : previewPageId
+
   const listMap = list.reduce((prev: NotionPageMap, next: DataSourceNotionPage) => {
     prev[next.page_id] = next
 
@@ -210,7 +226,7 @@ const PageSelector = ({
   }
 
   const handleCheck = (index: number) => {
-    const current = searchValue ? searchDataList[index] : dataList[index]
+    const current = currentDataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
@@ -236,35 +252,33 @@ const PageSelector = ({
   }
 
   const handlePreview = (index: number) => {
-    if (onPreview) {
-      const current = dataList[index]
-      const pageId = current.page_id
+    const current = currentDataList[index]
+    const pageId = current.page_id
+
+    setLocalPreviewPageId(pageId)
+
+    if (onPreview)
       onPreview(listMap[pageId])
-    }
   }
 
-  useEffect(() => {
-    setSearchDataList(list.filter((item) => {
-      return item.page_name.includes(searchValue)
-    }).map((item) => {
-      return {
-        ...item,
-        expand: false,
-        deepth: 0,
-      }
-    }))
-  }, [searchValue])
+  if (!currentDataList.length) {
+    return (
+      <div className='flex items-center justify-center h-[296px] text-[13px] text-gray-500'>
+        {t('common.dataSource.notion.selector.noSearchResult')}
+      </div>
+    )
+  }
 
   return (
     <List
       className='py-2'
       height={296}
-      itemCount={searchValue ? searchDataList.length : dataList.length}
+      itemCount={currentDataList.length}
       itemSize={28}
       width='100%'
       itemKey={(index, data) => data.dataList[index].page_id}
       itemData={{
-        dataList: searchValue ? searchDataList : dataList,
+        dataList: currentDataList,
         handleToggle,
         checkedIds,
         handleCheck,
@@ -272,6 +286,7 @@ const PageSelector = ({
         handlePreview,
         listMapWithChildrenAndDescendants,
         searchValue,
+        previewPageId: currentPreviewPageId,
       }}
     >
       {Item}

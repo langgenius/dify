@@ -13,6 +13,7 @@ type NotionPageSelectorProps = {
   value?: string[]
   onSelect: (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => void
   canPreview?: boolean
+  previewPageId?: string
   onPreview?: (selectedPage: DataSourceNotionPage & { workspace_id: string }) => void
 }
 
@@ -20,6 +21,7 @@ const NotionPageSelector = ({
   value,
   onSelect,
   canPreview,
+  previewPageId,
   onPreview,
 }: NotionPageSelectorProps) => {
   const [searchValue, setSearchValue] = useState('')
@@ -30,9 +32,9 @@ const NotionPageSelector = ({
   const [currentWorkspaceId, setCurrentWorkspaceId] = useState('')
   const currentWorkspace = notionWorkspaces.find(workspace => workspace.id === currentWorkspaceId)
 
-  const handleSearchValueChange = (value: string) => {
+  const handleSearchValueChange = useCallback((value: string) => {
     setSearchValue(value)
-  }
+  }, [])
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
@@ -76,19 +78,16 @@ const NotionPageSelector = ({
         />
       </div>
       <div className='rounded-b-xl overflow-hidden'>
-        {
-          currentWorkspace?.source_info.pages.length && (
-            <PageSelector
-              key={currentWorkspaceId}
-              value={value}
-              searchValue={searchValue}
-              list={currentWorkspace?.source_info.pages}
-              onSelect={handleSelecPages}
-              canPreview={canPreview}
-              onPreview={handlePreviewPage}
-            />
-          )
-        }
+        <PageSelector
+          key={currentWorkspaceId}
+          value={value}
+          searchValue={searchValue}
+          list={currentWorkspace?.source_info.pages || []}
+          onSelect={handleSelecPages}
+          canPreview={canPreview}
+          previewPageId={previewPageId}
+          onPreview={handlePreviewPage}
+        />
       </div>
       {
         showDataSourceSetting && (
