@@ -411,9 +411,8 @@ class DocumentService:
             batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
             document_ids = []
             if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info"]
-                for upload_file in upload_file_list:
-                    file_id = upload_file["upload_file_id"]
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                for file_id in upload_file_list:
                     file = db.session.query(UploadFile).filter(
                         UploadFile.tenant_id == dataset.tenant_id,
                         UploadFile.id == file_id
@@ -437,7 +436,7 @@ class DocumentService:
                     documents.append(document)
                     position += 1
             elif document_data["data_source"]["type"] == "notion_import":
-                notion_info_list = document_data["data_source"]['info']
+                notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 exist_page_ids = []
                 exist_document = dict()
                 documents = Document.query.filter_by(
@@ -539,9 +538,8 @@ class DocumentService:
             file_name = ''
             data_source_info = {}
             if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info"]
-                for upload_file in upload_file_list:
-                    file_id = upload_file["upload_file_id"]
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                for file_id in upload_file_list:
                     file = db.session.query(UploadFile).filter(
                         UploadFile.tenant_id == dataset.tenant_id,
                         UploadFile.id == file_id
@@ -556,7 +554,7 @@ class DocumentService:
                         "upload_file_id": file_id,
                     }
             elif document_data["data_source"]["type"] == "notion_import":
-                notion_info_list = document_data["data_source"]['info']
+                notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 for notion_info in notion_info_list:
                     workspace_id = notion_info['workspace_id']
                     data_source_binding = DataSourceBinding.query.filter(
