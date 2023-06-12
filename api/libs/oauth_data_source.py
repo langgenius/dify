@@ -157,42 +157,42 @@ class NotionOAuth(OAuthDataSource):
             }
             pages.append(page)
             # get database detail
-            for database_result in database_results:
-                page_id = database_result['id']
-                if len(database_result['title']) > 0:
-                    page_name = database_result['title'][0]['plain_text']
+        for database_result in database_results:
+            page_id = database_result['id']
+            if len(database_result['title']) > 0:
+                page_name = database_result['title'][0]['plain_text']
+            else:
+                page_name = 'Untitled'
+            page_icon = database_result['icon']
+            if page_icon:
+                icon_type = page_icon['type']
+                if icon_type == 'external' or icon_type == 'file':
+                    url = page_icon[icon_type]['url']
+                    icon = {
+                        'type': 'url',
+                        'url': url if url.startswith('http') else f'https://www.notion.so{url}'
+                    }
                 else:
-                    page_name = 'Untitled'
-                page_icon = database_result['icon']
-                if page_icon:
-                    icon_type = page_icon['type']
-                    if icon_type == 'external' or icon_type == 'file':
-                        url = page_icon[icon_type]['url']
-                        icon = {
-                            'type': 'url',
-                            'url': url if url.startswith('http') else f'https://www.notion.so{url}'
-                        }
-                    else:
-                        icon = {
-                            'type': icon_type,
-                            icon_type: page_icon[icon_type]
-                        }
-                else:
-                    icon = None
-                parent = database_result['parent']
-                parent_type = parent['type']
-                if parent_type == 'workspace':
-                    parent_id = 'root'
-                else:
-                    parent_id = parent[parent_type]
-                page = {
-                    'page_id': page_id,
-                    'page_name': page_name,
-                    'page_icon': icon,
-                    'parent_id': parent_id,
-                    'type': 'database'
-                }
-                pages.append(page)
+                    icon = {
+                        'type': icon_type,
+                        icon_type: page_icon[icon_type]
+                    }
+            else:
+                icon = None
+            parent = database_result['parent']
+            parent_type = parent['type']
+            if parent_type == 'workspace':
+                parent_id = 'root'
+            else:
+                parent_id = parent[parent_type]
+            page = {
+                'page_id': page_id,
+                'page_name': page_name,
+                'page_icon': icon,
+                'parent_id': parent_id,
+                'type': 'database'
+            }
+            pages.append(page)
         return pages
 
     def notion_page_search(self, access_token: str):
