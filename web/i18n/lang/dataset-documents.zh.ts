@@ -20,6 +20,7 @@ const translation = {
       archive: '归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
+      sync: '同步',
     },
     index: {
       enable: '启用中',

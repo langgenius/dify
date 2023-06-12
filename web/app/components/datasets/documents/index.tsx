@@ -112,7 +112,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         type: dataset?.data_source_type,
         info_list: {
           data_source_type: dataset?.data_source_type,
-          notion_info_list: {
+          notion_info_list: [{
             workspace_id: selectedPages[0].workspace_id,
             pages: selectedPages.map((selectedPage) => {
               const { page_id, page_name, page_icon, type } = selectedPage
@@ -123,7 +123,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
                 type,
               }
             }),
-          },
+          }],
         },
       },
       indexing_technique: dataset?.indexing_technique,
@@ -138,6 +138,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       body: params,
     })
     mutate()
+  }
+
+  const handleSync = async () => {
+    if (dataset?.data_source_type === 'notion_import')
+      mutate()
   }
 
   return (
@@ -167,7 +172,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsRes?.data || []} datasetId={datasetId} onUpdate={mutate} />
+            ? <List documents={documentsRes?.data || []} datasetId={datasetId} onUpdate={mutate} onSync={handleSync} />
             : <EmptyElement onClick={routeToDocCreate} />
         }
         {/* Show Pagination only if the total is more than the limit */}

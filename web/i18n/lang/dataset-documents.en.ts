@@ -20,6 +20,7 @@ const translation = {
       archive: 'Archive',
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
+      sync: 'Sync',
     },
     index: {
       enable: 'Enable',

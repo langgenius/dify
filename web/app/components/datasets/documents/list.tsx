@@ -24,11 +24,18 @@ import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import { archiveDocument, deleteDocument, disableDocument, enableDocument } from '@/service/datasets'
 import type { DocumentDisplayStatus, DocumentListResponse } from '@/models/datasets'
+import { syncDataSourceNotion } from '@/service/common'
 import type { CommonResponse } from '@/models/common'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M2 5.33325L10 5.33325M10 5.33325C10 6.43782 10.8954 7.33325 12 7.33325C13.1046 7.33325 14 6.43782 14 5.33325C14 4.22868 13.1046 3.33325 12 3.33325C10.8954 3.33325 10 4.22868 10 5.33325ZM6 10.6666L14 10.6666M6 10.6666C6 11.7712 5.10457 12.6666 4 12.6666C2.89543 12.6666 2 11.7712 2 10.6666C2 9.56202 2.89543 8.66659 4 8.66659C5.10457 8.66659 6 9.56202 6 10.6666Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+}
+
+export const SyncIcon: FC<{ className?: string }> = () => {
+  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106" stroke="#667085" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
 }
 
@@ -77,7 +84,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -85,13 +92,18 @@ export const OperationAction: FC<{
     enabled: boolean
     archived: boolean
     id: string
+    data_source_type: string
+    data_source_info: {
+      notion_workspace_id: string
+    }
   }
   datasetId: string
   onUpdate: () => void
   scene?: 'list' | 'detail'
   className?: string
-}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const { id, enabled = false, archived = false } = detail || {}
+  onSync: (workspaceId: string) => void
+}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '', onSync }) => {
+  const { id, enabled = false, archived = false, data_source_type, data_source_info } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
@@ -110,6 +122,9 @@ export const OperationAction: FC<{
         break
       case 'disable':
         opApi = disableDocument
+        break
+      case 'sync':
+        onSync(data_source_info.notion_workspace_id)
         break
       default:
         opApi = deleteDocument
@@ -173,10 +188,14 @@ export const OperationAction: FC<{
                 <SettingsIcon />
                 <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
               </div>
-              {/* <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/create`)}>
-                <FilePlusIcon />
-                <span className={s.actionName}>{t('datasetDocuments.list.action.uploadFile')}</span>
-              </div> */}
+              {
+                data_source_type === 'notion_import' && (
+                  <div className={s.actionItem} onClick={() => onOperate('sync')}>
+                    <SyncIcon />
+                    <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                  </div>
+                )
+              }
               <Divider className='my-1' />
             </>
           )}
@@ -240,12 +259,13 @@ type IDocumentListProps = {
   documents: DocumentListResponse['data']
   datasetId: string
   onUpdate: () => void
+  onSync: () => void
 }
 
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate }) => {
+const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate, onSync }) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [localDocs, setLocalDocs] = useState<DocumentListResponse['data']>(documents)
@@ -264,6 +284,12 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
     else {
       setLocalDocs(documents)
     }
+  }
+
+  const handleSync = async (workspaceId: string) => {
+    await syncDataSourceNotion({ url: `/oauth/data-source/notion/${workspaceId}/sync` })
+
+    onSync()
   }
 
   return (
@@ -310,8 +336,9 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               <td>
                 <OperationAction
                   datasetId={datasetId}
-                  detail={pick(doc, ['enabled', 'archived', 'id'])}
+                  detail={pick(doc, ['enabled', 'archived', 'id', 'data_source_type', 'data_source_info'])}
                   onUpdate={onUpdate}
+                  onSync={handleSync}
                 />
               </td>
             </tr>
