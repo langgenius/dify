@@ -26,12 +26,24 @@ class WeaviateVectorStoreClient(BaseVectorStoreClient):
 
         weaviate.connect.connection.has_grpc = grpc_enabled
 
-        return weaviate.Client(
+        client = weaviate.Client(
             url=endpoint,
             auth_client_secret=auth_config,
             timeout_config=(5, 60),
             startup_period=None
         )
+
+        client.batch.configure(
+            # `batch_size` takes an `int` value to enable auto-batching
+            # (`None` is used for manual batching)
+            batch_size=100,
+            # dynamically update the `batch_size` based on import speed
+            dynamic=True,
+            # `timeout_retries` takes an `int` value to retry on time outs
+            timeout_retries=3,
+        )
+
+        return client
 
     def get_index(self, service_context: ServiceContext, config: dict) -> GPTVectorStoreIndex:
         index_struct = WeaviateIndexDict()
