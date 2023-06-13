@@ -8,6 +8,7 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from controllers.console import api
 from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
+from libs.helper import supported_language
 from models.model import RecommendedApp, App, InstalledApp
 
 
@@ -47,8 +48,7 @@ class InsertExploreAppListApi(Resource):
         parser.add_argument('desc', type=str, location='json')
         parser.add_argument('copyright', type=str, location='json')
         parser.add_argument('privacy_policy', type=str, location='json')
-        parser.add_argument('language', type=str, required=True, nullable=False, choices=['en-US', 'zh-Hans'],
-                            location='json')
+        parser.add_argument('language', type=supported_language, required=True, nullable=False, location='json')
         parser.add_argument('category', type=str, required=True, nullable=False, location='json')
         parser.add_argument('position', type=int, required=True, nullable=False, location='json')
         args = parser.parse_args()
