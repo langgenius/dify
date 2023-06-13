@@ -34,7 +34,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
 
-  // TODO
   const [notionPages, setNotionPages] = useState<Page[]>([])
   const updateNotionPages = (value: Page[]) => {
     setNotionPages(value)

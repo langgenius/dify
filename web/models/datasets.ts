@@ -130,6 +130,7 @@ export type DataSourceInfo = {
 
 export type InitialDocumentDetail = {
   id: string
+  batch: string
   position: number
   dataset_id: string
   data_source_type: 'upload_file'
@@ -195,6 +196,7 @@ export type ProcessRule = {
 
 export type createDocumentResponse = {
   dataset?: DataSet
+  batch: string
   documents: InitialDocumentDetail[]
 }
 

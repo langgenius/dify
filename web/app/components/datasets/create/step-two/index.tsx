@@ -311,6 +311,7 @@ const StepTwo = ({
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType)
         updateResultCache && updateResultCache({
+          batch: res.batch,
           documents: [res],
         })
       }

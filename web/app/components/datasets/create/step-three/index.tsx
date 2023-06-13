@@ -2,7 +2,7 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import EmbeddingDetail from '../../documents/detail/embedding'
+import EmbeddingProcess from '../embedding-process'
 
 import s from './index.module.css'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
@@ -38,13 +38,11 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
               <div className={s.content}>{`${t('datasetCreation.stepThree.additionP1')} ${datasetName || creationCache?.dataset?.name} ${t('datasetCreation.stepThree.additionP2')}`}</div>
             </div>
           )}
-          {/* TODO multi doc display */}
-          <EmbeddingDetail
-            datasetId={datasetId || creationCache?.dataset?.id}
-            documentId={creationCache?.documents[0].id}
+          <EmbeddingProcess
+            datasetId={datasetId || creationCache?.dataset?.id || ''}
+            batchId={creationCache?.batch || ''}
+            documents={creationCache?.documents as FullDocumentDetail[]}
             indexingType={indexingType || creationCache?.dataset?.indexing_technique}
-            stopPosition='bottom'
-            detail={creationCache?.documents[0] as FullDocumentDetail}
           />
         </div>
       </div>

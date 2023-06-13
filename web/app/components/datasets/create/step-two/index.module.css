@@ -14,9 +14,26 @@
 }
 
 .fixed {
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 18px;
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 0.5px solid #EAECF0;
   backdrop-filter: blur(4px);
+  animation: fix 0.5s;
+}
+
+@keyframes fix {
+  from {
+    padding-top: 42px;
+    font-size: 18px;
+    line-height: 28px;
+  }
+  to {
+    padding-top: 12px;
+    font-size: 12px;
+    line-height: 18px;
+  }
 }
 
 .form {
