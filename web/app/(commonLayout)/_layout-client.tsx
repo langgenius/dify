@@ -22,9 +22,7 @@ export type ICommonLayoutProps = {
 const CommonLayout: FC<ICommonLayoutProps> = ({ children }) => {
   useEffect(() => {
     const SENTRY_DSN = document?.body?.getAttribute('data-public-sentry-dsn')
-    console.log(`SENTRY_DSN: ${SENTRY_DSN}`)
     if (!isDevelopment && SENTRY_DSN) {
-      console.log('init sentry')
       Sentry.init({
         dsn: SENTRY_DSN,
         integrations: [

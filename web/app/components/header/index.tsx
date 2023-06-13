@@ -84,7 +84,6 @@ const Header: FC<IHeaderProps> = ({
       s.header,
       isBordered ? 'border-b border-gray-200' : '',
     )}
-    onClick={() => testSentry3()}
     >
       <div className={classNames(
         s[`header-${langeniusVersionInfo.current_env}`],
