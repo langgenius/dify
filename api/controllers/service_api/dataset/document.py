@@ -78,7 +78,7 @@ class DocumentListApi(DatasetApiResource):
         }
 
         try:
-            documents = DocumentService.save_document_with_dataset_id(
+            documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 document_data=document_data,
                 account=dataset.created_by_account,

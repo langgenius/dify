@@ -202,10 +202,15 @@ class DatasetDocumentListApi(Resource):
 
         return response
 
+    documents_and_batch_fields = {
+        'documents': fields.List(fields.Nested(document_fields)),
+        'batch': fields.String
+    }
+
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(document_fields)
+    @marshal_with(documents_and_batch_fields)
     def post(self, dataset_id):
         dataset_id = str(dataset_id)
 
@@ -239,7 +244,7 @@ class DatasetDocumentListApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            documents = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:
@@ -247,13 +252,17 @@ class DatasetDocumentListApi(Resource):
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
 
-        return documents
+        return {
+            'documents': documents,
+            'batch': batch
+        }
 
 
 class DatasetInitApi(Resource):
     dataset_and_document_fields = {
         'dataset': fields.Nested(dataset_fields),
-        'documents': fields.List(fields.Nested(document_fields))
+        'documents': fields.List(fields.Nested(document_fields)),
+        'batch': fields.String
     }
 
     @setup_required
@@ -276,7 +285,7 @@ class DatasetInitApi(Resource):
         DocumentService.document_create_args_validate(args)
 
         try:
-            dataset, documents = DocumentService.save_document_without_dataset_id(
+            dataset, documents, batch = DocumentService.save_document_without_dataset_id(
                 tenant_id=current_user.current_tenant_id,
                 document_data=args,
                 account=current_user
@@ -290,7 +299,8 @@ class DatasetInitApi(Resource):
 
         response = {
             'dataset': dataset,
-            'documents': documents
+            'documents': documents,
+            'batch': batch
         }
 
         return response
