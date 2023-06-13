@@ -110,15 +110,20 @@ export type DataSourceNotionPage = {
   page_name: string
   parent_id: string
   type: string
+  is_bound: boolean
 }
+
+export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
 
 export type DataSourceNotionWorkspace = {
   workspace_name: string
   workspace_id: string
   workspace_icon: string | null
-  total: number
+  total?: number
   pages: DataSourceNotionPage[]
 }
+
+export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
 
 export type DataSourceNotion = {
   id: string

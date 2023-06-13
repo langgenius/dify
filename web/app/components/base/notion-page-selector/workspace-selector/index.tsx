@@ -5,11 +5,11 @@ import { Menu, Transition } from '@headlessui/react'
 import cn from 'classnames'
 import NotionIcon from '../../notion-icon'
 import s from './index.module.css'
-import type { DataSourceNotion } from '@/models/common'
+import type { DataSourceNotionWorkspace } from '@/models/common'
 
 type WorkspaceSelectorProps = {
   value: string
-  items: DataSourceNotion[]
+  items: Omit<DataSourceNotionWorkspace, 'total'>[]
   onSelect: (v: string) => void
 }
 export default function WorkspaceSelector({
@@ -18,7 +18,7 @@ export default function WorkspaceSelector({
   onSelect,
 }: WorkspaceSelectorProps) {
   const { t } = useTranslation()
-  const currentWorkspace = items.find(item => item.id === value)?.source_info
+  const currentWorkspace = items.find(item => item.workspace_id === value)
 
   return (
     <Menu as="div" className="relative inline-block text-left">
@@ -32,7 +32,7 @@ export default function WorkspaceSelector({
                 name={currentWorkspace?.workspace_name}
               />
               <div className='mr-1 w-[90px] text-left text-sm font-medium text-gray-700 truncate' title={currentWorkspace?.workspace_name}>{currentWorkspace?.workspace_name}</div>
-              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.total}</div>
+              <div className='mr-1 px-1 h-[18px] bg-primary-50 rounded-lg text-xs font-medium text-primary-600'>{currentWorkspace?.pages.length}</div>
               <div className={cn(s['down-arrow'], 'mr-2 w-3 h-3')} />
             </Menu.Button>
             <Transition
@@ -55,19 +55,19 @@ export default function WorkspaceSelector({
                 <div className="p-1 max-h-50 overflow-auto">
                   {
                     items.map(item => (
-                      <Menu.Item key={item.id}>
+                      <Menu.Item key={item.workspace_id}>
                         <div
                           className='flex items-center px-3 h-9 hover:bg-gray-50 cursor-pointer'
-                          onClick={() => onSelect(item.id)}
+                          onClick={() => onSelect(item.workspace_id)}
                         >
                           <NotionIcon
                             className='shrink-0 mr-2'
-                            src={item.source_info.workspace_icon}
-                            name={item.source_info.workspace_name}
+                            src={item.workspace_icon}
+                            name={item.workspace_name}
                           />
-                          <div className='grow mr-2 text-sm text-gray-700 truncate' title={item.source_info.workspace_name}>{item.source_info.workspace_name}</div>
+                          <div className='grow mr-2 text-sm text-gray-700 truncate' title={item.workspace_name}>{item.workspace_name}</div>
                           <div className='shrink-0 text-xs font-medium text-primary-600'>
-                            {item.source_info.total} {t('common.dataSource.notion.selector.pageSelected')}
+                            {item.pages.length} {t('common.dataSource.notion.selector.pageSelected')}
                           </div>
                         </div>
                       </Menu.Item>

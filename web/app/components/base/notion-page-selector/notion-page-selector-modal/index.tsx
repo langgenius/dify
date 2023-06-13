@@ -3,29 +3,29 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import NotionPageSelector from '../base'
+import type { NotionPageSelectorValue } from '../base'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
-import type { DataSourceNotionPage } from '@/models/common'
 
 type NotionPageSelectorModalProps = {
   isShow: boolean
   onClose: () => void
-  onSave: (selectedPages: DataSourceNotionPage[]) => void
-  value?: string[]
+  onSave: (selectedPages: NotionPageSelectorValue[]) => void
+  datasetId: string
 }
 const NotionPageSelectorModal = ({
   isShow,
   onClose,
   onSave,
-  value,
+  datasetId,
 }: NotionPageSelectorModalProps) => {
   const { t } = useTranslation()
-  const [selectedPages, setSelectedPages] = useState<DataSourceNotionPage[]>([])
+  const [selectedPages, setSelectedPages] = useState<NotionPageSelectorValue[]>([])
 
   const handleClose = () => {
     onClose()
   }
-  const handleSelectPage = (newSelectedPages: DataSourceNotionPage[]) => {
+  const handleSelectPage = (newSelectedPages: NotionPageSelectorValue[]) => {
     setSelectedPages(newSelectedPages)
   }
   const handleSave = () => {
@@ -47,9 +47,9 @@ const NotionPageSelectorModal = ({
         </div>
       </div>
       <NotionPageSelector
-        value={value}
         onSelect={handleSelectPage}
         canPreview={false}
+        datasetId={datasetId}
       />
       <div className='mt-8 flex justify-end'>
         <div className={s.operate} onClick={handleClose}>{t('common.operation.cancel')}</div>

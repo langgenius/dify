@@ -2,7 +2,7 @@ import type { Fetcher } from 'swr'
 import qs from 'qs'
 import { del, get, patch, post, put } from './base'
 import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusResponse, InitialDocumentDetail, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
+import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 
 // apis for documents in a dataset
 
@@ -93,6 +93,14 @@ export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetI
 
 export const disableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/disable`) as Promise<CommonResponse>
+}
+
+export const syncDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return get(`/datasets/${datasetId}/documents/${documentId}/notion/sync`) as Promise<CommonResponse>
+}
+
+export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorkspace[] }, { url: string; datasetId?: string }> = ({ url, datasetId }) => {
+  return get(url, { params: { dataset_id: datasetId } }) as Promise<{ notion_info: DataSourceNotionWorkspace[] }>
 }
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {

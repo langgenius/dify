@@ -1,4 +1,4 @@
-import { memo, useState } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List, areEqual } from 'react-window'
 import type { ListChildComponentProps } from 'react-window'
@@ -6,18 +6,18 @@ import cn from 'classnames'
 import Checkbox from '../../checkbox'
 import NotionIcon from '../../notion-icon'
 import s from './index.module.css'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 type PageSelectorProps = {
-  value?: string[]
+  value: Set<string>
   searchValue: string
+  pagesMap: DataSourceNotionPageMap
   list: DataSourceNotionPage[]
-  onSelect: (selectedPages: DataSourceNotionPage[]) => void
+  onSelect: (selectedPagesId: Set<string>) => void
   canPreview?: boolean
   previewPageId?: string
-  onPreview?: (selectedPage: DataSourceNotionPage) => void
+  onPreview?: (selectedPageId: string) => void
 }
-type NotionPageMap = Record<string, DataSourceNotionPage>
 type NotionPageTreeItem = {
   children: Set<string>
   descendants: Set<string>
@@ -31,7 +31,7 @@ type NotionPageItem = {
 } & DataSourceNotionPage
 
 const recursivePushInParentDescendants = (
-  listMap: Record<string, DataSourceNotionPage>,
+  pagesMap: DataSourceNotionPageMap,
   listTreeMap: NotionPageTreeMap,
   current: NotionPageTreeItem,
   leafItem: NotionPageTreeItem,
@@ -45,7 +45,7 @@ const recursivePushInParentDescendants = (
       const descendants = new Set([pageId, leafItem.page_id])
 
       listTreeMap[parentId] = {
-        ...listMap[parentId],
+        ...pagesMap[parentId],
         children,
         descendants,
         deepth: 0,
@@ -61,7 +61,7 @@ const recursivePushInParentDescendants = (
     leafItem.ancestors.unshift(listTreeMap[parentId].page_name)
 
     if (listTreeMap[parentId].parent_id !== 'root')
-      recursivePushInParentDescendants(listMap, listTreeMap, listTreeMap[parentId], leafItem)
+      recursivePushInParentDescendants(pagesMap, listTreeMap, listTreeMap[parentId], leafItem)
   }
 }
 
@@ -153,6 +153,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
 const PageSelector = ({
   value,
   searchValue,
+  pagesMap,
   list,
   onSelect,
   canPreview = true,
@@ -160,15 +161,19 @@ const PageSelector = ({
   onPreview,
 }: PageSelectorProps) => {
   const { t } = useTranslation()
-  const [dataList, setDataList] = useState<NotionPageItem[]>(
-    list.filter(item => item.parent_id === 'root').map((item) => {
+  const [prevDataList, setPrevDataList] = useState(list)
+  const [dataList, setDataList] = useState<NotionPageItem[]>([])
+  const [localPreviewPageId, setLocalPreviewPageId] = useState('')
+  if (prevDataList !== list) {
+    setPrevDataList(list)
+    setDataList(list.filter(item => item.parent_id === 'root').map((item) => {
       return {
         ...item,
         expand: false,
         deepth: 0,
       }
-    }),
-  )
+    }))
+  }
   const searchDataList = list.filter((item) => {
     return item.page_name.includes(searchValue)
   }).map((item) => {
@@ -179,23 +184,18 @@ const PageSelector = ({
     }
   })
   const currentDataList = searchValue ? searchDataList : dataList
-  const [checkedIds, setCheckedIds] = useState<Set<string>>(new Set(value || []))
-  const [localPreviewPageId, setLocalPreviewPageId] = useState('')
   const currentPreviewPageId = previewPageId === undefined ? localPreviewPageId : previewPageId
 
-  const listMap = list.reduce((prev: NotionPageMap, next: DataSourceNotionPage) => {
-    prev[next.page_id] = next
+  const listMapWithChildrenAndDescendants = useMemo(() => {
+    return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
+      const pageId = next.page_id
+      if (!prev[pageId])
+        prev[pageId] = { ...next, children: new Set(), descendants: new Set(), deepth: 0, ancestors: [] }
 
-    return prev
-  }, {})
-  const listMapWithChildrenAndDescendants = list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
-    const pageId = next.page_id
-    if (!prev[pageId])
-      prev[pageId] = { ...next, children: new Set(), descendants: new Set(), deepth: 0, ancestors: [] }
-
-    recursivePushInParentDescendants(listMap, prev, prev[pageId], prev[pageId])
-    return prev
-  }, {})
+      recursivePushInParentDescendants(pagesMap, prev, prev[pageId], prev[pageId])
+      return prev
+    }, {})
+  }, [list, pagesMap])
 
   const handleToggle = (index: number) => {
     const current = dataList[index]
@@ -216,7 +216,7 @@ const PageSelector = ({
       newDataList = [
         ...dataList.slice(0, index + 1),
         ...childrenIds.map(item => ({
-          ...listMap[item],
+          ...pagesMap[item],
           expand: false,
           deepth: listMapWithChildrenAndDescendants[item].deepth,
         })),
@@ -230,25 +230,24 @@ const PageSelector = ({
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
-    if (checkedIds.has(pageId)) {
+    if (value.has(pageId)) {
       if (!searchValue) {
         for (const item of currentWithChildrenAndDescendants.descendants)
-          checkedIds.delete(item)
+          value.delete(item)
       }
 
-      checkedIds.delete(pageId)
+      value.delete(pageId)
     }
     else {
       if (!searchValue) {
         for (const item of currentWithChildrenAndDescendants.descendants)
-          checkedIds.add(item)
+          value.add(item)
       }
 
-      checkedIds.add(pageId)
+      value.add(pageId)
     }
 
-    setCheckedIds(new Set([...checkedIds]))
-    onSelect([...checkedIds].map(item => listMap[item]))
+    onSelect(new Set([...value]))
   }
 
   const handlePreview = (index: number) => {
@@ -258,7 +257,7 @@ const PageSelector = ({
     setLocalPreviewPageId(pageId)
 
     if (onPreview)
-      onPreview(listMap[pageId])
+      onPreview(pageId)
   }
 
   if (!currentDataList.length) {
@@ -280,7 +279,7 @@ const PageSelector = ({
       itemData={{
         dataList: currentDataList,
         handleToggle,
-        checkedIds,
+        checkedIds: value,
         handleCheck,
         canPreview,
         handlePreview,

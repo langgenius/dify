@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { debounce, omit } from 'lodash-es'
+import { debounce, groupBy, omit } from 'lodash-es'
 // import Link from 'next/link'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import List from './list'
@@ -107,23 +107,32 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isLoading = !documentsRes && !error
 
   const handleSaveNotionPageSelected = async (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => {
+    const workspacesMap = groupBy(selectedPages, 'workspace_id')
+    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
+      return {
+        workspaceId,
+        pages: workspacesMap[workspaceId],
+      }
+    })
     const params = {
       data_source: {
         type: dataset?.data_source_type,
         info_list: {
           data_source_type: dataset?.data_source_type,
-          notion_info_list: [{
-            workspace_id: selectedPages[0].workspace_id,
-            pages: selectedPages.map((selectedPage) => {
-              const { page_id, page_name, page_icon, type } = selectedPage
-              return {
-                page_id,
-                page_name,
-                page_icon,
-                type,
-              }
-            }),
-          }],
+          notion_info_list: workspaces.map((workspace) => {
+            return {
+              workspace_id: workspace.workspaceId,
+              pages: workspace.pages.map((page) => {
+                const { page_id, page_name, page_icon, type } = page
+                return {
+                  page_id,
+                  page_name,
+                  page_icon,
+                  type,
+                }
+              }),
+            }
+          }),
         },
       },
       indexing_technique: dataset?.indexing_technique,
@@ -138,6 +147,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       body: params,
     })
     mutate()
+    setNotionPageSelectorModalVisible(false)
   }
 
   const handleSync = async () => {
@@ -180,12 +190,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
           : null}
         <NotionPageSelectorModal
-          value={(documentsRes?.data || []).map((doc) => {
-            return doc.data_source_info.notion_page_id
-          })}
           isShow={notionPageSelectorModalVisible}
           onClose={() => setNotionPageSelectorModalVisible(false)}
           onSave={handleSaveNotionPageSelected}
+          datasetId={dataset?.id || ''}
         />
       </div>
     </div>

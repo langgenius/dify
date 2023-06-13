@@ -22,9 +22,8 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
 import type { DocumentDisplayStatus, DocumentListResponse } from '@/models/datasets'
-import { syncDataSourceNotion } from '@/service/common'
 import type { CommonResponse } from '@/models/common'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
@@ -93,17 +92,13 @@ export const OperationAction: FC<{
     archived: boolean
     id: string
     data_source_type: string
-    data_source_info: {
-      notion_workspace_id: string
-    }
   }
   datasetId: string
   onUpdate: () => void
   scene?: 'list' | 'detail'
   className?: string
-  onSync: (workspaceId: string) => void
-}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '', onSync }) => {
-  const { id, enabled = false, archived = false, data_source_type, data_source_info } = detail || {}
+}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
+  const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
@@ -124,7 +119,7 @@ export const OperationAction: FC<{
         opApi = disableDocument
         break
       case 'sync':
-        onSync(data_source_info.notion_workspace_id)
+        opApi = syncDocument
         break
       default:
         opApi = deleteDocument
@@ -286,12 +281,6 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
     }
   }
 
-  const handleSync = async (workspaceId: string) => {
-    await syncDataSourceNotion({ url: `/oauth/data-source/notion/${workspaceId}/sync` })
-
-    onSync()
-  }
-
   return (
     <>
       <table className={`w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
@@ -336,9 +325,8 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               <td>
                 <OperationAction
                   datasetId={datasetId}
-                  detail={pick(doc, ['enabled', 'archived', 'id', 'data_source_type', 'data_source_info'])}
+                  detail={pick(doc, ['enabled', 'archived', 'id', 'data_source_type'])}
                   onUpdate={onUpdate}
-                  onSync={handleSync}
                 />
               </td>
             </tr>
