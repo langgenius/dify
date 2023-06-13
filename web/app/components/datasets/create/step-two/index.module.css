@@ -273,11 +273,11 @@
   @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
 }
 
-.file {
+.source {
   @apply flex justify-between items-center mt-8 px-6 py-4 rounded-xl bg-gray-50;
 }
 
-.file .divider {
+.source .divider {
   @apply shrink-0 mx-4 w-px bg-gray-200;
   height: 42px;
 }
@@ -318,9 +318,19 @@
 .fileIcon.json {
   background-image: url(../assets/json.svg);
 }
-
-.fileContent {
-  flex: 1 1 50%;
+.sourceContent {
+  flex: 1 1 auto;
+}
+.sourceCount {
+  @apply shrink-0 ml-1;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 18px;
+  color: #667085;
+}
+.segmentCount {
+  flex: 1 1 30%;
+  max-width: 120px;
 }
 
 .divider {
