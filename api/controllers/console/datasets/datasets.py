@@ -288,7 +288,7 @@ class DatasetRelatedAppListApi(Resource):
         }, 200
 
 
-class DocumentIndexingStatusApi(Resource):
+class DatasetIndexingStatusApi(Resource):
     document_status_fields = {
         'id': fields.String,
         'indexing_status': fields.String,
@@ -338,4 +338,4 @@ api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
-api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/indexing-status')
+api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
