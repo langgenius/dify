@@ -13,7 +13,7 @@ export type DataSet = {
   icon_background: string
   description: string
   permission: 'only_me' | 'all_team_members'
-  data_source_type: 'upload_file'
+  data_source_type: DataSourceType
   indexing_technique: 'high_quality' | 'economy'
   created_by: string
   updated_by: string
@@ -169,13 +169,23 @@ export type CreateDocumentReq = {
 }
 
 export type DataSource = {
-  type: string
-  // name: string
-  info: Info[] // upload_file_id
+  type: DataSourceType
+  info_list: {
+    data_source_type: DataSourceType
+    notion_info_list?: NotionInfo[]
+    file_info_list?: {
+      file_ids: string[]
+    }
+  }
 }
 
-export type Info = {
-  upload_file_id: string
+export type NotionInfo = {
+  workspace_id: string
+  pages: NotionPage[]
+}
+export type NotionPage = {
+  page_id: string
+  type: string
 }
 
 export type ProcessRule = {

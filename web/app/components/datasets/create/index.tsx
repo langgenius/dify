@@ -11,8 +11,11 @@ import { DataSourceType } from '@/models/datasets'
 import type { DataSet, File, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource, fetchTenantInfo } from '@/service/common'
 import { fetchDataDetail } from '@/service/datasets'
+import type { DataSourceNotionPage } from '@/models/common'
 
 import AccountSetting from '@/app/components/header/account-setting'
+
+type Page = DataSourceNotionPage & { workspace_id: string }
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -32,8 +35,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [hasError, setHasError] = useState(false)
 
   // TODO
-  const [notionPages, setNotionPages] = useState<any>([])
-  const updateNotionPages = (value: any[]) => {
+  const [notionPages, setNotionPages] = useState<Page[]>([])
+  const updateNotionPages = (value: Page[]) => {
     setNotionPages(value)
   }
 
@@ -100,6 +103,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           onSetting={showDataSourceSetting}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
+          dataSourceTypeDisable={!!detail?.data_source_type}
           changeType={setDataSourceType}
           file={file}
           updateFile={updateFile}

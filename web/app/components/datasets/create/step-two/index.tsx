@@ -6,9 +6,10 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import cn from 'classnames'
 import Link from 'next/link'
+import { groupBy } from 'lodash-es'
 import PreviewItem from './preview-item'
 import s from './index.module.css'
-import type { CreateDocumentReq, DataSourceType, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -20,6 +21,10 @@ import Loading from '@/app/components/base/loading'
 
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
+import type { DataSourceNotionPage } from '@/models/common'
+import { DataSourceType } from '@/models/datasets'
+
+type Page = DataSourceNotionPage & { workspace_id: string }
 
 type StepTwoProps = {
   isSetting?: boolean
@@ -30,7 +35,7 @@ type StepTwoProps = {
   indexingType?: string
   dataSourceType: DataSourceType
   file?: File
-  notionPages?: any[]
+  notionPages?: Page[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -56,6 +61,7 @@ const StepTwo = ({
   indexingType,
   dataSourceType,
   file,
+  notionPages,
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -188,6 +194,30 @@ const StepTwo = ({
     return params
   }
 
+  const getNotionInfo = () => {
+    const workspacesMap = groupBy(notionPages, 'workspace_id')
+    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
+      return {
+        workspaceId,
+        pages: workspacesMap[workspaceId],
+      }
+    })
+    return workspaces.map((workspace) => {
+      return {
+        workspace_id: workspace.workspaceId,
+        pages: workspace.pages.map((page) => {
+          const { page_id, page_name, page_icon, type } = page
+          return {
+            page_id,
+            page_name,
+            page_icon,
+            type,
+          }
+        }),
+      }
+    }) as NotionInfo[]
+  }
+
   const getCreationParams = () => {
     let params
     if (isSetting) {
@@ -200,14 +230,21 @@ const StepTwo = ({
       params = {
         data_source: {
           type: dataSourceType,
-          // name: file?.name,
-          info: [{
-            upload_file_id: file?.id,
-          }],
+          info_list: {
+            data_source_type: dataSourceType,
+          },
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
       } as CreateDocumentReq
+      if (dataSourceType === DataSourceType.FILE) {
+        params.data_source.info_list.file_info_list = {
+          // TODO multi files
+          file_ids: [file?.id || ''],
+        }
+      }
+      if (dataSourceType === DataSourceType.NOTION)
+        params.data_source.info_list.notion_info_list = getNotionInfo()
     }
     return params
   }

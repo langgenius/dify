@@ -26,7 +26,7 @@ const NotionPageSelector = ({
   canPreview,
   previewPageId,
   onPreview,
-  datasetId,
+  datasetId = '',
 }: NotionPageSelectorProps) => {
   const { data } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)

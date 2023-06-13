@@ -19,6 +19,7 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { DataSourceNotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
 
 // Custom page count is not currently supported.
 const limit = 15
@@ -95,7 +96,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
-    if (dataset?.data_source_type === 'notion_import') {
+    if (dataset?.data_source_type === DataSourceType.NOTION) {
       setNotionPageSelectorModalVisible(true)
       return
     }

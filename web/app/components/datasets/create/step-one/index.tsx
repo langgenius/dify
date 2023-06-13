@@ -16,6 +16,7 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 type IStepOneProps = {
   datasetId?: string
   dataSourceType: DataSourceType
+  dataSourceTypeDisable: Boolean
   hasConnection: boolean
   onSetting: () => void
   file?: File
@@ -31,6 +32,7 @@ type Page = DataSourceNotionPage & { workspace_id: string }
 const StepOne = ({
   datasetId,
   dataSourceType,
+  dataSourceTypeDisable,
   changeType,
   hasConnection,
   onSetting,
@@ -66,8 +68,14 @@ const StepOne = ({
         <div className={s.form}>
           <div className={s.dataSourceTypeList}>
             <div
-              className={cn(s.dataSourceItem, dataSourceType === DataSourceType.FILE && s.active)}
+              className={cn(
+                s.dataSourceItem,
+                dataSourceType === DataSourceType.FILE && s.active,
+                dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
+              )}
               onClick={() => {
+                if (dataSourceTypeDisable)
+                  return
                 changeType(DataSourceType.FILE)
                 hidePreview()
               }}
@@ -76,8 +84,14 @@ const StepOne = ({
               {t('datasetCreation.stepOne.dataSourceType.file')}
             </div>
             <div
-              className={cn(s.dataSourceItem, dataSourceType === DataSourceType.NOTION && s.active)}
+              className={cn(
+                s.dataSourceItem,
+                dataSourceType === DataSourceType.NOTION && s.active,
+                dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
+              )}
               onClick={() => {
+                if (dataSourceTypeDisable)
+                  return
                 changeType(DataSourceType.NOTION)
                 hidePreview()
               }}
@@ -112,9 +126,8 @@ const StepOne = ({
               )}
               {hasConnection && (
                 <>
-                  {/* TODO */}
                   <div className='mb-8 w-[640px]'>
-                    <NotionPageSelector onSelect={updateNotionPages} onPreview={updateCurrentPage} />
+                    <NotionPageSelector value={notionPages.map(page => page.page_id)} onSelect={updateNotionPages} onPreview={updateCurrentPage} />
                   </div>
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
