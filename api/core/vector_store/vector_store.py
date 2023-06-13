@@ -27,7 +27,8 @@ class VectorStore:
             self._client = WeaviateVectorStoreClient(
                 endpoint=app.config['WEAVIATE_ENDPOINT'],
                 api_key=app.config['WEAVIATE_API_KEY'],
-                grpc_enabled=app.config['WEAVIATE_GRPC_ENABLED']
+                grpc_enabled=app.config['WEAVIATE_GRPC_ENABLED'],
+                batch_size=app.config['WEAVIATE_BATCH_SIZE']
             )
         elif self._vector_store == 'qdrant':
             self._client = QdrantVectorStoreClient(
