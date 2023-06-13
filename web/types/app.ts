@@ -179,6 +179,9 @@ export type SiteConfig = {
   copyright: string
   /** Privacy Policy */
   privacy_policy: string
+
+  icon: string
+  icon_background: string
 }
 
 /**
