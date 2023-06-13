@@ -481,7 +481,7 @@ class DocumentService:
                             exist_document.pop(page['page_id'])
                 # delete not selected documents
                 if len(exist_document) > 0:
-                    clean_notion_document_task.delay(exist_document.values(), dataset.id)
+                    clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
             db.session.commit()
 
             # trigger async task
