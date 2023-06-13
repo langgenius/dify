@@ -21,6 +21,7 @@ const LocaleLayout = ({
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
         data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
         data-public-edition={process.env.NEXT_PUBLIC_EDITION}
+        data-public-sentry-dsn={process.env.NEXT_PUBLIC_SENTRY_DSN}
       >
         {/* @ts-expect-error Async Server Component */}
         <I18nServer locale={locale}>{children}</I18nServer>
