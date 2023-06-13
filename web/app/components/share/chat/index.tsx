@@ -193,9 +193,7 @@ const Main: FC<IMainProps> = ({
   const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
   const createNewChat = async () => {
     // if new chat is already exist, do not create new chat
-    await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
-    setHasStopResponded(true)
-    // abortController?.abort()
+    abortController?.abort()
     setResponsingFalse()
     if (conversationList.some(item => item.id === '-1'))
       return
@@ -543,7 +541,6 @@ const Main: FC<IMainProps> = ({
                     abortResponsing={async () => {
                       await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
                       setHasStopResponded(true)
-                      // abortController?.abort()
                       setResponsingFalse()
                     }}
                     checkCanSend={checkCanSend}

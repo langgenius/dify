@@ -72,7 +72,7 @@ const Debug: FC<IDebug> = ({
   }, [introduction, modelConfig.configs.prompt_variables, inputs])
 
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  // const [abortController, setAbortController] = useState<AbortController | null>(null)
+  const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const [messageTaskId, setMessageTaskId] = useState('')
@@ -87,9 +87,7 @@ const Debug: FC<IDebug> = ({
 
   const clearConversation = async () => {
     setConversationId(null)
-    // abortController?.abort()
-    await stopChatMessageResponding(appId, messageTaskId)
-    setHasStopResponded(true)
+    abortController?.abort()
     setResponsingFalse()
     setChatList(introduction
       ? [{
@@ -211,7 +209,7 @@ const Debug: FC<IDebug> = ({
     setIsShowSuggestion(false)
     sendChatMessage(appId, data, {
       getAbortController: (abortController) => {
-        // setAbortController(abortController)
+        setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
         responseItem.content = responseItem.content + message
@@ -384,7 +382,6 @@ const Debug: FC<IDebug> = ({
                   canStopResponsing={!!messageTaskId}
                   abortResponsing={async () => {
                     await stopChatMessageResponding(appId, messageTaskId)
-                    // abortController?.abort()
                     setHasStopResponded(true)
                     setResponsingFalse()
                   }}
