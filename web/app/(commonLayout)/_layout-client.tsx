@@ -15,28 +15,29 @@ import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/co
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 
-const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
-console.log(`SENTRY_DSN: ${SENTRY_DSN}`)
-if (!isDevelopment && SENTRY_DSN) {
-  console.log('init sentry')
-  Sentry.init({
-    dsn: SENTRY_DSN,
-    integrations: [
-      new Sentry.BrowserTracing({
-      }),
-      new Sentry.Replay(),
-    ],
-    tracesSampleRate: 0.1,
-    replaysSessionSampleRate: 0.1,
-    replaysOnErrorSampleRate: 1.0,
-  })
-}
-
 export type ICommonLayoutProps = {
   children: React.ReactNode
 }
 
 const CommonLayout: FC<ICommonLayoutProps> = ({ children }) => {
+  useEffect(() => {
+    const SENTRY_DSN = document?.body?.getAttribute('data-public-sentry-dsn')
+    console.log(`SENTRY_DSN: ${SENTRY_DSN}`)
+    if (!isDevelopment && SENTRY_DSN) {
+      console.log('init sentry')
+      Sentry.init({
+        dsn: SENTRY_DSN,
+        integrations: [
+          new Sentry.BrowserTracing({
+          }),
+          new Sentry.Replay(),
+        ],
+        tracesSampleRate: 0.1,
+        replaysSessionSampleRate: 0.1,
+        replaysOnErrorSampleRate: 1.0,
+      })
+    }
+  }, [])
   const router = useRouter()
   const pathname = usePathname()
   const segments = useSelectedLayoutSegments()
