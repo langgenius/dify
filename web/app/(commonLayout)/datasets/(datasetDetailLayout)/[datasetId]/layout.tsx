@@ -139,7 +139,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
             <div className='text-xs text-gray-500 mt-2'>{t('common.datasetMenus.emptyTip')}</div>
             <a
               className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
-              href={`https://docs.dify.ai/${locale === 'en' ? '' : 'v/zh-hans'}/application/prompt-engineering`}
+              href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/application/prompt-engineering`}
               target='_blank'
             >
               <BookOpenIcon className='mr-1' />
