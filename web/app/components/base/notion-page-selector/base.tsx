@@ -12,6 +12,7 @@ import type { DataSourceNotionPage, DataSourceNotionPageMap, DataSourceNotionWor
 export type NotionPageSelectorValue = DataSourceNotionPage & { workspace_id: string }
 
 type NotionPageSelectorProps = {
+  value?: string[]
   onSelect: (selectedPages: NotionPageSelectorValue[]) => void
   canPreview?: boolean
   previewPageId?: string
@@ -20,6 +21,7 @@ type NotionPageSelectorProps = {
 }
 
 const NotionPageSelector = ({
+  value,
   onSelect,
   canPreview,
   previewPageId,
@@ -54,11 +56,12 @@ const NotionPageSelector = ({
     }, {})
     return [pagesMap, selectedPagesId]
   }, [notionWorkspaces])
-  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set([...Array.from(getPagesMapAndSelectedPagesId[1])]))
+  const defaultSelectedPagesId = [...Array.from(getPagesMapAndSelectedPagesId[1]), ...(value || [])]
+  const [selectedPagesId, setSelectedPagesId] = useState<Set<string>>(new Set(defaultSelectedPagesId))
 
   if (prevData !== data) {
     setPrevData(data)
-    setSelectedPagesId(new Set([...Array.from(getPagesMapAndSelectedPagesId[1])]))
+    setSelectedPagesId(new Set(defaultSelectedPagesId))
   }
 
   const handleSearchValueChange = useCallback((value: string) => {
