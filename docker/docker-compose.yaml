@@ -168,6 +168,8 @@ services:
       # console or api domain.
       # example: http://udify.app
       APP_URL: ''
+      # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
+      SENTRY_DSN: ''
 
   # The postgres database.
   db:
