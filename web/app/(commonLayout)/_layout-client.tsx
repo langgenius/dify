@@ -13,26 +13,22 @@ import { AppContextProvider } from '@/context/app-context'
 import DatasetsContext from '@/context/datasets-context'
 import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 
-Sentry.init({
-  // dsn: "https://12f61d63153348398b196f99bc2a04c4@o4505072791912448.ingest.sentry.io/4505305961594880",
-  integrations: [
-    new Sentry.BrowserTracing({
-      // Set `tracePropagationTargets` to control for which URLs distributed tracing should be enabled
-      // tracePropagationTargets: ["localhost", /^https:\/\/yourserver\.io\/api/],
-    }),
-    new Sentry.Replay(),
-  ],
-
-  // Set tracesSampleRate to 1.0 to capture 100%
-  // of transactions for performance monitoring.
-  // We recommend adjusting this value in production
-  tracesSampleRate: 1.0,
-
-  // Capture Replay for 10% of all sessions,
-  // plus for 100% of sessions with an error
-  replaysSessionSampleRate: 0.1,
-  replaysOnErrorSampleRate: 1.0,
-})
+const isDevelopment = process.env.NODE_ENV === 'development'
+const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
+if (!isDevelopment && SENTRY_DSN) {
+  console.log('init sentry')
+  Sentry.init({
+    dsn: SENTRY_DSN,
+    integrations: [
+      new Sentry.BrowserTracing({
+      }),
+      new Sentry.Replay(),
+    ],
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+  })
+}
 
 export type ICommonLayoutProps = {
   children: React.ReactNode

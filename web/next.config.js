@@ -1,11 +1,3 @@
-// const { withSentryConfig } = require('@sentry/nextjs')
-
-// const isDevelopment = process.env.NODE_ENV === 'development'
-// const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
-// const SENTRY_ORG = process.env.NEXT_PUBLIC_SENTRY_ORG
-// const SENTRY_PROJECT = process.env.NEXT_PUBLIC_SENTRY_PROJECT
-// const isHideSentry = false
-
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {

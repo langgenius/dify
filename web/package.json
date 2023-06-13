@@ -20,7 +20,6 @@
     "@mdx-js/loader": "^2.3.0",
     "@mdx-js/react": "^2.3.0",
     "@next/mdx": "^13.2.4",
-    "@sentry/nextjs": "^7.53.1",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
     "@tailwindcss/line-clamp": "^0.4.2",
