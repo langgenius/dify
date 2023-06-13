@@ -14,7 +14,9 @@ import DatasetsContext from '@/context/datasets-context'
 import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
+
 const SENTRY_DSN = process.env.NEXT_PUBLIC_SENTRY_DSN
+console.log(`SENTRY_DSN: ${SENTRY_DSN}`)
 if (!isDevelopment && SENTRY_DSN) {
   console.log('init sentry')
   Sentry.init({
