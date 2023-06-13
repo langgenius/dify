@@ -72,9 +72,11 @@ const Debug: FC<IDebug> = ({
   }, [introduction, modelConfig.configs.prompt_variables, inputs])
 
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [abortController, setAbortController] = useState<AbortController | null>(null)
+  // const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
+  const [messageTaskId, setMessageTaskId] = useState('')
+  const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
 
   useEffect(() => {
     if (formattingChanged && chatList.some(item => !item.isAnswer))
@@ -83,9 +85,11 @@ const Debug: FC<IDebug> = ({
     setFormattingChanged(false)
   }, [formattingChanged])
 
-  const clearConversation = () => {
+  const clearConversation = async () => {
     setConversationId(null)
-    abortController?.abort()
+    // abortController?.abort()
+    await stopChatMessageResponding(appId, messageTaskId)
+    setHasStopResponded(true)
     setResponsingFalse()
     setChatList(introduction
       ? [{
@@ -136,7 +140,6 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
-  const [messageTaskId, setMessageTaskId] = useState('')
   const onSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -203,11 +206,12 @@ const Debug: FC<IDebug> = ({
 
     let _newConversationId: null | string = null
 
+    setHasStopResponded(false)
     setResponsingTrue()
     setIsShowSuggestion(false)
     sendChatMessage(appId, data, {
       getAbortController: (abortController) => {
-        setAbortController(abortController)
+        // setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
         responseItem.content = responseItem.content + message
@@ -255,7 +259,7 @@ const Debug: FC<IDebug> = ({
             }
           }))
         }
-        if (suggestedQuestionsAfterAnswerConfig.enabled) {
+        if (suggestedQuestionsAfterAnswerConfig.enabled && !getHasStopResponded()) {
           const { data }: any = await fetchSuggestedQuestions(appId, responseItem.id)
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
@@ -380,7 +384,8 @@ const Debug: FC<IDebug> = ({
                   canStopResponsing={!!messageTaskId}
                   abortResponsing={async () => {
                     await stopChatMessageResponding(appId, messageTaskId)
-                    abortController?.abort()
+                    // abortController?.abort()
+                    setHasStopResponded(true)
                     setResponsingFalse()
                   }}
                   isShowSuggestion={doShowSuggestion}
@@ -399,6 +404,7 @@ const Debug: FC<IDebug> = ({
                 className="mt-2"
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
+                isInstalledApp={false}
               />
             )}
           </div>

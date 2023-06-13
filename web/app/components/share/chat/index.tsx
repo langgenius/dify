@@ -191,9 +191,11 @@ const Main: FC<IMainProps> = ({
   }, [chatList, currConversationId])
   // user can not edit inputs if user had send message
   const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
-  const createNewChat = () => {
+  const createNewChat = async () => {
     // if new chat is already exist, do not create new chat
-    abortController?.abort()
+    await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
+    setHasStopResponded(true)
+    // abortController?.abort()
     setResponsingFalse()
     if (conversationList.some(item => item.id === '-1'))
       return
@@ -333,6 +335,8 @@ const Main: FC<IMainProps> = ({
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
+  const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
+
   const handleSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -371,6 +375,7 @@ const Main: FC<IMainProps> = ({
 
     let tempNewConversationId = ''
 
+    setHasStopResponded(false)
     setResponsingTrue()
     setIsShowSuggestion(false)
     sendChatMessage(data, {
@@ -411,7 +416,7 @@ const Main: FC<IMainProps> = ({
         resetNewConversationInputs()
         setChatNotStarted()
         setCurrConversationId(tempNewConversationId, appId, true)
-        if (suggestedQuestionsAfterAnswerConfig?.enabled) {
+        if (suggestedQuestionsAfterAnswerConfig?.enabled && !getHasStopResponded()) {
           const { data }: any = await fetchSuggestedQuestions(responseItem.id, isInstalledApp, installedAppInfo?.id)
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
@@ -537,7 +542,8 @@ const Main: FC<IMainProps> = ({
                     canStopResponsing={!!messageTaskId}
                     abortResponsing={async () => {
                       await stopChatMessageResponding(appId, messageTaskId, isInstalledApp, installedAppInfo?.id)
-                      abortController?.abort()
+                      setHasStopResponded(true)
+                      // abortController?.abort()
                       setResponsingFalse()
                     }}
                     checkCanSend={checkCanSend}
