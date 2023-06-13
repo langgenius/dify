@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { AppMode } from '@/types/app'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import type { AppMode } from '@/types/app'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
@@ -22,8 +22,6 @@ const StepNum: FC<{ children: React.ReactNode }> = ({ children }) =>
   <div className='h-7 w-7 flex justify-center items-center flex-shrink-0 mr-3 text-primary-600 bg-primary-50 rounded-2xl'>
     {children}
   </div>
-
-
 
 const GithubIcon = ({ className }: { className: string }) => {
   return (
@@ -73,7 +71,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
             export const APP_ID = '{appId}'<br />
-            export const API_KEY = {`'<Web API Key From Dify>'`}
+            export const API_KEY = {'\'<Web API Key From Dify>\''}
           </pre>
         </div>
       </div>
