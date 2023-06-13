@@ -170,12 +170,12 @@ class DataSourceNotionListApi(Resource):
             dataset = DatasetService.get_dataset(dataset_id)
             if not dataset:
                 raise NotFound('Dataset not found.')
-            if dataset.data_source_type != 'notion':
+            if dataset.data_source_type != 'notion_import':
                 raise ValueError('Dataset is not notion type.')
             documents = Document.query.filter_by(
                 dataset_id=dataset_id,
                 tenant_id=current_user.current_tenant_id,
-                data_source_type='notion',
+                data_source_type='notion_import',
                 enabled=True
             ).all()
             if documents:

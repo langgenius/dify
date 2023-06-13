@@ -12,6 +12,7 @@ from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
 from libs.helper import TimestampField
 from extensions.ext_database import db
+from models.dataset import DocumentSegment, Document
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
 
@@ -287,8 +288,54 @@ class DatasetRelatedAppListApi(Resource):
         }, 200
 
 
+class DocumentIndexingStatusApi(Resource):
+    document_status_fields = {
+        'id': fields.String,
+        'indexing_status': fields.String,
+        'processing_started_at': TimestampField,
+        'parsing_completed_at': TimestampField,
+        'cleaning_completed_at': TimestampField,
+        'splitting_completed_at': TimestampField,
+        'completed_at': TimestampField,
+        'paused_at': TimestampField,
+        'error': fields.String,
+        'stopped_at': TimestampField,
+        'completed_segments': fields.Integer,
+        'total_segments': fields.Integer,
+    }
+
+    document_status_fields_list = {
+        'data': fields.List(fields.Nested(document_status_fields))
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id = str(dataset_id)
+        documents = db.session.query(Document).filter(
+            Document.dataset_id == dataset_id,
+            Document.tenant_id == current_user.current_tenant_id
+        ).all()
+        documents_status = []
+        for document in documents:
+            completed_segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+                                                              DocumentSegment.document_id == str(document.id),
+                                                              DocumentSegment.status != 're_segment').count()
+            total_segments = DocumentSegment.query.filter(DocumentSegment.document_id == str(document.id),
+                                                          DocumentSegment.status != 're_segment').count()
+            document.completed_segments = completed_segments
+            document.total_segments = total_segments
+            documents_status.append(marshal(document, self.document_status_fields))
+        data = {
+            'data': documents_status
+        }
+        return data
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
+api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/indexing-status')

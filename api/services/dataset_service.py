@@ -442,7 +442,7 @@ class DocumentService:
                 documents = Document.query.filter_by(
                     dataset_id=dataset.id,
                     tenant_id=current_user.current_tenant_id,
-                    data_source_type='notion',
+                    data_source_type='notion_import',
                     enabled=True
                 ).all()
                 if documents:
