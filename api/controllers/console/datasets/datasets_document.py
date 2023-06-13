@@ -341,7 +341,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         return response
 
 
-class DocumentIndexingStatusApi(DocumentResource):
+class DocumentBatchIndexingStatusApi(DocumentResource):
     document_status_fields = {
         'id': fields.String,
         'indexing_status': fields.String,
@@ -360,6 +360,7 @@ class DocumentIndexingStatusApi(DocumentResource):
     document_status_fields_list = {
         'data': fields.List(fields.Nested(document_status_fields))
     }
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -381,6 +382,46 @@ class DocumentIndexingStatusApi(DocumentResource):
             'data': documents_status
         }
         return data
+
+
+class DocumentIndexingStatusApi(DocumentResource):
+    document_status_fields = {
+        'id': fields.String,
+        'indexing_status': fields.String,
+        'processing_started_at': TimestampField,
+        'parsing_completed_at': TimestampField,
+        'cleaning_completed_at': TimestampField,
+        'splitting_completed_at': TimestampField,
+        'completed_at': TimestampField,
+        'paused_at': TimestampField,
+        'error': fields.String,
+        'stopped_at': TimestampField,
+        'completed_segments': fields.Integer,
+        'total_segments': fields.Integer,
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, document_id):
+        dataset_id = str(dataset_id)
+        document_id = str(document_id)
+        document = self.get_document(dataset_id, document_id)
+
+        completed_segments = DocumentSegment.query \
+            .filter(DocumentSegment.completed_at.isnot(None),
+                    DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
+            .count()
+        total_segments = DocumentSegment.query \
+            .filter(DocumentSegment.document_id == str(document_id),
+                    DocumentSegment.status != 're_segment') \
+            .count()
+
+        document.completed_segments = completed_segments
+        document.total_segments = total_segments
+
+        return marshal(document, self.document_status_fields)
 
 
 class DocumentDetailApi(DocumentResource):
@@ -699,8 +740,10 @@ api.add_resource(DatasetInitApi,
                  '/datasets/init')
 api.add_resource(DocumentIndexingEstimateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate')
-api.add_resource(DocumentIndexingStatusApi,
+api.add_resource(DocumentBatchIndexingStatusApi,
                  '/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status')
+api.add_resource(DocumentIndexingStatusApi,
+                 '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status')
 api.add_resource(DocumentDetailApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>')
 api.add_resource(DocumentProcessingApi,
