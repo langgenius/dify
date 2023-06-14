@@ -467,6 +467,7 @@ class DocumentService:
                             data_source_info = {
                                 "notion_workspace_id": workspace_id,
                                 "notion_page_id": page['page_id'],
+                                "notion_page_icon": page['icon'],
                                 "type": page['type']
                             }
                             document = DocumentService.save_document(dataset, dataset_process_rule.id,
@@ -582,6 +583,7 @@ class DocumentService:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page['page_id'],
+                            "notion_page_icon": page['icon'],
                             "type": page['type']
                         }
             document.data_source_type = document_data["data_source"]["type"]
