@@ -107,6 +107,10 @@ export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: {
   return put(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body }) as Promise<CommonResponse>
 }
 
+export const getDatasetIndexingStatus: Fetcher<{ data: IndexingStatusResponse[] }, string> = (datasetId) => {
+  return get(`/datasets/${datasetId}/indexing-status`) as Promise<{ data: IndexingStatusResponse[] }>
+}
+
 // apis for segments in a document
 
 export const fetchSegments: Fetcher<SegmentsResponse, CommonDocReq & { params: SegmentsQuery }> = ({ datasetId, documentId, params }) => {

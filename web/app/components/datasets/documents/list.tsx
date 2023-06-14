@@ -260,7 +260,7 @@ type IDocumentListProps = {
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate, onSync }) => {
+const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate }) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [localDocs, setLocalDocs] = useState<DocumentListResponse['data']>(documents)

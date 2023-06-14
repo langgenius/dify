@@ -152,7 +152,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   }
 
   const handleSync = async () => {
-    if (dataset?.data_source_type === 'notion_import')
+    if (dataset?.data_source_type === DataSourceType.NOTION)
       mutate()
   }
 
@@ -174,7 +174,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
             <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
             {
-              dataset?.data_source_type === 'notion_import'
+              dataset?.data_source_type === DataSourceType.NOTION
                 ? t('datasetDocuments.list.addPages')
                 : t('datasetDocuments.list.addFile')
             }

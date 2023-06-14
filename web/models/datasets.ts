@@ -1,4 +1,5 @@
 import type { AppMode } from './app'
+import type { DataSourceNotionPage } from './common'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -182,7 +183,7 @@ export type DataSource = {
 
 export type NotionInfo = {
   workspace_id: string
-  pages: NotionPage[]
+  pages: DataSourceNotionPage[]
 }
 export type NotionPage = {
   page_id: string
