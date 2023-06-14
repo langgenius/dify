@@ -51,3 +51,7 @@ git clone git@github.com:<github_username>/dify.git
 ## 社区渠道
 
 遇到困难了吗？有任何问题吗? 加入 [Discord Community Server](https://discord.gg/AhzKf7dNgk)，我们将为您提供帮助。
+
+### 多语言支持
+
+需要参与贡献翻译内容，请参阅[前端多语言翻译 README](web/i18n/README_CN.md)。
