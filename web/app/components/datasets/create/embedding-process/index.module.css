@@ -1,10 +1,13 @@
 .progressContainer {
   @apply relative pb-4 w-full;
+  border-bottom: 0.5px solid #EAECF0;
 }
 .sourceItem {
+  position: relative;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-bottom: 4px;
   padding: 0 4px;
   height: 24px;
   background: #EFF4FF;
@@ -23,6 +26,10 @@
   left: 0;
   height: 100%;
   background-color: #B2CCFF;
+}
+.sourceItem .info {
+  display: flex;
+  align-items: center;
 }
 .sourceItem .info .name {
   font-weight: 500;

@@ -14,7 +14,7 @@ import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } 
 import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
-// import NotionIcon from '@/app/components/base/notion-icon'
+import NotionIcon from '@/app/components/base/notion-icon'
 
 type Props = {
   datasetId: string
@@ -158,18 +158,17 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     const doc = documents.find(document => document.id === id)
     return doc?.data_source_type as DataSourceType
   }
-  // TODO
-  // const getIcon = (id: string) => {
-  //   const doc = documents.find(document => document.id === id)
-  //   let iconSrc
-  //   if (notionPages.length > 0) {
-  //     if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'url')
-  //       iconSrc = notionPages[0].page_icon.url
-  //     if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'emoji')
-  //       iconSrc = notionPages[0].page_icon.emoji
-  //   }
-  //   return iconSrc
-  // }
+  const getIcon = (id: string) => {
+    const doc = documents.find(document => document.id === id) as any // TODO type fix
+    let iconSrc
+    if (doc) {
+      if (doc.data_source_info.notion_page_icon && doc.data_source_info.notion_page_icon.type === 'url')
+        iconSrc = doc.data_source_info.notion_page_icon.url
+      if (doc.data_source_info.notion_page_icon && doc.data_source_info.notion_page_icon.type === 'emoji')
+        iconSrc = doc.data_source_info.notion_page_icon.emoji
+    }
+    return iconSrc
+  }
   const isSourceEmbedding = (detail: IndexingStatusResponse) => ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
 
   return (
@@ -204,18 +203,20 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             indexingStatusDetail.indexing_status === 'error' && s.error,
             indexingStatusDetail.indexing_status === 'completed' && s.success,
           )}>
-            <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
+            {isSourceEmbedding(indexingStatusDetail) && (
+              <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
+            )}
             <div className={s.info}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
                 <div className={s.type}></div>
               )}
-              {/* {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
+              {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon
                   className='shrink-0 mr-1'
                   type='page'
                   src={getIcon(indexingStatusDetail.id)}
                 />
-              )} */}
+              )}
               <div className={s.name}>{getSourceName(indexingStatusDetail.id)}</div>
             </div>
             <div className='shrink-0'>
@@ -223,10 +224,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 <div className={s.percent}>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
               )}
               {indexingStatusDetail.indexing_status === 'error' && (
-                <div className={s.error}>Error%</div>
+                <div className={cn(s.percent, s.error)}>Error</div>
               )}
               {indexingStatusDetail.indexing_status === 'completed' && (
-                <div className={s.success}>100%</div>
+                <div className={cn(s.percent, s.success)}>100%</div>
               )}
             </div>
           </div>
