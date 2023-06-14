@@ -217,7 +217,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
                 {isShowOption && (
                   <div className={cn(isChatApp ? 'min-w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
                     {availableModels.map(item => (
-                      <div key={item.id} onClick={handleSelectModel(item.id)} className="min-w-[159px] flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
+                      <div key={item.id} onClick={handleSelectModel(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
                         <ModelIcon className='shrink-0 mr-2' />
                         <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
                       </div>
