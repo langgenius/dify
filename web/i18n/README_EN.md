@@ -1,8 +1,17 @@
 # Frontend i18n modification
 
+## Backend i18n modification
+
+`api/libs/helper.py:117` Add corresponding language support. Such as:
+```python
+def supported_language(lang):
+    if lang in ['en-US', 'zh-Hans', 'de', 'de-AT']:
+        return lang
+```
+
 ## Adding multiple language files
 
-Add multilingual files for different modules under web/i18n/lang. The file name is Module name.{LANG}.ts.
+Add multilingual files for different modules under web/i18n/lang. The file name is Module name.{LANG}.ts. Please refer [LANG](https://www.venea.net/web/culture_code) for details.
 
 ## Introducing a newly added multilingual file 
 

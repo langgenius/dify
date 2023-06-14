@@ -1,8 +1,18 @@
 # 前端 i18n 修改
 
+## 后端多语言支持
+
+`api/libs/helper.py:117` 中添加对应的语言支持。如：
+```python
+def supported_language(lang):
+    if lang in ['en-US', 'zh-Hans', 'de', 'de-AT']:
+        return lang
+```
+
+
 ## 添加多语言文件
 
-在 `web/i18n/lang` 下添加不同模块的多语言文件。文件命令为 模块名.{LANG}.ts。
+在 `web/i18n/lang` 下添加不同模块的多语言文件。文件命令为 模块名.{LANG}.ts。详细参考[LANG](https://www.venea.net/web/culture_code) 
 
 ## 引入新添加的多语言文件
 在 `web/i18n/i18next-config.ts` 中 resources 对象中中引入新添加的多语言文件。如：
