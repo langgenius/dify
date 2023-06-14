@@ -13,6 +13,8 @@ import Button from '@/app/components/base/button'
 import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
+import { DataSourceType } from '@/models/datasets'
+// import NotionIcon from '@/app/components/base/notion-icon'
 
 type Props = {
   datasetId: string
@@ -140,15 +142,35 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     return indexingStatusBatchDetail.every((indexingStatusDetail: { indexing_status: any }) => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
+  const getSourceName = (id: string) => {
+    const doc = documents.find(document => document.id === id)
+    return doc?.name
+  }
+  const getSourcePercent = (detail: IndexingStatusResponse) => {
+    const completedCount = detail.completed_segments || 0
+    const totalCount = detail.total_segments || 0
+    if (totalCount === 0)
+      return 0
+    const percent = Math.round(completedCount * 100 / totalCount)
+    return percent > 100 ? 100 : percent
+  }
+  const getSourceType = (id: string) => {
+    const doc = documents.find(document => document.id === id)
+    return doc?.data_source_type as DataSourceType
+  }
   // TODO
-  // const percent = useMemo(() => {
-  //   const completedCount = indexingStatusBatchDetail?.completed_segments || 0
-  //   const totalCount = indexingStatusBatchDetail?.total_segments || 0
-  //   if (totalCount === 0)
-  //     return 0
-  //   const percent = Math.round(completedCount * 100 / totalCount)
-  //   return percent > 100 ? 100 : percent
-  // }, [indexingStatusBatchDetail])
+  // const getIcon = (id: string) => {
+  //   const doc = documents.find(document => document.id === id)
+  //   let iconSrc
+  //   if (notionPages.length > 0) {
+  //     if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'url')
+  //       iconSrc = notionPages[0].page_icon.url
+  //     if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'emoji')
+  //       iconSrc = notionPages[0].page_icon.emoji
+  //   }
+  //   return iconSrc
+  // }
+  const isSourceEmbedding = (detail: IndexingStatusResponse) => ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
 
   return (
     <>
@@ -175,23 +197,41 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           )}
         </div>
       </div>
-      {/* TODO progress bar */}
-      {/* <div className={s.progressContainer}>
-        {new Array(10).fill('').map((_, idx) => <div
-          key={idx}
-          className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
-        />)}
-        <div
-          className={cn(
-            'rounded-l-md',
-            s.progressBar,
-            (isEmbedding || isEmbeddingCompleted) && s.barProcessing,
-            (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
-            indexingStatusBatchDetail?.indexing_status === 'completed' && 'rounded-r-md',
-          )}
-          style={{ width: `${percent}%` }}
-        />
-      </div> */}
+      <div className={s.progressContainer}>
+        {indexingStatusBatchDetail.map(indexingStatusDetail => (
+          <div className={cn(
+            s.sourceItem,
+            indexingStatusDetail.indexing_status === 'error' && s.error,
+            indexingStatusDetail.indexing_status === 'completed' && s.success,
+          )}>
+            <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
+            <div className={s.info}>
+              {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
+                <div className={s.type}></div>
+              )}
+              {/* {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
+                <NotionIcon
+                  className='shrink-0 mr-1'
+                  type='page'
+                  src={getIcon(indexingStatusDetail.id)}
+                />
+              )} */}
+              <div className={s.name}>{getSourceName(indexingStatusDetail.id)}</div>
+            </div>
+            <div className='shrink-0'>
+              {isSourceEmbedding(indexingStatusDetail) && (
+                <div className={s.percent}>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+              )}
+              {indexingStatusDetail.indexing_status === 'error' && (
+                <div className={s.error}>Error%</div>
+              )}
+              {indexingStatusDetail.indexing_status === 'completed' && (
+                <div className={s.success}>100%</div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
       <RuleDetail sourceData={ruleDetail} />
       <div className='flex items-center gap-2 mt-10'>
         <Button className='w-fit' type='primary' onClick={navToDocumentList}>

@@ -1,30 +1,51 @@
-.progressBar {
-  @apply absolute top-0 h-4;
+.progressContainer {
+  @apply relative pb-4 w-full;
 }
-.barPaused {
-  background: linear-gradient(
-    270deg,
-    rgba(208, 213, 221, 0.8) -2.21%,
-    rgba(208, 213, 221, 0.5) 100%
-  );
+.sourceItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  height: 24px;
+  background: #EFF4FF;
+  border-radius: 6px;
+  overflow: hidden;
 }
-.barProcessing {
-  background: linear-gradient(
-    90deg,
-    rgba(41, 112, 255, 0.9) 0%,
-    rgba(21, 94, 239, 0.9) 100%
-  );
+.sourceItem.error {
+  background: #FEE4E2;
+}
+.sourceItem.success {
+  background: #D1FADF;
+}
+.progressbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #B2CCFF;
+}
+.sourceItem .info .name {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #101828;
+}
+.sourceItem.success .info .name {
+  color: #05603A;
+}
+.sourceItem .percent {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #344054;
+}
+.sourceItem .error {
+  color: #D92D20;
+}
+.sourceItem .success {
+  color: #05603A;
 }
 
-.progressContainer {
-  @apply relative flex mb-2 h-4 rounded-md w-full;
-}
-.progressBgItem {
-  @apply flex-1 border-r border-r-white first:rounded-l-md;
-}
-.progressBgItem:nth-last-child(2) {
-  @apply rounded-r-md;
-}
 
 .cost {
   @apply flex justify-between items-center text-xs text-gray-700;
