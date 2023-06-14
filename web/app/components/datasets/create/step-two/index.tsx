@@ -310,10 +310,7 @@ const StepTwo = ({
           body: params,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType)
-        updateResultCache && updateResultCache({
-          batch: res.batch,
-          documents: [res],
-        })
+        updateResultCache && updateResultCache(res)
       }
       onStepChange && onStepChange(+1)
       isSetting && onSave && onSave()

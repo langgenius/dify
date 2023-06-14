@@ -1,7 +1,7 @@
 import type { Fetcher } from 'swr'
 import qs from 'qs'
 import { del, get, patch, post, put } from './base'
-import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusBatchResponse, IndexingStatusResponse, InitialDocumentDetail, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusBatchResponse, IndexingStatusResponse, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 
 // apis for documents in a dataset
@@ -60,8 +60,8 @@ export const createFirstDocument: Fetcher<createDocumentResponse, { body: Create
   return post('/datasets/init', { body }) as Promise<createDocumentResponse>
 }
 
-export const createDocument: Fetcher<InitialDocumentDetail, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
-  return post(`/datasets/${datasetId}/documents`, { body }) as Promise<InitialDocumentDetail>
+export const createDocument: Fetcher<createDocumentResponse, { datasetId: string; body: CreateDocumentReq }> = ({ datasetId, body }) => {
+  return post(`/datasets/${datasetId}/documents`, { body }) as Promise<createDocumentResponse>
 }
 
 export const fetchIndexingEstimate: Fetcher<IndexingEstimateResponse, CommonDocReq> = ({ datasetId, documentId }) => {

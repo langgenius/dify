@@ -71,6 +71,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             hasSetAPIKEY={hasSetAPIKEY}
             onSetting={showSetAPIKey}
             datasetId={datasetId}
+            dataSourceType={documentDetail.data_source_type}
             indexingType={indexingTechnique || ''}
             isSetting
             documentDetail={documentDetail}
