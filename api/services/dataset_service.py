@@ -384,6 +384,7 @@ class DocumentService:
         if dataset.indexing_technique == 'high_quality':
             IndexBuilder.get_default_service_context(dataset.tenant_id)
         documents = []
+        batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
         if 'original_document_id' in document_data and document_data["original_document_id"]:
             document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
             documents.append(document)
@@ -408,7 +409,6 @@ class DocumentService:
                 db.session.add(dataset_process_rule)
                 db.session.commit()
             position = DocumentService.get_documents_position(dataset.id)
-            batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
             document_ids = []
             if document_data["data_source"]["type"] == "upload_file":
                 upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
@@ -466,15 +466,26 @@ class DocumentService:
                         if page['page_id'] not in exist_page_ids:
                             data_source_info = {
                                 "notion_workspace_id": workspace_id,
-                                "notion_page_id": page['page_id']
+                                "notion_page_id": page['page_id'],
+                                "type": page['type']
                             }
                             document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                                      document_data["data_source"]["type"],
                                                                      data_source_info, created_from, position,
                                                                      account, page['page_name'], batch)
+                            if page['type'] == 'database':
+                                document.splitting_completed_at = datetime.datetime.utcnow()
+                                document.cleaning_completed_at = datetime.datetime.utcnow()
+                                document.parsing_completed_at = datetime.datetime.utcnow()
+                                document.completed_at = datetime.datetime.utcnow()
+                                document.indexing_status = 'completed'
+                                document.word_count = 0
+                                document.tokens = 0
+                                document.indexing_latency = 0
                             db.session.add(document)
                             db.session.flush()
-                            document_ids.append(document.id)
+                            if page['type'] != 'database':
+                                document_ids.append(document.id)
                             documents.append(document)
                             position += 1
                         else:
@@ -571,6 +582,7 @@ class DocumentService:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
                             "notion_page_id": page['page_id'],
+                            "type": page['type']
                         }
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)

@@ -351,6 +351,73 @@ class DocumentIndexingEstimateApi(DocumentResource):
         return response
 
 
+class DocumentBatchIndexingEstimateApi(DocumentResource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id, batch):
+        dataset_id = str(dataset_id)
+        batch = str(batch)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        documents = self.get_batch_documents(dataset_id, batch)
+        response = {
+            "tokens": 0,
+            "total_price": 0,
+            "currency": "USD",
+            "total_segments": 0,
+            "preview": []
+        }
+        if not documents:
+            return response
+        data_process_rule = documents[0].dataset_process_rule
+        data_process_rule_dict = data_process_rule.to_dict()
+        info_list = []
+        for document in documents:
+            if document.indexing_status in ['completed', 'error']:
+                raise DocumentAlreadyFinishedError()
+            data_source_info = document.data_source_info_dict
+            # format document files info
+            if data_source_info and 'upload_file_id' in data_source_info:
+                file_id = data_source_info['upload_file_id']
+                info_list.append(file_id)
+            # format document notion info
+            elif data_source_info and 'notion_workspace_id' in data_source_info and 'notion_page_id' in data_source_info:
+                pages = []
+                page = {
+                    'page_id': data_source_info['notion_page_id'],
+                    'type': data_source_info['type']
+                }
+                pages.append(page)
+                notion_info = {
+                    'workspace_id': data_source_info['notion_workspace_id'],
+                    'pages': pages
+                }
+                info_list.append(notion_info)
+
+        if dataset.data_source_type == 'upload_file':
+            file_details = db.session.query(UploadFile).filter(
+                UploadFile.tenant_id == current_user.current_tenant_id,
+                UploadFile.id in info_list
+            ).all()
+
+            if file_details is None:
+                raise NotFound("File not found.")
+
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.file_indexing_estimate(file_details, data_process_rule_dict)
+        elif dataset.data_source_type:
+
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.notion_indexing_estimate(info_list,
+                                                                data_process_rule_dict)
+        else:
+            raise ValueError('Data source type not support')
+        return response
+
+
 class DocumentBatchIndexingStatusApi(DocumentResource):
     document_status_fields = {
         'id': fields.String,
@@ -750,6 +817,8 @@ api.add_resource(DatasetInitApi,
                  '/datasets/init')
 api.add_resource(DocumentIndexingEstimateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate')
+api.add_resource(DocumentBatchIndexingEstimateApi,
+                 '/datasets/<uuid:dataset_id>/batch/<uuid:batch>/indexing-estimate')
 api.add_resource(DocumentBatchIndexingStatusApi,
                  '/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-status')
 api.add_resource(DocumentIndexingStatusApi,

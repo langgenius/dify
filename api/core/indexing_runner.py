@@ -210,7 +210,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def notion_indexing_estimate(self, notion_info_list: dict, tmp_processing_rule: dict) -> dict:
+    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict) -> dict:
         """
         Estimate the indexing for the document.
         """
