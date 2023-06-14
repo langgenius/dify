@@ -27,7 +27,7 @@
 }
 
 .cost {
-  @apply w-full flex justify-between items-center text-xs text-gray-700;
+  @apply flex justify-between items-center text-xs text-gray-700;
 }
 .embeddingStatus {
   @apply flex items-center justify-between text-gray-900 font-medium text-sm mr-2;
@@ -36,12 +36,12 @@
   @apply w-3 h-3 mr-1 inline-block align-middle;
 }
 .highIcon {
-  mask-image: url(/../assets/star.svg);
+  mask-image: url(../assets/star.svg);
   @apply bg-orange-500;
 }
 .economyIcon {
   background-color: #444ce7;
-  mask-image: url(/../assets/normal.svg);
+  mask-image: url(../assets/normal.svg);
 }
 .tokens {
   @apply text-xs font-medium px-1;

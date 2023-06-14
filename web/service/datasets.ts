@@ -1,7 +1,7 @@
 import type { Fetcher } from 'swr'
 import qs from 'qs'
 import { del, get, patch, post, put } from './base'
-import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusResponse, InitialDocumentDetail, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusBatchResponse, IndexingStatusResponse, InitialDocumentDetail, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 
 // apis for documents in a dataset
@@ -9,6 +9,11 @@ import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 type CommonDocReq = {
   datasetId: string
   documentId: string
+}
+
+type BatchReq = {
+  datasetId: string
+  batchId: string
 }
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
@@ -62,9 +67,16 @@ export const createDocument: Fetcher<InitialDocumentDetail, { datasetId: string;
 export const fetchIndexingEstimate: Fetcher<IndexingEstimateResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get(`/datasets/${datasetId}/documents/${documentId}/indexing-estimate`, {}) as Promise<IndexingEstimateResponse>
 }
+export const fetchIndexingEstimateBatch: Fetcher<IndexingEstimateResponse, BatchReq> = ({ datasetId, batchId }) => {
+  return get(`/datasets/${datasetId}/batch/${batchId}/indexing-estimate`, {}) as Promise<IndexingEstimateResponse>
+}
 
 export const fetchIndexingStatus: Fetcher<IndexingStatusResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return get(`/datasets/${datasetId}/documents/${documentId}/indexing-status`, {}) as Promise<IndexingStatusResponse>
+}
+
+export const fetchIndexingStatusBatch: Fetcher<IndexingStatusBatchResponse, BatchReq> = ({ datasetId, batchId }) => {
+  return get(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {}) as Promise<IndexingStatusBatchResponse>
 }
 
 export const fetchDocumentDetail: Fetcher<DocumentDetailResponse, CommonDocReq & { params: { metadata?: MetadataType } }> = ({ datasetId, documentId, params }) => {

@@ -10,9 +10,9 @@ import cn from 'classnames'
 import s from './index.module.css'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
-import type { FullDocumentDetail, ProcessRuleResponse } from '@/models/datasets'
+import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
-import { fetchIndexingStatus as doFetchIndexingStatus, fetchIndexingEstimate, fetchProcessRule } from '@/service/datasets'
+import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 
 type Props = {
   datasetId: string
@@ -79,10 +79,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   const getFirstDocument = documents[0]
 
-  const [indexingStatusDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<any>(null)
+  const [indexingStatusBatchDetail, setIndexingStatusDetail, getIndexingStatusDetail] = useGetState<IndexingStatusResponse[]>([])
   const fetchIndexingStatus = async () => {
-    const status = await doFetchIndexingStatus({ datasetId, documentId: getFirstDocument.id })
-    setIndexingStatusDetail(status)
+    const status = await doFetchIndexingStatus({ datasetId, batchId })
+    setIndexingStatusDetail(status.data)
   }
 
   const [runId, setRunId, getRunId] = useGetState<any>(null)
@@ -93,8 +93,9 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   const startQueryStatus = () => {
     const runId = setInterval(() => {
-      const indexingStatusDetail = getIndexingStatusDetail()
-      if (indexingStatusDetail?.indexing_status === 'completed') {
+      const indexingStatusBatchDetail = getIndexingStatusDetail()
+      const isCompleted = indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail.indexing_status))
+      if (isCompleted) {
         stopQueryStatus()
         return
       }
@@ -112,21 +113,18 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }, [])
 
   // get rule
-  // get cost
-  // get index status
-
-  const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
-    action: 'fetchIndexingEstimate',
-    datasetId,
-    documentId: getFirstDocument.id,
-  }, apiParams => fetchIndexingEstimate(omit(apiParams, 'action')), {
-    revalidateOnFocus: false,
-  })
-
   const { data: ruleDetail, error: ruleError } = useSWR({
     action: 'fetchProcessRule',
     params: { documentId: getFirstDocument.id },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
+    revalidateOnFocus: false,
+  })
+  // get cost
+  const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
+    action: 'fetchIndexingEstimateBatch',
+    datasetId,
+    batchId,
+  }, apiParams => fetchIndexingEstimateBatch(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
 
@@ -135,18 +133,22 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     router.push(`/datasets/${datasetId}/documents`)
   }
 
-  const isEmbedding = useMemo(() => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
-  const isEmbeddingCompleted = useMemo(() => ['completed'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
-  const isEmbeddingPaused = useMemo(() => ['paused'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
-  const isEmbeddingError = useMemo(() => ['error'].includes(indexingStatusDetail?.indexing_status || ''), [indexingStatusDetail])
-  const percent = useMemo(() => {
-    const completedCount = indexingStatusDetail?.completed_segments || 0
-    const totalCount = indexingStatusDetail?.total_segments || 0
-    if (totalCount === 0)
-      return 0
-    const percent = Math.round(completedCount * 100 / totalCount)
-    return percent > 100 ? 100 : percent
-  }, [indexingStatusDetail])
+  const isEmbedding = useMemo(() => {
+    return indexingStatusBatchDetail.some((indexingStatusDetail: { indexing_status: any }) => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
+  }, [indexingStatusBatchDetail])
+  const isEmbeddingCompleted = useMemo(() => {
+    return indexingStatusBatchDetail.every((indexingStatusDetail: { indexing_status: any }) => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
+  }, [indexingStatusBatchDetail])
+
+  // TODO
+  // const percent = useMemo(() => {
+  //   const completedCount = indexingStatusBatchDetail?.completed_segments || 0
+  //   const totalCount = indexingStatusBatchDetail?.total_segments || 0
+  //   if (totalCount === 0)
+  //     return 0
+  //   const percent = Math.round(completedCount * 100 / totalCount)
+  //   return percent > 100 ? 100 : percent
+  // }, [indexingStatusBatchDetail])
 
   return (
     <>
@@ -154,8 +156,6 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
         <div className={s.embeddingStatus}>
           {isEmbedding && t('datasetDocuments.embedding.processing')}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
-          {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
-          {isEmbeddingError && t('datasetDocuments.embedding.error')}
         </div>
         <div className={s.cost}>
           {indexingType === 'high_quaility' && (
@@ -176,7 +176,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
         </div>
       </div>
       {/* TODO progress bar */}
-      <div className={s.progressContainer}>
+      {/* <div className={s.progressContainer}>
         {new Array(10).fill('').map((_, idx) => <div
           key={idx}
           className={cn(s.progressBgItem, isEmbedding ? 'bg-primary-50' : 'bg-gray-100')}
@@ -187,11 +187,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             s.progressBar,
             (isEmbedding || isEmbeddingCompleted) && s.barProcessing,
             (isEmbeddingPaused || isEmbeddingError) && s.barPaused,
-            indexingStatusDetail?.indexing_status === 'completed' && 'rounded-r-md',
+            indexingStatusBatchDetail?.indexing_status === 'completed' && 'rounded-r-md',
           )}
           style={{ width: `${percent}%` }}
         />
-      </div>
+      </div> */}
       <RuleDetail sourceData={ruleDetail} />
       <div className='flex items-center gap-2 mt-10'>
         <Button className='w-fit' type='primary' onClick={navToDocumentList}>
