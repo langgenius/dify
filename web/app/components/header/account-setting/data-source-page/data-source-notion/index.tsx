@@ -71,7 +71,7 @@ const DataSourceNotion = ({
                 <div className={cn(s['workspace-item'], 'flex items-center mb-1 py-1 pr-1 bg-white rounded-lg')} key={workspace.id}>
                   <NotionIcon
                     className='ml-3 mr-[6px]'
-                    src={workspace.source_info.workspace_icon || ''}
+                    src={workspace.source_info.workspace_icon}
                     name={workspace.source_info.workspace_name}
                   />
                   <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700'>{workspace.source_info.workspace_name}</div>

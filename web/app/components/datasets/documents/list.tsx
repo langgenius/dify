@@ -24,7 +24,8 @@ import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
-import { DataSourceType, type DocumentDisplayStatus, type DocumentListResponse } from '@/models/datasets'
+import ProgressBar from '@/app/components/base/progress-bar'
+import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
@@ -252,7 +253,7 @@ const renderCount = (count: number | undefined) => {
 }
 
 type IDocumentListProps = {
-  documents: DocumentListResponse['data']
+  documents: (SimpleDocumentDetail & { percent: number })[]
   datasetId: string
   onUpdate: () => void
   onSync: () => void
@@ -264,7 +265,7 @@ type IDocumentListProps = {
 const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate }) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [localDocs, setLocalDocs] = useState<DocumentListResponse['data']>(documents)
+  const [localDocs, setLocalDocs] = useState<(SimpleDocumentDetail & { percent: number })[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
 
   useEffect(() => {
@@ -317,7 +318,11 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
                     ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
                     : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
                 }
-                <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
+                {
+                  doc.data_source_type === DataSourceType.NOTION
+                    ? <span>{doc.name}</span>
+                    : <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
+                }
               </td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
@@ -325,7 +330,11 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
                 {dayjs.unix(doc.created_at).format(t('datasetHitTesting.dateTimeFormat') as string)}
               </td>
               <td>
-                <StatusItem status={doc.display_status} />
+                {
+                  ['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
+                    ? <ProgressBar percent={doc.percent} />
+                    : <StatusItem status={doc.display_status} />
+                }
               </td>
               <td>
                 <OperationAction

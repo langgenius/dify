@@ -14,11 +14,11 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Pagination from '@/app/components/base/pagination'
 import { get } from '@/service/base'
-import { createDocument, fetchDocuments } from '@/service/datasets'
+import { createDocument, fetchDocuments, getDatasetIndexingStatus } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { DataSourceNotionPage } from '@/models/common'
-import type { CreateDocumentReq } from '@/models/datasets'
+import type { CreateDocumentReq, IndexingStatusResponse } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 
 // Custom page count is not currently supported.
@@ -82,6 +82,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
   const { dataset } = useDatasetDetailContext()
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
+  const [timerCanRun, setTimerCanRun] = useState(false)
 
   const query = useMemo(() => {
     return { page: currPage + 1, limit, keyword: searchValue }
@@ -92,7 +93,45 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     datasetId,
     params: query,
   }, apiParams => fetchDocuments(omit(apiParams, 'action')))
+  const { data: datasetIndexingStatus } = useSWR(timerCanRun ? datasetId : null, getDatasetIndexingStatus, { refreshInterval: 2500 })
 
+  const datasetDocumentProgress: [Record<string, number>, boolean] = useMemo(() => {
+    let completedNum = 0
+    const progressPercentMap = datasetIndexingStatus?.data.reduce((prev: Record<string, number>, next: IndexingStatusResponse) => {
+      const { id, completed_segments, total_segments, indexing_status } = next
+
+      if (indexing_status === 'completed')
+        completedNum++
+      const completedCount = completed_segments || 0
+      const totalCount = total_segments || 0
+      if (totalCount === 0 && completedCount === 0) {
+        prev[id] = indexing_status === 'completed' ? 100 : 0
+      }
+      else {
+        const percent = Math.round(completedCount * 100 / totalCount)
+        prev[id] = percent > 100 ? 100 : percent
+      }
+
+      return prev
+    }, {}) || {}
+
+    return [progressPercentMap, completedNum === datasetIndexingStatus?.data.length]
+  }, [datasetIndexingStatus?.data])
+
+  if (datasetDocumentProgress[1])
+    setTimerCanRun(false)
+
+  const documentsWithProgress = useMemo(() => {
+    return {
+      ...documentsRes,
+      data: documentsRes?.data.map((documentItem) => {
+        return {
+          ...documentItem,
+          percent: datasetDocumentProgress[0][documentItem.id],
+        }
+      }),
+    }
+  }, [documentsRes, datasetDocumentProgress])
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
@@ -149,6 +188,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     })
     mutate()
     setNotionPageSelectorModalVisible(false)
+    setTimerCanRun(true)
   }
 
   const handleSync = async () => {
@@ -183,7 +223,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsRes?.data || []} datasetId={datasetId} onUpdate={mutate} onSync={handleSync} />
+            ? <List documents={documentsWithProgress?.data || []} datasetId={datasetId} onUpdate={mutate} onSync={handleSync} />
             : <EmptyElement onClick={routeToDocCreate} />
         }
         {/* Show Pagination only if the total is more than the limit */}
