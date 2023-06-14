@@ -26,8 +26,10 @@ export type IConifgModelProps = {
 
 const options = [
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.chat },
+  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.chat },
   { id: 'gpt-4', name: 'gpt-4', type: AppType.chat }, // 8k version
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.completion },
+  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.completion },
   { id: 'text-davinci-003', name: 'text-davinci-003', type: AppType.completion },
   { id: 'gpt-4', name: 'gpt-4', type: AppType.completion }, // 8k version
 ]
