@@ -326,17 +326,6 @@ const StepTwo = ({
     }
   }
 
-  const getIcon = () => {
-    let iconSrc
-    if (notionPages.length > 0) {
-      if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'url')
-        iconSrc = notionPages[0].page_icon.url
-      if (notionPages[0].page_icon && notionPages[0].page_icon.type === 'emoji')
-        iconSrc = notionPages[0].page_icon.emoji
-    }
-    return iconSrc
-  }
-
   useEffect(() => {
     // fetch rules
     if (!isSetting) {
@@ -558,7 +547,7 @@ const StepTwo = ({
                       <NotionIcon
                         className='shrink-0 mr-1'
                         type='page'
-                        src={getIcon()}
+                        src={notionPages[0]?.page_icon}
                       />
                       {notionPages[0]?.page_name}
                       {notionPages.length > 1 && (

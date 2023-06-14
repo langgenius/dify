@@ -83,13 +83,6 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
   const ancestors = currentWithChildrenAndDescendants.ancestors
   const breadCrumbs = ancestors.length ? [...ancestors, current.page_name] : [current.page_name]
-  let iconSrc
-
-  if (current.page_icon && current.page_icon.type === 'url')
-    iconSrc = current.page_icon.url
-
-  if (current.page_icon && current.page_icon.type === 'emoji')
-    iconSrc = current.page_icon.emoji
 
   const renderArrow = () => {
     return hasChild
@@ -119,7 +112,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
       <NotionIcon
         className='shrink-0 mr-1'
         type='page'
-        src={iconSrc}
+        src={current.page_icon}
       />
       <div
         className='grow text-sm font-medium text-gray-700 truncate'

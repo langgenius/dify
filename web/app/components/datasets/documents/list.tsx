@@ -23,7 +23,8 @@ import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
 import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
-import type { DocumentDisplayStatus, DocumentListResponse } from '@/models/datasets'
+import NotionIcon from '@/app/components/base/notion-icon'
+import { DataSourceType, type DocumentDisplayStatus, type DocumentListResponse } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
@@ -311,7 +312,11 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               }}>
               <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
               <td className={s.tdValue}>
-                <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                {
+                  doc?.data_source_type === DataSourceType.NOTION
+                    ? <NotionIcon className='inline-block -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
+                    : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                }
                 <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
               </td>
               <td>{renderCount(doc.word_count)}</td>

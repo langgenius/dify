@@ -75,6 +75,9 @@
 .markdownIcon {
   background-image: url(./assets/md.svg);
 }
+.mdIcon {
+  background-image: url(./assets/md.svg);
+}
 .xlsIcon {
   background-image: url(./assets/xlsx.svg);
 }

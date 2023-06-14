@@ -137,7 +137,7 @@ export type InitialDocumentDetail = {
   batch: string
   position: number
   dataset_id: string
-  data_source_type: 'upload_file'
+  data_source_type: DataSourceType
   data_source_info: DataSourceInfo
   dataset_process_rule_id: string
   name: string

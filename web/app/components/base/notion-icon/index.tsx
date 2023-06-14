@@ -1,13 +1,14 @@
 import cn from 'classnames'
 import s from './index.module.css'
+import type { DataSourceNotionPage } from '@/models/common'
 
+type IconTypes = 'workspace' | 'page'
 type NotionIconProps = {
-  type?: 'workspace' | 'page'
-  src?: string | null
+  type?: IconTypes
   name?: string | null
   className?: string
+  src?: string | null | Pick<DataSourceNotionPage, 'page_icon'>['page_icon']
 }
-
 const NotionIcon = ({
   type = 'workspace',
   src,
@@ -15,7 +16,7 @@ const NotionIcon = ({
   className,
 }: NotionIconProps) => {
   if (type === 'workspace') {
-    if (src) {
+    if (typeof src === 'string') {
       if (src.startsWith('https://') || src.startsWith('http://')) {
         return (
           <img
@@ -34,18 +35,18 @@ const NotionIcon = ({
     )
   }
 
-  if (src) {
-    if (src.startsWith('https://') || src.startsWith('http://')) {
+  if (typeof src === 'object' && src !== null) {
+    if (src?.type === 'url') {
       return (
         <img
           alt='page icon'
-          src={src}
+          src={src.url || ''}
           className={cn('block object-cover w-5 h-5', className)}
         />
       )
     }
     return (
-      <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src}</div>
+      <div className={cn('flex items-center justify-center w-5 h-5', className)}>{src?.emoji}</div>
     )
   }
 

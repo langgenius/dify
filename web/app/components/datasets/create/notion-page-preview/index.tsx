@@ -35,16 +35,6 @@ const NotionPagePreview = ({
     }
     catch {}
   }
-  const getIcon = () => {
-    let iconSrc
-    if (currentPage) {
-      if (currentPage.page_icon && currentPage.page_icon.type === 'url')
-        iconSrc = currentPage.page_icon.url
-      if (currentPage.page_icon && currentPage.page_icon.type === 'emoji')
-        iconSrc = currentPage.page_icon.emoji
-    }
-    return iconSrc
-  }
 
   useEffect(() => {
     if (currentPage) {
@@ -66,7 +56,7 @@ const NotionPagePreview = ({
           <NotionIcon
             className='shrink-0 mr-1'
             type='page'
-            src={getIcon()}
+            src={currentPage?.page_icon}
           />
           {currentPage?.page_name}
         </div>
