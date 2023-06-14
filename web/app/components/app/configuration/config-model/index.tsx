@@ -97,7 +97,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
       key: 'max_tokens',
       tip: t('common.model.params.maxTokenTip'),
       step: 100,
-      max: modelId === 'gpt-4' ? 8000 : 4000,
+      max: (modelId === 'gpt-4' || modelId === 'gpt-3.5-turbo-16k') ? 8000 : 4000,
     },
   ]
 
@@ -215,11 +215,11 @@ const ConifgModel: FC<IConifgModelProps> = ({
                   {!selectModelDisabled && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
                 </div>
                 {isShowOption && (
-                  <div className={cn(isChatApp ? 'w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
+                  <div className={cn(isChatApp ? 'min-w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
                     {availableModels.map(item => (
                       <div key={item.id} onClick={handleSelectModel(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
-                        <ModelIcon className='mr-2' />
-                        <div className="text-sm gray-900">{item.name}</div>
+                        <ModelIcon className='shrink-0 mr-2' />
+                        <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
                       </div>
                     ))}
                   </div>
