@@ -346,7 +346,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 indexing_runner = IndexingRunner()
 
-                response = indexing_runner.file_indexing_estimate(list(file), data_process_rule_dict)
+                response = indexing_runner.file_indexing_estimate([file], data_process_rule_dict)
 
         return response
 
