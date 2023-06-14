@@ -78,3 +78,34 @@
   color: #f79009;
   @apply text-xs font-medium;
 }
+
+.fileIcon {
+  @apply w-4 h-4 mr-1 bg-center bg-no-repeat;
+  background-image: url(../assets/unknow.svg);
+  background-size: 16px;
+}
+.fileIcon.csv {
+  background-image: url(../assets/csv.svg);
+}
+
+.fileIcon.xlsx,
+.fileIcon.xls {
+  background-image: url(../assets/xlsx.svg);
+}
+.fileIcon.pdf {
+  background-image: url(../assets/pdf.svg);
+}
+.fileIcon.html,
+.fileIcon.htm {
+  background-image: url(../assets/html.svg);
+}
+.fileIcon.md,
+.fileIcon.markdown {
+  background-image: url(../assets/md.svg);
+}
+.fileIcon.txt {
+  background-image: url(../assets/txt.svg);
+}
+.fileIcon.json {
+  background-image: url(../assets/json.svg);
+}

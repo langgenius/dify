@@ -146,6 +146,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     const doc = documents.find(document => document.id === id)
     return doc?.name
   }
+  const getFileType = (name?: string) => name?.split('.').pop() || 'txt'
   const getSourcePercent = (detail: IndexingStatusResponse) => {
     const completedCount = detail.completed_segments || 0
     const totalCount = detail.total_segments || 0
@@ -202,7 +203,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             )}
             <div className={s.info}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
-                <div className={s.type}></div>
+                <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])}/>
               )}
               {getSourceType(indexingStatusDetail.id) === DataSourceType.NOTION && (
                 <NotionIcon
