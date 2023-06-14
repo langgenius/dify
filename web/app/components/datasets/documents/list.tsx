@@ -314,7 +314,7 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               <td className={s.tdValue}>
                 {
                   doc?.data_source_type === DataSourceType.NOTION
-                    ? <NotionIcon className='inline-block -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
+                    ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
                     : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
                 }
                 <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
