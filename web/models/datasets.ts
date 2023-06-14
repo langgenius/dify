@@ -68,6 +68,9 @@ export type IndexingStatusResponse = {
   completed_segments: number
   total_segments: number
 }
+export type IndexingStatusBatchResponse = {
+  data: IndexingStatusResponse[]
+}
 
 export type ProcessMode = 'automatic' | 'custom'
 
