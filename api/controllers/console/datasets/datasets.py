@@ -225,9 +225,10 @@ class DatasetIndexingEstimateApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         if args['info_list']['data_source_type'] == 'upload_file':
+            file_ids = args['info_list']['file_info_list']['file_ids']
             file_details = db.session.query(UploadFile).filter(
                 UploadFile.tenant_id == current_user.current_tenant_id,
-                UploadFile.id in args['info_list']['file_info_list']['file_ids']
+                UploadFile.id.in_(file_ids)
             ).all()
 
             if file_details is None:

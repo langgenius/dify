@@ -242,6 +242,8 @@ class Document(db.Model):
                             'created_at': file_detail.created_at.timestamp()
                         }
                     }
+            elif self.data_source_type == 'notion_import':
+                return json.loads(self.data_source_info)
         return {}
 
     @property
