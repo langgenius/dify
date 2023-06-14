@@ -160,14 +160,8 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }
   const getIcon = (id: string) => {
     const doc = documents.find(document => document.id === id) as any // TODO type fix
-    let iconSrc
-    if (doc) {
-      if (doc.data_source_info.notion_page_icon && doc.data_source_info.notion_page_icon.type === 'url')
-        iconSrc = doc.data_source_info.notion_page_icon.url
-      if (doc.data_source_info.notion_page_icon && doc.data_source_info.notion_page_icon.type === 'emoji')
-        iconSrc = doc.data_source_info.notion_page_icon.emoji
-    }
-    return iconSrc
+
+    return doc.data_source_info.notion_page_icon
   }
   const isSourceEmbedding = (detail: IndexingStatusResponse) => ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
 
