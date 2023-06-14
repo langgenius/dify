@@ -817,9 +817,9 @@ api.add_resource(DatasetInitApi,
                  '/datasets/init')
 api.add_resource(DocumentIndexingEstimateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-estimate')
-api.add_resource(DocumentBatchIndexingEstimateApi,
-                 '/datasets/<uuid:dataset_id>/batch/<uuid:batch>/indexing-estimate')
 api.add_resource(DocumentBatchIndexingStatusApi,
+                 '/datasets/<uuid:dataset_id>/batch/<uuid:batch>/indexing-status')
+api.add_resource(DocumentBatchIndexingEstimateApi,
                  '/datasets/<uuid:dataset_id>/batch/<string:batch>/indexing-estimate')
 api.add_resource(DocumentIndexingStatusApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/indexing-status')
