@@ -75,7 +75,12 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.conversation_message_task.save_message(self.llm_message)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        self.conversation_message_task.append_message_text(token)
+        try:
+            self.conversation_message_task.append_message_text(token)
+        except ConversationTaskStoppedException as ex:
+            self.on_llm_error(error=ex)
+            raise ex
+
         self.llm_message.completion += token
 
     def on_llm_error(

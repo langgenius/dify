@@ -215,7 +215,11 @@ class AppTemplateApi(Resource):
         account = current_user
         interface_language = account.interface_language
 
-        return {'data': demo_model_templates.get(interface_language)}
+        templates = demo_model_templates.get(interface_language)
+        if not templates:
+            templates = demo_model_templates.get('en-US')
+
+        return {'data': templates}
 
 
 class AppApi(Resource):

@@ -34,6 +34,10 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
   }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController })
 }
 
+export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
+  return getAction('post', isInstalledApp)(getUrl(`chat-messages/${taskId}/stop`, isInstalledApp, installedAppId))
+}
+
 export const sendCompletionMessage = async (body: Record<string, any>, { onData, onCompleted, onError }: {
   onData: IOnData
   onCompleted: IOnCompleted

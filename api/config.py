@@ -43,6 +43,7 @@ DEFAULTS = {
     'SENTRY_TRACES_SAMPLE_RATE': 1.0,
     'SENTRY_PROFILES_SAMPLE_RATE': 1.0,
     'WEAVIATE_GRPC_ENABLED': 'True',
+    'WEAVIATE_BATCH_SIZE': 100,
     'CELERY_BACKEND': 'database',
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
@@ -78,7 +79,7 @@ class Config:
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
-        self.CURRENT_VERSION = "0.3.1"
+        self.CURRENT_VERSION = "0.3.3"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -138,6 +139,7 @@ class Config:
         self.WEAVIATE_ENDPOINT = get_env('WEAVIATE_ENDPOINT')
         self.WEAVIATE_API_KEY = get_env('WEAVIATE_API_KEY')
         self.WEAVIATE_GRPC_ENABLED = get_bool_env('WEAVIATE_GRPC_ENABLED')
+        self.WEAVIATE_BATCH_SIZE = int(get_env('WEAVIATE_BATCH_SIZE'))
 
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')

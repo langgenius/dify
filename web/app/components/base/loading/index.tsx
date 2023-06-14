@@ -1,11 +1,11 @@
 import React from 'react'
 
 import './style.css'
-interface ILoadingProps {
+type ILoadingProps = {
   type?: 'area' | 'app'
 }
 const Loading = (
-  { type = 'area' }: ILoadingProps = { type: 'area' }
+  { type = 'area' }: ILoadingProps = { type: 'area' },
 ) => {
   return (
     <div className={`flex w-full justify-center items-center ${type === 'app' ? 'h-full' : ''}`}>

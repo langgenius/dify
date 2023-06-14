@@ -83,7 +83,8 @@ const Header: FC<IHeaderProps> = ({
       'sticky top-0 left-0 right-0 z-20 flex bg-gray-100 grow-0 shrink-0 basis-auto h-14',
       s.header,
       isBordered ? 'border-b border-gray-200' : '',
-    )}>
+    )}
+    >
       <div className={classNames(
         s[`header-${langeniusVersionInfo.current_env}`],
         'flex flex-1 items-center justify-between px-4',

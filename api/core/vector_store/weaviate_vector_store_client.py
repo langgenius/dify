@@ -18,20 +18,32 @@ from llama_index.readers.weaviate.utils import (
 
 class WeaviateVectorStoreClient(BaseVectorStoreClient):
 
-    def __init__(self, endpoint: str, api_key: str, grpc_enabled: bool):
-        self._client = self.init_from_config(endpoint, api_key, grpc_enabled)
+    def __init__(self, endpoint: str, api_key: str, grpc_enabled: bool, batch_size: int):
+        self._client = self.init_from_config(endpoint, api_key, grpc_enabled, batch_size)
 
-    def init_from_config(self, endpoint: str, api_key: str, grpc_enabled: bool):
+    def init_from_config(self, endpoint: str, api_key: str, grpc_enabled: bool, batch_size: int):
         auth_config = weaviate.auth.AuthApiKey(api_key=api_key)
 
         weaviate.connect.connection.has_grpc = grpc_enabled
 
-        return weaviate.Client(
+        client = weaviate.Client(
             url=endpoint,
             auth_client_secret=auth_config,
             timeout_config=(5, 60),
             startup_period=None
         )
+
+        client.batch.configure(
+            # `batch_size` takes an `int` value to enable auto-batching
+            # (`None` is used for manual batching)
+            batch_size=batch_size,
+            # dynamically update the `batch_size` based on import speed
+            dynamic=True,
+            # `timeout_retries` takes an `int` value to retry on time outs
+            timeout_retries=3,
+        )
+
+        return client
 
     def get_index(self, service_context: ServiceContext, config: dict) -> GPTVectorStoreIndex:
         index_struct = WeaviateIndexDict()

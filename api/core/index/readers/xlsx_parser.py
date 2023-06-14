@@ -25,7 +25,7 @@ class XLSXParser(BaseParser):
                     if all(v is None for v in row):
                         continue
                     if keys == []:
-                        keys = row
+                        keys = list(map(str, row))
                     else:
-                        data.append(json.dumps(dict(zip(keys, row)), ensure_ascii=False))
-        return data
+                        data.append(json.dumps(dict(zip(keys, list(map(str, row)))), ensure_ascii=False))
+        return '\n\n'.join(data)
