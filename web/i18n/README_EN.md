@@ -16,7 +16,8 @@ Add multilingual files for different modules under web/i18n/lang. The file name 
 ## Introducing a newly added multilingual file 
 
 Introduce the newly added multilingual file in the resources object in web/i18n/i18next-config.ts. For example:
-javascript
+
+```javascript
 const resources = {
     'en': {...},
     'zh-Hans': {...},  
@@ -29,12 +30,14 @@ const resources = {
       }  
     }
 }
+```
 ## Changes in the translation process
 
 ### Multi-language processing of date formatting
 
 Currently, two files are involved in date formatting in multiple languages:
-javascript
+
+```javascript
 1. web/app/components/header/account-setting/members-page/index.tsx
 _// Line 78_   
 {dayjs(Number((account.last_login_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}  
@@ -47,6 +50,8 @@ const formatDate = (timestamp: any) => {
       return new Intl.DateTimeFormat('fr-CA', { year: 'numeric', month: '2-digit', day: '2-digit' }).format((+timestamp) * 1000)  
     }  
   }
+```
+
 Make corresponding changes based on requirements.
 
 ### Handling translation content with variables
