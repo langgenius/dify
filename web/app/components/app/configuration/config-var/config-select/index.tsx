@@ -37,6 +37,7 @@ const ConfigSelect: FC<IConfigSelectProps> = ({
             setList={list => onChange(list.map(item => item.name))}
             handle='.handle'
             ghostClass="opacity-50"
+            animation={150}
           >
             {options.map((o, index) => (
               <div className={`${s.inputWrap} relative`} key={index}>
