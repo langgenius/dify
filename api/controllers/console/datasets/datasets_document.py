@@ -150,7 +150,7 @@ class DatasetDocumentListApi(Resource):
         dataset_id = str(dataset_id)
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=20, type=int)
-        search = request.args.get('search', default=None, type=str)
+        search = request.args.get('keyword', default=None, type=str)
         sort = request.args.get('sort', default='-created_at', type=str)
 
         dataset = DatasetService.get_dataset(dataset_id)
@@ -718,6 +718,8 @@ class DocumentStatusApi(DocumentResource):
             return {'result': 'success'}, 200
 
         elif action == "disable":
+            if not document.completed_at or document.indexing_status != 'completed':
+                raise InvalidActionError('Document is not completed.')
             if not document.enabled:
                 raise InvalidActionError('Document already disabled.')
 
