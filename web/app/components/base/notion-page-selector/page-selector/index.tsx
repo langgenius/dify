@@ -167,7 +167,7 @@ const PageSelector = ({
   const [localPreviewPageId, setLocalPreviewPageId] = useState('')
   if (prevDataList !== list) {
     setPrevDataList(list)
-    setDataList(list.filter(item => item.parent_id === 'root').map((item) => {
+    setDataList(list.filter(item => item.parent_id === 'root' || !pagesMap[item.parent_id]).map((item) => {
       return {
         ...item,
         expand: false,
