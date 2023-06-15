@@ -51,16 +51,21 @@ class OAuthDataSourceCallback(Resource):
             oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
         if not oauth_provider:
             return {'error': 'Invalid provider'}, 400
+        if 'code' in request.args:
+            code = request.args.get('code')
+            try:
+                oauth_provider.get_access_token(code)
+            except requests.exceptions.HTTPError as e:
+                logging.exception(
+                    f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
+                return {'error': 'OAuth data source process failed'}, 400
 
-        code = request.args.get('code')
-        try:
-            oauth_provider.get_access_token(code)
-        except requests.exceptions.HTTPError as e:
-            logging.exception(
-                f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
-            return {'error': 'OAuth data source process failed'}, 400
-
-        return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
+            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
+        elif 'error' in request.args:
+            error = request.args.get('error')
+            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source={error}')
+        else:
+            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=access_denied')
 
 
 class OAuthDataSourceSync(Resource):
