@@ -82,7 +82,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const router = useRouter()
   const { dataset } = useDatasetDetailContext()
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
-  const [timerCanRun, setTimerCanRun] = useState(false)
+  const [timerCanRun, setTimerCanRun] = useState(true)
 
   const query = useMemo(() => {
     return { page: currPage + 1, limit, keyword: searchValue }
@@ -100,7 +100,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     const progressPercentMap = datasetIndexingStatus?.data.reduce((prev: Record<string, number>, next: IndexingStatusResponse) => {
       const { id, completed_segments, total_segments, indexing_status } = next
 
-      if (indexing_status === 'completed')
+      if (indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error')
         completedNum++
       const completedCount = completed_segments || 0
       const totalCount = total_segments || 0
