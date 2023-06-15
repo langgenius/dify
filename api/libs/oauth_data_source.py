@@ -144,7 +144,9 @@ class NotionOAuth(OAuthDataSource):
                 icon = None
             parent = page_result['parent']
             parent_type = parent['type']
-            if parent_type == 'workspace':
+            if parent_type == 'block_id':
+                continue
+            elif parent_type == 'workspace':
                 parent_id = 'root'
             else:
                 parent_id = parent[parent_type]
@@ -181,7 +183,9 @@ class NotionOAuth(OAuthDataSource):
                 icon = None
             parent = database_result['parent']
             parent_type = parent['type']
-            if parent_type == 'workspace':
+            if parent_type == 'block_id':
+                continue
+            elif parent_type == 'workspace':
                 parent_id = 'root'
             else:
                 parent_id = parent[parent_type]
