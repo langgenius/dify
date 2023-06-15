@@ -74,13 +74,13 @@ const DataSourceNotion = ({
                     src={workspace.source_info.workspace_icon}
                     name={workspace.source_info.workspace_name}
                   />
-                  <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700'>{workspace.source_info.workspace_name}</div>
+                  <div className='grow py-[7px] leading-[18px] text-[13px] font-medium text-gray-700 truncate' title={workspace.source_info.workspace_name}>{workspace.source_info.workspace_name}</div>
                   {
                     workspace.is_bound
-                      ? <Indicator className='mr-[6px]' />
-                      : <Indicator className='mr-[6px]' color='yellow' />
+                      ? <Indicator className='shrink-0 mr-[6px]' />
+                      : <Indicator className='shrink-0 mr-[6px]' color='yellow' />
                   }
-                  <div className='mr-3 text-xs font-medium'>
+                  <div className='shrink-0 mr-3 text-xs font-medium'>
                     {
                       workspace.is_bound
                         ? t('common.dataSource.notion.connected')

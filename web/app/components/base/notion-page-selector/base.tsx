@@ -28,7 +28,7 @@ const NotionPageSelector = ({
   onPreview,
   datasetId = '',
 }: NotionPageSelectorProps) => {
-  const { data } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
+  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [showDataSourceSetting, setShowDataSourceSetting] = useState(false)
@@ -119,6 +119,7 @@ const NotionPageSelector = ({
         showDataSourceSetting && (
           <AccountSetting activeTab='data-source' onCancel={() => {
             setShowDataSourceSetting(false)
+            mutate()
           }} />
         )
       }
