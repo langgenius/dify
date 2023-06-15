@@ -39,11 +39,13 @@ const recursivePushInParentDescendants = (
   const parentId = current.parent_id
   const pageId = current.page_id
 
+  if (!parentId || !pageId)
+    return
+
   if (parentId !== 'root') {
     if (!listTreeMap[parentId]) {
       const children = new Set([pageId])
       const descendants = new Set([pageId, leafItem.page_id])
-
       listTreeMap[parentId] = {
         ...pagesMap[parentId],
         children,
@@ -85,17 +87,23 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
   const breadCrumbs = ancestors.length ? [...ancestors, current.page_name] : [current.page_name]
 
   const renderArrow = () => {
-    return hasChild
-      ? (
+    if (hasChild) {
+      return (
         <div
           className={cn(s.arrow, current.expand && s['arrow-expand'], 'shrink-0 mr-1 w-5 h-5 hover:bg-gray-200 rounded-md')}
           style={{ marginLeft: current.deepth * 8 }}
           onClick={() => handleToggle(index)}
         />
       )
-      : (
-        <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.deepth * 8 }} />
+    }
+    if (current.parent_id === 'root') {
+      return (
+        <div></div>
       )
+    }
+    return (
+      <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.deepth * 8 }} />
+    )
   }
 
   return (
