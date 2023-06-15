@@ -42,7 +42,7 @@ const recursivePushInParentDescendants = (
   if (!parentId || !pageId)
     return
 
-  if (parentId !== 'root') {
+  if (parentId !== 'root' && pagesMap[parentId]) {
     if (!listTreeMap[parentId]) {
       const children = new Set([pageId])
       const descendants = new Set([pageId, leafItem.page_id])
