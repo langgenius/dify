@@ -99,11 +99,15 @@ class NotionOAuth(OAuthDataSource):
             # get all authorized pages
             pages = self.get_authorized_pages(data_source_binding.access_token)
             source_info = data_source_binding.source_info
-            source_info['pages'] = pages
-            source_info['total'] = len(pages)
-            data_source_binding.source_info = source_info
+            new_source_info = {
+                'workspace_name': source_info['workspace_name'],
+                'workspace_icon': source_info['workspace_icon'],
+                'workspace_id': source_info['workspace_id'],
+                'pages': pages,
+                'total': len(pages)
+            }
+            data_source_binding.source_info = new_source_info
             data_source_binding.disabled = False
-            db.session.add(data_source_binding)
             db.session.commit()
         else:
             raise ValueError('Data source binding not found')
