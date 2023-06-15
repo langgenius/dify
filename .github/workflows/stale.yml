@@ -20,6 +20,8 @@ jobs:
     steps:
     - uses: actions/stale@v5
       with:
+        days-before-issue-stale: 30
+        days-before-issue-close: 3
         repo-token: ${{ secrets.GITHUB_TOKEN }}
         stale-issue-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
         stale-pr-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
