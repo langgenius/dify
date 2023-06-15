@@ -77,9 +77,10 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
   listMapWithChildrenAndDescendants: NotionPageTreeMap
   searchValue: string
   previewPageId: string
+  pagesMap: DataSourceNotionPageMap
 }>) => {
   const { t } = useTranslation()
-  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId } = data
+  const { dataList, handleToggle, checkedIds, handleCheck, canPreview, handlePreview, listMapWithChildrenAndDescendants, searchValue, previewPageId, pagesMap } = data
   const current = dataList[index]
   const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[current.page_id]
   const hasChild = currentWithChildrenAndDescendants.descendants.size > 0
@@ -96,7 +97,7 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
         />
       )
     }
-    if (current.parent_id === 'root') {
+    if (current.parent_id === 'root' || !pagesMap[current.parent_id]) {
       return (
         <div></div>
       )
@@ -287,6 +288,7 @@ const PageSelector = ({
         listMapWithChildrenAndDescendants,
         searchValue,
         previewPageId: currentPreviewPageId,
+        pagesMap,
       }}
     >
       {Item}

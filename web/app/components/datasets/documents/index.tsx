@@ -93,19 +93,20 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     datasetId,
     params: query,
   }, apiParams => fetchDocuments(omit(apiParams, 'action')))
-  const { data: datasetIndexingStatus } = useSWR(timerCanRun ? datasetId : null, getDatasetIndexingStatus, { refreshInterval: 2500 })
+  const { data: datasetIndexingStatus, mutate: mutateDatasetIndexingStatus } = useSWR(timerCanRun ? datasetId : null, getDatasetIndexingStatus, { refreshInterval: 2500 })
 
   const datasetDocumentProgress: [Record<string, number>, boolean] = useMemo(() => {
     let completedNum = 0
-    const progressPercentMap = datasetIndexingStatus?.data.reduce((prev: Record<string, number>, next: IndexingStatusResponse) => {
+    const progressPercentMap = datasetIndexingStatus?.data?.reduce((prev: Record<string, number>, next: IndexingStatusResponse) => {
       const { id, completed_segments, total_segments, indexing_status } = next
+      const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
-      if (indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error')
+      if (isEmbeddinged)
         completedNum++
       const completedCount = completed_segments || 0
       const totalCount = total_segments || 0
       if (totalCount === 0 && completedCount === 0) {
-        prev[id] = indexing_status === 'completed' ? 100 : 0
+        prev[id] = isEmbeddinged ? 100 : 0
       }
       else {
         const percent = Math.round(completedCount * 100 / totalCount)
@@ -115,11 +116,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       return prev
     }, {}) || {}
 
-    return [progressPercentMap, completedNum === datasetIndexingStatus?.data.length]
-  }, [datasetIndexingStatus?.data])
+    if (completedNum === datasetIndexingStatus?.data?.length)
+      setTimerCanRun(false)
 
-  if (datasetDocumentProgress[1])
-    setTimerCanRun(false)
+    return [progressPercentMap, completedNum === datasetIndexingStatus?.data?.length]
+  }, [datasetIndexingStatus])
 
   const documentsWithProgress = useMemo(() => {
     return {
@@ -187,8 +188,9 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       body: params,
     })
     mutate()
-    setNotionPageSelectorModalVisible(false)
     setTimerCanRun(true)
+    mutateDatasetIndexingStatus(undefined, { revalidate: true })
+    setNotionPageSelectorModalVisible(false)
   }
 
   const handleSync = async () => {
