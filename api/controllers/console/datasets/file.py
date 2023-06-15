@@ -1,6 +1,7 @@
 import datetime
 import hashlib
 import tempfile
+import chardet
 import time
 import uuid
 from pathlib import Path
@@ -141,7 +142,8 @@ class FilePreviewApi(Resource):
                 # ['txt', 'markdown', 'md']
                 with open(filepath, "rb") as fp:
                     data = fp.read()
-                    text = data.decode(encoding='utf-8').strip() if data else ''
+                    encoding = chardet.detect(data)['encoding']
+                    text = data.decode(encoding=encoding).strip() if data else ''
 
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
         return {'content': text}
