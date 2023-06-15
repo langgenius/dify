@@ -222,7 +222,7 @@ class NotionOAuth(OAuthDataSource):
             'Authorization': f"Bearer {access_token}",
             'Notion-Version': '2022-06-28',
         }
-        response = requests.get(url=f'{self._NOTION_PAGE_SEARCH}/{block_id}', headers=headers)
+        response = requests.get(url=f'{self._NOTION_BLOCK_SEARCH}/{block_id}', headers=headers)
         response_json = response.json()
         parent = response_json['parent']
         parent_type = parent['type']
