@@ -25,6 +25,7 @@ class NotionOAuth(OAuthDataSource):
     _AUTH_URL = 'https://api.notion.com/v1/oauth/authorize'
     _TOKEN_URL = 'https://api.notion.com/v1/oauth/token'
     _NOTION_PAGE_SEARCH = "https://api.notion.com/v1/search"
+    _NOTION_BLOCK_SEARCH = "https://api.notion.com/v1/blocks"
 
     def get_authorization_url(self):
         params = {
@@ -145,7 +146,7 @@ class NotionOAuth(OAuthDataSource):
             parent = page_result['parent']
             parent_type = parent['type']
             if parent_type == 'block_id':
-                continue
+                parent_id = self.notion_block_parent_page_id(access_token, parent[parent_type])
             elif parent_type == 'workspace':
                 parent_id = 'root'
             else:
@@ -184,7 +185,7 @@ class NotionOAuth(OAuthDataSource):
             parent = database_result['parent']
             parent_type = parent['type']
             if parent_type == 'block_id':
-                continue
+                parent_id = self.notion_block_parent_page_id(access_token, parent[parent_type])
             elif parent_type == 'workspace':
                 parent_id = 'root'
             else:
@@ -215,6 +216,19 @@ class NotionOAuth(OAuthDataSource):
         response_json = response.json()
         results = response_json['results']
         return results
+
+    def notion_block_parent_page_id(self, access_token: str, block_id: str):
+        headers = {
+            'Authorization': f"Bearer {access_token}",
+            'Notion-Version': '2022-06-28',
+        }
+        response = requests.get(url=f'{self._NOTION_PAGE_SEARCH}/{block_id}', headers=headers)
+        response_json = response.json()
+        parent = response_json['parent']
+        parent_type = parent['type']
+        if parent_type == 'block_id':
+            return self.notion_block_parent_page_id(access_token, parent[parent_type])
+        return parent[parent_type]
 
     def notion_database_search(self, access_token: str):
         data = {
