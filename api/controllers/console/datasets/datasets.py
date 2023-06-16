@@ -12,8 +12,9 @@ from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
 from libs.helper import TimestampField
 from extensions.ext_database import db
+from models.dataset import DocumentSegment, Document
 from models.model import UploadFile
-from services.dataset_service import DatasetService
+from services.dataset_service import DatasetService, DocumentService
 
 dataset_detail_fields = {
     'id': fields.String,
@@ -217,17 +218,31 @@ class DatasetIndexingEstimateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        segment_rule = request.get_json()
-        file_detail = db.session.query(UploadFile).filter(
-            UploadFile.tenant_id == current_user.current_tenant_id,
-            UploadFile.id == segment_rule["file_id"]
-        ).first()
+        parser = reqparse.RequestParser()
+        parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        args = parser.parse_args()
+        # validate args
+        DocumentService.estimate_args_validate(args)
+        if args['info_list']['data_source_type'] == 'upload_file':
+            file_ids = args['info_list']['file_info_list']['file_ids']
+            file_details = db.session.query(UploadFile).filter(
+                UploadFile.tenant_id == current_user.current_tenant_id,
+                UploadFile.id.in_(file_ids)
+            ).all()
 
-        if file_detail is None:
-            raise NotFound("File not found.")
+            if file_details is None:
+                raise NotFound("File not found.")
 
-        indexing_runner = IndexingRunner()
-        response = indexing_runner.indexing_estimate(file_detail, segment_rule['process_rule'])
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.file_indexing_estimate(file_details, args['process_rule'])
+        elif args['info_list']['data_source_type'] == 'notion_import':
+
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],
+                                                                args['process_rule'])
+        else:
+            raise ValueError('Data source type not support')
         return response, 200
 
 
@@ -274,8 +289,54 @@ class DatasetRelatedAppListApi(Resource):
         }, 200
 
 
+class DatasetIndexingStatusApi(Resource):
+    document_status_fields = {
+        'id': fields.String,
+        'indexing_status': fields.String,
+        'processing_started_at': TimestampField,
+        'parsing_completed_at': TimestampField,
+        'cleaning_completed_at': TimestampField,
+        'splitting_completed_at': TimestampField,
+        'completed_at': TimestampField,
+        'paused_at': TimestampField,
+        'error': fields.String,
+        'stopped_at': TimestampField,
+        'completed_segments': fields.Integer,
+        'total_segments': fields.Integer,
+    }
+
+    document_status_fields_list = {
+        'data': fields.List(fields.Nested(document_status_fields))
+    }
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, dataset_id):
+        dataset_id = str(dataset_id)
+        documents = db.session.query(Document).filter(
+            Document.dataset_id == dataset_id,
+            Document.tenant_id == current_user.current_tenant_id
+        ).all()
+        documents_status = []
+        for document in documents:
+            completed_segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+                                                              DocumentSegment.document_id == str(document.id),
+                                                              DocumentSegment.status != 're_segment').count()
+            total_segments = DocumentSegment.query.filter(DocumentSegment.document_id == str(document.id),
+                                                          DocumentSegment.status != 're_segment').count()
+            document.completed_segments = completed_segments
+            document.total_segments = total_segments
+            documents_status.append(marshal(document, self.document_status_fields))
+        data = {
+            'data': documents_status
+        }
+        return data
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
-api.add_resource(DatasetIndexingEstimateApi, '/datasets/file-indexing-estimate')
+api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
+api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')

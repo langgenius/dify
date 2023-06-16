@@ -1,4 +1,11 @@
-import { AppMode } from './app'
+import type { AppMode } from './app'
+import type { DataSourceNotionPage } from './common'
+
+export enum DataSourceType {
+  FILE = 'upload_file',
+  NOTION = 'notion_import',
+  WEB = 'web_import',
+}
 
 export type DataSet = {
   id: string
@@ -7,7 +14,7 @@ export type DataSet = {
   icon_background: string
   description: string
   permission: 'only_me' | 'all_team_members'
-  data_source_type: 'upload_file'
+  data_source_type: DataSourceType
   indexing_technique: 'high_quality' | 'economy'
   created_by: string
   updated_by: string
@@ -43,9 +50,9 @@ export type IndexingEstimateResponse = {
   preview: string[]
 }
 
-export interface FileIndexingEstimateResponse extends IndexingEstimateResponse {
+export type FileIndexingEstimateResponse = {
   total_nodes: number
-}
+} & IndexingEstimateResponse
 
 export type IndexingStatusResponse = {
   id: string
@@ -60,6 +67,9 @@ export type IndexingStatusResponse = {
   stopped_at: any
   completed_segments: number
   total_segments: number
+}
+export type IndexingStatusBatchResponse = {
+  data: IndexingStatusResponse[]
 }
 
 export type ProcessMode = 'automatic' | 'custom'
@@ -98,17 +108,17 @@ export const DocumentIndexingStatusList = [
 export type DocumentIndexingStatus = typeof DocumentIndexingStatusList[number]
 
 export const DisplayStatusList = [
-  "queuing",
-  "indexing",
-  "paused",
-  "error",
-  "available",
-  "enabled",
-  "disabled",
-  "archived",
-] as const;
+  'queuing',
+  'indexing',
+  'paused',
+  'error',
+  'available',
+  'enabled',
+  'disabled',
+  'archived',
+] as const
 
-export type DocumentDisplayStatus = typeof DisplayStatusList[number];
+export type DocumentDisplayStatus = typeof DisplayStatusList[number]
 
 export type DataSourceInfo = {
   upload_file: {
@@ -124,9 +134,10 @@ export type DataSourceInfo = {
 
 export type InitialDocumentDetail = {
   id: string
+  batch: string
   position: number
   dataset_id: string
-  data_source_type: 'upload_file'
+  data_source_type: DataSourceType
   data_source_info: DataSourceInfo
   dataset_process_rule_id: string
   name: string
@@ -135,6 +146,8 @@ export type InitialDocumentDetail = {
   created_at: number
   indexing_status: DocumentIndexingStatus
   display_status: DocumentDisplayStatus
+  completed_segments?: number
+  total_segments?: number
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -157,16 +170,29 @@ export type DocumentListResponse = {
 
 export type CreateDocumentReq = {
   original_document_id?: string
-  indexing_technique?: string;
-  name: string
+  indexing_technique?: string
   data_source: DataSource
   process_rule: ProcessRule
 }
 
 export type DataSource = {
+  type: DataSourceType
+  info_list: {
+    data_source_type: DataSourceType
+    notion_info_list?: NotionInfo[]
+    file_info_list?: {
+      file_ids: string[]
+    }
+  }
+}
+
+export type NotionInfo = {
+  workspace_id: string
+  pages: DataSourceNotionPage[]
+}
+export type NotionPage = {
+  page_id: string
   type: string
-  info: string // upload_file_id
-  name: string
 }
 
 export type ProcessRule = {
@@ -176,7 +202,8 @@ export type ProcessRule = {
 
 export type createDocumentResponse = {
   dataset?: DataSet
-  document: InitialDocumentDetail
+  batch: string
+  documents: InitialDocumentDetail[]
 }
 
 export type FullDocumentDetail = SimpleDocumentDetail & {
@@ -216,20 +243,20 @@ export type DocMetadata = {
 }
 
 export const CUSTOMIZABLE_DOC_TYPES = [
-  "book",
-  "web_page",
-  "paper",
-  "social_media_post",
-  "personal_document",
-  "business_document",
-  "im_chat_log",
-] as const;
+  'book',
+  'web_page',
+  'paper',
+  'social_media_post',
+  'personal_document',
+  'business_document',
+  'im_chat_log',
+] as const
 
-export const FIXED_DOC_TYPES = ["synced_from_github", "synced_from_notion", "wikipedia_entry"] as const;
+export const FIXED_DOC_TYPES = ['synced_from_github', 'synced_from_notion', 'wikipedia_entry'] as const
 
-export type CustomizableDocType = typeof CUSTOMIZABLE_DOC_TYPES[number];
-export type FixedDocType = typeof FIXED_DOC_TYPES[number];
-export type DocType = CustomizableDocType | FixedDocType;
+export type CustomizableDocType = typeof CUSTOMIZABLE_DOC_TYPES[number]
+export type FixedDocType = typeof FIXED_DOC_TYPES[number]
+export type DocType = CustomizableDocType | FixedDocType
 
 export type DocumentDetailResponse = FullDocumentDetail
 

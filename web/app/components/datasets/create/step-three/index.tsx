@@ -1,16 +1,16 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { createDocumentResponse } from '@/models/datasets'
-import EmbeddingDetail from '../../documents/detail/embedding'
-
 import cn from 'classnames'
+import EmbeddingProcess from '../embedding-process'
+
 import s from './index.module.css'
+import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 
 type StepThreeProps = {
-  datasetId?: string,
-  datasetName?: string,
-  indexingType?: string,
+  datasetId?: string
+  datasetName?: string
+  indexingType?: string
   creationCache?: createDocumentResponse
 }
 
@@ -38,12 +38,11 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
               <div className={s.content}>{`${t('datasetCreation.stepThree.additionP1')} ${datasetName || creationCache?.dataset?.name} ${t('datasetCreation.stepThree.additionP2')}`}</div>
             </div>
           )}
-          <EmbeddingDetail
-            datasetId={datasetId || creationCache?.dataset?.id}
-            documentId={creationCache?.document.id}
+          <EmbeddingProcess
+            datasetId={datasetId || creationCache?.dataset?.id || ''}
+            batchId={creationCache?.batch || ''}
+            documents={creationCache?.documents as FullDocumentDetail[]}
             indexingType={indexingType || creationCache?.dataset?.indexing_technique}
-            stopPosition='bottom'
-            detail={creationCache?.document}
           />
         </div>
       </div>
@@ -58,4 +57,4 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
   )
 }
 
-export default StepThree;
+export default StepThree

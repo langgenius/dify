@@ -12,10 +12,10 @@ from . import setup, version, apikey, admin
 from .app import app, site, completion, model_config, statistic, conversation, message, generator
 
 # Import auth controllers
-from .auth import login, oauth
+from .auth import login, oauth, data_source_oauth
 
 # Import datasets controllers
-from .datasets import datasets, datasets_document, datasets_segments, file, hit_testing
+from .datasets import datasets, datasets_document, datasets_segments, file, hit_testing, data_source
 
 # Import workspace controllers
 from .workspace import workspace, members, providers, account

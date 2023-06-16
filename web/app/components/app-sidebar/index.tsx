@@ -4,7 +4,7 @@ import NavLink from './navLink'
 import AppBasic from './basic'
 
 export type IAppDetailNavProps = {
-  iconType?: 'app' | 'dataset'
+  iconType?: 'app' | 'dataset' | 'notion'
   title: string
   desc: string
   icon: string
@@ -17,7 +17,6 @@ export type IAppDetailNavProps = {
   }>
   extraInfo?: React.ReactNode
 }
-
 
 const AppDetailNav: FC<IAppDetailNavProps> = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }) => {
   return (

@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
@@ -43,6 +43,15 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   }, [])
 
   const [documentDetail, setDocumentDetail] = useState<FullDocumentDetail | null>(null)
+  const currentPage = useMemo(() => {
+    return {
+      workspace_id: documentDetail?.data_source_info.notion_workspace_id,
+      page_id: documentDetail?.data_source_info.notion_page_id,
+      page_name: documentDetail?.name,
+      page_icon: documentDetail?.data_source_info.notion_page_icon,
+      type: documentDetail?.data_source_info.type,
+    }
+  }, [documentDetail])
   useEffect(() => {
     (async () => {
       try {
@@ -71,6 +80,8 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             hasSetAPIKEY={hasSetAPIKEY}
             onSetting={showSetAPIKey}
             datasetId={datasetId}
+            dataSourceType={documentDetail.data_source_type}
+            notionPages={[currentPage]}
             indexingType={indexingTechnique || ''}
             isSetting
             documentDetail={documentDetail}

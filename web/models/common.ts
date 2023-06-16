@@ -100,6 +100,38 @@ export type IWorkspace = {
   current: boolean
 }
 
+export type DataSourceNotionPage = {
+  page_icon: null | {
+    type: string | null
+    url: string | null
+    emoji: string | null
+  }
+  page_id: string
+  page_name: string
+  parent_id: string
+  type: string
+  is_bound: boolean
+}
+
+export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
+
+export type DataSourceNotionWorkspace = {
+  workspace_name: string
+  workspace_id: string
+  workspace_icon: string | null
+  total?: number
+  pages: DataSourceNotionPage[]
+}
+
+export type DataSourceNotionWorkspaceMap = Record<string, DataSourceNotionWorkspace>
+
+export type DataSourceNotion = {
+  id: string
+  provider: string
+  is_bound: boolean
+  source_info: DataSourceNotionWorkspace
+}
+
 export type GithubRepo = {
   stargazers_count: number
 }

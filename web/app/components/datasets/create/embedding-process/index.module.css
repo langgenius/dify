@@ -1,0 +1,111 @@
+.progressContainer {
+  @apply relative pb-4 w-full;
+  border-bottom: 0.5px solid #EAECF0;
+}
+.sourceItem {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  padding: 0 4px;
+  height: 24px;
+  background: #EFF4FF;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.sourceItem.error {
+  background: #FEE4E2;
+}
+.sourceItem.success {
+  background: #D1FADF;
+}
+.progressbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background-color: #B2CCFF;
+}
+.sourceItem .info {
+  display: flex;
+  align-items: center;
+}
+.sourceItem .info .name {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #101828;
+}
+.sourceItem.success .info .name {
+  color: #05603A;
+}
+.sourceItem .percent {
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 18px;
+  color: #344054;
+}
+.sourceItem .error {
+  color: #D92D20;
+}
+.sourceItem .success {
+  color: #05603A;
+}
+
+
+.cost {
+  @apply flex justify-between items-center text-xs text-gray-700;
+}
+.embeddingStatus {
+  @apply flex items-center justify-between text-gray-900 font-medium text-sm mr-2;
+}
+.commonIcon {
+  @apply w-3 h-3 mr-1 inline-block align-middle;
+}
+.highIcon {
+  mask-image: url(../assets/star.svg);
+  @apply bg-orange-500;
+}
+.economyIcon {
+  background-color: #444ce7;
+  mask-image: url(../assets/normal.svg);
+}
+.tokens {
+  @apply text-xs font-medium px-1;
+}
+.price {
+  color: #f79009;
+  @apply text-xs font-medium;
+}
+
+.fileIcon {
+  @apply w-4 h-4 mr-1 bg-center bg-no-repeat;
+  background-image: url(../assets/unknow.svg);
+  background-size: 16px;
+}
+.fileIcon.csv {
+  background-image: url(../assets/csv.svg);
+}
+
+.fileIcon.xlsx,
+.fileIcon.xls {
+  background-image: url(../assets/xlsx.svg);
+}
+.fileIcon.pdf {
+  background-image: url(../assets/pdf.svg);
+}
+.fileIcon.html,
+.fileIcon.htm {
+  background-image: url(../assets/html.svg);
+}
+.fileIcon.md,
+.fileIcon.markdown {
+  background-image: url(../assets/md.svg);
+}
+.fileIcon.txt {
+  background-image: url(../assets/txt.svg);
+}
+.fileIcon.json {
+  background-image: url(../assets/json.svg);
+}

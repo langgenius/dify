@@ -87,6 +87,7 @@ const translation = {
     integrations: 'Integrations',
     language: 'Language',
     provider: 'Model Provider',
+    dataSource: 'Data Source',
   },
   account: {
     avatar: 'Avatar',
@@ -170,6 +171,29 @@ const translation = {
     encrypted: {
       front: 'Your API KEY will be encrypted and stored using',
       back: ' technology.',
+    },
+  },
+  dataSource: {
+    add: 'Add a data source',
+    connect: 'Connect',
+    notion: {
+      title: 'Notion',
+      description: 'Using Notion as a data source for the dataset.',
+      connectedWorkspace: 'Connected workspace',
+      addWorkspace: 'Add workspace',
+      connected: 'Connected',
+      disconnected: 'Disconnected',
+      changeAuthorizedPages: 'Change authorized pages',
+      pagesAuthorized: 'Pages authorized',
+      sync: 'Sync',
+      remove: 'Remove',
+      selector: {
+        pageSelected: 'Pages Selected',
+        searchPages: 'Search pages...',
+        noSearchResult: 'No search resluts',
+        addPages: 'Add pages',
+        preview: 'PREVIEW',
+      },
     },
   },
   about: {

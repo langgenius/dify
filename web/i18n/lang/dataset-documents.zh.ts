@@ -3,6 +3,7 @@ const translation = {
     title: '文档',
     desc: '数据集的所有文件都在这里显示，整个数据集都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
     addFile: '添加文件',
+    addPages: '添加页面',
     table: {
       header: {
         fileName: '文件名',
@@ -19,6 +20,7 @@ const translation = {
       archive: '归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
+      sync: '同步',
     },
     index: {
       enable: '启用中',

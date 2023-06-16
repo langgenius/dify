@@ -20,7 +20,7 @@ from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
 # DO NOT REMOVE BELOW
-from models import model, account, dataset, web, task
+from models import model, account, dataset, web, task, source
 from events import event_handlers
 # DO NOT REMOVE ABOVE
 

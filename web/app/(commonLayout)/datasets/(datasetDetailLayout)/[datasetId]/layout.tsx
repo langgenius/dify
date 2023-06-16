@@ -28,6 +28,7 @@ import Indicator from '@/app/components/header/indicator'
 import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { DataSourceType } from '@/models/datasets'
 
 // import { fetchDatasetDetail } from '@/service/datasets'
 
@@ -162,7 +163,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         desc={datasetRes?.description || '--'}
         navigation={navigation}
         extraInfo={<ExtraInfo />}
-        iconType='dataset'
+        iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
       />}
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,

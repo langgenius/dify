@@ -87,6 +87,7 @@ const translation = {
     integrations: '集成',
     language: '语言',
     provider: '模型供应商',
+    dataSource: '数据来源',
   },
   account: {
     avatar: '头像',
@@ -171,6 +172,29 @@ const translation = {
     encrypted: {
       front: '密钥将使用 ',
       back: ' 技术进行加密和存储。',
+    },
+  },
+  dataSource: {
+    add: '添加数据源',
+    connect: '绑定',
+    notion: {
+      title: 'Notion',
+      description: '使用 Notion 作为数据集的数据源。',
+      connectedWorkspace: '已绑定工作空间',
+      addWorkspace: '添加工作空间',
+      connected: '已绑定',
+      disconnected: '未绑定',
+      changeAuthorizedPages: '更改授权页面',
+      pagesAuthorized: '已授权页面',
+      sync: '同步',
+      remove: '删除',
+      selector: {
+        pageSelected: '已选页面',
+        searchPages: '搜索页面...',
+        noSearchResult: '无搜索结果',
+        addPages: '添加页面',
+        preview: '预览',
+      },
     },
   },
   about: {

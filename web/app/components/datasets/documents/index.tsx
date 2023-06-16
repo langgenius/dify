@@ -4,7 +4,7 @@ import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { debounce, omit } from 'lodash-es'
+import { debounce, groupBy, omit } from 'lodash-es'
 // import Link from 'next/link'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import List from './list'
@@ -14,7 +14,12 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Pagination from '@/app/components/base/pagination'
 import { get } from '@/service/base'
-import { fetchDocuments } from '@/service/datasets'
+import { createDocument, fetchDocuments } from '@/service/datasets'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
+import type { DataSourceNotionPage } from '@/models/common'
+import type { CreateDocumentReq } from '@/models/datasets'
+import { DataSourceType } from '@/models/datasets'
 
 // Custom page count is not currently supported.
 const limit = 15
@@ -75,26 +80,117 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [searchValue, setSearchValue] = useState<string>('')
   const [currPage, setCurrPage] = React.useState<number>(0)
   const router = useRouter()
+  const { dataset } = useDatasetDetailContext()
+  const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
+  const [timerCanRun, setTimerCanRun] = useState(true)
+  const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
 
   const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: searchValue }
-  }, [searchValue, currPage])
+    return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
+  }, [searchValue, currPage, isDataSourceNotion])
 
-  const { data: documentsRes, error, mutate } = useSWR({
-    action: 'fetchDocuments',
-    datasetId,
-    params: query,
-  }, apiParams => fetchDocuments(omit(apiParams, 'action')))
+  const { data: documentsRes, error, mutate } = useSWR(
+    {
+      action: 'fetchDocuments',
+      datasetId,
+      params: query,
+    },
+    apiParams => fetchDocuments(omit(apiParams, 'action')),
+    { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
+  )
 
+  const documentsWithProgress = useMemo(() => {
+    let completedNum = 0
+    let percent = 0
+    const documentsData = documentsRes?.data?.map((documentItem) => {
+      const { indexing_status, completed_segments, total_segments } = documentItem
+      const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
+
+      if (isEmbeddinged)
+        completedNum++
+
+      const completedCount = completed_segments || 0
+      const totalCount = total_segments || 0
+      if (totalCount === 0 && completedCount === 0) {
+        percent = isEmbeddinged ? 100 : 0
+      }
+      else {
+        const per = Math.round(completedCount * 100 / totalCount)
+        percent = per > 100 ? 100 : per
+      }
+      return {
+        ...documentItem,
+        percent,
+      }
+    })
+    if (completedNum === documentsRes?.data?.length)
+      setTimerCanRun(false)
+    return {
+      ...documentsRes,
+      data: documentsData,
+    }
+  }, [documentsRes])
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
+    if (isDataSourceNotion) {
+      setNotionPageSelectorModalVisible(true)
+      return
+    }
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
   router.prefetch(`/datasets/${datasetId}/documents/create`)
 
   const isLoading = !documentsRes && !error
+
+  const handleSaveNotionPageSelected = async (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => {
+    const workspacesMap = groupBy(selectedPages, 'workspace_id')
+    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
+      return {
+        workspaceId,
+        pages: workspacesMap[workspaceId],
+      }
+    })
+    const params = {
+      data_source: {
+        type: dataset?.data_source_type,
+        info_list: {
+          data_source_type: dataset?.data_source_type,
+          notion_info_list: workspaces.map((workspace) => {
+            return {
+              workspace_id: workspace.workspaceId,
+              pages: workspace.pages.map((page) => {
+                const { page_id, page_name, page_icon, type } = page
+                return {
+                  page_id,
+                  page_name,
+                  page_icon,
+                  type,
+                }
+              }),
+            }
+          }),
+        },
+      },
+      indexing_technique: dataset?.indexing_technique,
+      process_rule: {
+        rules: {},
+        mode: 'automatic',
+      },
+    } as CreateDocumentReq
+
+    await createDocument({
+      datasetId,
+      body: params,
+    })
+    mutate()
+    setTimerCanRun(true)
+    // mutateDatasetIndexingStatus(undefined, { revalidate: true })
+    setNotionPageSelectorModalVisible(false)
+  }
+
+  const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
 
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
@@ -113,19 +209,29 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           />
           <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
             <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-            {t('datasetDocuments.list.addFile')}
+            {
+              isDataSourceNotion
+                ? t('datasetDocuments.list.addPages')
+                : t('datasetDocuments.list.addFile')
+            }
           </Button>
         </div>
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsRes?.data || []} datasetId={datasetId} onUpdate={mutate} />
+            ? <List documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
             : <EmptyElement onClick={routeToDocCreate} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > limit)
           ? <Pagination current={currPage} onChange={setCurrPage} total={total} limit={limit} />
           : null}
+        <NotionPageSelectorModal
+          isShow={notionPageSelectorModalVisible}
+          onClose={() => setNotionPageSelectorModalVisible(false)}
+          onSave={handleSaveNotionPageSelected}
+          datasetId={dataset?.id || ''}
+        />
       </div>
     </div>
   )

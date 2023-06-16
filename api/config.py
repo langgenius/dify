@@ -187,6 +187,9 @@ class Config:
         # For temp use only
         # set default LLM provider, default is 'openai', support `azure_openai`
         self.DEFAULT_LLM_PROVIDER = get_env('DEFAULT_LLM_PROVIDER')
+        # notion import setting
+        self.NOTION_CLIENT_ID = get_env('NOTION_CLIENT_ID')
+        self.NOTION_CLIENT_SECRET = get_env('NOTION_CLIENT_SECRET')
 
 class CloudEditionConfig(Config):
 

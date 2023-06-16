@@ -1,9 +1,10 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, put } from './base'
+import { del, get, patch, post, put } from './base'
 import type {
-  AccountIntegrate, CommonResponse, IWorkspace,
-  LangGeniusVersionResponse, Member, OauthResponse,
-  Provider, ProviderAzureToken, TenantInfoResponse, UserProfileOriginResponse,
+  AccountIntegrate, CommonResponse, DataSourceNotion,
+  IWorkspace, LangGeniusVersionResponse, Member,
+  OauthResponse, Provider, ProviderAzureToken, TenantInfoResponse,
+  UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -87,4 +88,16 @@ export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: strin
 
 export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { new_tenant: IWorkspace }>
+}
+
+export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string }> = ({ url }) => {
+  return get(url) as Promise<{ data: DataSourceNotion[] }>
+}
+
+export const syncDataSourceNotion: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return get(url) as Promise<CommonResponse>
+}
+
+export const updateDataSourceNotionAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return patch(url) as Promise<CommonResponse>
 }

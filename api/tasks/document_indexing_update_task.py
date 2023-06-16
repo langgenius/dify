@@ -67,7 +67,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         logging.exception("Cleaned document when document update data source or process rule failed")
     try:
         indexing_runner = IndexingRunner()
-        indexing_runner.run(document)
+        indexing_runner.run([document])
         end_at = time.perf_counter()
         logging.info(click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
     except DocumentIsPausedException:

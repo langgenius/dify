@@ -22,13 +22,21 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument } from '@/service/datasets'
-import type { DocumentDisplayStatus, DocumentListResponse } from '@/models/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
+import NotionIcon from '@/app/components/base/notion-icon'
+import ProgressBar from '@/app/components/base/progress-bar'
+import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M2 5.33325L10 5.33325M10 5.33325C10 6.43782 10.8954 7.33325 12 7.33325C13.1046 7.33325 14 6.43782 14 5.33325C14 4.22868 13.1046 3.33325 12 3.33325C10.8954 3.33325 10 4.22868 10 5.33325ZM6 10.6666L14 10.6666M6 10.6666C6 11.7712 5.10457 12.6666 4 12.6666C2.89543 12.6666 2 11.7712 2 10.6666C2 9.56202 2.89543 8.66659 4 8.66659C5.10457 8.66659 6 9.56202 6 10.6666Z" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+}
+
+export const SyncIcon: FC<{ className?: string }> = () => {
+  return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5.69773 13.1783C7.29715 13.8879 9.20212 13.8494 10.8334 12.9075C13.5438 11.3427 14.4724 7.87704 12.9076 5.16672L12.7409 4.87804M3.09233 10.8335C1.52752 8.12314 2.45615 4.65746 5.16647 3.09265C6.7978 2.15081 8.70277 2.11227 10.3022 2.82185M1.66226 10.8892L3.48363 11.3773L3.97166 9.5559M12.0284 6.44393L12.5164 4.62256L14.3378 5.1106" stroke="#667085" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>
 }
 
@@ -77,7 +85,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -85,13 +93,14 @@ export const OperationAction: FC<{
     enabled: boolean
     archived: boolean
     id: string
+    data_source_type: string
   }
   datasetId: string
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
 }> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const { id, enabled = false, archived = false } = detail || {}
+  const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
@@ -111,6 +120,9 @@ export const OperationAction: FC<{
       case 'disable':
         opApi = disableDocument
         break
+      case 'sync':
+        opApi = syncDocument
+        break
       default:
         opApi = deleteDocument
         break
@@ -120,7 +132,7 @@ export const OperationAction: FC<{
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
-    onUpdate()
+    onUpdate(operationName)
   }
 
   return <div
@@ -173,10 +185,14 @@ export const OperationAction: FC<{
                 <SettingsIcon />
                 <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
               </div>
-              {/* <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/create`)}>
-                <FilePlusIcon />
-                <span className={s.actionName}>{t('datasetDocuments.list.action.uploadFile')}</span>
-              </div> */}
+              {
+                data_source_type === 'notion_import' && (
+                  <div className={s.actionItem} onClick={() => onOperate('sync')}>
+                    <SyncIcon />
+                    <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                  </div>
+                )
+              }
               <Divider className='my-1' />
             </>
           )}
@@ -236,8 +252,9 @@ const renderCount = (count: number | undefined) => {
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
+type LocalDoc = SimpleDocumentDetail & { percent?: number }
 type IDocumentListProps = {
-  documents: DocumentListResponse['data']
+  documents: LocalDoc[]
   datasetId: string
   onUpdate: () => void
 }
@@ -248,7 +265,7 @@ type IDocumentListProps = {
 const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate }) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [localDocs, setLocalDocs] = useState<DocumentListResponse['data']>(documents)
+  const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
 
   useEffect(() => {
@@ -296,8 +313,16 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               }}>
               <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
               <td className={s.tdValue}>
-                <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
-                <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
+                {
+                  doc?.data_source_type === DataSourceType.NOTION
+                    ? <NotionIcon className='inline-flex -mt-[3px] mr-1.5 align-middle' type='page' src={doc.data_source_info.notion_page_icon} />
+                    : <div className={cn(s[`${doc?.data_source_info?.upload_file?.extension ?? suffix}Icon`], s.commonIcon, 'mr-1.5')}></div>
+                }
+                {
+                  doc.data_source_type === DataSourceType.NOTION
+                    ? <span>{doc.name}</span>
+                    : <span>{doc?.name?.replace(/\.[^/.]+$/, '')}<span className='text-gray-500'>.{suffix}</span></span>
+                }
               </td>
               <td>{renderCount(doc.word_count)}</td>
               <td>{renderCount(doc.hit_count)}</td>
@@ -305,12 +330,16 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
                 {dayjs.unix(doc.created_at).format(t('datasetHitTesting.dateTimeFormat') as string)}
               </td>
               <td>
-                <StatusItem status={doc.display_status} />
+                {
+                  (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
+                    ? <ProgressBar percent={doc.percent || 0} />
+                    : <StatusItem status={doc.display_status} />
+                }
               </td>
               <td>
                 <OperationAction
                   datasetId={datasetId}
-                  detail={pick(doc, ['enabled', 'archived', 'id'])}
+                  detail={pick(doc, ['enabled', 'archived', 'id', 'data_source_type'])}
                   onUpdate={onUpdate}
                 />
               </td>

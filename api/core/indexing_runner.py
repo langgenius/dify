@@ -5,6 +5,8 @@ import tempfile
 import time
 from pathlib import Path
 from typing import Optional, List
+
+from flask_login import current_user
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 
 from llama_index import SimpleDirectoryReader
@@ -13,6 +15,8 @@ from llama_index.data_structs.node_v2 import DocumentRelationship
 from llama_index.node_parser import SimpleNodeParser, NodeParser
 from llama_index.readers.file.base import DEFAULT_FILE_EXTRACTOR
 from llama_index.readers.file.markdown_parser import MarkdownParser
+
+from core.data_source.notion import NotionPageReader
 from core.index.readers.xlsx_parser import XLSXParser
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.index.keyword_table_index import KeywordTableIndex
@@ -27,6 +31,7 @@ from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from models.dataset import Document, Dataset, DocumentSegment, DatasetProcessRule
 from models.model import UploadFile
+from models.source import DataSourceBinding
 
 
 class IndexingRunner:
@@ -35,42 +40,43 @@ class IndexingRunner:
         self.storage = storage
         self.embedding_model_name = embedding_model_name
 
-    def run(self, document: Document):
+    def run(self, documents: List[Document]):
         """Run the indexing process."""
-        # get dataset
-        dataset = Dataset.query.filter_by(
-            id=document.dataset_id
-        ).first()
+        for document in documents:
+            # get dataset
+            dataset = Dataset.query.filter_by(
+                id=document.dataset_id
+            ).first()
 
-        if not dataset:
-            raise ValueError("no dataset found")
+            if not dataset:
+                raise ValueError("no dataset found")
 
-        # load file
-        text_docs = self._load_data(document)
+            # load file
+            text_docs = self._load_data(document)
 
-        # get the process rule
-        processing_rule = db.session.query(DatasetProcessRule). \
-            filter(DatasetProcessRule.id == document.dataset_process_rule_id). \
-            first()
+            # get the process rule
+            processing_rule = db.session.query(DatasetProcessRule). \
+                filter(DatasetProcessRule.id == document.dataset_process_rule_id). \
+                first()
 
-        # get node parser for splitting
-        node_parser = self._get_node_parser(processing_rule)
+            # get node parser for splitting
+            node_parser = self._get_node_parser(processing_rule)
 
-        # split to nodes
-        nodes = self._step_split(
-            text_docs=text_docs,
-            node_parser=node_parser,
-            dataset=dataset,
-            document=document,
-            processing_rule=processing_rule
-        )
+            # split to nodes
+            nodes = self._step_split(
+                text_docs=text_docs,
+                node_parser=node_parser,
+                dataset=dataset,
+                document=document,
+                processing_rule=processing_rule
+            )
 
-        # build index
-        self._build_index(
-            dataset=dataset,
-            document=document,
-            nodes=nodes
-        )
+            # build index
+            self._build_index(
+                dataset=dataset,
+                document=document,
+                nodes=nodes
+            )
 
     def run_in_splitting_status(self, document: Document):
         """Run the indexing process when the index_status is splitting."""
@@ -164,38 +170,98 @@ class IndexingRunner:
             nodes=nodes
         )
 
-    def indexing_estimate(self, file_detail: UploadFile, tmp_processing_rule: dict) -> dict:
+    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict) -> dict:
         """
         Estimate the indexing for the document.
         """
-        # load data from file
-        text_docs = self._load_data_from_file(file_detail)
-
-        processing_rule = DatasetProcessRule(
-            mode=tmp_processing_rule["mode"],
-            rules=json.dumps(tmp_processing_rule["rules"])
-        )
-
-        # get node parser for splitting
-        node_parser = self._get_node_parser(processing_rule)
-
-        # split to nodes
-        nodes = self._split_to_nodes(
-            text_docs=text_docs,
-            node_parser=node_parser,
-            processing_rule=processing_rule
-        )
-
         tokens = 0
         preview_texts = []
-        for node in nodes:
-            if len(preview_texts) < 5:
-                preview_texts.append(node.get_text())
+        total_segments = 0
+        for file_detail in file_details:
+            # load data from file
+            text_docs = self._load_data_from_file(file_detail)
 
-            tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
+            processing_rule = DatasetProcessRule(
+                mode=tmp_processing_rule["mode"],
+                rules=json.dumps(tmp_processing_rule["rules"])
+            )
+
+            # get node parser for splitting
+            node_parser = self._get_node_parser(processing_rule)
+
+            # split to nodes
+            nodes = self._split_to_nodes(
+                text_docs=text_docs,
+                node_parser=node_parser,
+                processing_rule=processing_rule
+            )
+            total_segments += len(nodes)
+            for node in nodes:
+                if len(preview_texts) < 5:
+                    preview_texts.append(node.get_text())
+
+                tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
 
         return {
-            "total_segments": len(nodes),
+            "total_segments": total_segments,
+            "tokens": tokens,
+            "total_price": '{:f}'.format(TokenCalculator.get_token_price(self.embedding_model_name, tokens)),
+            "currency": TokenCalculator.get_currency(self.embedding_model_name),
+            "preview": preview_texts
+        }
+
+    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict) -> dict:
+        """
+        Estimate the indexing for the document.
+        """
+        # load data from notion
+        tokens = 0
+        preview_texts = []
+        total_segments = 0
+        for notion_info in notion_info_list:
+            workspace_id = notion_info['workspace_id']
+            data_source_binding = DataSourceBinding.query.filter(
+                db.and_(
+                    DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                    DataSourceBinding.provider == 'notion',
+                    DataSourceBinding.disabled == False,
+                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                )
+            ).first()
+            if not data_source_binding:
+                raise ValueError('Data source binding not found.')
+            reader = NotionPageReader(integration_token=data_source_binding.access_token)
+            for page in notion_info['pages']:
+                if page['type'] == 'page':
+                    page_ids = [page['page_id']]
+                    documents = reader.load_data_as_documents(page_ids=page_ids)
+                elif page['type'] == 'database':
+                    documents = reader.load_data_as_documents(database_id=page['page_id'])
+                else:
+                    documents = []
+                processing_rule = DatasetProcessRule(
+                    mode=tmp_processing_rule["mode"],
+                    rules=json.dumps(tmp_processing_rule["rules"])
+                )
+
+                # get node parser for splitting
+                node_parser = self._get_node_parser(processing_rule)
+
+                # split to nodes
+                nodes = self._split_to_nodes(
+                    text_docs=documents,
+                    node_parser=node_parser,
+                    processing_rule=processing_rule
+                )
+                total_segments += len(nodes)
+                for node in nodes:
+                    if len(preview_texts) < 5:
+                        preview_texts.append(node.get_text())
+
+                    tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, node.get_text())
+
+        return {
+            "total_segments": total_segments,
             "tokens": tokens,
             "total_price": '{:f}'.format(TokenCalculator.get_token_price(self.embedding_model_name, tokens)),
             "currency": TokenCalculator.get_currency(self.embedding_model_name),
@@ -204,25 +270,50 @@ class IndexingRunner:
 
     def _load_data(self, document: Document) -> List[Document]:
         # load file
-        if document.data_source_type != "upload_file":
+        if document.data_source_type not in ["upload_file", "notion_import"]:
             return []
 
         data_source_info = document.data_source_info_dict
-        if not data_source_info or 'upload_file_id' not in data_source_info:
-            raise ValueError("no upload file found")
+        text_docs = []
+        if document.data_source_type == 'upload_file':
+            if not data_source_info or 'upload_file_id' not in data_source_info:
+                raise ValueError("no upload file found")
 
-        file_detail = db.session.query(UploadFile). \
-            filter(UploadFile.id == data_source_info['upload_file_id']). \
-            one_or_none()
+            file_detail = db.session.query(UploadFile). \
+                filter(UploadFile.id == data_source_info['upload_file_id']). \
+                one_or_none()
 
-        text_docs = self._load_data_from_file(file_detail)
-
+            text_docs = self._load_data_from_file(file_detail)
+        elif document.data_source_type == 'notion_import':
+            if not data_source_info or 'notion_page_id' not in data_source_info \
+                    or 'notion_workspace_id' not in data_source_info:
+                raise ValueError("no notion page found")
+            workspace_id = data_source_info['notion_workspace_id']
+            page_id = data_source_info['notion_page_id']
+            page_type = data_source_info['type']
+            data_source_binding = DataSourceBinding.query.filter(
+                db.and_(
+                    DataSourceBinding.tenant_id == document.tenant_id,
+                    DataSourceBinding.provider == 'notion',
+                    DataSourceBinding.disabled == False,
+                    DataSourceBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                )
+            ).first()
+            if not data_source_binding:
+                raise ValueError('Data source binding not found.')
+            if page_type == 'page':
+                # add page last_edited_time to data_source_info
+                self._get_notion_page_last_edited_time(page_id, data_source_binding.access_token, document)
+                text_docs = self._load_page_data_from_notion(page_id, data_source_binding.access_token)
+            elif page_type == 'database':
+                # add page last_edited_time to data_source_info
+                self._get_notion_database_last_edited_time(page_id, data_source_binding.access_token, document)
+                text_docs = self._load_database_data_from_notion(page_id, data_source_binding.access_token)
         # update document status to splitting
         self._update_document_index_status(
             document_id=document.id,
             after_indexing_status="splitting",
             extra_update_params={
-                Document.file_id: file_detail.id,
                 Document.word_count: sum([len(text_doc.text) for text_doc in text_docs]),
                 Document.parsing_completed_at: datetime.datetime.utcnow()
             }
@@ -258,6 +349,41 @@ class IndexingRunner:
             text_docs = loader.load_data()
 
             return text_docs
+
+    def _load_page_data_from_notion(self, page_id: str, access_token: str) -> List[Document]:
+        page_ids = [page_id]
+        reader = NotionPageReader(integration_token=access_token)
+        text_docs = reader.load_data_as_documents(page_ids=page_ids)
+        return text_docs
+
+    def _load_database_data_from_notion(self, database_id: str, access_token: str) -> List[Document]:
+        reader = NotionPageReader(integration_token=access_token)
+        text_docs = reader.load_data_as_documents(database_id=database_id)
+        return text_docs
+
+    def _get_notion_page_last_edited_time(self, page_id: str, access_token: str, document: Document):
+        reader = NotionPageReader(integration_token=access_token)
+        last_edited_time = reader.get_page_last_edited_time(page_id)
+        data_source_info = document.data_source_info_dict
+        data_source_info['last_edited_time'] = last_edited_time
+        update_params = {
+            Document.data_source_info: json.dumps(data_source_info)
+        }
+
+        Document.query.filter_by(id=document.id).update(update_params)
+        db.session.commit()
+
+    def _get_notion_database_last_edited_time(self, page_id: str, access_token: str, document: Document):
+        reader = NotionPageReader(integration_token=access_token)
+        last_edited_time = reader.get_database_last_edited_time(page_id)
+        data_source_info = document.data_source_info_dict
+        data_source_info['last_edited_time'] = last_edited_time
+        update_params = {
+            Document.data_source_info: json.dumps(data_source_info)
+        }
+
+        Document.query.filter_by(id=document.id).update(update_params)
+        db.session.commit()
 
     def _get_node_parser(self, processing_rule: DatasetProcessRule) -> NodeParser:
         """
@@ -308,7 +434,7 @@ class IndexingRunner:
             embedding_model_name=self.embedding_model_name,
             document_id=document.id
         )
-
+        # add document segments
         doc_store.add_documents(nodes)
 
         # update document status to indexing

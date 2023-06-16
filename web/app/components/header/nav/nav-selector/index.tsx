@@ -24,7 +24,7 @@ export type INavSelectorProps = {
 
 const itemClassName = `
   flex items-center w-full h-10 px-3 text-gray-700 text-[14px]
-  rounded-lg font-normal hover:bg-gray-100 cursor-pointer
+  rounded-lg font-normal hover:bg-gray-100 cursor-pointer truncate
 `
 
 const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
@@ -50,9 +50,9 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
               text-[#1C64F2] hover:bg-[#EBF5FF]
             "
           >
-            {curNav?.name}
+            <div className='max-w-[180px] truncate' title={curNav?.name}>{curNav?.name}</div>
             <ChevronDownIcon
-              className="w-3 h-3 ml-1"
+              className="shrink-0 w-3 h-3 ml-1"
               aria-hidden="true"
             />
           </Menu.Button>
@@ -68,7 +68,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
             {
               navs.map(nav => (
                 <Menu.Item key={nav.id}>
-                  <div className={itemClassName} onClick={() => router.push(nav.link)}>
+                  <div className={itemClassName} onClick={() => router.push(nav.link)} title={nav.name}>
                     <div className='relative w-6 h-6 mr-2 bg-[#D5F5F6] rounded-[6px]'>
                       <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
                       <div className='flex justify-center items-center absolute -right-0.5 -bottom-0.5 w-2.5 h-2.5 bg-white rounded'>

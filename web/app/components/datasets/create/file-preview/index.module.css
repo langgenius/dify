@@ -11,6 +11,9 @@
   }
   
   .previewHeader .title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     color: #101828;
     font-weight: 600;
     font-size: 18px;
