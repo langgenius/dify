@@ -331,7 +331,7 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               </td>
               <td>
                 {
-                  ['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
+                  (['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status) && doc?.data_source_type === DataSourceType.NOTION)
                     ? <ProgressBar percent={doc.percent || 0} />
                     : <StatusItem status={doc.display_status} />
                 }
