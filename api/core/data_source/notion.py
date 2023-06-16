@@ -60,7 +60,7 @@ class NotionPageReader(BaseReader):
                 "GET", block_url, headers=self.headers, json=query_dict
             )
             data = res.json()
-            if data["results"] is None:
+            if 'results' not in data or data["results"] is None:
                 done = True
                 break
             heading = ''
@@ -224,7 +224,7 @@ class NotionPageReader(BaseReader):
         )
         data = res.json()
         database_content_list = []
-        if data["results"] is None:
+        if 'results' not in data or data["results"] is None:
             return ""
         for result in data["results"]:
             properties = result['properties']
