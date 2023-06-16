@@ -62,6 +62,29 @@ document_fields = {
     'hit_count': fields.Integer,
 }
 
+document_with_segments_fields = {
+    'id': fields.String,
+    'position': fields.Integer,
+    'data_source_type': fields.String,
+    'data_source_info': fields.Raw(attribute='data_source_info_dict'),
+    'dataset_process_rule_id': fields.String,
+    'name': fields.String,
+    'created_from': fields.String,
+    'created_by': fields.String,
+    'created_at': TimestampField,
+    'tokens': fields.Integer,
+    'indexing_status': fields.String,
+    'error': fields.String,
+    'enabled': fields.Boolean,
+    'disabled_at': TimestampField,
+    'disabled_by': fields.String,
+    'archived': fields.Boolean,
+    'display_status': fields.String,
+    'word_count': fields.Integer,
+    'hit_count': fields.Integer,
+    'completed_segments': fields.Integer,
+    'total_segments': fields.Integer
+}
 
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
@@ -152,7 +175,7 @@ class DatasetDocumentListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         search = request.args.get('keyword', default=None, type=str)
         sort = request.args.get('sort', default='-created_at', type=str)
-
+        fetch = request.args.get('fetch', default=False, type=bool)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
@@ -191,9 +214,20 @@ class DatasetDocumentListApi(Resource):
         paginated_documents = query.paginate(
             page=page, per_page=limit, max_per_page=100, error_out=False)
         documents = paginated_documents.items
-
+        if fetch:
+            for document in documents:
+                completed_segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+                                                                  DocumentSegment.document_id == str(document.id),
+                                                                  DocumentSegment.status != 're_segment').count()
+                total_segments = DocumentSegment.query.filter(DocumentSegment.document_id == str(document.id),
+                                                              DocumentSegment.status != 're_segment').count()
+                document.completed_segments = completed_segments
+                document.total_segments = total_segments
+            data = marshal(documents, document_with_segments_fields)
+        else:
+            data = marshal(documents, document_fields)
         response = {
-            'data': marshal(documents, document_fields),
+            'data': data,
             'has_more': len(documents) == limit,
             'limit': limit,
             'total': paginated_documents.total,
