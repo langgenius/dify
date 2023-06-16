@@ -297,7 +297,7 @@ class DataSourceNotionDocumentSyncApi(Resource):
 api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integrates/<uuid:binding_id>/<string:action>')
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
 api.add_resource(DataSourceNotionApi,
-                 '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<str:page_type>/preview',
+                 '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview',
                  '/datasets/notion-indexing-estimate')
 api.add_resource(DataSourceNotionDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')
 api.add_resource(DataSourceNotionDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync')
