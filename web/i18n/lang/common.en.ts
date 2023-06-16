@@ -111,7 +111,7 @@ const translation = {
     normal: 'Normal',
     normalTip: 'Only can use apps，can not build apps',
     inviteTeamMember: 'Add team member',
-    inviteTeamMemberTip: 'He can access your team data directly after signing in.',
+    inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',
     emailInvalid: 'Invalid Email Format',
     emailPlaceholder: 'Input Email',

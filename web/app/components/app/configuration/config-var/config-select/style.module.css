@@ -1,6 +1,9 @@
 .inputWrap {
+  display: flex;
+  align-items: center;
   border-radius: 8px;
   border: 1px solid #EAECF0;
+  padding-left: 10px;
   cursor: pointer;
 }
 
