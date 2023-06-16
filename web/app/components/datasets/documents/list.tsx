@@ -96,7 +96,7 @@ export const OperationAction: FC<{
     data_source_type: string
   }
   datasetId: string
-  onUpdate: () => void
+  onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
 }> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
@@ -132,7 +132,7 @@ export const OperationAction: FC<{
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
-    onUpdate()
+    onUpdate(operationName)
   }
 
   return <div
