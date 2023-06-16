@@ -128,6 +128,11 @@ class NotionOAuth(OAuthDataSource):
                     page_name = page_result['properties']['title']['title'][0]['plain_text']
                 else:
                     page_name = 'Untitled'
+            elif 'Title' in page_result['properties']:
+                if len(page_result['properties']['Title']['title']) > 0:
+                    page_name = page_result['properties']['title']['title'][0]['plain_text']
+                else:
+                    page_name = 'Untitled'
             else:
                 page_name = 'Untitled'
             page_icon = page_result['icon']
