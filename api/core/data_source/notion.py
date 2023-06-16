@@ -231,7 +231,22 @@ class NotionPageReader(BaseReader):
             data = {}
             for property_name, property_value in properties.items():
                 type = property_value['type']
-                data[property_name] = property_value[type]
+                if type == 'multi_select':
+                    value = []
+                    multi_select_list = property_value[type]
+                    for multi_select in multi_select_list:
+                        value.append(multi_select['name'])
+                elif type == 'rich_text':
+                    value = property_value[type][0]['plain_text']
+                elif type == 'title':
+                    value = property_value[type][0]['plain_text']
+                elif type == 'select':
+                    value = property_value[type]['name']
+                elif type == 'status':
+                    value = property_value[type]['name']
+                else:
+                    value = property_value[type]
+                data[property_name] = value
             database_content_list.append(json.dumps(data))
 
         return "\n\n".join(database_content_list)

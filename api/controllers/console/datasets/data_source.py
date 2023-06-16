@@ -219,7 +219,7 @@ class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, workspace_id, page_id):
+    def get(self, workspace_id, page_id, page_type):
         workspace_id = str(workspace_id)
         page_id = str(page_id)
         data_source_binding = DataSourceBinding.query.filter(
@@ -233,7 +233,12 @@ class DataSourceNotionApi(Resource):
         if not data_source_binding:
             raise NotFound('Data source binding not found.')
         reader = NotionPageReader(integration_token=data_source_binding.access_token)
-        page_content = reader.read_page(page_id)
+        if page_type == 'page':
+            page_content = reader.read_page(page_id)
+        elif page_type == 'database':
+            page_content = reader.query_database_data(page_id)
+        else:
+            page_content = ""
         return {
             'content': page_content
         }, 200
@@ -291,7 +296,8 @@ class DataSourceNotionDocumentSyncApi(Resource):
 
 api.add_resource(DataSourceApi, '/data-source/integrates', '/data-source/integrates/<uuid:binding_id>/<string:action>')
 api.add_resource(DataSourceNotionListApi, '/notion/pre-import/pages')
-api.add_resource(DataSourceNotionApi, '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/preview',
+api.add_resource(DataSourceNotionApi,
+                 '/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<str:page_type>/preview',
                  '/datasets/notion-indexing-estimate')
 api.add_resource(DataSourceNotionDatasetSyncApi, '/datasets/<uuid:dataset_id>/notion/sync')
 api.add_resource(DataSourceNotionDocumentSyncApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync')
