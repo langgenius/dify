@@ -193,11 +193,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     setNotionPageSelectorModalVisible(false)
   }
 
-  const handleSync = async () => {
-    if (dataset?.data_source_type === DataSourceType.NOTION)
-      mutate()
-  }
-
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
@@ -225,7 +220,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsWithProgress?.data || []} datasetId={datasetId} onUpdate={mutate} onSync={handleSync} />
+            ? <List documents={documentsWithProgress?.data || []} datasetId={datasetId} onUpdate={mutate} />
             : <EmptyElement onClick={routeToDocCreate} />
         }
         {/* Show Pagination only if the total is more than the limit */}

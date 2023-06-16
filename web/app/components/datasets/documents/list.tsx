@@ -256,7 +256,6 @@ type IDocumentListProps = {
   documents: (SimpleDocumentDetail & { percent: number })[]
   datasetId: string
   onUpdate: () => void
-  onSync: () => void
 }
 
 /**

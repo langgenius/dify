@@ -7,6 +7,7 @@ import SearchInput from './search-input'
 import PageSelector from './page-selector'
 import { preImportNotionPages } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
+import { NotionConnector } from '@/app/components/datasets/create/step-one'
 import type { DataSourceNotionPage, DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
 
 export type NotionPageSelectorValue = DataSourceNotionPage & { workspace_id: string }
@@ -28,7 +29,7 @@ const NotionPageSelector = ({
   onPreview,
   datasetId = '',
 }: NotionPageSelectorProps) => {
-  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
+  const { data, error, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [showDataSourceSetting, setShowDataSourceSetting] = useState(false)
@@ -86,35 +87,45 @@ const NotionPageSelector = ({
 
   return (
     <div className='bg-gray-25 border border-gray-200 rounded-xl'>
-      <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
-        <WorkspaceSelector
-          value={currentWorkspaceId}
-          items={notionWorkspaces}
-          onSelect={handleSelectWorkspace}
-        />
-        <div className='mx-1 w-[1px] h-3 bg-gray-200' />
-        <div
-          className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
-          onClick={() => setShowDataSourceSetting(true)}
-        />
-        <div className='grow' />
-        <SearchInput
-          value={searchValue}
-          onChange={handleSearchValueChange}
-        />
-      </div>
-      <div className='rounded-b-xl overflow-hidden'>
-        <PageSelector
-          value={selectedPagesId}
-          searchValue={searchValue}
-          list={currentWorkspace?.pages || []}
-          pagesMap={getPagesMapAndSelectedPagesId[0]}
-          onSelect={handleSelecPages}
-          canPreview={canPreview}
-          previewPageId={previewPageId}
-          onPreview={handlePreviewPage}
-        />
-      </div>
+      {
+        error?.status === 404
+          ? (
+            <NotionConnector onSetting={() => setShowDataSourceSetting(true)} />
+          )
+          : (
+            <>
+              <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
+                <WorkspaceSelector
+                  value={currentWorkspaceId}
+                  items={notionWorkspaces}
+                  onSelect={handleSelectWorkspace}
+                />
+                <div className='mx-1 w-[1px] h-3 bg-gray-200' />
+                <div
+                  className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
+                  onClick={() => setShowDataSourceSetting(true)}
+                />
+                <div className='grow' />
+                <SearchInput
+                  value={searchValue}
+                  onChange={handleSearchValueChange}
+                />
+              </div>
+              <div className='rounded-b-xl overflow-hidden'>
+                <PageSelector
+                  value={selectedPagesId}
+                  searchValue={searchValue}
+                  list={currentWorkspace?.pages || []}
+                  pagesMap={getPagesMapAndSelectedPagesId[0]}
+                  onSelect={handleSelecPages}
+                  canPreview={canPreview}
+                  previewPageId={previewPageId}
+                  onPreview={handlePreviewPage}
+                />
+              </div>
+            </>
+          )
+      }
       {
         showDataSourceSetting && (
           <AccountSetting activeTab='data-source' onCancel={() => {
