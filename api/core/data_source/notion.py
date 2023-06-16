@@ -58,6 +58,9 @@ class NotionPageReader(BaseReader):
                 "GET", block_url, headers=self.headers, json=query_dict
             )
             data = res.json()
+            if data["results"] is None:
+                done = True
+                break
             heading = ''
             for result in data["results"]:
                 result_type = result["type"]
@@ -211,7 +214,8 @@ class NotionPageReader(BaseReader):
             self, database_id: str, query_dict: Dict[str, Any] = {}
     ) -> List[str]:
         """Get all the pages from a Notion database."""
-        res = requests.post(
+        res = requests.post\
+                (
             DATABASE_URL_TMPL.format(database_id=database_id),
             headers=self.headers,
             json=query_dict,
