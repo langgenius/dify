@@ -29,7 +29,7 @@ const NotionPageSelector = ({
   onPreview,
   datasetId = '',
 }: NotionPageSelectorProps) => {
-  const { data, error, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
+  const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
   const [showDataSourceSetting, setShowDataSourceSetting] = useState(false)
@@ -88,11 +88,8 @@ const NotionPageSelector = ({
   return (
     <div className='bg-gray-25 border border-gray-200 rounded-xl'>
       {
-        error?.status === 404
+        data?.notion_info?.length
           ? (
-            <NotionConnector onSetting={() => setShowDataSourceSetting(true)} />
-          )
-          : (
             <>
               <div className='flex items-center pl-[10px] pr-2 h-11 bg-white border-b border-b-gray-200 rounded-t-xl'>
                 <WorkspaceSelector
@@ -124,6 +121,9 @@ const NotionPageSelector = ({
                 />
               </div>
             </>
+          )
+          : (
+            <NotionConnector onSetting={() => setShowDataSourceSetting(true)} />
           )
       }
       {
