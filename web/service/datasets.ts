@@ -150,6 +150,6 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, an
   return post('/datasets/indexing-estimate', { body }) as Promise<FileIndexingEstimateResponse>
 }
 
-export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string }> = ({ workspaceID, pageID }) => {
-  return get(`notion/workspaces/${workspaceID}/pages/${pageID}/preview`) as Promise<{ content: string }>
+export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
+  return get(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`) as Promise<{ content: string }>
 }
