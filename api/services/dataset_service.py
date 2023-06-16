@@ -629,7 +629,7 @@ class DocumentService:
 
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
-        dataset.name = cut_name + '...' if len(documents[0].name) > cut_length else cut_name
+        dataset.name = cut_name + '...'
         dataset.description = 'useful for when you want to answer queries about the ' + documents[0].name
         db.session.commit()
 
