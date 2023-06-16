@@ -29,6 +29,22 @@ type IStepOneProps = {
 
 type Page = DataSourceNotionPage & { workspace_id: string }
 
+type NotionConnectorProps = {
+  onSetting: () => void
+}
+export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className={s.notionConnectionTip}>
+      <span className={s.notionIcon}/>
+      <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
+      <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
+      <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
+    </div>
+  )
+}
+
 const StepOne = ({
   datasetId,
   dataSourceType,
@@ -116,14 +132,7 @@ const StepOne = ({
           )}
           {dataSourceType === DataSourceType.NOTION && (
             <>
-              {!hasConnection && (
-                <div className={s.notionConnectionTip}>
-                  <span className={s.notionIcon}/>
-                  <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
-                  <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
-                  <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
-                </div>
-              )}
+              {!hasConnection && <NotionConnector onSetting={onSetting} />}
               {hasConnection && (
                 <>
                   <div className='mb-8 w-[640px]'>
