@@ -102,7 +102,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const documentsWithProgress = useMemo(() => {
     let completedNum = 0
     let percent = 0
-    const documentsData = documentsRes?.data.map((documentItem) => {
+    const documentsData = documentsRes?.data?.map((documentItem) => {
       const { indexing_status, completed_segments, total_segments } = documentItem
       const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
@@ -123,7 +123,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         percent,
       }
     })
-    if (completedNum === documentsRes?.data.length)
+    if (completedNum === documentsRes?.data?.length)
       setTimerCanRun(false)
     return {
       ...documentsRes,
