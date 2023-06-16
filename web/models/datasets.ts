@@ -146,6 +146,8 @@ export type InitialDocumentDetail = {
   created_at: number
   indexing_status: DocumentIndexingStatus
   display_status: DocumentDisplayStatus
+  completed_segments?: number
+  total_segments?: number
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {

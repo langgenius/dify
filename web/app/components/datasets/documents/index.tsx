@@ -14,11 +14,11 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Pagination from '@/app/components/base/pagination'
 import { get } from '@/service/base'
-import { createDocument, fetchDocuments, getDatasetIndexingStatus } from '@/service/datasets'
+import { createDocument, fetchDocuments } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
 import type { DataSourceNotionPage } from '@/models/common'
-import type { CreateDocumentReq, IndexingStatusResponse } from '@/models/datasets'
+import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 
 // Custom page count is not currently supported.
@@ -83,60 +83,57 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { dataset } = useDatasetDetailContext()
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
+  const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
 
   const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: searchValue }
-  }, [searchValue, currPage])
+    return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
+  }, [searchValue, currPage, isDataSourceNotion])
 
-  const { data: documentsRes, error, mutate } = useSWR({
-    action: 'fetchDocuments',
-    datasetId,
-    params: query,
-  }, apiParams => fetchDocuments(omit(apiParams, 'action')))
-  const { data: datasetIndexingStatus, mutate: mutateDatasetIndexingStatus } = useSWR(timerCanRun ? datasetId : null, getDatasetIndexingStatus, { refreshInterval: 2500 })
+  const { data: documentsRes, error, mutate } = useSWR(
+    {
+      action: 'fetchDocuments',
+      datasetId,
+      params: query,
+    },
+    apiParams => fetchDocuments(omit(apiParams, 'action')),
+    { refreshInterval: (isDataSourceNotion && timerCanRun) ? 2500 : 0 },
+  )
 
-  const datasetDocumentProgress: [Record<string, number>, boolean] = useMemo(() => {
+  const documentsWithProgress = useMemo(() => {
     let completedNum = 0
-    const progressPercentMap = datasetIndexingStatus?.data?.reduce((prev: Record<string, number>, next: IndexingStatusResponse) => {
-      const { id, completed_segments, total_segments, indexing_status } = next
+    let percent = 0
+    const documentsData = documentsRes?.data.map((documentItem) => {
+      const { indexing_status, completed_segments, total_segments } = documentItem
       const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
       if (isEmbeddinged)
         completedNum++
+
       const completedCount = completed_segments || 0
       const totalCount = total_segments || 0
       if (totalCount === 0 && completedCount === 0) {
-        prev[id] = isEmbeddinged ? 100 : 0
+        percent = isEmbeddinged ? 100 : 0
       }
       else {
-        const percent = Math.round(completedCount * 100 / totalCount)
-        prev[id] = percent > 100 ? 100 : percent
+        const per = Math.round(completedCount * 100 / totalCount)
+        percent = per > 100 ? 100 : per
       }
-
-      return prev
-    }, {}) || {}
-
-    if (completedNum === datasetIndexingStatus?.data?.length)
+      return {
+        ...documentItem,
+        percent,
+      }
+    })
+    if (completedNum === documentsRes?.data.length)
       setTimerCanRun(false)
-
-    return [progressPercentMap, completedNum === datasetIndexingStatus?.data?.length]
-  }, [datasetIndexingStatus])
-
-  const documentsWithProgress = useMemo(() => {
     return {
       ...documentsRes,
-      data: documentsRes?.data.map((documentItem) => {
-        return {
-          ...documentItem,
-          percent: datasetDocumentProgress[0][documentItem.id],
-        }
-      }),
+      data: documentsData,
     }
-  }, [documentsRes, datasetDocumentProgress])
+  }, [documentsRes])
   const total = documentsRes?.total || 0
 
   const routeToDocCreate = () => {
-    if (dataset?.data_source_type === DataSourceType.NOTION) {
+    if (isDataSourceNotion) {
       setNotionPageSelectorModalVisible(true)
       return
     }
@@ -189,9 +186,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     })
     mutate()
     setTimerCanRun(true)
-    mutateDatasetIndexingStatus(undefined, { revalidate: true })
+    // mutateDatasetIndexingStatus(undefined, { revalidate: true })
     setNotionPageSelectorModalVisible(false)
   }
+
+  const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
 
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
@@ -211,7 +210,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
             <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
             {
-              dataset?.data_source_type === DataSourceType.NOTION
+              isDataSourceNotion
                 ? t('datasetDocuments.list.addPages')
                 : t('datasetDocuments.list.addFile')
             }
@@ -220,7 +219,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsWithProgress?.data || []} datasetId={datasetId} onUpdate={mutate} />
+            ? <List documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
             : <EmptyElement onClick={routeToDocCreate} />
         }
         {/* Show Pagination only if the total is more than the limit */}

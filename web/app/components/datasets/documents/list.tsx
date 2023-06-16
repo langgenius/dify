@@ -252,8 +252,9 @@ const renderCount = (count: number | undefined) => {
   return `${formatNumber((count / 1000).toFixed(1))}k`
 }
 
+type LocalDoc = SimpleDocumentDetail & { percent?: number }
 type IDocumentListProps = {
-  documents: (SimpleDocumentDetail & { percent: number })[]
+  documents: LocalDoc[]
   datasetId: string
   onUpdate: () => void
 }
@@ -264,7 +265,7 @@ type IDocumentListProps = {
 const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpdate }) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [localDocs, setLocalDocs] = useState<(SimpleDocumentDetail & { percent: number })[]>(documents)
+  const [localDocs, setLocalDocs] = useState<LocalDoc[]>(documents)
   const [enableSort, setEnableSort] = useState(false)
 
   useEffect(() => {
@@ -331,7 +332,7 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               <td>
                 {
                   ['indexing', 'splitting', 'parsing', 'cleaning'].includes(doc.indexing_status)
-                    ? <ProgressBar percent={doc.percent} />
+                    ? <ProgressBar percent={doc.percent || 0} />
                     : <StatusItem status={doc.display_status} />
                 }
               </td>
