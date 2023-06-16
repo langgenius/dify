@@ -73,7 +73,6 @@ class NotionOAuth(OAuthDataSource):
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
-            db.session.add(data_source_binding)
             db.session.commit()
         else:
             new_data_source_binding = DataSourceBinding(

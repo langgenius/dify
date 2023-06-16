@@ -189,7 +189,9 @@ class DataSourceNotionListApi(Resource):
             disabled=False
         ).all()
         if not data_source_bindings:
-            raise NotFound('Data source binding not found.')
+            return {
+                'notion_info': []
+            }, 200
         pre_import_info_list = []
         for data_source_binding in data_source_bindings:
             source_info = data_source_binding.source_info
