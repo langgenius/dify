@@ -47,6 +47,11 @@ docker compose up -d
 
 运行后，可以在浏览器上访问 [http://localhost/install](http://localhost/install) 进入 Dify 控制台并开始初始化安装操作。
 
+### Helm Chart
+
+非常感谢 @BorisPolonsky 为我们提供了一个 [Helm Chart](https://helm.sh/) 版本，可以在 Kubernetes 上部署 Dify。
+您可以前往 https://github.com/BorisPolonsky/dify-helm 来获取部署信息。
+
 ### 配置
 
 需要自定义配置，请参考我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件中的注释，并手动设置环境配置，修改完毕后，请再次执行 `docker-compose up -d`。

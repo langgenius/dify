@@ -45,6 +45,11 @@ docker compose up -d
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization installation process.
 
+### Helm Chart
+
+A big thanks to @BorisPolonsky for providing us with a [Helm Chart](https://helm.sh/) version, which allows Dify to be deployed on Kubernetes.
+You can go to https://github.com/BorisPolonsky/dify-helm for deployment information.
+
 ### Configuration
 
 If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run 'docker-compose up -d' again.
