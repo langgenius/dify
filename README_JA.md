@@ -48,7 +48,7 @@ docker compose up -d
 
 ### Helm Chart
 
-@BorisPolonskyに大感謝します。彼はDifyをKubernetes上にデプロイするための[Helm Chart](https://helm.sh/)バージョンを提供してくれました。
+@BorisPolonsky に大感謝します。彼は Dify を Kubernetes 上にデプロイするための [Helm Chart](https://helm.sh/) バージョンを提供してくれました。
 デプロイ情報については、https://github.com/BorisPolonsky/dify-helm をご覧ください。
 
 ### 構成
