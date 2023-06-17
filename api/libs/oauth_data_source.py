@@ -26,6 +26,7 @@ class NotionOAuth(OAuthDataSource):
     _TOKEN_URL = 'https://api.notion.com/v1/oauth/token'
     _NOTION_PAGE_SEARCH = "https://api.notion.com/v1/search"
     _NOTION_BLOCK_SEARCH = "https://api.notion.com/v1/blocks"
+    _NOTION_BOT_USER = "https://api.notion.com/v1/users/me"
 
     def get_authorization_url(self):
         params = {
@@ -53,6 +54,41 @@ class NotionOAuth(OAuthDataSource):
         workspace_name = response_json.get('workspace_name')
         workspace_icon = response_json.get('workspace_icon')
         workspace_id = response_json.get('workspace_id')
+        # get all authorized pages
+        pages = self.get_authorized_pages(access_token)
+        source_info = {
+            'workspace_name': workspace_name,
+            'workspace_icon': workspace_icon,
+            'workspace_id': workspace_id,
+            'pages': pages,
+            'total': len(pages)
+        }
+        # save data source binding
+        data_source_binding = DataSourceBinding.query.filter(
+            db.and_(
+                DataSourceBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceBinding.provider == 'notion',
+                DataSourceBinding.access_token == access_token
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceBinding(
+                tenant_id=current_user.current_tenant_id,
+                access_token=access_token,
+                source_info=source_info,
+                provider='notion'
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
+
+    def save_internal_access_token(self, access_token: str):
+        workspace_name = self.notion_workspace_name(access_token)
+        workspace_icon = None
+        workspace_id = current_user.current_tenant_id
         # get all authorized pages
         pages = self.get_authorized_pages(access_token)
         source_info = {
@@ -222,7 +258,10 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        results = response_json['results']
+        if 'results' in response_json:
+            results = response_json['results']
+        else:
+            results = []
         return results
 
     def notion_block_parent_page_id(self, access_token: str, block_id: str):
@@ -238,6 +277,20 @@ class NotionOAuth(OAuthDataSource):
             return self.notion_block_parent_page_id(access_token, parent[parent_type])
         return parent[parent_type]
 
+    def notion_workspace_name(self, access_token: str):
+        headers = {
+            'Authorization': f"Bearer {access_token}",
+            'Notion-Version': '2022-06-28',
+        }
+        response = requests.get(url=self._NOTION_BOT_USER, headers=headers)
+        response_json = response.json()
+        if 'object' in response_json and response_json['object'] == 'user':
+            user_type = response_json['type']
+            user_info = response_json[user_type]
+            if 'workspace_name' in user_info:
+                return user_info['workspace_name']
+        return 'workspace'
+
     def notion_database_search(self, access_token: str):
         data = {
             'filter': {
@@ -252,5 +305,8 @@ class NotionOAuth(OAuthDataSource):
         }
         response = requests.post(url=self._NOTION_PAGE_SEARCH, json=data, headers=headers)
         response_json = response.json()
-        results = response_json['results']
+        if 'results' in response_json:
+            results = response_json['results']
+        else:
+            results = []
         return results
