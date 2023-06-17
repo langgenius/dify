@@ -46,6 +46,11 @@ docker compose up -d
 
 実行後、ブラウザで [http://localhost/install](http://localhost/install) にアクセスし、初期化インストール作業を開始することができます。
 
+### Helm Chart
+
+@BorisPolonsky に大感謝します。彼は Dify を Kubernetes 上にデプロイするための [Helm Chart](https://helm.sh/) バージョンを提供してくれました。
+デプロイ情報については、https://github.com/BorisPolonsky/dify-helm をご覧ください。
+
 ### 構成
 
 カスタマイズが必要な場合は、[docker-compose.yml](docker/docker-compose.yaml) ファイルのコメントを参照し、手動で環境設定をお願いします。変更後、再度 'docker-compose up -d' を実行してください。
