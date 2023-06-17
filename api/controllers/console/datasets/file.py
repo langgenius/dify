@@ -143,7 +143,10 @@ class FilePreviewApi(Resource):
                 with open(filepath, "rb") as fp:
                     data = fp.read()
                     encoding = chardet.detect(data)['encoding']
-                    text = data.decode(encoding=encoding).strip() if data else ''
+                    if encoding:
+                        text = data.decode(encoding=encoding).strip() if data else ''
+                    else:
+                        text = data.decode(encoding='utf-8').strip() if data else ''
 
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
         return {'content': text}
