@@ -39,9 +39,15 @@ class OAuthDataSource(Resource):
             print(vars(oauth_provider))
         if not oauth_provider:
             return {'error': 'Invalid provider'}, 400
+        if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
+            internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
+            oauth_provider.save_internal_access_token(internal_secret)
+            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
+        else:
+            auth_url = oauth_provider.get_authorization_url()
+            return redirect(auth_url)
 
-        auth_url = oauth_provider.get_authorization_url()
-        return redirect(auth_url)
+
 
 
 class OAuthDataSourceCallback(Resource):

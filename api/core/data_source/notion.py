@@ -84,7 +84,8 @@ class NotionPageReader(BaseReader):
                                     heading = text
                     result_block_id = result["id"]
                     has_children = result["has_children"]
-                    if has_children:
+                    block_type = result["type"]
+                    if has_children and block_type != 'child_page':
                         children_text = self._read_block(
                             result_block_id, num_tabs=num_tabs + 1
                         )
@@ -184,7 +185,8 @@ class NotionPageReader(BaseReader):
 
                     result_block_id = result["id"]
                     has_children = result["has_children"]
-                    if has_children:
+                    block_type = result["type"]
+                    if has_children and block_type != 'child_page':
                         children_text = self._read_block(
                             result_block_id, num_tabs=num_tabs + 1
                         )
