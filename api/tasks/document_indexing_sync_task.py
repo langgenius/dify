@@ -6,7 +6,7 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.data_source.notion import NotionPageReader
+from core.data_loader.loader.notion import NotionLoader
 from core.index.keyword_table_index import KeywordTableIndex
 from core.index.vector_index import VectorIndex
 from core.indexing_runner import IndexingRunner, DocumentIsPausedException
@@ -43,6 +43,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             raise ValueError("no notion page found")
         workspace_id = data_source_info['notion_workspace_id']
         page_id = data_source_info['notion_page_id']
+        page_type = data_source_info['type']
         page_edited_time = data_source_info['last_edited_time']
         data_source_binding = DataSourceBinding.query.filter(
             db.and_(
@@ -54,8 +55,16 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         ).first()
         if not data_source_binding:
             raise ValueError('Data source binding not found.')
-        reader = NotionPageReader(integration_token=data_source_binding.access_token)
-        last_edited_time = reader.get_page_last_edited_time(page_id)
+
+        loader = NotionLoader(
+            notion_access_token=data_source_binding.access_token,
+            notion_workspace_id=workspace_id,
+            notion_obj_id=page_id,
+            notion_page_type=page_type
+        )
+
+        last_edited_time = loader.get_notion_last_edited_time()
+
         # check the page is updated
         if last_edited_time != page_edited_time:
             document.indexing_status = 'parsing'

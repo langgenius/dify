@@ -1,10 +1,6 @@
 from typing import Any, Dict, Optional, Sequence
 
-import tiktoken
-from llama_index.data_structs import Node
-from llama_index.docstore.types import BaseDocumentStore
-from llama_index.docstore.utils import json_to_doc
-from llama_index.schema import BaseDocument
+from langchain.schema import Document
 from sqlalchemy import func
 
 from core.llm.token_calculator import TokenCalculator
@@ -12,7 +8,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
 
-class DatesetDocumentStore(BaseDocumentStore):
+class DatesetDocumentStore:
     def __init__(
         self,
         dataset: Dataset,
@@ -48,7 +44,7 @@ class DatesetDocumentStore(BaseDocumentStore):
         return self._embedding_model_name
 
     @property
-    def docs(self) -> Dict[str, BaseDocument]:
+    def docs(self) -> Dict[str, Document]:
         document_segments = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == self._dataset.id
         ).all()
@@ -56,13 +52,20 @@ class DatesetDocumentStore(BaseDocumentStore):
         output = {}
         for document_segment in document_segments:
             doc_id = document_segment.index_node_id
-            result = self.segment_to_dict(document_segment)
-            output[doc_id] = json_to_doc(result)
+            output[doc_id] = Document(
+                page_content=document_segment.content,
+                metadata={
+                    "doc_id": document_segment.index_node_id,
+                    "doc_hash": document_segment.index_node_hash,
+                    "document_id": document_segment.document_id,
+                    "dataset_id": document_segment.dataset_id,
+                }
+            )
 
         return output
 
     def add_documents(
-        self, docs: Sequence[BaseDocument], allow_update: bool = True
+        self, docs: Sequence[Document], allow_update: bool = True
     ) -> None:
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document == self._document_id
@@ -72,23 +75,20 @@ class DatesetDocumentStore(BaseDocumentStore):
             max_position = 0
 
         for doc in docs:
-            if doc.is_doc_id_none:
-                raise ValueError("doc_id not set")
+            if not isinstance(doc, Document):
+                raise ValueError("doc must be a Document")
 
-            if not isinstance(doc, Node):
-                raise ValueError("doc must be a Node")
-
-            segment_document = self.get_document(doc_id=doc.get_doc_id(), raise_error=False)
+            segment_document = self.get_document(doc_id=doc.metadata['doc_id'], raise_error=False)
 
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:
                 raise ValueError(
-                    f"doc_id {doc.get_doc_id()} already exists. "
+                    f"doc_id {doc.metadata['doc_id']} already exists. "
                     "Set allow_update to True to overwrite."
                 )
 
             # calc embedding use tokens
-            tokens = TokenCalculator.get_num_tokens(self._embedding_model_name, doc.get_text())
+            tokens = TokenCalculator.get_num_tokens(self._embedding_model_name, doc.page_content)
 
             if not segment_document:
                 max_position += 1
@@ -97,19 +97,19 @@ class DatesetDocumentStore(BaseDocumentStore):
                     tenant_id=self._dataset.tenant_id,
                     dataset_id=self._dataset.id,
                     document_id=self._document_id,
-                    index_node_id=doc.get_doc_id(),
-                    index_node_hash=doc.get_doc_hash(),
+                    index_node_id=doc.metadata['doc_id'],
+                    index_node_hash=doc.metadata['doc_hash'],
                     position=max_position,
-                    content=doc.get_text(),
-                    word_count=len(doc.get_text()),
+                    content=doc.page_content,
+                    word_count=len(doc.page_content),
                     tokens=tokens,
                     created_by=self._user_id,
                 )
                 db.session.add(segment_document)
             else:
-                segment_document.content = doc.get_text()
-                segment_document.index_node_hash = doc.get_doc_hash()
-                segment_document.word_count = len(doc.get_text())
+                segment_document.content = doc.page_content
+                segment_document.index_node_hash = doc.metadata['doc_hash']
+                segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
 
             db.session.commit()
@@ -121,7 +121,7 @@ class DatesetDocumentStore(BaseDocumentStore):
 
     def get_document(
         self, doc_id: str, raise_error: bool = True
-    ) -> Optional[BaseDocument]:
+    ) -> Optional[Document]:
         document_segment = self.get_document_segment(doc_id)
 
         if document_segment is None:
@@ -130,8 +130,15 @@ class DatesetDocumentStore(BaseDocumentStore):
             else:
                 return None
 
-        result = self.segment_to_dict(document_segment)
-        return json_to_doc(result)
+        return Document(
+            page_content=document_segment.content,
+            metadata={
+                "doc_id": document_segment.index_node_id,
+                "doc_hash": document_segment.index_node_hash,
+                "document_id": document_segment.document_id,
+                "dataset_id": document_segment.dataset_id,
+            }
+        )
 
     def delete_document(self, doc_id: str, raise_error: bool = True) -> None:
         document_segment = self.get_document_segment(doc_id)
@@ -164,15 +171,6 @@ class DatesetDocumentStore(BaseDocumentStore):
 
         return document_segment.index_node_hash
 
-    def update_docstore(self, other: "BaseDocumentStore") -> None:
-        """Update docstore.
-
-        Args:
-            other (BaseDocumentStore): docstore to update from
-
-        """
-        self.add_documents(list(other.docs.values()))
-
     def get_document_segment(self, doc_id: str) -> DocumentSegment:
         document_segment = db.session.query(DocumentSegment).filter(
             DocumentSegment.dataset_id == self._dataset.id,
@@ -180,11 +178,3 @@ class DatesetDocumentStore(BaseDocumentStore):
         ).first()
 
         return document_segment
-
-    def segment_to_dict(self, segment: DocumentSegment) -> Dict[str, Any]:
-        return {
-            "doc_id": segment.index_node_id,
-            "doc_hash": segment.index_node_hash,
-            "text": segment.content,
-            "__type__": Node.get_type()
-        }
