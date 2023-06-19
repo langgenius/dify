@@ -14,7 +14,7 @@ from flask import Flask, request, Response, session
 import flask_login
 from flask_cors import CORS
 
-from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_vector_store, ext_migrate, \
+from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
     ext_database, ext_storage
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
@@ -79,7 +79,6 @@ def initialize_extensions(app):
     ext_database.init_app(app)
     ext_migrate.init(app, db)
     ext_redis.init_app(app)
-    ext_vector_store.init_app(app)
     ext_storage.init_app(app)
     ext_celery.init_app(app)
     ext_session.init_app(app)

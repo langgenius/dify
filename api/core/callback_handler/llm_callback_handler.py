@@ -53,37 +53,12 @@ class LLMCallbackHandler(BaseCallbackHandler):
     ) -> None:
         self.start_at = time.perf_counter()
 
-        # todo chat serialized maybe deprecated in future
-        if 'Chat' in serialized['name']:
-            real_prompts = []
-            messages = []
-            for prompt in prompts:
-                role, content = prompt.split(': ', maxsplit=1)
-                if role == 'human':
-                    role = 'user'
-                    message = HumanMessage(content=content)
-                elif role == 'ai':
-                    role = 'assistant'
-                    message = AIMessage(content=content)
-                else:
-                    message = SystemMessage(content=content)
+        self.llm_message.prompt = [{
+            "role": 'user',
+            "text": prompts[0]
+        }]
 
-                real_prompt = {
-                    "role": role,
-                    "text": content
-                }
-                real_prompts.append(real_prompt)
-                messages.append(message)
-
-            self.llm_message.prompt = real_prompts
-            self.llm_message.prompt_tokens = self.llm.get_messages_tokens(messages)
-        else:
-            self.llm_message.prompt = [{
-                "role": 'user',
-                "text": prompts[0]
-            }]
-
-            self.llm_message.prompt_tokens = self.llm.get_num_tokens(prompts[0])
+        self.llm_message.prompt_tokens = self.llm.get_num_tokens(prompts[0])
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         end_at = time.perf_counter()

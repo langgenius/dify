@@ -3,7 +3,7 @@ from collections import defaultdict
 from typing import Any, List, Optional, Dict
 
 from langchain.schema import Document, BaseRetriever
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, Extra
 
 from core.index.base import BaseIndex
 from core.index.keyword_table_index.jieba_keyword_table_handler import JiebaKeywordTableHandler
@@ -169,6 +169,12 @@ class KeywordTableIndex(BaseIndex):
 class KeywordTableRetriever(BaseRetriever, BaseModel):
     index: KeywordTableIndex
     search_kwargs: dict = Field(default_factory=dict)
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        extra = Extra.forbid
+        arbitrary_types_allowed = True
 
     def get_relevant_documents(self, query: str) -> List[Document]:
         """Get documents relevant for a query.

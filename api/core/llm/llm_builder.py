@@ -1,7 +1,6 @@
 from typing import Union, Optional, List
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.llms.fake import FakeListLLM
 
 from core.constant import llm_constant
 from core.llm.error import ProviderTokenNotInitError
@@ -32,10 +31,7 @@ class LLMBuilder:
     """
 
     @classmethod
-    def to_llm(cls, tenant_id: str, model_name: str, **kwargs) -> Union[StreamableOpenAI, StreamableChatOpenAI, FakeListLLM]:
-        if model_name == 'fake':
-            return FakeListLLM(responses=[])
-
+    def to_llm(cls, tenant_id: str, model_name: str, **kwargs) -> Union[StreamableOpenAI, StreamableChatOpenAI]:
         provider = cls.get_default_provider(tenant_id)
 
         mode = cls.get_mode_by_model(model_name)

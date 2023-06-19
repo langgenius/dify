@@ -19,6 +19,7 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
+        print_text("\n[on_chat_model_start]\n", color='blue')
         for sub_messages in messages:
             for sub_message in sub_messages:
                 print_text(str(sub_message) + "\n", color='blue')
@@ -28,12 +29,7 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Print out the prompts."""
         print_text("\n[on_llm_start]\n", color='blue')
-
-        if 'Chat' in serialized['name']:
-            for prompt in prompts:
-                print_text(prompt + "\n", color='blue')
-        else:
-            print_text(prompts[0] + "\n", color='blue')
+        print_text(prompts[0] + "\n", color='blue')
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Do nothing."""
