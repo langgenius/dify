@@ -51,14 +51,14 @@ class VectorIndex:
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 
-    def add_texts(self, texts: list[Document]):
+    def add_texts(self, texts: list[Document], **kwargs):
         if not self._dataset.index_struct_dict:
-            self._vector_index.create(texts)
+            self._vector_index.create(texts, **kwargs)
             self._dataset.index_struct = json.dumps(self._vector_index.to_index_struct())
             db.session.commit()
             return
 
-        self._vector_index.add_texts(texts)
+        self._vector_index.add_texts(texts, **kwargs)
 
     def __getattr__(self, name):
         if self._vector_index is not None:

@@ -67,11 +67,13 @@ class BaseVectorIndex(BaseIndex):
 
         return vector_store.as_retriever(**kwargs)
 
-    def add_texts(self, texts: list[Document]):
+    def add_texts(self, texts: list[Document], **kwargs):
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
-        texts = self._filter_duplicate_texts(texts)
+        if kwargs.get('duplicate_check', False):
+            texts = self._filter_duplicate_texts(texts)
+
         uuids = self._get_uuids(texts)
         vector_store.add_documents(texts, uuids=uuids)
 

@@ -1,5 +1,6 @@
 import datetime
 import json
+import logging
 import re
 import time
 import uuid
@@ -15,8 +16,10 @@ from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.embedding.cached_embedding import CacheEmbedding
+from core.index.index import IndexBuilder
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
+from core.llm.error import ProviderTokenNotInitError
 from core.llm.llm_builder import LLMBuilder
 from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
 from core.llm.token_calculator import TokenCalculator
@@ -39,6 +42,58 @@ class IndexingRunner:
     def run(self, dataset_documents: List[DatasetDocument]):
         """Run the indexing process."""
         for dataset_document in dataset_documents:
+            try:
+                # get dataset
+                dataset = Dataset.query.filter_by(
+                    id=dataset_document.dataset_id
+                ).first()
+
+                if not dataset:
+                    raise ValueError("no dataset found")
+
+                # load file
+                text_docs = self._load_data(dataset_document)
+
+                # get the process rule
+                processing_rule = db.session.query(DatasetProcessRule). \
+                    filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
+                    first()
+
+                # get splitter
+                splitter = self._get_splitter(processing_rule)
+
+                # split to documents
+                documents = self._step_split(
+                    text_docs=text_docs,
+                    splitter=splitter,
+                    dataset=dataset,
+                    dataset_document=dataset_document,
+                    processing_rule=processing_rule
+                )
+
+                # build index
+                self._build_index(
+                    dataset=dataset,
+                    dataset_document=dataset_document,
+                    documents=documents
+                )
+            except DocumentIsPausedException:
+                raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+            except ProviderTokenNotInitError as e:
+                dataset_document.indexing_status = 'error'
+                dataset_document.error = str(e.description)
+                dataset_document.stopped_at = datetime.datetime.utcnow()
+                db.session.commit()
+            except Exception as e:
+                logging.exception("consume document failed")
+                dataset_document.indexing_status = 'error'
+                dataset_document.error = str(e)
+                dataset_document.stopped_at = datetime.datetime.utcnow()
+                db.session.commit()
+
+    def run_in_splitting_status(self, dataset_document: DatasetDocument):
+        """Run the indexing process when the index_status is splitting."""
+        try:
             # get dataset
             dataset = Dataset.query.filter_by(
                 id=dataset_document.dataset_id
@@ -46,6 +101,15 @@ class IndexingRunner:
 
             if not dataset:
                 raise ValueError("no dataset found")
+
+            # get exist document_segment list and delete
+            document_segments = DocumentSegment.query.filter_by(
+                dataset_id=dataset.id,
+                document_id=dataset_document.id
+            ).all()
+
+            db.session.delete(document_segments)
+            db.session.commit()
 
             # load file
             text_docs = self._load_data(dataset_document)
@@ -73,92 +137,73 @@ class IndexingRunner:
                 dataset_document=dataset_document,
                 documents=documents
             )
-
-    def run_in_splitting_status(self, dataset_document: DatasetDocument):
-        """Run the indexing process when the index_status is splitting."""
-        # get dataset
-        dataset = Dataset.query.filter_by(
-            id=dataset_document.dataset_id
-        ).first()
-
-        if not dataset:
-            raise ValueError("no dataset found")
-
-        # get exist document_segment list and delete
-        document_segments = DocumentSegment.query.filter_by(
-            dataset_id=dataset.id,
-            document_id=dataset_document.id
-        ).all()
-
-        db.session.delete(document_segments)
-        db.session.commit()
-
-        # load file
-        text_docs = self._load_data(dataset_document)
-
-        # get the process rule
-        processing_rule = db.session.query(DatasetProcessRule). \
-            filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
-            first()
-
-        # get splitter
-        splitter = self._get_splitter(processing_rule)
-
-        # split to documents
-        documents = self._step_split(
-            text_docs=text_docs,
-            splitter=splitter,
-            dataset=dataset,
-            dataset_document=dataset_document,
-            processing_rule=processing_rule
-        )
-
-        # build index
-        self._build_index(
-            dataset=dataset,
-            dataset_document=dataset_document,
-            documents=documents
-        )
+        except DocumentIsPausedException:
+            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+        except ProviderTokenNotInitError as e:
+            dataset_document.indexing_status = 'error'
+            dataset_document.error = str(e.description)
+            dataset_document.stopped_at = datetime.datetime.utcnow()
+            db.session.commit()
+        except Exception as e:
+            logging.exception("consume document failed")
+            dataset_document.indexing_status = 'error'
+            dataset_document.error = str(e)
+            dataset_document.stopped_at = datetime.datetime.utcnow()
+            db.session.commit()
 
     def run_in_indexing_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is indexing."""
-        # get dataset
-        dataset = Dataset.query.filter_by(
-            id=dataset_document.dataset_id
-        ).first()
+        try:
+            # get dataset
+            dataset = Dataset.query.filter_by(
+                id=dataset_document.dataset_id
+            ).first()
 
-        if not dataset:
-            raise ValueError("no dataset found")
+            if not dataset:
+                raise ValueError("no dataset found")
 
-        # get exist document_segment list and delete
-        document_segments = DocumentSegment.query.filter_by(
-            dataset_id=dataset.id,
-            document_id=dataset_document.id
-        ).all()
+            # get exist document_segment list and delete
+            document_segments = DocumentSegment.query.filter_by(
+                dataset_id=dataset.id,
+                document_id=dataset_document.id
+            ).all()
 
-        documents = []
-        if document_segments:
-            for document_segment in document_segments:
-                # transform segment to node
-                if document_segment.status != "completed":
-                    document = Document(
-                        page_content=document_segment.content,
-                        metadata={
-                            "doc_id": document_segment.index_node_id,
-                            "doc_hash": document_segment.index_node_hash,
-                            "document_id": document_segment.document_id,
-                            "dataset_id": document_segment.dataset_id,
-                        }
-                    )
+            documents = []
+            if document_segments:
+                for document_segment in document_segments:
+                    # transform segment to node
+                    if document_segment.status != "completed":
+                        document = Document(
+                            page_content=document_segment.content,
+                            metadata={
+                                "doc_id": document_segment.index_node_id,
+                                "doc_hash": document_segment.index_node_hash,
+                                "document_id": document_segment.document_id,
+                                "dataset_id": document_segment.dataset_id,
+                            }
+                        )
 
-                    documents.append(document)
+                        documents.append(document)
 
-        # build index
-        self._build_index(
-            dataset=dataset,
-            dataset_document=dataset_document,
-            documents=documents
-        )
+            # build index
+            self._build_index(
+                dataset=dataset,
+                dataset_document=dataset_document,
+                documents=documents
+            )
+        except DocumentIsPausedException:
+            raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
+        except ProviderTokenNotInitError as e:
+            dataset_document.indexing_status = 'error'
+            dataset_document.error = str(e.description)
+            dataset_document.stopped_at = datetime.datetime.utcnow()
+            db.session.commit()
+        except Exception as e:
+            logging.exception("consume document failed")
+            dataset_document.indexing_status = 'error'
+            dataset_document.error = str(e)
+            dataset_document.stopped_at = datetime.datetime.utcnow()
+            db.session.commit()
 
     def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict) -> dict:
         """
@@ -481,11 +526,14 @@ class IndexingRunner:
             )
 
             # save vector index
-            if dataset.indexing_technique == "high_quality":
-                vector_index.add_texts(chunk_documents)
+            index = IndexBuilder.get_index(dataset, 'high_quality')
+            if index:
+                index.add_texts(chunk_documents)
 
             # save keyword index
-            keyword_table_index.add_texts(chunk_documents)
+            index = IndexBuilder.get_index(dataset, 'economy')
+            if index:
+                index.add_texts(chunk_documents)
 
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(

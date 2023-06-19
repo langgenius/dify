@@ -4,12 +4,10 @@ import time
 
 import click
 from celery import shared_task
-from llama_index.data_structs import Node
-from llama_index.data_structs.node_v2 import DocumentRelationship
+from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
@@ -36,25 +34,14 @@ def add_segment_to_index_task(segment_id: str):
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
     try:
-        relationships = {
-            DocumentRelationship.SOURCE: segment.document_id,
-        }
-
-        previous_segment = segment.previous_segment
-        if previous_segment:
-            relationships[DocumentRelationship.PREVIOUS] = previous_segment.index_node_id
-
-        next_segment = segment.next_segment
-        if next_segment:
-            relationships[DocumentRelationship.NEXT] = next_segment.index_node_id
-
-        node = Node(
-            doc_id=segment.index_node_id,
-            doc_hash=segment.index_node_hash,
-            text=segment.content,
-            extra_info=None,
-            node_info=None,
-            relationships=relationships
+        document = Document(
+            page_content=segment.content,
+            metadata={
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+                "document_id": segment.document_id,
+                "dataset_id": segment.dataset_id,
+            }
         )
 
         dataset = segment.dataset
@@ -62,18 +49,15 @@ def add_segment_to_index_task(segment_id: str):
         if not dataset:
             raise Exception('Segment has no dataset')
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
-
         # save vector index
-        if dataset.indexing_technique == "high_quality":
-            vector_index.add_nodes(
-                nodes=[node],
-                duplicate_check=True
-            )
+        index = IndexBuilder.get_index(dataset, 'high_quality')
+        if index:
+            index.add_texts([document], duplicate_check=True)
 
         # save keyword index
-        keyword_table_index.add_nodes([node])
+        index = IndexBuilder.get_index(dataset, 'economy')
+        if index:
+            index.add_texts([document])
 
         end_at = time.perf_counter()
         logging.info(click.style('Segment added to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))

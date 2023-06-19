@@ -7,11 +7,11 @@ from langchain.schema import Document, BaseRetriever
 
 class BaseIndex(ABC):
     @abstractmethod
-    def create(self, texts: list[Document]) -> BaseIndex:
+    def create(self, texts: list[Document], **kwargs) -> BaseIndex:
         raise NotImplementedError
 
     @abstractmethod
-    def add_texts(self, texts: list[Document]):
+    def add_texts(self, texts: list[Document], **kwargs):
         raise NotImplementedError
 
     @abstractmethod

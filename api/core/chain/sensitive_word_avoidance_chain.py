@@ -1,5 +1,6 @@
-from typing import List, Dict
+from typing import List, Dict, Optional, Any
 
+from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
 
 
@@ -36,7 +37,11 @@ class SensitiveWordAvoidanceChain(Chain):
                 return self.canned_response
         return text
 
-    def _call(self, inputs: Dict[str, str]) -> Dict[str, str]:
+    def _call(
+            self,
+            inputs: Dict[str, Any],
+            run_manager: Optional[CallbackManagerForChainRun] = None,
+    ) -> Dict[str, Any]:
         text = inputs[self.input_key]
         output = self._check_sensitive_word(text)
         return {self.output_key: output}

@@ -4,8 +4,7 @@ import time
 import click
 from celery import shared_task
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
     AppDatasetJoin
@@ -33,19 +32,19 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             index_struct=index_struct
         )
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
-
         documents = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
         index_doc_ids = [document.id for document in documents]
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        kw_index = IndexBuilder.get_index(dataset, 'economy')
+
         # delete from vector index
-        if dataset.indexing_technique == "high_quality":
+        if vector_index:
             for index_doc_id in index_doc_ids:
                 try:
-                    vector_index.del_doc(index_doc_id)
+                    vector_index.delete_by_document_id(index_doc_id)
                 except Exception:
                     logging.exception("Delete doc index failed when dataset deleted.")
                     continue
@@ -53,7 +52,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         # delete from keyword index
         if index_node_ids:
             try:
-                keyword_table_index.del_nodes(index_node_ids)
+                kw_index.delete_by_ids(index_node_ids)
             except Exception:
                 logging.exception("Delete nodes index failed when dataset deleted.")
 

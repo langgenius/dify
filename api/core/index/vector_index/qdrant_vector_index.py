@@ -53,7 +53,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             "vector_store": {"collection_name": self.get_index_name(self._dataset.get_id())}
         }
 
-    def create(self, texts: list[Document]) -> BaseIndex:
+    def create(self, texts: list[Document], **kwargs) -> BaseIndex:
         uuids = self._get_uuids(texts)
         self._vector_store = QdrantVectorStore.from_documents(
             texts,

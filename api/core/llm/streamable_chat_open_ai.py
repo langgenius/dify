@@ -1,5 +1,6 @@
 import os
 
+from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.schema import BaseMessage, ChatResult, LLMResult
 from langchain.chat_models import ChatOpenAI
 from typing import Optional, List, Dict, Any
@@ -71,7 +72,11 @@ class StreamableChatOpenAI(ChatOpenAI):
         return message_tokens
 
     def _generate(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[CallbackManagerForLLMRun] = None,
+            **kwargs: Any,
     ) -> ChatResult:
         self.callback_manager.on_llm_start(
             {"name": self.__class__.__name__}, [(message.type + ": " + message.content) for message in messages], verbose=self.verbose
@@ -88,7 +93,11 @@ class StreamableChatOpenAI(ChatOpenAI):
         return chat_result
 
     async def _agenerate(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[AsyncCallbackManagerForLLMRun] = None,
+            **kwargs: Any,
     ) -> ChatResult:
         if self.callback_manager.is_async:
             await self.callback_manager.on_llm_start(

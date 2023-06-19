@@ -4,6 +4,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Type, cast, NamedTuple
 
 from langchain.base_language import BaseLanguageModel
+from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
 from pydantic import root_validator
 
@@ -51,8 +52,9 @@ class LLMRouterChain(Chain):
             raise ValueError
 
     def _call(
-        self,
-        inputs: Dict[str, Any]
+            self,
+            inputs: Dict[str, Any],
+            run_manager: Optional[CallbackManagerForChainRun] = None,
     ) -> Dict[str, Any]:
         output = cast(
             Dict[str, Any],

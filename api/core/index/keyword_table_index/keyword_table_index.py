@@ -20,7 +20,7 @@ class KeywordTableIndex(BaseIndex):
         self._dataset = dataset
         self._config = config
 
-    def create(self, texts: list[Document]) -> BaseIndex:
+    def create(self, texts: list[Document], **kwargs) -> BaseIndex:
         keyword_table_handler = JiebaKeywordTableHandler()
         keyword_table = {}
         for text in texts:
@@ -37,7 +37,7 @@ class KeywordTableIndex(BaseIndex):
 
         return self
 
-    def add_texts(self, texts: list[Document]):
+    def add_texts(self, texts: list[Document], **kwargs):
         keyword_table_handler = JiebaKeywordTableHandler()
 
         keyword_table = self._get_dataset_keyword_table()
