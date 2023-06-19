@@ -3,7 +3,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, BaseMessage
 
 
 class DifyStdOutCallbackHandler(BaseCallbackHandler):
@@ -12,6 +12,16 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     def __init__(self, color: Optional[str] = None) -> None:
         """Initialize callback handler."""
         self.color = color
+
+    def on_chat_model_start(
+            self,
+            serialized: Dict[str, Any],
+            messages: List[List[BaseMessage]],
+            **kwargs: Any
+    ) -> Any:
+        for sub_messages in messages:
+            for sub_message in sub_messages:
+                print_text(str(sub_message) + "\n", color='blue')
 
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
