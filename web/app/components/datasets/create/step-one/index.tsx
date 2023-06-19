@@ -80,53 +80,61 @@ const StepOne = ({
   return (
     <div className='flex w-full h-full'>
       <div className='grow overflow-y-auto relative'>
-        <div className={s.stepHeader}>{t('datasetCreation.steps.one')}</div>
+        {
+          !datasetId && (
+            <div className={s.stepHeader}>{t('datasetCreation.steps.one')}</div>
+          )
+        }
         <div className={s.form}>
-          <div className={s.dataSourceTypeList}>
-            <div
-              className={cn(
-                s.dataSourceItem,
-                dataSourceType === DataSourceType.FILE && s.active,
-                dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
-              )}
-              onClick={() => {
-                if (dataSourceTypeDisable)
-                  return
-                changeType(DataSourceType.FILE)
-                hidePreview()
-              }}
-            >
-              <span className={cn(s.datasetIcon)} />
-              {t('datasetCreation.stepOne.dataSourceType.file')}
-            </div>
-            <div
-              className={cn(
-                s.dataSourceItem,
-                dataSourceType === DataSourceType.NOTION && s.active,
-                dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
-              )}
-              onClick={() => {
-                if (dataSourceTypeDisable)
-                  return
-                changeType(DataSourceType.NOTION)
-                hidePreview()
-              }}
-            >
-              <span className={cn(s.datasetIcon, s.notion)} />
-              {t('datasetCreation.stepOne.dataSourceType.notion')}
-            </div>
-            <div
-              className={cn(s.dataSourceItem, s.disabled, dataSourceType === DataSourceType.WEB && s.active)}
-            // onClick={() => changeType(DataSourceType.WEB)}
-            >
-              <span className={s.comingTag}>Coming soon</span>
-              <span className={cn(s.datasetIcon, s.web)} />
-              {t('datasetCreation.stepOne.dataSourceType.web')}
-            </div>
-          </div>
+          {
+            !datasetId && (
+              <div className={s.dataSourceTypeList}>
+                <div
+                  className={cn(
+                    s.dataSourceItem,
+                    dataSourceType === DataSourceType.FILE && s.active,
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
+                  )}
+                  onClick={() => {
+                    if (dataSourceTypeDisable)
+                      return
+                    changeType(DataSourceType.FILE)
+                    hidePreview()
+                  }}
+                >
+                  <span className={cn(s.datasetIcon)} />
+                  {t('datasetCreation.stepOne.dataSourceType.file')}
+                </div>
+                <div
+                  className={cn(
+                    s.dataSourceItem,
+                    dataSourceType === DataSourceType.NOTION && s.active,
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
+                  )}
+                  onClick={() => {
+                    if (dataSourceTypeDisable)
+                      return
+                    changeType(DataSourceType.NOTION)
+                    hidePreview()
+                  }}
+                >
+                  <span className={cn(s.datasetIcon, s.notion)} />
+                  {t('datasetCreation.stepOne.dataSourceType.notion')}
+                </div>
+                <div
+                  className={cn(s.dataSourceItem, s.disabled, dataSourceType === DataSourceType.WEB && s.active)}
+                // onClick={() => changeType(DataSourceType.WEB)}
+                >
+                  <span className={s.comingTag}>Coming soon</span>
+                  <span className={cn(s.datasetIcon, s.web)} />
+                  {t('datasetCreation.stepOne.dataSourceType.web')}
+                </div>
+              </div>
+            )
+          }
           {dataSourceType === DataSourceType.FILE && (
             <>
-              <FileUploader onFileUpdate={updateFile} file={file} />
+              <FileUploader onFileUpdate={updateFile} file={file} titleClassName={datasetId && 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900'} />
               <Button disabled={!file} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
