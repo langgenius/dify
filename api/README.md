@@ -17,6 +17,11 @@
    ```bash
    openssl rand -base64 42
    ```
+3.5 If you use annaconda, create a new environment and activate it
+   ```bash
+   conda create --name dify python=3.10
+   conda activate dify
+   ```
 4. Install dependencies
    ```bash
    pip install -r requirements.txt
