@@ -12,6 +12,7 @@ import type { DataSourceNotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
 
 type IStepOneProps = {
   datasetId?: string
@@ -58,6 +59,7 @@ const StepOne = ({
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
+  const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [showFilePreview, setShowFilePreview] = useState(true)
   const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
@@ -77,7 +79,7 @@ const StepOne = ({
     setCurrentNotionPage(undefined)
   }
 
-  const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataSourceType)
+  const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
 
   return (
     <div className='flex w-full h-full'>
