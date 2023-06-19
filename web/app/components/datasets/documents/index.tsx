@@ -220,7 +220,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           ? <Loading type='app' />
           : total > 0
             ? <List documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
-            : <EmptyElement onClick={routeToDocCreate} />
+            : <EmptyElement onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > limit)

@@ -12,6 +12,7 @@ import { upload } from '@/service/base'
 
 type IFileUploaderProps = {
   file?: FileEntity
+  titleClassName?: string
   onFileUpdate: (file?: FileEntity) => void
 }
 
@@ -29,7 +30,7 @@ const ACCEPTS = [
 
 const MAX_SIZE = 15 * 1024 * 1024
 
-const FileUploader = ({ file, onFileUpdate }: IFileUploaderProps) => {
+const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
@@ -189,7 +190,7 @@ const FileUploader = ({ file, onFileUpdate }: IFileUploaderProps) => {
         accept={ACCEPTS.join(',')}
         onChange={fileChangeHandle}
       />
-      <div className={s.title}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef}>
         {!currentFile && !file && (
           <div className={cn(s.uploader, dragging && s.dragging)}>
