@@ -78,7 +78,7 @@ class DatasetService:
             raise DatasetNameDuplicateError(
                 f'Dataset with name {name} already exists.')
 
-        dataset = Dataset(name=name, indexing_technique=indexing_technique, data_source_type='upload_file')
+        dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.created_by = account.id
         dataset.updated_by = account.id
@@ -374,6 +374,11 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+        # if dataset is empty, update dataset data_source_type
+        if not dataset.data_source_type:
+            dataset.data_source_type = document_data["data_source"]["type"]
+            db.session.commit()
+
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
                     or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
