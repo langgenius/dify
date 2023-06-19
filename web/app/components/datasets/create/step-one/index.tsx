@@ -15,7 +15,7 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 
 type IStepOneProps = {
   datasetId?: string
-  dataSourceType: DataSourceType
+  dataSourceType?: DataSourceType
   dataSourceTypeDisable: Boolean
   hasConnection: boolean
   onSetting: () => void
@@ -77,17 +77,19 @@ const StepOne = ({
     setCurrentNotionPage(undefined)
   }
 
+  const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataSourceType)
+
   return (
     <div className='flex w-full h-full'>
       <div className='grow overflow-y-auto relative'>
         {
-          !datasetId && (
+          shouldShowDataSourceTypeList && (
             <div className={s.stepHeader}>{t('datasetCreation.steps.one')}</div>
           )
         }
         <div className={s.form}>
           {
-            !datasetId && (
+            shouldShowDataSourceTypeList && (
               <div className={s.dataSourceTypeList}>
                 <div
                   className={cn(
@@ -134,7 +136,7 @@ const StepOne = ({
           }
           {dataSourceType === DataSourceType.FILE && (
             <>
-              <FileUploader onFileUpdate={updateFile} file={file} titleClassName={datasetId && 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900'} />
+              <FileUploader onFileUpdate={updateFile} file={file} titleClassName={(!shouldShowDataSourceTypeList) ? 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900' : undefined} />
               <Button disabled={!file} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
