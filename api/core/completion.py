@@ -1,17 +1,18 @@
 import logging
 from typing import Optional, List, Union, Tuple
 
-from langchain.callbacks import CallbackManager
+from langchain.base_language import BaseLanguageModel
+from langchain.callbacks.base import BaseCallbackHandler
 from langchain.chat_models.base import BaseChatModel
 from langchain.llms import BaseLLM
-from langchain.schema import BaseMessage, BaseLanguageModel, HumanMessage
+from langchain.schema import BaseMessage, HumanMessage
 from requests.exceptions import ChunkedEncodingError
 
 from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, \
     DifyStdOutCallbackHandler
-from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, PubHandler
+from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.llm.error import LLMBadRequestError
 from core.llm.llm_builder import LLMBuilder
 from core.chain.main_chain_builder import MainChainBuilder
@@ -115,7 +116,7 @@ class Completion:
             memory=memory
         )
 
-        final_llm.callback_manager = cls.get_llm_callback_manager(final_llm, streaming, conversation_message_task)
+        final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
 
         cls.recale_llm_max_tokens(
             final_llm=final_llm,
@@ -247,16 +248,14 @@ And answer according to the language of the user's question.
             return messages, ['\nHuman:']
 
     @classmethod
-    def get_llm_callback_manager(cls, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
-                                 streaming: bool,
-                                 conversation_message_task: ConversationMessageTask) -> CallbackManager:
+    def get_llm_callbacks(cls, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
+                          streaming: bool,
+                          conversation_message_task: ConversationMessageTask) -> List[BaseCallbackHandler]:
         llm_callback_handler = LLMCallbackHandler(llm, conversation_message_task)
         if streaming:
-            callback_handlers = [llm_callback_handler, DifyStreamingStdOutCallbackHandler()]
+            return [llm_callback_handler, DifyStreamingStdOutCallbackHandler()]
         else:
-            callback_handlers = [llm_callback_handler, DifyStdOutCallbackHandler()]
-
-        return CallbackManager(callback_handlers)
+            return [llm_callback_handler, DifyStdOutCallbackHandler()]
 
     @classmethod
     def get_history_messages_from_memory(cls, memory: ReadOnlyConversationTokenDBBufferSharedMemory,
@@ -360,7 +359,7 @@ And answer according to the language of the user's question.
             streaming=streaming
         )
 
-        llm.callback_manager = cls.get_llm_callback_manager(llm, streaming, conversation_message_task)
+        llm.callbacks = cls.get_llm_callbacks(llm, streaming, conversation_message_task)
 
         cls.recale_llm_max_tokens(
             final_llm=llm,

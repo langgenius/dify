@@ -1,7 +1,5 @@
 from typing import Optional
 
-from langchain.callbacks import CallbackManager
-
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
 from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
 from core.chain.tool_chain import ToolChain
@@ -14,7 +12,7 @@ class ChainBuilder:
             tool=tool,
             input_key=kwargs.get('input_key', 'input'),
             output_key=kwargs.get('output_key', 'tool_output'),
-            callback_manager=CallbackManager([DifyStdOutCallbackHandler()])
+            callbacks=[DifyStdOutCallbackHandler()]
         )
 
     @classmethod
@@ -27,7 +25,7 @@ class ChainBuilder:
                 sensitive_words=sensitive_words.split(","),
                 canned_response=tool_config.get("canned_response", ''),
                 output_key="sensitive_word_avoidance_output",
-                callback_manager=CallbackManager([DifyStdOutCallbackHandler()]),
+                callbacks=[DifyStdOutCallbackHandler()],
                 **kwargs
             )
 

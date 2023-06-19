@@ -3,7 +3,6 @@ from typing import Optional
 
 import langchain
 from flask import Flask
-from langchain import set_handler
 from langchain.prompts.base import DEFAULT_FORMATTER_MAPPING
 from pydantic import BaseModel
 
@@ -28,7 +27,6 @@ def init_app(app: Flask):
 
     if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
         langchain.verbose = True
-        set_handler(DifyStdOutCallbackHandler())
 
     if app.config.get("OPENAI_API_KEY"):
         hosted_llm_credentials.openai = HostedOpenAICredential(api_key=app.config.get("OPENAI_API_KEY"))

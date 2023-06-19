@@ -1,15 +1,15 @@
 """Base classes for LLM-powered router chains."""
 from __future__ import annotations
 
-import json
 from typing import Any, Dict, List, Optional, Type, cast, NamedTuple
 
+from langchain.base_language import BaseLanguageModel
 from langchain.chains.base import Chain
 from pydantic import root_validator
 
 from langchain.chains import LLMChain
 from langchain.prompts import BasePromptTemplate
-from langchain.schema import BaseOutputParser, OutputParserException, BaseLanguageModel
+from langchain.schema import BaseOutputParser, OutputParserException
 
 from libs.json_in_md_parser import parse_and_check_json_markdown
 

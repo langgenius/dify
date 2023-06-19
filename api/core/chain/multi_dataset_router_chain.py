@@ -1,9 +1,7 @@
-from typing import Mapping, List, Dict, Any, Optional
+from typing import Mapping, List, Dict, Any
 
-from langchain import LLMChain, PromptTemplate, ConversationChain
-from langchain.callbacks import CallbackManager
+from langchain import PromptTemplate
 from langchain.chains.base import Chain
-from langchain.schema import BaseLanguageModel
 from pydantic import Extra
 
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
@@ -82,13 +80,12 @@ class MultiDatasetRouterChain(Chain):
             **kwargs: Any,
     ):
         """Convenience constructor for instantiating from destination prompts."""
-        llm_callback_manager = CallbackManager([DifyStdOutCallbackHandler()])
         llm = LLMBuilder.to_llm(
             tenant_id=tenant_id,
             model_name='gpt-3.5-turbo',
             temperature=0,
             max_tokens=1024,
-            callback_manager=llm_callback_manager
+            callbacks=[DifyStdOutCallbackHandler()]
         )
 
         destinations = ["{}: {}".format(d.id, d.description.replace('\n', ' ') if d.description
