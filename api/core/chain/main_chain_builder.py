@@ -1,11 +1,9 @@
-from typing import Optional, List
+from typing import Optional, List, cast
 
-from langchain.callbacks import SharedCallbackManager, CallbackManager
 from langchain.chains import SequentialChain
 from langchain.chains.base import Chain
 from langchain.memory.chat_memory import BaseChatMemory
 
-from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
 from core.chain.chain_builder import ChainBuilder
@@ -42,9 +40,8 @@ class MainChainBuilder:
             return None
 
         for chain in chains:
-            # do not add handler into singleton callback manager
-            if not isinstance(chain.callback_manager, SharedCallbackManager):
-                chain.callback_manager.add_handler(chain_callback_handler)
+            chain = cast(Chain, chain)
+            chain.callbacks.append(chain_callback_handler)
 
         # build main chain
         overall_chain = SequentialChain(
@@ -93,7 +90,7 @@ class MainChainBuilder:
                     tenant_id=tenant_id,
                     datasets=datasets,
                     conversation_message_task=conversation_message_task,
-                    callback_manager=CallbackManager([DifyStdOutCallbackHandler()])
+                    callbacks=[DifyStdOutCallbackHandler()]
                 )
                 chains.append(multi_dataset_router_chain)
 

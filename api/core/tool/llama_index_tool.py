@@ -1,8 +1,6 @@
 from typing import Dict
 
 from langchain.tools import BaseTool
-from llama_index.indices.base import BaseGPTIndex
-from llama_index.langchain_helpers.agents import IndexToolConfig
 from pydantic import Field
 
 from core.callback_handler.index_tool_callback_handler import IndexToolCallbackHandler

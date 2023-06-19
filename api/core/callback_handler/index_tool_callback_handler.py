@@ -1,5 +1,3 @@
-from llama_index import Response
-
 from extensions.ext_database import db
 from models.dataset import DocumentSegment
 
