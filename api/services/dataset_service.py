@@ -374,6 +374,11 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+        # if dataset is empty, update dataset data_source_type
+        if not dataset.data_source_type:
+            dataset.data_source_type = document_data["data_source"]["type"]
+            db.session.commit()
+
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
                     or document_data['indexing_technique'] not in Dataset.INDEXING_TECHNIQUE_LIST:
