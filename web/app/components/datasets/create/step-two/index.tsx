@@ -24,6 +24,7 @@ import { formatNumber } from '@/utils/format'
 import type { DataSourceNotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
 
 type Page = DataSourceNotionPage & { workspace_id: string }
 
@@ -70,6 +71,7 @@ const StepTwo = ({
   onCancel,
 }: StepTwoProps) => {
   const { t } = useTranslation()
+  const { mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
@@ -312,6 +314,8 @@ const StepTwo = ({
         updateIndexingTypeCache && updateIndexingTypeCache(indexType)
         updateResultCache && updateResultCache(res)
       }
+      if (mutateDatasetRes)
+        mutateDatasetRes()
       onStepChange && onStepChange(+1)
       isSetting && onSave && onSave()
     }
