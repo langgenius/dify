@@ -78,7 +78,7 @@ class DatasetService:
             raise DatasetNameDuplicateError(
                 f'Dataset with name {name} already exists.')
 
-        dataset = Dataset(name=name, indexing_technique=indexing_technique, data_source_type='upload_file')
+        dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.created_by = account.id
         dataset.updated_by = account.id
