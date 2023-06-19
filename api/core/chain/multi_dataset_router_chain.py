@@ -1,6 +1,7 @@
-from typing import Mapping, List, Dict, Any
+from typing import Mapping, List, Dict, Any, Optional
 
 from langchain import PromptTemplate
+from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
 from pydantic import Extra
 
@@ -9,8 +10,7 @@ from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHan
 from core.chain.llm_router_chain import LLMRouterChain, RouterOutputParser
 from core.conversation_message_task import ConversationMessageTask
 from core.llm.llm_builder import LLMBuilder
-from core.tool.dataset_tool_builder import DatasetToolBuilder
-from core.tool.llama_index_tool import EnhanceLlamaIndexTool
+from core.tool.dataset_index_tool import DatasetTool
 from models.dataset import Dataset
 
 MULTI_PROMPT_ROUTER_TEMPLATE = """
@@ -50,7 +50,7 @@ class MultiDatasetRouterChain(Chain):
 
     router_chain: LLMRouterChain
     """Chain for deciding a destination chain and the input to it."""
-    dataset_tools: Mapping[str, EnhanceLlamaIndexTool]
+    dataset_tools: Mapping[str, DatasetTool]
     """Map of name to candidate chains that inputs can be routed to."""
 
     class Config:
@@ -95,22 +95,30 @@ class MultiDatasetRouterChain(Chain):
         router_template = MULTI_PROMPT_ROUTER_TEMPLATE.format(
             destinations=destinations_str
         )
+
         router_prompt = PromptTemplate(
             template=router_template,
             input_variables=["input"],
             output_parser=RouterOutputParser(),
         )
+
         router_chain = LLMRouterChain.from_llm(llm, router_prompt)
         dataset_tools = {}
         for dataset in datasets:
-            dataset_tool = DatasetToolBuilder.build_dataset_tool(
+            # fulfill description when it is empty
+            description = dataset.description
+            if not description:
+                description = 'useful for when you want to answer queries about the ' + dataset.name
+
+            dataset_tool = DatasetTool(
+                name=f"dataset-{dataset.id}",
+                description=description,
+                k=2,   # todo set by llm tokens limit
                 dataset=dataset,
-                response_mode='no_synthesizer',  # "compact"
-                callback_handler=DatasetToolCallbackHandler(conversation_message_task)
+                callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
             )
 
-            if dataset_tool:
-                dataset_tools[dataset.id] = dataset_tool
+            dataset_tools[dataset.id] = dataset_tool
 
         return cls(
             router_chain=router_chain,
@@ -120,7 +128,8 @@ class MultiDatasetRouterChain(Chain):
 
     def _call(
         self,
-        inputs: Dict[str, Any]
+        inputs: Dict[str, Any],
+        run_manager: Optional[CallbackManagerForChainRun] = None,
     ) -> Dict[str, Any]:
         if len(self.dataset_tools) == 0:
             return {"text": ''}
