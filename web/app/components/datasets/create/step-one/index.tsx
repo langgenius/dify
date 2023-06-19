@@ -59,7 +59,7 @@ const StepOne = ({
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
-  const { dataset } = useDatasetDetailContext()
+  const { dataset, mutateDatasetRes } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [showFilePreview, setShowFilePreview] = useState(true)
   const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
@@ -77,6 +77,12 @@ const StepOne = ({
 
   const hideNotionPagePreview = () => {
     setCurrentNotionPage(undefined)
+  }
+
+  const handleStepChange = () => {
+    if (mutateDatasetRes)
+      mutateDatasetRes()
+    onStepChange()
   }
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
@@ -139,7 +145,7 @@ const StepOne = ({
           {dataSourceType === DataSourceType.FILE && (
             <>
               <FileUploader onFileUpdate={updateFile} file={file} titleClassName={(!shouldShowDataSourceTypeList) ? 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900' : undefined} />
-              <Button disabled={!file} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <Button disabled={!file} className={s.submitButton} type='primary' onClick={handleStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {dataSourceType === DataSourceType.NOTION && (
@@ -150,7 +156,7 @@ const StepOne = ({
                   <div className='mb-8 w-[640px]'>
                     <NotionPageSelector value={notionPages.map(page => page.page_id)} onSelect={updateNotionPages} onPreview={updateCurrentPage} />
                   </div>
-                  <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                  <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={handleStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
               )}
             </>
