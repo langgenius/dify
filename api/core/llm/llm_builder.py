@@ -34,6 +34,8 @@ class LLMBuilder:
     def to_llm(cls, tenant_id: str, model_name: str, **kwargs) -> Union[StreamableOpenAI, StreamableChatOpenAI]:
         provider = cls.get_default_provider(tenant_id)
 
+        model_credentials = cls.get_model_credentials(tenant_id, provider, model_name)
+
         mode = cls.get_mode_by_model(model_name)
         if mode == 'chat':
             if provider == 'openai':
@@ -48,15 +50,20 @@ class LLMBuilder:
         else:
             raise ValueError(f"model name {model_name} is not supported.")
 
-        model_credentials = cls.get_model_credentials(tenant_id, provider, model_name)
+
+        model_kwargs = {
+            'top_p': kwargs.get('top_p', 1),
+            'frequency_penalty': kwargs.get('frequency_penalty', 0),
+            'presence_penalty': kwargs.get('presence_penalty', 0),
+        }
+
+        model_extras_kwargs = model_kwargs if mode == 'completion' else {'model_kwargs': model_kwargs}
 
         return llm_cls(
             model_name=model_name,
             temperature=kwargs.get('temperature', 0),
             max_tokens=kwargs.get('max_tokens', 256),
-            top_p=kwargs.get('top_p', 1),
-            frequency_penalty=kwargs.get('frequency_penalty', 0),
-            presence_penalty=kwargs.get('presence_penalty', 0),
+            **model_extras_kwargs,
             callbacks=kwargs.get('callbacks', None),
             streaming=kwargs.get('streaming', False),
             # request_timeout=None
