@@ -93,7 +93,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = /documents\/create$/.test(pathname)
   const { t } = useTranslation()
-  const { data: datasetRes, error } = useSWR({
+  const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
     action: 'fetchDataDetail',
     datasetId,
   }, apiParams => fetchDataDetail(apiParams.datasetId))
@@ -168,6 +168,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       <DatasetDetailContext.Provider value={{
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
+        mutateDatasetRes: () => mutateDatasetRes(),
       }}>
         <div className="bg-white grow">{children}</div>
       </DatasetDetailContext.Provider>
