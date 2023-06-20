@@ -67,6 +67,23 @@ class Dataset(db.Model):
         return db.session.query(func.count(Document.id)).filter(Document.dataset_id == self.id).scalar()
 
     @property
+    def available_document_count(self):
+        return db.session.query(func.count(Document.id)).filter(
+            Document.dataset_id == self.id,
+            Document.indexing_status == 'completed',
+            Document.enabled == True,
+            Document.archived == False
+        ).scalar()
+
+    @property
+    def available_segment_count(self):
+        return db.session.query(func.count(DocumentSegment.id)).filter(
+            DocumentSegment.dataset_id == self.id,
+            DocumentSegment.status == 'completed',
+            DocumentSegment.enabled == True
+        ).scalar()
+
+    @property
     def word_count(self):
         return Document.query.with_entities(func.coalesce(func.sum(Document.word_count))) \
             .filter(Document.dataset_id == self.id).scalar()

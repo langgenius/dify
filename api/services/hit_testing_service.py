@@ -20,6 +20,15 @@ from models.dataset import Dataset, DocumentSegment, DatasetQuery
 class HitTestingService:
     @classmethod
     def retrieve(cls, dataset: Dataset, query: str, account: Account, limit: int = 10) -> dict:
+        if dataset.available_document_count == 0 or dataset.available_document_count == 0:
+            return {
+                "query": {
+                    "content": query,
+                    "tsne_position": {'x': 0, 'y': 0},
+                },
+                "records": []
+            }
+
         model_credentials = LLMBuilder.get_model_credentials(
             tenant_id=dataset.tenant_id,
             model_provider=LLMBuilder.get_default_provider(dataset.tenant_id),
