@@ -42,7 +42,7 @@ class AzureProvider(BaseProvider):
         """
         config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
-        config['deployment'] = config['deployment_name'] = model_id.replace('.', '') if model_id else None
+        config['deployment_name'] = model_id.replace('.', '') if model_id else None
         return config
 
     def get_provider_name(self):

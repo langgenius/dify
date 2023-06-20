@@ -4,7 +4,7 @@ import weaviate
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document, BaseRetriever
 from langchain.vectorstores import VectorStore
-from pydantic import BaseModel
+from pydantic import BaseModel, root_validator
 
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
@@ -16,6 +16,12 @@ class WeaviateConfig(BaseModel):
     endpoint: str
     api_key: Optional[str]
     batch_size: int = 100
+
+    @root_validator()
+    def validate_config(cls, values: dict) -> dict:
+        if not values['endpoint']:
+            raise ValueError("config WEAVIATE_ENDPOINT is required")
+        return values
 
 
 class WeaviateVectorIndex(BaseVectorIndex):
@@ -59,7 +65,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_index_name(self._dataset.get_id())}
+            "vector_store": {"class_prefix": self.get_index_name(self._dataset.id)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -68,7 +74,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
             texts,
             self._embeddings,
             client=self._client,
-            index_name=self.get_index_name(self._dataset.get_id()),
+            index_name=self.get_index_name(self._dataset.id),
             uuids=uuids,
             by_text=False
         )
@@ -82,7 +88,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         return WeaviateVectorStore(
             client=self._client,
-            index_name=self.get_index_name(self._dataset.get_id()),
+            index_name=self.get_index_name(self._dataset.id),
             text_key='text',
             embedding=self._embeddings,
             attributes=self._attributes,

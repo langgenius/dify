@@ -49,13 +49,15 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Print out that we are entering a chain."""
         if not self._current_chain_result:
-            self._current_chain_result = ChainResult(
-                type=serialized['name'],
-                prompt=inputs,
-                started_at=time.perf_counter()
-            )
-            self._current_chain_message = self.conversation_message_task.init_chain(self._current_chain_result)
-            self.agent_loop_gather_callback_handler.current_chain = self._current_chain_message
+            chain_type = serialized['id'][-1]
+            if chain_type:
+                self._current_chain_result = ChainResult(
+                    type=chain_type,
+                    prompt=inputs,
+                    started_at=time.perf_counter()
+                )
+                self._current_chain_message = self.conversation_message_task.init_chain(self._current_chain_result)
+                self.agent_loop_gather_callback_handler.current_chain = self._current_chain_message
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""

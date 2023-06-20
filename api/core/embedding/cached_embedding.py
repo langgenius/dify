@@ -22,7 +22,7 @@ class CacheEmbedding(Embeddings):
             hash = helper.generate_text_hash(text)
             embedding = db.session.query(Embedding).filter_by(hash=hash).first()
             if embedding:
-                text_embeddings.append(embedding.embedding)
+                text_embeddings.append(embedding.get_embedding())
             else:
                 embedding_queue_texts.append(text)
 
@@ -55,7 +55,7 @@ class CacheEmbedding(Embeddings):
         hash = helper.generate_text_hash(text)
         embedding = db.session.query(Embedding).filter_by(hash=hash).first()
         if embedding:
-            return embedding.embedding
+            return embedding.get_embedding()
 
         embedding_results = self._embeddings.embed_query(text)
 
