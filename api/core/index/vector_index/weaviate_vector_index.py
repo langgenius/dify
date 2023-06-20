@@ -1,4 +1,4 @@
-from typing import Optional, Any, List, cast
+from typing import Optional, cast
 
 import weaviate
 from langchain.embeddings.base import Embeddings
@@ -25,11 +25,10 @@ class WeaviateConfig(BaseModel):
 
 
 class WeaviateVectorIndex(BaseVectorIndex):
-    def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings, attributes: list[str]):
+    def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings):
         self._dataset = dataset
         self._client = self._init_client(config)
         self._embeddings = embeddings
-        self._attributes = attributes
         self._vector_store = None
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
@@ -95,12 +94,16 @@ class WeaviateVectorIndex(BaseVectorIndex):
         if self._vector_store:
             return self._vector_store
 
+        attributes = ['doc_id', 'dataset_id', 'document_id', 'source']
+        if self._is_origin():
+            attributes = ['doc_id', 'ref_doc_id']
+
         return WeaviateVectorStore(
             client=self._client,
             index_name=self.get_index_name(self._dataset),
             text_key='text',
             embedding=self._embeddings,
-            attributes=self._attributes,
+            attributes=attributes,
             by_text=False
         )
 
@@ -113,6 +116,15 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         vector_store.del_texts({
             "operator": "Equal",
-            "path": ["document_id"],
+            "path": ["doc_id" if self._is_origin() else "document_id"],
             "valueText": document_id
         })
+
+    def _is_origin(self):
+        if self._dataset.index_struct_dict:
+            class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+            if not class_prefix.endswith('_Node'):
+                # original class_prefix
+                return True
+
+        return False

@@ -260,7 +260,7 @@ class Document(db.Model):
 
     @property
     def dataset(self):
-        return Dataset.query.get(self.dataset_id)
+        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).one_or_none()
 
     @property
     def segment_count(self):
@@ -400,8 +400,10 @@ class DatasetKeywordTable(db.Model):
                 super().__init__(object_hook=self.object_hook, *args, **kwargs)
 
             def object_hook(self, dct):
-                if "__set__" in dct:
-                    return set(dct["__set__"])
+                if isinstance(dct, dict):
+                    for keyword, node_idxs in dct.items():
+                        if isinstance(node_idxs, list):
+                            dct[keyword] = set(node_idxs)
                 return dct
 
         return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None

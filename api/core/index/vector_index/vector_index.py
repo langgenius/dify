@@ -33,9 +33,7 @@ class VectorIndex:
                     api_key=config.get('WEAVIATE_API_KEY'),
                     batch_size=int(config.get('WEAVIATE_BATCH_SIZE'))
                 ),
-                embeddings=embeddings,
-                # attributes=['doc_id', 'dataset_id', 'document_id', 'source'],
-                attributes=['doc_id'],
+                embeddings=embeddings
             )
         elif vector_type == "qdrant":
             from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
