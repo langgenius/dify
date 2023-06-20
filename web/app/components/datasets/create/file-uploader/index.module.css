@@ -1,5 +1,5 @@
 .fileUploader {
-  @apply mb-9;
+  @apply mb-6;
 }
 .fileUploader .title {
   @apply mb-2;
@@ -9,14 +9,14 @@
   color: #344054;
 }
 .fileUploader .tip {
-  @apply mt-2;
   font-weight: 400;
   font-size: 12px;
-  line-height: 26px;
+  line-height: 18px;
   color: #667085;
 }
 .uploader {
-  @apply relative box-border flex justify-center items-center;
+  @apply relative box-border flex justify-center items-center mb-2;
+  flex-direction: column;
   max-width: 640px;
   height: 80px;
   background: #F9FAFB;
@@ -38,7 +38,7 @@
   width: 100%;
   height: 100%;
 }
-.uploader::before {
+.uploader .uploadIcon {
   content: '';
   display: block;
   margin-right: 8px;
@@ -51,16 +51,20 @@
   @apply pl-1 cursor-pointer;
   color: #155eef;
 }
-
+.fileList {
+  @apply space-y-2;
+}
 .file {
-  @apply box-border relative flex items-center;
-  padding: 21px 24px 21px 64px;
+  @apply box-border relative flex items-center justify-between;
+  padding: 8px 12px 8px 8px;
   max-width: 640px;
-  height: 80px;
-  background: #F9FAFB;
-  border: 1px solid #F2F4F7;
-  border-radius: 12px;
+  height: 40px;
+  background: #ffffff;
+  border:  0.5px solid #EAECF0;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+  border-radius: 8px;
   overflow: hidden;
+  cursor: pointer;
 }
 .progressbar {
   position: absolute;
@@ -69,36 +73,27 @@
   height: 100%;
   background-color: #F2F4F7;
 }
-.file:hover {
-  background: #F5F8FF;
-  border: 1px solid #D1E0FF;
-}
-.file:hover .actionWrapper .buttonWrapper {
-  display: flex;
-  align-items: center;
-}
-.file:hover .actionWrapper .divider {
-  display: block;
-}
+
 .file.uploading,
 .file.uploading:hover {
   background: #FCFCFD;
-  border: 1px solid #EAECF0;
+  border: 0.5px solid #EAECF0;
 }
-.file.uploading:hover .actionWrapper .percent {
-  padding: 8px;
+.file.active {
+  background: #F5F8FF;
+  border: 1px solid #D1E0FF;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
 }
-.file.uploading:hover .actionWrapper .buttonWrapper {
-  display: flex;
-  align-items: center;
+.file:hover {
+  background: #F5F8FF;
+  border: 1px solid #D1E0FF;
+  box-shadow: 0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06);
 }
+
 .fileIcon {
-  @apply w-8 h-8 bg-center bg-no-repeat;
-  position: absolute;
-  top: 24px;
-  left: 24px;
+  @apply shrink-0 w-6 h-6 mr-2 bg-center bg-no-repeat;
   background-image: url(../assets/unknow.svg);
-  background-size: 32px;
+  background-size: 24px;
 }
 .fileIcon.csv {
   background-image: url(../assets/csv.svg);
@@ -126,7 +121,7 @@
   background-image: url(../assets/json.svg);
 }
 .fileInfo {
-  @apply grow;
+  @apply grow flex items-center;
   z-index: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -134,46 +129,37 @@
 }
 .filename {
   font-weight: 500;
-  font-size: 14px;
-  line-height: 20px;
-}
-.name {
+  font-size: 13px;
+  line-height: 18px;
   color: #1D2939;
-  line-height: 20px;
 }
-.extension {
-  color: #667085;
-  line-height: 20px;
-}
-.fileExtraInfo {
-  color: #667085;
+
+.size {
+  @apply ml-3;
+  font-weight: 400;
   font-size: 12px;
   line-height: 18px;
+  color: #667085;
 }
 .actionWrapper {
   @apply flex items-center shrink-0;
   z-index: 1;
 }
 .actionWrapper .percent {
-  font-size: 16px;
-  line-height: 24px;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 18px;
   color: #344054;
 }
-.actionWrapper .divider {
-  display: none;
-  margin: 0 8px;
-  width: 1px;
-  height: 16px;
-  background: #FEE4E2;
-}
+
 .actionWrapper .remove {
-  width: 32px;
-  height: 32px;
+  display: none;
+  width: 24px;
+  height: 24px;
   background: center no-repeat url(../assets/trash.svg);
   background-size: 16px;
   cursor: pointer;
 }
-.actionWrapper .buttonWrapper {
-  @apply flex items-center;
-  display: none;
+.file:hover .actionWrapper .remove {
+  display: block;
 }

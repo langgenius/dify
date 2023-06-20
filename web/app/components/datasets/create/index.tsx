@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, File, createDocumentResponse } from '@/models/datasets'
+import type { DataSet, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource, fetchTenantInfo } from '@/service/common'
 import { fetchDataDetail } from '@/service/datasets'
 import type { DataSourceNotionPage } from '@/models/common'
@@ -30,7 +30,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
-  const [file, setFile] = useState<File | undefined>()
+  const [fileList, setFiles] = useState<any[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
 
@@ -39,8 +39,28 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
-  const updateFile = (file?: File) => {
-    setFile(file)
+  const updateFileList = (preparedFiles: any) => {
+    setFiles(preparedFiles)
+  }
+
+  const updateFile = (fileItem: any, progress: number, list: any[]) => {
+    const targetIndex = list.findIndex((file: any) => file.fileID === fileItem.fileID)
+    list[targetIndex] = {
+      ...list[targetIndex],
+      progress,
+    }
+    setFiles([...list])
+    // use follow code would cause dirty list update problem
+    // const newList = list.map((file) => {
+    //   if (file.fileID === fileItem.fileID) {
+    //     return {
+    //       ...fileItem,
+    //       progress,
+    //     }
+    //   }
+    //   return file
+    // })
+    // setFiles(newList)
   }
   const updateIndexingTypeCache = (type: string) => {
     setIndexTypeCache(type)
@@ -104,8 +124,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           dataSourceType={dataSourceType}
           dataSourceTypeDisable={!!detail?.data_source_type}
           changeType={setDataSourceType}
-          file={file}
+          files={fileList}
           updateFile={updateFile}
+          updateFileList={updateFileList}
           notionPages={notionPages}
           updateNotionPages={updateNotionPages}
           onStepChange={nextStep}
@@ -116,7 +137,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           indexingType={detail?.indexing_technique || ''}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
-          file={file}
+          files={fileList.map(file => file.file)}
           notionPages={notionPages}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
