@@ -118,7 +118,7 @@ class BaseVectorIndex(BaseIndex):
         return False
 
     def recreate_dataset(self, dataset: Dataset):
-        logging.debug(f"Recreating dataset {dataset.id}")
+        logging.info(f"Recreating dataset {dataset.id}")
         self.delete()
 
         dataset_documents = db.session.query(DatasetDocument).filter(
@@ -155,3 +155,4 @@ class BaseVectorIndex(BaseIndex):
         db.session.commit()
 
         self.dataset = dataset
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
