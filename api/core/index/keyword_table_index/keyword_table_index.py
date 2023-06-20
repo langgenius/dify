@@ -114,6 +114,12 @@ class KeywordTableIndex(BaseIndex):
 
         return documents
 
+    def delete(self) -> None:
+        dataset_keyword_table = self._dataset.dataset_keyword_table
+        if dataset_keyword_table:
+            db.session.delete(dataset_keyword_table)
+            db.session.commit()
+
     def _save_dataset_keyword_table(self, keyword_table):
         keyword_table_dict = {
             '__type__': 'keyword_table',

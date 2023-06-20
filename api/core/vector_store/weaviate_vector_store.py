@@ -33,3 +33,6 @@ class WeaviateVectorStore(Weaviate):
             return False
 
         return True
+
+    def delete(self):
+        self._client.schema.delete_class(self._index_name)

@@ -33,28 +33,23 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         )
 
         documents = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
-        index_doc_ids = [document.id for document in documents]
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
-        index_node_ids = [segment.index_node_id for segment in segments]
 
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         # delete from vector index
         if vector_index:
-            for index_doc_id in index_doc_ids:
-                try:
-                    vector_index.delete_by_document_id(index_doc_id)
-                except Exception:
-                    logging.exception("Delete doc index failed when dataset deleted.")
-                    continue
+            try:
+                vector_index.delete()
+            except Exception:
+                logging.exception("Delete doc index failed when dataset deleted.")
 
         # delete from keyword index
-        if index_node_ids:
-            try:
-                kw_index.delete_by_ids(index_node_ids)
-            except Exception:
-                logging.exception("Delete nodes index failed when dataset deleted.")
+        try:
+            kw_index.delete()
+        except Exception:
+            logging.exception("Delete nodes index failed when dataset deleted.")
 
         for document in documents:
             db.session.delete(document)
@@ -62,7 +57,6 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         for segment in segments:
             db.session.delete(segment)
 
-        db.session.query(DatasetKeywordTable).filter(DatasetKeywordTable.dataset_id == dataset_id).delete()
         db.session.query(DatasetProcessRule).filter(DatasetProcessRule.dataset_id == dataset_id).delete()
         db.session.query(DatasetQuery).filter(DatasetQuery.dataset_id == dataset_id).delete()
         db.session.query(AppDatasetJoin).filter(AppDatasetJoin.dataset_id == dataset_id).delete()

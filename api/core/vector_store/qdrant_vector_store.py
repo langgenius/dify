@@ -39,6 +39,11 @@ class QdrantVectorStore(Qdrant):
 
         return len(response) > 0
 
+    def delete(self):
+        self._reload_if_needed()
+
+        self.client.delete_collection(collection_name=self.collection_name)
+
     def _reload_if_needed(self):
         if isinstance(self.client, QdrantLocal):
             self.client = cast(QdrantLocal, self.client)
