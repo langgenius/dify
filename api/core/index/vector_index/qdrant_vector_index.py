@@ -49,7 +49,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             return self._dataset.index_struct_dict['vector_store']['collection_name']
 
         dataset_id = dataset.id
-        return "Vector_index_" + dataset_id.replace("-", "_")
+        return "Index_" + dataset_id.replace("-", "_")
 
     def to_index_struct(self) -> dict:
         return {
@@ -64,6 +64,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             self._embeddings,
             collection_name=self.get_index_name(self._dataset),
             ids=uuids,
+            content_payload_key='text',
             **self._client_config.to_qdrant_params()
         )
 
@@ -81,7 +82,8 @@ class QdrantVectorIndex(BaseVectorIndex):
         return QdrantVectorStore(
             client=client,
             collection_name=self.get_index_name(self._dataset),
-            embeddings=self._embeddings
+            embeddings=self._embeddings,
+            content_payload_key='text'
         )
 
     def _get_vector_store_class(self) -> type:
@@ -96,8 +98,17 @@ class QdrantVectorIndex(BaseVectorIndex):
         vector_store.del_texts(models.Filter(
             must=[
                 models.FieldCondition(
-                    key="metadata.document_id",
+                    key="doc_id" if self._is_origin() else "metadata.document_id",
                     match=models.MatchValue(value=document_id),
                 ),
             ],
         ))
+
+    def _is_origin(self):
+        if self._dataset.index_struct_dict:
+            class_prefix: str = self._dataset.index_struct_dict['vector_store']['collection_name']
+            if not class_prefix.strip('Vector_'):
+                # original class_prefix
+                return True
+
+        return False
