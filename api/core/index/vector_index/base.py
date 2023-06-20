@@ -1,14 +1,25 @@
+import json
+import logging
 from abc import abstractmethod
 from typing import List, Any, Tuple, cast
 
+from langchain.embeddings.base import Embeddings
 from langchain.schema import Document, BaseRetriever
 from langchain.vectorstores import VectorStore
 
 from core.index.base import BaseIndex
-from models.dataset import Dataset
+from extensions.ext_database import db
+from models.dataset import Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 class BaseVectorIndex(BaseIndex):
+    
+    def __init__(self, dataset: Dataset, embeddings: Embeddings):
+        super().__init__(dataset)
+        self._embeddings = embeddings
+        self._vector_store = None
+        
     def get_type(self) -> str:
         raise NotImplementedError
 
@@ -69,6 +80,9 @@ class BaseVectorIndex(BaseIndex):
         return vector_store.as_retriever(**kwargs)
 
     def add_texts(self, texts: list[Document], **kwargs):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
@@ -85,6 +99,9 @@ class BaseVectorIndex(BaseIndex):
         return vector_store.text_exists(id)
 
     def delete_by_ids(self, ids: list[str]) -> None:
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
@@ -96,3 +113,45 @@ class BaseVectorIndex(BaseIndex):
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
         vector_store.delete()
+
+    def _is_origin(self):
+        return False
+
+    def recreate_dataset(self, dataset: Dataset):
+        logging.debug(f"Recreating dataset {dataset.id}")
+        self.delete()
+
+        dataset_documents = db.session.query(DatasetDocument).filter(
+            DatasetDocument.dataset_id == dataset.id,
+            DatasetDocument.indexing_status == 'completed',
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
+        ).all()
+
+        documents = []
+        for dataset_document in dataset_documents:
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.status == 'completed',
+                DocumentSegment.enabled == True
+            ).all()
+            
+            for segment in segments:
+                document = Document(
+                    page_content=segment.content,
+                    metadata={
+                        "doc_id": segment.index_node_id,
+                        "doc_hash": segment.index_node_hash,
+                        "document_id": segment.document_id,
+                        "dataset_id": segment.dataset_id,
+                    }
+                )
+
+                documents.append(document)
+                
+        self.create(documents)
+        
+        dataset.index_struct = json.dumps(self.to_index_struct())
+        db.session.commit()
+
+        self.dataset = dataset

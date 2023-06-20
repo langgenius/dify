@@ -54,7 +54,7 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
 
         # delete from keyword index
         if index_node_ids:
-            vector_index.delete_by_ids(index_node_ids)
+            kw_index.delete_by_ids(index_node_ids)
 
         for segment in segments:
             db.session.delete(segment)

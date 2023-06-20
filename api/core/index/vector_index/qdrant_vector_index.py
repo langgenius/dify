@@ -36,17 +36,15 @@ class QdrantConfig(BaseModel):
 
 class QdrantVectorIndex(BaseVectorIndex):
     def __init__(self, dataset: Dataset, config: QdrantConfig, embeddings: Embeddings):
-        self._dataset = dataset
+        super().__init__(dataset, embeddings)
         self._client_config = config
-        self._embeddings = embeddings
-        self._vector_store = None
 
     def get_type(self) -> str:
         return 'qdrant'
 
     def get_index_name(self, dataset: Dataset) -> str:
-        if self._dataset.index_struct_dict:
-            return self._dataset.index_struct_dict['vector_store']['collection_name']
+        if self.dataset.index_struct_dict:
+            return self.dataset.index_struct_dict['vector_store']['collection_name']
 
         dataset_id = dataset.id
         return "Index_" + dataset_id.replace("-", "_")
@@ -54,7 +52,7 @@ class QdrantVectorIndex(BaseVectorIndex):
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"collection_name": self.get_index_name(self._dataset)}
+            "vector_store": {"collection_name": self.get_index_name(self.dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -62,7 +60,7 @@ class QdrantVectorIndex(BaseVectorIndex):
         self._vector_store = QdrantVectorStore.from_documents(
             texts,
             self._embeddings,
-            collection_name=self.get_index_name(self._dataset),
+            collection_name=self.get_index_name(self.dataset),
             ids=uuids,
             content_payload_key='text',
             **self._client_config.to_qdrant_params()
@@ -81,7 +79,7 @@ class QdrantVectorIndex(BaseVectorIndex):
 
         return QdrantVectorStore(
             client=client,
-            collection_name=self.get_index_name(self._dataset),
+            collection_name=self.get_index_name(self.dataset),
             embeddings=self._embeddings,
             content_payload_key='text'
         )
@@ -90,6 +88,9 @@ class QdrantVectorIndex(BaseVectorIndex):
         return QdrantVectorStore
 
     def delete_by_document_id(self, document_id: str):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
@@ -98,15 +99,15 @@ class QdrantVectorIndex(BaseVectorIndex):
         vector_store.del_texts(models.Filter(
             must=[
                 models.FieldCondition(
-                    key="doc_id" if self._is_origin() else "metadata.document_id",
+                    key="metadata.document_id",
                     match=models.MatchValue(value=document_id),
                 ),
             ],
         ))
 
     def _is_origin(self):
-        if self._dataset.index_struct_dict:
-            class_prefix: str = self._dataset.index_struct_dict['vector_store']['collection_name']
+        if self.dataset.index_struct_dict:
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['collection_name']
             if not class_prefix.strip('Vector_'):
                 # original class_prefix
                 return True

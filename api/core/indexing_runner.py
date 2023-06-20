@@ -488,28 +488,8 @@ class IndexingRunner:
         """
         Build the index for the document.
         """
-        model_credentials = LLMBuilder.get_model_credentials(
-            tenant_id=dataset.tenant_id,
-            model_provider=LLMBuilder.get_default_provider(dataset.tenant_id),
-            model_name='text-embedding-ada-002'
-        )
-
-        embeddings = CacheEmbedding(OpenAIEmbeddings(
-            **model_credentials
-        ))
-
-        vector_index = VectorIndex(
-            dataset=dataset,
-            config=current_app.config,
-            embeddings=embeddings
-        )
-
-        keyword_table_index = KeywordTableIndex(
-            dataset=dataset,
-            config=KeywordTableConfig(
-                max_keywords_per_chunk=10
-            )
-        )
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
 
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
@@ -526,14 +506,11 @@ class IndexingRunner:
             )
 
             # save vector index
-            index = IndexBuilder.get_index(dataset, 'high_quality')
-            if index:
-                index.add_texts(chunk_documents)
+            if vector_index:
+                vector_index.add_texts(chunk_documents)
 
             # save keyword index
-            index = IndexBuilder.get_index(dataset, 'economy')
-            if index:
-                index.add_texts(chunk_documents)
+            keyword_table_index.add_texts(chunk_documents)
 
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(

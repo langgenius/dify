@@ -26,10 +26,8 @@ class WeaviateConfig(BaseModel):
 
 class WeaviateVectorIndex(BaseVectorIndex):
     def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings):
-        self._dataset = dataset
+        super().__init__(dataset, embeddings)
         self._client = self._init_client(config)
-        self._embeddings = embeddings
-        self._vector_store = None
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
         auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
@@ -59,8 +57,8 @@ class WeaviateVectorIndex(BaseVectorIndex):
         return 'weaviate'
 
     def get_index_name(self, dataset: Dataset) -> str:
-        if self._dataset.index_struct_dict:
-            class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+        if self.dataset.index_struct_dict:
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
             if not class_prefix.endswith('_Node'):
                 # original class_prefix
                 class_prefix += '_Node'
@@ -73,7 +71,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_index_name(self._dataset)}
+            "vector_store": {"class_prefix": self.get_index_name(self.dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -82,7 +80,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
             texts,
             self._embeddings,
             client=self._client,
-            index_name=self.get_index_name(self._dataset),
+            index_name=self.get_index_name(self.dataset),
             uuids=uuids,
             by_text=False
         )
@@ -96,11 +94,11 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         attributes = ['doc_id', 'dataset_id', 'document_id']
         if self._is_origin():
-            attributes = ['doc_id', 'ref_doc_id']
+            attributes = ['doc_id']
 
         return WeaviateVectorStore(
             client=self._client,
-            index_name=self.get_index_name(self._dataset),
+            index_name=self.get_index_name(self.dataset),
             text_key='text',
             embedding=self._embeddings,
             attributes=attributes,
@@ -111,18 +109,21 @@ class WeaviateVectorIndex(BaseVectorIndex):
         return WeaviateVectorStore
 
     def delete_by_document_id(self, document_id: str):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
 
         vector_store.del_texts({
             "operator": "Equal",
-            "path": ["doc_id" if self._is_origin() else "document_id"],
+            "path": ["document_id"],
             "valueText": document_id
         })
 
     def _is_origin(self):
-        if self._dataset.index_struct_dict:
-            class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+        if self.dataset.index_struct_dict:
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
             if not class_prefix.endswith('_Node'):
                 # original class_prefix
                 return True

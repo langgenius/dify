@@ -4,8 +4,14 @@ from typing import List, Any
 
 from langchain.schema import Document, BaseRetriever
 
+from models.dataset import Dataset
+
 
 class BaseIndex(ABC):
+
+    def __init__(self, dataset: Dataset):
+        self.dataset = dataset
+
     @abstractmethod
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
         raise NotImplementedError

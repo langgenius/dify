@@ -17,7 +17,7 @@ class KeywordTableConfig(BaseModel):
 
 class KeywordTableIndex(BaseIndex):
     def __init__(self, dataset: Dataset, config: KeywordTableConfig = KeywordTableConfig()):
-        self._dataset = dataset
+        super().__init__(dataset)
         self._config = config
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -29,11 +29,11 @@ class KeywordTableIndex(BaseIndex):
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
         dataset_keyword_table = DatasetKeywordTable(
-            dataset_id=self._dataset.id,
+            dataset_id=self.dataset.id,
             keyword_table=json.dumps({
                 '__type__': 'keyword_table',
                 '__data__': {
-                    "index_id": self._dataset.id,
+                    "index_id": self.dataset.id,
                     "summary": None,
                     "table": {}
                 }
@@ -70,7 +70,7 @@ class KeywordTableIndex(BaseIndex):
     def delete_by_document_id(self, document_id: str):
         # get segment ids by document_id
         segments = db.session.query(DocumentSegment).filter(
-            DocumentSegment.dataset_id == self._dataset.id,
+            DocumentSegment.dataset_id == self.dataset.id,
             DocumentSegment.document_id == document_id
         ).all()
 
@@ -98,7 +98,7 @@ class KeywordTableIndex(BaseIndex):
         documents = []
         for chunk_index in sorted_chunk_indices:
             segment = db.session.query(DocumentSegment).filter(
-                DocumentSegment.dataset_id == self._dataset.id,
+                DocumentSegment.dataset_id == self.dataset.id,
                 DocumentSegment.index_node_id == chunk_index
             ).first()
 
@@ -115,7 +115,7 @@ class KeywordTableIndex(BaseIndex):
         return documents
 
     def delete(self) -> None:
-        dataset_keyword_table = self._dataset.dataset_keyword_table
+        dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             db.session.delete(dataset_keyword_table)
             db.session.commit()
@@ -124,26 +124,26 @@ class KeywordTableIndex(BaseIndex):
         keyword_table_dict = {
             '__type__': 'keyword_table',
             '__data__': {
-                "index_id": self._dataset.id,
+                "index_id": self.dataset.id,
                 "summary": None,
                 "table": keyword_table
             }
         }
-        self._dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
+        self.dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
         db.session.commit()
 
     def _get_dataset_keyword_table(self) -> Optional[dict]:
-        dataset_keyword_table = self._dataset.dataset_keyword_table
+        dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             if dataset_keyword_table.keyword_table_dict:
                 return dataset_keyword_table.keyword_table_dict['__data__']['table']
         else:
             dataset_keyword_table = DatasetKeywordTable(
-                dataset_id=self._dataset.id,
+                dataset_id=self.dataset.id,
                 keyword_table=json.dumps({
                     '__type__': 'keyword_table',
                     '__data__': {
-                        "index_id": self._dataset.id,
+                        "index_id": self.dataset.id,
                         "summary": None,
                         "table": {}
                     }
