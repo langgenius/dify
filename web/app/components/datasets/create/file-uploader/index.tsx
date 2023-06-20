@@ -10,9 +10,10 @@ import { ToastContext } from '@/app/components/base/toast'
 import { upload } from '@/service/base'
 
 type IFileUploaderProps = {
-  fileList: FileEntity[]
+  fileList: any[]
   prepareFileList: (files: any[]) => void
   onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
+  onFileListUpdate?: (files: any) => void
   onPreview: (file: FileEntity) => void
 }
 
@@ -35,6 +36,7 @@ const FileUploader = ({
   fileList,
   prepareFileList,
   onFileUpdate,
+  onFileListUpdate,
   onPreview,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
@@ -104,7 +106,6 @@ const FileUploader = ({
         onFileUpdate(fileItem, percent, fileListCopy)
       }
     }
-    console.log('fff1', fileListCopy)
 
     return upload({
       xhr: new XMLHttpRequest(),
@@ -116,14 +117,12 @@ const FileUploader = ({
           fileID: fileItem.fileID,
           file: res,
         }
-        console.log('fff2', fileListCopy)
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
       })
-      .catch((err) => {
-        console.log(err)
+      .catch(() => {
         notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
-        onFileUpdate(fileItem, -2, fileListCopy)
+        onFileUpdate(fileItem, -2, [...fileListCopy])
         return Promise.resolve({ ...fileItem })
       })
       .finally()
@@ -199,13 +198,14 @@ const FileUploader = ({
     if (fileUploader.current)
       fileUploader.current.click()
   }
-  // TODO
-  const removeFile = () => {
+
+  const removeFile = (index: number) => {
     if (fileUploader.current)
       fileUploader.current.value = ''
 
     setCurrentFile(undefined)
-    // onFileUpdate()
+    fileListRef.current.splice(index, 1)
+    onFileListUpdate?.([...fileListRef.current])
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = [...(e.target.files ?? [])].filter(file => isValid(file))
@@ -247,8 +247,9 @@ const FileUploader = ({
         {dragging && <div ref={dragRef} className={s.draggingCover}/>}
       </div>
       <div className={s.fileList}>
-        {fileList.map(fileItem => (
+        {fileList.map((fileItem, index) => (
           <div
+            key={`${fileItem.fileID}-${index}`}
             // onClick={() => onPreview(currentFile)}
             className={cn(
               s.file,
@@ -269,12 +270,12 @@ const FileUploader = ({
                 <div className={s.percent}>{`${fileItem.progress}%`}</div>
               )}
               {fileItem.progress === 100 && (
-                <div className={s.remove} onClick={removeFile}/>
+                <div className={s.remove} onClick={() => removeFile(index)}/>
               )}
             </div>
           </div>
         ))}
-        {currentFile && (
+        {/* {currentFile && (
           <div
             // onClick={() => onPreview(currentFile)}
             className={cn(
@@ -296,14 +297,14 @@ const FileUploader = ({
                 <div className={s.percent}>{`${percent}%`}</div>
               )}
               {!uploading && (
-                <div className={s.remove} onClick={removeFile}/>
+                <div className={s.remove} onClick={() => removeFile(index)}/>
               )}
             </div>
           </div>
-        )}
+        )} */}
       </div>
       {/* TODO */}
-      {false && !currentFile && fileList[0] && (
+      {/* {false && !currentFile && fileList[0] && (
         <div
           // onClick={() => onPreview(currentFile)}
           className={cn(
@@ -329,7 +330,7 @@ const FileUploader = ({
             )}
           </div>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

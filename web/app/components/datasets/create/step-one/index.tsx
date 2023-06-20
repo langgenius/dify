@@ -87,12 +87,9 @@ const StepOne = ({
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
 
-  // TODO
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
-    console.log(files)
-    console.log(files.some(file => file.progress !== 100))
     if (files.some(file => file.progress !== 100))
       return true
     return false
@@ -159,6 +156,7 @@ const StepOne = ({
               <FileUploader
                 fileList={files}
                 prepareFileList={updateFileList}
+                onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
               />

@@ -39,9 +39,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
-  // TODO
   const updateFileList = (preparedFiles: any) => {
-    console.log('preparedFiles', preparedFiles)
     setFiles(preparedFiles)
   }
 
@@ -52,6 +50,17 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
       progress,
     }
     setFiles([...list])
+    // use follow code would cause dirty list update problem
+    // const newList = list.map((file) => {
+    //   if (file.fileID === fileItem.fileID) {
+    //     return {
+    //       ...fileItem,
+    //       progress,
+    //     }
+    //   }
+    //   return file
+    // })
+    // setFiles(newList)
   }
   const updateIndexingTypeCache = (type: string) => {
     setIndexTypeCache(type)
