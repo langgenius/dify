@@ -31,6 +31,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
+        self.start_at = time.perf_counter()
         real_prompts = []
         for message in messages[0]:
             if message.type == 'human':
