@@ -142,7 +142,6 @@ const FileUploader = ({
       return fileItem
     })
     prepareFileList(preparedFiles)
-    // TODO fix filelist copy
     fileListRef.current = preparedFiles
     uploadMultipleFiles(preparedFiles)
   }
@@ -169,13 +168,9 @@ const FileUploader = ({
       return
 
     const files = [...e.dataTransfer.files]
-    if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
-      return
-    }
-    // TODO
-    // onFileUpdate()
-    fileUpload(files[0])
+    const validFiles = files.filter(file => isValid(file))
+    // fileUpload(files[0])
+    initialUpload(validFiles)
   }
 
   const selectHandle = () => {
@@ -187,7 +182,6 @@ const FileUploader = ({
     if (fileUploader.current)
       fileUploader.current.value = ''
 
-    setCurrentFile(undefined)
     fileListRef.current.splice(index, 1)
     onFileListUpdate?.([...fileListRef.current])
   }
@@ -254,7 +248,10 @@ const FileUploader = ({
                 <div className={s.percent}>{`${fileItem.progress}%`}</div>
               )}
               {fileItem.progress === 100 && (
-                <div className={s.remove} onClick={() => removeFile(index)}/>
+                <div className={s.remove} onClick={(e) => {
+                  e.stopPropagation()
+                  removeFile(index)
+                }}/>
               )}
             </div>
           </div>
