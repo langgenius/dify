@@ -38,7 +38,8 @@ class PdfLoader(BaseLoader):
                 try:
                     text = storage.load(plaintext_file_key).decode('utf-8')
                     plaintext_file_exists = True
-                    return text
+                    metadata = {"source": self._file_path}
+                    return [Document(page_content=text, metadata=metadata)]
                 except FileNotFoundError:
                     pass
 
