@@ -139,7 +139,7 @@ class NotionLoader(BaseLoader):
                 else:
                     value = property_value[type]
                 data[property_name] = value
-            database_content_list.append(json.dumps(data))
+            database_content_list.append(json.dumps(data, ensure_ascii=False))
 
         return "\n\n".join(database_content_list)
 
