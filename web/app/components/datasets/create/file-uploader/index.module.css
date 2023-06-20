@@ -51,7 +51,9 @@
   @apply pl-1 cursor-pointer;
   color: #155eef;
 }
-
+.fileList {
+  @apply space-y-2;
+}
 .file {
   @apply box-border relative flex items-center justify-between;
   padding: 8px 12px 8px 8px;

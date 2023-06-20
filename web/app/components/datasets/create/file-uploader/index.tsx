@@ -266,7 +266,7 @@ const FileUploader = ({
               <div className={s.size}>{getFileSize(fileItem.file.size)}</div>
             </div>
             <div className={s.actionWrapper}>
-              {fileItem.progress < 100 && (
+              {(fileItem.progress < 100 && fileItem.progress >= 0) && (
                 <div className={s.percent}>{`${fileItem.progress}%`}</div>
               )}
               {fileItem.progress === 100 && (
