@@ -11,6 +11,7 @@ import { upload } from '@/service/base'
 
 type IFileUploaderProps = {
   fileList: any[]
+  titleClassName?: string
   prepareFileList: (files: any[]) => void
   onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
   onFileListUpdate?: (files: any) => void
@@ -34,6 +35,7 @@ const BATCH_COUNT = 5
 
 const FileUploader = ({
   fileList,
+  titleClassName,
   prepareFileList,
   onFileUpdate,
   onFileListUpdate,
@@ -216,7 +218,7 @@ const FileUploader = ({
         accept={ACCEPTS.join(',')}
         onChange={fileChangeHandle}
       />
-      <div className={s.title}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
         <div className='flex justify-center items-center h-6 mb-2'>
           <span className={s.uploadIcon}/>
