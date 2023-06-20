@@ -23,7 +23,7 @@ class FileExtractor:
             storage.download(upload_file.key, file_path)
 
             input_file = Path(file_path)
-            if input_file.suffix == '.xlxs':
+            if input_file.suffix == '.xlsx':
                 loader = ExcelLoader(file_path)
             elif input_file.suffix == '.pdf':
                 loader = PdfLoader(file_path, upload_file=upload_file)
