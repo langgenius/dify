@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -11,6 +11,7 @@ import { upload } from '@/service/base'
 
 type IFileUploaderProps = {
   fileList: any[]
+  titleClassName?: string
   prepareFileList: (files: any[]) => void
   onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
   onFileListUpdate?: (files: any) => void
@@ -34,6 +35,7 @@ const BATCH_COUNT = 5
 
 const FileUploader = ({
   fileList,
+  titleClassName,
   prepareFileList,
   onFileUpdate,
   onFileListUpdate,
@@ -45,13 +47,8 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const uploadPromise = useRef<any>(null)
-  const [currentFile, setCurrentFile] = useState<File>()
-  const [uploading, setUploading] = useState(false)
-  const [percent, setPercent] = useState(0)
 
-  // TODO
-  const fileListRef = useRef<any>(null)
+  const fileListRef = useRef<any>([])
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -61,10 +58,7 @@ const FileUploader = ({
     const arr = currentFile.name.split('.')
     return arr[arr.length - 1]
   }
-  const getFileName = (name: string) => {
-    const arr = name.split('.')
-    return arr.slice(0, -1).join()
-  }
+
   const getFileSize = (size: number) => {
     if (size / 1024 < 10)
       return `${(size / 1024).toFixed(2)}KB`
@@ -85,25 +79,14 @@ const FileUploader = ({
 
     return isValidType && isValidSize
   }
-  const onProgress = useCallback((e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor(e.loaded / e.total * 100)
-      // updateFileItem
-      setPercent(percent)
-    }
-  }, [setPercent])
-  const abort = () => {
-    const currentXHR = uploadPromise.current
-    currentXHR.abort()
-  }
+
   const fileUpload = async (fileItem: any) => {
-    const fileListCopy = fileListRef.current
     const formData = new FormData()
     formData.append('file', fileItem.file)
     const onProgress = (e: ProgressEvent) => {
       if (e.lengthComputable) {
         const percent = Math.floor(e.loaded / e.total * 100)
-        onFileUpdate(fileItem, percent, fileListCopy)
+        onFileUpdate(fileItem, percent, fileListRef.current)
       }
     }
 
@@ -113,11 +96,13 @@ const FileUploader = ({
       onprogress: onProgress,
     })
       .then((res: FileEntity) => {
+        const fileListCopy = fileListRef.current
+
         const completeFile = {
           fileID: fileItem.fileID,
           file: res,
         }
-        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
+        const index = fileListCopy.findIndex((item: any) => item.fileID === fileItem.fileID)
         fileListCopy[index] = completeFile
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
@@ -159,9 +144,9 @@ const FileUploader = ({
       }
       return fileItem
     })
-    prepareFileList(preparedFiles)
-    // TODO fix filelist copy
-    fileListRef.current = preparedFiles
+    const newFiles = [...fileListRef.current, ...preparedFiles]
+    prepareFileList(newFiles)
+    fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
   }
   const handleDragEnter = (e: DragEvent) => {
@@ -178,7 +163,7 @@ const FileUploader = ({
     e.stopPropagation()
     e.target === dragRef.current && setDragging(false)
   }
-  // TODO
+
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -187,13 +172,9 @@ const FileUploader = ({
       return
 
     const files = [...e.dataTransfer.files]
-    if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
-      return
-    }
-    // TODO
-    // onFileUpdate()
-    fileUpload(files[0])
+    const validFiles = files.filter(file => isValid(file))
+    // fileUpload(files[0])
+    initialUpload(validFiles)
   }
 
   const selectHandle = () => {
@@ -201,12 +182,11 @@ const FileUploader = ({
       fileUploader.current.click()
   }
 
-  const removeFile = (index: number) => {
+  const removeFile = (fileID: string) => {
     if (fileUploader.current)
       fileUploader.current.value = ''
 
-    setCurrentFile(undefined)
-    fileListRef.current.splice(index, 1)
+    fileListRef.current = fileListRef.current.filter((item: any) => item.fileID !== fileID)
     onFileListUpdate?.([...fileListRef.current])
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -238,7 +218,7 @@ const FileUploader = ({
         accept={ACCEPTS.join(',')}
         onChange={fileChangeHandle}
       />
-      <div className={s.title}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
         <div className='flex justify-center items-center h-6 mb-2'>
           <span className={s.uploadIcon}/>
@@ -260,7 +240,7 @@ const FileUploader = ({
             )}
           >
             {fileItem.progress < 100 && (
-              <div className={s.progressbar} style={{ width: `${percent}%` }}/>
+              <div className={s.progressbar} style={{ width: `${fileItem.progress}%` }}/>
             )}
             <div className={s.fileInfo}>
               <div className={cn(s.fileIcon, s[getFileType(fileItem.file)])}/>
@@ -272,7 +252,10 @@ const FileUploader = ({
                 <div className={s.percent}>{`${fileItem.progress}%`}</div>
               )}
               {fileItem.progress === 100 && (
-                <div className={s.remove} onClick={() => removeFile(index)}/>
+                <div className={s.remove} onClick={(e) => {
+                  e.stopPropagation()
+                  removeFile(fileItem.fileID)
+                }}/>
               )}
             </div>
           </div>
@@ -305,34 +288,6 @@ const FileUploader = ({
           </div>
         )} */}
       </div>
-      {/* TODO */}
-      {/* {false && !currentFile && fileList[0] && (
-        <div
-          // onClick={() => onPreview(currentFile)}
-          className={cn(
-            s.file,
-            uploading && s.uploading,
-            s.active,
-          )}
-        >
-          {uploading && (
-            <div className={s.progressbar} style={{ width: `${percent}%` }}/>
-          )}
-          <div className={s.fileInfo}>
-            <div className={cn(s.fileIcon, s[getFileType(fileList[0])])}/>
-            <div className={s.filename}>{fileList[0].name}</div>
-            <div className={s.size}>{getFileSize(fileList[0].size)}</div>
-          </div>
-          <div className={s.actionWrapper}>
-            {uploading && (
-              <div className={s.percent}>{`${percent}%`}</div>
-            )}
-            {!uploading && (
-              <div className={s.remove} onClick={removeFile}/>
-            )}
-          </div>
-        </div>
-      )} */}
     </div>
   )
 }
