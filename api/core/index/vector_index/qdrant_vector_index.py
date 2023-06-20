@@ -90,6 +90,7 @@ class QdrantVectorIndex(BaseVectorIndex):
     def delete_by_document_id(self, document_id: str):
         if self._is_origin():
             self.recreate_dataset(self.dataset)
+            return
 
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)

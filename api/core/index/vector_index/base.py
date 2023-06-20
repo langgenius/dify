@@ -1,7 +1,7 @@
 import json
 import logging
 from abc import abstractmethod
-from typing import List, Any, Tuple, cast
+from typing import List, Any, cast
 
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document, BaseRetriever
@@ -101,6 +101,7 @@ class BaseVectorIndex(BaseIndex):
     def delete_by_ids(self, ids: list[str]) -> None:
         if self._is_origin():
             self.recreate_dataset(self.dataset)
+            return
 
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
