@@ -23,7 +23,7 @@ const translation = {
       title: 'Upload text file',
       button: 'Drag and drop file, or',
       browse: 'Browse',
-      tip: 'Supports txt, html, markdown, xlsx, and pdf.',
+      tip: 'Supports txt, html, markdown, xlsx, and pdf. Max 10MB each.',
       validation: {
         typeError: 'File type not supported',
         size: 'File too large. Maximum is 15MB',

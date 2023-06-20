@@ -23,7 +23,7 @@ const translation = {
       title: '上传文本文件',
       button: '拖拽文件至此，或者',
       browse: '选择文件',
-      tip: '已支持 TXT, HTML, Markdown, PDF, XLSX',
+      tip: '已支持 TXT、 HTML、 Markdown、 PDF、 XLSX，每个文件不超过 10 MB。',
       validation: {
         typeError: '文件类型不支持',
         size: '文件太大了，不能超过 15MB',

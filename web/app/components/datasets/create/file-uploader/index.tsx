@@ -6,14 +6,14 @@ import cn from 'classnames'
 import s from './index.module.css'
 import type { File as FileEntity } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import Button from '@/app/components/base/button'
 
 import { upload } from '@/service/base'
 
 type IFileUploaderProps = {
-  file?: FileEntity
-  titleClassName?: string
-  onFileUpdate: (file?: FileEntity) => void
+  fileList: FileEntity[]
+  prepareFileList: (files: any[]) => void
+  onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
+  onPreview: (file: FileEntity) => void
 }
 
 const ACCEPTS = [
@@ -28,9 +28,15 @@ const ACCEPTS = [
   '.csv',
 ]
 
-const MAX_SIZE = 15 * 1024 * 1024
+const MAX_SIZE = 10 * 1024 * 1024
+const BATCH_COUNT = 5
 
-const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps) => {
+const FileUploader = ({
+  fileList,
+  prepareFileList,
+  onFileUpdate,
+  onPreview,
+}: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [dragging, setDragging] = useState(false)
@@ -41,6 +47,9 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
   const [currentFile, setCurrentFile] = useState<File>()
   const [uploading, setUploading] = useState(false)
   const [percent, setPercent] = useState(0)
+
+  // TODO
+  const fileListRef = useRef<any>(null)
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -77,6 +86,7 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
   const onProgress = useCallback((e: ProgressEvent) => {
     if (e.lengthComputable) {
       const percent = Math.floor(e.loaded / e.total * 100)
+      // updateFileItem
       setPercent(percent)
     }
   }, [setPercent])
@@ -84,41 +94,74 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
     const currentXHR = uploadPromise.current
     currentXHR.abort()
   }
-  const fileUpload = async (file?: File) => {
-    if (!file)
-      return
-
-    if (!isValid(file))
-      return
-
-    setCurrentFile(file)
-    setUploading(true)
+  const fileUpload = async (fileItem: any) => {
+    const fileListCopy = fileListRef.current
     const formData = new FormData()
-    formData.append('file', file)
-    // store for abort
-    const currentXHR = new XMLHttpRequest()
-    uploadPromise.current = currentXHR
-    try {
-      const result = await upload({
-        xhr: currentXHR,
-        data: formData,
-        onprogress: onProgress,
-      }) as FileEntity
-      onFileUpdate(result)
-      setUploading(false)
-    }
-    catch (xhr: any) {
-      setUploading(false)
-      // abort handle
-      if (xhr.readyState === 0 && xhr.status === 0) {
-        if (fileUploader.current)
-          fileUploader.current.value = ''
-
-        setCurrentFile(undefined)
-        return
+    formData.append('file', fileItem.file)
+    const onProgress = (e: ProgressEvent) => {
+      if (e.lengthComputable) {
+        const percent = Math.floor(e.loaded / e.total * 100)
+        onFileUpdate(fileItem, percent, fileListCopy)
       }
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
     }
+    console.log('fff1', fileListCopy)
+
+    return upload({
+      xhr: new XMLHttpRequest(),
+      data: formData,
+      onprogress: onProgress,
+    })
+      .then((res: FileEntity) => {
+        const completeFile = {
+          fileID: fileItem.fileID,
+          file: res,
+        }
+        console.log('fff2', fileListCopy)
+        onFileUpdate(completeFile, 100, fileListCopy)
+        return Promise.resolve({ ...completeFile })
+      })
+      .catch((err) => {
+        console.log(err)
+        notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
+        onFileUpdate(fileItem, -2, fileListCopy)
+        return Promise.resolve({ ...fileItem })
+      })
+      .finally()
+  }
+  const uploadBatchFiles = (bFiles: any) => {
+    bFiles.forEach((bf: any) => (bf.progress = 0))
+    return Promise.all(bFiles.map((bFile: any) => fileUpload(bFile)))
+  }
+  const uploadMultipleFiles = async (files: any) => {
+    const length = files.length
+    let start = 0
+    let end = 0
+
+    while (start < length) {
+      if (start + BATCH_COUNT > length)
+        end = length
+      else
+        end = start + BATCH_COUNT
+      const bFiles = files.slice(start, end)
+      await uploadBatchFiles(bFiles)
+      start = end
+    }
+  }
+  const initialUpload = (files: any) => {
+    if (!files.length)
+      return false
+    const preparedFiles = files.map((file: any, index: number) => {
+      const fileItem = {
+        fileID: `file${index}-${Date.now()}`,
+        file,
+        progress: -1,
+      }
+      return fileItem
+    })
+    prepareFileList(preparedFiles)
+    // TODO fix filelist copy
+    fileListRef.current = preparedFiles
+    uploadMultipleFiles(preparedFiles)
   }
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
@@ -134,6 +177,7 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
     e.stopPropagation()
     e.target === dragRef.current && setDragging(false)
   }
+  // TODO
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -146,7 +190,8 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
       return
     }
-    onFileUpdate()
+    // TODO
+    // onFileUpdate()
     fileUpload(files[0])
   }
 
@@ -154,17 +199,17 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
     if (fileUploader.current)
       fileUploader.current.click()
   }
+  // TODO
   const removeFile = () => {
     if (fileUploader.current)
       fileUploader.current.value = ''
 
     setCurrentFile(undefined)
-    onFileUpdate()
+    // onFileUpdate()
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const currentFile = e.target.files?.[0]
-    onFileUpdate()
-    fileUpload(currentFile)
+    const files = [...(e.target.files ?? [])].filter(file => isValid(file))
+    initialUpload(files)
   }
 
   useEffect(() => {
@@ -184,83 +229,107 @@ const FileUploader = ({ file, onFileUpdate, titleClassName }: IFileUploaderProps
     <div className={s.fileUploader}>
       <input
         ref={fileUploader}
+        id="fileUploader"
         style={{ display: 'none' }}
         type="file"
-        id="fileUploader"
+        multiple
         accept={ACCEPTS.join(',')}
         onChange={fileChangeHandle}
       />
-      <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
-      <div ref={dropRef}>
-        {!currentFile && !file && (
-          <div className={cn(s.uploader, dragging && s.dragging)}>
-            <span>{t('datasetCreation.stepOne.uploader.button')}</span>
-            <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
-            {dragging && <div ref={dragRef} className={s.draggingCover}/>}
+      <div className={s.title}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
+        <div className='flex justify-center items-center h-6 mb-2'>
+          <span className={s.uploadIcon}/>
+          <span>{t('datasetCreation.stepOne.uploader.button')}</span>
+          <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+        </div>
+        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip')}</div>
+        {dragging && <div ref={dragRef} className={s.draggingCover}/>}
+      </div>
+      <div className={s.fileList}>
+        {fileList.map(fileItem => (
+          <div
+            // onClick={() => onPreview(currentFile)}
+            className={cn(
+              s.file,
+              fileItem.progress < 100 && s.uploading,
+              // s.active,
+            )}
+          >
+            {fileItem.progress < 100 && (
+              <div className={s.progressbar} style={{ width: `${percent}%` }}/>
+            )}
+            <div className={s.fileInfo}>
+              <div className={cn(s.fileIcon, s[getFileType(fileItem.file)])}/>
+              <div className={s.filename}>{fileItem.file.name}</div>
+              <div className={s.size}>{getFileSize(fileItem.file.size)}</div>
+            </div>
+            <div className={s.actionWrapper}>
+              {fileItem.progress < 100 && (
+                <div className={s.percent}>{`${fileItem.progress}%`}</div>
+              )}
+              {fileItem.progress === 100 && (
+                <div className={s.remove} onClick={removeFile}/>
+              )}
+            </div>
+          </div>
+        ))}
+        {currentFile && (
+          <div
+            // onClick={() => onPreview(currentFile)}
+            className={cn(
+              s.file,
+              uploading && s.uploading,
+              // s.active,
+            )}
+          >
+            {uploading && (
+              <div className={s.progressbar} style={{ width: `${percent}%` }}/>
+            )}
+            <div className={s.fileInfo}>
+              <div className={cn(s.fileIcon, s[getFileType(currentFile)])}/>
+              <div className={s.filename}>{currentFile.name}</div>
+              <div className={s.size}>{getFileSize(currentFile.size)}</div>
+            </div>
+            <div className={s.actionWrapper}>
+              {uploading && (
+                <div className={s.percent}>{`${percent}%`}</div>
+              )}
+              {!uploading && (
+                <div className={s.remove} onClick={removeFile}/>
+              )}
+            </div>
           </div>
         )}
       </div>
-      {currentFile && (
-        <div className={cn(s.file, uploading && s.uploading)}>
+      {/* TODO */}
+      {false && !currentFile && fileList[0] && (
+        <div
+          // onClick={() => onPreview(currentFile)}
+          className={cn(
+            s.file,
+            uploading && s.uploading,
+            s.active,
+          )}
+        >
           {uploading && (
             <div className={s.progressbar} style={{ width: `${percent}%` }}/>
           )}
-          <div className={cn(s.fileIcon, s[getFileType(currentFile)])}/>
           <div className={s.fileInfo}>
-            <div className={s.filename}>
-              <span className={s.name}>{getFileName(currentFile.name)}</span>
-              <span className={s.extension}>{`.${getFileType(currentFile)}`}</span>
-            </div>
-            <div className={s.fileExtraInfo}>
-              <span className={s.size}>{getFileSize(currentFile.size)}</span>
-              <span className={s.error}></span>
-            </div>
+            <div className={cn(s.fileIcon, s[getFileType(fileList[0])])}/>
+            <div className={s.filename}>{fileList[0].name}</div>
+            <div className={s.size}>{getFileSize(fileList[0].size)}</div>
           </div>
           <div className={s.actionWrapper}>
             {uploading && (
-              <>
-                <div className={s.percent}>{`${percent}%`}</div>
-                <div className={s.divider}/>
-                <div className={s.buttonWrapper}>
-                  <Button className={cn(s.button, 'ml-2 !h-8 bg-white')} onClick={abort}>{t('datasetCreation.stepOne.uploader.cancel')}</Button>
-                </div>
-              </>
+              <div className={s.percent}>{`${percent}%`}</div>
             )}
             {!uploading && (
-              <>
-                <div className={s.buttonWrapper}>
-                  <Button className={cn(s.button, 'ml-2 !h-8 bg-white')} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-                  <div className={s.divider}/>
-                  <div className={s.remove} onClick={removeFile}/>
-                </div>
-              </>
+              <div className={s.remove} onClick={removeFile}/>
             )}
           </div>
         </div>
       )}
-      {!currentFile && file && (
-        <div className={cn(s.file)}>
-          <div className={cn(s.fileIcon, s[file.extension])}/>
-          <div className={s.fileInfo}>
-            <div className={s.filename}>
-              <span className={s.name}>{getFileName(file.name)}</span>
-              <span className={s.extension}>{`.${file.extension}`}</span>
-            </div>
-            <div className={s.fileExtraInfo}>
-              <span className={s.size}>{getFileSize(file.size)}</span>
-              <span className={s.error}></span>
-            </div>
-          </div>
-          <div className={s.actionWrapper}>
-            <div className={s.buttonWrapper}>
-              <Button className={cn(s.button, 'ml-2 !h-8 bg-white')} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
-              <div className={s.divider}/>
-              <div className={s.remove} onClick={removeFile}/>
-            </div>
-          </div>
-        </div>
-      )}
-      <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip')}</div>
     </div>
   )
 }
