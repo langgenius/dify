@@ -1,5 +1,5 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -45,12 +45,7 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
-  const uploadPromise = useRef<any>(null)
-  const [currentFile, setCurrentFile] = useState<File>()
-  const [uploading, setUploading] = useState(false)
-  const [percent, setPercent] = useState(0)
 
-  // TODO
   const fileListRef = useRef<any>(null)
 
   // utils
@@ -61,10 +56,7 @@ const FileUploader = ({
     const arr = currentFile.name.split('.')
     return arr[arr.length - 1]
   }
-  const getFileName = (name: string) => {
-    const arr = name.split('.')
-    return arr.slice(0, -1).join()
-  }
+
   const getFileSize = (size: number) => {
     if (size / 1024 < 10)
       return `${(size / 1024).toFixed(2)}KB`
@@ -85,17 +77,7 @@ const FileUploader = ({
 
     return isValidType && isValidSize
   }
-  const onProgress = useCallback((e: ProgressEvent) => {
-    if (e.lengthComputable) {
-      const percent = Math.floor(e.loaded / e.total * 100)
-      // updateFileItem
-      setPercent(percent)
-    }
-  }, [setPercent])
-  const abort = () => {
-    const currentXHR = uploadPromise.current
-    currentXHR.abort()
-  }
+
   const fileUpload = async (fileItem: any) => {
     const fileListCopy = fileListRef.current
     const formData = new FormData()
@@ -178,7 +160,7 @@ const FileUploader = ({
     e.stopPropagation()
     e.target === dragRef.current && setDragging(false)
   }
-  // TODO
+
   const handleDrop = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -260,7 +242,7 @@ const FileUploader = ({
             )}
           >
             {fileItem.progress < 100 && (
-              <div className={s.progressbar} style={{ width: `${percent}%` }}/>
+              <div className={s.progressbar} style={{ width: `${fileItem.progress}%` }}/>
             )}
             <div className={s.fileInfo}>
               <div className={cn(s.fileIcon, s[getFileType(fileItem.file)])}/>
@@ -305,34 +287,6 @@ const FileUploader = ({
           </div>
         )} */}
       </div>
-      {/* TODO */}
-      {/* {false && !currentFile && fileList[0] && (
-        <div
-          // onClick={() => onPreview(currentFile)}
-          className={cn(
-            s.file,
-            uploading && s.uploading,
-            s.active,
-          )}
-        >
-          {uploading && (
-            <div className={s.progressbar} style={{ width: `${percent}%` }}/>
-          )}
-          <div className={s.fileInfo}>
-            <div className={cn(s.fileIcon, s[getFileType(fileList[0])])}/>
-            <div className={s.filename}>{fileList[0].name}</div>
-            <div className={s.size}>{getFileSize(fileList[0].size)}</div>
-          </div>
-          <div className={s.actionWrapper}>
-            {uploading && (
-              <div className={s.percent}>{`${percent}%`}</div>
-            )}
-            {!uploading && (
-              <div className={s.remove} onClick={removeFile}/>
-            )}
-          </div>
-        </div>
-      )} */}
     </div>
   )
 }
