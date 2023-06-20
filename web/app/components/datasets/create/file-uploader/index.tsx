@@ -46,7 +46,7 @@ const FileUploader = ({
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
 
-  const fileListRef = useRef<any>(null)
+  const fileListRef = useRef<any>([])
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -79,13 +79,12 @@ const FileUploader = ({
   }
 
   const fileUpload = async (fileItem: any) => {
-    const fileListCopy = fileListRef.current
     const formData = new FormData()
     formData.append('file', fileItem.file)
     const onProgress = (e: ProgressEvent) => {
       if (e.lengthComputable) {
         const percent = Math.floor(e.loaded / e.total * 100)
-        onFileUpdate(fileItem, percent, fileListCopy)
+        onFileUpdate(fileItem, percent, fileListRef.current)
       }
     }
 
@@ -95,6 +94,8 @@ const FileUploader = ({
       onprogress: onProgress,
     })
       .then((res: FileEntity) => {
+        const fileListCopy = fileListRef.current
+
         const completeFile = {
           fileID: fileItem.fileID,
           file: res,
@@ -141,8 +142,9 @@ const FileUploader = ({
       }
       return fileItem
     })
-    prepareFileList(preparedFiles)
-    fileListRef.current = preparedFiles
+    const newFiles = [...fileListRef.current, ...preparedFiles]
+    prepareFileList(newFiles)
+    fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
   }
   const handleDragEnter = (e: DragEvent) => {
@@ -178,11 +180,11 @@ const FileUploader = ({
       fileUploader.current.click()
   }
 
-  const removeFile = (index: number) => {
+  const removeFile = (fileID: string) => {
     if (fileUploader.current)
       fileUploader.current.value = ''
 
-    fileListRef.current.splice(index, 1)
+    fileListRef.current = fileListRef.current.filter((item: any) => item.fileID !== fileID)
     onFileListUpdate?.([...fileListRef.current])
   }
   const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -250,7 +252,7 @@ const FileUploader = ({
               {fileItem.progress === 100 && (
                 <div className={s.remove} onClick={(e) => {
                   e.stopPropagation()
-                  removeFile(index)
+                  removeFile(fileItem.fileID)
                 }}/>
               )}
             </div>
