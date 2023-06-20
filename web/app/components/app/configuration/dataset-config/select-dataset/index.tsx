@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useRef, useState } from 'react'
+import { useGetState, useInfiniteScroll } from 'ahooks'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -32,14 +33,33 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const hasNoData = !datasets || datasets?.length === 0
   const canSelectMulti = true
-  useEffect(() => {
-    (async () => {
-      const { data } = await fetchDatasets({ url: '/datasets', params: { page: 1 } })
-      setDataSets(data)
-      setLoaded(true)
-      setSelected(data.filter(item => selectedIds.includes(item.id)))
-    })()
-  }, [])
+
+  const listRef = useRef<HTMLDivElement>(null)
+  const [page, setPage, getPage] = useGetState(1)
+  const [isNoMore, setIsNoMore] = useState(false)
+
+  useInfiniteScroll(
+    async () => {
+      if (!isNoMore) {
+        const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
+        setPage(getPage() + 1)
+        setIsNoMore(!has_more)
+        const newList = [...(datasets || []), ...data]
+        setDataSets(newList)
+        setLoaded(true)
+        setSelected(newList.filter(item => selectedIds.includes(item.id)))
+      }
+      return { list: [] }
+    },
+    {
+      target: listRef,
+      isNoMore: () => {
+        return isNoMore
+      },
+      reloadDeps: [isNoMore],
+    },
+  )
+
   const toggleSelect = (dataSet: DataSet) => {
     const isSelected = selected.some(item => item.id === dataSet.id)
     if (isSelected) {
@@ -83,7 +103,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
 
       {datasets && datasets?.length > 0 && (
         <>
-          <div className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
+          <div ref={listRef} className='mt-7 space-y-1 max-h-[286px] overflow-y-auto'>
             {datasets.map(item => (
               <div
                 key={item.id}
