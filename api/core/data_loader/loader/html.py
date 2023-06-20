@@ -25,9 +25,9 @@ class HTMLLoader(BaseLoader):
 
     def load(self) -> List[Document]:
         metadata = {"source": self._file_path}
-        return [Document(page_content=self.load_as_text(), metadata=metadata)]
+        return [Document(page_content=self._load_as_text(), metadata=metadata)]
 
-    def load_as_text(self) -> str:
+    def _load_as_text(self) -> str:
         with open(self._file_path, "rb") as fp:
             soup = BeautifulSoup(fp, 'html.parser')
             text = soup.get_text()

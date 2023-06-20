@@ -46,8 +46,8 @@ class CacheEmbedding(Embeddings):
 
             i += 1
 
-        embedding_queue_texts.extend(embedding_results)
-        return embedding_queue_texts
+        text_embeddings.extend(embedding_results)
+        return text_embeddings
 
     def embed_query(self, text: str) -> List[float]:
         """Embed query text."""

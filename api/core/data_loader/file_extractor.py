@@ -22,21 +22,21 @@ class FileExtractor:
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             storage.download(upload_file.key, file_path)
 
-        input_file = Path(file_path)
-        if input_file.suffix == '.xlxs':
-            loader = ExcelLoader(file_path)
-        elif input_file.suffix == '.pdf':
-            loader = PdfLoader(file_path, upload_file=upload_file)
-        elif input_file.suffix in ['.md', '.markdown']:
-            loader = MarkdownLoader(file_path, autodetect_encoding=True)
-        elif input_file.suffix in ['.htm', '.html']:
-            loader = HTMLLoader(file_path)
-        elif input_file.suffix == '.docx':
-            loader = Docx2txtLoader(file_path)
-        elif input_file.suffix == '.csv':
-            loader = CSVLoader(file_path, autodetect_encoding=True)
-        else:
-            # txt
-            loader = TextLoader(file_path, autodetect_encoding=True)
+            input_file = Path(file_path)
+            if input_file.suffix == '.xlxs':
+                loader = ExcelLoader(file_path)
+            elif input_file.suffix == '.pdf':
+                loader = PdfLoader(file_path, upload_file=upload_file)
+            elif input_file.suffix in ['.md', '.markdown']:
+                loader = MarkdownLoader(file_path, autodetect_encoding=True)
+            elif input_file.suffix in ['.htm', '.html']:
+                loader = HTMLLoader(file_path)
+            elif input_file.suffix == '.docx':
+                loader = Docx2txtLoader(file_path)
+            elif input_file.suffix == '.csv':
+                loader = CSVLoader(file_path, autodetect_encoding=True)
+            else:
+                # txt
+                loader = TextLoader(file_path, autodetect_encoding=True)
 
-        return loader.load_as_text() if return_text else loader.load()
+            return '\n'.join([document.page_content for document in loader.load()]) if return_text else loader.load()

@@ -30,10 +30,19 @@ class KeywordTableIndex(BaseIndex):
 
         dataset_keyword_table = DatasetKeywordTable(
             dataset_id=self._dataset.id,
-            keyword_table=json.dumps(keyword_table)
+            keyword_table=json.dumps({
+                '__type__': 'keyword_table',
+                '__data__': {
+                    "index_id": self._dataset.id,
+                    "summary": None,
+                    "table": {}
+                }
+            }, cls=SetEncoder)
         )
         db.session.add(dataset_keyword_table)
         db.session.commit()
+
+        self._save_dataset_keyword_table(keyword_table)
 
         return self
 
@@ -46,8 +55,7 @@ class KeywordTableIndex(BaseIndex):
             self._update_segment_keywords(text.metadata['doc_id'], list(keywords))
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
-        self._dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table)
-        db.session.commit()
+        self._save_dataset_keyword_table(keyword_table)
 
     def text_exists(self, id: str) -> bool:
         keyword_table = self._get_dataset_keyword_table()
@@ -57,8 +65,7 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
 
-        self._dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table)
-        db.session.commit()
+        self._save_dataset_keyword_table(keyword_table)
 
     def delete_by_document_id(self, document_id: str):
         # get segment ids by document_id
@@ -72,8 +79,7 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
 
-        self._dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table)
-        db.session.commit()
+        self._save_dataset_keyword_table(keyword_table)
 
     def get_retriever(self, **kwargs: Any) -> BaseRetriever:
         return KeywordTableRetriever(index=self, **kwargs)
@@ -108,10 +114,38 @@ class KeywordTableIndex(BaseIndex):
 
         return documents
 
+    def _save_dataset_keyword_table(self, keyword_table):
+        keyword_table_dict = {
+            '__type__': 'keyword_table',
+            '__data__': {
+                "index_id": self._dataset.id,
+                "summary": None,
+                "table": keyword_table
+            }
+        }
+        self._dataset.dataset_keyword_table.keyword_table = json.dumps(keyword_table_dict, cls=SetEncoder)
+        db.session.commit()
+
     def _get_dataset_keyword_table(self) -> Optional[dict]:
-        keyword_table_dict = self._dataset.dataset_keyword_table.keyword_table_dict
-        if keyword_table_dict:
-            return keyword_table_dict
+        dataset_keyword_table = self._dataset.dataset_keyword_table
+        if dataset_keyword_table:
+            if dataset_keyword_table.keyword_table_dict:
+                return dataset_keyword_table.keyword_table_dict['__data__']['table']
+        else:
+            dataset_keyword_table = DatasetKeywordTable(
+                dataset_id=self._dataset.id,
+                keyword_table=json.dumps({
+                    '__type__': 'keyword_table',
+                    '__data__': {
+                        "index_id": self._dataset.id,
+                        "summary": None,
+                        "table": {}
+                    }
+                }, cls=SetEncoder)
+            )
+            db.session.add(dataset_keyword_table)
+            db.session.commit()
+
         return {}
 
     def _add_text_to_keyword_table(self, keyword_table: dict, id: str, keywords: list[str]) -> dict:
@@ -146,9 +180,9 @@ class KeywordTableIndex(BaseIndex):
 
         # go through text chunks in order of most matching keywords
         chunk_indices_count: Dict[str, int] = defaultdict(int)
-        keywords = [k for k in keywords if k in set(keyword_table.keys())]
-        for k in keywords:
-            for node_id in keyword_table[k]:
+        keywords = [keyword for keyword in keywords if keyword in set(keyword_table.keys())]
+        for keyword in keywords:
+            for node_id in keyword_table[keyword]:
                 chunk_indices_count[node_id] += 1
 
         sorted_chunk_indices = sorted(
@@ -190,3 +224,9 @@ class KeywordTableRetriever(BaseRetriever, BaseModel):
     async def aget_relevant_documents(self, query: str) -> List[Document]:
         raise NotImplementedError("KeywordTableRetriever does not support async")
 
+
+class SetEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, set):
+            return list(obj)
+        return super().default(obj)

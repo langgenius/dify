@@ -44,13 +44,17 @@ class QdrantVectorIndex(BaseVectorIndex):
     def get_type(self) -> str:
         return 'qdrant'
 
-    def get_index_name(self, dataset_id: str) -> str:
-        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+    def get_index_name(self, dataset: Dataset) -> str:
+        if self._dataset.index_struct_dict:
+            return self._dataset.index_struct_dict['vector_store']['collection_name']
+
+        dataset_id = dataset.id
+        return "Vector_index_" + dataset_id.replace("-", "_")
 
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"collection_name": self.get_index_name(self._dataset.id)}
+            "vector_store": {"collection_name": self.get_index_name(self._dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -58,7 +62,7 @@ class QdrantVectorIndex(BaseVectorIndex):
         self._vector_store = QdrantVectorStore.from_documents(
             texts,
             self._embeddings,
-            collection_name=self.get_index_name(self._dataset.id),
+            collection_name=self.get_index_name(self._dataset),
             ids=uuids,
             **self._client_config.to_qdrant_params()
         )
@@ -76,7 +80,7 @@ class QdrantVectorIndex(BaseVectorIndex):
 
         return QdrantVectorStore(
             client=client,
-            collection_name=self.get_index_name(self._dataset.id),
+            collection_name=self.get_index_name(self._dataset),
             embeddings=self._embeddings
         )
 

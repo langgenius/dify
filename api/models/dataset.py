@@ -395,7 +395,16 @@ class DatasetKeywordTable(db.Model):
 
     @property
     def keyword_table_dict(self):
-        return json.loads(self.keyword_table) if self.keyword_table else None
+        class SetDecoder(json.JSONDecoder):
+            def __init__(self, *args, **kwargs):
+                super().__init__(object_hook=self.object_hook, *args, **kwargs)
+
+            def object_hook(self, dct):
+                if "__set__" in dct:
+                    return set(dct["__set__"])
+                return dct
+
+        return json.loads(self.keyword_table, cls=SetDecoder) if self.keyword_table else None
 
 
 class Embedding(db.Model):

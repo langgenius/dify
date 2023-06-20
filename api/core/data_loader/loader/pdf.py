@@ -64,6 +64,3 @@ class PdfLoader(BaseLoader):
         metadata = {"source": self._file_path}
         return [Document(page_content=text, metadata=metadata)]
 
-    def load_as_text(self) -> str:
-        documents = self.load()
-        return '\n'.join([document.page_content for document in documents])

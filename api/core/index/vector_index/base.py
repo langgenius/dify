@@ -5,6 +5,7 @@ from langchain.schema import Document, BaseRetriever
 from langchain.vectorstores import VectorStore
 
 from core.index.base import BaseIndex
+from models.dataset import Dataset
 
 
 class BaseVectorIndex(BaseIndex):
@@ -12,7 +13,7 @@ class BaseVectorIndex(BaseIndex):
         raise NotImplementedError
 
     @abstractmethod
-    def get_index_name(self, dataset_id: str) -> str:
+    def get_index_name(self, dataset: Dataset) -> str:
         raise NotImplementedError
 
     @abstractmethod

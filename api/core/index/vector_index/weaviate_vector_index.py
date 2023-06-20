@@ -59,13 +59,22 @@ class WeaviateVectorIndex(BaseVectorIndex):
     def get_type(self) -> str:
         return 'weaviate'
 
-    def get_index_name(self, dataset_id: str) -> str:
+    def get_index_name(self, dataset: Dataset) -> str:
+        if self._dataset.index_struct_dict:
+            class_prefix: str = self._dataset.index_struct_dict['vector_store']['class_prefix']
+            if not class_prefix.endswith('_Node'):
+                # original class_prefix
+                class_prefix += '_Node'
+
+            return class_prefix
+
+        dataset_id = dataset.id
         return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
 
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"class_prefix": self.get_index_name(self._dataset.id)}
+            "vector_store": {"class_prefix": self.get_index_name(self._dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -74,7 +83,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
             texts,
             self._embeddings,
             client=self._client,
-            index_name=self.get_index_name(self._dataset.id),
+            index_name=self.get_index_name(self._dataset),
             uuids=uuids,
             by_text=False
         )
@@ -88,7 +97,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
 
         return WeaviateVectorStore(
             client=self._client,
-            index_name=self.get_index_name(self._dataset.id),
+            index_name=self.get_index_name(self._dataset),
             text_key='text',
             embedding=self._embeddings,
             attributes=self._attributes,
