@@ -32,7 +32,6 @@ const FilePreview = ({
   const getFileName = (currentFile?: File) => {
     if (!currentFile)
       return ''
-
     const arr = currentFile.name.split('.')
     return arr.slice(0, -1).join()
   }

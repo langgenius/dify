@@ -117,12 +117,14 @@ const FileUploader = ({
           fileID: fileItem.fileID,
           file: res,
         }
+        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
+        fileListCopy[index] = completeFile
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
       })
       .catch(() => {
         notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.failed') })
-        onFileUpdate(fileItem, -2, [...fileListCopy])
+        onFileUpdate(fileItem, -2, fileListCopy)
         return Promise.resolve({ ...fileItem })
       })
       .finally()
@@ -250,7 +252,7 @@ const FileUploader = ({
         {fileList.map((fileItem, index) => (
           <div
             key={`${fileItem.fileID}-${index}`}
-            // onClick={() => onPreview(currentFile)}
+            onClick={() => fileItem.file?.id && onPreview(fileItem.file)}
             className={cn(
               s.file,
               fileItem.progress < 100 && s.uploading,

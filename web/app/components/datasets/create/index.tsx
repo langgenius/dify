@@ -46,7 +46,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const updateFile = (fileItem: any, progress: number, list: any[]) => {
     const targetIndex = list.findIndex((file: any) => file.fileID === fileItem.fileID)
     list[targetIndex] = {
-      ...fileItem,
+      ...list[targetIndex],
       progress,
     }
     setFiles([...list])
