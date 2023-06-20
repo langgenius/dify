@@ -90,7 +90,7 @@ const StepOne = ({
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
-    if (files.some(file => file.progress !== 100))
+    if (files.some(file => !file.file.id))
       return true
     return false
   }, [files])

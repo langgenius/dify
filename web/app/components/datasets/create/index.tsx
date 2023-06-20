@@ -137,7 +137,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           indexingType={detail?.indexing_technique || ''}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
-          files={fileList}
+          files={fileList.map(file => file.file)}
           notionPages={notionPages}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
