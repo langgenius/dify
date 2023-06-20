@@ -23,6 +23,7 @@ class FileExtractor:
             storage.download(upload_file.key, file_path)
 
             input_file = Path(file_path)
+            delimiter = '\n'
             if input_file.suffix == '.xlsx':
                 loader = ExcelLoader(file_path)
             elif input_file.suffix == '.pdf':
@@ -39,4 +40,4 @@ class FileExtractor:
                 # txt
                 loader = TextLoader(file_path, autodetect_encoding=True)
 
-            return '\n'.join([document.page_content for document in loader.load()]) if return_text else loader.load()
+            return delimiter.join([document.page_content for document in loader.load()]) if return_text else loader.load()

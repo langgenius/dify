@@ -47,6 +47,7 @@ class MarkdownLoader(BaseLoader):
         documents = []
         metadata = {"source": self._file_path}
         for header, value in tups:
+            value = value.strip()
             if header is None:
                 documents.append(Document(page_content=value, metadata=metadata))
             else:

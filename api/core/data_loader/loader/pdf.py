@@ -56,7 +56,7 @@ class PdfLoader(BaseLoader):
                 # Extract the text from the page
                 page_text = pdf.pages[page].extract_text()
                 text_list.append(page_text)
-        text = "\n".join(text_list)
+        text = "\n\n".join(text_list)
 
         # save plaintext file for caching
         if not plaintext_file_exists and plaintext_file_key:
