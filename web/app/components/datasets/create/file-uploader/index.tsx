@@ -99,7 +99,7 @@ const FileUploader = ({
           fileID: fileItem.fileID,
           file: res,
         }
-        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
+        const index = fileListCopy.findIndex((item: any) => item.fileID === fileItem.fileID)
         fileListCopy[index] = completeFile
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
