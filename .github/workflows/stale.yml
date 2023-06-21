@@ -27,4 +27,4 @@ jobs:
         stale-pr-message: "Close due to it's no longer active, if you have any questions, you can reopen it."
         stale-issue-label: 'no-issue-activity'
         stale-pr-label: 'no-pr-activity'
-        only-labels: 'duplicate,question,invalid,wontfix,no-issue-activity,no-pr-activity,enhancement'
+        any-of-labels: 'duplicate,question,invalid,wontfix,no-issue-activity,no-pr-activity,enhancement'

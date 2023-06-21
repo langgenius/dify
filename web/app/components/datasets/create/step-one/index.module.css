@@ -10,7 +10,9 @@
 }
 
 .form {
+  position: relative;
   padding: 12px 64px;
+  background-color: #fff;
 }
 
 .dataSourceTypeList {

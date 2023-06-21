@@ -124,7 +124,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         ? (
           <>
             <div className={s.subTitle}>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>
-            {relatedApps?.data?.map(item => (<LikedItem detail={item} />))}
+            {relatedApps?.data?.map((item, index) => (<LikedItem key={index} detail={item} />))}
           </>
         )
         : (
