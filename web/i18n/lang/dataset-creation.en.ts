@@ -26,7 +26,7 @@ const translation = {
       tip: 'Supports txt, html, markdown, xlsx, and pdf. Max 15MB each.',
       validation: {
         typeError: 'File type not supported',
-        size: 'File too large. Maximum is 10MB',
+        size: 'File too large. Maximum is 15MB',
         count: 'Multiple files not supported',
       },
       cancel: 'Cancel',

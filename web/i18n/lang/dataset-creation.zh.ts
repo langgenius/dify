@@ -26,7 +26,7 @@ const translation = {
       tip: '已支持 TXT、 HTML、 Markdown、 PDF、 XLSX，每个文件不超过 15 MB。',
       validation: {
         typeError: '文件类型不支持',
-        size: '文件太大了，不能超过 10MB',
+        size: '文件太大了，不能超过 15MB',
         count: '暂不支持多个文件',
       },
       cancel: '取消',
