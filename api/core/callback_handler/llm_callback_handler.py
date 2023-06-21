@@ -12,6 +12,7 @@ from core.llm.streamable_open_ai import StreamableOpenAI
 
 
 class LLMCallbackHandler(BaseCallbackHandler):
+    raise_error: bool = True
 
     def __init__(self, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
                  conversation_message_task: ConversationMessageTask):
