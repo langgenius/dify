@@ -1,5 +1,5 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import FilePreview from '../file-preview'
@@ -20,8 +20,9 @@ type IStepOneProps = {
   dataSourceTypeDisable: Boolean
   hasConnection: boolean
   onSetting: () => void
-  file?: File
-  updateFile: (file?: File) => void
+  files: any[]
+  updateFileList: (files: any[]) => void
+  updateFile: (fileItem: any, progress: number, list: any[]) => void
   notionPages?: any[]
   updateNotionPages: (value: any[]) => void
   onStepChange: () => void
@@ -54,22 +55,27 @@ const StepOne = ({
   hasConnection,
   onSetting,
   onStepChange,
-  file,
+  files,
+  updateFileList,
   updateFile,
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
-  const [showFilePreview, setShowFilePreview] = useState(true)
+  const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
   const { t } = useTranslation()
 
-  const hidePreview = () => setShowFilePreview(false)
-
   const modalShowHandle = () => setShowModal(true)
-
   const modalCloseHandle = () => setShowModal(false)
+
+  const updateCurrentFile = (file: File) => {
+    setCurrentFile(file)
+  }
+  const hideFilePreview = () => {
+    setCurrentNotionPage(undefined)
+  }
 
   const updateCurrentPage = (page: Page) => {
     setCurrentNotionPage(page)
@@ -81,6 +87,13 @@ const StepOne = ({
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
 
+  const nextDisabled = useMemo(() => {
+    if (!files.length)
+      return true
+    if (files.some(file => !file.file.id))
+      return true
+    return false
+  }, [files])
   return (
     <div className='flex w-full h-full'>
       <div className='grow overflow-y-auto relative'>
@@ -103,7 +116,8 @@ const StepOne = ({
                     if (dataSourceTypeDisable)
                       return
                     changeType(DataSourceType.FILE)
-                    hidePreview()
+                    hideFilePreview()
+                    hideNotionPagePreview()
                   }}
                 >
                   <span className={cn(s.datasetIcon)} />
@@ -119,7 +133,8 @@ const StepOne = ({
                     if (dataSourceTypeDisable)
                       return
                     changeType(DataSourceType.NOTION)
-                    hidePreview()
+                    hideFilePreview()
+                    hideNotionPagePreview()
                   }}
                 >
                   <span className={cn(s.datasetIcon, s.notion)} />
@@ -138,8 +153,15 @@ const StepOne = ({
           }
           {dataSourceType === DataSourceType.FILE && (
             <>
-              <FileUploader onFileUpdate={updateFile} file={file} titleClassName={(!shouldShowDataSourceTypeList) ? 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900' : undefined} />
-              <Button disabled={!file} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+              <FileUploader
+                fileList={files}
+                titleClassName={!shouldShowDataSourceTypeList ? 'mt-[30px] !mb-[44px] !text-lg !font-semibold !text-gray-900' : undefined}
+                prepareFileList={updateFileList}
+                onFileListUpdate={updateFileList}
+                onFileUpdate={updateFile}
+                onPreview={updateCurrentFile}
+              />
+              <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {dataSourceType === DataSourceType.NOTION && (
@@ -164,7 +186,7 @@ const StepOne = ({
         </div>
         <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
       </div>
-      {file && showFilePreview && <FilePreview file={file} hidePreview={hidePreview} />}
+      {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
       {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
     </div>
   )

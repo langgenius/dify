@@ -85,7 +85,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
             indexingType={indexingTechnique || ''}
             isSetting
             documentDetail={documentDetail}
-            file={documentDetail.data_source_info.upload_file}
+            files={[documentDetail.data_source_info.upload_file]}
             onSave={saveHandler}
             onCancel={cancelHandler}
           />

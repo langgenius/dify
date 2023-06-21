@@ -9,7 +9,6 @@ import { fetchFilePreview } from '@/service/common'
 
 type IProps = {
   file?: File
-  notionPage?: any
   hidePreview: () => void
 }
 
@@ -33,14 +32,15 @@ const FilePreview = ({
   const getFileName = (currentFile?: File) => {
     if (!currentFile)
       return ''
-
     const arr = currentFile.name.split('.')
     return arr.slice(0, -1).join()
   }
 
   useEffect(() => {
-    if (file)
+    if (file) {
+      setLoading(true)
       getPreviewContent(file.id)
+    }
   }, [file])
 
   return (

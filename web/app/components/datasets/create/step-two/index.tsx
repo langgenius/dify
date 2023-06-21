@@ -36,7 +36,7 @@ type StepTwoProps = {
   datasetId?: string
   indexingType?: string
   dataSourceType: DataSourceType
-  file?: File
+  files: File[]
   notionPages?: Page[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
@@ -62,7 +62,7 @@ const StepTwo = ({
   datasetId,
   indexingType,
   dataSourceType,
-  file,
+  files,
   notionPages = [],
   onStepChange,
   updateIndexingTypeCache,
@@ -212,8 +212,7 @@ const StepTwo = ({
         info_list: {
           data_source_type: dataSourceType,
           file_info_list: {
-            // TODO multi files
-            file_ids: [file?.id || ''],
+            file_ids: files.map(file => file.id),
           },
         },
         indexing_technique: getIndexing_technique(),
@@ -254,8 +253,7 @@ const StepTwo = ({
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
-          // TODO multi files
-          file_ids: [file?.id || ''],
+          file_ids: files.map(file => file.id),
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
@@ -529,15 +527,21 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {/* TODO multi files */}
             <div className={s.source}>
               <div className={s.sourceContent}>
                 {dataSourceType === DataSourceType.FILE && (
                   <>
                     <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.fileSource')}</div>
                     <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <span className={cn(s.fileIcon, file && s[file.extension])} />
-                      {getFileName(file?.name || '')}
+                      <span className={cn(s.fileIcon, files.length && s[files[0].extension])} />
+                      {getFileName(files[0].name || '')}
+                      {files.length > 1 && (
+                        <span className={s.sourceCount}>
+                          <span>{t('datasetCreation.stepTwo.other')}</span>
+                          <span>{files.length - 1}</span>
+                          <span>{t('datasetCreation.stepTwo.fileUnit')}</span>
+                        </span>
+                      )}
                     </div>
                   </>
                 )}
