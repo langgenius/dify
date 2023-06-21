@@ -293,12 +293,12 @@ class PubHandler:
         if not user:
             raise ValueError("user is required")
 
-        user_str = 'account-' + user.id if isinstance(user, Account) else 'end-user-' + user.id
+        user_str = 'account-' + str(user.id) if isinstance(user, Account) else 'end-user-' + str(user.id)
         return "generate_result:{}-{}".format(user_str, task_id)
 
     @classmethod
     def generate_stopped_cache_key(cls, user: Union[Account | EndUser], task_id: str):
-        user_str = 'account-' + user.id if isinstance(user, Account) else 'end-user-' + user.id
+        user_str = 'account-' + str(user.id) if isinstance(user, Account) else 'end-user-' + str(user.id)
         return "generate_result_stopped:{}-{}".format(user_str, task_id)
 
     def pub_text(self, text: str):
