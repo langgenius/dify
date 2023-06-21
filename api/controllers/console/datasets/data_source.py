@@ -239,8 +239,9 @@ class DataSourceNotionApi(Resource):
             notion_page_type=page_type
         )
 
+        text_docs = loader.load()
         return {
-            'content': loader.load_as_text()
+            'content': "\n".join([doc.page_content for doc in text_docs])
         }, 200
 
     @setup_required

@@ -75,11 +75,6 @@ class NotionLoader(BaseLoader):
 
         return text_docs
 
-    def load_as_text(self) -> str:
-        text_docs = self._load_data_as_documents(self._notion_obj_id, self._notion_page_type)
-        text = "\n".join([doc.page_content for doc in text_docs])
-        return text
-
     def _load_data_as_documents(
             self, notion_obj_id: str, notion_page_type: str
     ) -> List[Document]:
