@@ -1,5 +1,4 @@
-import os
-
+from langchain.callbacks.manager import Callbacks
 from langchain.llms import AzureOpenAI
 from langchain.schema import LLMResult
 from typing import Optional, List, Dict, Mapping, Any
@@ -53,12 +52,20 @@ class StreamableAzureOpenAI(AzureOpenAI):
 
     @handle_llm_exceptions
     def generate(
-            self, prompts: List[str], stop: Optional[List[str]] = None
+            self,
+            prompts: List[str],
+            stop: Optional[List[str]] = None,
+            callbacks: Callbacks = None,
+            **kwargs: Any,
     ) -> LLMResult:
-        return super().generate(prompts, stop)
+        return super().generate(prompts, stop, callbacks, **kwargs)
 
     @handle_llm_exceptions_async
     async def agenerate(
-            self, prompts: List[str], stop: Optional[List[str]] = None
+            self,
+            prompts: List[str],
+            stop: Optional[List[str]] = None,
+            callbacks: Callbacks = None,
+            **kwargs: Any,
     ) -> LLMResult:
-        return await super().agenerate(prompts, stop)
+        return await super().agenerate(prompts, stop, callbacks, **kwargs)

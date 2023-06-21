@@ -4,96 +4,81 @@ import time
 
 import click
 from celery import shared_task
-from llama_index.data_structs import Node
-from llama_index.data_structs.node_v2 import DocumentRelationship
+from langchain.schema import Document
 from werkzeug.exceptions import NotFound
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import DocumentSegment, Document
+from models.dataset import DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 @shared_task
-def add_document_to_index_task(document_id: str):
+def add_document_to_index_task(dataset_document_id: str):
     """
     Async Add document to index
     :param document_id:
 
     Usage: add_document_to_index.delay(document_id)
     """
-    logging.info(click.style('Start add document to index: {}'.format(document_id), fg='green'))
+    logging.info(click.style('Start add document to index: {}'.format(dataset_document_id), fg='green'))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(Document.id == document_id).first()
-    if not document:
+    dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == dataset_document_id).first()
+    if not dataset_document:
         raise NotFound('Document not found')
 
-    if document.indexing_status != 'completed':
+    if dataset_document.indexing_status != 'completed':
         return
 
-    indexing_cache_key = 'document_{}_indexing'.format(document.id)
+    indexing_cache_key = 'document_{}_indexing'.format(dataset_document.id)
 
     try:
         segments = db.session.query(DocumentSegment).filter(
-            DocumentSegment.document_id == document.id,
+            DocumentSegment.document_id == dataset_document.id,
             DocumentSegment.enabled == True
         ) \
             .order_by(DocumentSegment.position.asc()).all()
 
-        nodes = []
-        previous_node = None
+        documents = []
         for segment in segments:
-            relationships = {
-                DocumentRelationship.SOURCE: document.id
-            }
-
-            if previous_node:
-                relationships[DocumentRelationship.PREVIOUS] = previous_node.doc_id
-
-                previous_node.relationships[DocumentRelationship.NEXT] = segment.index_node_id
-
-            node = Node(
-                doc_id=segment.index_node_id,
-                doc_hash=segment.index_node_hash,
-                text=segment.content,
-                extra_info=None,
-                node_info=None,
-                relationships=relationships
+            document = Document(
+                page_content=segment.content,
+                metadata={
+                    "doc_id": segment.index_node_id,
+                    "doc_hash": segment.index_node_hash,
+                    "document_id": segment.document_id,
+                    "dataset_id": segment.dataset_id,
+                }
             )
 
-            previous_node = node
+            documents.append(document)
 
-            nodes.append(node)
-
-        dataset = document.dataset
+        dataset = dataset_document.dataset
 
         if not dataset:
             raise Exception('Document has no dataset')
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
-
         # save vector index
-        if dataset.indexing_technique == "high_quality":
-            vector_index.add_nodes(
-                nodes=nodes,
-                duplicate_check=True
-            )
+        index = IndexBuilder.get_index(dataset, 'high_quality')
+        if index:
+            index.add_texts(documents)
 
         # save keyword index
-        keyword_table_index.add_nodes(nodes)
+        index = IndexBuilder.get_index(dataset, 'economy')
+        if index:
+            index.add_texts(documents)
 
         end_at = time.perf_counter()
         logging.info(
-            click.style('Document added to index: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
+            click.style('Document added to index: {} latency: {}'.format(dataset_document.id, end_at - start_at), fg='green'))
     except Exception as e:
         logging.exception("add document to index failed")
-        document.enabled = False
-        document.disabled_at = datetime.datetime.utcnow()
-        document.status = 'error'
-        document.error = str(e)
+        dataset_document.enabled = False
+        dataset_document.disabled_at = datetime.datetime.utcnow()
+        dataset_document.status = 'error'
+        dataset_document.error = str(e)
         db.session.commit()
     finally:
         redis_client.delete(indexing_cache_key)

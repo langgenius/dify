@@ -3,47 +3,56 @@ import time
 from typing import List
 
 import numpy as np
-from llama_index.data_structs.node_v2 import NodeWithScore
-from llama_index.indices.query.schema import QueryBundle
-from llama_index.indices.vector_store import GPTVectorStoreIndexQuery
+from flask import current_app
+from langchain.embeddings import OpenAIEmbeddings
+from langchain.embeddings.base import Embeddings
+from langchain.schema import Document
 from sklearn.manifold import TSNE
 
-from core.docstore.empty_docstore import EmptyDocumentStore
-from core.index.vector_index import VectorIndex
+from core.embedding.cached_embedding import CacheEmbedding
+from core.index.vector_index.vector_index import VectorIndex
+from core.llm.llm_builder import LLMBuilder
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
-from services.errors.index import IndexNotInitializedError
 
 
 class HitTestingService:
     @classmethod
     def retrieve(cls, dataset: Dataset, query: str, account: Account, limit: int = 10) -> dict:
-        index = VectorIndex(dataset=dataset).query_index
+        if dataset.available_document_count == 0 or dataset.available_document_count == 0:
+            return {
+                "query": {
+                    "content": query,
+                    "tsne_position": {'x': 0, 'y': 0},
+                },
+                "records": []
+            }
 
-        if not index:
-            raise IndexNotInitializedError()
-
-        index_query = GPTVectorStoreIndexQuery(
-            index_struct=index.index_struct,
-            service_context=index.service_context,
-            vector_store=index.query_context.get('vector_store'),
-            docstore=EmptyDocumentStore(),
-            response_synthesizer=None,
-            similarity_top_k=limit
+        model_credentials = LLMBuilder.get_model_credentials(
+            tenant_id=dataset.tenant_id,
+            model_provider=LLMBuilder.get_default_provider(dataset.tenant_id),
+            model_name='text-embedding-ada-002'
         )
 
-        query_bundle = QueryBundle(
-            query_str=query,
-            custom_embedding_strs=[query],
-        )
+        embeddings = CacheEmbedding(OpenAIEmbeddings(
+            **model_credentials
+        ))
 
-        query_bundle.embedding = index.service_context.embed_model.get_agg_embedding_from_queries(
-            query_bundle.embedding_strs
+        vector_index = VectorIndex(
+            dataset=dataset,
+            config=current_app.config,
+            embeddings=embeddings
         )
 
         start = time.perf_counter()
-        nodes = index_query.retrieve(query_bundle=query_bundle)
+        documents = vector_index.search(
+            query,
+            search_type='similarity_score_threshold',
+            search_kwargs={
+                'k': 10
+            }
+        )
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
 
@@ -58,25 +67,24 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(dataset, query_bundle, nodes)
+        return cls.compact_retrieve_response(dataset, embeddings, query, documents)
 
     @classmethod
-    def compact_retrieve_response(cls, dataset: Dataset, query_bundle: QueryBundle, nodes: List[NodeWithScore]):
-        embeddings = [
-            query_bundle.embedding
+    def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: List[Document]):
+        text_embeddings = [
+            embeddings.embed_query(query)
         ]
 
-        for node in nodes:
-            embeddings.append(node.node.embedding)
+        text_embeddings.extend(embeddings.embed_documents([document.page_content for document in documents]))
 
-        tsne_position_data = cls.get_tsne_positions_from_embeddings(embeddings)
+        tsne_position_data = cls.get_tsne_positions_from_embeddings(text_embeddings)
 
         query_position = tsne_position_data.pop(0)
 
         i = 0
         records = []
-        for node in nodes:
-            index_node_id = node.node.doc_id
+        for document in documents:
+            index_node_id = document.metadata['doc_id']
 
             segment = db.session.query(DocumentSegment).filter(
                 DocumentSegment.dataset_id == dataset.id,
@@ -91,7 +99,7 @@ class HitTestingService:
 
             record = {
                 "segment": segment,
-                "score": node.score,
+                "score": document.metadata['score'],
                 "tsne_position": tsne_position_data[i]
             }
 
@@ -101,7 +109,7 @@ class HitTestingService:
 
         return {
             "query": {
-                "content": query_bundle.query_str,
+                "content": query,
                 "tsne_position": query_position,
             },
             "records": records

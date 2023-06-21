@@ -1,6 +1,7 @@
 import os
 
-from langchain.schema import BaseMessage, ChatResult, LLMResult
+from langchain.callbacks.manager import Callbacks
+from langchain.schema import BaseMessage, LLMResult
 from langchain.chat_models import ChatOpenAI
 from typing import Optional, List, Dict, Any
 
@@ -70,57 +71,22 @@ class StreamableChatOpenAI(ChatOpenAI):
 
         return message_tokens
 
-    def _generate(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
-    ) -> ChatResult:
-        self.callback_manager.on_llm_start(
-            {"name": self.__class__.__name__}, [(message.type + ": " + message.content) for message in messages], verbose=self.verbose
-        )
-
-        chat_result = super()._generate(messages, stop)
-
-        result = LLMResult(
-            generations=[chat_result.generations],
-            llm_output=chat_result.llm_output
-        )
-        self.callback_manager.on_llm_end(result, verbose=self.verbose)
-
-        return chat_result
-
-    async def _agenerate(
-        self, messages: List[BaseMessage], stop: Optional[List[str]] = None
-    ) -> ChatResult:
-        if self.callback_manager.is_async:
-            await self.callback_manager.on_llm_start(
-                {"name": self.__class__.__name__}, [(message.type + ": " + message.content) for message in messages], verbose=self.verbose
-            )
-        else:
-            self.callback_manager.on_llm_start(
-                {"name": self.__class__.__name__}, [(message.type + ": " + message.content) for message in messages], verbose=self.verbose
-            )
-
-        chat_result = super()._generate(messages, stop)
-
-        result = LLMResult(
-            generations=[chat_result.generations],
-            llm_output=chat_result.llm_output
-        )
-
-        if self.callback_manager.is_async:
-            await self.callback_manager.on_llm_end(result, verbose=self.verbose)
-        else:
-            self.callback_manager.on_llm_end(result, verbose=self.verbose)
-
-        return chat_result
-
     @handle_llm_exceptions
     def generate(
-            self, messages: List[List[BaseMessage]], stop: Optional[List[str]] = None
+            self,
+            messages: List[List[BaseMessage]],
+            stop: Optional[List[str]] = None,
+            callbacks: Callbacks = None,
+            **kwargs: Any,
     ) -> LLMResult:
-        return super().generate(messages, stop)
+        return super().generate(messages, stop, callbacks, **kwargs)
 
     @handle_llm_exceptions_async
     async def agenerate(
-            self, messages: List[List[BaseMessage]], stop: Optional[List[str]] = None
+            self,
+            messages: List[List[BaseMessage]],
+            stop: Optional[List[str]] = None,
+            callbacks: Callbacks = None,
+            **kwargs: Any,
     ) -> LLMResult:
-        return await super().agenerate(messages, stop)
+        return await super().agenerate(messages, stop, callbacks, **kwargs)

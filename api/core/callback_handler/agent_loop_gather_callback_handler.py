@@ -64,31 +64,12 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             self._current_loop.completion = response.generations[0][0].text
             self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
 
-    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        """Do nothing."""
-        pass
-
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         logging.error(error)
         self._agent_loops = []
         self._current_loop = None
-
-    def on_chain_start(
-        self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
-    ) -> None:
-        """Print out that we are entering a chain."""
-        pass
-
-    def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
-        """Print out that we finished a chain."""
-        pass
-
-    def on_chain_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> None:
-        logging.error(error)
 
     def on_tool_start(
         self,
@@ -150,16 +131,6 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         logging.error(error)
         self._agent_loops = []
         self._current_loop = None
-
-    def on_text(
-        self,
-        text: str,
-        color: Optional[str] = None,
-        end: str = "",
-        **kwargs: Optional[str],
-    ) -> None:
-        """Run on additional input from chains and agents."""
-        pass
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
         """Run on agent end."""
