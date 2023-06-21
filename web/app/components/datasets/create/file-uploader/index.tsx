@@ -30,7 +30,7 @@ const ACCEPTS = [
   '.csv',
 ]
 
-const MAX_SIZE = 10 * 1024 * 1024
+const MAX_SIZE = 15 * 1024 * 1024
 const BATCH_COUNT = 5
 
 const FileUploader = ({
