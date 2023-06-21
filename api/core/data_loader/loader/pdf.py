@@ -1,6 +1,7 @@
 import logging
 from typing import List, Optional
 
+from langchain.document_loaders import PyPDFium2Loader
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
 from pypdf import PdfReader
@@ -42,20 +43,10 @@ class PdfLoader(BaseLoader):
                     return [Document(page_content=text, metadata=metadata)]
                 except FileNotFoundError:
                     pass
-
+        documents = PyPDFium2Loader(file_path=self._file_path).load()
         text_list = []
-        with open(self._file_path, "rb") as fp:
-            # Create a PDF object
-            pdf = PdfReader(fp)
-
-            # Get the number of pages in the PDF document
-            num_pages = len(pdf.pages)
-
-            # Iterate over every page
-            for page in range(num_pages):
-                # Extract the text from the page
-                page_text = pdf.pages[page].extract_text()
-                text_list.append(page_text)
+        for document in documents:
+            text_list.append(document.page_content)
         text = "\n\n".join(text_list)
 
         # save plaintext file for caching
@@ -63,5 +54,5 @@ class PdfLoader(BaseLoader):
             storage.save(plaintext_file_key, text.encode('utf-8'))
 
         metadata = {"source": self._file_path}
-        return [Document(page_content=text, metadata=metadata)]
+        return documents
 
