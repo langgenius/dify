@@ -1,4 +1,5 @@
 import json
+import uuid
 from collections import defaultdict
 from typing import Any, List, Optional, Dict
 
@@ -235,4 +236,6 @@ class SetEncoder(json.JSONEncoder):
     def default(self, obj):
         if isinstance(obj, set):
             return list(obj)
+        elif isinstance(obj, uuid.UUID):
+            return str(obj)
         return super().default(obj)

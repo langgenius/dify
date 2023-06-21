@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import os
+import uuid
 from datetime import datetime
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
@@ -181,6 +182,15 @@ celery = app.extensions["celery"]
 
 if app.config['TESTING']:
     print("App is running in TESTING mode")
+
+
+def uuid_encoder(self, obj):
+    if isinstance(obj, uuid.UUID):
+        return str(obj)
+    raise TypeError(f"Object of type '{type(obj)}' is not JSON serializable")
+
+
+json.JSONEncoder.default = uuid_encoder
 
 
 @app.after_request
