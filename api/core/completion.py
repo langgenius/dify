@@ -35,8 +35,6 @@ class Completion:
         """
         errors: ProviderTokenNotInitError
         """
-        cls.validate_query_tokens(app.tenant_id, app_model_config, query)
-
         memory = None
         if conversation:
             # get memory of conversation (read-only)
@@ -48,6 +46,14 @@ class Completion:
             )
 
             inputs = conversation.inputs
+
+        rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
+            mode=app.mode,
+            tenant_id=app.tenant_id,
+            app_model_config=app_model_config,
+            query=query,
+            inputs=inputs
+        )
 
         conversation_message_task = ConversationMessageTask(
             task_id=task_id,
@@ -65,6 +71,7 @@ class Completion:
         main_chain = MainChainBuilder.to_langchain_components(
             tenant_id=app.tenant_id,
             agent_mode=app_model_config.agent_mode_dict,
+            rest_tokens=rest_tokens_for_context_and_memory,
             memory=ReadOnlyConversationTokenDBStringBufferSharedMemory(memory=memory) if memory else None,
             conversation_message_task=conversation_message_task
         )
@@ -292,7 +299,8 @@ And answer according to the language of the user's question.
         return memory
 
     @classmethod
-    def validate_query_tokens(cls, tenant_id: str, app_model_config: AppModelConfig, query: str):
+    def get_validate_rest_tokens(cls, mode: str, tenant_id: str, app_model_config: AppModelConfig,
+                                 query: str, inputs: dict) -> int:
         llm = LLMBuilder.to_llm_from_model(
             tenant_id=tenant_id,
             model=app_model_config.model_dict
@@ -301,8 +309,26 @@ And answer according to the language of the user's question.
         model_limited_tokens = llm_constant.max_context_token_length[llm.model_name]
         max_tokens = llm.max_tokens
 
-        if model_limited_tokens - max_tokens - llm.get_num_tokens(query) < 0:
-            raise LLMBadRequestError("Query is too long")
+        # get prompt without memory and context
+        prompt, _ = cls.get_main_llm_prompt(
+            mode=mode,
+            llm=llm,
+            pre_prompt=app_model_config.pre_prompt,
+            query=query,
+            inputs=inputs,
+            chain_output=None,
+            memory=None
+        )
+
+        prompt_tokens = llm.get_num_tokens(prompt) if isinstance(prompt, str) \
+            else llm.get_num_tokens_from_messages(prompt)
+
+        rest_tokens = model_limited_tokens - max_tokens - prompt_tokens
+        if rest_tokens < 0:
+            raise LLMBadRequestError("Query or prefix prompt is too long, you can reduce the prefix prompt, "
+                                     "or shrink the max token, or switch to a llm with a larger token limit size.")
+
+        return rest_tokens
 
     @classmethod
     def recale_llm_max_tokens(cls, final_llm: Union[StreamableOpenAI, StreamableChatOpenAI],

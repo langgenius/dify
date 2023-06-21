@@ -1,3 +1,4 @@
+import math
 from typing import Mapping, List, Dict, Any, Optional
 
 from langchain import PromptTemplate
@@ -11,8 +12,10 @@ from core.chain.llm_router_chain import LLMRouterChain, RouterOutputParser
 from core.conversation_message_task import ConversationMessageTask
 from core.llm.llm_builder import LLMBuilder
 from core.tool.dataset_index_tool import DatasetTool
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetProcessRule
 
+DEFAULT_K = 2
+CONTEXT_TOKENS_PERCENT = 0.3
 MULTI_PROMPT_ROUTER_TEMPLATE = """
 Given a raw text input to a language model select the model prompt best suited for \
 the input. You will be given the names of the available prompts and a description of \
@@ -77,6 +80,7 @@ class MultiDatasetRouterChain(Chain):
             tenant_id: str,
             datasets: List[Dataset],
             conversation_message_task: ConversationMessageTask,
+            rest_tokens: int,
             **kwargs: Any,
     ):
         """Convenience constructor for instantiating from destination prompts."""
@@ -88,7 +92,7 @@ class MultiDatasetRouterChain(Chain):
             callbacks=[DifyStdOutCallbackHandler()]
         )
 
-        destinations = ["{}: {}".format(d.id, d.description.replace('\n', ' ') if d.description
+        destinations = ["[[{}]]: {}".format(d.id, d.description.replace('\n', ' ') if d.description
                         else ('useful for when you want to answer queries about the ' + d.name))
                         for d in datasets]
         destinations_str = "\n".join(destinations)
@@ -113,10 +117,14 @@ class MultiDatasetRouterChain(Chain):
             if not description:
                 description = 'useful for when you want to answer queries about the ' + dataset.name
 
+            k = cls._dynamic_calc_retrieve_k(dataset, rest_tokens)
+            if k == 0:
+                continue
+
             dataset_tool = DatasetTool(
                 name=f"dataset-{dataset.id}",
                 description=description,
-                k=2,   # todo set by llm tokens limit
+                k=k,
                 dataset=dataset,
                 callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
             )
@@ -128,6 +136,35 @@ class MultiDatasetRouterChain(Chain):
             dataset_tools=dataset_tools,
             **kwargs,
         )
+
+    @classmethod
+    def _dynamic_calc_retrieve_k(cls, dataset: Dataset, rest_tokens: int) -> int:
+        processing_rule = dataset.latest_process_rule
+        if not processing_rule:
+            return DEFAULT_K
+
+        if processing_rule.mode == "custom":
+            rules = processing_rule.rules_dict
+            if not rules:
+                return DEFAULT_K
+
+            segmentation = rules["segmentation"]
+            segment_max_tokens = segmentation["max_tokens"]
+        else:
+            segment_max_tokens = DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens']
+
+        # when rest_tokens is less than default context tokens
+        if rest_tokens < segment_max_tokens * DEFAULT_K:
+            return rest_tokens // segment_max_tokens
+
+        context_limit_tokens = math.floor(rest_tokens * CONTEXT_TOKENS_PERCENT)
+
+        # when context_limit_tokens is less than default context tokens, use default_k
+        if context_limit_tokens <= segment_max_tokens * DEFAULT_K:
+            return DEFAULT_K
+
+        # Expand the k value when there's still some room left in the 30% rest tokens space
+        return context_limit_tokens // segment_max_tokens
 
     def _call(
         self,

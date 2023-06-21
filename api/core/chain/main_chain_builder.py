@@ -16,6 +16,7 @@ from models.dataset import Dataset
 class MainChainBuilder:
     @classmethod
     def to_langchain_components(cls, tenant_id: str, agent_mode: dict, memory: Optional[BaseChatMemory],
+                                rest_tokens: int,
                                 conversation_message_task: ConversationMessageTask):
         first_input_key = "input"
         final_output_key = "output"
@@ -28,6 +29,7 @@ class MainChainBuilder:
         tool_chains, chains_output_key = cls.get_agent_chains(
             tenant_id=tenant_id,
             agent_mode=agent_mode,
+            rest_tokens=rest_tokens,
             memory=memory,
             conversation_message_task=conversation_message_task
         )
@@ -54,7 +56,9 @@ class MainChainBuilder:
         return overall_chain
 
     @classmethod
-    def get_agent_chains(cls, tenant_id: str, agent_mode: dict, memory: Optional[BaseChatMemory],
+    def get_agent_chains(cls, tenant_id: str, agent_mode: dict,
+                         rest_tokens: int,
+                         memory: Optional[BaseChatMemory],
                          conversation_message_task: ConversationMessageTask):
         # agent mode
         chains = []
@@ -90,6 +94,7 @@ class MainChainBuilder:
                     tenant_id=tenant_id,
                     datasets=datasets,
                     conversation_message_task=conversation_message_task,
+                    rest_tokens=rest_tokens,
                     callbacks=[DifyStdOutCallbackHandler()]
                 )
                 chains.append(multi_dataset_router_chain)
