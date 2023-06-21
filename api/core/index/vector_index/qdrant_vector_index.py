@@ -109,7 +109,7 @@ class QdrantVectorIndex(BaseVectorIndex):
     def _is_origin(self):
         if self.dataset.index_struct_dict:
             class_prefix: str = self.dataset.index_struct_dict['vector_store']['collection_name']
-            if not class_prefix.strip('Vector_'):
+            if class_prefix.startswith('Vector_'):
                 # original class_prefix
                 return True
 

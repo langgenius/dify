@@ -36,7 +36,9 @@ class ExcelLoader(BaseLoader):
                 if keys == []:
                     keys = list(map(str, row))
                 else:
-                    data.append(json.dumps(dict(zip(keys, list(map(str, row)))), ensure_ascii=False))
+                    row_dict = dict(zip(keys, row))
+                    row_dict = {k: v for k, v in row_dict.items() if v}
+                    data.append(json.dumps(row_dict, ensure_ascii=False))
 
         metadata = {"source": self._file_path}
         return [Document(page_content='\n\n'.join(data), metadata=metadata)]

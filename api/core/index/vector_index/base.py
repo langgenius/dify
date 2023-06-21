@@ -149,10 +149,19 @@ class BaseVectorIndex(BaseIndex):
                 )
 
                 documents.append(document)
-                
-        self.create(documents)
-        
-        dataset.index_struct = json.dumps(self.to_index_struct())
+
+        origin_index_struct = self.dataset.index_struct
+        self.dataset.index_struct = None
+
+        if documents:
+            try:
+                self.create(documents)
+            except Exception as e:
+                self.dataset.index_struct = origin_index_struct
+                raise e
+
+            dataset.index_struct = json.dumps(self.to_index_struct())
+
         db.session.commit()
 
         self.dataset = dataset
