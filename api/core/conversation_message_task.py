@@ -306,10 +306,10 @@ class PubHandler:
             'event': 'message',
             'data': {
                 'task_id': self._task_id,
-                'message_id': self._message.id,
+                'message_id': str(self._message.id),
                 'text': text,
                 'mode': self._conversation.mode,
-                'conversation_id': self._conversation.id
+                'conversation_id': str(self._conversation.id)
             }
         }
 

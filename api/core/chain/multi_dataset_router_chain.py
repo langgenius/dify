@@ -129,7 +129,7 @@ class MultiDatasetRouterChain(Chain):
                 callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
             )
 
-            dataset_tools[dataset.id] = dataset_tool
+            dataset_tools[str(dataset.id)] = dataset_tool
 
         return cls(
             router_chain=router_chain,
