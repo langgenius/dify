@@ -24,8 +24,7 @@ class HTMLLoader(BaseLoader):
         self._file_path = file_path
 
     def load(self) -> List[Document]:
-        metadata = {"source": self._file_path}
-        return [Document(page_content=self._load_as_text(), metadata=metadata)]
+        return [Document(page_content=self._load_as_text())]
 
     def _load_as_text(self) -> str:
         with open(self._file_path, "rb") as fp:

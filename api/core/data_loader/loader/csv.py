@@ -54,7 +54,7 @@ class CSVLoader(LCCSVLoader):
                 source = (
                     row[self.source_column]
                     if self.source_column is not None
-                    else self.file_path
+                    else ''
                 )
             except KeyError:
                 raise ValueError(

@@ -40,5 +40,4 @@ class ExcelLoader(BaseLoader):
                     row_dict = {k: v for k, v in row_dict.items() if v}
                     data.append(json.dumps(row_dict, ensure_ascii=False))
 
-        metadata = {"source": self._file_path}
-        return [Document(page_content='\n\n'.join(data), metadata=metadata)]
+        return [Document(page_content='\n\n'.join(data))]

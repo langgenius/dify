@@ -4,7 +4,6 @@ from typing import List, Optional
 from langchain.document_loaders import PyPDFium2Loader
 from langchain.document_loaders.base import BaseLoader
 from langchain.schema import Document
-from pypdf import PdfReader
 
 from extensions.ext_storage import storage
 from models.model import UploadFile
@@ -39,8 +38,7 @@ class PdfLoader(BaseLoader):
                 try:
                     text = storage.load(plaintext_file_key).decode('utf-8')
                     plaintext_file_exists = True
-                    metadata = {"source": self._file_path}
-                    return [Document(page_content=text, metadata=metadata)]
+                    return [Document(page_content=text)]
                 except FileNotFoundError:
                     pass
         documents = PyPDFium2Loader(file_path=self._file_path).load()
@@ -53,6 +51,5 @@ class PdfLoader(BaseLoader):
         if not plaintext_file_exists and plaintext_file_key:
             storage.save(plaintext_file_key, text.encode('utf-8'))
 
-        metadata = {"source": self._file_path}
         return documents
 

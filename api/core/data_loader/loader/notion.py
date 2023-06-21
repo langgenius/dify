@@ -182,7 +182,7 @@ class NotionLoader(BaseLoader):
                     block_type = result["type"]
                     if has_children and block_type != 'child_page':
                         children_text = self._read_block(
-                            result_block_id, num_tabs=num_tabs + 1
+                            result_block_id, num_tabs=1
                         )
                         cur_result_text_arr.append(children_text)
 

@@ -45,13 +45,12 @@ class MarkdownLoader(BaseLoader):
     def load(self) -> List[Document]:
         tups = self.parse_tups(self._file_path)
         documents = []
-        metadata = {"source": self._file_path}
         for header, value in tups:
             value = value.strip()
             if header is None:
-                documents.append(Document(page_content=value, metadata=metadata))
+                documents.append(Document(page_content=value))
             else:
-                documents.append(Document(page_content=f"\n\n{header}\n{value}", metadata=metadata))
+                documents.append(Document(page_content=f"\n\n{header}\n{value}"))
 
         return documents
 
