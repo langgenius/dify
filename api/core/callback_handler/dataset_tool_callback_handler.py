@@ -3,7 +3,6 @@ import logging
 from typing import Any, Dict, List, Union, Optional
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
 
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
 from core.conversation_message_task import ConversationMessageTask
@@ -11,6 +10,7 @@ from core.conversation_message_task import ConversationMessageTask
 
 class DatasetToolCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
+    raise_error: bool = True
 
     def __init__(self, conversation_message_task: ConversationMessageTask) -> None:
         """Initialize callback handler."""

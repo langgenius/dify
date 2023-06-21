@@ -13,6 +13,7 @@ from core.conversation_message_task import ConversationMessageTask
 
 class MainChainGatherCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
+    raise_error: bool = True
 
     def __init__(self, conversation_message_task: ConversationMessageTask) -> None:
         """Initialize callback handler."""

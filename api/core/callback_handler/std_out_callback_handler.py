@@ -1,3 +1,4 @@
+import os
 import sys
 from typing import Any, Dict, List, Optional, Union
 
@@ -122,6 +123,26 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Run on agent end."""
         print_text("[on_agent_finish] " + finish.return_values['output'] + "\n", color='green', end="\n")
+
+    @property
+    def ignore_llm(self) -> bool:
+        """Whether to ignore LLM callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_chain(self) -> bool:
+        """Whether to ignore chain callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_agent(self) -> bool:
+        """Whether to ignore agent callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_chat_model(self) -> bool:
+        """Whether to ignore chat model callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
 
 
 class DifyStreamingStdOutCallbackHandler(DifyStdOutCallbackHandler):

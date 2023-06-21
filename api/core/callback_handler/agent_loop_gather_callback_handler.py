@@ -12,6 +12,7 @@ from core.conversation_message_task import ConversationMessageTask
 
 class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
+    raise_error: bool = True
 
     def __init__(self, model_name, conversation_message_task: ConversationMessageTask) -> None:
         """Initialize callback handler."""
