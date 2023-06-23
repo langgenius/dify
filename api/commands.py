@@ -1,15 +1,18 @@
 import datetime
+import logging
 import random
 import string
 
 import click
 from flask import current_app
 
+from core.index.index import IndexBuilder
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
 from libs.rsa import generate_key_pair
 from models.account import InvitationCode, Tenant
+from models.dataset import Dataset
 from models.model import Account
 import secrets
 import base64
@@ -159,8 +162,31 @@ def generate_upper_string():
     return result
 
 
+@click.command('recreate-all-dataset-indexes', help='Recreate all dataset indexes.')
+def recreate_all_dataset_indexes():
+    click.echo(click.style('Start recreate all dataset indexes.', fg='green'))
+    recreate_count = 0
+
+    datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality').all()
+    for dataset in datasets:
+        try:
+            click.echo('Recreating dataset index: {}'.format(dataset.id))
+            index = IndexBuilder.get_index(dataset, 'high_quality')
+            if index and index._is_origin():
+                index.recreate_dataset(dataset)
+                recreate_count += 1
+            else:
+                click.echo('passed.')
+        except Exception as e:
+            click.echo(click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+            continue
+
+    click.echo(click.style('Congratulations! Recreate {} dataset indexes.'.format(recreate_count), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(generate_invitation_codes)
     app.cli.add_command(reset_encrypt_key_pair)
+    app.cli.add_command(recreate_all_dataset_indexes)
