@@ -10,8 +10,8 @@ from models.dataset import Dataset
 
 class IndexBuilder:
     @classmethod
-    def get_index(cls, dataset: Dataset, high_quality: str):
-        if high_quality == "high_quality":
+    def get_index(cls, dataset: Dataset, indexing_technique: str):
+        if indexing_technique == "high_quality":
             if dataset.indexing_technique != 'high_quality':
                 return None
 
@@ -30,7 +30,7 @@ class IndexBuilder:
                 config=current_app.config,
                 embeddings=embeddings
             )
-        elif high_quality == "economy":
+        elif indexing_technique == "economy":
             return KeywordTableIndex(
                 dataset=dataset,
                 config=KeywordTableConfig(
