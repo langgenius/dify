@@ -5,6 +5,7 @@ import string
 
 import click
 from flask import current_app
+from werkzeug.exceptions import NotFound
 
 from core.index.index import IndexBuilder
 from libs.password import password_pattern, valid_password, hash_password
@@ -167,19 +168,27 @@ def recreate_all_dataset_indexes():
     click.echo(click.style('Start recreate all dataset indexes.', fg='green'))
     recreate_count = 0
 
-    datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality').all()
-    for dataset in datasets:
+    page = 1
+    while True:
         try:
-            click.echo('Recreating dataset index: {}'.format(dataset.id))
-            index = IndexBuilder.get_index(dataset, 'high_quality')
-            if index and index._is_origin():
-                index.recreate_dataset(dataset)
-                recreate_count += 1
-            else:
-                click.echo('passed.')
-        except Exception as e:
-            click.echo(click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
-            continue
+            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality')\
+                .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
+        except NotFound:
+            break
+
+        page += 1
+        for dataset in datasets:
+            try:
+                click.echo('Recreating dataset index: {}'.format(dataset.id))
+                index = IndexBuilder.get_index(dataset, 'high_quality')
+                if index and index._is_origin():
+                    index.recreate_dataset(dataset)
+                    recreate_count += 1
+                else:
+                    click.echo('passed.')
+            except Exception as e:
+                click.echo(click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                continue
 
     click.echo(click.style('Congratulations! Recreate {} dataset indexes.'.format(recreate_count), fg='green'))
 
