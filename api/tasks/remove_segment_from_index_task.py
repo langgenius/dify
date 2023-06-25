@@ -35,7 +35,18 @@ def remove_segment_from_index_task(segment_id: str):
         dataset = segment.dataset
 
         if not dataset:
-            raise Exception('Segment has no dataset')
+            logging.info(click.style('Segment {} has no dataset, pass.'.format(segment.id), fg='cyan'))
+            return
+
+        dataset_document = segment.document
+
+        if not dataset_document:
+            logging.info(click.style('Segment {} has no document, pass.'.format(segment.id), fg='cyan'))
+            return
+
+        if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != 'completed':
+            logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
+            return
 
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         kw_index = IndexBuilder.get_index(dataset, 'economy')
