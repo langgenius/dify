@@ -10,9 +10,9 @@ from models.dataset import Dataset
 
 class IndexBuilder:
     @classmethod
-    def get_index(cls, dataset: Dataset, indexing_technique: str):
+    def get_index(cls, dataset: Dataset, indexing_technique: str, ignore_high_quality_check: bool = False):
         if indexing_technique == "high_quality":
-            if dataset.indexing_technique != 'high_quality':
+            if not ignore_high_quality_check and dataset.indexing_technique != 'high_quality':
                 return None
 
             model_credentials = LLMBuilder.get_model_credentials(
