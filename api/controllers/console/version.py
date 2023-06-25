@@ -32,8 +32,13 @@ class VersionApi(Resource):
                 'current_version': args.get('current_version')
             })
         except Exception as error:
-            logging.exception("Check update error.")
-            raise InternalServerError()
+            logging.warning("Check update version error: {}.".format(str(error)))
+            return {
+                'version': args.get('current_version'),
+                'release_date': '',
+                'release_notes': '',
+                'can_auto_update': False
+            }
 
         content = json.loads(response.content)
         return {
