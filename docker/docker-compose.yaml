@@ -161,7 +161,8 @@ services:
   # Frontend web application.
   web:
     container_name: web
-    image: langgenius/dify-web:0.3.1
+    # image: langgenius/dify-web:0.3.1
+    image: harbor.behye.cn/beiyeai/dify-web:0.0.2
     restart: always
     environment:
       EDITION: SELF_HOSTED
@@ -173,6 +174,10 @@ services:
       # console or api domain.
       # example: http://udify.app
       APP_URL: ''
+    # volumes:
+    #   - ${PWD}/../web/sentry.client.config.js:/app/web/sentry.client.config.js
+    #   - ${PWD}/../web/sentry.server.config.js:/app/web/sentry.server.config.js
+    #   - ${PWD}/../web/sentry.edge.config.js:/app/web/sentry.edge.config.js
 
   # The postgres database.
   db:

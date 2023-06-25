@@ -1,4 +1,5 @@
-FROM langgenius/base:1.0.0-bullseye-slim
+# FROM langgenius/base:1.0.0-bullseye-slim
+FROM harbor.behye.cn/beiyeai/dify-web-build:0.0.2
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -13,7 +14,7 @@ WORKDIR /app/web
 
 COPY package.json /app/web/package.json
 
-RUN npm install
+RUN npm install --retry 2
 
 COPY . /app/web/
 

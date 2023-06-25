@@ -85,26 +85,6 @@ export default function AppSelector({ userProfile, onLogout, langeniusVersionInf
                   <div>{t('common.userProfile.settings')}</div>
                 </div>
               </Menu.Item>
-              <Menu.Item>
-                <Link
-                  className={classNames(itemClassName, 'group justify-between')}
-                  href={
-                    locale === 'zh-Hans' ? 'https://docs.dify.ai/v/zh-hans/' : 'https://docs.dify.ai/'
-                  }
-                  target='_blank'>
-                  <div>{t('common.userProfile.helpCenter')}</div>
-                  <ArrowTopRightOnSquareIcon className='hidden w-4 h-4 group-hover:flex' />
-                </Link>
-              </Menu.Item>
-              <Menu.Item>
-                <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
-                  <div>{t('common.userProfile.about')}</div>
-                  <div className='flex items-center'>
-                    <div className='mr-2 text-xs font-normal text-gray-500'>{langeniusVersionInfo.current_version}</div>
-                    <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                  </div>
-                </div>
-              </Menu.Item>
             </div>
             <Menu.Item>
               <div className='p-1' onClick={() => onLogout()}>
