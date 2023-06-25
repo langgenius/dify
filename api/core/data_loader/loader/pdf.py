@@ -34,7 +34,7 @@ class PdfLoader(BaseLoader):
         if self._upload_file:
             if self._upload_file.hash:
                 plaintext_file_key = 'upload_files/' + self._upload_file.tenant_id + '/' \
-                                     + self._upload_file.hash + '.plaintext'
+                                     + self._upload_file.hash + '.0625.plaintext'
                 try:
                     text = storage.load(plaintext_file_key).decode('utf-8')
                     plaintext_file_exists = True
