@@ -16,8 +16,6 @@ import Button from '@/app/components/base/button'
 
 export type IPromptValuePanelProps = {
   appType: AppType
-  value?: string
-  onChange?: (value: string) => void
   onSend?: () => void
 }
 
@@ -31,8 +29,6 @@ const starIcon = (
 
 const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   appType,
-  value,
-  onChange,
   onSend,
 }) => {
   const { t } = useTranslation()
@@ -147,35 +143,16 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
       {
         appType === AppType.completion && (
-          <div className='px-4'>
+          <div>
             <div className="mt-5 border-b border-gray-100"></div>
-            <div className="mt-4">
-              <div>
-                <div className="text-[13px] text-gray-900 font-medium">{t('appDebug.inputs.queryTitle')}</div>
-                <div className="mt-2 mb-4 overflow-hidden border border-gray-200 rounded-lg grow bg-gray-50 ">
-                  <div className="px-4 py-2 rounded-t-lg bg-gray-50">
-                    <textarea
-                      rows={4}
-                      className="w-full px-0 text-sm text-gray-900 border-0 bg-gray-50 focus:outline-none placeholder:bg-gray-50"
-                      placeholder={t('appDebug.inputs.queryPlaceholder') as string}
-                      value={value}
-                      onChange={e => onChange && onChange(e.target.value)}
-                    ></textarea>
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                    <div className="flex pl-0 space-x-1 sm:pl-2">
-                      <span className="bg-gray-100 text-gray-500 text-xs font-medium mr-2 px-2.5 py-0.5 rounded cursor-pointer">{value?.length}</span>
-                    </div>
-                    <Button
-                      type="primary"
-                      onClick={() => onSend && onSend()}
-                      className="w-[80px] !h-8">
-                      <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
-                      <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
+            <div className="flex justify-end mt-4 px-4">
+              <Button
+                type="primary"
+                onClick={() => onSend && onSend()}
+                className="w-[80px] !h-8">
+                <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+                <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
+              </Button>
             </div>
           </div>
         )
