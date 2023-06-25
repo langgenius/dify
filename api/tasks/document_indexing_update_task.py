@@ -6,10 +6,8 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from core.indexing_runner import IndexingRunner, DocumentIsPausedException
-from core.llm.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from models.dataset import Document, Dataset, DocumentSegment
 
@@ -44,18 +42,19 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         if not dataset:
             raise Exception('Dataset not found')
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
         # delete from vector index
-        vector_index.del_nodes(index_node_ids)
+        if vector_index:
+            vector_index.delete_by_ids(index_node_ids)
 
         # delete from keyword index
         if index_node_ids:
-            keyword_table_index.del_nodes(index_node_ids)
+            kw_index.delete_by_ids(index_node_ids)
 
         for segment in segments:
             db.session.delete(segment)
@@ -65,21 +64,13 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
             click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
     except Exception:
         logging.exception("Cleaned document when document update data source or process rule failed")
+
     try:
         indexing_runner = IndexingRunner()
         indexing_runner.run([document])
         end_at = time.perf_counter()
         logging.info(click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
-    except DocumentIsPausedException:
-        logging.info(click.style('Document update paused, document id: {}'.format(document.id), fg='yellow'))
-    except ProviderTokenNotInitError as e:
-        document.indexing_status = 'error'
-        document.error = str(e.description)
-        document.stopped_at = datetime.datetime.utcnow()
-        db.session.commit()
-    except Exception as e:
-        logging.exception("consume update document failed")
-        document.indexing_status = 'error'
-        document.error = str(e)
-        document.stopped_at = datetime.datetime.utcnow()
-        db.session.commit()
+    except DocumentIsPausedException as ex:
+        logging.info(click.style(str(ex), fg='yellow'))
+    except Exception:
+        pass

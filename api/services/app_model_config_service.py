@@ -4,7 +4,6 @@ import uuid
 from core.constant import llm_constant
 from models.account import Account
 from services.dataset_service import DatasetService
-from services.errors.account import NoPermissionError
 
 
 class AppModelConfigService:

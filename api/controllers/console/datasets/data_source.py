@@ -10,11 +10,10 @@ from werkzeug.exceptions import NotFound
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.data_source.notion import NotionPageReader
+from core.data_loader.loader.notion import NotionLoader
 from core.indexing_runner import IndexingRunner
 from extensions.ext_database import db
 from libs.helper import TimestampField
-from libs.oauth_data_source import NotionOAuth
 from models.dataset import Document
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
@@ -232,15 +231,17 @@ class DataSourceNotionApi(Resource):
         ).first()
         if not data_source_binding:
             raise NotFound('Data source binding not found.')
-        reader = NotionPageReader(integration_token=data_source_binding.access_token)
-        if page_type == 'page':
-            page_content = reader.read_page(page_id)
-        elif page_type == 'database':
-            page_content = reader.query_database_data(page_id)
-        else:
-            page_content = ""
+
+        loader = NotionLoader(
+            notion_access_token=data_source_binding.access_token,
+            notion_workspace_id=workspace_id,
+            notion_obj_id=page_id,
+            notion_page_type=page_type
+        )
+
+        text_docs = loader.load()
         return {
-            'content': page_content
+            'content': "\n".join([doc.page_content for doc in text_docs])
         }, 200
 
     @setup_required
