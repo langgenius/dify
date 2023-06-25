@@ -49,7 +49,6 @@ const TextGeneration: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [query, setQuery] = useState('')
   const [completionRes, setCompletionRes] = useState('')
   const { notify } = Toast
   const isNoData = !completionRes
@@ -125,14 +124,8 @@ const TextGeneration: FC<IMainProps> = ({
     if (!checkCanSend())
       return
 
-    if (!query) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
-
     const data = {
       inputs,
-      query,
     }
 
     setMessageId(null)
@@ -188,7 +181,11 @@ const TextGeneration: FC<IMainProps> = ({
       changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this }: any = appParams
-      const prompt_variables = userInputsFormToPromptVariables(user_input_form)
+      // TODO: test paragraph type
+      const prompt_variables = userInputsFormToPromptVariables(user_input_form).map(item => ({
+        ...item,
+        type: 'paragraph',
+      }))
       setPromptConfig({
         prompt_template: '', // placeholder for feture
         prompt_variables,
@@ -331,8 +328,6 @@ const TextGeneration: FC<IMainProps> = ({
                 inputs={inputs}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
-                query={query}
-                onQueryChange={setQuery}
                 onSend={handleSend}
               />
             )}
