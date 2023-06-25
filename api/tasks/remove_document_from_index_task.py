@@ -5,8 +5,7 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment, Document
@@ -38,17 +37,17 @@ def remove_document_from_index_task(document_id: str):
         if not dataset:
             raise Exception('Document has no dataset')
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         # delete from vector index
-        vector_index.del_doc(document.id)
+        vector_index.delete_by_document_id(document.id)
 
         # delete from keyword index
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
         if index_node_ids:
-            keyword_table_index.del_nodes(index_node_ids)
+            kw_index.delete_by_ids(index_node_ids)
 
         end_at = time.perf_counter()
         logging.info(

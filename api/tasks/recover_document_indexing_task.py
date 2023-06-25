@@ -1,4 +1,3 @@
-import datetime
 import logging
 import time
 
@@ -41,11 +40,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
             indexing_runner.run_in_indexing_status(document)
         end_at = time.perf_counter()
         logging.info(click.style('Processed document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
-    except DocumentIsPausedException:
-        logging.info(click.style('Document paused, document id: {}'.format(document.id), fg='yellow'))
-    except Exception as e:
-        logging.exception("consume document failed")
-        document.indexing_status = 'error'
-        document.error = str(e)
-        document.stopped_at = datetime.datetime.utcnow()
-        db.session.commit()
+    except DocumentIsPausedException as ex:
+        logging.info(click.style(str(ex), fg='yellow'))
+    except Exception:
+        pass

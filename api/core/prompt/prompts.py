@@ -1,5 +1,3 @@
-from llama_index import QueryKeywordExtractPrompt
-
 CONVERSATION_TITLE_PROMPT = (
     "Human:{query}\n-----\n"
     "Help me summarize the intent of what the human said and provide a title, the title should not exceed 20 words.\n"
@@ -43,23 +41,6 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "and keeping each question under 20 characters.\n"
     "The output must be in JSON format following the specified schema:\n"
     "[\"question1\",\"question2\",\"question3\"]\n"
-)
-
-QUERY_KEYWORD_EXTRACT_TEMPLATE_TMPL = (
-    "A question is provided below. Given the question, extract up to {max_keywords} "
-    "keywords from the text. Focus on extracting the keywords that we can use "
-    "to best lookup answers to the question. Avoid stopwords."
-    "I am not sure which language the following question is in. "
-    "If the user asked the question in Chinese, please return the keywords in Chinese. "
-    "If the user asked the question in English, please return the keywords in English.\n"
-    "---------------------\n"
-    "{question}\n"
-    "---------------------\n"
-    "Provide keywords in the following comma-separated format: 'KEYWORDS: <keywords>'\n"
-)
-
-QUERY_KEYWORD_EXTRACT_TEMPLATE = QueryKeywordExtractPrompt(
-    QUERY_KEYWORD_EXTRACT_TEMPLATE_TMPL
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \

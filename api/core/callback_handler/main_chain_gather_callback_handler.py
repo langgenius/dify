@@ -1,10 +1,9 @@
 import logging
 import time
 
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
 
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.entity.chain_result import ChainResult
@@ -14,6 +13,7 @@ from core.conversation_message_task import ConversationMessageTask
 
 class MainChainGatherCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
+    raise_error: bool = True
 
     def __init__(self, conversation_message_task: ConversationMessageTask) -> None:
         """Initialize callback handler."""
@@ -50,13 +50,15 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Print out that we are entering a chain."""
         if not self._current_chain_result:
-            self._current_chain_result = ChainResult(
-                type=serialized['name'],
-                prompt=inputs,
-                started_at=time.perf_counter()
-            )
-            self._current_chain_message = self.conversation_message_task.init_chain(self._current_chain_result)
-            self.agent_loop_gather_callback_handler.current_chain = self._current_chain_message
+            chain_type = serialized['id'][-1]
+            if chain_type:
+                self._current_chain_result = ChainResult(
+                    type=chain_type,
+                    prompt=inputs,
+                    started_at=time.perf_counter()
+                )
+                self._current_chain_message = self.conversation_message_task.init_chain(self._current_chain_result)
+                self.agent_loop_gather_callback_handler.current_chain = self._current_chain_message
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""
@@ -75,63 +77,3 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     ) -> None:
         logging.error(error)
         self.clear_chain_results()
-
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> None:
-        pass
-
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        pass
-
-    def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        """Do nothing."""
-        pass
-
-    def on_llm_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> None:
-        logging.error(error)
-
-    def on_tool_start(
-        self,
-        serialized: Dict[str, Any],
-        input_str: str,
-        **kwargs: Any,
-    ) -> None:
-        pass
-
-    def on_agent_action(
-        self, action: AgentAction, color: Optional[str] = None, **kwargs: Any
-    ) -> Any:
-        pass
-
-    def on_tool_end(
-        self,
-        output: str,
-        color: Optional[str] = None,
-        observation_prefix: Optional[str] = None,
-        llm_prefix: Optional[str] = None,
-        **kwargs: Any,
-    ) -> None:
-        pass
-
-    def on_tool_error(
-        self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
-    ) -> None:
-        """Do nothing."""
-        logging.error(error)
-
-    def on_text(
-        self,
-        text: str,
-        color: Optional[str] = None,
-        end: str = "",
-        **kwargs: Optional[str],
-    ) -> None:
-        """Run on additional input from chains and agents."""
-        pass
-
-    def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
-        """Run on agent end."""
-        pass

@@ -4,8 +4,7 @@ import time
 import click
 from celery import shared_task
 
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset
 
@@ -28,21 +27,23 @@ def clean_document_task(document_id: str, dataset_id: str):
         if not dataset:
             raise Exception('Document has no dataset')
 
-        vector_index = VectorIndex(dataset=dataset)
-        keyword_table_index = KeywordTableIndex(dataset=dataset)
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
         index_node_ids = [segment.index_node_id for segment in segments]
 
         # delete from vector index
-        vector_index.del_nodes(index_node_ids)
+        if vector_index:
+            vector_index.delete_by_document_id(document_id)
 
         # delete from keyword index
         if index_node_ids:
-            keyword_table_index.del_nodes(index_node_ids)
+            kw_index.delete_by_ids(index_node_ids)
 
         for segment in segments:
             db.session.delete(segment)
+
         db.session.commit()
         end_at = time.perf_counter()
         logging.info(

@@ -2,6 +2,7 @@ coverage~=7.2.4
 beautifulsoup4==4.12.2
 flask~=2.3.2
 Flask-SQLAlchemy~=3.0.3
+SQLAlchemy~=1.4.28
 flask-login==0.6.2
 flask-migrate~=4.0.4
 flask-restful==0.3.9
@@ -9,8 +10,7 @@ flask-session2==1.3.1
 flask-cors==3.0.10
 gunicorn~=20.1.0
 gevent~=22.10.2
-langchain==0.0.142
-llama-index==0.5.27
+langchain==0.0.209
 openai~=0.27.5
 psycopg2-binary~=2.9.6
 pycryptodome==3.17
@@ -29,6 +29,7 @@ sentry-sdk[flask]~=1.21.1
 jieba==0.42.1
 celery==5.2.7
 redis~=4.5.4
-pypdf==3.8.1
 openpyxl==3.1.2
 chardet~=5.1.0
+docx2txt==0.8
+pypdfium2==4.16.0

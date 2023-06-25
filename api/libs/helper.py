@@ -3,6 +3,7 @@ import re
 import subprocess
 import uuid
 from datetime import datetime
+from hashlib import sha256
 from zoneinfo import available_timezones
 import random
 import string
@@ -147,3 +148,8 @@ def get_remote_ip(request):
         return request.headers.getlist("X-Forwarded-For")[0]
     else:
         return request.remote_addr
+
+
+def generate_text_hash(text: str) -> str:
+    hash_text = str(text) + 'None'
+    return sha256(hash_text.encode()).hexdigest()

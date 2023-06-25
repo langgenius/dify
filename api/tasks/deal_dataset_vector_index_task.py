@@ -3,10 +3,12 @@ import time
 
 import click
 from celery import shared_task
-from llama_index.data_structs.node_v2 import DocumentRelationship, Node
-from core.index.vector_index import VectorIndex
+from langchain.schema import Document
+
+from core.index.index import IndexBuilder
 from extensions.ext_database import db
-from models.dataset import DocumentSegment, Document, Dataset
+from models.dataset import DocumentSegment, Dataset
+from models.dataset import Document as DatasetDocument
 
 
 @shared_task
@@ -24,49 +26,47 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
         dataset = Dataset.query.filter_by(
             id=dataset_id
         ).first()
+
         if not dataset:
             raise Exception('Dataset not found')
-        documents = Document.query.filter_by(dataset_id=dataset_id).all()
-        if documents:
-            vector_index = VectorIndex(dataset=dataset)
-            for document in documents:
-                # delete from vector index
-                if action == "remove":
-                    vector_index.del_doc(document.id)
-                elif action == "add":
+
+        if action == "remove":
+            index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=True)
+            index.delete()
+        elif action == "add":
+            dataset_documents = db.session.query(DatasetDocument).filter(
+                DatasetDocument.dataset_id == dataset_id,
+                DatasetDocument.indexing_status == 'completed',
+                DatasetDocument.enabled == True,
+                DatasetDocument.archived == False,
+            ).all()
+
+            if dataset_documents:
+                # save vector index
+                index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=True)
+                for dataset_document in dataset_documents:
+                    # delete from vector index
                     segments = db.session.query(DocumentSegment).filter(
-                        DocumentSegment.document_id == document.id,
+                        DocumentSegment.document_id == dataset_document.id,
                         DocumentSegment.enabled == True
                     ) .order_by(DocumentSegment.position.asc()).all()
 
-                    nodes = []
-                    previous_node = None
+                    documents = []
                     for segment in segments:
-                        relationships = {
-                            DocumentRelationship.SOURCE: document.id
-                        }
-
-                        if previous_node:
-                            relationships[DocumentRelationship.PREVIOUS] = previous_node.doc_id
-
-                            previous_node.relationships[DocumentRelationship.NEXT] = segment.index_node_id
-
-                        node = Node(
-                            doc_id=segment.index_node_id,
-                            doc_hash=segment.index_node_hash,
-                            text=segment.content,
-                            extra_info=None,
-                            node_info=None,
-                            relationships=relationships
+                        document = Document(
+                            page_content=segment.content,
+                            metadata={
+                                "doc_id": segment.index_node_id,
+                                "doc_hash": segment.index_node_hash,
+                                "document_id": segment.document_id,
+                                "dataset_id": segment.dataset_id,
+                            }
                         )
 
-                        previous_node = node
-                        nodes.append(node)
+                        documents.append(document)
+
                     # save vector index
-                    vector_index.add_nodes(
-                        nodes=nodes,
-                        duplicate_check=True
-                    )
+                    index.add_texts(documents)
 
         end_at = time.perf_counter()
         logging.info(

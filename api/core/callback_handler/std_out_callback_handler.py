@@ -1,9 +1,10 @@
+import os
 import sys
 from typing import Any, Dict, List, Optional, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.input import print_text
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, BaseMessage
 
 
 class DifyStdOutCallbackHandler(BaseCallbackHandler):
@@ -13,17 +14,23 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
         """Initialize callback handler."""
         self.color = color
 
+    def on_chat_model_start(
+            self,
+            serialized: Dict[str, Any],
+            messages: List[List[BaseMessage]],
+            **kwargs: Any
+    ) -> Any:
+        print_text("\n[on_chat_model_start]\n", color='blue')
+        for sub_messages in messages:
+            for sub_message in sub_messages:
+                print_text(str(sub_message) + "\n", color='blue')
+
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
         """Print out the prompts."""
         print_text("\n[on_llm_start]\n", color='blue')
-
-        if 'Chat' in serialized['name']:
-            for prompt in prompts:
-                print_text(prompt + "\n", color='blue')
-        else:
-            print_text(prompts[0] + "\n", color='blue')
+        print_text(prompts[0] + "\n", color='blue')
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         """Do nothing."""
@@ -44,8 +51,8 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
         self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any
     ) -> None:
         """Print out that we are entering a chain."""
-        class_name = serialized["name"]
-        print_text("\n[on_chain_start]\nChain: " + class_name + "\nInputs: " + str(inputs) + "\n", color='pink')
+        chain_type = serialized['id'][-1]
+        print_text("\n[on_chain_start]\nChain: " + chain_type + "\nInputs: " + str(inputs) + "\n", color='pink')
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""
@@ -116,6 +123,26 @@ class DifyStdOutCallbackHandler(BaseCallbackHandler):
     ) -> None:
         """Run on agent end."""
         print_text("[on_agent_finish] " + finish.return_values['output'] + "\n", color='green', end="\n")
+
+    @property
+    def ignore_llm(self) -> bool:
+        """Whether to ignore LLM callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_chain(self) -> bool:
+        """Whether to ignore chain callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_agent(self) -> bool:
+        """Whether to ignore agent callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
+
+    @property
+    def ignore_chat_model(self) -> bool:
+        """Whether to ignore chat model callbacks."""
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true'
 
 
 class DifyStreamingStdOutCallbackHandler(DifyStdOutCallbackHandler):

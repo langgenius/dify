@@ -6,11 +6,9 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.data_source.notion import NotionPageReader
-from core.index.keyword_table_index import KeywordTableIndex
-from core.index.vector_index import VectorIndex
+from core.data_loader.loader.notion import NotionLoader
+from core.index.index import IndexBuilder
 from core.indexing_runner import IndexingRunner, DocumentIsPausedException
-from core.llm.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from models.dataset import Document, Dataset, DocumentSegment
 from models.source import DataSourceBinding
@@ -43,6 +41,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             raise ValueError("no notion page found")
         workspace_id = data_source_info['notion_workspace_id']
         page_id = data_source_info['notion_page_id']
+        page_type = data_source_info['type']
         page_edited_time = data_source_info['last_edited_time']
         data_source_binding = DataSourceBinding.query.filter(
             db.and_(
@@ -54,8 +53,16 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         ).first()
         if not data_source_binding:
             raise ValueError('Data source binding not found.')
-        reader = NotionPageReader(integration_token=data_source_binding.access_token)
-        last_edited_time = reader.get_page_last_edited_time(page_id)
+
+        loader = NotionLoader(
+            notion_access_token=data_source_binding.access_token,
+            notion_workspace_id=workspace_id,
+            notion_obj_id=page_id,
+            notion_page_type=page_type
+        )
+
+        last_edited_time = loader.get_notion_last_edited_time()
+
         # check the page is updated
         if last_edited_time != page_edited_time:
             document.indexing_status = 'parsing'
@@ -68,18 +75,19 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                 if not dataset:
                     raise Exception('Dataset not found')
 
-                vector_index = VectorIndex(dataset=dataset)
-                keyword_table_index = KeywordTableIndex(dataset=dataset)
+                vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+                kw_index = IndexBuilder.get_index(dataset, 'economy')
 
                 segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
                 index_node_ids = [segment.index_node_id for segment in segments]
 
                 # delete from vector index
-                vector_index.del_nodes(index_node_ids)
+                if vector_index:
+                    vector_index.delete_by_document_id(document_id)
 
                 # delete from keyword index
                 if index_node_ids:
-                    keyword_table_index.del_nodes(index_node_ids)
+                    kw_index.delete_by_ids(index_node_ids)
 
                 for segment in segments:
                     db.session.delete(segment)
@@ -89,21 +97,13 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
                     click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
             except Exception:
                 logging.exception("Cleaned document when document update data source or process rule failed")
+
             try:
                 indexing_runner = IndexingRunner()
                 indexing_runner.run([document])
                 end_at = time.perf_counter()
                 logging.info(click.style('update document: {} latency: {}'.format(document.id, end_at - start_at), fg='green'))
-            except DocumentIsPausedException:
-                logging.info(click.style('Document update paused, document id: {}'.format(document.id), fg='yellow'))
-            except ProviderTokenNotInitError as e:
-                document.indexing_status = 'error'
-                document.error = str(e.description)
-                document.stopped_at = datetime.datetime.utcnow()
-                db.session.commit()
-            except Exception as e:
-                logging.exception("consume update document failed")
-                document.indexing_status = 'error'
-                document.error = str(e)
-                document.stopped_at = datetime.datetime.utcnow()
-                db.session.commit()
+            except DocumentIsPausedException as ex:
+                logging.info(click.style(str(ex), fg='yellow'))
+            except Exception:
+                pass
