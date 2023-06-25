@@ -7,7 +7,7 @@ import { useBoolean } from 'ahooks'
 import Panel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import VarIcon from '../base/icons/var-icon'
-import EditModel from './config-model'
+import EditModal from './config-modal'
 import IconTypeIcon from './input-type-icon'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
@@ -231,7 +231,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
 
       {isShowEditModal && (
-        <EditModel
+        <EditModal
           payload={currItem as PromptVariable}
           isShow={isShowEditModal}
           onClose={hideEditModal}

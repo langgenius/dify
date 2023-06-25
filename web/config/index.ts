@@ -74,6 +74,10 @@ export const TONE_LIST = [
   },
 ]
 
+export const getMaxToken = (modelId: string) => {
+  return (modelId === 'gpt-4' || modelId === 'gpt-3.5-turbo-16k') ? 8000 : 4000
+}
+
 export const LOCALE_COOKIE_NAME = 'locale'
 
 export const DEFAULT_VALUE_MAX_LEN = 48

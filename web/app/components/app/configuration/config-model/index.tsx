@@ -10,7 +10,7 @@ import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
 import { AppType } from '@/types/app'
-import { TONE_LIST } from '@/config'
+import { TONE_LIST, getMaxToken } from '@/config'
 import Toast from '@/app/components/base/toast'
 
 export type IConifgModelProps = {
@@ -97,7 +97,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
       key: 'max_tokens',
       tip: t('common.model.params.maxTokenTip'),
       step: 100,
-      max: (modelId === 'gpt-4' || modelId === 'gpt-3.5-turbo-16k') ? 8000 : 4000,
+      max: getMaxToken(modelId),
     },
   ]
 
@@ -118,7 +118,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
         onShowUseGPT4Confirm()
         return
       }
-      if (id !== 'gpt-4' && completionParams.max_tokens > 4000) {
+      if ((id !== 'gpt-4' && id !== 'gpt-3.5-turbo-16k') && completionParams.max_tokens > 4000) {
         Toast.notify({
           type: 'warning',
           message: t('common.model.params.setToCurrentModelMaxTokenTip'),
