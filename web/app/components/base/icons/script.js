@@ -2,7 +2,6 @@ const path = require('node:path')
 const { open, readdir, access, mkdir, writeFile, appendFile, rm } = require('node:fs/promises')
 const { parseXml } = require('@rgrove/parse-xml')
 const camelCase = require('lodash/camelCase')
-const capitalize = require('lodash/capitalize')
 const template = require('lodash/template')
 
 const generateDir = async (currentPath) => {
@@ -69,7 +68,7 @@ export default Icon
 `.trim())
 
   await writeFile(path.resolve(currentPath, `${fileName}.json`), JSON.stringify(svgData, '', '\t'))
-  await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ svgName: capitalize(fileName) })}\n`)
+  await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ svgName: fileName })}\n`)
 
   const indexingRender = template(`
 export { default as <%= svgName %> } from './<%= svgName %>'
