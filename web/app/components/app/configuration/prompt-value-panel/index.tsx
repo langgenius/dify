@@ -11,7 +11,7 @@ import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
 import Select from '@/app/components/base/select'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { DEFAULT_PARAGRAPH_VALUE_MAX_LEN, DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 
 export type IPromptValuePanelProps = {
@@ -107,29 +107,38 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ? (
               <div className="space-y-3 ">
                 {promptVariables.map(({ key, name, type, options, max_length, required }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
-                    {type === 'select'
-                      ? (
-                        <Select
-                          className='w-full'
-                          defaultValue={inputs[key] as string}
-                          onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                          items={(options || []).map(i => ({ name: i, value: i }))}
-                          allowSearch={false}
-                          bgClassName='bg-gray-50'
-                        />
-                      )
-                      : (
-                        <input
-                          className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-                          placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                          type="text"
-                          value={inputs[key] ? `${inputs[key]}` : ''}
-                          onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                          maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
-                        />
-                      )}
+                  <div key={key} className="flex justify-between">
+                    <div className="mr-1 pt-2 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                    {type === 'select' && (
+                      <Select
+                        className='w-full'
+                        defaultValue={inputs[key] as string}
+                        onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
+                        items={(options || []).map(i => ({ name: i, value: i }))}
+                        allowSearch={false}
+                        bgClassName='bg-gray-50'
+                      />
+                    )
+                    }
+                    {type === 'string' && (
+                      <input
+                        className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                        placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                        type="text"
+                        value={inputs[key] ? `${inputs[key]}` : ''}
+                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                      />
+                    )}
+                    {type === 'paragraph' && (
+                      <textarea
+                        className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                        placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                        value={inputs[key] ? `${inputs[key]}` : ''}
+                        onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                        maxLength={max_length || DEFAULT_PARAGRAPH_VALUE_MAX_LEN}
+                      />
+                    )}
 
                   </div>
                 ))}
