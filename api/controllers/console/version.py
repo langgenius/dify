@@ -34,7 +34,7 @@ class VersionApi(Resource):
         except Exception as error:
             logging.warning("Check update version error: {}.".format(str(error)))
             return {
-                'version': '0.0.0',
+                'version': args.get('current_version'),
                 'release_date': '',
                 'release_notes': '',
                 'can_auto_update': False
