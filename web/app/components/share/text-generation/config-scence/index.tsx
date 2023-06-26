@@ -25,6 +25,14 @@ const ConfigSence: FC<IConfigSenceProps> = ({
 }) => {
   const { t } = useTranslation()
 
+  const onClear = () => {
+    const newInputs: Record<string, any> = {}
+    promptConfig.prompt_variables.forEach((item) => {
+      newInputs[item.key] = ''
+    })
+    onInputsChange(newInputs)
+  }
+
   return (
     <div className="">
       <section>
@@ -73,7 +81,7 @@ const ConfigSence: FC<IConfigSenceProps> = ({
             <div className="flex items-center justify-between">
               <Button
                 className='w-[58px] !h-8 !p-3'
-                onClick={onSend}
+                onClick={onClear}
                 disabled={false}
               >
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>

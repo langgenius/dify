@@ -58,6 +58,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     setInputs(newInputs)
   }
 
+  const onClear = () => {
+    const newInputs: Record<string, any> = {}
+    promptVariables.forEach((item) => {
+      newInputs[item.key] = ''
+    })
+    setInputs(newInputs)
+  }
+
   const promptPreview = (
     <div className='pt-3 pb-4 rounded-t-xl bg-indigo-25'>
       <div className="px-4">
@@ -154,7 +162,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         appType === AppType.completion && (
           <div>
             <div className="mt-5 border-b border-gray-100"></div>
-            <div className="flex justify-end mt-4 px-4">
+            <div className="flex justify-between mt-4 px-4">
+              <Button
+                className='w-[58px] !h-8 !p-3'
+                onClick={onClear}
+                disabled={false}
+              >
+                <span className='text-[13px]'>{t('common.operation.clear')}</span>
+              </Button>
               <Button
                 type="primary"
                 onClick={() => onSend && onSend()}
