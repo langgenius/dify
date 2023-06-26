@@ -23,6 +23,9 @@ services:
       # console or api domain.
       # example: http://udify.app
       APP_URL: ''
+      # Check the URL for version updates.
+      # example: https://updates.dify.ai
+      CHECK_UPDATE_URL: ''
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
