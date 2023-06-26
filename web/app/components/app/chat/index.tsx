@@ -352,10 +352,12 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                 }
               </div>
               <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>
-                <CopyBtn
-                  value={content}
-                  className={cn(s.copyBtn, 'mr-1')}
-                />
+                {!item.isOpeningStatement && (
+                  <CopyBtn
+                    value={content}
+                    className={cn(s.copyBtn, 'mr-1')}
+                  />
+                )}
                 {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
                 {/* Admin feedback is displayed only in the background. */}
                 {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}
@@ -487,7 +489,7 @@ const Chat: FC<IChatProps> = ({
   }, [suggestionList])
 
   return (
-    <div className={cn(!feedbackDisabled && 'px-3.5', 'h-full')}>
+    <div className={cn('px-3.5', 'h-full')}>
       {/* Chat List */}
       <div className="h-full space-y-[30px]">
         {chatList.map((item) => {
