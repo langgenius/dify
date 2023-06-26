@@ -65,8 +65,8 @@ class ChatClient(DifyClient):
 
         return self._send_request("GET", "/messages", params=params)
 
-    def get_conversations(self, user, first_id=None, limit=None, pinned=None):
-        params = {"user": user, "first_id": first_id, "limit": limit, "pinned": pinned}
+    def get_conversations(self, user, last_id=None, limit=None, pinned=None):
+        params = {"user": user, "last_id": last_id, "limit": limit, "pinned": pinned}
         return self._send_request("GET", "/conversations", params=params)
 
     def rename_conversation(self, conversation_id, name, user):

@@ -157,7 +157,7 @@ class BaseVectorIndex(BaseIndex):
 
                 documents.append(document)
 
-        origin_index_struct = self.dataset.index_struct
+        origin_index_struct = self.dataset.index_struct[:]
         self.dataset.index_struct = None
 
         if documents:
