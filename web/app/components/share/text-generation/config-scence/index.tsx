@@ -80,7 +80,7 @@ const ConfigSence: FC<IConfigSenceProps> = ({
           <div className='w-full mt-4'>
             <div className="flex items-center justify-between">
               <Button
-                className='w-[58px] !h-8 !p-3'
+                className='!h-8 !p-3'
                 onClick={onClear}
                 disabled={false}
               >
