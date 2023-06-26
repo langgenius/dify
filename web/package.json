@@ -9,7 +9,8 @@
     "lint": "next lint",
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
-    "prepare": "cd ../ && husky install ./web/.husky"
+    "prepare": "cd ../ && husky install ./web/.husky",
+    "gen-icons": "node ./app/components/base/icons/script.js"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -83,6 +84,7 @@
   "devDependencies": {
     "@antfu/eslint-config": "^0.36.0",
     "@faker-js/faker": "^7.6.0",
+    "@rgrove/parse-xml": "^4.1.0",
     "@types/js-cookie": "^3.0.3",
     "@types/negotiator": "^0.6.1",
     "@types/qs": "^6.9.7",

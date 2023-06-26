@@ -5,12 +5,13 @@ import Link from 'next/link'
 import { useSWRConfig } from 'swr'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid'
 import { Menu, Transition } from '@headlessui/react'
-import cn from 'classnames'
-import s from './index.module.css'
 import { apiPrefix } from '@/config'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNotion } from '@/models/common'
+import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import { RefreshCw05 } from '@/app/components/base/icons/src/vender/line/arrows'
+import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type OperateProps = {
   workspace: DataSourceNotion
@@ -23,7 +24,7 @@ export default function Operate({
     cursor-pointer
   `
   const itemIconClassName = `
-  mr-2 mt-[2px] w-4 h-4
+  mr-2 mt-[2px] w-4 h-4 text-gray-500
   `
   const { t } = useTranslation()
   const { mutate } = useSWRConfig()
@@ -73,7 +74,7 @@ export default function Operate({
                     <Link
                       className={itemClassName}
                       href={`${apiPrefix}/oauth/data-source/notion`}>
-                      <div className={cn(s['file-icon'], itemIconClassName)}></div>
+                      <FilePlus02 className={itemIconClassName} />
                       <div>
                         <div className='leading-5'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
                         <div className='leading-5 text-xs text-gray-500'>
@@ -84,7 +85,7 @@ export default function Operate({
                   </Menu.Item>
                   <Menu.Item>
                     <div className={itemClassName} onClick={handleSync}>
-                      <div className={cn(s['sync-icon'], itemIconClassName)} />
+                      <RefreshCw05 className={itemIconClassName} />
                       <div className='leading-5'>{t('common.dataSource.notion.sync')}</div>
                     </div>
                   </Menu.Item>
@@ -92,7 +93,7 @@ export default function Operate({
                 <Menu.Item>
                   <div className='p-1'>
                     <div className={itemClassName} onClick={handleRemove}>
-                      <div className={cn(s['trash-icon'], itemIconClassName)} />
+                      <Trash03 className={itemIconClassName} />
                       <div className='leading-5'>{t('common.dataSource.notion.remove')}</div>
                     </div>
                   </div>
