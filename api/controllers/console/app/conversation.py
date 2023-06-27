@@ -225,7 +225,7 @@ class CompletionConversationDetailApi(Resource):
         if not conversation:
             raise NotFound("Conversation Not Exists.")
 
-        db.session.delete(conversation)
+        conversation.is_deleted = True
         db.session.commit()
 
         return {'result': 'success'}, 204
@@ -393,7 +393,7 @@ class ChatConversationDetailApi(Resource):
         if not conversation:
             raise NotFound("Conversation Not Exists.")
 
-        db.session.delete(conversation)
+        conversation.is_deleted = True
         db.session.commit()
 
         return {'result': 'success'}, 204
