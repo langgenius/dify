@@ -209,6 +209,26 @@ class CompletionConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_id, conversation_id, 'completion')
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id, conversation_id):
+        app_id = str(app_id)
+        conversation_id = str(conversation_id)
+
+        app = _get_app(app_id, 'chat')
+
+        conversation = db.session.query(Conversation) \
+            .filter(Conversation.id == conversation_id, Conversation.app_id == app.id).first()
+
+        if not conversation:
+            raise NotFound("Conversation Not Exists.")
+
+        conversation.is_deleted = True
+        db.session.commit()
+
+        return {'result': 'success'}, 204
 
 
 class ChatConversationApi(Resource):
@@ -356,6 +376,27 @@ class ChatConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_id, conversation_id, 'chat')
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, app_id, conversation_id):
+        app_id = str(app_id)
+        conversation_id = str(conversation_id)
+
+        # get app info
+        app = _get_app(app_id, 'chat')
+
+        conversation = db.session.query(Conversation) \
+            .filter(Conversation.id == conversation_id, Conversation.app_id == app.id).first()
+
+        if not conversation:
+            raise NotFound("Conversation Not Exists.")
+
+        conversation.is_deleted = True
+        db.session.commit()
+
+        return {'result': 'success'}, 204
 
 
 
@@ -371,7 +412,7 @@ def _get_conversation(app_id, conversation_id, mode):
     app = _get_app(app_id, mode)
 
     conversation = db.session.query(Conversation) \
-        .filter(Conversation.id == conversation_id, Conversation.app_id == app.id).first()
+        .filter(Conversation.id == conversation_id, Conversation.app_id == app.id, Conversation.is_deleted == False).first()
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")
