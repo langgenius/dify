@@ -309,7 +309,7 @@ const DocumentList: FC<IDocumentListProps> = ({ documents = [], datasetId, onUpd
               key={doc.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
               onClick={() => {
-                router.push(`datasets/${datasetId}/documents/${doc.id}`)
+                router.push(`/datasets/${datasetId}/documents/${doc.id}`)
               }}>
               <td className='text-left align-middle text-gray-500 text-xs'>{doc.position}</td>
               <td className={s.tdValue}>
