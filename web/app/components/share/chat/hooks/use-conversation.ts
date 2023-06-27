@@ -1,12 +1,13 @@
 import { useState } from 'react'
-import type { ConversationItem } from '@/models/share'
 import produce from 'immer'
+import type { ConversationItem } from '@/models/share'
 
 const storageConversationIdKey = 'conversationIdInfo'
 
 type ConversationInfoType = Omit<ConversationItem, 'inputs' | 'id'>
 function useConversation() {
   const [conversationList, setConversationList] = useState<ConversationItem[]>([])
+  const [pinnedConversationList, setPinnedConversationList] = useState<ConversationItem[]>([])
   const [currConversationId, doSetCurrConversationId] = useState<string>('-1')
   // when set conversation id, we do not have set appId
   const setCurrConversationId = (id: string, appId: string, isSetToLocalStroge = true, newConversationName = '') => {
@@ -29,9 +30,10 @@ function useConversation() {
   // input can be updated by user
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any> | null>(null)
   const resetNewConversationInputs = () => {
-    if (!newConversationInputs) return
-    setNewConversationInputs(produce(newConversationInputs, draft => {
-      Object.keys(draft).forEach(key => {
+    if (!newConversationInputs)
+      return
+    setNewConversationInputs(produce(newConversationInputs, (draft) => {
+      Object.keys(draft).forEach((key) => {
         draft[key] = ''
       })
     }))
@@ -48,6 +50,8 @@ function useConversation() {
   return {
     conversationList,
     setConversationList,
+    pinnedConversationList,
+    setPinnedConversationList,
     currConversationId,
     setCurrConversationId,
     getConversationIdFromStorage,
@@ -59,8 +63,8 @@ function useConversation() {
     setCurrInputs,
     currConversationInfo,
     setNewConversationInfo,
-    setExistConversationInfo
+    setExistConversationInfo,
   }
 }
 
-export default useConversation;
+export default useConversation

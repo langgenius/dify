@@ -14,7 +14,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
 import ConfigSence from '@/app/components/share/chat/config-scence'
 import Header from '@/app/components/share/header'
-import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
+import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, pinConversation, sendChatMessage, stopChatMessageResponding, unpinConversation, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
@@ -68,6 +68,8 @@ const Main: FC<IMainProps> = ({
   const {
     conversationList,
     setConversationList,
+    pinnedConversationList,
+    setPinnedConversationList,
     currConversationId,
     setCurrConversationId,
     getConversationIdFromStorage,
@@ -81,11 +83,34 @@ const Main: FC<IMainProps> = ({
     setNewConversationInfo,
     setExistConversationInfo,
   } = useConversation()
-  const [hasMore, setHasMore] = useState<boolean>(false)
+  const [hasMore, setHasMore] = useState<boolean>(true)
+  const [hasPinnedMore, setHasPinnedMore] = useState<boolean>(true)
   const onMoreLoaded = ({ data: conversations, has_more }: any) => {
     setHasMore(has_more)
     setConversationList([...conversationList, ...conversations])
   }
+  const onPinnedMoreLoaded = ({ data: conversations, has_more }: any) => {
+    setHasPinnedMore(has_more)
+    setPinnedConversationList([...pinnedConversationList, ...conversations])
+  }
+  const [controlUpdateConversationList, setControlUpdateConversationList] = useState(0)
+  const noticeUpdateList = () => {
+    setConversationList([])
+    setHasMore(true)
+    setPinnedConversationList([])
+    setHasPinnedMore(true)
+    setControlUpdateConversationList(Date.now())
+  }
+  const handlePin = async (id: string) => {
+    await pinConversation(isInstalledApp, installedAppInfo?.id, id)
+    noticeUpdateList()
+  }
+
+  const handleUnpin = async (id: string) => {
+    await unpinConversation(isInstalledApp, installedAppInfo?.id, id)
+    noticeUpdateList()
+  }
+
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
@@ -258,7 +283,7 @@ const Main: FC<IMainProps> = ({
         const { data: conversations, has_more } = conversationData as { data: ConversationItem[]; has_more: boolean }
         const _conversationId = getConversationIdFromStorage(appId)
         const isNotNewConversation = conversations.some(item => item.id === _conversationId)
-        setHasMore(has_more)
+        // setHasMore(has_more)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
@@ -276,7 +301,7 @@ const Main: FC<IMainProps> = ({
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
 
-        setConversationList(conversations as ConversationItem[])
+        // setConversationList(conversations as ConversationItem[])
 
         if (isNotNewConversation)
           setCurrConversationId(_conversationId, appId, false)
@@ -403,12 +428,11 @@ const Main: FC<IMainProps> = ({
         if (hasError)
           return
 
-        let currChatList = conversationList
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppInfo?.id)
-          setHasMore(has_more)
-          setConversationList(conversations as ConversationItem[])
-          currChatList = conversations
+          // setHasMore(has_more)
+          // setConversationList(conversations as ConversationItem[])
+          setControlUpdateConversationList(Date.now())
         }
         setConversationIdChangeBecauseOfNew(false)
         resetNewConversationInputs()
@@ -451,14 +475,20 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
+        pinnedList={pinnedConversationList}
         onMoreLoaded={onMoreLoaded}
+        onPinnedMoreLoaded={onPinnedMoreLoaded}
         isNoMore={!hasMore}
+        isPinnedNoMore={!hasPinnedMore}
         onCurrentIdChange={handleConversationIdChange}
         currentId={currConversationId}
         copyRight={siteInfo.copyright || siteInfo.title}
         isInstalledApp={isInstalledApp}
         installedAppId={installedAppInfo?.id}
         siteInfo={siteInfo}
+        onPin={handlePin}
+        onUnpin={handleUnpin}
+        controlUpdateList={controlUpdateConversationList}
       />
     )
   }
