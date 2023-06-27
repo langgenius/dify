@@ -38,6 +38,7 @@ class ExcelLoader(BaseLoader):
                 else:
                     row_dict = dict(zip(keys, row))
                     row_dict = {k: v for k, v in row_dict.items() if v}
-                    data.append(json.dumps(row_dict, ensure_ascii=False))
+                    item = ''.join(f'{k}:{v}\n' for k, v in row_dict.items())
+                    data.append(item)
 
         return [Document(page_content='\n\n'.join(data))]
