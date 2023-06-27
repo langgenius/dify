@@ -17,14 +17,16 @@ def handle_llm_exceptions(func):
             raise LLMBadRequestError(str(e))
         except openai.error.APIConnectionError as e:
             logging.exception("Failed to connect to OpenAI API.")
-            raise LLMAPIConnectionError(str(e))
+            raise LLMAPIConnectionError(e.__class__.__name__ + ":" + str(e))
         except (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout) as e:
             logging.exception("OpenAI service unavailable.")
-            raise LLMAPIUnavailableError(str(e))
+            raise LLMAPIUnavailableError(e.__class__.__name__ + ":" + str(e))
         except openai.error.RateLimitError as e:
             raise LLMRateLimitError(str(e))
         except openai.error.AuthenticationError as e:
             raise LLMAuthorizationError(str(e))
+        except openai.error.OpenAIError as e:
+            raise LLMBadRequestError(e.__class__.__name__ + ":" + str(e))
 
     return wrapper
 
@@ -39,13 +41,15 @@ def handle_llm_exceptions_async(func):
             raise LLMBadRequestError(str(e))
         except openai.error.APIConnectionError as e:
             logging.exception("Failed to connect to OpenAI API.")
-            raise LLMAPIConnectionError(str(e))
+            raise LLMAPIConnectionError(e.__class__.__name__ + ":" + str(e))
         except (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout) as e:
             logging.exception("OpenAI service unavailable.")
-            raise LLMAPIUnavailableError(str(e))
+            raise LLMAPIUnavailableError(e.__class__.__name__ + ":" + str(e))
         except openai.error.RateLimitError as e:
             raise LLMRateLimitError(str(e))
         except openai.error.AuthenticationError as e:
             raise LLMAuthorizationError(str(e))
+        except openai.error.OpenAIError as e:
+            raise LLMBadRequestError(e.__class__.__name__ + ":" + str(e))
 
     return wrapper

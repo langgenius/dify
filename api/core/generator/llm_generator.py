@@ -1,5 +1,6 @@
 import logging
 
+from langchain import PromptTemplate
 from langchain.chat_models.base import BaseChatModel
 from langchain.schema import HumanMessage, OutputParserException
 
@@ -10,7 +11,7 @@ from core.llm.token_calculator import TokenCalculator
 from core.prompt.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 
 from core.prompt.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
-from core.prompt.prompt_template import OutLinePromptTemplate
+from core.prompt.prompt_template import JinjaPromptTemplate, OutLinePromptTemplate
 from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, CONVERSATION_SUMMARY_PROMPT, INTRODUCTION_GENERATE_PROMPT
 
 
@@ -91,8 +92,8 @@ class LLMGenerator:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser()
         format_instructions = output_parser.get_format_instructions()
 
-        prompt = OutLinePromptTemplate(
-            template="{histories}\n{format_instructions}\nquestions:\n",
+        prompt = JinjaPromptTemplate(
+            template="{{histories}}\n{{format_instructions}}\nquestions:\n",
             input_variables=["histories"],
             partial_variables={"format_instructions": format_instructions}
         )

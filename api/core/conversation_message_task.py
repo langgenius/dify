@@ -10,7 +10,7 @@ from core.constant import llm_constant
 from core.llm.llm_builder import LLMBuilder
 from core.llm.provider.llm_provider_service import LLMProviderService
 from core.prompt.prompt_builder import PromptBuilder
-from core.prompt.prompt_template import OutLinePromptTemplate
+from core.prompt.prompt_template import JinjaPromptTemplate
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -78,7 +78,7 @@ class ConversationMessageTask:
         if self.mode == 'chat':
             introduction = self.app_model_config.opening_statement
             if introduction:
-                prompt_template = OutLinePromptTemplate.from_template(template=PromptBuilder.process_template(introduction))
+                prompt_template = JinjaPromptTemplate.from_template(template=introduction)
                 prompt_inputs = {k: self.inputs[k] for k in prompt_template.input_variables if k in self.inputs}
                 try:
                     introduction = prompt_template.format(**prompt_inputs)
@@ -86,8 +86,7 @@ class ConversationMessageTask:
                     pass
 
             if self.app_model_config.pre_prompt:
-                pre_prompt = PromptBuilder.process_template(self.app_model_config.pre_prompt)
-                system_message = PromptBuilder.to_system_message(pre_prompt, self.inputs)
+                system_message = PromptBuilder.to_system_message(self.app_model_config.pre_prompt, self.inputs)
                 system_instruction = system_message.content
                 llm = LLMBuilder.to_llm(self.tenant_id, self.model_name)
                 system_instruction_tokens = llm.get_messages_tokens([system_message])
