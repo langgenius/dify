@@ -134,6 +134,16 @@ class NotionLoader(BaseLoader):
                 else:
                     value = property_value[type]
                 data[property_name] = value
+            row_dict = {k: v for k, v in data.items() if v}
+            row_content = ''
+            for key, value in row_dict.items():
+                if isinstance(value, dict):
+                    value_dict = {k: v for k, v in value.items() if v}
+                    value_content = ''.join(f'{k}:{v} ' for k, v in value_dict.items())
+                    row_content = row_content + f'{key}:{value_content}\n'
+                else:
+                    row_content = row_content + f'{key}:{value}\n'
+            database_content_list.append(row_content)
             database_content_list.append(json.dumps(data, ensure_ascii=False))
 
         return "\n\n".join(database_content_list)
