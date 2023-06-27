@@ -79,6 +79,7 @@ class ConversationService:
             Conversation.from_source == ('api' if isinstance(user, EndUser) else 'console'),
             Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+            Conversation.is_deleted == False
         ).first()
 
         if not conversation:
