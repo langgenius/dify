@@ -3,7 +3,6 @@ from typing import Optional
 
 import langchain
 from flask import Flask
-from langchain.prompts.base import DEFAULT_FORMATTER_MAPPING
 from pydantic import BaseModel
 
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
@@ -22,9 +21,6 @@ hosted_llm_credentials = HostedLLMCredentials()
 
 
 def init_app(app: Flask):
-    formatter = OneLineFormatter()
-    DEFAULT_FORMATTER_MAPPING['f-string'] = formatter.format
-
     if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
         langchain.verbose = True
 
