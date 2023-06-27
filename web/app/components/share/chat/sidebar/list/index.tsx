@@ -27,6 +27,7 @@ export type IListProps = {
 }
 
 const List: FC<IListProps> = ({
+  className,
   currentId,
   onCurrentIdChange,
   list,
@@ -60,7 +61,7 @@ const List: FC<IListProps> = ({
   return (
     <nav
       ref={listRef}
-      className="space-y-1 bg-white pb-[60px] overflow-y-auto"
+      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[60px] overflow-y-auto')}
     >
       {list.map((item) => {
         const isCurrent = item.id === currentId

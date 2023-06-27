@@ -64,6 +64,8 @@ const Sidebar: FC<ISidebarProps> = ({
       checkHasPinned()
   }, [controlUpdateList])
 
+  const maxListHeight = isInstalledApp ? 'max-h-[30vh]' : 'max-h-[40vh]'
+
   return (
     <div
       className={
@@ -88,13 +90,13 @@ const Sidebar: FC<ISidebarProps> = ({
           <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
         </Button>
       </div>
-      <div className='flex-grow'>
+      <div className='flex-grow h-0 overflow-y-auto overflow-x-hidden'>
         {/* pinned list */}
         {hasPinned && (
           <div className='mt-4 px-4'>
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.pinnedTitle')}</div>
             <List
-              className='max-h-[40vh]'
+              className={maxListHeight}
               currentId={currentId}
               onCurrentIdChange={onCurrentIdChange}
               list={pinnedList}
@@ -114,7 +116,7 @@ const Sidebar: FC<ISidebarProps> = ({
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.unpinnedTitle')}</div>
           )}
           <List
-            className={cn(hasPinned ? 'max-h-[40vh]' : 'flex-grow')}
+            className={cn(hasPinned ? maxListHeight : 'flex-grow')}
             currentId={currentId}
             onCurrentIdChange={onCurrentIdChange}
             list={list}
