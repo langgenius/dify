@@ -11,7 +11,6 @@ import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
 import s from './index.module.css'
 import type { GithubRepo, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
-import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import { Grid01 as Grid01Solid } from '@/app/components/base/icons/src/vender/solid/layout'
@@ -40,7 +39,6 @@ const Header: FC<IHeaderProps> = ({
   isBordered,
 }) => {
   const { t } = useTranslation()
-  const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
@@ -142,7 +140,6 @@ const Header: FC<IHeaderProps> = ({
           </WorkspaceProvider>
         </div>
       </div>
-      <NewAppDialog show={showNewAppDialog} onClose={() => setShowNewAppDialog(false)} />
     </div>
   )
 }
