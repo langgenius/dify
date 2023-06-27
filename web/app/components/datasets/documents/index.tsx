@@ -140,8 +140,6 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     router.push(`/datasets/${datasetId}/documents/create`)
   }
 
-  router.prefetch(`/datasets/${datasetId}/documents/create`)
-
   const isLoading = !documentsRes && !error
 
   const handleSaveNotionPageSelected = async (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => {
