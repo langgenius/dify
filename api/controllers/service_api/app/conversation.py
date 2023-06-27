@@ -64,7 +64,8 @@ class ConversationDetailApi(AppApiResource):
             end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
         try:
-            return ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user)
+            return {"result": "success"}, 204
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
