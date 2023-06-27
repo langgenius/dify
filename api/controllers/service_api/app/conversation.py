@@ -93,4 +93,4 @@ class ConversationRenameApi(AppApiResource):
 
 api.add_resource(ConversationRenameApi, '/conversations/<uuid:c_id>/name', endpoint='conversation_name')
 api.add_resource(ConversationApi, '/conversations')
-api.add_resource(ConversationApi, '/conversations/<uuid:c_id>')
+api.add_resource(ConversationApi, '/conversations/<uuid:c_id>', endpoint='conversation')
