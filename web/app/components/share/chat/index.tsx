@@ -65,6 +65,7 @@ const Main: FC<IMainProps> = ({
   /*
   * conversation info
   */
+  const [allConversationList, setAllConversationList] = useState<ConversationItem[]>([])
   const {
     conversationList,
     setConversationList,
@@ -148,7 +149,7 @@ const Main: FC<IMainProps> = ({
     let notSyncToStateIntroduction = ''
     let notSyncToStateInputs: Record<string, any> | undefined | null = {}
     if (!isNewConversation) {
-      const item = conversationList.find(item => item.id === currConversationId)
+      const item = allConversationList.find(item => item.id === currConversationId)
       notSyncToStateInputs = item?.inputs || {}
       setCurrInputs(notSyncToStateInputs)
       notSyncToStateIntroduction = item?.introduction || ''
@@ -256,6 +257,10 @@ const Main: FC<IMainProps> = ({
     return []
   }
 
+  const fetchAllConversations = () => {
+    return fetchConversations(isInstalledApp, installedAppInfo?.id, undefined, undefined, 100)
+  }
+
   const fetchInitData = () => {
     return Promise.all([isInstalledApp
       ? {
@@ -267,7 +272,7 @@ const Main: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchConversations(isInstalledApp, installedAppInfo?.id), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
   // init
@@ -282,10 +287,10 @@ const Main: FC<IMainProps> = ({
         setIsPublicVersion(tempIsPublicVersion)
         const prompt_template = ''
         // handle current conversation id
-        const { data: conversations, has_more } = conversationData as { data: ConversationItem[]; has_more: boolean }
+        const { data: allConversations } = conversationData as { data: ConversationItem[]; has_more: boolean }
         const _conversationId = getConversationIdFromStorage(appId)
-        const isNotNewConversation = conversations.some(item => item.id === _conversationId)
-        // setHasMore(has_more)
+        const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
+        setAllConversationList(allConversations)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
@@ -431,9 +436,8 @@ const Main: FC<IMainProps> = ({
           return
 
         if (getConversationIdChangeBecauseOfNew()) {
-          const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppInfo?.id)
-          // setHasMore(has_more)
-          // setConversationList(conversations as ConversationItem[])
+          const { data: allConversations }: any = await fetchAllConversations()
+          setAllConversationList(allConversations)
           setControlUpdateConversationList(Date.now())
         }
         setConversationIdChangeBecauseOfNew(false)
