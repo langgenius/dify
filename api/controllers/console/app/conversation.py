@@ -412,7 +412,7 @@ def _get_conversation(app_id, conversation_id, mode):
     app = _get_app(app_id, mode)
 
     conversation = db.session.query(Conversation) \
-        .filter(Conversation.id == conversation_id, Conversation.app_id == app.id).first()
+        .filter(Conversation.id == conversation_id, Conversation.app_id == app.id, Conversation.is_deleted == False).first()
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")
