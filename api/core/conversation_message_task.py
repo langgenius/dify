@@ -156,7 +156,7 @@ class ConversationMessageTask:
         self.message.message = llm_message.prompt
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
-        self.message.answer = llm_message.completion.strip() if llm_message.completion else ''
+        self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
         self.message.provider_response_latency = llm_message.latency
