@@ -35,6 +35,8 @@ class Completion:
         """
         errors: ProviderTokenNotInitError
         """
+        query = PromptBuilder.process_template(query)
+
         memory = None
         if conversation:
             # get memory of conversation (read-only)
@@ -140,7 +142,6 @@ class Completion:
                             chain_output: Optional[str],
                             memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]) -> \
             Tuple[Union[str | List[BaseMessage]], Optional[List[str]]]:
-        query = PromptBuilder.process_template(query)
         # disable template string in query
         # query_params = JinjaPromptTemplate.from_template(template=query).input_variables
         # if query_params:
