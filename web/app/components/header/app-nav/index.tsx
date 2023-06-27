@@ -1,12 +1,13 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams, usePathname, useRouter, useSearchParams, useSelectedLayoutSegment } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
 import { fetchAppList } from '@/service/apps'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { Container } from '@/app/components/base/icons/src/vender/line/development'
+import { Container as ContainerSolid } from '@/app/components/base/icons/src/vender/solid/development'
 import type { AppListResponse } from '@/models/app'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
@@ -18,17 +19,8 @@ const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
 const AppNav = () => {
   const { t } = useTranslation()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
-  const { data: appsData, isLoading, setSize } = useSWRInfinite(false ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
-  // const { datasets, currentDataset } = useDatasetsContext()
-  // const router = useRouter()
-  // const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
-  const selectedSegment = useSelectedLayoutSegment()
-  console.log(selectedSegment)
-  console.log(usePathname(), useSearchParams(), useRouter(), useParams())
-  // const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
-  // const isExplore = selectedSegment === 'explore'
-  // const [starCount, setStarCount] = useState(0)
-
+  const { appId } = useParams()
+  const { data: appsData, isLoading, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
   const appItems = flatten(appsData?.map(appData => appData.data))
 
   const handleLoadmore = useCallback(() => {
@@ -41,11 +33,12 @@ const AppNav = () => {
   return (
     <>
       <Nav
-        icon={<Container />}
+        icon={<Container className='w-4 h-4' />}
+        activeIcon={<ContainerSolid className='w-4 h-4' />}
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
-        curNav={appItems.find(appItem => appItem.id === '')}
+        curNav={appItems.find(appItem => appItem.id === appId)}
         navs={appItems.map(item => ({
           id: item.id,
           name: item.name,
