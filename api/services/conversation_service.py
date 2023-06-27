@@ -90,5 +90,5 @@ class ConversationService:
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
-        db.session.delete(conversation)
+        conversation.is_deleted = True
         db.session.commit()
