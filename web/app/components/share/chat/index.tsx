@@ -438,7 +438,7 @@ const Main: FC<IMainProps> = ({
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: allConversations }: any = await fetchAllConversations()
           setAllConversationList(allConversations)
-          setControlUpdateConversationList(Date.now())
+          noticeUpdateList()
         }
         setConversationIdChangeBecauseOfNew(false)
         resetNewConversationInputs()
@@ -518,9 +518,6 @@ const Main: FC<IMainProps> = ({
         />
       )}
 
-      {/* {isNewConversation ? 'new' : 'exist'}
-        {JSON.stringify(newConversationInputs ? newConversationInputs : {})}
-        {JSON.stringify(existConversationInputs ? existConversationInputs : {})} */}
       <div
         className={cn(
           'flex rounded-t-2xl bg-white overflow-hidden',
