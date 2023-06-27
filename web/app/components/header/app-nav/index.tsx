@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
@@ -21,7 +21,8 @@ const AppNav = () => {
   const { t } = useTranslation()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { appId } = useParams()
-  const { data: currentApp } = useSWR(appId ? { url: '/apps', id: appId } : null, fetchAppDetail)
+  const isAppDetailPage = usePathname().split('/').includes('app')
+  const { data: currentApp } = useSWR((appId && isAppDetailPage) ? { url: '/apps', id: appId } : null, fetchAppDetail)
   const { data: appsData, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
   const appItems = flatten(appsData?.map(appData => appData.data))
 
