@@ -103,11 +103,13 @@ const Main: FC<IMainProps> = ({
   }
   const handlePin = async (id: string) => {
     await pinConversation(isInstalledApp, installedAppInfo?.id, id)
+    notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
   }
 
   const handleUnpin = async (id: string) => {
     await unpinConversation(isInstalledApp, installedAppInfo?.id, id)
+    notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
   }
 
