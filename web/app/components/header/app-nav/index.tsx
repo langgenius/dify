@@ -1,10 +1,11 @@
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams } from 'next/navigation'
+import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
-import { fetchAppList } from '@/service/apps'
+import { fetchAppDetail, fetchAppList } from '@/service/apps'
 import NewAppDialog from '@/app/(commonLayout)/apps/NewAppDialog'
 import { Container } from '@/app/components/base/icons/src/vender/line/development'
 import { Container as ContainerSolid } from '@/app/components/base/icons/src/vender/solid/development'
@@ -20,15 +21,13 @@ const AppNav = () => {
   const { t } = useTranslation()
   const [showNewAppDialog, setShowNewAppDialog] = useState(false)
   const { appId } = useParams()
-  const { data: appsData, isLoading, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
+  const { data: currentApp } = useSWR(appId ? { url: '/apps', id: appId } : null, fetchAppDetail)
+  const { data: appsData, setSize } = useSWRInfinite(appId ? getKey : () => null, fetchAppList, { revalidateFirstPage: false })
   const appItems = flatten(appsData?.map(appData => appData.data))
 
   const handleLoadmore = useCallback(() => {
-    if (isLoading)
-      return
-
     setSize(size => size + 1)
-  }, [setSize, isLoading])
+  }, [setSize])
 
   return (
     <>
@@ -38,7 +37,7 @@ const AppNav = () => {
         text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link='/apps'
-        curNav={appItems.find(appItem => appItem.id === appId)}
+        curNav={currentApp}
         navs={appItems.map(item => ({
           id: item.id,
           name: item.name,

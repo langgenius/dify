@@ -1,10 +1,11 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useRouter } from 'next/navigation'
+import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
-import { fetchDatasets } from '@/service/datasets'
+import { fetchDataDetail, fetchDatasets } from '@/service/datasets'
 import { Database01 } from '@/app/components/base/icons/src/vender/line/development'
 import { Database02 } from '@/app/components/base/icons/src/vender/solid/development'
 import type { DataSetListResponse } from '@/models/datasets'
@@ -19,15 +20,13 @@ const DatasetNav = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { datasetId } = useParams()
-  const { data: datasetsData, isLoading, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: false })
+  const { data: currentDataset } = useSWR(datasetId || null, fetchDataDetail)
+  const { data: datasetsData, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: true })
   const datasetItems = flatten(datasetsData?.map(datasetData => datasetData.data))
 
   const handleLoadmore = useCallback(() => {
-    if (isLoading)
-      return
-
     setSize(size => size + 1)
-  }, [setSize, isLoading])
+  }, [setSize])
 
   return (
     <Nav
@@ -36,7 +35,7 @@ const DatasetNav = () => {
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
-      curNav={datasetItems.find(datasetItem => datasetItem.id === datasetId)}
+      curNav={currentDataset}
       navs={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
