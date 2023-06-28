@@ -1,4 +1,5 @@
 import math
+import re
 from typing import Mapping, List, Dict, Any, Optional
 
 from langchain import PromptTemplate
@@ -178,13 +179,20 @@ class MultiDatasetRouterChain(Chain):
 
         route = self.router_chain.route(inputs)
 
-        if not route.destination:
+        destination = ''
+        if route.destination:
+            pattern = r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'
+            match = re.search(pattern, route.destination, re.IGNORECASE)
+            if match:
+                destination = match.group()
+
+        if not destination:
             return {"text": ''}
-        elif route.destination in self.dataset_tools:
-            return {"text": self.dataset_tools[route.destination].run(
+        elif destination in self.dataset_tools:
+            return {"text": self.dataset_tools[destination].run(
                 route.next_inputs['input']
             )}
         else:
             raise ValueError(
-                f"Received invalid destination chain name '{route.destination}'"
+                f"Received invalid destination chain name '{destination}'"
             )
