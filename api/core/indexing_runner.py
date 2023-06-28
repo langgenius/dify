@@ -346,10 +346,10 @@ class IndexingRunner:
         return text_docs
 
     def filter_string(self, text):
-        text = text.replace('<|', '<')
-        text = text.replace('|>', '>')
-        pattern = re.compile('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]')
-        return pattern.sub('', text)
+        text = re.sub(r'<\|', '<', text)
+        text = re.sub(r'\|>', '>', text)
+        text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]', '', text)
+        return text
 
     def _get_splitter(self, processing_rule: DatasetProcessRule) -> TextSplitter:
         """
