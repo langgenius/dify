@@ -39,6 +39,7 @@ class ExcelLoader(BaseLoader):
                     row_dict = dict(zip(keys, list(map(str, row))))
                     row_dict = {k: v for k, v in row_dict.items() if v}
                     item = ''.join(f'{k}:{v}\n' for k, v in row_dict.items())
-                    data.append(item)
+                    document = Document(page_content=item)
+                    data.append(document)
 
-        return [Document(page_content='\n\n'.join(data))]
+        return data
