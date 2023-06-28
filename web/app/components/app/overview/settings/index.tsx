@@ -83,17 +83,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   return (
     <>
-      {showEmojiPicker && <EmojiPicker
-        onSelect={(icon, icon_background) => {
-          console.log(icon, icon_background)
-          setEmoji({ icon, icon_background })
-          setShowEmojiPicker(false)
-        }}
-        onClose={() => {
-          setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
-          setShowEmojiPicker(false)
-        }}
-      />}
       <Modal
         title={t(`${prefixSettings}.title`)}
         isShow={isShow}
@@ -161,6 +150,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button type='primary' className='flex-shrink-0' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
+        {showEmojiPicker && <EmojiPicker
+          onSelect={(icon, icon_background) => {
+            console.log(icon, icon_background)
+            setEmoji({ icon, icon_background })
+            setShowEmojiPicker(false)
+          }}
+          onClose={() => {
+            setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
+            setShowEmojiPicker(false)
+          }}
+        />}
       </Modal >
     </>
 
