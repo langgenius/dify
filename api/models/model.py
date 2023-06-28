@@ -206,6 +206,8 @@ class Conversation(db.Model):
     messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
     message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
 
+    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+
     @property
     def model_config(self):
         model_config = {}

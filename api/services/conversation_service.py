@@ -16,6 +16,7 @@ class ConversationService:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
         base_query = db.session.query(Conversation).filter(
+            Conversation.is_deleted == False,
             Conversation.app_id == app_model.id,
             Conversation.from_source == ('api' if isinstance(user, EndUser) else 'console'),
             Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
@@ -79,6 +80,7 @@ class ConversationService:
             Conversation.from_source == ('api' if isinstance(user, EndUser) else 'console'),
             Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
             Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
+            Conversation.is_deleted == False
         ).first()
 
         if not conversation:
@@ -90,5 +92,5 @@ class ConversationService:
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
-        db.session.delete(conversation)
+        conversation.is_deleted = True
         db.session.commit()

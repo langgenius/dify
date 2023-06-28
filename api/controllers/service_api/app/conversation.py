@@ -48,6 +48,26 @@ class ConversationApi(AppApiResource):
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
+class ConversationDetailApi(AppApiResource):
+    @marshal_with(conversation_fields)
+    def delete(self, app_model, end_user, c_id):
+        if app_model.mode != 'chat':
+            raise NotChatAppError()
+
+        conversation_id = str(c_id)
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('user', type=str, location='args')
+        args = parser.parse_args()
+
+        if end_user is None and args['user'] is not None:
+            end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
+
+        try:
+            ConversationService.delete(app_model, conversation_id, end_user)
+            return {"result": "success"}, 204
+        except services.errors.conversation.ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
 
 class ConversationRenameApi(AppApiResource):
 
@@ -74,3 +94,4 @@ class ConversationRenameApi(AppApiResource):
 
 api.add_resource(ConversationRenameApi, '/conversations/<uuid:c_id>/name', endpoint='conversation_name')
 api.add_resource(ConversationApi, '/conversations')
+api.add_resource(ConversationApi, '/conversations/<uuid:c_id>', endpoint='conversation')
