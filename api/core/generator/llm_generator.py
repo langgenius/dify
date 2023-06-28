@@ -2,7 +2,7 @@ import logging
 
 from langchain import PromptTemplate
 from langchain.chat_models.base import BaseChatModel
-from langchain.schema import HumanMessage, OutputParserException
+from langchain.schema import HumanMessage, OutputParserException, BaseMessage
 
 from core.constant import llm_constant
 from core.llm.llm_builder import LLMBuilder
@@ -23,10 +23,10 @@ class LLMGenerator:
     @classmethod
     def generate_conversation_name(cls, tenant_id: str, query, answer):
         prompt = CONVERSATION_TITLE_PROMPT
-        prompt = prompt.format(query=query, answer=answer)
+        prompt = prompt.format(query=query)
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
-            model_name=generate_base_model,
+            model_name='gpt-3.5-turbo',
             max_tokens=50
         )
 
@@ -40,11 +40,12 @@ class LLMGenerator:
     @classmethod
     def generate_conversation_summary(cls, tenant_id: str, messages):
         max_tokens = 200
+        model = 'gpt-3.5-turbo'
 
         prompt = CONVERSATION_SUMMARY_PROMPT
         prompt_with_empty_context = prompt.format(context='')
-        prompt_tokens = TokenCalculator.get_num_tokens(generate_base_model, prompt_with_empty_context)
-        rest_tokens = llm_constant.max_context_token_length[generate_base_model] - prompt_tokens - max_tokens
+        prompt_tokens = TokenCalculator.get_num_tokens(model, prompt_with_empty_context)
+        rest_tokens = llm_constant.max_context_token_length[model] - prompt_tokens - max_tokens
 
         context = ''
         for message in messages:
@@ -52,14 +53,14 @@ class LLMGenerator:
                 continue
 
             message_qa_text = "Human:" + message.query + "\nAI:" + message.answer + "\n"
-            if rest_tokens - TokenCalculator.get_num_tokens(generate_base_model, context + message_qa_text) > 0:
+            if rest_tokens - TokenCalculator.get_num_tokens(model, context + message_qa_text) > 0:
                 context += message_qa_text
 
         prompt = prompt.format(context=context)
 
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
-            model_name=generate_base_model,
+            model_name=model,
             max_tokens=max_tokens
         )
 
@@ -102,7 +103,7 @@ class LLMGenerator:
 
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
-            model_name=generate_base_model,
+            model_name='gpt-3.5-turbo',
             temperature=0,
             max_tokens=256
         )
@@ -114,6 +115,8 @@ class LLMGenerator:
 
         try:
             output = llm(query)
+            if isinstance(output, BaseMessage):
+                output = output.content
             questions = output_parser.parse(output)
         except Exception:
             logging.exception("Error generating suggested questions after answer")
