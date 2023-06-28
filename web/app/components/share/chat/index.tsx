@@ -142,6 +142,9 @@ const Main: FC<IMainProps> = ({
     await delConversation(isInstalledApp, installedAppInfo?.id, toDeleteConversationId)
     notify({ type: 'success', message: t('common.api.success') })
     hideConfirm()
+    if (currConversationId === toDeleteConversationId)
+      handleConversationIdChange('-1')
+
     noticeUpdateList()
   }
 
