@@ -1,32 +1,34 @@
-import React, { useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  ChatBubbleOvalLeftEllipsisIcon,
   PencilSquareIcon,
 } from '@heroicons/react/24/outline'
-import { ChatBubbleOvalLeftEllipsisIcon as ChatBubbleOvalLeftEllipsisSolidIcon } from '@heroicons/react/24/solid'
-import { useInfiniteScroll } from 'ahooks'
+import cn from 'classnames'
 import Button from '../../../base/button'
+import List from './list'
 import AppInfo from '@/app/components/share/chat/sidebar/app-info'
 // import Card from './card'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import { fetchConversations } from '@/service/share'
-
-function classNames(...classes: any[]) {
-  return classes.filter(Boolean).join(' ')
-}
 
 export type ISidebarProps = {
   copyRight: string
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  pinnedList: ConversationItem[]
   isInstalledApp: boolean
   installedAppId?: string
   siteInfo: SiteInfo
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
+  onPinnedMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
   isNoMore: boolean
+  isPinnedNoMore: boolean
+  onPin: (id: string) => void
+  onUnpin: (id: string) => void
+  controlUpdateList: number
+  onDelete: (id: string) => void
 }
 
 const Sidebar: FC<ISidebarProps> = ({
@@ -34,37 +36,42 @@ const Sidebar: FC<ISidebarProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  pinnedList,
   isInstalledApp,
   installedAppId,
   siteInfo,
   onMoreLoaded,
+  onPinnedMoreLoaded,
   isNoMore,
+  isPinnedNoMore,
+  onPin,
+  onUnpin,
+  controlUpdateList,
+  onDelete,
 }) => {
   const { t } = useTranslation()
-  const listRef = useRef<HTMLDivElement>(null)
+  const [hasPinned, setHasPinned] = useState(false)
 
-  useInfiniteScroll(
-    async () => {
-      if (!isNoMore) {
-        const lastId = list[list.length - 1].id
-        const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId)
-        onMoreLoaded({ data: conversations, has_more })
-      }
-      return { list: [] }
-    },
-    {
-      target: listRef,
-      isNoMore: () => {
-        return isNoMore
-      },
-      reloadDeps: [isNoMore],
-    },
-  )
+  const checkHasPinned = async () => {
+    const { data }: any = await fetchConversations(isInstalledApp, installedAppId, undefined, true)
+    setHasPinned(data.length > 0)
+  }
+
+  useEffect(() => {
+    checkHasPinned()
+  }, [])
+
+  useEffect(() => {
+    if (controlUpdateList !== 0)
+      checkHasPinned()
+  }, [controlUpdateList])
+
+  const maxListHeight = isInstalledApp ? 'max-h-[30vh]' : 'max-h-[40vh]'
 
   return (
     <div
       className={
-        classNames(
+        cn(
           isInstalledApp ? 'tablet:h-[calc(100vh_-_74px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
           'shrink-0 flex flex-col bg-white pc:w-[244px] tablet:w-[192px] mobile:w-[240px]  border-r border-gray-200 mobile:h-screen',
         )
@@ -85,40 +92,48 @@ const Sidebar: FC<ISidebarProps> = ({
           <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
         </Button>
       </div>
-
-      <nav
-        ref={listRef}
-        className="mt-4 flex-1 space-y-1 bg-white p-4 !pt-0 overflow-y-auto"
-      >
-        {list.map((item) => {
-          const isCurrent = item.id === currentId
-          const ItemIcon
-            = isCurrent ? ChatBubbleOvalLeftEllipsisSolidIcon : ChatBubbleOvalLeftEllipsisIcon
-          return (
-            <div
-              onClick={() => onCurrentIdChange(item.id)}
-              key={item.id}
-              className={classNames(
-                isCurrent
-                  ? 'bg-primary-50 text-primary-600'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-gray-700',
-                'group flex items-center rounded-md px-2 py-2 text-sm font-medium cursor-pointer',
-              )}
-            >
-              <ItemIcon
-                className={classNames(
-                  isCurrent
-                    ? 'text-primary-600'
-                    : 'text-gray-400 group-hover:text-gray-500',
-                  'mr-3 h-5 w-5 flex-shrink-0',
-                )}
-                aria-hidden="true"
-              />
-              {item.name}
-            </div>
-          )
-        })}
-      </nav>
+      <div className='flex-grow h-0 overflow-y-auto overflow-x-hidden'>
+        {/* pinned list */}
+        {hasPinned && (
+          <div className='mt-4 px-4'>
+            <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.pinnedTitle')}</div>
+            <List
+              className={maxListHeight}
+              currentId={currentId}
+              onCurrentIdChange={onCurrentIdChange}
+              list={pinnedList}
+              isInstalledApp={isInstalledApp}
+              installedAppId={installedAppId}
+              onMoreLoaded={onPinnedMoreLoaded}
+              isNoMore={isPinnedNoMore}
+              isPinned={true}
+              onPinChanged={id => onUnpin(id)}
+              controlUpdate={controlUpdateList + 1}
+              onDelete={onDelete}
+            />
+          </div>
+        )}
+        {/* unpinned list */}
+        <div className='mt-4 px-4'>
+          {hasPinned && (
+            <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.unpinnedTitle')}</div>
+          )}
+          <List
+            className={cn(hasPinned ? maxListHeight : 'flex-grow')}
+            currentId={currentId}
+            onCurrentIdChange={onCurrentIdChange}
+            list={list}
+            isInstalledApp={isInstalledApp}
+            installedAppId={installedAppId}
+            onMoreLoaded={onMoreLoaded}
+            isNoMore={isNoMore}
+            isPinned={false}
+            onPinChanged={id => onPin(id)}
+            controlUpdate={controlUpdateList + 1}
+            onDelete={onDelete}
+          />
+        </div>
+      </div>
       <div className="flex flex-shrink-0 pr-4 pb-4 pl-4">
         <div className="text-gray-400 font-normal text-xs">© {copyRight} {(new Date()).getFullYear()}</div>
       </div>

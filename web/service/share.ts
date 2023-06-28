@@ -1,16 +1,18 @@
 import type { IOnCompleted, IOnData, IOnError } from './base'
 import {
-  del as consoleDel, get as consoleGet, post as consolePost,
-  delPublic as del, getPublic as get, postPublic as post, ssePost,
+  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
+  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
 import type { Feedbacktype } from '@/app/components/app/chat'
 
-function getAction(action: 'get' | 'post' | 'del', isInstalledApp: boolean) {
+function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {
     case 'get':
       return isInstalledApp ? consoleGet : get
     case 'post':
       return isInstalledApp ? consolePost : post
+    case 'patch':
+      return isInstalledApp ? consolePatch : patch
     case 'del':
       return isInstalledApp ? consoleDel : del
   }
@@ -55,8 +57,20 @@ export const fetchAppInfo = async () => {
   return get('/site')
 }
 
-export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string) => {
-  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: 20 }, ...(last_id ? { last_id } : {}) } })
+export const fetchConversations = async (isInstalledApp: boolean, installedAppId = '', last_id?: string, pinned?: boolean, limit?: number) => {
+  return getAction('get', isInstalledApp)(getUrl('conversations', isInstalledApp, installedAppId), { params: { ...{ limit: limit || 20 }, ...(last_id ? { last_id } : {}), ...(pinned !== undefined ? { pinned } : {}) } })
+}
+
+export const pinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('patch', isInstalledApp)(getUrl(`conversations/${id}/pin`, isInstalledApp, installedAppId))
+}
+
+export const unpinConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('patch', isInstalledApp)(getUrl(`conversations/${id}/unpin`, isInstalledApp, installedAppId))
+}
+
+export const delConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('del', isInstalledApp)(getUrl(`conversations/${id}`, isInstalledApp, installedAppId))
 }
 
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
