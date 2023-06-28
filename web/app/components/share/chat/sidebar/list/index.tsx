@@ -17,6 +17,7 @@ export type IListProps = {
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  isClearConversationList: boolean
   isInstalledApp: boolean
   installedAppId?: string
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
@@ -32,6 +33,7 @@ const List: FC<IListProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  isClearConversationList,
   isInstalledApp,
   installedAppId,
   onMoreLoaded,
@@ -46,7 +48,7 @@ const List: FC<IListProps> = ({
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const lastId = list[list.length - 1]?.id
+        const lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
         const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
         onMoreLoaded({ data: conversations, has_more })
       }
@@ -63,7 +65,7 @@ const List: FC<IListProps> = ({
   return (
     <nav
       ref={listRef}
-      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[60px] overflow-y-auto')}
+      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[85px] overflow-y-auto')}
     >
       {list.map((item) => {
         const isCurrent = item.id === currentId
@@ -93,18 +95,16 @@ const List: FC<IListProps> = ({
               <span>{item.name}</span>
             </div>
 
-            {
-              !isCurrent && (
-                <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
-                  <ItemOperation
-                    isPinned={isPinned}
-                    togglePin={() => onPinChanged(item.id)}
-                    isShowDelete
-                    onDelete={() => onDelete(item.id)}
-                  />
-                </div>
-              )
-            }
+            {item.id !== '-1' && (
+              <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
+                <ItemOperation
+                  isPinned={isPinned}
+                  togglePin={() => onPinChanged(item.id)}
+                  isShowDelete
+                  onDelete={() => onDelete(item.id)}
+                />
+              </div>
+            )}
           </div>
         )
       })}

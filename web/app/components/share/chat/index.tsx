@@ -67,6 +67,8 @@ const Main: FC<IMainProps> = ({
   * conversation info
   */
   const [allConversationList, setAllConversationList] = useState<ConversationItem[]>([])
+  const [isClearConversationList, { setTrue: clearConversationListTrue, setFalse: clearConversationListFalse }] = useBoolean(false)
+  const [isClearPinnedConversationList, { setTrue: clearPinnedConversationListTrue, setFalse: clearPinnedConversationListFalse }] = useBoolean(false)
   const {
     conversationList,
     setConversationList,
@@ -89,18 +91,32 @@ const Main: FC<IMainProps> = ({
   const [hasPinnedMore, setHasPinnedMore] = useState<boolean>(true)
   const onMoreLoaded = ({ data: conversations, has_more }: any) => {
     setHasMore(has_more)
-    setConversationList([...conversationList, ...conversations])
+    if (isClearConversationList) {
+      setConversationList(conversations)
+      clearConversationListFalse()
+    }
+    else {
+      setConversationList([...conversationList, ...conversations])
+    }
   }
   const onPinnedMoreLoaded = ({ data: conversations, has_more }: any) => {
     setHasPinnedMore(has_more)
-    setPinnedConversationList([...pinnedConversationList, ...conversations])
+    if (isClearPinnedConversationList) {
+      setPinnedConversationList(conversations)
+      clearPinnedConversationListFalse()
+    }
+    else {
+      setPinnedConversationList([...pinnedConversationList, ...conversations])
+    }
   }
   const [controlUpdateConversationList, setControlUpdateConversationList] = useState(0)
   const noticeUpdateList = () => {
-    setConversationList([])
     setHasMore(true)
-    setPinnedConversationList([])
+    clearConversationListTrue()
+
     setHasPinnedMore(true)
+    clearPinnedConversationListTrue()
+
     setControlUpdateConversationList(Date.now())
   }
   const handlePin = async (id: string) => {
@@ -126,6 +142,9 @@ const Main: FC<IMainProps> = ({
     await delConversation(isInstalledApp, installedAppInfo?.id, toDeleteConversationId)
     notify({ type: 'success', message: t('common.api.success') })
     hideConfirm()
+    if (currConversationId === toDeleteConversationId)
+      handleConversationIdChange('-1')
+
     noticeUpdateList()
   }
 
@@ -496,7 +515,9 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
+        isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
         isNoMore={!hasMore}

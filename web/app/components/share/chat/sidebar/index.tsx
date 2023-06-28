@@ -17,7 +17,9 @@ export type ISidebarProps = {
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  isClearConversationList: boolean
   pinnedList: ConversationItem[]
+  isClearPinnedConversationList: boolean
   isInstalledApp: boolean
   installedAppId?: string
   siteInfo: SiteInfo
@@ -36,7 +38,9 @@ const Sidebar: FC<ISidebarProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  isClearConversationList,
   pinnedList,
+  isClearPinnedConversationList,
   isInstalledApp,
   installedAppId,
   siteInfo,
@@ -92,16 +96,17 @@ const Sidebar: FC<ISidebarProps> = ({
           <PencilSquareIcon className="mr-2 h-4 w-4" /> {t('share.chat.newChat')}
         </Button>
       </div>
-      <div className='flex-grow h-0 overflow-y-auto overflow-x-hidden'>
+      <div className={'flex-grow flex flex-col h-0 overflow-y-auto overflow-x-hidden'}>
         {/* pinned list */}
         {hasPinned && (
-          <div className='mt-4 px-4'>
+          <div className={cn('mt-4 px-4', list.length === 0 && 'flex flex-col flex-grow')}>
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.pinnedTitle')}</div>
             <List
-              className={maxListHeight}
+              className={cn(list.length > 0 ? maxListHeight : 'flex-grow')}
               currentId={currentId}
               onCurrentIdChange={onCurrentIdChange}
               list={pinnedList}
+              isClearConversationList={isClearPinnedConversationList}
               isInstalledApp={isInstalledApp}
               installedAppId={installedAppId}
               onMoreLoaded={onPinnedMoreLoaded}
@@ -114,8 +119,8 @@ const Sidebar: FC<ISidebarProps> = ({
           </div>
         )}
         {/* unpinned list */}
-        <div className='mt-4 px-4'>
-          {hasPinned && (
+        <div className={cn('mt-4 px-4', !hasPinned && 'flex flex-col flex-grow')}>
+          {(hasPinned && list.length > 0) && (
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.unpinnedTitle')}</div>
           )}
           <List
@@ -123,6 +128,7 @@ const Sidebar: FC<ISidebarProps> = ({
             currentId={currentId}
             onCurrentIdChange={onCurrentIdChange}
             list={list}
+            isClearConversationList={isClearConversationList}
             isInstalledApp={isInstalledApp}
             installedAppId={installedAppId}
             onMoreLoaded={onMoreLoaded}
@@ -133,6 +139,7 @@ const Sidebar: FC<ISidebarProps> = ({
             onDelete={onDelete}
           />
         </div>
+
       </div>
       <div className="flex flex-shrink-0 pr-4 pb-4 pl-4">
         <div className="text-gray-400 font-normal text-xs">© {copyRight} {(new Date()).getFullYear()}</div>
