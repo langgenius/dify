@@ -95,18 +95,14 @@ const List: FC<IListProps> = ({
               <span>{item.name}</span>
             </div>
 
-            {
-              !isCurrent && (
-                <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
-                  <ItemOperation
-                    isPinned={isPinned}
-                    togglePin={() => onPinChanged(item.id)}
-                    isShowDelete
-                    onDelete={() => onDelete(item.id)}
-                  />
-                </div>
-              )
-            }
+            <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
+              <ItemOperation
+                isPinned={isPinned}
+                togglePin={() => onPinChanged(item.id)}
+                isShowDelete
+                onDelete={() => onDelete(item.id)}
+              />
+            </div>
           </div>
         )
       })}
