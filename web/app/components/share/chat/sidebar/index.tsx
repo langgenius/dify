@@ -28,6 +28,7 @@ export type ISidebarProps = {
   onPin: (id: string) => void
   onUnpin: (id: string) => void
   controlUpdateList: number
+  onDelete: (id: string) => void
 }
 
 const Sidebar: FC<ISidebarProps> = ({
@@ -46,6 +47,7 @@ const Sidebar: FC<ISidebarProps> = ({
   onPin,
   onUnpin,
   controlUpdateList,
+  onDelete,
 }) => {
   const { t } = useTranslation()
   const [hasPinned, setHasPinned] = useState(false)
@@ -107,6 +109,7 @@ const Sidebar: FC<ISidebarProps> = ({
               isPinned={true}
               onPinChanged={id => onUnpin(id)}
               controlUpdate={controlUpdateList + 1}
+              onDelete={onDelete}
             />
           </div>
         )}
@@ -127,6 +130,7 @@ const Sidebar: FC<ISidebarProps> = ({
             isPinned={false}
             onPinChanged={id => onPin(id)}
             controlUpdate={controlUpdateList + 1}
+            onDelete={onDelete}
           />
         </div>
       </div>

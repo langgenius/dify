@@ -19,6 +19,10 @@ const translation = {
     privacyPolicyLeft: '请阅读由该应用开发者提供的',
     privacyPolicyMiddle: '隐私政策',
     privacyPolicyRight: '。',
+    deleteConversation: {
+      title: '删除对话',
+      content: '您确定要删除此对话吗？',
+    },
   },
   generation: {
     tabs: {

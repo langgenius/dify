@@ -24,6 +24,7 @@ export type IListProps = {
   isPinned: boolean
   onPinChanged: (id: string) => void
   controlUpdate: number
+  onDelete: (id: string) => void
 }
 
 const List: FC<IListProps> = ({
@@ -38,6 +39,7 @@ const List: FC<IListProps> = ({
   isPinned,
   onPinChanged,
   controlUpdate,
+  onDelete,
 }) => {
   const listRef = useRef<HTMLDivElement>(null)
 
@@ -97,8 +99,8 @@ const List: FC<IListProps> = ({
                   <ItemOperation
                     isPinned={isPinned}
                     togglePin={() => onPinChanged(item.id)}
-                    isShowDelete={false}
-                    onDelete={() => {}}
+                    isShowDelete
+                    onDelete={() => onDelete(item.id)}
                   />
                 </div>
               )

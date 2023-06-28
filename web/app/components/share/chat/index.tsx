@@ -14,7 +14,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
 import ConfigSence from '@/app/components/share/chat/config-scence'
 import Header from '@/app/components/share/header'
-import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, pinConversation, sendChatMessage, stopChatMessageResponding, unpinConversation, updateFeedback } from '@/service/share'
+import { delConversation, fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, pinConversation, sendChatMessage, stopChatMessageResponding, unpinConversation, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
@@ -25,6 +25,7 @@ import Loading from '@/app/components/base/loading'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
+import Confirm from '@/app/components/base/confirm'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -111,6 +112,20 @@ const Main: FC<IMainProps> = ({
   const handleUnpin = async (id: string) => {
     await unpinConversation(isInstalledApp, installedAppInfo?.id, id)
     notify({ type: 'success', message: t('common.api.success') })
+    noticeUpdateList()
+  }
+  const [isShowConfirm, { setTrue: showConfirm, setFalse: hideConfirm }] = useBoolean(false)
+  const [toDeleteConversationId, setToDeleteConversationId] = useState('')
+  const handleDelete = (id: string) => {
+    setToDeleteConversationId(id)
+    hideSidebar() // mobile
+    showConfirm()
+  }
+
+  const didDelete = async () => {
+    await delConversation(isInstalledApp, installedAppInfo?.id, toDeleteConversationId)
+    notify({ type: 'success', message: t('common.api.success') })
+    hideConfirm()
     noticeUpdateList()
   }
 
@@ -495,6 +510,7 @@ const Main: FC<IMainProps> = ({
         onPin={handlePin}
         onUnpin={handleUnpin}
         controlUpdateList={controlUpdateConversationList}
+        onDelete={handleDelete}
       />
     )
   }
@@ -584,6 +600,17 @@ const Main: FC<IMainProps> = ({
                 </div>
               </div>)
           }
+
+          {isShowConfirm && (
+            <Confirm
+              title={t('share.chat.deleteConversation.title')}
+              content={t('share.chat.deleteConversation.content')}
+              isShow={isShowConfirm}
+              onClose={hideConfirm}
+              onConfirm={didDelete}
+              onCancel={hideConfirm}
+            />
+          )}
         </div>
       </div>
     </div>

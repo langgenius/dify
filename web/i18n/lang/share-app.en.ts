@@ -23,6 +23,10 @@ const translation = {
       'privacy policy',
     privacyPolicyRight:
       ' provided by the app developer.',
+    deleteConversation: {
+      title: 'Delete conversation',
+      content: 'Are you sure you want to delete this conversation?',
+    },
   },
   generation: {
     tabs: {
