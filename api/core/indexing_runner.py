@@ -235,7 +235,8 @@ class IndexingRunner:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
 
-                tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, document.page_content)
+                tokens += TokenCalculator.get_num_tokens(self.embedding_model_name,
+                                                         self.filter_string(document.page_content))
 
         return {
             "total_segments": total_segments,
@@ -345,6 +346,8 @@ class IndexingRunner:
         return text_docs
 
     def filter_string(self, text):
+        text = text.replace('<|', '<')
+        text = text.replace('|>', '>')
         pattern = re.compile('[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\x80-\xFF]')
         return pattern.sub('', text)
 
@@ -425,7 +428,7 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                        processing_rule: DatasetProcessRule) -> List[Document]:
+                            processing_rule: DatasetProcessRule) -> List[Document]:
         """
         Split the text documents into nodes.
         """
