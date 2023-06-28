@@ -17,7 +17,9 @@ export type ISidebarProps = {
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  isClearConversationList: boolean
   pinnedList: ConversationItem[]
+  isClearPinnedConversationList: boolean
   isInstalledApp: boolean
   installedAppId?: string
   siteInfo: SiteInfo
@@ -36,7 +38,9 @@ const Sidebar: FC<ISidebarProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  isClearConversationList,
   pinnedList,
+  isClearPinnedConversationList,
   isInstalledApp,
   installedAppId,
   siteInfo,
@@ -102,6 +106,7 @@ const Sidebar: FC<ISidebarProps> = ({
               currentId={currentId}
               onCurrentIdChange={onCurrentIdChange}
               list={pinnedList}
+              isClearConversationList={isClearPinnedConversationList}
               isInstalledApp={isInstalledApp}
               installedAppId={installedAppId}
               onMoreLoaded={onPinnedMoreLoaded}
@@ -123,6 +128,7 @@ const Sidebar: FC<ISidebarProps> = ({
             currentId={currentId}
             onCurrentIdChange={onCurrentIdChange}
             list={list}
+            isClearConversationList={isClearConversationList}
             isInstalledApp={isInstalledApp}
             installedAppId={installedAppId}
             onMoreLoaded={onMoreLoaded}

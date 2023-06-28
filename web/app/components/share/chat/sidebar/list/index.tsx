@@ -17,6 +17,7 @@ export type IListProps = {
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  isClearConversationList: boolean
   isInstalledApp: boolean
   installedAppId?: string
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
@@ -32,6 +33,7 @@ const List: FC<IListProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  isClearConversationList,
   isInstalledApp,
   installedAppId,
   onMoreLoaded,
@@ -46,7 +48,7 @@ const List: FC<IListProps> = ({
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const lastId = list[list.length - 1]?.id
+        const lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
         const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
         onMoreLoaded({ data: conversations, has_more })
       }
