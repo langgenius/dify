@@ -69,6 +69,10 @@ export const unpinConversation = async (isInstalledApp: boolean, installedAppId 
   return getAction('patch', isInstalledApp)(getUrl(`conversations/${id}/unpin`, isInstalledApp, installedAppId))
 }
 
+export const delConversation = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('del', isInstalledApp)(getUrl(`conversations/${id}`, isInstalledApp, installedAppId))
+}
+
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
   return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
 }
