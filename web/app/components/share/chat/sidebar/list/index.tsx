@@ -65,7 +65,7 @@ const List: FC<IListProps> = ({
   return (
     <nav
       ref={listRef}
-      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[60px] overflow-y-auto')}
+      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[85px] overflow-y-auto')}
     >
       {list.map((item) => {
         const isCurrent = item.id === currentId
@@ -95,14 +95,16 @@ const List: FC<IListProps> = ({
               <span>{item.name}</span>
             </div>
 
-            <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
-              <ItemOperation
-                isPinned={isPinned}
-                togglePin={() => onPinChanged(item.id)}
-                isShowDelete
-                onDelete={() => onDelete(item.id)}
-              />
-            </div>
+            {item.id !== '-1' && (
+              <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
+                <ItemOperation
+                  isPinned={isPinned}
+                  togglePin={() => onPinChanged(item.id)}
+                  isShowDelete
+                  onDelete={() => onDelete(item.id)}
+                />
+              </div>
+            )}
           </div>
         )
       })}
