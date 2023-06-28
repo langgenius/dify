@@ -56,16 +56,14 @@ export default function AppNavItem({
         <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
       </div>
       {
-        !isSelected && (
-          <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
-            <ItemOperation
-              isPinned={isPinned}
-              togglePin={togglePin}
-              isShowDelete={!uninstallable}
-              onDelete={() => onDelete(id)}
-            />
-          </div>
-        )
+        <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
+          <ItemOperation
+            isPinned={isPinned}
+            togglePin={togglePin}
+            isShowDelete={!uninstallable && !isSelected}
+            onDelete={() => onDelete(id)}
+          />
+        </div>
       }
     </div>
   )
