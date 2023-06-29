@@ -29,3 +29,7 @@ body .btn:hover {
   /* background-image: ; */
   background-color: #F2F4F7;
 }
+
+.deleteActionItem:hover .deleteActionItemChild {
+  @apply text-red-500; 
+}
