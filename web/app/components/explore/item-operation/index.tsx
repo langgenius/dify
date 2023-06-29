@@ -43,8 +43,8 @@ const ItemOperation: FC<IItemOperationProps> = ({
           </div>
           {isShowDelete && (
             <div className={cn(s.actionItem, s.deleteActionItem, 'hover:bg-gray-50 group')} onClick={onDelete} >
-              <TrashIcon className={'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
-              <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('explore.sidebar.action.delete')}</span>
+              <TrashIcon className={cn(s.deleteActionItemChild, 'shrink-0 w-4 h-4 stroke-current text-gray-500 stroke-2')} />
+              <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}
 

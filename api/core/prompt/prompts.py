@@ -1,15 +1,15 @@
 CONVERSATION_TITLE_PROMPT = (
     "Human:{query}\n-----\n"
     "Help me summarize the intent of what the human said and provide a title, the title should not exceed 20 words.\n"
-    "If the human said is conducted in Chinese, you should return a Chinese title.\n" 
-    "If the human said is conducted in English, you should return an English title.\n"
+    "If what the human said is conducted in English, you should only return an English title.\n" 
+    "If what the human said is conducted in Chinese, you should only return a Chinese title.\n"
     "title:"
 )
 
 CONVERSATION_SUMMARY_PROMPT = (
     "Please generate a short summary of the following conversation.\n"
-    "If the conversation communicating in Chinese, you should return a Chinese summary.\n"
-    "If the conversation communicating in English, you should return an English summary.\n"
+    "If the following conversation communicating in English, you should only return an English summary.\n"
+    "If the following conversation communicating in Chinese, you should only return a Chinese summary.\n"
     "[Conversation Start]\n"
     "{context}\n"
     "[Conversation End]\n\n"
