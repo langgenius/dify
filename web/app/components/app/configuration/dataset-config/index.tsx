@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { isEqual } from 'lodash-es'
+import produce from 'immer'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import CardItem from './card-item'
@@ -31,11 +32,27 @@ const DatasetConfig: FC = () => {
   const hasData = dataSet.length > 0
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const handleSelect = (data: DataSet[]) => {
-    if (isEqual(data, dataSet))
+    if (isEqual(data.map(item => item.id), dataSet.map(item => item.id))) {
       hideSelectDataSet()
+      return
+    }
 
     setFormattingChanged(true)
-    setDataSet(data)
+    if (data.find(item => !item.name)) { // has not loaded selected dataset
+      const newSelected = produce(data, (draft) => {
+        data.forEach((item, index) => {
+          if (!item.name) { // not fetched database
+            const newItem = dataSet.find(i => i.id === item.id)
+            if (newItem)
+              draft[index] = newItem
+          }
+        })
+      })
+      setDataSet(newSelected)
+    }
+    else {
+      setDataSet(data)
+    }
     hideSelectDataSet()
   }
   const onRemove = (id: string) => {

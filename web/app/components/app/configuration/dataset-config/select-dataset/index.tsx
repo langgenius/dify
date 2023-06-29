@@ -5,6 +5,7 @@ import { useGetState, useInfiniteScroll } from 'ahooks'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import produce from 'immer'
 import TypeIcon from '../type-icon'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
@@ -28,7 +29,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const [selected, setSelected] = React.useState<DataSet[]>([])
+  const [selected, setSelected] = React.useState<DataSet[]>(selectedIds.map(id => ({ id }) as any))
   const [loaded, setLoaded] = React.useState(false)
   const [datasets, setDataSets] = React.useState<DataSet[] | null>(null)
   const hasNoData = !datasets || datasets?.length === 0
@@ -47,7 +48,19 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const newList = [...(datasets || []), ...data]
         setDataSets(newList)
         setLoaded(true)
-        setSelected(newList.filter(item => selectedIds.includes(item.id)))
+        if (!selected.find(item => !item.name))
+          return { list: [] }
+
+        const newSelected = produce(selected, (draft) => {
+          selected.forEach((item, index) => {
+            if (!item.name) { // not fetched database
+              const newItem = newList.find(i => i.id === item.id)
+              if (newItem)
+                draft[index] = newItem
+            }
+          })
+        })
+        setSelected(newSelected)
       }
       return { list: [] }
     },
