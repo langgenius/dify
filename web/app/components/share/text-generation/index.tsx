@@ -342,7 +342,7 @@ const TextGeneration: FC<IMainProps> = ({
             )}
             {currTab === 'batch' && (
               <RunBatch
-                inputs={inputs}
+                vars={promptConfig.prompt_variables}
                 onSend={handleRunBatch}
               />
             )}

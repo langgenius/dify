@@ -46,6 +46,7 @@ const translation = {
     copy: 'Copy',
     resultTitle: 'AI Completion',
     noData: 'AI will give you what you want here.',
+    downloadTemplate: 'Download the template here',
   },
 }
 
