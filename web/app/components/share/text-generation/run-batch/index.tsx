@@ -28,13 +28,13 @@ const RunBatch: FC<IRunBatchProps> = ({
     setIsParsed(true)
   }
   return (
-    <div>
+    <div className='pt-4'>
       <CSVReader onParsed={handleParsed} />
       <CSVDownload vars={vars} />
-
+      <div className='mt-4 h-[1px] bg-gray-100'></div>
       <Button
         type="primary"
-        className='w-[80px] !h-8 !p-0'
+        className='mt-4 !h-8 !pl-3 !pr-4'
         onClick={onSend}
         disabled={!isParsed}
       >
