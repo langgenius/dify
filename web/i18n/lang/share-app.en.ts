@@ -42,11 +42,13 @@ const translation = {
     title: 'AI Completion',
     queryTitle: 'Query content',
     queryPlaceholder: 'Write your query content...',
-    run: 'RUN',
+    run: 'Execute',
     copy: 'Copy',
     resultTitle: 'AI Completion',
     noData: 'AI will give you what you want here.',
+    csvStructureTitle: 'The CSV file must conform to the following structure:',
     downloadTemplate: 'Download the template here',
+    field: 'Field',
   },
 }
 

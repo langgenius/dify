@@ -42,7 +42,9 @@ const translation = {
     copy: '拷贝',
     resultTitle: 'AI 书写',
     noData: 'AI 会在这里给你惊喜。',
+    csvStructureTitle: 'CSV 文件必须符合以下结构：',
     downloadTemplate: '下载模板',
+    field: '',
   },
 }
 
