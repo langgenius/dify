@@ -87,7 +87,7 @@ const translation = {
   formattingChangedTitle: '编排已改变',
   formattingChangedText: '修改编排将重置调试区域，确定吗？',
   variableTitle: '变量',
-  notSetVar: '变量能使用户输入表单引入提示词或开场白，你可以试试在提示词中输入输入 {{input}}',
+  notSetVar: '变量能使用户输入表单引入提示词或开场白，你可以试试在提示词中输入 {{input}}',
   variableTip:
     '变量将以表单形式让用户在对话前填写，用户填写的表单内容将自动替换提示词中的变量。',
   autoAddVar: '提示词中引用了未定义的变量，是否自动添加到用户输入表单中？',
