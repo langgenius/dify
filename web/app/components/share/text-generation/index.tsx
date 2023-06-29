@@ -8,6 +8,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import s from './style.module.css'
+import RunBatch from './run-batch'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import ConfigScence from '@/app/components/share/text-generation/config-scence'
 import NoData from '@/app/components/share/text-generation/no-data'
@@ -41,7 +42,7 @@ const TextGeneration: FC<IMainProps> = ({
   const isTablet = media === MediaType.tablet
   const isMoble = media === MediaType.mobile
 
-  const [currTab, setCurrTab] = useState<string>('create')
+  const [currTab, setCurrTab] = useState<string>('batch')
 
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [appId, setAppId] = useState<string>('')
@@ -164,6 +165,8 @@ const TextGeneration: FC<IMainProps> = ({
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
+
+  const handleRunBatch = () => { }
 
   const fetchInitData = () => {
     return Promise.all([isInstalledApp
@@ -309,6 +312,7 @@ const TextGeneration: FC<IMainProps> = ({
           <TabHeader
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
+              { id: 'batch', name: t('share.generation.tabs.batch') },
               {
                 id: 'saved',
                 name: t('share.generation.tabs.saved'),
@@ -334,6 +338,12 @@ const TextGeneration: FC<IMainProps> = ({
                 query={query}
                 onQueryChange={setQuery}
                 onSend={handleSend}
+              />
+            )}
+            {currTab === 'batch' && (
+              <RunBatch
+                inputs={inputs}
+                onSend={handleRunBatch}
               />
             )}
 
