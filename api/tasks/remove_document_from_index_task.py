@@ -41,7 +41,8 @@ def remove_document_from_index_task(document_id: str):
         kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         # delete from vector index
-        vector_index.delete_by_document_id(document.id)
+        if vector_index:
+            vector_index.delete_by_document_id(document.id)
 
         # delete from keyword index
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document.id).all()
