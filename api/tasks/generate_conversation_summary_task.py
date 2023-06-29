@@ -28,7 +28,7 @@ def generate_conversation_summary_task(conversation_id: str):
     try:
         # get conversation messages count
         history_message_count = conversation.message_count
-        if history_message_count >= 5:
+        if history_message_count >= 5 and not conversation.summary:
             app_model = conversation.app
             if not app_model:
                 return

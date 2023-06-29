@@ -45,7 +45,7 @@ class LLMGenerator:
         prompt = CONVERSATION_SUMMARY_PROMPT
         prompt_with_empty_context = prompt.format(context='')
         prompt_tokens = TokenCalculator.get_num_tokens(model, prompt_with_empty_context)
-        rest_tokens = llm_constant.max_context_token_length[model] - prompt_tokens - max_tokens
+        rest_tokens = llm_constant.max_context_token_length[model] - prompt_tokens - max_tokens - 1
 
         context = ''
         for message in messages:
@@ -55,6 +55,9 @@ class LLMGenerator:
             message_qa_text = "Human:" + message.query + "\nAI:" + message.answer + "\n"
             if rest_tokens - TokenCalculator.get_num_tokens(model, context + message_qa_text) > 0:
                 context += message_qa_text
+
+        if not context:
+            return '[message too long, no summary]'
 
         prompt = prompt.format(context=context)
 
