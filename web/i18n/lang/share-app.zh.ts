@@ -42,6 +42,7 @@ const translation = {
     copy: '拷贝',
     resultTitle: 'AI 书写',
     noData: 'AI 会在这里给你惊喜。',
+    downloadTemplate: '下载模板',
   },
 }
 

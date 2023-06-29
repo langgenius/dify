@@ -6,15 +6,16 @@ import {
 } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import CSVReader from './csv-reader'
+import CSVDownload from './csv-download'
 import Button from '@/app/components/base/button'
 
 export type IRunBatchProps = {
-  inputs: Record<string, any>
+  vars: { name: string }[]
   onSend: () => void
 }
 
 const RunBatch: FC<IRunBatchProps> = ({
-  inputs,
+  vars,
   onSend,
 }) => {
   const { t } = useTranslation()
@@ -23,11 +24,13 @@ const RunBatch: FC<IRunBatchProps> = ({
   const [isParsed, setIsParsed] = React.useState(false)
   const handleParsed = (data: string[][]) => {
     setCsvData(data)
+    console.log(data)
     setIsParsed(true)
   }
   return (
     <div>
       <CSVReader onParsed={handleParsed} />
+      <CSVDownload vars={vars} />
 
       <Button
         type="primary"
