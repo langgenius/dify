@@ -30,7 +30,8 @@ const translation = {
   },
   generation: {
     tabs: {
-      create: 'Create',
+      create: 'Run Once',
+      batch: 'Run Batch',
       saved: 'Saved',
     },
     savedNoData: {

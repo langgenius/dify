@@ -1,10 +1,11 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import cn from 'classnames'
 
 import s from './style.module.css'
 
-export interface ITabHeaderProps {
+export type ITabHeaderProps = {
   items: {
     id: string
     name: string
@@ -17,7 +18,7 @@ export interface ITabHeaderProps {
 const TabHeader: FC<ITabHeaderProps> = ({
   items,
   value,
-  onChange
+  onChange,
 }) => {
   return (
     <div className='flex space-x-4 border-b border-gray-200 '>
@@ -28,7 +29,7 @@ const TabHeader: FC<ITabHeaderProps> = ({
           onClick={() => onChange(id)}
         >
           <div className='text-base font-semibold'>{name}</div>
-          {extra ? extra : ''}
+          {extra || ''}
         </div>
       ))}
     </div>

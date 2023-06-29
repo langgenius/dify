@@ -26,7 +26,8 @@ const translation = {
   },
   generation: {
     tabs: {
-      create: '创建',
+      create: '运行一次',
+      batch: '批量运行',
       saved: '已保存',
     },
     savedNoData: {
