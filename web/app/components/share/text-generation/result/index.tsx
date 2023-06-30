@@ -23,7 +23,7 @@ export type IResultProps = {
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
   query: string
-  controlSend: number
+  controlSend?: number
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
 }
@@ -62,6 +62,10 @@ const Result: FC<IResultProps> = ({
   }
 
   const checkCanSend = () => {
+    // batch will check outer
+    if (isBatch)
+      return true
+
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0)
       return true
@@ -133,41 +137,57 @@ const Result: FC<IResultProps> = ({
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
-
+  // run once
   useEffect(() => {
     if (controlSend)
       handleSend()
   }, [controlSend])
 
+  // run batch
+  useEffect(() => {
+    if (isBatch)
+      handleSend()
+  }, [isBatch])
+
+  const renderTextGenerationRes = () => (
+    <TextGenerationRes
+      className='mt-3'
+      content={completionRes}
+      messageId={messageId}
+      isInWebApp
+      moreLikeThis={moreLikeThisEnabled}
+      onFeedback={handleFeedback}
+      feedback={feedback}
+      onSave={handleSaveMessage}
+      isMobile={isMobile}
+      isInstalledApp={isInstalledApp}
+      installedAppId={installedAppInfo?.id}
+      isLoading={isBatch ? (!completionRes && isResponsing) : false}
+    />
+  )
+
   return (
-    <div className={cn((isBatch && !isNoData) ? 'h-52' : 'h-full')}>
-      {(isResponsing && !completionRes)
-        ? (
-          <div className='flex h-full w-full justify-center items-center'>
-            <Loading type='area' />
-          </div>)
-        : (
-          <>
-            {isNoData
-              ? <NoData />
-              : (
-                <TextGenerationRes
-                  className='mt-3'
-                  content={completionRes}
-                  messageId={messageId}
-                  isInWebApp
-                  moreLikeThis={moreLikeThisEnabled}
-                  onFeedback={handleFeedback}
-                  feedback={feedback}
-                  onSave={handleSaveMessage}
-                  isMobile={isMobile}
-                  isInstalledApp={isInstalledApp}
-                  installedAppId={installedAppInfo?.id}
-                />
-              )
-            }
-          </>
-        )}
+    <div className={cn((isBatch && !isNoData) ? '' : 'h-full')}>
+      {!isBatch && (
+        (isResponsing && !completionRes)
+          ? (
+            <div className='flex h-full w-full justify-center items-center'>
+              <Loading type='area' />
+            </div>)
+          : (
+            <>
+              {isNoData
+                ? <NoData />
+                : renderTextGenerationRes()
+              }
+            </>
+          )
+      )}
+      {isBatch && (
+        <div className='mt-2'>
+          {renderTextGenerationRes()}
+        </div>
+      )}
     </div>
   )
 }

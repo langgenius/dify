@@ -25,6 +25,24 @@ import type { InstalledApp } from '@/models/explore'
 import { appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
 
+const PARALLEL_LIMIT = 5
+enum TaskStatus {
+  pending = 'pending',
+  running = 'running',
+  completed = 'completed',
+}
+
+type TaskParam = {
+  inputs: Record<string, any>
+  query: string
+}
+
+type Task = {
+  id: number
+  status: TaskStatus
+  params: TaskParam
+}
+
 export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
@@ -43,7 +61,7 @@ const TextGeneration: FC<IMainProps> = ({
   const isMobile = media === MediaType.mobile
 
   const [currTab, setCurrTab] = useState<string>('batch')
-
+  const [isBatch, setIsBatch] = useState(false)
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
@@ -51,40 +69,58 @@ const TextGeneration: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
 
+  // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-
   const fetchSavedMessage = async () => {
     const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
-
   useEffect(() => {
     fetchSavedMessage()
   }, [])
-
   const handleSaveMessage = async (messageId: string) => {
     await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
-
   const handleRemoveSavedMessage = async (messageId: string) => {
     await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
 
-  const logError = (message: string) => {
-    notify({ type: 'error', message })
-  }
+  // send message task
   const [controlSend, setControlSend] = useState(0)
   const handleSend = () => {
+    setIsBatch(false)
     setControlSend(Date.now())
   }
 
-  const handleRunBatch = () => {
-    setControlSend(Date.now())
+  const [allTaskList, setAllTaskList] = useState<Task[]>([])
+  // const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
+  const runningTaskList = allTaskList.filter(task => task.status === TaskStatus.running)
+  const completedTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
+  const showTaskList = [...runningTaskList, ...completedTaskList]
+  const handleRunBatch = (data: string[][]) => {
+    setIsBatch(true)
+    const allTaskList: Task[] = data.map((item, i) => {
+      const inputs: Record<string, string> = {}
+      item.slice(0, -1).forEach((input, index) => {
+        inputs[promptConfig?.prompt_variables[index].key as string] = input
+      })
+      return {
+        id: 1,
+        status: i + 1 < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
+        params: {
+          inputs,
+          query: item[item.length - 1],
+        },
+      }
+    })
+    setAllTaskList(allTaskList)
   }
+
+  // TODO: finished add pending tasks.
 
   const fetchInitData = () => {
     return Promise.all([isInstalledApp
@@ -130,7 +166,27 @@ const TextGeneration: FC<IMainProps> = ({
     hideResSidebar()
   }, resRef)
 
-  const renderRes = (
+  const renderRes = (task?: Task) => (<Res
+    key={task?.id}
+    isBatch={isBatch}
+    isPC={isPC}
+    isMobile={isMobile}
+    isInstalledApp={!!isInstalledApp}
+    installedAppInfo={installedAppInfo}
+    promptConfig={promptConfig}
+    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+    inputs={isBatch ? (task as Task).params.inputs : inputs}
+    query={isBatch ? (task as Task).params.query : query}
+    controlSend={isBatch ? 0 : controlSend}
+    onShowRes={showResSidebar}
+    handleSaveMessage={handleSaveMessage}
+  />)
+
+  const renderBatchRes = () => {
+    return (showTaskList.map(task => renderRes(task)))
+  }
+
+  const renderResWrap = (
     <div
       ref={resRef}
       className={
@@ -157,20 +213,7 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         <div className='grow overflow-y-auto'>
-          <Res
-            isBatch={currTab === 'batch'}
-            isPC={isPC}
-            isMobile={isMobile}
-            isInstalledApp={!!isInstalledApp}
-            installedAppInfo={installedAppInfo}
-            promptConfig={promptConfig}
-            moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-            inputs={inputs}
-            query={query}
-            controlSend={controlSend}
-            onShowRes={showResSidebar}
-            handleSaveMessage={handleSaveMessage}
-          />
+          {!isBatch ? renderRes() : renderBatchRes()}
         </div>
       </>
     </div>
@@ -287,7 +330,7 @@ const TextGeneration: FC<IMainProps> = ({
         {/* Result */}
         {isPC && (
           <div className='grow h-full'>
-            {renderRes}
+            {renderResWrap}
           </div>
         )}
 
@@ -298,7 +341,7 @@ const TextGeneration: FC<IMainProps> = ({
               background: 'rgba(35, 56, 118, 0.2)',
             }}
           >
-            {renderRes}
+            {renderResWrap}
           </div>
         )}
       </div>
