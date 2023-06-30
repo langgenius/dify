@@ -8,9 +8,11 @@ import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/g
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
+  onCancel: () => void
 }
 
 const VoiceInput = ({
+  onCancel,
   onConverted,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
@@ -36,14 +38,14 @@ const VoiceInput = ({
       let v = dataArray[i * gap]
       if (v < 128)
         v = 128
-      if (v > 188)
-        v = 188
-      const y = (v - 118) / 70 * canvas.height
+      if (v > 178)
+        v = 178
+      const y = (v - 128) / 50 * canvas.height
 
       ctx.moveTo(x, 16)
       ctx.roundRect(x, 16 - y, 2, y, [1, 1, 0, 0])
       ctx.fill()
-      x += 4
+      x += 3
     }
     ctx.closePath()
   }, [])
@@ -73,9 +75,6 @@ const VoiceInput = ({
     }
     if (canvasRef.current && ctxRef.current)
       drawRecord()
-  }
-  const handleStopConvert = () => {
-    handleStartRecord()
   }
 
   const initCanvas = () => {
@@ -138,7 +137,7 @@ const VoiceInput = ({
         startConvert && (
           <div
             className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
-            onClick={handleStopConvert}
+            onClick={onCancel}
           >
             <XClose className='w-4 h-4 text-gray-500' />
           </div>
