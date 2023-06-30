@@ -22,7 +22,6 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
     addQueryContentVars.forEach((item) => {
       res[item.name] = ''
     })
-    // console.log(res)
     return res
   })()
 
