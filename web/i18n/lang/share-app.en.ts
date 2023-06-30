@@ -51,6 +51,13 @@ const translation = {
     csvStructureTitle: 'The CSV file must conform to the following structure:',
     downloadTemplate: 'Download the template here',
     field: 'Field',
+    errorMsg: {
+      empty: 'Please input content in the uploaded file.',
+      fileStructNotMatch: 'The uploaded CSV file not match the struct.',
+      emptyLine: 'Row {{rowIndex}} is empty',
+      invalidLine: 'Row {{rowIndex}}: {{varName}} is required',
+      atLeastOne: 'Please input at least one row in the uploaded file.',
+    },
   },
 }
 
