@@ -85,7 +85,7 @@ const ConfigSence: FC<IConfigSenceProps> = ({
                 </div>
                 <Button
                   type="primary"
-                  className='w-[80px] !h-8 !p-0'
+                  className='!h-8 !pl-3 !pr-4'
                   onClick={onSend}
                   disabled={!query || query === ''}
                 >

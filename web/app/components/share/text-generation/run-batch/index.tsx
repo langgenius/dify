@@ -11,7 +11,7 @@ import Button from '@/app/components/base/button'
 
 export type IRunBatchProps = {
   vars: { name: string }[]
-  onSend: () => void
+  onSend: (data: string[][]) => void
 }
 
 const RunBatch: FC<IRunBatchProps> = ({
@@ -24,8 +24,12 @@ const RunBatch: FC<IRunBatchProps> = ({
   const [isParsed, setIsParsed] = React.useState(false)
   const handleParsed = (data: string[][]) => {
     setCsvData(data)
-    console.log(data)
+    // console.log(data)
     setIsParsed(true)
+  }
+
+  const handleSend = () => {
+    onSend(csvData.slice(1))
   }
   return (
     <div className='pt-4'>
@@ -36,7 +40,7 @@ const RunBatch: FC<IRunBatchProps> = ({
         <Button
           type="primary"
           className='mt-4 !h-8 !pl-3 !pr-4'
-          onClick={onSend}
+          onClick={handleSend}
           disabled={!isParsed}
         >
           <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
