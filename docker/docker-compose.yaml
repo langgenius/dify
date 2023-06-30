@@ -93,6 +93,12 @@ services:
       QDRANT_URL: 'https://your-qdrant-cluster-url.qdrant.tech/'
       # The Qdrant API key.
       QDRANT_API_KEY: 'ak-difyai'
+      # Mail configuration, support: resend
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
       # The sample rate for Sentry events. Default: `1.0`
