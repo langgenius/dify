@@ -32,15 +32,17 @@ const RunBatch: FC<IRunBatchProps> = ({
       <CSVReader onParsed={handleParsed} />
       <CSVDownload vars={vars} />
       <div className='mt-4 h-[1px] bg-gray-100'></div>
-      <Button
-        type="primary"
-        className='mt-4 !h-8 !pl-3 !pr-4'
-        onClick={onSend}
-        disabled={!isParsed}
-      >
-        <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
-        <span className='uppercase text-[13px]'>{t('share.generation.run')}</span>
-      </Button>
+      <div className='flex justify-end'>
+        <Button
+          type="primary"
+          className='mt-4 !h-8 !pl-3 !pr-4'
+          onClick={onSend}
+          disabled={!isParsed}
+        >
+          <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+          <span className='uppercase text-[13px]'>{t('share.generation.run')}</span>
+        </Button>
+      </div>
     </div>
   )
 }

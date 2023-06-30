@@ -42,6 +42,8 @@ const translation = {
     copy: '拷贝',
     resultTitle: 'AI 书写',
     noData: 'AI 会在这里给你惊喜。',
+    csvUploadTitle: '将您的 CSV 文件拖放到此处，或',
+    browse: '浏览',
     csvStructureTitle: 'CSV 文件必须符合以下结构：',
     downloadTemplate: '下载模板',
     field: '',

@@ -1,5 +1,5 @@
 .zone {
-    @apply flex items-center  h-20 rounded-xl bg-gray-50 border border-gray-200 cursor-pointer;
+    @apply flex items-center h-20 rounded-xl bg-gray-50 border border-gray-200 cursor-pointer text-sm font-normal;
 }
 
 .zoneHover {
