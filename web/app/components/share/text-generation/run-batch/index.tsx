@@ -29,7 +29,7 @@ const RunBatch: FC<IRunBatchProps> = ({
   }
 
   const handleSend = () => {
-    onSend(csvData.slice(1))
+    onSend(csvData)
   }
   return (
     <div className='pt-4'>

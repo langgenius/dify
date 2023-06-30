@@ -10,8 +10,7 @@ import Button from '../../base/button'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import ConfigScence from '@/app/components/share/text-generation/config-scence'
-// import History from '@/app/components/share/text-generation/history'
+import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
@@ -102,16 +101,106 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  // console.log(showTaskList.map(item => ({ id: item.id, status: item.status })))
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const checkBatchInputs = (data: string[][]) => {
+    if (!data || data.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
+      return false
+    }
+    const headerData = data[0]
+    const varLen = promptConfig?.prompt_variables.length || 0
+    let isMapVarName = true
+    promptConfig?.prompt_variables.forEach((item, index) => {
+      if (!isMapVarName)
+        return
+
+      if (item.name !== headerData[index])
+        isMapVarName = false
+    })
+
+    if (headerData[varLen] !== t('share.generation.queryTitle'))
+      isMapVarName = false
+
+    if (!isMapVarName) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
+      return false
+    }
+    let payloadData = data.slice(0)
+    if (payloadData.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      return false
+    }
+
+    // check middle empty line
+    const allEmptyLineIndexes = payloadData.filter(item => item.every(i => i === '')).map(item => payloadData.indexOf(item))
+    if (allEmptyLineIndexes.length > 0) {
+      let hasMiddleEmptyLine = false
+      let startIndex = allEmptyLineIndexes[0] - 1
+      allEmptyLineIndexes.forEach((index) => {
+        if (hasMiddleEmptyLine)
+          return
+
+        if (startIndex + 1 !== index) {
+          hasMiddleEmptyLine = true
+          return
+        }
+        startIndex++
+      })
+
+      if (hasMiddleEmptyLine) {
+        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex }) })
+        return false
+      }
+    }
+
+    // check row format
+    payloadData = payloadData.filter(item => !item.every(i => i === '')) // remove empty rows in the end
+    let errorRowIndex = 0
+    let requiredVarName = ''
+    payloadData.forEach((item, index) => {
+      if (errorRowIndex !== 0)
+        return
+
+      promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
+        if (errorRowIndex !== 0)
+          return
+        if (varItem.required === false)
+          return
+
+        if (item[varIndex].trim() === '') {
+          requiredVarName = varItem.name
+          errorRowIndex = index + 1
+        }
+      })
+
+      if (errorRowIndex !== 0)
+        return
+
+      if (item[varLen] === '') {
+        requiredVarName = t('share.generation.queryTitle')
+        errorRowIndex = index + 1
+      }
+    })
+
+    if (errorRowIndex !== 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex, varName: requiredVarName }) })
+      return false
+    }
+    return true
+  }
   const handleRunBatch = (data: string[][]) => {
+    if (!checkBatchInputs(data))
+      return
+
     if (!allTaskFinished) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
       return
     }
 
+    const payloadData = data.slice(0)
+
     setIsCallBatchAPI(true)
-    const allTaskList: Task[] = data.map((item, i) => {
+    const allTaskList: Task[] = payloadData.map((item, i) => {
       const inputs: Record<string, string> = {}
       item.slice(0, -1).forEach((input, index) => {
         inputs[promptConfig?.prompt_variables[index].key as string] = input
@@ -314,7 +403,7 @@ const TextGeneration: FC<IMainProps> = ({
           />
           <div className='grow h-20 overflow-y-auto'>
             <div className={cn(currTab === 'create' ? 'block' : 'hidden')}>
-              <ConfigScence
+              <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
                 onInputsChange={setInputs}
