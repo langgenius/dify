@@ -225,6 +225,10 @@ const translation = {
     viewDoc: '查看文档',
     relatedApp: '个关联应用',
   },
+  voiceInput: {
+    speaking: '现在讲...',
+    converting: '正在转换为文本...',
+  },
 }
 
 export default translation
