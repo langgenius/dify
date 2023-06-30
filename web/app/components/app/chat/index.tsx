@@ -594,7 +594,7 @@ const Chat: FC<IChatProps> = ({
                   )}
               </div>
               {
-                voiceInputShow && <VoiceInput onConverted={() => setVoiceInputShow(false)} />
+                voiceInputShow && <VoiceInput onCancel={() => setVoiceInputShow(false)} onConverted={() => setVoiceInputShow(false)} />
               }
             </div>
           </div>
