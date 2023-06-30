@@ -5,12 +5,15 @@ import cn from 'classnames'
 
 import s from './style.module.css'
 
+type Item = {
+  id: string
+  name: string
+  isRight?: boolean
+  extra?: React.ReactNode
+}
+
 export type ITabHeaderProps = {
-  items: {
-    id: string
-    name: string
-    extra?: React.ReactNode
-  }[]
+  items: Item[]
   value: string
   onChange: (value: string) => void
 }
@@ -20,18 +23,24 @@ const TabHeader: FC<ITabHeaderProps> = ({
   value,
   onChange,
 }) => {
+  const renderItem = ({ id, name, extra }: Item) => (
+    <div
+      key={id}
+      className={cn(id === value ? `${s.itemActive} text-gray-900` : 'text-gray-500', 'relative flex items-center pb-1.5 leading-6 cursor-pointer')}
+      onClick={() => onChange(id)}
+    >
+      <div className='text-base font-semibold'>{name}</div>
+      {extra || ''}
+    </div>
+  )
   return (
-    <div className='flex space-x-4 border-b border-gray-200 '>
-      {items.map(({ id, name, extra }) => (
-        <div
-          key={id}
-          className={cn(id === value ? `${s.itemActive} text-gray-900` : 'text-gray-500', 'relative flex items-center pb-1.5 leading-6 cursor-pointer')}
-          onClick={() => onChange(id)}
-        >
-          <div className='text-base font-semibold'>{name}</div>
-          {extra || ''}
-        </div>
-      ))}
+    <div className='flex justify-between border-b border-gray-200 '>
+      <div className='flex space-x-4'>
+        {items.filter(item => !item.isRight).map(renderItem)}
+      </div>
+      <div className='flex space-x-4'>
+        {items.filter(item => item.isRight).map(renderItem)}
+      </div>
     </div>
   )
 }
