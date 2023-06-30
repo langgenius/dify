@@ -19,6 +19,9 @@ import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import VoiceInput from '@/app/components/base/voice-input'
+import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 
 const stopIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -488,6 +491,8 @@ const Chat: FC<IChatProps> = ({
     }
   }, [suggestionList])
 
+  const [voiceInputShow, setVoiceInputShow] = useState(false)
+
   return (
     <div className={cn('px-3.5', 'h-full')}>
       {/* Chat List */}
@@ -565,6 +570,13 @@ const Chat: FC<IChatProps> = ({
               />
               <div className="absolute top-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
+                <div
+                  className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
+                  onClick={() => setVoiceInputShow(true)}
+                >
+                  <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
+                  <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
+                </div>
                 {isMobile
                   ? sendBtn
                   : (
@@ -581,6 +593,9 @@ const Chat: FC<IChatProps> = ({
                     </Tooltip>
                   )}
               </div>
+              {
+                voiceInputShow && <VoiceInput onConverted={() => setVoiceInputShow(false)} />
+              }
             </div>
           </div>
         )
