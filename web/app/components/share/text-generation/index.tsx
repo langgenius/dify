@@ -11,21 +11,19 @@ import s from './style.module.css'
 import RunBatch from './run-batch'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import ConfigScence from '@/app/components/share/text-generation/config-scence'
-import NoData from '@/app/components/share/text-generation/no-data'
 // import History from '@/app/components/share/text-generation/history'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage, sendCompletionMessage, updateFeedback } from '@/service/share'
+import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
-import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
-import type { Feedbacktype } from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import TextGenerationRes from '@/app/components/app/text-generate/item'
+import Res from '@/app/components/share/text-generation/result'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { appDefaultIconBackground } from '@/config'
+import Toast from '@/app/components/base/toast'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -36,34 +34,22 @@ const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
 }) => {
+  const { notify } = Toast
+
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const isTablet = media === MediaType.tablet
-  const isMoble = media === MediaType.mobile
+  const isMobile = media === MediaType.mobile
 
   const [currTab, setCurrTab] = useState<string>('batch')
 
   const [inputs, setInputs] = useState<Record<string, any>>({})
+  const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [query, setQuery] = useState('')
-  const [completionRes, setCompletionRes] = useState('')
-  const { notify } = Toast
-  const isNoData = !completionRes
-
-  const [messageId, setMessageId] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<Feedbacktype>({
-    rating: null,
-  })
-
-  const handleFeedback = async (feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
-    setFeedback(feedback)
-  }
 
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
 
@@ -91,82 +77,14 @@ const TextGeneration: FC<IMainProps> = ({
   const logError = (message: string) => {
     notify({ type: 'error', message })
   }
-
-  const checkCanSend = () => {
-    const prompt_variables = promptConfig?.prompt_variables
-    if (!prompt_variables || prompt_variables?.length === 0)
-      return true
-
-    let hasEmptyInput = false
-    const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
-      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
-      return res
-    }) || [] // compatible with old version
-    requiredVars.forEach(({ key }) => {
-      if (hasEmptyInput)
-        return
-
-      if (!inputs[key])
-        hasEmptyInput = true
-    })
-
-    if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired'))
-      return false
-    }
-    return !hasEmptyInput
+  const [controlSend, setControlSend] = useState(0)
+  const handleSend = () => {
+    setControlSend(Date.now())
   }
 
-  const handleSend = async () => {
-    if (isResponsing) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
-      return false
-    }
-
-    if (!checkCanSend())
-      return
-
-    if (!query) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
-
-    const data = {
-      inputs,
-      query,
-    }
-
-    setMessageId(null)
-    setFeedback({
-      rating: null,
-    })
-    setCompletionRes('')
-
-    const res: string[] = []
-    let tempMessageId = ''
-
-    if (!isPC)
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      showResSidebar()
-
-    setResponsingTrue()
-    sendCompletionMessage(data, {
-      onData: (data: string, _isFirstMessage: boolean, { messageId }: any) => {
-        tempMessageId = messageId
-        res.push(data)
-        setCompletionRes(res.join(''))
-      },
-      onCompleted: () => {
-        setResponsingFalse()
-        setMessageId(tempMessageId)
-      },
-      onError() {
-        setResponsingFalse()
-      },
-    }, isInstalledApp, installedAppInfo?.id)
+  const handleRunBatch = () => {
+    setControlSend(Date.now())
   }
-
-  const handleRunBatch = () => { }
 
   const fetchInitData = () => {
     return Promise.all([isInstalledApp
@@ -219,7 +137,7 @@ const TextGeneration: FC<IMainProps> = ({
         cn(
           'flex flex-col h-full shrink-0',
           isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMoble && 'p-4')
+          isTablet && 'p-6', isMobile && 'p-4')
       }
     >
       <>
@@ -239,33 +157,20 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         <div className='grow overflow-y-auto'>
-          {(isResponsing && !completionRes)
-            ? (
-              <div className='flex h-full w-full justify-center items-center'>
-                <Loading type='area' />
-              </div>)
-            : (
-              <>
-                {isNoData
-                  ? <NoData />
-                  : (
-                    <TextGenerationRes
-                      className='mt-3'
-                      content={completionRes}
-                      messageId={messageId}
-                      isInWebApp
-                      moreLikeThis={moreLikeThisConfig?.enabled}
-                      onFeedback={handleFeedback}
-                      feedback={feedback}
-                      onSave={handleSaveMessage}
-                      isMobile={isMoble}
-                      isInstalledApp={isInstalledApp}
-                      installedAppId={installedAppInfo?.id}
-                    />
-                  )
-                }
-              </>
-            )}
+          <Res
+            isBatch={currTab === 'batch'}
+            isPC={isPC}
+            isMobile={isMobile}
+            isInstalledApp={!!isInstalledApp}
+            installedAppInfo={installedAppInfo}
+            promptConfig={promptConfig}
+            moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+            inputs={inputs}
+            query={query}
+            controlSend={controlSend}
+            onShowRes={showResSidebar}
+            handleSaveMessage={handleSaveMessage}
+          />
         </div>
       </>
     </div>
