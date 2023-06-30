@@ -61,7 +61,9 @@ const TextGeneration: FC<IMainProps> = ({
   const isMobile = media === MediaType.mobile
 
   const [currTab, setCurrTab] = useState<string>('batch')
-  const [isBatch, setIsBatch] = useState(false)
+  // Notice this situation isCallBatchAPI but not in batch tab
+  const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
+  const isInBatchTab = currTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
@@ -92,25 +94,31 @@ const TextGeneration: FC<IMainProps> = ({
   // send message task
   const [controlSend, setControlSend] = useState(0)
   const handleSend = () => {
-    setIsBatch(false)
+    setIsCallBatchAPI(false)
     setControlSend(Date.now())
   }
 
   const [allTaskList, setAllTaskList] = useState<Task[]>([])
-  // const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
-  const runningTaskList = allTaskList.filter(task => task.status === TaskStatus.running)
-  const completedTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
-  const showTaskList = [...runningTaskList, ...completedTaskList]
+  const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
+  const noPendingTask = pendingTaskList.length === 0
+  const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  // console.log(showTaskList.map(item => ({ id: item.id, status: item.status })))
+  const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const handleRunBatch = (data: string[][]) => {
-    setIsBatch(true)
+    if (!allTaskFinished) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
+      return
+    }
+
+    setIsCallBatchAPI(true)
     const allTaskList: Task[] = data.map((item, i) => {
       const inputs: Record<string, string> = {}
       item.slice(0, -1).forEach((input, index) => {
         inputs[promptConfig?.prompt_variables[index].key as string] = input
       })
       return {
-        id: 1,
-        status: i + 1 < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
+        id: i + 1,
+        status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
           query: item[item.length - 1],
@@ -118,9 +126,29 @@ const TextGeneration: FC<IMainProps> = ({
       }
     })
     setAllTaskList(allTaskList)
+    setControlSend(Date.now())
   }
 
-  // TODO: finished add pending tasks.
+  const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
+    console.log(taskId, isSuccess)
+    const nextPendingTaskId = pendingTaskList[0]?.id
+    const newAllTaskList = allTaskList.map((item) => {
+      if (item.id === taskId) {
+        return {
+          ...item,
+          status: TaskStatus.completed,
+        }
+      }
+      if (item.id === nextPendingTaskId) {
+        return {
+          ...item,
+          status: TaskStatus.running,
+        }
+      }
+      return item
+    })
+    setAllTaskList(newAllTaskList)
+  }
 
   const fetchInitData = () => {
     return Promise.all([isInstalledApp
@@ -168,18 +196,20 @@ const TextGeneration: FC<IMainProps> = ({
 
   const renderRes = (task?: Task) => (<Res
     key={task?.id}
-    isBatch={isBatch}
+    isCallBatchAPI={isCallBatchAPI}
     isPC={isPC}
     isMobile={isMobile}
     isInstalledApp={!!isInstalledApp}
     installedAppInfo={installedAppInfo}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-    inputs={isBatch ? (task as Task).params.inputs : inputs}
-    query={isBatch ? (task as Task).params.query : query}
-    controlSend={isBatch ? 0 : controlSend}
+    inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+    query={isCallBatchAPI ? (task as Task).params.query : query}
+    controlSend={controlSend}
     onShowRes={showResSidebar}
     handleSaveMessage={handleSaveMessage}
+    taskId={task?.id}
+    onCompleted={handleCompleted}
   />)
 
   const renderBatchRes = () => {
@@ -213,7 +243,12 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         <div className='grow overflow-y-auto'>
-          {!isBatch ? renderRes() : renderBatchRes()}
+          {!isCallBatchAPI ? renderRes() : renderBatchRes()}
+          {!noPendingTask && (
+            <div className='mt-4'>
+              <Loading type='area' />
+            </div>
+          )}
         </div>
       </>
     </div>
@@ -278,7 +313,7 @@ const TextGeneration: FC<IMainProps> = ({
             onChange={setCurrTab}
           />
           <div className='grow h-20 overflow-y-auto'>
-            {currTab === 'create' && (
+            <div className={cn(currTab === 'create' ? 'block' : 'hidden')}>
               <ConfigScence
                 siteInfo={siteInfo}
                 inputs={inputs}
@@ -288,13 +323,13 @@ const TextGeneration: FC<IMainProps> = ({
                 onQueryChange={setQuery}
                 onSend={handleSend}
               />
-            )}
-            {currTab === 'batch' && (
+            </div>
+            <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
               <RunBatch
                 vars={promptConfig.prompt_variables}
                 onSend={handleRunBatch}
               />
-            )}
+            </div>
 
             {currTab === 'saved' && (
               <SavedItems

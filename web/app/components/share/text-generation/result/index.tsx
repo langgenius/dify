@@ -12,9 +12,8 @@ import type { Feedbacktype } from '@/app/components/app/chat'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
-
 export type IResultProps = {
-  isBatch: boolean
+  isCallBatchAPI: boolean
   isPC: boolean
   isMobile: boolean
   isInstalledApp: boolean
@@ -26,10 +25,12 @@ export type IResultProps = {
   controlSend?: number
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
+  taskId?: number
+  onCompleted: (taskId?: number, success?: boolean) => void
 }
 
 const Result: FC<IResultProps> = ({
-  isBatch,
+  isCallBatchAPI,
   isPC,
   isMobile,
   isInstalledApp,
@@ -41,6 +42,8 @@ const Result: FC<IResultProps> = ({
   controlSend,
   onShowRes,
   handleSaveMessage,
+  taskId,
+  onCompleted,
 }) => {
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [completionRes, setCompletionRes] = useState('')
@@ -63,7 +66,7 @@ const Result: FC<IResultProps> = ({
 
   const checkCanSend = () => {
     // batch will check outer
-    if (isBatch)
+    if (isCallBatchAPI)
       return true
 
     const prompt_variables = promptConfig?.prompt_variables
@@ -131,23 +134,18 @@ const Result: FC<IResultProps> = ({
       onCompleted: () => {
         setResponsingFalse()
         setMessageId(tempMessageId)
+        onCompleted(taskId, true)
       },
       onError() {
         setResponsingFalse()
+        onCompleted(taskId, false)
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
-  // run once
   useEffect(() => {
     if (controlSend)
       handleSend()
   }, [controlSend])
-
-  // run batch
-  useEffect(() => {
-    if (isBatch)
-      handleSend()
-  }, [isBatch])
 
   const renderTextGenerationRes = () => (
     <TextGenerationRes
@@ -162,13 +160,13 @@ const Result: FC<IResultProps> = ({
       isMobile={isMobile}
       isInstalledApp={isInstalledApp}
       installedAppId={installedAppInfo?.id}
-      isLoading={isBatch ? (!completionRes && isResponsing) : false}
+      isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
     />
   )
 
   return (
-    <div className={cn((isBatch && !isNoData) ? '' : 'h-full')}>
-      {!isBatch && (
+    <div className={cn(isNoData && !isCallBatchAPI && 'h-full')}>
+      {!isCallBatchAPI && (
         (isResponsing && !completionRes)
           ? (
             <div className='flex h-full w-full justify-center items-center'>
@@ -183,7 +181,7 @@ const Result: FC<IResultProps> = ({
             </>
           )
       )}
-      {isBatch && (
+      {isCallBatchAPI && (
         <div className='mt-2'>
           {renderTextGenerationRes()}
         </div>

@@ -81,6 +81,8 @@ const translation = {
     queryRequired: 'Request text is required.',
     waitForResponse:
       'Please wait for the response to the previous message to complete.',
+    waitForBatchResponse:
+      'Please wait for the response to the batch task to complete.',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',
