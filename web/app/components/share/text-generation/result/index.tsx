@@ -161,6 +161,7 @@ const Result: FC<IResultProps> = ({
       isInstalledApp={isInstalledApp}
       installedAppId={installedAppInfo?.id}
       isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
+      taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
     />
   )
 
