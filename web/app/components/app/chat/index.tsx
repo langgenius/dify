@@ -466,7 +466,7 @@ const Chat: FC<IChatProps> = ({
     }
   }
 
-  const haneleKeyDown = (e: any) => {
+  const handleKeyDown = (e: any) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
     if (e.code === 'Enter' && !e.shiftKey) {
       setQuery(query.replace(/\n$/, ''))
@@ -557,7 +557,7 @@ const Chat: FC<IChatProps> = ({
                 value={query}
                 onChange={handleContentChange}
                 onKeyUp={handleKeyUp}
-                onKeyDown={haneleKeyDown}
+                onKeyDown={handleKeyDown}
                 minHeight={48}
                 autoFocus
                 controlFocus={controlFocus}

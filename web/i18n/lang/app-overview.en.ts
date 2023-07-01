@@ -42,6 +42,8 @@ const translation = {
         explanation: 'Choose the way to embed chat app to your website',
         iframe: 'To add the chat app any where on your website, add this iframe to your html code.',
         scripts: 'To add a chat app to the bottom right of your website add this code to your html.',
+        copied: 'Copied',
+        copy: 'Copy',
       },
       customize: {
         way: 'way',

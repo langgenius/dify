@@ -5,6 +5,9 @@ import style from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
+import Tooltip from '@/app/components/base/tooltip'
+
+const isDevelopment = process.env.NODE_ENV === 'development'
 
 type Props = {
   isShow: boolean
@@ -17,14 +20,17 @@ const OPTION_MAP = {
   iframe: {
     getContent: (url: string, token: string) =>
       `<iframe
- src="${url}/completion/${token}"
+ src="${url}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0" >
 </iframe>`,
   },
   scripts: {
     getContent: (url: string, token: string) =>
-      `<script
+      `<script>
+ window.difyChatbotConfig = { token: ${token}${isDevelopment ? ', isDev: true' : ''} }
+</script>
+<script
  src="${url}/embed.min.js"
  id="${token}"
  defer>
@@ -78,9 +84,14 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
             {t(`${prefixEmbedded}.${option}`)}
           </div>
           <div className="p-2 rounded-lg justify-center items-center gap-1 flex">
-            <div className="w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg">
-              <div onClick={onClickCopy} className={`w-full h-full ${copyStyle.copyIcon} ${isCopied[option] ? copyStyle.copied : ''}`}></div>
-            </div>
+            <Tooltip
+              selector={'code-copy-feedback'}
+              content={(isCopied[option] ? t(`${prefixEmbedded}.copied`) : t(`${prefixEmbedded}.copy`)) || ''}
+            >
+              <div className="w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg">
+                <div onClick={onClickCopy} className={`w-full h-full ${copyStyle.copyIcon} ${isCopied[option] ? copyStyle.copied : ''}`}></div>
+              </div>
+            </Tooltip>
           </div>
         </div>
         <div className="self-stretch p-3 justify-start items-start gap-2 inline-flex">
