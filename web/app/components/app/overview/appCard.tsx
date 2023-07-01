@@ -1,4 +1,5 @@
 'use client'
+import type { FC } from 'react'
 import React, { useState } from 'react'
 import {
   Cog8ToothIcon,
@@ -11,6 +12,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from './settings'
 import ShareLink from './share-link'
+import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic, { randomString } from '@/app/components/app-sidebar/basic'
@@ -18,6 +20,7 @@ import Button from '@/app/components/base/button'
 import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import type { AppDetailResponse } from '@/models/app'
+import './style.css'
 
 export type IAppCardProps = {
   className?: string
@@ -27,6 +30,10 @@ export type IAppCardProps = {
   onChangeStatus: (val: boolean) => Promise<any>
   onSaveSiteConfig?: (params: any) => Promise<any>
   onGenerateCode?: () => Promise<any>
+}
+
+const EmbedIcon: FC<{ className?: string }> = ({ className = '' }) => {
+  return <div className={`codeBrowserIcon ${className}`}></div>
 }
 
 function AppCard({
@@ -42,6 +49,7 @@ function AppCard({
   const pathname = usePathname()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
+  const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const { t } = useTranslation()
 
@@ -49,6 +57,7 @@ function AppCard({
     webapp: [
       { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
       { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
+      { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon },
       { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
     ],
     api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
@@ -79,6 +88,10 @@ function AppCard({
       case t('appOverview.overview.appInfo.settings.entry'):
         return () => {
           setShowSettingsModal(true)
+        }
+      case t('appOverview.overview.appInfo.embedded.entry'):
+        return () => {
+          setShowEmbedded(true)
         }
       default:
         // jump to page develop
@@ -152,7 +165,7 @@ function AppCard({
                   }
                 >
                   <div className="flex flex-row items-center">
-                    <op.opIcon className="h-4 w-4 mr-1.5" />
+                    <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
                     <span className="text-xs">{op.opName}</span>
                   </div>
                 </Tooltip>
@@ -192,6 +205,12 @@ function AppCard({
               isShow={showSettingsModal}
               onClose={() => setShowSettingsModal(false)}
               onSave={onSaveSiteConfig}
+            />
+            <EmbeddedModal
+              isShow={showEmbedded}
+              onClose={() => setShowEmbedded(false)}
+              appBaseUrl={app_base_url}
+              accessToken={access_token}
             />
             <CustomizeModal
               isShow={showCustomizeModal}
