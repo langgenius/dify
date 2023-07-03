@@ -28,7 +28,7 @@ const OPTION_MAP = {
   scripts: {
     getContent: (url: string, token: string) =>
       `<script>
- window.difyChatbotConfig = { token: ${token}${isDevelopment ? ', isDev: true' : ''} }
+ window.difyChatbotConfig = { token: '${token}'${isDevelopment ? ', isDev: true' : ''} }
 </script>
 <script
  src="${url}/embed.min.js"
