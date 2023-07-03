@@ -6,8 +6,9 @@ import Modal from '@/app/components/base/modal'
 import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
+import { useAppContext } from '@/context/app-context'
 
-const isDevelopment = process.env.NODE_ENV === 'development'
+// const isDevelopment = process.env.NODE_ENV === 'development'
 
 type Props = {
   isShow: boolean
@@ -26,9 +27,9 @@ const OPTION_MAP = {
 </iframe>`,
   },
   scripts: {
-    getContent: (url: string, token: string) =>
+    getContent: (url: string, token: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = { token: '${token}'${isDevelopment ? ', isDev: true' : ''} }
+ window.difyChatbotConfig = { token: '${token}'${isTestEnv ? ', isDev: true' : ''} }
 </script>
 <script
  src="${url}/embed.min.js"
@@ -47,8 +48,10 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   const [isCopied, setIsCopied] = useState({ iframe: false, scripts: false })
   const [_, copy] = useCopyToClipboard()
 
+  const { langeniusVersionInfo } = useAppContext()
+  const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
-    copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken))
+    copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
     setIsCopied({ ...isCopied, [option]: true })
   }
 
@@ -96,7 +99,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
         </div>
         <div className="self-stretch p-3 justify-start items-start gap-2 inline-flex">
           <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
-            <pre>{OPTION_MAP[option].getContent(appBaseUrl, accessToken)}</pre>
+            <pre>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
           </div>
         </div>
       </div>
