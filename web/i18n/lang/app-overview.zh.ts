@@ -36,6 +36,15 @@ const translation = {
           privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
         },
       },
+      embedded: {
+        entry: '嵌入',
+        title: '嵌入到网站中',
+        explanation: '选择一种方式将聊天应用嵌入到你的网站中',
+        iframe: '将以下 iframe 嵌入到你的网站中的目标位置',
+        scripts: '将以下代码嵌入到你的网站中',
+        copied: '已复制',
+        copy: '复制',
+      },
       customize: {
         way: '方法',
         entry: '想要进一步自定义 WebApp？',
