@@ -21,6 +21,7 @@ import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import type { AppDetailResponse } from '@/models/app'
 import './style.css'
+import { AppType } from '@/types/app'
 
 export type IAppCardProps = {
   className?: string
@@ -57,9 +58,9 @@ function AppCard({
     webapp: [
       { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
       { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
-      { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon },
+      appInfo.mode === AppType.chat ? { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon } : false,
       { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
-    ],
+    ].filter(item => !!item),
     api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
     app: [],
   }
