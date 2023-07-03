@@ -104,9 +104,11 @@ const VoiceInput = ({
   return (
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
       <div className='absolute inset-[1.5px] flex items-center pl-[14.5px] pr-[6.5px] py-[14px] bg-primary-25 rounded-[10.5px] overflow-hidden'>
-        <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
         {
-          startConvert && <Loading02 className='mr-2 w-4 h-4 text-primary-700' />
+          startRecord && <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
+        }
+        {
+          startConvert && <Loading02 className='animate-spin mr-2 w-4 h-4 text-primary-700' />
         }
         <div className='grow'>
           {
