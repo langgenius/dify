@@ -102,48 +102,50 @@ const VoiceInput = ({
   }, [])
 
   return (
-    <div className={cn(s.wrapper, 'flex items-center absolute inset-0 pl-4 pr-2 py-[14px] bg-primary-25 rounded-xl overflow-hidden')}>
-      <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
-      {
-        startConvert && <Loading02 className='mr-2 w-4 h-4 text-primary-700' />
-      }
-      <div className='grow'>
+    <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
+      <div className='absolute inset-[1.5px] flex items-center pl-[14.5px] pr-[6.5px] py-[14px] bg-primary-25 rounded-[10.5px] overflow-hidden'>
+        <canvas id='voice-input-record' className='absolute left-0 bottom-0 w-full h-4' />
+        {
+          startConvert && <Loading02 className='mr-2 w-4 h-4 text-primary-700' />
+        }
+        <div className='grow'>
+          {
+            startRecord && (
+              <div className='text-sm text-gray-500'>
+                {t('common.voiceInput.speaking')}
+              </div>
+            )
+          }
+          {
+            startConvert && (
+              <div className={cn(s.convert, 'text-sm')}>
+                {t('common.voiceInput.converting')}
+              </div>
+            )
+          }
+        </div>
         {
           startRecord && (
-            <div className='text-sm text-gray-500'>
-              {t('common.voiceInput.speaking')}
+            <div
+              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
+              onClick={handleStopRecorder}
+            >
+              <StopCircle className='w-5 h-5 text-primary-600' />
             </div>
           )
         }
         {
           startConvert && (
-            <div className={cn(s.convert, 'text-sm')}>
-              {t('common.voiceInput.converting')}
+            <div
+              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
+              onClick={onCancel}
+            >
+              <XClose className='w-4 h-4 text-gray-500' />
             </div>
           )
         }
+        <div className='w-[45px] pl-1 text-xs font-medium text-gray-700'>{duration}</div>
       </div>
-      {
-        startRecord && (
-          <div
-            className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
-            onClick={handleStopRecorder}
-          >
-            <StopCircle className='w-5 h-5 text-primary-600' />
-          </div>
-        )
-      }
-      {
-        startConvert && (
-          <div
-            className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
-            onClick={onCancel}
-          >
-            <XClose className='w-4 h-4 text-gray-500' />
-          </div>
-        )
-      }
-      <div className='w-[45px] pl-1 text-xs font-medium text-gray-700'>{duration}</div>
     </div>
   )
 }
