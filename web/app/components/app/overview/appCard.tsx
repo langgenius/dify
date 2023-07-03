@@ -153,14 +153,14 @@ function AppCard({
                 key={op.opName}
                 onClick={genClickFuncByName(op.opName)}
                 disabled={
-                  [t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry')].includes(op.opName) && !runningStatus
+                  [t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry'), t('appOverview.overview.appInfo.embedded.entry')].includes(op.opName) && !runningStatus
                 }
               >
                 <Tooltip
                   content={t('appOverview.overview.appInfo.preUseReminder') ?? ''}
                   selector={`op-btn-${randomString(16)}`}
                   className={
-                    ([t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry')].includes(op.opName) && !runningStatus)
+                    ([t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry'), t('appOverview.overview.appInfo.embedded.entry')].includes(op.opName) && !runningStatus)
                       ? 'mt-[-8px]'
                       : '!hidden'
                   }
