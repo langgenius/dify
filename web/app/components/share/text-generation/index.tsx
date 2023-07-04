@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
@@ -97,7 +97,7 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
   }
 
-  const [allTaskList, setAllTaskList] = useState<Task[]>([])
+  const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
@@ -197,7 +197,6 @@ const TextGeneration: FC<IMainProps> = ({
   const handleRunBatch = (data: string[][]) => {
     if (!checkBatchInputs(data))
       return
-
     if (!allTaskFinished) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
       return
@@ -221,13 +220,17 @@ const TextGeneration: FC<IMainProps> = ({
       }
     })
     setAllTaskList(allTaskList)
+
     setControlSend(Date.now())
   }
 
   const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
-    console.log(taskId, isSuccess)
+    // console.log(taskId, isSuccess)
+    const allTasklistLatest = getLatestTaskList()
+    const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
     const nextPendingTaskId = pendingTaskList[0]?.id
-    const newAllTaskList = allTaskList.map((item) => {
+    // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
+    const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
         return {
           ...item,
@@ -242,6 +245,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
       return item
     })
+    // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
     setAllTaskList(newAllTaskList)
   }
 
