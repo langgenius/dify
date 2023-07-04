@@ -92,9 +92,12 @@ const TextGeneration: FC<IMainProps> = ({
 
   // send message task
   const [controlSend, setControlSend] = useState(0)
+  const [controlStopResponding, setControlStopResponding] = useState(0)
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    setAllTaskList([]) // clear batch task running status
   }
 
   const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
@@ -222,6 +225,8 @@ const TextGeneration: FC<IMainProps> = ({
     setAllTaskList(allTaskList)
 
     setControlSend(Date.now())
+    // clear run once task status
+    setControlStopResponding(Date.now())
   }
 
   const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
@@ -305,6 +310,7 @@ const TextGeneration: FC<IMainProps> = ({
     inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
     query={isCallBatchAPI ? (task as Task).params.query : query}
     controlSend={controlSend}
+    controlStopResponding={controlStopResponding}
     onShowRes={showResSidebar}
     handleSaveMessage={handleSaveMessage}
     taskId={task?.id}
