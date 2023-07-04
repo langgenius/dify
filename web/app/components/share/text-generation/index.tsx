@@ -206,19 +206,21 @@ const TextGeneration: FC<IMainProps> = ({
     }
 
     const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
-
+    const varLen = promptConfig?.prompt_variables.length || 0
     setIsCallBatchAPI(true)
     const allTaskList: Task[] = payloadData.map((item, i) => {
       const inputs: Record<string, string> = {}
-      item.slice(0, -1).forEach((input, index) => {
-        inputs[promptConfig?.prompt_variables[index].key as string] = input
-      })
+      if (varLen > 0) {
+        item.slice(0, varLen).forEach((input, index) => {
+          inputs[promptConfig?.prompt_variables[index].key as string] = input
+        })
+      }
       return {
         id: i + 1,
         status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
-          query: item[item.length - 1],
+          query: item[varLen],
         },
       }
     })
