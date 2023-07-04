@@ -125,7 +125,8 @@ const TextGeneration: FC<IMainProps> = ({
       notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
       return false
     }
-    let payloadData = data.slice(0)
+
+    let payloadData = data.slice(1)
     if (payloadData.length === 0) {
       notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
       return false
@@ -202,7 +203,7 @@ const TextGeneration: FC<IMainProps> = ({
       return
     }
 
-    const payloadData = data.slice(0)
+    const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
 
     setIsCallBatchAPI(true)
     const allTaskList: Task[] = payloadData.map((item, i) => {
