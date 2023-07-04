@@ -23,6 +23,7 @@ export type IResultProps = {
   inputs: Record<string, any>
   query: string
   controlSend?: number
+  controlStopResponding?: number
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
   taskId?: number
@@ -40,12 +41,18 @@ const Result: FC<IResultProps> = ({
   inputs,
   query,
   controlSend,
+  controlStopResponding,
   onShowRes,
   handleSaveMessage,
   taskId,
   onCompleted,
 }) => {
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
+  useEffect(() => {
+    if (controlStopResponding)
+      setResponsingFalse()
+  }, [controlStopResponding])
+
   const [completionRes, setCompletionRes] = useState('')
   const { notify } = Toast
   const isNoData = !completionRes
