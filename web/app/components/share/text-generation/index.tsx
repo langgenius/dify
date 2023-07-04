@@ -149,7 +149,7 @@ const TextGeneration: FC<IMainProps> = ({
       })
 
       if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex }) })
+        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
         return false
       }
     }
@@ -189,7 +189,7 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (errorRowIndex !== 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex, varName: requiredVarName }) })
+      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
       return false
     }
     return true
