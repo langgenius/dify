@@ -20,7 +20,7 @@ import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
-// import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -37,8 +37,8 @@ const Main: FC<IMainProps> = ({
   installedAppInfo,
 }) => {
   const { t } = useTranslation()
-  // const media = useBreakpoints()
-  // const isMobile = media === MediaType.mobile
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
 
   /*
   * app info
@@ -553,13 +553,13 @@ const Main: FC<IMainProps> = ({
     return <Loading type='app' />
 
   return (
-    <div className='bg-gray-100'>
+    <div>
       <Header
         title={siteInfo.title}
         icon={siteInfo.icon || ''}
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
-      // isMobile={isMobile}
+        isMobile={isMobile}
       // onShowSideBar={showSidebar}
       // onCreateNewChat={() => handleConversationIdChange('-1')}
       />
