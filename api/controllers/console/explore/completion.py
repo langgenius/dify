@@ -20,7 +20,6 @@ from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthor
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
 from services.completion_service import CompletionService
-from services.audio_service import AudioService
 from controllers.console.datasets.error import NoFileUploadedError, TooManyFilesError
 
 
@@ -155,6 +154,8 @@ class AudioApi(InstalledAppResource):
         
         if len(request.files) > 1:
             raise TooManyFilesError()
+        
+        from services.audio_service import AudioService
 
         try:
             response = AudioService.transcript(
