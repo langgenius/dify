@@ -59,7 +59,7 @@ const TextGeneration: FC<IMainProps> = ({
   const isTablet = media === MediaType.tablet
   const isMobile = media === MediaType.mobile
 
-  const [currTab, setCurrTab] = useState<string>('batch')
+  const [currTab, setCurrTab] = useState<string>('create')
   // Notice this situation isCallBatchAPI but not in batch tab
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currTab === 'batch'
