@@ -63,6 +63,8 @@ export type IChatProps = {
   controlFocus?: number
   isShowSuggestion?: boolean
   suggestionList?: string[]
+  isInstalledApp: boolean
+  installedAppId: string
 }
 
 export type MessageMore = {
@@ -425,6 +427,8 @@ const Chat: FC<IChatProps> = ({
   controlFocus,
   isShowSuggestion,
   suggestionList,
+  isInstalledApp,
+  installedAppId,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -606,7 +610,14 @@ const Chat: FC<IChatProps> = ({
                   )}
               </div>
               {
-                voiceInputShow && <VoiceInput onCancel={() => setVoiceInputShow(false)} onConverted={() => setVoiceInputShow(false)} />
+                voiceInputShow && (
+                  <VoiceInput
+                    isInstalledApp={isInstalledApp}
+                    installedAppId={installedAppId}
+                    onCancel={() => setVoiceInputShow(false)}
+                    onConverted={text => setQuery(text)}
+                  />
+                )
               }
             </div>
           </div>

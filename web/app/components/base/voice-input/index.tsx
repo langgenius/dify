@@ -5,13 +5,18 @@ import Recorder from 'js-audio-recorder'
 import s from './index.module.css'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
+  isInstalledApp: boolean
+  installedAppId: string
   onConverted: (text: string) => void
   onCancel: () => void
 }
 
 const VoiceInput = ({
+  isInstalledApp,
+  installedAppId,
   onCancel,
   onConverted,
 }: VoiceInputTypes) => {
@@ -49,7 +54,7 @@ const VoiceInput = ({
     }
     ctx.closePath()
   }, [])
-  const handleStopRecorder = useCallback(() => {
+  const handleStopRecorder = useCallback(async () => {
     setStartRecord(false)
     setStartConvert(true)
     recorder.current.stop()
@@ -58,9 +63,22 @@ const VoiceInput = ({
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    // const wavBlob = recorder.current.getWAVBlob()
-    // const wavFile = new File([wavBlob], 'audio.wav', { type: 'audio/wav' })
-    // onConverted('')
+    const wavBlob = recorder.current.getWAVBlob()
+    const wavFile = new File([wavBlob], 'a.wav', { type: 'audio/wav' })
+    const formData = new FormData()
+    formData.append('file', wavBlob)
+
+    try {
+      const audioResponse = await audioToText(isInstalledApp, installedAppId, formData)
+      const audioData = await audioResponse.json()
+      onConverted(audioData.text)
+    }
+    catch (e) {
+      onConverted('')
+    }
+    finally {
+      onCancel()
+    }
   }, [])
   const handleStartRecord = () => {
     setStartRecord(true)
