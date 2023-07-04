@@ -154,7 +154,12 @@ const TextGeneration: FC<IMainProps> = ({
     }
 
     // check row format
-    payloadData = payloadData.filter(item => !item.every(i => i === '')) // remove empty rows in the end
+    payloadData = payloadData.filter(item => !item.every(i => i === ''))
+    // after remove empty rows in the end, checked again
+    if (payloadData.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      return false
+    }
     let errorRowIndex = 0
     let requiredVarName = ''
     payloadData.forEach((item, index) => {
