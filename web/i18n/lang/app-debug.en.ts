@@ -6,6 +6,11 @@ const translation = {
     addFeature: 'Add Feature',
     automatic: 'Automatic',
     stopResponding: 'Stop responding',
+    agree: 'like',
+    disagree: 'dislike',
+    cancelAgree: 'Cancel like',
+    cancelDisagree: 'Cancel dislike',
+    userAction: 'User ',
   },
   notSetAPIKey: {
     title: 'LLM provider key has not been set',

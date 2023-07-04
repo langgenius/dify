@@ -376,6 +376,9 @@ const Main: FC<IMainProps> = ({
   }
 
   const checkCanSend = () => {
+    if (currConversationId !== '-1')
+      return true
+
     const prompt_variables = promptConfig?.prompt_variables
     const inputs = currInputs
     if (!inputs || !prompt_variables || prompt_variables?.length === 0)
@@ -556,9 +559,9 @@ const Main: FC<IMainProps> = ({
         icon={siteInfo.icon || ''}
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
-        // isMobile={isMobile}
-        // onShowSideBar={showSidebar}
-        // onCreateNewChat={() => handleConversationIdChange('-1')}
+      // isMobile={isMobile}
+      // onShowSideBar={showSidebar}
+      // onCreateNewChat={() => handleConversationIdChange('-1')}
       />
 
       <div className={'flex bg-white overflow-hidden'}>
