@@ -6,6 +6,11 @@ const translation = {
     addFeature: '添加功能',
     automatic: '自动编排',
     stopResponding: '停止响应',
+    agree: '赞同',
+    disagree: '反对',
+    cancelAgree: '取消赞同',
+    cancelDisagree: '取消反对',
+    userAction: '用户表示',
   },
   notSetAPIKey: {
     title: 'LLM 提供者的密钥未设置',

@@ -200,7 +200,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
     return (
       <Tooltip
         selector={`user-feedback-${randomString(16)}`}
-        content={(isWebScene || (!isUserFeedback && !isWebScene)) ? isLike ? '取消赞同' : '取消反对' : (!isWebScene && isUserFeedback) ? `用户表示${isLike ? '赞同' : '反对'}` : ''}
+        content={((isWebScene || (!isUserFeedback && !isWebScene)) ? isLike ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree') : (!isWebScene && isUserFeedback) ? `${t('appDebug.operation.userAction')}${isLike ? t('appDebug.operation.agree') : t('appDebug.operation.disagree')}` : '') as string}
       >
         <div
           className={`relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-gray-500 hover:text-gray-800 ${(!isWebScene && isUserFeedback) ? '!cursor-default' : ''}`}
