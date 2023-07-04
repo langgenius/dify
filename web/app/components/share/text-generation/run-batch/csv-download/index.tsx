@@ -52,7 +52,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
         filename={'template'}
         bom={true}
         config={{
-          delimiter: ';',
+          // delimiter: ';',
         }}
         data={[
           template,
