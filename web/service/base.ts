@@ -22,6 +22,16 @@ const baseOptions = {
   redirect: 'follow',
 }
 
+const sseBaseOptions = {
+  method: 'GET',
+  mode: 'cors',
+  credentials: 'include', // always send cookies、HTTP Basic authentication.
+  headers: new Headers({
+    'Content-Type': ContentType.json,
+  }),
+  redirect: 'follow',
+}
+
 export type IOnDataMoreInfo = {
   conversationId?: string
   taskId?: string
@@ -145,8 +155,14 @@ const baseFetch = (
     options.headers.set('Authorization', `bearer ${sharedToken}`)
   }
 
-  if (deleteContentType)
+  if (deleteContentType) {
     options.headers.delete('Content-Type')
+  }
+  else {
+    const contentType = options.headers.get('Content-Type')
+    if (!contentType)
+      options.headers.set('Content-Type', ContentType.json)
+  }
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
@@ -287,7 +303,7 @@ export const upload = (options: any): Promise<any> => {
 export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
-  const options = Object.assign({}, baseOptions, {
+  const options = Object.assign({}, sseBaseOptions, {
     method: 'POST',
     signal: abortController.signal,
   }, fetchOptions)
