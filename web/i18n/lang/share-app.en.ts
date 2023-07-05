@@ -55,7 +55,7 @@ const translation = {
       empty: 'Please input content in the uploaded file.',
       fileStructNotMatch: 'The uploaded CSV file not match the struct.',
       emptyLine: 'Row {{rowIndex}} is empty',
-      invalidLine: 'Row {{rowIndex}}: {{varName}} is required',
+      invalidLine: 'Row {{rowIndex}}: variables value can not be empty',
       atLeastOne: 'Please input at least one row in the uploaded file.',
     },
   },

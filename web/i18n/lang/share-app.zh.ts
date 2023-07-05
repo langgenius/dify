@@ -51,7 +51,7 @@ const translation = {
       empty: '上传文件的内容不能为空',
       fileStructNotMatch: '上传文件的内容与结构不匹配',
       emptyLine: '第 {{rowIndex}} 行的内容为空',
-      invalidLine: '第 {{rowIndex}} 行: {{varName}} 的内容不能为空',
+      invalidLine: '第 {{rowIndex}} 行: 变量值必填',
       atLeastOne: '上传文件的内容不能少于一条',
     },
   },
