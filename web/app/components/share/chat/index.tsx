@@ -369,6 +369,9 @@ const Main: FC<IMainProps> = ({
   }
 
   const checkCanSend = () => {
+    if (currConversationId !== '-1')
+      return true
+
     const prompt_variables = promptConfig?.prompt_variables
     const inputs = currInputs
     if (!inputs || !prompt_variables || prompt_variables?.length === 0)
