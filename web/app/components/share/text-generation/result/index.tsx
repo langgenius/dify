@@ -149,9 +149,13 @@ const Result: FC<IResultProps> = ({
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
+
+  const [controlClearMoreLikeThis, setControlClearMoreLikeThis] = useState(0)
   useEffect(() => {
-    if (controlSend)
+    if (controlSend) {
       handleSend()
+      setControlClearMoreLikeThis(Date.now())
+    }
   }, [controlSend])
 
   const renderTextGenerationRes = () => (
@@ -169,6 +173,7 @@ const Result: FC<IResultProps> = ({
       installedAppId={installedAppInfo?.id}
       isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
+      controlClearMoreLikeThis={controlClearMoreLikeThis}
     />
   )
 
