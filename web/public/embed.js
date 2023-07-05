@@ -50,7 +50,7 @@ async function embedChatbot () {
   // create iframe
   function createIframe () {
     const iframe = document.createElement('iframe');
-    iframe.allow = "fullscreen"
+    iframe.allow = "fullscreen;microphone"
     iframe.title = "dify chatbot bubble window"
     iframe.id = 'dify-chatbot-bubble-window'
     iframe.src = `https://${isDev ? 'dev.' : ''}udify.app/chatbot/${difyChatbotConfig.token}`;
