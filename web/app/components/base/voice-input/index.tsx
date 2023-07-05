@@ -33,7 +33,8 @@ const VoiceInput = ({
     drawRecordId.current = requestAnimationFrame(drawRecord)
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
-    const dataArray = recorder.current.getRecordAnalyseData()
+    const dataUnit8Array = recorder.current.getRecordAnalyseData()
+    const dataArray = [].slice.call(dataUnit8Array)
     const lineLength = parseInt(`${canvas.width / 3}`)
     const gap = parseInt(`${1024 / lineLength}`)
 
@@ -41,7 +42,10 @@ const VoiceInput = ({
     ctx.beginPath()
     let x = 0
     for (let i = 0; i < lineLength; i++) {
-      let v = dataArray[i * gap]
+      let v = dataArray.slice(i * gap, i * gap + gap).reduce((prev: number, next: number) => {
+        return prev + next
+      }, 0) / gap
+
       if (v < 128)
         v = 128
       if (v > 178)
