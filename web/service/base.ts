@@ -35,7 +35,9 @@ export type IOnError = (msg: string) => void
 
 type IOtherOptions = {
   isPublicAPI?: boolean
+  bodyStringify?: boolean
   needAllResponseContent?: boolean
+  deleteContentType?: boolean
   onData?: IOnData // for stream
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
@@ -140,7 +142,9 @@ const baseFetch = (
   fetchOptions: any,
   {
     isPublicAPI = false,
+    bodyStringify = true,
     needAllResponseContent,
+    deleteContentType,
   }: IOtherOptions,
 ) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
@@ -148,6 +152,9 @@ const baseFetch = (
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     options.headers.set('Authorization', `bearer ${sharedToken}`)
   }
+
+  if (deleteContentType)
+    options.headers.delete('Content-Type')
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
@@ -168,7 +175,7 @@ const baseFetch = (
     delete options.params
   }
 
-  if (body)
+  if (body && bodyStringify)
     options.body = JSON.stringify(body)
 
   // Handle timeout

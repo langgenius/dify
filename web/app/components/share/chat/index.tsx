@@ -620,6 +620,8 @@ const Main: FC<IMainProps> = ({
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
                     suggestionList={suggestQuestions}
+                    isInstalledApp={isInstalledApp}
+                    installedAppId={installedAppInfo?.id || ''}
                   />
                 </div>
               </div>)

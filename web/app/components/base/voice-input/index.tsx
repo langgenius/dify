@@ -5,13 +5,18 @@ import Recorder from 'js-audio-recorder'
 import s from './index.module.css'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
+  isInstalledApp: boolean
+  installedAppId: string
   onConverted: (text: string) => void
   onCancel: () => void
 }
 
 const VoiceInput = ({
+  isInstalledApp,
+  installedAppId,
   onCancel,
   onConverted,
 }: VoiceInputTypes) => {
@@ -21,6 +26,7 @@ const VoiceInput = ({
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
   const [duration, setDuration] = useState('00:00')
+  const [originDuration, setOriginDuration] = useState(0)
   const [startRecord, setStartRecord] = useState(false)
   const [startConvert, setStartConvert] = useState(false)
   const drawRecord = useCallback(() => {
@@ -49,7 +55,7 @@ const VoiceInput = ({
     }
     ctx.closePath()
   }, [])
-  const handleStopRecorder = useCallback(() => {
+  const handleStopRecorder = useCallback(async () => {
     setStartRecord(false)
     setStartConvert(true)
     recorder.current.stop()
@@ -58,9 +64,20 @@ const VoiceInput = ({
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    // const wavBlob = recorder.current.getWAVBlob()
-    // const wavFile = new File([wavBlob], 'audio.wav', { type: 'audio/wav' })
-    // onConverted('')
+    const wavBlob = recorder.current.getWAVBlob()
+    const wavFile = new File([wavBlob], 'a.wav', { type: 'audio/wav' })
+    const formData = new FormData()
+    formData.append('file', wavFile)
+
+    try {
+      const audioResponse = await audioToText(isInstalledApp, installedAppId, formData)
+      onConverted(audioResponse.text)
+      onCancel()
+    }
+    catch (e) {
+      onConverted('')
+      onCancel()
+    }
   }, [])
   const handleStartRecord = () => {
     setStartRecord(true)
@@ -68,10 +85,9 @@ const VoiceInput = ({
     recorder.current.start()
     recorder.current.onprogress = (params) => {
       const originDuration = params.duration
-      if (originDuration > 65) {
-        console.log('stop')
+      setOriginDuration(originDuration)
+      if (originDuration >= 120)
         handleStopRecorder()
-      }
       const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
       const seconds = parseInt(`${originDuration}`) % 60
       setDuration(`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`)
@@ -140,14 +156,14 @@ const VoiceInput = ({
         {
           startConvert && (
             <div
-              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
+              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-gray-200 rounded-lg  cursor-pointer'
               onClick={onCancel}
             >
               <XClose className='w-4 h-4 text-gray-500' />
             </div>
           )
         }
-        <div className='w-[45px] pl-1 text-xs font-medium text-gray-700'>{duration}</div>
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{duration}</div>
       </div>
     </div>
   )
