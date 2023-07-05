@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
@@ -29,6 +29,7 @@ export type IGenerationItemProps = {
   isInstalledApp: boolean
   installedAppId?: string
   taskId?: string
+  controlClearMoreLikeThis?: number
 }
 
 export const SimpleBtn = ({ className, onClick, children }: {
@@ -84,6 +85,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   isInstalledApp,
   installedAppId,
   taskId,
+  controlClearMoreLikeThis,
 }) => {
   const { t } = useTranslation()
   const isTop = depth === 1
@@ -115,6 +117,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isMobile,
     isInstalledApp,
     installedAppId,
+    controlClearMoreLikeThis,
   }
 
   const handleMoreLikeThis = async () => {
@@ -141,6 +144,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
     return res
   })()
+
+  useEffect(() => {
+    if (controlClearMoreLikeThis) {
+      setChildMessageId(null)
+      setCompletionRes('')
+    }
+  }, [controlClearMoreLikeThis])
+
   return (
     <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
       style={isTop
