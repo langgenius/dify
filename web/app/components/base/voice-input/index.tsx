@@ -26,6 +26,7 @@ const VoiceInput = ({
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
   const [duration, setDuration] = useState('00:00')
+  const [originDuration, setOriginDuration] = useState(0)
   const [startRecord, setStartRecord] = useState(false)
   const [startConvert, setStartConvert] = useState(false)
   const drawRecord = useCallback(() => {
@@ -66,17 +67,15 @@ const VoiceInput = ({
     const wavBlob = recorder.current.getWAVBlob()
     const wavFile = new File([wavBlob], 'a.wav', { type: 'audio/wav' })
     const formData = new FormData()
-    formData.append('file', wavBlob)
+    formData.append('file', wavFile)
 
     try {
       const audioResponse = await audioToText(isInstalledApp, installedAppId, formData)
-      const audioData = await audioResponse.json()
-      onConverted(audioData.text)
+      onConverted(audioResponse.text)
+      onCancel()
     }
     catch (e) {
       onConverted('')
-    }
-    finally {
       onCancel()
     }
   }, [])
@@ -86,10 +85,9 @@ const VoiceInput = ({
     recorder.current.start()
     recorder.current.onprogress = (params) => {
       const originDuration = params.duration
-      if (originDuration > 65) {
-        console.log('stop')
+      setOriginDuration(originDuration)
+      if (originDuration >= 120)
         handleStopRecorder()
-      }
       const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
       const seconds = parseInt(`${originDuration}`) % 60
       setDuration(`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`)
@@ -158,14 +156,14 @@ const VoiceInput = ({
         {
           startConvert && (
             <div
-              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-primary-100 rounded-lg  cursor-pointer'
+              className='flex justify-center items-center mr-1 w-8 h-8 hover:bg-gray-200 rounded-lg  cursor-pointer'
               onClick={onCancel}
             >
               <XClose className='w-4 h-4 text-gray-500' />
             </div>
           )
         }
-        <div className='w-[45px] pl-1 text-xs font-medium text-gray-700'>{duration}</div>
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{duration}</div>
       </div>
     </div>
   )

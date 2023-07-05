@@ -578,7 +578,7 @@ const Chat: FC<IChatProps> = ({
                 {
                   query
                     ? (
-                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer' onClick={() => setQuery('')}>
+                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
                         <XCircle className='w-4 h-4 text-[#98A2B3]' />
                       </div>
                     )

@@ -142,7 +142,8 @@ class ChatStopApi(InstalledAppResource):
         return {'result': 'success'}, 200
     
 class AudioApi(InstalledAppResource):
-    def post(self, app_model, end_user):
+    def post(self, installed_app):
+        app_model = installed_app.app
         if app_model.mode != 'chat':
             raise NotChatAppError()
         

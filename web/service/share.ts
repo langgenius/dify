@@ -116,5 +116,5 @@ export const fetchSuggestedQuestions = (messageId: string, isInstalledApp: boole
 }
 
 export const audioToText = (isInstalledApp: boolean, installedAppId: string, body: FormData) => {
-  return (getAction('post', isInstalledApp))(getUrl('/audio-to-text', isInstalledApp, installedAppId), { body }, { bodyStringify: false, deleteContentType: true })
+  return (getAction('post', isInstalledApp))(getUrl('/audio-to-text', isInstalledApp, installedAppId), { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
