@@ -20,6 +20,16 @@ export type AppContextValue = {
   useSelector: typeof useSelector
 }
 
+const initialLangeniusVersionInfo = {
+  current_env: '',
+  current_version: '',
+  latest_version: '',
+  release_date: '',
+  release_notes: '',
+  version: '',
+  can_auto_update: false,
+}
+
 const AppContext = createContext<AppContextValue>({
   apps: [],
   mutateApps: () => { },
@@ -30,15 +40,7 @@ const AppContext = createContext<AppContextValue>({
   },
   mutateUserProfile: () => { },
   pageContainerRef: createRef(),
-  langeniusVersionInfo: {
-    current_env: '',
-    current_version: '',
-    latest_version: '',
-    release_date: '',
-    release_notes: '',
-    version: '',
-    can_auto_update: false,
-  },
+  langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
 })
 
@@ -57,7 +59,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>()
-  const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>()
+  const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
   const updateUserProfileAndVersion = async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       const result = await userProfileResponse.json()
@@ -72,7 +74,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     updateUserProfileAndVersion()
   }, [userProfileResponse])
 
-  if (!appList || !userProfile || !langeniusVersionInfo)
+  if (!appList || !userProfile)
     return <Loading type='app' />
 
   return (
