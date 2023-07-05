@@ -22,16 +22,6 @@ const baseOptions = {
   redirect: 'follow',
 }
 
-const sseBaseOptions = {
-  method: 'GET',
-  mode: 'cors',
-  credentials: 'include', // always send cookies、HTTP Basic authentication.
-  headers: new Headers({
-    'Content-Type': ContentType.json,
-  }),
-  redirect: 'follow',
-}
-
 export type IOnDataMoreInfo = {
   conversationId?: string
   taskId?: string
@@ -303,10 +293,14 @@ export const upload = (options: any): Promise<any> => {
 export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
-  const options = Object.assign({}, sseBaseOptions, {
+  const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
   }, fetchOptions)
+
+  const contentType = options.headers.get('Content-Type')
+  if (!contentType)
+    options.headers.set('Content-Type', ContentType.json)
 
   getAbortController?.(abortController)
 
