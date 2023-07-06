@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
+import { useRafInterval } from 'ahooks'
 import s from './index.module.css'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -23,10 +24,13 @@ const VoiceInput = ({
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
-  const [duration, setDuration] = useState('00:00')
   const [originDuration, setOriginDuration] = useState(0)
   const [startRecord, setStartRecord] = useState(false)
   const [startConvert, setStartConvert] = useState(false)
+  const clearInterval = useRafInterval(() => {
+    setOriginDuration(originDuration + 1)
+  }, 1000)
+
   const drawRecord = useCallback(() => {
     drawRecordId.current = requestAnimationFrame(drawRecord)
     const canvas = canvasRef.current!
@@ -58,6 +62,7 @@ const VoiceInput = ({
     ctx.closePath()
   }, [])
   const handleStopRecorder = useCallback(async () => {
+    clearInterval()
     setStartRecord(false)
     setStartConvert(true)
     recorder.current.stop()
@@ -85,15 +90,6 @@ const VoiceInput = ({
     setStartRecord(true)
     setStartConvert(false)
     recorder.current.start()
-    recorder.current.onprogress = (params) => {
-      const originDuration = params.duration
-      setOriginDuration(originDuration)
-      if (originDuration >= 120)
-        handleStopRecorder()
-      const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
-      const seconds = parseInt(`${originDuration}`) % 60
-      setDuration(`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`)
-    }
     if (canvasRef.current && ctxRef.current)
       drawRecord()
   }
@@ -117,10 +113,20 @@ const VoiceInput = ({
       }
     }
   }
+  if (originDuration >= 120 && startRecord)
+    handleStopRecorder()
+
   useEffect(() => {
-    initCanvas()
-    handleStartRecord()
+    initCanvas();
+    (Recorder as any).getPermission().then(() => {
+      handleStartRecord()
+    }, () => {
+      handleStopRecorder()
+    })
   }, [])
+
+  const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
+  const seconds = parseInt(`${originDuration}`) % 60
 
   return (
     <div className={cn(s.wrapper, 'absolute inset-0 rounded-xl')}>
@@ -165,7 +171,7 @@ const VoiceInput = ({
             </div>
           )
         }
-        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{duration}</div>
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
       </div>
     </div>
   )

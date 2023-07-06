@@ -19,6 +19,7 @@ from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthor
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
 
+
 # define completion api for user
 class CompletionApi(WebApiResource):
 

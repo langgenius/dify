@@ -19,7 +19,6 @@ from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthor
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-from services.completion_service import CompletionService
 
 
 # define completion api for user
