@@ -386,6 +386,7 @@ const Debug: FC<IDebug> = ({
                   }}
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
+                  displayScene='console'
                 />
               </div>
             </div>

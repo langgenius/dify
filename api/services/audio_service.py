@@ -1,30 +1,32 @@
-import openai
 import io
+import openai
 from werkzeug.datastructures import FileStorage
 from core.llm.llm_builder import LLMBuilder
 from core.llm.provider.llm_provider_service import LLMProviderService
-from models.model import App
-from controllers.console.datasets.error import FileTooLargeError, UnsupportedFileTypeError
+from services.errors.audio import NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError
 
-FILE_SIZE_LIMIT = 25 * 1024 * 1024  # 25MB
+FILE_SIZE_LIMIT = 25 * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']
 
 class AudioService:
     @classmethod
-    def transcript(cls, app_model: App, file: FileStorage, **params):
+    def transcript(cls, tenant_id: str, file: FileStorage, **params):
+        if file is None:
+            raise NoAudioUploadedError()
+        
+        extension = file.mimetype
+        if extension not in [f'audio/{ext}' for ext in ALLOWED_EXTENSIONS]:
+            raise AudioTooLargeError()
+
         file_content = file.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:
             message = f"({file_size} > {FILE_SIZE_LIMIT})"
-            raise FileTooLargeError(message)
+            raise UnsupportedAudioTypeError(message)
         
-        extension = file.mimetype
-        if extension not in [f'audio/{ext}' for ext in ALLOWED_EXTENSIONS]:
-            raise UnsupportedFileTypeError()
-
-        provider_name = LLMBuilder.get_default_provider(app_model.tenant_id)
-        provider = LLMProviderService(app_model.tenant_id, provider_name)
+        provider_name = LLMBuilder.get_default_provider(tenant_id)
+        provider = LLMProviderService(tenant_id, provider_name)
         credentials = provider.get_credentials(provider_name)
 
         buffer = io.BytesIO(file_content)
