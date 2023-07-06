@@ -228,6 +228,7 @@ const translation = {
   voiceInput: {
     speaking: '现在讲...',
     converting: '正在转换为文本...',
+    notAllow: '麦克风未授权',
   },
 }
 

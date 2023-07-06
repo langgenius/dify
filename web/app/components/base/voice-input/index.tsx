@@ -86,12 +86,18 @@ const VoiceInput = ({
       onCancel()
     }
   }, [])
-  const handleStartRecord = () => {
-    setStartRecord(true)
-    setStartConvert(false)
-    recorder.current.start()
-    if (canvasRef.current && ctxRef.current)
-      drawRecord()
+  const handleStartRecord = async () => {
+    try {
+      await recorder.current.start()
+      setStartRecord(true)
+      setStartConvert(false)
+
+      if (canvasRef.current && ctxRef.current)
+        drawRecord()
+    }
+    catch (e) {
+      onCancel()
+    }
   }
 
   const initCanvas = () => {
@@ -117,12 +123,8 @@ const VoiceInput = ({
     handleStopRecorder()
 
   useEffect(() => {
-    initCanvas();
-    (Recorder as any).getPermission().then(() => {
-      handleStartRecord()
-    }, () => {
-      handleStopRecorder()
-    })
+    initCanvas()
+    handleStartRecord()
   }, [])
 
   const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
