@@ -616,6 +616,7 @@ const Main: FC<IMainProps> = ({
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
                     suggestionList={suggestQuestions}
+                    displayScene='web'
                   />
                 </div>
               </div>)
