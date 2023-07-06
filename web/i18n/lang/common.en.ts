@@ -228,6 +228,7 @@ const translation = {
   voiceInput: {
     speaking: 'Speak now...',
     converting: 'Converting to text...',
+    notAllow: 'microphone not authorized',
   },
 }
 

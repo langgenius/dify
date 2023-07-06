@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
+import Recorder from 'js-audio-recorder'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
@@ -493,6 +494,13 @@ const Chat: FC<IChatProps> = ({
   }, [suggestionList])
 
   const [voiceInputShow, setVoiceInputShow] = useState(false)
+  const handleVoiceInputShow = () => {
+    (Recorder as any).getPermission().then(() => {
+      setVoiceInputShow(true)
+    }, () => {
+      logError(t('common.voiceInput.notAllow'))
+    })
+  }
 
   return (
     <div className={cn('px-3.5', 'h-full')}>
@@ -581,7 +589,7 @@ const Chat: FC<IChatProps> = ({
                     : (
                       <div
                         className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
-                        onClick={() => setVoiceInputShow(true)}
+                        onClick={handleVoiceInputShow}
                       >
                         <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
                         <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />

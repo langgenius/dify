@@ -5,7 +5,7 @@ from core.llm.llm_builder import LLMBuilder
 from core.llm.provider.llm_provider_service import LLMProviderService
 from services.errors.audio import NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError
 
-FILE_SIZE_LIMIT = 25 * 1024 * 1024
+FILE_SIZE_LIMIT = 1 * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']
 
 class AudioService:
