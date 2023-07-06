@@ -32,7 +32,7 @@ const translation = {
     status: {
       queuing: '排队中',
       indexing: '索引中',
-      parsed: '已解析',
+      paused: '已暂停',
       error: '错误',
       available: '可用',
       enabled: '已启用',
