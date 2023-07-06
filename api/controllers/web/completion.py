@@ -3,7 +3,7 @@ import json
 import logging
 from typing import Generator, Union
 
-from flask import Response, stream_with_context, request
+from flask import Response, stream_with_context
 from flask_restful import reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
@@ -18,8 +18,6 @@ from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthor
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-from services.audio_service import AudioService
-from controllers.console.datasets.error import NoFileUploadedError, TooManyFilesError
 
 # define completion api for user
 class CompletionApi(WebApiResource):
@@ -134,49 +132,6 @@ class ChatStopApi(WebApiResource):
         PubHandler.stop(end_user, task_id)
 
         return {'result': 'success'}, 200
-    
-class AudioApi(WebApiResource):
-    def post(self, app_model, end_user):
-        if app_model.mode != 'chat':
-            raise NotChatAppError()
-        
-        file = request.files['file']
-
-        # check file
-        if 'file' not in request.files:
-            raise NoFileUploadedError()
-        
-        if len(request.files) > 1:
-            raise TooManyFilesError()
-
-        try:
-            response = AudioService.transcript(
-                app_model=app_model,
-                file=file,
-            )
-
-            return response
-        except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
-        except services.errors.conversation.ConversationCompletedError:
-            raise ConversationCompletedError()
-        except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
-            raise AppUnavailableError()
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
-        except ValueError as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
 
 
 def compact_response(response: Union[dict | Generator]) -> Response:
@@ -217,4 +172,3 @@ api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
 api.add_resource(ChatApi, '/chat-messages')
 api.add_resource(ChatStopApi, '/chat-messages/<string:task_id>/stop')
-api.add_resource(AudioApi, '/audio-to-text')

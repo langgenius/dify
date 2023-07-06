@@ -115,6 +115,6 @@ export const fetchSuggestedQuestions = (messageId: string, isInstalledApp: boole
   return (getAction('get', isInstalledApp))(getUrl(`/messages/${messageId}/suggested-questions`, isInstalledApp, installedAppId))
 }
 
-export const audioToText = (isInstalledApp: boolean, installedAppId: string, body: FormData) => {
-  return (getAction('post', isInstalledApp))(getUrl('/audio-to-text', isInstalledApp, installedAppId), { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
+export const audioToText = (isPublicAPI: boolean, body: FormData) => {
+  return (getAction('post', !isPublicAPI))('/audio-to-text', { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }

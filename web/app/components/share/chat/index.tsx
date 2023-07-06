@@ -17,7 +17,7 @@ import Header from '@/app/components/share/header'
 import { delConversation, fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, pinConversation, sendChatMessage, stopChatMessageResponding, unpinConversation, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
+import type { DisplayScene, Feedbacktype, IChatItem } from '@/app/components/app/chat'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -28,11 +28,13 @@ import type { InstalledApp } from '@/models/explore'
 import Confirm from '@/app/components/base/confirm'
 
 export type IMainProps = {
+  displayScene?: DisplayScene
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
 }
 
 const Main: FC<IMainProps> = ({
+  displayScene = 'web',
   isInstalledApp = false,
   installedAppInfo,
 }) => {
@@ -620,8 +622,7 @@ const Main: FC<IMainProps> = ({
                     controlFocus={controlFocus}
                     isShowSuggestion={doShowSuggestion}
                     suggestionList={suggestQuestions}
-                    isInstalledApp={isInstalledApp}
-                    installedAppId={installedAppInfo?.id || ''}
+                    displayScene={displayScene}
                   />
                 </div>
               </div>)

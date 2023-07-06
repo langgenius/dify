@@ -8,15 +8,13 @@ import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/g
 import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
-  isInstalledApp: boolean
-  installedAppId: string
+  isPublic: boolean
   onConverted: (text: string) => void
   onCancel: () => void
 }
 
 const VoiceInput = ({
-  isInstalledApp,
-  installedAppId,
+  isPublic,
   onCancel,
   onConverted,
 }: VoiceInputTypes) => {
@@ -74,7 +72,7 @@ const VoiceInput = ({
     formData.append('file', wavFile)
 
     try {
-      const audioResponse = await audioToText(isInstalledApp, installedAppId, formData)
+      const audioResponse = await audioToText(isPublic, formData)
       onConverted(audioResponse.text)
       onCancel()
     }
