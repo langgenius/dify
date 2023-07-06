@@ -74,7 +74,7 @@ const StepOne = ({
     setCurrentFile(file)
   }
   const hideFilePreview = () => {
-    setCurrentNotionPage(undefined)
+    setCurrentFile(undefined)
   }
 
   const updateCurrentPage = (page: Page) => {

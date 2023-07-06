@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useClickAway } from 'ahooks'
@@ -12,6 +12,7 @@ import type { CompletionParams } from '@/models/debug'
 import { AppType } from '@/types/app'
 import { TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 export type IConifgModelProps = {
   mode: string
@@ -55,6 +56,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
   const isChatApp = mode === AppType.chat
   const availableModels = options.filter(item => item.type === mode)
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
+  const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
   useClickAway(() => {
     hideConfig()
@@ -177,6 +179,14 @@ const ConifgModel: FC<IConifgModelProps> = ({
   const ableStyle = 'bg-indigo-25 border-[#2A87F5] cursor-pointer'
   const diabledStyle = 'bg-[#FFFCF5] border-[#F79009]'
 
+  useEffect(() => {
+    const max = params[4].max
+    if (completionParams.max_tokens > max * 2 / 3)
+      setMaxTokenSettingTipVisible(true)
+    else
+      setMaxTokenSettingTipVisible(false)
+  }, [params, completionParams.max_tokens, setMaxTokenSettingTipVisible])
+
   return (
     <div className='relative' ref={configContentRef}>
       <div
@@ -247,6 +257,14 @@ const ConifgModel: FC<IConifgModelProps> = ({
               {params.map(({ key, ...param }) => (<ParamItem key={key} {...param} value={(completionParams as any)[key] as any} onChange={handleParamChange} />))}
             </div>
           </div>
+          {
+            maxTokenSettingTipVisible && (
+              <div className='flex py-2 pr-4 pl-5 bg-[#FFFAEB] border-t border-[#FEF0C7]'>
+                <AlertTriangle className='shrink-0 mr-2 mt-[3px] w-3 h-3 text-[#F79009]' />
+                <div className='mr-2 text-xs font-medium text-gray-700'>{t('common.model.params.maxTokenSettingTip')}</div>
+              </div>
+            )
+          }
         </Panel>
       )}
     </div>
