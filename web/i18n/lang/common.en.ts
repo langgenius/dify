@@ -51,6 +51,7 @@ const translation = {
       maxToken: 'Max token',
       maxTokenTip:
         'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
+      maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
       setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model 4,000.',
     },
     tone: {
