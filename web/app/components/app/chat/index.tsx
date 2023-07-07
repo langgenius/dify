@@ -4,6 +4,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
+import { usePathname } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
@@ -186,6 +187,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
+  const pathname = usePathname()
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -250,13 +252,18 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
     }
 
     const adminOperation = () => {
+      const inAppLogPage = /\/app\/.+\/logs/g.test(pathname)
       return <div className='flex gap-1'>
-        <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.addAnnotation') as string}>
-          {OperationBtn({
-            innerContent: <IconWrapper><EditIcon className='hover:text-gray-800' /></IconWrapper>,
-            onClick: () => setShowEdit(true),
-          })}
-        </Tooltip>
+        {
+          inAppLogPage && (
+            <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.addAnnotation') as string}>
+              {OperationBtn({
+                innerContent: <IconWrapper><EditIcon className='hover:text-gray-800' /></IconWrapper>,
+                onClick: () => setShowEdit(true),
+              })}
+            </Tooltip>
+          )
+        }
         {!localAdminFeedback?.rating && <>
           <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.like') as string}>
             {OperationBtn({
