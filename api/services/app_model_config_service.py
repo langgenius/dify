@@ -4,6 +4,7 @@ import uuid
 from core.constant import llm_constant
 from models.account import Account
 from services.dataset_service import DatasetService
+from core.llm.llm_builder import LLMBuilder
 
 
 class AppModelConfigService:
@@ -123,6 +124,11 @@ class AppModelConfigService:
 
         if not isinstance(config["speech_to_text"]["enabled"], bool):
             raise ValueError("enabled in speech_to_text must be of boolean type")
+        
+        provider_name = LLMBuilder.get_default_provider(account.current_tenant_id)
+
+        if config["speech_to_text"]["enabled"] and provider_name != 'openai':
+            raise ValueError("provider not support speech to text")
 
         # more_like_this
         if 'more_like_this' not in config or not config["more_like_this"]:
