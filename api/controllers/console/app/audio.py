@@ -16,7 +16,6 @@ from controllers.console.wraps import account_initialization_required
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from flask_restful import Resource
-from models.model import AppModelConfig
 from services.audio_service import AudioService
 
 
@@ -26,12 +25,7 @@ class ChatMessageAudioApi(Resource):
     @account_initialization_required
     def post(self, app_id):
         app_id = str(app_id)
-
         app_model = _get_app(app_id, 'chat')
-        app_model_config: AppModelConfig = app_model.app_model_config
-
-        if not app_model_config.speech_to_text_dict['enabled']:
-            raise AppUnavailableError()
 
         file = request.files['file']
 
