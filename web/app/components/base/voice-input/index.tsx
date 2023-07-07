@@ -10,13 +10,11 @@ import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/g
 import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
-  isPublic: boolean
   onConverted: (text: string) => void
   onCancel: () => void
 }
 
 const VoiceInput = ({
-  isPublic,
   onCancel,
   onConverted,
 }: VoiceInputTypes) => {
@@ -80,9 +78,11 @@ const VoiceInput = ({
     formData.append('file', wavFile)
 
     let url = ''
+    let isPublic = false
 
     if (params.token) {
       url = '/audio-to-text'
+      isPublic = true
     }
     else if (params.appId) {
       if (pathname.search('explore/installed') > -1)
