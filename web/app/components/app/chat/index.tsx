@@ -577,7 +577,7 @@ const Chat: FC<IChatProps> = ({
                 minHeight={48}
                 autoFocus
                 controlFocus={controlFocus}
-                className={`${cn(s.textArea)} ${isShowSpeechToText ? 'pr-[130px]' : 'pr-[90px]'} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
+                className={`${cn(s.textArea)} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
               />
               <div className="absolute top-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
