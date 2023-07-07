@@ -7,11 +7,15 @@ from werkzeug.exceptions import InternalServerError
 import services
 from controllers.console import api
 from controllers.console.app.error import AppUnavailableError, ProviderNotInitializeError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
+    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError, \
+    NoAudioUploadedError, AudioTooLargeError, \
+    UnsupportedAudioTypeError, ProviderNotSupportSpeechToTextError
 from controllers.console.explore.wraps import InstalledAppResource
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from services.audio_service import AudioService
+from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
+    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 from models.model import AppModelConfig
 
 
@@ -35,6 +39,14 @@ class ChatAudioApi(InstalledAppResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:

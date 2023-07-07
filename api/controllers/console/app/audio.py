@@ -10,13 +10,16 @@ from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.app.error import AppUnavailableError, \
     ProviderNotInitializeError, CompletionRequestError, ProviderQuotaExceededError, \
-    ProviderModelCurrentlyNotSupportError
+    ProviderModelCurrentlyNotSupportError, NoAudioUploadedError, AudioTooLargeError, \
+    UnsupportedAudioTypeError, ProviderNotSupportSpeechToTextError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from flask_restful import Resource
 from services.audio_service import AudioService
+from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
+    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 
 
 class ChatMessageAudioApi(Resource):
@@ -39,6 +42,14 @@ class ChatMessageAudioApi(Resource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:
