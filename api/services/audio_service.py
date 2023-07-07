@@ -1,53 +1,42 @@
 import io
-import openai
 from werkzeug.datastructures import FileStorage
 from core.llm.llm_builder import LLMBuilder
 from core.llm.provider.llm_provider_service import LLMProviderService
-from services.errors.audio import NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError
-from openai.error import InvalidRequestError
+from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
+from core.llm.whisper import Whisper
+from models.provider import ProviderName
 
 FILE_SIZE_LIMIT = 1 * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']
 
 class AudioService:
     @classmethod
-    def transcript(cls, tenant_id: str, file: FileStorage, **params):
+    def transcript(cls, tenant_id: str, file: FileStorage):
         if file is None:
-            raise NoAudioUploadedError()
+            raise NoAudioUploadedServiceError()
         
         extension = file.mimetype
         if extension not in [f'audio/{ext}' for ext in ALLOWED_EXTENSIONS]:
-            raise AudioTooLargeError()
+            raise UnsupportedAudioTypeServiceError()
 
         file_content = file.read()
         file_size = len(file_content)
 
         if file_size > FILE_SIZE_LIMIT:
             message = f"({file_size} > {FILE_SIZE_LIMIT})"
-            raise UnsupportedAudioTypeError(message)
+            raise AudioTooLargeServiceError(message)
         
         provider_name = LLMBuilder.get_default_provider(tenant_id)
-        provider = LLMProviderService(tenant_id, provider_name)
-        credentials = provider.get_credentials(provider_name)
+        if provider_name != ProviderName.OPENAI.value:
+            raise ProviderNotSupportSpeechToTextServiceError('haha')
+
+        provider_service = LLMProviderService(tenant_id, provider_name)
 
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.wav'
 
-        try:
-            transcript = openai.Audio.transcribe(
-                        model='whisper-1', 
-                        file=buffer,
-                        api_key=credentials.get('openai_api_key'),
-                        api_base=credentials.get('openai_api_base'),
-                        api_type=credentials.get('openai_api_type'),
-                        api_version=credentials.get('openai_api_version'),
-                        params=params
-                    )
-        
-            return transcript
-        except InvalidRequestError as e:
-            return {'message': str(e)}, 400
-    
+        return Whisper(provider_service.provider).transcribe(buffer)
+
 
 
         

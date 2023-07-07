@@ -7,11 +7,14 @@ from werkzeug.exceptions import InternalServerError
 import services
 from controllers.web import api
 from controllers.web.error import AppUnavailableError, ProviderNotInitializeError, CompletionRequestError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
+    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, NoAudioUploadedError, AudioTooLargeError, \
+    UnsupportedAudioTypeError, ProviderNotSupportSpeechToTextError
 from controllers.web.wraps import WebApiResource
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from services.audio_service import AudioService
+from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
+    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 from models.model import App, AppModelConfig
 
 
@@ -34,6 +37,14 @@ class AudioApi(WebApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:

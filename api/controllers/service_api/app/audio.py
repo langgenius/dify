@@ -4,14 +4,17 @@ from flask import request
 from werkzeug.exceptions import InternalServerError
 
 import services
-from services.audio_service import AudioService
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError, ProviderNotInitializeError, CompletionRequestError, ProviderQuotaExceededError, \
-    ProviderModelCurrentlyNotSupportError
+    ProviderModelCurrentlyNotSupportError, NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError, \
+    ProviderNotSupportSpeechToTextError
 from controllers.service_api.wraps import AppApiResource
 from core.llm.error import LLMBadRequestError, LLMAuthorizationError, LLMAPIUnavailableError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from models.model import App, AppModelConfig
+from services.audio_service import AudioService
+from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
+    UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 
 class AudioApi(AppApiResource):
     def post(self, app_model: App, end_user):
@@ -32,6 +35,14 @@ class AudioApi(AppApiResource):
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
             raise AppUnavailableError()
+        except NoAudioUploadedServiceError:
+            raise NoAudioUploadedError()
+        except AudioTooLargeServiceError as e:
+            raise AudioTooLargeError(str(e))
+        except UnsupportedAudioTypeServiceError:
+            raise UnsupportedAudioTypeError()
+        except ProviderNotSupportSpeechToTextServiceError:
+            raise ProviderNotSupportSpeechToTextError()
         except ProviderTokenNotInitError:
             raise ProviderNotInitializeError()
         except QuotaExceededError:
