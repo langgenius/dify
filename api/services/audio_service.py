@@ -27,7 +27,7 @@ class AudioService:
             raise AudioTooLargeServiceError(message)
         
         provider_name = LLMBuilder.get_default_provider(tenant_id)
-        if provider_name != ProviderName.OPENAI:
+        if provider_name != ProviderName.OPENAI.value:
             raise ProviderNotSupportSpeechToTextServiceError('haha')
 
         provider_service = LLMProviderService(tenant_id, provider_name)
