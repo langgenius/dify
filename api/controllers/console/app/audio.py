@@ -2,21 +2,32 @@
 import logging
 
 from flask import request
-from werkzeug.exceptions import InternalServerError
+from flask_login import login_required
+from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from controllers.web import api
-from controllers.web.error import AppUnavailableError, ProviderNotInitializeError, CompletionRequestError, \
-    ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
-from controllers.web.wraps import WebApiResource
+from controllers.console import api
+from controllers.console.app import _get_app
+from controllers.console.app.error import AppUnavailableError, \
+    ProviderNotInitializeError, CompletionRequestError, ProviderQuotaExceededError, \
+    ProviderModelCurrentlyNotSupportError
+from controllers.console.setup import setup_required
+from controllers.console.wraps import account_initialization_required
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from flask_restful import Resource
+from models.model import AppModelConfig
 from services.audio_service import AudioService
-from models.model import App, AppModelConfig
 
 
-class AudioApi(WebApiResource):
-    def post(self, app_model: App, end_user):
+class ChatMessageAudioApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, app_id):
+        app_id = str(app_id)
+
+        app_model = _get_app(app_id, 'chat')
         app_model_config: AppModelConfig = app_model.app_model_config
 
         if not app_model_config.speech_to_text_dict['enabled']:
@@ -48,5 +59,6 @@ class AudioApi(WebApiResource):
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
+        
 
-api.add_resource(AudioApi, '/audio-to-text')
+api.add_resource(ChatMessageAudioApi, '/apps/<uuid:app_id>/audio-to-text')

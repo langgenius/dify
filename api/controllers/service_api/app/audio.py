@@ -11,10 +11,15 @@ from controllers.service_api.app.error import AppUnavailableError, ProviderNotIn
 from controllers.service_api.wraps import AppApiResource
 from core.llm.error import LLMBadRequestError, LLMAuthorizationError, LLMAPIUnavailableError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
-from models.model import App
+from models.model import App, AppModelConfig
 
 class AudioApi(AppApiResource):
     def post(self, app_model: App, end_user):
+        app_model_config: AppModelConfig = app_model.app_model_config
+
+        if not app_model_config.speech_to_text_dict['enabled']:
+            raise AppUnavailableError() 
+
         file = request.files['file']
 
         try:

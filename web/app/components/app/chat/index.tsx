@@ -64,6 +64,7 @@ export type IChatProps = {
   controlFocus?: number
   isShowSuggestion?: boolean
   suggestionList?: string[]
+  isShowSpeechToText?: boolean
 }
 
 export type MessageMore = {
@@ -426,6 +427,7 @@ const Chat: FC<IChatProps> = ({
   controlFocus,
   isShowSuggestion,
   suggestionList,
+  isShowSpeechToText,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -586,15 +588,17 @@ const Chat: FC<IChatProps> = ({
                         <XCircle className='w-4 h-4 text-[#98A2B3]' />
                       </div>
                     )
-                    : (
-                      <div
-                        className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
-                        onClick={handleVoiceInputShow}
-                      >
-                        <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
-                        <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
-                      </div>
-                    )
+                    : isShowSpeechToText
+                      ? (
+                        <div
+                          className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
+                          onClick={handleVoiceInputShow}
+                        >
+                          <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
+                          <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
+                        </div>
+                      )
+                      : null
                 }
                 <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
                 {isMobile

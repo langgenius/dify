@@ -1,25 +1,30 @@
 'use client'
-import React, { FC } from 'react'
-import GroupName from '../../base/group-name'
-import OpeningStatement, { IOpeningStatementProps } from './opening-statement'
-import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import GroupName from '../../base/group-name'
+import type { IOpeningStatementProps } from './opening-statement'
+import OpeningStatement from './opening-statement'
+import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
+import SpeechToText from './speech-to-text'
 
 /*
-* Include 
+* Include
 * 1. Conversation Opener
 * 2. Opening Suggestion
 * 3. Next question suggestion
 */
-interface ChatGroupProps {
+type ChatGroupProps = {
   isShowOpeningStatement: boolean
   openingStatementConfig: IOpeningStatementProps
   isShowSuggestedQuestionsAfterAnswer: boolean
+  isShowSpeechText: boolean
 }
 const ChatGroup: FC<ChatGroupProps> = ({
   isShowOpeningStatement,
   openingStatementConfig,
-  isShowSuggestedQuestionsAfterAnswer
+  isShowSuggestedQuestionsAfterAnswer,
+  isShowSpeechText,
 }) => {
   const { t } = useTranslation()
 
@@ -33,6 +38,11 @@ const ChatGroup: FC<ChatGroupProps> = ({
         {isShowSuggestedQuestionsAfterAnswer && (
           <SuggestedQuestionsAfterAnswer />
         )}
+        {
+          isShowSpeechText && (
+            <SpeechToText />
+          )
+        }
       </div>
     </div>
   )

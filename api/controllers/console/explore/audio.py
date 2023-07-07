@@ -2,25 +2,32 @@
 import logging
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource
 from werkzeug.exceptions import InternalServerError
 
 import services
-from services.audio_service import AudioService
 from controllers.console import api
 from controllers.console.app.error import AppUnavailableError, ProviderNotInitializeError, \
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
+from controllers.console.explore.wraps import InstalledAppResource
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from services.audio_service import AudioService
+from models.model import AppModelConfig
 
-class AudioApi(Resource):
-    def post(self):
+
+class ChatAudioApi(InstalledAppResource):
+    def post(self, installed_app):
+        app_model = installed_app.app
+        app_model_config: AppModelConfig = app_model.app_model_config
+
+        if not app_model_config.speech_to_text_dict['enabled']:
+            raise AppUnavailableError()
+
         file = request.files['file']
-        
+
         try:
             response = AudioService.transcript(
-                tenant_id=current_user.current_tenant_id,
+                tenant_id=app_model.tenant_id,
                 file=file,
             )
 
@@ -42,5 +49,6 @@ class AudioApi(Resource):
         except Exception as e:
             logging.exception("internal server error.")
             raise InternalServerError()
+        
 
-api.add_resource(AudioApi, '/audio-to-text')
+api.add_resource(ChatAudioApi, '/installed-apps/<uuid:installed_app_id>/audio-to-text', endpoint='installed_app_audio')

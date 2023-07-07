@@ -41,6 +41,7 @@ class ModelConfigResource(Resource):
             opening_statement=model_configuration['opening_statement'],
             suggested_questions=json.dumps(model_configuration['suggested_questions']),
             suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
+            speech_to_text=json.dumps(model_configuration['speech_to_text']),
             more_like_this=json.dumps(model_configuration['more_like_this']),
             model=json.dumps(model_configuration['model']),
             user_input_form=json.dumps(model_configuration['user_input_form']),

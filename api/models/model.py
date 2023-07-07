@@ -81,6 +81,7 @@ class AppModelConfig(db.Model):
     opening_statement = db.Column(db.Text)
     suggested_questions = db.Column(db.Text)
     suggested_questions_after_answer = db.Column(db.Text)
+    speech_to_text = db.Column(db.Text)
     more_like_this = db.Column(db.Text)
     model = db.Column(db.Text)
     user_input_form = db.Column(db.Text)
@@ -103,6 +104,11 @@ class AppModelConfig(db.Model):
     @property
     def suggested_questions_after_answer_dict(self) -> dict:
         return json.loads(self.suggested_questions_after_answer) if self.suggested_questions_after_answer \
+            else {"enabled": False}
+    
+    @property
+    def speech_to_text_dict(self) -> dict:
+        return json.loads(self.speech_to_text) if self.speech_to_text \
             else {"enabled": False}
 
     @property
@@ -223,6 +229,9 @@ class Conversation(db.Model):
                 model_config['suggested_questions_after_answer'] = override_model_configs[
                     'suggested_questions_after_answer'] \
                     if 'suggested_questions_after_answer' in override_model_configs else {"enabled": False}
+                model_config['speech_to_text'] = override_model_configs[
+                    'speech_to_text'] \
+                    if 'speech_to_text' in override_model_configs else {"enabled": False}
                 model_config['more_like_this'] = override_model_configs['more_like_this'] \
                     if 'more_like_this' in override_model_configs else {"enabled": False}
                 model_config['user_input_form'] = override_model_configs['user_input_form']
@@ -239,6 +248,7 @@ class Conversation(db.Model):
             model_config['opening_statement'] = app_model_config.opening_statement
             model_config['suggested_questions'] = app_model_config.suggested_questions_list
             model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
+            model_config['speech_to_text'] = app_model_config.speech_to_text_dict
             model_config['more_like_this'] = app_model_config.more_like_this_dict
             model_config['user_input_form'] = app_model_config.user_input_form_list
 

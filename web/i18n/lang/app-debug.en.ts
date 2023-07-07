@@ -46,6 +46,11 @@ const translation = {
       generateNumTip: 'Number of each generated times',
       tip: 'Using this feature will incur additional tokens overhead',
     },
+    speechToText: {
+      title: 'Speech to Text',
+      description: 'Once enabled, you can use voice input.',
+      resDes: 'Voice input is enabled',
+    },
     dataSet: {
       title: 'Context',
       noData: 'You can import datasets as context',
