@@ -7,10 +7,12 @@ import MoreLikeThisIcon from '../../../base/icons/more-like-this-icon'
 import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
+import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
   suggestedQuestionsAfterAnswer: boolean
+  speechToText: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -68,6 +70,14 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
                 value={config.suggestedQuestionsAfterAnswer}
                 onChange={value => onChange('suggestedQuestionsAfterAnswer', value)}
+              />
+              <FeatureItem
+                icon={<Microphone01 className='w-4 h-4 text-[#7839EE]' />}
+                previewImgClassName='speechToTextPreview'
+                title={t('appDebug.feature.speechToText.title')}
+                description={t('appDebug.feature.speechToText.description')}
+                value={config.speechToText}
+                onChange={value => onChange('speechToText', value)}
               />
             </>
           </FeatureGroup>

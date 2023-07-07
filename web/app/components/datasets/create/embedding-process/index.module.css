@@ -30,6 +30,7 @@
 .sourceItem .info {
   display: flex;
   align-items: center;
+  z-index: 1;
 }
 .sourceItem .info .name {
   font-weight: 500;
@@ -45,6 +46,7 @@
   font-size: 12px;
   line-height: 18px;
   color: #344054;
+  z-index: 1;
 }
 .sourceItem .error {
   color: #D92D20;

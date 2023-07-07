@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useParams, usePathname } from 'next/navigation'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
@@ -27,6 +28,8 @@ const VoiceInput = ({
   const [originDuration, setOriginDuration] = useState(0)
   const [startRecord, setStartRecord] = useState(false)
   const [startConvert, setStartConvert] = useState(false)
+  const pathname = usePathname()
+  const params = useParams()
   const clearInterval = useRafInterval(() => {
     setOriginDuration(originDuration + 1)
   }, 1000)
@@ -76,8 +79,20 @@ const VoiceInput = ({
     const formData = new FormData()
     formData.append('file', wavFile)
 
+    let url = ''
+
+    if (params.token) {
+      url = '/audio-to-text'
+    }
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        url = `/installed-apps/${params.appId}/audio-to-text`
+      else
+        url = `/apps/${params.appId}/audio-to-text`
+    }
+
     try {
-      const audioResponse = await audioToText(isPublic, formData)
+      const audioResponse = await audioToText(url, isPublic, formData)
       onConverted(audioResponse.text)
       onCancel()
     }

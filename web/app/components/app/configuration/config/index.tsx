@@ -33,6 +33,8 @@ const Config: FC = () => {
     setMoreLikeThisConfig,
     suggestedQuestionsAfterAnswerConfig,
     setSuggestedQuestionsAfterAnswerConfig,
+    speechToTextConfig,
+    setSpeechToTextConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
 
@@ -78,9 +80,15 @@ const Config: FC = () => {
         draft.enabled = value
       }))
     },
+    speechToText: speechToTextConfig.enabled,
+    setSpeechToText: (value) => {
+      setSpeechToTextConfig(produce(speechToTextConfig, (draft) => {
+        draft.enabled = value
+      }))
+    },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer)
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || featureConfig.speechToText)
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -149,6 +157,7 @@ const Config: FC = () => {
                 }
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
+              isShowSpeechText={featureConfig.speechToText}
             />
           )
         }

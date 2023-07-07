@@ -31,6 +31,8 @@ export type MoreLikeThisConfig = {
 
 export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
+export type SpeechToTextConfig = MoreLikeThisConfig
+
 // frontend use. Not the same as backend
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
@@ -41,6 +43,9 @@ export type ModelConfig = {
     enabled: boolean
   } | null
   suggested_questions_after_answer: {
+    enabled: boolean
+  } | null
+  speech_to_text: {
     enabled: boolean
   } | null
   dataSets: any[]

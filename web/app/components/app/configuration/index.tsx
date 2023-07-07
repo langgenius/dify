@@ -53,6 +53,9 @@ const Configuration: FC = () => {
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
@@ -73,6 +76,7 @@ const Configuration: FC = () => {
     opening_statement: '',
     more_like_this: null,
     suggested_questions_after_answer: null,
+    speech_to_text: null,
     dataSets: [],
   })
 
@@ -100,6 +104,9 @@ const Configuration: FC = () => {
       enabled: false,
     })
     setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer || {
+      enabled: false,
+    })
+    setSpeechToTextConfig(modelConfig.speech_to_text || {
       enabled: false,
     })
   }
@@ -146,6 +153,9 @@ const Configuration: FC = () => {
       if (modelConfig.suggested_questions_after_answer)
         setSuggestedQuestionsAfterAnswerConfig(modelConfig.suggested_questions_after_answer)
 
+      if (modelConfig.speech_to_text)
+        setSpeechToTextConfig(modelConfig.speech_to_text)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -157,6 +167,7 @@ const Configuration: FC = () => {
           opening_statement: modelConfig.opening_statement,
           more_like_this: modelConfig.more_like_this,
           suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
+          speech_to_text: modelConfig.speech_to_text,
           dataSets: datasets || [],
         },
         completionParams: model.completion_params,
@@ -187,6 +198,7 @@ const Configuration: FC = () => {
       opening_statement: introduction || '',
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+      speech_to_text: speechToTextConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -203,6 +215,7 @@ const Configuration: FC = () => {
       draft.opening_statement = introduction
       draft.more_like_this = moreLikeThisConfig
       draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
+      draft.speech_to_text = speechToTextConfig
       draft.dataSets = dataSets
     })
     setPublishedConfig({
@@ -245,6 +258,8 @@ const Configuration: FC = () => {
       setMoreLikeThisConfig,
       suggestedQuestionsAfterAnswerConfig,
       setSuggestedQuestionsAfterAnswerConfig,
+      speechToTextConfig,
+      setSpeechToTextConfig,
       formattingChanged,
       setFormattingChanged,
       inputs,

@@ -46,6 +46,11 @@ const translation = {
       generateNumTip: '每次生成数',
       tip: '使用此功能将会额外消耗 tokens',
     },
+    speechToText: {
+      title: '语音转文字',
+      description: '启用后，您可以使用语音输入。',
+      resDes: '语音输入已启用',
+    },
     dataSet: {
       title: '上下文',
       noData: '您可以导入数据集作为上下文',
