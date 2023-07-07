@@ -4,6 +4,7 @@ from werkzeug.datastructures import FileStorage
 from core.llm.llm_builder import LLMBuilder
 from core.llm.provider.llm_provider_service import LLMProviderService
 from services.errors.audio import NoAudioUploadedError, AudioTooLargeError, UnsupportedAudioTypeError
+from openai.error import InvalidRequestError
 
 FILE_SIZE_LIMIT = 1 * 1024 * 1024
 ALLOWED_EXTENSIONS = ['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']
@@ -32,7 +33,8 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.wav'
 
-        transcript = openai.Audio.transcribe(
+        try:
+            transcript = openai.Audio.transcribe(
                         model='whisper-1', 
                         file=buffer,
                         api_key=credentials.get('openai_api_key'),
@@ -42,4 +44,11 @@ class AudioService:
                         params=params
                     )
         
-        return transcript
+            return transcript
+        except InvalidRequestError as e:
+            return {'message': str(e)}, 400
+    
+
+
+        
+        
