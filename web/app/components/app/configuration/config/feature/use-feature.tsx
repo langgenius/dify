@@ -7,6 +7,8 @@ function useFeature({
   setMoreLikeThis,
   suggestedQuestionsAfterAnswer,
   setSuggestedQuestionsAfterAnswer,
+  speechToText,
+  setSpeechToText,
 }: {
   introduction: string
   setIntroduction: (introduction: string) => void
@@ -14,13 +16,14 @@ function useFeature({
   setMoreLikeThis: (moreLikeThis: boolean) => void
   suggestedQuestionsAfterAnswer: boolean
   setSuggestedQuestionsAfterAnswer: (suggestedQuestionsAfterAnswer: boolean) => void
+  speechToText: boolean
+  setSpeechToText: (speechToText: boolean) => void
 }) {
   const [tempshowOpeningStatement, setTempShowOpeningStatement] = React.useState(!!introduction)
   useEffect(() => {
     // wait to api data back
-    if (!!introduction) {
+    if (introduction)
       setTempShowOpeningStatement(true)
-    }
   }, [introduction])
 
   // const [tempMoreLikeThis, setTempMoreLikeThis] = React.useState(moreLikeThis)
@@ -30,15 +33,16 @@ function useFeature({
 
   const featureConfig = {
     openingStatement: tempshowOpeningStatement,
-    moreLikeThis: moreLikeThis,
-    suggestedQuestionsAfterAnswer: suggestedQuestionsAfterAnswer
+    moreLikeThis,
+    suggestedQuestionsAfterAnswer,
+    speechToText,
   }
   const handleFeatureChange = (key: string, value: boolean) => {
     switch (key) {
       case 'openingStatement':
-        if (!value) {
+        if (!value)
           setIntroduction('')
-        }
+
         setTempShowOpeningStatement(value)
         break
       case 'moreLikeThis':
@@ -47,11 +51,13 @@ function useFeature({
       case 'suggestedQuestionsAfterAnswer':
         setSuggestedQuestionsAfterAnswer(value)
         break
+      case 'speechToText':
+        setSpeechToText(value)
     }
   }
   return {
     featureConfig,
-    handleFeatureChange
+    handleFeatureChange,
   }
 }
 

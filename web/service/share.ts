@@ -114,3 +114,7 @@ export const removeMessage = (messageId: string, isInstalledApp: boolean, instal
 export const fetchSuggestedQuestions = (messageId: string, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('get', isInstalledApp))(getUrl(`/messages/${messageId}/suggested-questions`, isInstalledApp, installedAppId))
 }
+
+export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) => {
+  return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
+}

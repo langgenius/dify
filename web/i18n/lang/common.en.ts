@@ -225,6 +225,11 @@ const translation = {
     viewDoc: 'View documentation',
     relatedApp: 'linked apps',
   },
+  voiceInput: {
+    speaking: 'Speak now...',
+    converting: 'Converting to text...',
+    notAllow: 'microphone not authorized',
+  },
 }
 
 export default translation

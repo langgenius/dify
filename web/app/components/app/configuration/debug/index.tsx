@@ -38,6 +38,7 @@ const Debug: FC<IDebug> = ({
     mode,
     introduction,
     suggestedQuestionsAfterAnswerConfig,
+    speechToTextConfig,
     moreLikeThisConfig,
     inputs,
     // setInputs,
@@ -159,6 +160,7 @@ const Debug: FC<IDebug> = ({
         enabled: false,
       },
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+      speech_to_text: speechToTextConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -308,6 +310,7 @@ const Debug: FC<IDebug> = ({
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+      speech_to_text: speechToTextConfig,
       more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,
@@ -386,6 +389,7 @@ const Debug: FC<IDebug> = ({
                   }}
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
+                  isShowSpeechToText={speechToTextConfig.enabled}
                 />
               </div>
             </div>

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
+import Recorder from 'js-audio-recorder'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +20,10 @@ import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 import { formatNumber } from '@/utils/format'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import VoiceInput from '@/app/components/base/voice-input'
+import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 const stopIcon = (
   <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -59,6 +64,7 @@ export type IChatProps = {
   controlFocus?: number
   isShowSuggestion?: boolean
   suggestionList?: string[]
+  isShowSpeechToText?: boolean
 }
 
 export type MessageMore = {
@@ -421,6 +427,7 @@ const Chat: FC<IChatProps> = ({
   controlFocus,
   isShowSuggestion,
   suggestionList,
+  isShowSpeechToText,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -487,6 +494,15 @@ const Chat: FC<IChatProps> = ({
       setHasScrollbar(hasScrollbar)
     }
   }, [suggestionList])
+
+  const [voiceInputShow, setVoiceInputShow] = useState(false)
+  const handleVoiceInputShow = () => {
+    (Recorder as any).getPermission().then(() => {
+      setVoiceInputShow(true)
+    }, () => {
+      logError(t('common.voiceInput.notAllow'))
+    })
+  }
 
   return (
     <div className={cn('px-3.5', 'h-full')}>
@@ -565,6 +581,26 @@ const Chat: FC<IChatProps> = ({
               />
               <div className="absolute top-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
+                {
+                  query
+                    ? (
+                      <div className='flex justify-center items-center w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg' onClick={() => setQuery('')}>
+                        <XCircle className='w-4 h-4 text-[#98A2B3]' />
+                      </div>
+                    )
+                    : isShowSpeechToText
+                      ? (
+                        <div
+                          className='group flex justify-center items-center w-8 h-8 hover:bg-primary-50 rounded-lg cursor-pointer'
+                          onClick={handleVoiceInputShow}
+                        >
+                          <Microphone01 className='block w-4 h-4 text-gray-500 group-hover:hidden' />
+                          <Microphone01Solid className='hidden w-4 h-4 text-primary-600 group-hover:block' />
+                        </div>
+                      )
+                      : null
+                }
+                <div className='mx-2 w-[1px] h-4 bg-black opacity-5' />
                 {isMobile
                   ? sendBtn
                   : (
@@ -581,6 +617,14 @@ const Chat: FC<IChatProps> = ({
                     </Tooltip>
                   )}
               </div>
+              {
+                voiceInputShow && (
+                  <VoiceInput
+                    onCancel={() => setVoiceInputShow(false)}
+                    onConverted={text => setQuery(text)}
+                  />
+                )
+              }
             </div>
           </div>
         )

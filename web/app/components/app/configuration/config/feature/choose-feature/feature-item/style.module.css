@@ -23,3 +23,7 @@
 .moreLikeThisPreview {
   background-image: url(./preview-imgs/more-like-this.svg);
 }
+
+.speechToTextPreview {
+  background-image: url(./preview-imgs/speech-to-text.svg);
+}
