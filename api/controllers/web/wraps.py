@@ -96,14 +96,12 @@ def generate_session_id():
     """
     Generate a unique session ID.
     """
-    count = 1
-    session_id = ''
-    while count != 0:
+    while True:
         session_id = str(uuid.uuid4())
-        count = db.session.query(EndUser) \
+        existing_count = db.session.query(EndUser) \
             .filter(EndUser.session_id == session_id).count()
-
-    return session_id
+        if existing_count == 0:
+            return session_id
 
 
 class WebApiResource(Resource):
