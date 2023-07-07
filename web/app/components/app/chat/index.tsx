@@ -4,7 +4,6 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
-import { usePathname } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
@@ -187,7 +186,6 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
-  const pathname = usePathname()
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -252,18 +250,13 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
     }
 
     const adminOperation = () => {
-      const inAppLogPage = /\/app\/.+\/logs/g.test(pathname)
       return <div className='flex gap-1'>
-        {
-          inAppLogPage && (
-            <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.addAnnotation') as string}>
-              {OperationBtn({
-                innerContent: <IconWrapper><EditIcon className='hover:text-gray-800' /></IconWrapper>,
-                onClick: () => setShowEdit(true),
-              })}
-            </Tooltip>
-          )
-        }
+        <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.addAnnotation') as string}>
+          {OperationBtn({
+            innerContent: <IconWrapper><EditIcon className='hover:text-gray-800' /></IconWrapper>,
+            onClick: () => setShowEdit(true),
+          })}
+        </Tooltip>
         {!localAdminFeedback?.rating && <>
           <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.like') as string}>
             {OperationBtn({
@@ -584,7 +577,7 @@ const Chat: FC<IChatProps> = ({
                 minHeight={48}
                 autoFocus
                 controlFocus={controlFocus}
-                className={`${cn(s.textArea)} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
+                className={`${cn(s.textArea)} ${isShowSpeechToText ? 'pr-[130px]' : 'pr-[90px]'} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
               />
               <div className="absolute top-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
@@ -627,7 +620,6 @@ const Chat: FC<IChatProps> = ({
               {
                 voiceInputShow && (
                   <VoiceInput
-                    isPublic={displayScene === 'web'}
                     onCancel={() => setVoiceInputShow(false)}
                     onConverted={text => setQuery(text)}
                   />

@@ -389,7 +389,6 @@ const Debug: FC<IDebug> = ({
                   }}
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
-                  displayScene='console'
                   isShowSpeechToText={speechToTextConfig.enabled}
                 />
               </div>
