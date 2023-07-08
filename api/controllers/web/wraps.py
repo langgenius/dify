@@ -9,7 +9,27 @@ from werkzeug.exceptions import NotFound, Unauthorized
 from extensions.ext_database import db
 from models.model import App, Site, EndUser
 
+def validate_jwt_token(view=None):
+    def decorator(view):
+        @wraps(view)
+        def decorated(*args, **kwargs):
+            site = get_site_from_jwt_token()
 
+            app_model = db.session.query(App).filter(App.id == site.app_id).first()
+            if not app_model:
+                raise NotFound()
+
+            if app_model.status != 'normal':
+                raise NotFound()
+
+            if not app_model.enable_site:
+                raise NotFound()
+
+            end_user = get_end_user_from_jwt_token()
+
+            return view(app_model, end_user, *args, **kwargs)
+        return decorated
+    
 def validate_token(view=None):
     def decorator(view):
         @wraps(view)
@@ -47,9 +67,9 @@ def validate_and_get_site():
     if ' ' not in auth_header:
         raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
 
-    auth_scheme, auth_token = auth_header.split(None, 1)
+    auth_scheme, auth_tokens = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
-
+    auth_token, jwt_token = [token.strip() for token in auth_tokens.split(',')]
     if auth_scheme != 'bearer':
         raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
 
@@ -103,6 +123,12 @@ def generate_session_id():
         if existing_count == 0:
             return session_id
 
+
+def get_site_from_jwt_token():
+    return "site"
+
+def get_end_user_from_jwt_token():
+    return "end_user"
 
 class WebApiResource(Resource):
     method_decorators = [validate_token]
