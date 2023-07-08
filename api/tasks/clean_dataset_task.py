@@ -43,7 +43,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             try:
                 vector_index.delete()
             except Exception:
-                logging.exception("Delete doc index failed when dataset deletead.")
+                logging.exception("Delete doc index failed when dataset deleted.")
 
         # delete from keyword index
         try:
