@@ -40,6 +40,7 @@ class App(db.Model):
     api_rph = db.Column(db.Integer, nullable=False)
     is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 

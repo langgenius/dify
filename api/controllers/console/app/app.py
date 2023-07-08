@@ -96,7 +96,8 @@ class AppListApi(Resource):
         args = parser.parse_args()
 
         app_models = db.paginate(
-            db.select(App).where(App.tenant_id == current_user.current_tenant_id).order_by(App.created_at.desc()),
+            db.select(App).where(App.tenant_id == current_user.current_tenant_id,
+                                 App.is_universal == False).order_by(App.created_at.desc()),
             page=args['page'],
             per_page=args['limit'],
             error_out=False)
