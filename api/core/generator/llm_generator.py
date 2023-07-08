@@ -2,7 +2,7 @@ import logging
 
 from langchain import PromptTemplate
 from langchain.chat_models.base import BaseChatModel
-from langchain.schema import HumanMessage, OutputParserException, BaseMessage
+from langchain.schema import HumanMessage, OutputParserException, BaseMessage, SystemMessage
 
 from core.constant import llm_constant
 from core.llm.llm_builder import LLMBuilder
@@ -12,8 +12,8 @@ from core.prompt.output_parser.rule_config_generator import RuleConfigGeneratorO
 
 from core.prompt.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.prompt.prompt_template import JinjaPromptTemplate, OutLinePromptTemplate
-from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, CONVERSATION_SUMMARY_PROMPT, INTRODUCTION_GENERATE_PROMPT
-
+from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, CONVERSATION_SUMMARY_PROMPT, INTRODUCTION_GENERATE_PROMPT, \
+    GENERATOR_QA_PROMPT
 
 # gpt-3.5-turbo works not well
 generate_base_model = 'text-davinci-003'
@@ -171,3 +171,19 @@ class LLMGenerator:
             }
 
         return rule_config
+
+    @classmethod
+    def generate_qa_document(cls, tenant_id: str, query):
+        prompt = GENERATOR_QA_PROMPT
+        llm: StreamableOpenAI = LLMBuilder.to_llm(
+            tenant_id=tenant_id,
+            model_name='gpt-3.5-turbo',
+            max_tokens=1000
+        )
+
+        if isinstance(llm, BaseChatModel):
+            prompt = [SystemMessage(content=prompt), HumanMessage(content=query)]
+
+        response = llm.generate([prompt])
+        answer = response.generations[0][0].text
+        return answer.strip()

@@ -488,6 +488,8 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                                                           DocumentSegment.status != 're_segment').count()
             document.completed_segments = completed_segments
             document.total_segments = total_segments
+            if document.is_paused:
+                document.indexing_status = 'paused'
             documents_status.append(marshal(document, self.document_status_fields))
         data = {
             'data': documents_status

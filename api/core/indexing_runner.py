@@ -16,6 +16,7 @@ from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.embedding.cached_embedding import CacheEmbedding
+from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
@@ -70,12 +71,18 @@ class IndexingRunner:
                     dataset_document=dataset_document,
                     processing_rule=processing_rule
                 )
-
+                new_documents = []
+                for document in documents:
+                    response = LLMGenerator.generate_qa_document(dataset.tenant_id, document.page_content)
+                    document_qa_list = self.format_split_text(response)
+                    for result in document_qa_list:
+                        document = Document(page_content=result['question'], metadata={'source': result['answer']})
+                        new_documents.append(document)
                 # build index
                 self._build_index(
                     dataset=dataset,
                     dataset_document=dataset_document,
-                    documents=documents
+                    documents=new_documents
                 )
             except DocumentIsPausedException:
                 raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
@@ -91,6 +98,22 @@ class IndexingRunner:
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
 
+    def format_split_text(self, text):
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
+        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
+
+        result = []  # 存储最终的结果
+        for match in matches:
+            q = match[0]
+            a = match[1]
+            if q and a:
+                # 如果Q和A都存在，就将其添加到结果中
+                result.append({
+                    "question": q,
+                    "answer": re.sub(r"\n\s*", "\n", a.strip())
+                })
+
+        return result
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
         try:
@@ -428,7 +451,7 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                            processing_rule: DatasetProcessRule) -> List[Document]:
+                            processing_rule: DatasetProcessRule, tenant_id) -> List[Document]:
         """
         Split the text documents into nodes.
         """
@@ -446,6 +469,11 @@ class IndexingRunner:
                 if document.page_content is None or not document.page_content.strip():
                     continue
 
+                response = LLMGenerator.generate_qa_document(processing_rule.tenant_id, document.page_content)
+                document_qa_list = self.format_split_text(response)
+                for result in document_qa_list:
+                    document = Document(page_content=result['question'], metadata={'source': result['answer']})
+                    new_documents.append(document)
                 doc_id = str(uuid.uuid4())
                 hash = helper.generate_text_hash(document.page_content)
 
