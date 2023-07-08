@@ -1,5 +1,4 @@
 # -*- coding:utf-8 -*-
-import uuid
 from functools import wraps
 
 from flask import request
