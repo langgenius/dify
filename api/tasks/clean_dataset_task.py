@@ -7,7 +7,7 @@ from celery import shared_task
 from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
-    AppDatasetJoin
+    AppDatasetJoin, Document
 
 
 @shared_task
@@ -32,7 +32,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             index_struct=index_struct
         )
 
-        documents = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
+        documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
 
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
@@ -43,7 +43,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
             try:
                 vector_index.delete()
             except Exception:
-                logging.exception("Delete doc index failed when dataset deleted.")
+                logging.exception("Delete doc index failed when dataset deletead.")
 
         # delete from keyword index
         try:
