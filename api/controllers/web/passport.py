@@ -15,7 +15,6 @@ class PassportResource(Resource):
         if app_id is None:
             raise Unauthorized('X-Site-Code header is missing.')
 
-        sk = current_app.config.get('SECRET_KEY')
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(
             Site.code == app_id,
@@ -46,8 +45,8 @@ class PassportResource(Resource):
             'end_user_id': end_user.id,
         }
 
-        tk = PassportService(sk, payload).get_token()
-        
+        tk = PassportService().issue(payload)
+
         return {
             'access_token': tk,
         }
