@@ -2,7 +2,7 @@
 import uuid
 from controllers.web import api
 from flask_restful import Resource
-from flask import current_app, request
+from flask import request
 from werkzeug.exceptions import Unauthorized, NotFound
 from models.model import Site, EndUser, App
 from extensions.ext_database import db
