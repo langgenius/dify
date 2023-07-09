@@ -14,6 +14,17 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
     moving_summary_index: int = 0
     summary_llm: BaseLanguageModel
 
+    def should_use_agent(self, query: str):
+        """
+        return should use agent
+        Using the ReACT mode to determine whether an agent is needed is costly,
+        so it's better to just use an Agent for reasoning, which is cheaper.
+
+        :param query:
+        :return:
+        """
+        return True
+
     def plan(
         self,
         intermediate_steps: List[Tuple[AgentAction, str]],
