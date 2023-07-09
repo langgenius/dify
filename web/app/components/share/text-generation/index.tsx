@@ -3,28 +3,44 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import s from './style.module.css'
+import RunBatch from './run-batch'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import ConfigScence from '@/app/components/share/text-generation/config-scence'
-import NoData from '@/app/components/share/text-generation/no-data'
-// import History from '@/app/components/share/text-generation/history'
-import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage, sendCompletionMessage, updateFeedback } from '@/service/share'
+import RunOnce from '@/app/components/share/text-generation/run-once'
+import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
 import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
-import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
-import type { Feedbacktype } from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import TextGenerationRes from '@/app/components/app/text-generate/item'
+import Res from '@/app/components/share/text-generation/result'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { appDefaultIconBackground } from '@/config'
+import Toast from '@/app/components/base/toast'
+
+const PARALLEL_LIMIT = 5
+enum TaskStatus {
+  pending = 'pending',
+  running = 'running',
+  completed = 'completed',
+}
+
+type TaskParam = {
+  inputs: Record<string, any>
+  query: string
+}
+
+type Task = {
+  id: number
+  status: TaskStatus
+  params: TaskParam
+}
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -35,134 +51,209 @@ const TextGeneration: FC<IMainProps> = ({
   isInstalledApp = false,
   installedAppInfo,
 }) => {
+  const { notify } = Toast
+
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
   const isTablet = media === MediaType.tablet
-  const isMoble = media === MediaType.mobile
+  const isMobile = media === MediaType.mobile
 
   const [currTab, setCurrTab] = useState<string>('create')
-
+  // Notice this situation isCallBatchAPI but not in batch tab
+  const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
+  const isInBatchTab = currTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
+  const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
-  const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
-  const [query, setQuery] = useState('')
-  const [completionRes, setCompletionRes] = useState('')
-  const { notify } = Toast
-  const isNoData = !completionRes
 
-  const [messageId, setMessageId] = useState<string | null>(null)
-  const [feedback, setFeedback] = useState<Feedbacktype>({
-    rating: null,
-  })
-
-  const handleFeedback = async (feedback: Feedbacktype) => {
-    await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating } }, isInstalledApp, installedAppInfo?.id)
-    setFeedback(feedback)
-  }
-
+  // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-
   const fetchSavedMessage = async () => {
     const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
-
   useEffect(() => {
     fetchSavedMessage()
   }, [])
-
   const handleSaveMessage = async (messageId: string) => {
     await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
     fetchSavedMessage()
   }
-
   const handleRemoveSavedMessage = async (messageId: string) => {
     await removeMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.remove') })
     fetchSavedMessage()
   }
 
-  const logError = (message: string) => {
-    notify({ type: 'error', message })
+  // send message task
+  const [controlSend, setControlSend] = useState(0)
+  const [controlStopResponding, setControlStopResponding] = useState(0)
+  const handleSend = () => {
+    setIsCallBatchAPI(false)
+    setControlSend(Date.now())
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    setAllTaskList([]) // clear batch task running status
   }
 
-  const checkCanSend = () => {
-    const prompt_variables = promptConfig?.prompt_variables
-    if (!prompt_variables || prompt_variables?.length === 0)
-      return true
-
-    let hasEmptyInput = false
-    const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
-      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
-      return res
-    }) || [] // compatible with old version
-    requiredVars.forEach(({ key }) => {
-      if (hasEmptyInput)
+  const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
+  const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
+  const noPendingTask = pendingTaskList.length === 0
+  const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const checkBatchInputs = (data: string[][]) => {
+    if (!data || data.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
+      return false
+    }
+    const headerData = data[0]
+    const varLen = promptConfig?.prompt_variables.length || 0
+    let isMapVarName = true
+    promptConfig?.prompt_variables.forEach((item, index) => {
+      if (!isMapVarName)
         return
 
-      if (!inputs[key])
-        hasEmptyInput = true
+      if (item.name !== headerData[index])
+        isMapVarName = false
     })
 
-    if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired'))
+    if (headerData[varLen] !== t('share.generation.queryTitle'))
+      isMapVarName = false
+
+    if (!isMapVarName) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
       return false
     }
-    return !hasEmptyInput
+
+    let payloadData = data.slice(1)
+    if (payloadData.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      return false
+    }
+
+    // check middle empty line
+    const allEmptyLineIndexes = payloadData.filter(item => item.every(i => i === '')).map(item => payloadData.indexOf(item))
+    if (allEmptyLineIndexes.length > 0) {
+      let hasMiddleEmptyLine = false
+      let startIndex = allEmptyLineIndexes[0] - 1
+      allEmptyLineIndexes.forEach((index) => {
+        if (hasMiddleEmptyLine)
+          return
+
+        if (startIndex + 1 !== index) {
+          hasMiddleEmptyLine = true
+          return
+        }
+        startIndex++
+      })
+
+      if (hasMiddleEmptyLine) {
+        notify({ type: 'error', message: t('share.generation.errorMsg.emptyLine', { rowIndex: startIndex + 2 }) })
+        return false
+      }
+    }
+
+    // check row format
+    payloadData = payloadData.filter(item => !item.every(i => i === ''))
+    // after remove empty rows in the end, checked again
+    if (payloadData.length === 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.atLeastOne') })
+      return false
+    }
+    let errorRowIndex = 0
+    let requiredVarName = ''
+    payloadData.forEach((item, index) => {
+      if (errorRowIndex !== 0)
+        return
+
+      promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
+        if (errorRowIndex !== 0)
+          return
+        if (varItem.required === false)
+          return
+
+        if (item[varIndex].trim() === '') {
+          requiredVarName = varItem.name
+          errorRowIndex = index + 1
+        }
+      })
+
+      if (errorRowIndex !== 0)
+        return
+
+      if (item[varLen] === '') {
+        requiredVarName = t('share.generation.queryTitle')
+        errorRowIndex = index + 1
+      }
+    })
+
+    if (errorRowIndex !== 0) {
+      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+      return false
+    }
+    return true
+  }
+  const handleRunBatch = (data: string[][]) => {
+    if (!checkBatchInputs(data))
+      return
+    if (!allTaskFinished) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
+      return
+    }
+
+    const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
+    const varLen = promptConfig?.prompt_variables.length || 0
+    setIsCallBatchAPI(true)
+    const allTaskList: Task[] = payloadData.map((item, i) => {
+      const inputs: Record<string, string> = {}
+      if (varLen > 0) {
+        item.slice(0, varLen).forEach((input, index) => {
+          inputs[promptConfig?.prompt_variables[index].key as string] = input
+        })
+      }
+      return {
+        id: i + 1,
+        status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
+        params: {
+          inputs,
+          query: item[varLen],
+        },
+      }
+    })
+    setAllTaskList(allTaskList)
+
+    setControlSend(Date.now())
+    // clear run once task status
+    setControlStopResponding(Date.now())
   }
 
-  const handleSend = async () => {
-    if (isResponsing) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
-      return false
-    }
-
-    if (!checkCanSend())
-      return
-
-    if (!query) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
-
-    const data = {
-      inputs,
-      query,
-    }
-
-    setMessageId(null)
-    setFeedback({
-      rating: null,
+  const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
+    // console.log(taskId, isSuccess)
+    const allTasklistLatest = getLatestTaskList()
+    const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
+    const nextPendingTaskId = pendingTaskList[0]?.id
+    // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
+    const newAllTaskList = allTasklistLatest.map((item) => {
+      if (item.id === taskId) {
+        return {
+          ...item,
+          status: TaskStatus.completed,
+        }
+      }
+      if (item.id === nextPendingTaskId) {
+        return {
+          ...item,
+          status: TaskStatus.running,
+        }
+      }
+      return item
     })
-    setCompletionRes('')
-
-    const res: string[] = []
-    let tempMessageId = ''
-
-    if (!isPC)
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      showResSidebar()
-
-    setResponsingTrue()
-    sendCompletionMessage(data, {
-      onData: (data: string, _isFirstMessage: boolean, { messageId }: any) => {
-        tempMessageId = messageId
-        res.push(data)
-        setCompletionRes(res.join(''))
-      },
-      onCompleted: () => {
-        setResponsingFalse()
-        setMessageId(tempMessageId)
-      },
-      onError() {
-        setResponsingFalse()
-      },
-    }, isInstalledApp, installedAppInfo?.id)
+    // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
+    setAllTaskList(newAllTaskList)
   }
 
   const fetchInitData = () => {
@@ -209,14 +300,37 @@ const TextGeneration: FC<IMainProps> = ({
     hideResSidebar()
   }, resRef)
 
-  const renderRes = (
+  const renderRes = (task?: Task) => (<Res
+    key={task?.id}
+    isCallBatchAPI={isCallBatchAPI}
+    isPC={isPC}
+    isMobile={isMobile}
+    isInstalledApp={!!isInstalledApp}
+    installedAppInfo={installedAppInfo}
+    promptConfig={promptConfig}
+    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+    inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+    query={isCallBatchAPI ? (task as Task).params.query : query}
+    controlSend={controlSend}
+    controlStopResponding={controlStopResponding}
+    onShowRes={showResSidebar}
+    handleSaveMessage={handleSaveMessage}
+    taskId={task?.id}
+    onCompleted={handleCompleted}
+  />)
+
+  const renderBatchRes = () => {
+    return (showTaskList.map(task => renderRes(task)))
+  }
+
+  const renderResWrap = (
     <div
       ref={resRef}
       className={
         cn(
           'flex flex-col h-full shrink-0',
           isPC ? 'px-10 py-8' : 'bg-gray-50',
-          isTablet && 'p-6', isMoble && 'p-4')
+          isTablet && 'p-6', isMobile && 'p-4')
       }
     >
       <>
@@ -236,33 +350,12 @@ const TextGeneration: FC<IMainProps> = ({
         </div>
 
         <div className='grow overflow-y-auto'>
-          {(isResponsing && !completionRes)
-            ? (
-              <div className='flex h-full w-full justify-center items-center'>
-                <Loading type='area' />
-              </div>)
-            : (
-              <>
-                {isNoData
-                  ? <NoData />
-                  : (
-                    <TextGenerationRes
-                      className='mt-3'
-                      content={completionRes}
-                      messageId={messageId}
-                      isInWebApp
-                      moreLikeThis={moreLikeThisConfig?.enabled}
-                      onFeedback={handleFeedback}
-                      feedback={feedback}
-                      onSave={handleSaveMessage}
-                      isMobile={isMoble}
-                      isInstalledApp={isInstalledApp}
-                      installedAppId={installedAppInfo?.id}
-                    />
-                  )
-                }
-              </>
-            )}
+          {!isCallBatchAPI ? renderRes() : renderBatchRes()}
+          {!noPendingTask && (
+            <div className='mt-4'>
+              <Loading type='area' />
+            </div>
+          )}
         </div>
       </>
     </div>
@@ -309,9 +402,11 @@ const TextGeneration: FC<IMainProps> = ({
           <TabHeader
             items={[
               { id: 'create', name: t('share.generation.tabs.create') },
+              { id: 'batch', name: t('share.generation.tabs.batch') },
               {
                 id: 'saved',
                 name: t('share.generation.tabs.saved'),
+                isRight: true,
                 extra: savedMessages.length > 0
                   ? (
                     <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
@@ -325,8 +420,8 @@ const TextGeneration: FC<IMainProps> = ({
             onChange={setCurrTab}
           />
           <div className='grow h-20 overflow-y-auto'>
-            {currTab === 'create' && (
-              <ConfigScence
+            <div className={cn(currTab === 'create' ? 'block' : 'hidden')}>
+              <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
                 onInputsChange={setInputs}
@@ -335,7 +430,13 @@ const TextGeneration: FC<IMainProps> = ({
                 onQueryChange={setQuery}
                 onSend={handleSend}
               />
-            )}
+            </div>
+            <div className={cn(isInBatchTab ? 'block' : 'hidden')}>
+              <RunBatch
+                vars={promptConfig.prompt_variables}
+                onSend={handleRunBatch}
+              />
+            </div>
 
             {currTab === 'saved' && (
               <SavedItems
@@ -371,7 +472,7 @@ const TextGeneration: FC<IMainProps> = ({
         {/* Result */}
         {isPC && (
           <div className='grow h-full'>
-            {renderRes}
+            {renderResWrap}
           </div>
         )}
 
@@ -382,7 +483,7 @@ const TextGeneration: FC<IMainProps> = ({
               background: 'rgba(35, 56, 118, 0.2)',
             }}
           >
-            {renderRes}
+            {renderResWrap}
           </div>
         )}
       </div>

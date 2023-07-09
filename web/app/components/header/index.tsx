@@ -1,8 +1,7 @@
 'use client'
 import { useEffect, useState } from 'react'
-import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSelectedLayoutSegment } from 'next/navigation'
+import { usePathname, useSelectedLayoutSegment } from 'next/navigation'
 import classNames from 'classnames'
 import { CommandLineIcon } from '@heroicons/react/24/solid'
 import Link from 'next/link'
@@ -10,19 +9,14 @@ import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
 import s from './index.module.css'
-import type { GithubRepo, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { GithubRepo } from '@/models/common'
 import { WorkspaceProvider } from '@/context/workspace-context'
+import { useAppContext } from '@/context/app-context'
 import { Grid01 } from '@/app/components/base/icons/src/vender/line/layout'
 import { Grid01 as Grid01Solid } from '@/app/components/base/icons/src/vender/solid/layout'
 import { PuzzlePiece01 } from '@/app/components/base/icons/src/vender/line/development'
 import { PuzzlePiece01 as PuzzlePiece01Solid } from '@/app/components/base/icons/src/vender/solid/development'
 
-export type IHeaderProps = {
-  userProfile: UserProfileResponse
-  onLogout: () => void
-  langeniusVersionInfo: LangGeniusVersionResponse
-  isBordered: boolean
-}
 const navClassName = `
   flex items-center relative mr-3 px-3 h-8 rounded-xl
   font-medium text-sm
@@ -32,18 +26,16 @@ const headerEnvClassName: { [k: string]: string } = {
   DEVELOPMENT: 'bg-[#FEC84B] border-[#FDB022] text-[#93370D]',
   TESTING: 'bg-[#A5F0FC] border-[#67E3F9] text-[#164C63]',
 }
-const Header: FC<IHeaderProps> = ({
-  userProfile,
-  onLogout,
-  langeniusVersionInfo,
-  isBordered,
-}) => {
+const Header = () => {
   const { t } = useTranslation()
+  const pathname = usePathname()
+  const { userProfile, langeniusVersionInfo } = useAppContext()
   const showEnvTag = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const selectedSegment = useSelectedLayoutSegment()
   const isPluginsComingSoon = selectedSegment === 'plugins-coming-soon'
   const isExplore = selectedSegment === 'explore'
   const [starCount, setStarCount] = useState(0)
+  const isBordered = ['/apps', '/datasets'].includes(pathname)
 
   useEffect(() => {
     globalThis.fetch('https://api.github.com/repos/langgenius/dify').then(res => res.json()).then((data: GithubRepo) => {
@@ -136,7 +128,7 @@ const Header: FC<IHeaderProps> = ({
             )
           }
           <WorkspaceProvider>
-            <AccountDropdown userProfile={userProfile} onLogout={onLogout} langeniusVersionInfo={langeniusVersionInfo} />
+            <AccountDropdown userProfile={userProfile} langeniusVersionInfo={langeniusVersionInfo} />
           </WorkspaceProvider>
         </div>
       </div>

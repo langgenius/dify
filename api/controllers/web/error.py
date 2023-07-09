@@ -62,3 +62,27 @@ class AppSuggestedQuestionsAfterAnswerDisabledError(BaseHTTPException):
     error_code = 'app_suggested_questions_after_answer_disabled'
     description = "The 'Suggested Questions After Answer' feature is disabled. Please refresh your page."
     code = 403
+
+
+class NoAudioUploadedError(BaseHTTPException):
+    error_code = 'no_audio_uploaded'
+    description = "Please upload your audio."
+    code = 400
+
+
+class AudioTooLargeError(BaseHTTPException):
+    error_code = 'audio_too_large'
+    description = "Audio size exceeded. {message}"
+    code = 413
+
+
+class UnsupportedAudioTypeError(BaseHTTPException):
+    error_code = 'unsupported_audio_type'
+    description = "Audio type not allowed."
+    code = 415
+
+
+class ProviderNotSupportSpeechToTextError(BaseHTTPException):
+    error_code = 'provider_not_support_speech_to_text'
+    description = "Provider not support speech to text."
+    code = 400

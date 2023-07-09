@@ -35,6 +35,7 @@ class DatasetService:
             permission_filter = Dataset.permission == 'all_team_members'
         datasets = Dataset.query.filter(
             db.and_(Dataset.provider == provider, Dataset.tenant_id == tenant_id, permission_filter)) \
+            .order_by(Dataset.created_at.desc()) \
             .paginate(
             page=page,
             per_page=per_page,
