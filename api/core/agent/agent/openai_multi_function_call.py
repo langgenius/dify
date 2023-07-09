@@ -1,8 +1,7 @@
 from typing import List, Tuple, Any, Union
 
-from langchain.agents import OpenAIFunctionsAgent
-from langchain.agents.openai_functions_agent.base import _parse_ai_message, \
-    _format_intermediate_steps
+from langchain.agents.openai_functions_multi_agent.base import OpenAIMultiFunctionsAgent, _format_intermediate_steps, \
+    _parse_ai_message
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import AgentAction, AgentFinish
 
@@ -10,7 +9,7 @@ from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError
 from core.agent.agent.openai_function_call_summarize_mixin import OpenAIFunctionCallSummarizeMixin
 
 
-class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctionCallSummarizeMixin):
+class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, OpenAIFunctionCallSummarizeMixin):
 
     def plan(
             self,
