@@ -11,9 +11,9 @@ from libs.passport import PassportService
 class PassportResource(Resource):
     """Base resource for passport."""
     def get(self):
-        app_id = request.headers.get('X-App-Id')
+        app_id = request.headers.get('X-App-Code')
         if app_id is None:
-            raise Unauthorized('X-App-Id header is missing.')
+            raise Unauthorized('X-App-Code header is missing.')
 
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(
