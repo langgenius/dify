@@ -40,7 +40,7 @@ class PassportResource(Resource):
         payload = {
             "iss": site.app_id,
             'sub': 'Web API Passport',
-            "aud": end_user.id,
+            # "aud": end_user.id,
             'app_id': site.app_id,
             'end_user_id': end_user.id,
         }

@@ -118,3 +118,9 @@ export const fetchSuggestedQuestions = (messageId: string, isInstalledApp: boole
 export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) => {
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
+
+export const fetchAccessToken = async (appCode: string) => {
+  const headers = new Headers()
+  headers.append('X-App-Code', appCode)
+  return get('/passport', { headers }) as Promise<{ access_token: string }>
+}

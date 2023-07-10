@@ -141,8 +141,8 @@ const baseFetch = (
 ) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
   if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    options.headers.set('Authorization', `bearer ${sharedToken}`)
+    const sharedToken = localStorage.getItem('accessToken') || ''
+    options.headers.set('Authorization', `Bearer ${sharedToken}`)
   }
 
   if (deleteContentType) {
@@ -194,7 +194,7 @@ const baseFetch = (
               case 401: {
                 if (isPublicAPI) {
                   Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return
+                  return bodyJson.then((data: any) => Promise.reject(data))
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
                 if (IS_CE_EDITION) {
