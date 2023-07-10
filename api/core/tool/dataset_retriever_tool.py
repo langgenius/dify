@@ -27,6 +27,7 @@ class DatasetRetrieverTool(BaseTool):
     description: str = "use this to retrieve a dataset. "
 
     tenant_id: str
+    dataset_id: str
     k: int = 3
 
     @classmethod
@@ -38,6 +39,7 @@ class DatasetRetrieverTool(BaseTool):
         description += '\nID of dataset MUST be ' + dataset.id
         return cls(
             tenant_id=dataset.tenant_id,
+            dataset_id=dataset.id,
             description=description,
             **kwargs
         )

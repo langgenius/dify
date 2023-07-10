@@ -103,6 +103,7 @@ class Completion:
             #     # todo streaming flush the agent result to user, not call final llm
             #     pass
 
+            # todo or use fake llm
             cls.run_final_llm(
                 tenant_id=app.tenant_id,
                 mode=app.mode,

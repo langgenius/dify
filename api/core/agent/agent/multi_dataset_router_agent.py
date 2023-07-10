@@ -1,4 +1,4 @@
-from typing import Tuple, List, Any, Union, Sequence, Optional
+from typing import Tuple, List, Any, Union, Sequence, Optional, cast
 
 from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
 from langchain.callbacks.base import BaseCallbackManager
@@ -42,7 +42,9 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         if len(self.tools) == 0:
             return AgentFinish(return_values={"output": ''}, log='')
         elif len(self.tools) == 1:
-            rst = next(iter(self.tools)).run(kwargs['input'])
+            tool = next(iter(self.tools))
+            tool = cast(DatasetRetrieverTool, tool)
+            rst = tool.run(tool_input={'dataset_id': tool.dataset_id, 'query': kwargs['input']})
             return AgentFinish(return_values={"output": rst}, log=rst)
 
         if intermediate_steps:
