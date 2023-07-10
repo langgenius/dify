@@ -1,2 +1,2 @@
-class ValidateFailedError(Exception):
-    description = "Provider Validate failed"
+class ToolValidateFailedError(Exception):
+    description = "Tool Provider Validate failed"

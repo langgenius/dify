@@ -1,7 +1,7 @@
 from typing import Optional
 
-from core.llm.provider.errors import ValidateFailedError
 from core.tool.provider.base import BaseToolProvider
+from core.tool.provider.errors import ToolValidateFailedError
 from models.tool import ToolProviderName
 
 
@@ -56,4 +56,4 @@ class SerpAPIToolProvider(BaseToolProvider):
         :return:
         """
         if 'api_key' not in credentials or not credentials.get('api_key'):
-            raise ValidateFailedError("SerpAPI api_key is required.")
+            raise ToolValidateFailedError("SerpAPI api_key is required.")

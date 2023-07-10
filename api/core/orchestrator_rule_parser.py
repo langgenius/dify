@@ -26,8 +26,9 @@ class OrchestratorRuleParser:
     def __init__(self, tenant_id: str, app_model_config: AppModelConfig):
         self.tenant_id = tenant_id
         self.app_model_config = app_model_config
+        self.agent_summary_model_name = "gpt-3.5-turbo-16k"
 
-    def to_agent_arguments(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
+    def to_agent_chain(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                            rest_tokens: int, callbacks: Callbacks = None) -> Optional[Chain]:
         if not self.app_model_config.agent_mode_dict:
             return None
@@ -54,7 +55,7 @@ class OrchestratorRuleParser:
 
             summary_llm = LLMBuilder.to_llm(
                 tenant_id=self.tenant_id,
-                model_name="gpt-3.5-turbo-16k",
+                model_name=self.agent_summary_model_name,
                 temperature=0,
                 max_tokens=500,
                 callbacks=[DifyStdOutCallbackHandler()]
@@ -181,15 +182,9 @@ class OrchestratorRuleParser:
         if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
             return None
 
-        description = dataset.description
-        if not description:
-            description = 'useful for when you want to answer queries about the ' + dataset.name
-
-        tool = DatasetRetrieverTool(
-            name=f"dataset_retriever",
-            description=description,
-            k=3,
+        tool = DatasetRetrieverTool.from_dataset(
             dataset=dataset,
+            k=3,
             callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
         )
 
@@ -227,7 +222,8 @@ class OrchestratorRuleParser:
         tool = Tool(
             name="google_search",
             description="A tool for performing a Google search and extracting snippets and webpages "
-                        "when you need to search for something you don't know or when your information is not up to date."
+                        "when you need to search for something you don't know or when your information "
+                        "is not up to date."
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
             callbacks=[DifyStdOutCallbackHandler]

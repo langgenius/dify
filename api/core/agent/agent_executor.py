@@ -63,6 +63,8 @@ class AgentExecutor:
                 summary_llm=self.configuration.summary_llm,
                 verbose=True
             )
+        else:
+            raise NotImplementedError(f"Unknown Agent Strategy: {self.configuration.strategy}")
 
         return agent
 
