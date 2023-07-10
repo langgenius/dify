@@ -88,7 +88,6 @@ class WebReaderTool(BaseTool):
             if len(docs) > 10:
                 docs = docs[:10]
 
-            print("summary docs: ", docs)
             chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
             page_contents = chain.run(docs)
             # todo use cache

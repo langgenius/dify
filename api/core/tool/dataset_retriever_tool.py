@@ -83,13 +83,16 @@ class DatasetRetrieverTool(BaseTool):
                 embeddings=embeddings
             )
 
-            documents = vector_index.search(
-                query,
-                search_type='similarity',
-                search_kwargs={
-                    'k': self.k
-                }
-            )
+            if self.k > 0:
+                documents = vector_index.search(
+                    query,
+                    search_type='similarity',
+                    search_kwargs={
+                        'k': self.k
+                    }
+                )
+            else:
+                documents = []
 
             hit_callback = DatasetIndexToolCallbackHandler(dataset.id)
             hit_callback.on_tool_end(documents)

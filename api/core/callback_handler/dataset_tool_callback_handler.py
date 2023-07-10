@@ -1,3 +1,4 @@
+import json
 import logging
 
 from typing import Any, Dict, List, Union, Optional
@@ -43,8 +44,9 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         input_str: str,
         **kwargs: Any,
     ) -> None:
-        tool_name = serialized.get('name')
-        dataset_id = tool_name[len("dataset-"):]
+        # tool_name = serialized.get('name')
+        input_dict = json.loads(input_str.replace("'", "\""))
+        dataset_id = input_dict.get('dataset_id')
         self.conversation_message_task.on_dataset_query_end(DatasetQueryObj(dataset_id=dataset_id, query=input_str))
 
     def on_tool_end(

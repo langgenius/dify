@@ -4,9 +4,11 @@ from typing import Union, Optional
 from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent, AgentExecutor
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import Callbacks
+from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Extra
 
+from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMultiAIFunctionCallAgent
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
@@ -16,6 +18,7 @@ from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
 
 
 class PlanningStrategy(str, enum.Enum):
+    ROUTER = 'router'
     REACT = 'react'
     FUNCTION_CALL = 'function_call'
     MULTI_FUNCTION_CALL = 'multi_function_call'
@@ -26,7 +29,7 @@ class AgentConfiguration(BaseModel):
     llm: BaseLanguageModel
     tools: list[BaseTool]
     summary_llm: BaseLanguageModel
-    memory: ReadOnlyConversationTokenDBBufferSharedMemory = None
+    memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
     max_execution_time: Optional[float] = None
@@ -67,6 +70,13 @@ class AgentExecutor:
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
                 summary_llm=self.configuration.summary_llm,
+                verbose=True
+            )
+        elif self.configuration.strategy == PlanningStrategy.ROUTER:
+            agent = MultiDatasetRouterAgent.from_llm_and_tools(
+                llm=self.configuration.llm,
+                tools=self.configuration.tools,
+                extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,
                 verbose=True
             )
         else:

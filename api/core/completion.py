@@ -10,7 +10,6 @@ from langchain.schema import BaseMessage, HumanMessage
 from requests.exceptions import ChunkedEncodingError
 
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
-from core.chain.multi_dataset_router_chain import MultiDatasetRouterChain
 from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, \
@@ -22,8 +21,6 @@ from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.llm.streamable_open_ai import StreamableOpenAI
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
-from core.memory.read_only_conversation_token_db_string_buffer_shared_memory import \
-    ReadOnlyConversationTokenDBStringBufferSharedMemory
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
@@ -88,26 +85,21 @@ class Completion:
         # get agent executor
         agent_executor = orchestrator_rule_parser.to_agent_executor(
             conversation_message_task=conversation_message_task,
-            memory=ReadOnlyConversationTokenDBStringBufferSharedMemory(memory=memory) if memory else None,
+            memory=memory,
             rest_tokens=rest_tokens_for_context_and_memory,
             callbacks=[chain_callback]
         )
 
         # run agent executor
         executor_output = ''
-        is_agent_output = False
         if agent_executor:
-            if isinstance(agent_executor, MultiDatasetRouterChain):
+            should_use_agent = agent_executor.should_use_agent(query)
+            if should_use_agent:
                 executor_output = agent_executor.run(query)
-            else:
-                should_use_agent = agent_executor.should_use_agent(query)
-                if should_use_agent:
-                    executor_output = agent_executor.run(query)
-                    is_agent_output = True
 
         # run the final llm
         try:
-            # if is_agent_output and not app_model_config.pre_prompt:
+            # if executor_output and not app_model_config.pre_prompt:
             #     # todo streaming flush the agent result to user, not call final llm
             #     pass
 

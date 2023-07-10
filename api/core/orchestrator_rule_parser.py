@@ -1,15 +1,14 @@
-from typing import Optional, Union
+import math
+from typing import Optional
 
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
-from langchain.chains.base import Chain
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.chain.multi_dataset_router_chain import MultiDatasetRouterChain
 from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
 from core.conversation_message_task import ConversationMessageTask
 from core.llm.llm_builder import LLMBuilder
@@ -18,7 +17,7 @@ from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
 
@@ -32,7 +31,7 @@ class OrchestratorRuleParser:
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                        rest_tokens: int, callbacks: Callbacks = None) \
-            -> Optional[Union[AgentExecutor | MultiDatasetRouterChain]]:
+            -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
 
@@ -41,11 +40,6 @@ class OrchestratorRuleParser:
         chain = None
         if agent_mode_config and agent_mode_config.get('enabled'):
             tool_configs = agent_mode_config.get('tools', [])
-
-            # use router chain if planning strategy is router or not set
-            if not agent_mode_config.get('strategy') or agent_mode_config.get('strategy') == 'router':
-                return self.to_router_chain(tool_configs, conversation_message_task, rest_tokens)
-
             agent_model_name = agent_mode_config.get('model_name', 'gpt-4')
 
             agent_llm = LLMBuilder.to_llm(
@@ -64,15 +58,15 @@ class OrchestratorRuleParser:
                 callbacks=[DifyStdOutCallbackHandler()]
             )
 
-            tools = self.to_tools(tool_configs, conversation_message_task)
+            tools = self.to_tools(tool_configs, conversation_message_task, rest_tokens)
 
             if len(tools) == 0:
                 return None
 
             agent_configuration = AgentConfiguration(
-                strategy=PlanningStrategy(agent_mode_config.get('strategy')),
+                strategy=PlanningStrategy(agent_mode_config.get('strategy', 'router')),
                 llm=agent_llm,
-                tools=self.to_tools(tool_configs, conversation_message_task),
+                tools=tools,
                 summary_llm=summary_llm,
                 memory=memory,
                 callbacks=callbacks,
@@ -82,44 +76,6 @@ class OrchestratorRuleParser:
             )
 
             return AgentExecutor(agent_configuration)
-
-        return chain
-
-    def to_router_chain(self, tool_configs: list, conversation_message_task: ConversationMessageTask,
-                        rest_tokens: int) -> Optional[Chain]:
-        """
-        Convert tool configs to router chain if planning strategy is router
-
-        :param tool_configs:
-        :param conversation_message_task:
-        :param rest_tokens:
-        :return:
-        """
-        chain = None
-        datasets = []
-        for tool_config in tool_configs:
-            tool_type = list(tool_config.keys())[0]
-            tool_val = list(tool_config.values())[0]
-            if tool_type == "dataset":
-                # get dataset from dataset id
-                dataset = db.session.query(Dataset).filter(
-                    Dataset.tenant_id == self.tenant_id,
-                    Dataset.id == tool_val.get("id")
-                ).first()
-
-                if dataset:
-                    datasets.append(dataset)
-
-        if len(datasets) > 0:
-            # tool to chain
-            multi_dataset_router_chain = MultiDatasetRouterChain.from_datasets(
-                tenant_id=self.tenant_id,
-                datasets=datasets,
-                conversation_message_task=conversation_message_task,
-                rest_tokens=rest_tokens,
-                callbacks=[DifyStdOutCallbackHandler()]
-            )
-            chain = multi_dataset_router_chain
 
         return chain
 
@@ -147,10 +103,12 @@ class OrchestratorRuleParser:
 
         return None
 
-    def to_tools(self, tool_configs: list, conversation_message_task: ConversationMessageTask) -> list[BaseTool]:
+    def to_tools(self, tool_configs: list, conversation_message_task: ConversationMessageTask,
+                 rest_tokens: int) -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
+        :param rest_tokens:
         :param tool_configs: app agent tool configs
         :param conversation_message_task:
         :return:
@@ -164,8 +122,7 @@ class OrchestratorRuleParser:
 
             tool = None
             if tool_type == "dataset":
-                tool = None
-                # tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task)
+                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool()
             elif tool_type == "google_search":
@@ -178,10 +135,12 @@ class OrchestratorRuleParser:
 
         return tools
 
-    def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask) \
+    def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask,
+                                  rest_tokens: int) \
             -> Optional[BaseTool]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
+        :param rest_tokens:
         :param tool_config:
         :param conversation_message_task:
         :return:
@@ -195,9 +154,10 @@ class OrchestratorRuleParser:
         if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
             return None
 
+        k = self._dynamic_calc_retrieve_k(dataset, rest_tokens)
         tool = DatasetRetrieverTool.from_dataset(
             dataset=dataset,
-            k=3,
+            k=k,
             callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
         )
 
@@ -249,3 +209,34 @@ class OrchestratorRuleParser:
             api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
             callbacks=[DifyStdOutCallbackHandler()]
         )
+
+    @classmethod
+    def _dynamic_calc_retrieve_k(cls, dataset: Dataset, rest_tokens: int) -> int:
+        DEFAULT_K = 2
+        CONTEXT_TOKENS_PERCENT = 0.3
+        processing_rule = dataset.latest_process_rule
+        if not processing_rule:
+            return DEFAULT_K
+
+        if processing_rule.mode == "custom":
+            rules = processing_rule.rules_dict
+            if not rules:
+                return DEFAULT_K
+
+            segmentation = rules["segmentation"]
+            segment_max_tokens = segmentation["max_tokens"]
+        else:
+            segment_max_tokens = DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens']
+
+        # when rest_tokens is less than default context tokens
+        if rest_tokens < segment_max_tokens * DEFAULT_K:
+            return rest_tokens // segment_max_tokens
+
+        context_limit_tokens = math.floor(rest_tokens * CONTEXT_TOKENS_PERCENT)
+
+        # when context_limit_tokens is less than default context tokens, use default_k
+        if context_limit_tokens <= segment_max_tokens * DEFAULT_K:
+            return DEFAULT_K
+
+        # Expand the k value when there's still some room left in the 30% rest tokens space
+        return context_limit_tokens // segment_max_tokens
