@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import Optional, List, Union, Tuple
 
 from langchain.base_language import BaseLanguageModel
@@ -8,6 +9,8 @@ from langchain.llms import BaseLLM
 from langchain.schema import BaseMessage, HumanMessage
 from requests.exceptions import ChunkedEncodingError
 
+from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
+from core.chain.multi_dataset_router_chain import MultiDatasetRouterChain
 from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, \
@@ -15,13 +18,13 @@ from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCa
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.llm.error import LLMBadRequestError
 from core.llm.llm_builder import LLMBuilder
-from core.chain.main_chain_builder import MainChainBuilder
 from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.llm.streamable_open_ai import StreamableOpenAI
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
 from core.memory.read_only_conversation_token_db_string_buffer_shared_memory import \
     ReadOnlyConversationTokenDBStringBufferSharedMemory
+from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
@@ -69,28 +72,52 @@ class Completion:
             streaming=streaming
         )
 
-        # build main chain include agent
-        main_chain = MainChainBuilder.get_chains(
+        chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
+
+        # init orchestrator rule parser
+        orchestrator_rule_parser = OrchestratorRuleParser(
             tenant_id=app.tenant_id,
-            app_model_config=app_model_config,
-            rest_tokens=rest_tokens_for_context_and_memory,
-            memory=ReadOnlyConversationTokenDBStringBufferSharedMemory(memory=memory) if memory else None,
-            conversation_message_task=conversation_message_task
+            app_model_config=app_model_config
         )
 
-        chain_output = ''
-        if main_chain:
-            chain_output = main_chain.run(query)
+        # parse sensitive_word_avoidance_chain
+        sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain([chain_callback])
+        if sensitive_word_avoidance_chain:
+            query = sensitive_word_avoidance_chain.run(query)
+
+        # get agent executor
+        agent_executor = orchestrator_rule_parser.to_agent_executor(
+            conversation_message_task=conversation_message_task,
+            memory=ReadOnlyConversationTokenDBStringBufferSharedMemory(memory=memory) if memory else None,
+            rest_tokens=rest_tokens_for_context_and_memory,
+            callbacks=[chain_callback]
+        )
+
+        # run agent executor
+        executor_output = ''
+        is_agent_output = False
+        if agent_executor:
+            if isinstance(agent_executor, MultiDatasetRouterChain):
+                executor_output = agent_executor.run(query)
+            else:
+                should_use_agent = agent_executor.should_use_agent(query)
+                if should_use_agent:
+                    executor_output = agent_executor.run(query)
+                    is_agent_output = True
 
         # run the final llm
         try:
+            # if is_agent_output and not app_model_config.pre_prompt:
+            #     # todo streaming flush the agent result to user, not call final llm
+            #     pass
+
             cls.run_final_llm(
                 tenant_id=app.tenant_id,
                 mode=app.mode,
                 app_model_config=app_model_config,
                 query=query,
                 inputs=inputs,
-                chain_output=chain_output,
+                chain_output=executor_output,
                 conversation_message_task=conversation_message_task,
                 memory=memory,
                 streaming=streaming
@@ -136,6 +163,38 @@ class Completion:
         response = final_llm.generate([prompt], stop_words)
 
         return response
+
+    # @classmethod
+    # def simulate_output(cls, tenant_id: str, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
+    #                     conversation_message_task: ConversationMessageTask,
+    #                     executor_output: str, memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
+    #                     streaming: bool):
+    #     final_llm = LLMBuilder.to_llm_from_model(
+    #         tenant_id=tenant_id,
+    #         model=app_model_config.model_dict,
+    #         streaming=streaming
+    #     )
+    #
+    #     # get llm prompt
+    #     prompt, stop_words = cls.get_main_llm_prompt(
+    #         mode=mode,
+    #         llm=final_llm,
+    #         pre_prompt=app_model_config.pre_prompt,
+    #         query=query,
+    #         inputs=inputs,
+    #         chain_output=executor_output,
+    #         memory=memory
+    #     )
+    #
+    #     final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
+    #
+    #     llm_callback_handler = LLMCallbackHandler(llm, conversation_message_task)
+    #     llm_callback_handler
+    #     for token in executor_output:
+    #         if token:
+    #             sys.stdout.write(token)
+    #             sys.stdout.flush()
+    #             time.sleep(0.01)
 
     @classmethod
     def get_main_llm_prompt(cls, mode: str, llm: BaseLanguageModel, pre_prompt: str, query: str, inputs: dict,

@@ -16,7 +16,7 @@ from models.dataset import Dataset
 
 
 class DatasetRetrieverToolInput(BaseModel):
-    dataset_id: str = Field(..., description="ID of dateset to be queried. MUST be UUID format.")
+    dataset_id: str = Field(..., description="ID of dataset to be queried. MUST be UUID format.")
     query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
 
 

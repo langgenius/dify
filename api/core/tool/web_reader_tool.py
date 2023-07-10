@@ -97,7 +97,7 @@ class WebReaderTool(BaseTool):
 
             if self.continue_reading and len(page_contents) >= self.max_chunk_length:
                 page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
-                                 f"THEN DIRECT ANSWER AND STOP INVOKING read_page TOOL, OTHERWISE USE " \
+                                 f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
                                  f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
 
         return page_contents

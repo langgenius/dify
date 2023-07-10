@@ -38,7 +38,6 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
             **kwargs,
         )
 
-
     def should_use_agent(self, query: str):
         """
         return should use agent
@@ -49,15 +48,18 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
         original_max_tokens = self.llm.max_tokens
         self.llm.max_tokens = 6
 
-        agent_decision = self.plan(
-            intermediate_steps=[],
-            callbacks=None,
-            input=query
+        prompt = self.prompt.format_prompt(input=query, agent_scratchpad=[])
+        messages = prompt.to_messages()
+
+        predicted_message = self.llm.predict_messages(
+            messages, functions=self.functions, callbacks=None
         )
+
+        function_call = predicted_message.additional_kwargs.get("function_call", {})
 
         self.llm.max_tokens = original_max_tokens
 
-        return isinstance(agent_decision, AgentAction)
+        return True if function_call else False
 
     def plan(
             self,

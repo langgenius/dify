@@ -1,9 +1,10 @@
-from typing import Optional
+from typing import Optional, Union
 
+from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.chains.base import Chain
 from langchain.memory.chat_memory import BaseChatMemory
-from langchain.tools import BaseTool, Tool
+from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
@@ -23,13 +24,15 @@ from models.model import AppModelConfig
 
 class OrchestratorRuleParser:
     """Parse the orchestrator rule to entities."""
+
     def __init__(self, tenant_id: str, app_model_config: AppModelConfig):
         self.tenant_id = tenant_id
         self.app_model_config = app_model_config
         self.agent_summary_model_name = "gpt-3.5-turbo-16k"
 
-    def to_agent_chain(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
-                           rest_tokens: int, callbacks: Callbacks = None) -> Optional[Chain]:
+    def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
+                       rest_tokens: int, callbacks: Callbacks = None) \
+            -> Optional[Union[AgentExecutor | MultiDatasetRouterChain]]:
         if not self.app_model_config.agent_mode_dict:
             return None
 
@@ -61,6 +64,11 @@ class OrchestratorRuleParser:
                 callbacks=[DifyStdOutCallbackHandler()]
             )
 
+            tools = self.to_tools(tool_configs, conversation_message_task)
+
+            if len(tools) == 0:
+                return None
+
             agent_configuration = AgentConfiguration(
                 strategy=PlanningStrategy(agent_mode_config.get('strategy')),
                 llm=agent_llm,
@@ -73,8 +81,7 @@ class OrchestratorRuleParser:
                 early_stopping_method="generate"
             )
 
-            agent_executor = AgentExecutor(agent_configuration)
-            chain = agent_executor.get_chain()
+            return AgentExecutor(agent_configuration)
 
         return chain
 
@@ -116,7 +123,8 @@ class OrchestratorRuleParser:
 
         return chain
 
-    def to_sensitive_word_avoidance_chain(self, **kwargs) -> Optional[SensitiveWordAvoidanceChain]:
+    def to_sensitive_word_avoidance_chain(self, callbacks: Callbacks = None, **kwargs) \
+            -> Optional[SensitiveWordAvoidanceChain]:
         """
         Convert app sensitive word avoidance config to chain
 
@@ -133,7 +141,7 @@ class OrchestratorRuleParser:
                 sensitive_words=sensitive_words.split(","),
                 canned_response=sensitive_word_avoidance_config.get("canned_response", ''),
                 output_key="sensitive_word_avoidance_output",
-                callbacks=[DifyStdOutCallbackHandler()],
+                callbacks=callbacks,
                 **kwargs
             )
 
@@ -151,14 +159,19 @@ class OrchestratorRuleParser:
         for tool_config in tool_configs:
             tool_type = list(tool_config.keys())[0]
             tool_val = list(tool_config.values())[0]
-            if not tool_config.get("enabled") or tool_config.get("enabled") is not True:
+            if not tool_val.get("enabled") or tool_val.get("enabled") is not True:
                 continue
 
             tool = None
             if tool_type == "dataset":
-                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task)
+                tool = None
+                # tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool()
+            elif tool_type == "google_search":
+                tool = self.to_google_search_tool()
+            elif tool_type == "wikipedia":
+                tool = self.to_wikipedia_tool()
 
             if tool:
                 tools.append(tool)
@@ -226,7 +239,13 @@ class OrchestratorRuleParser:
                         "is not up to date."
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
-            callbacks=[DifyStdOutCallbackHandler]
+            callbacks=[DifyStdOutCallbackHandler()]
         )
 
         return tool
+
+    def to_wikipedia_tool(self) -> Optional[BaseTool]:
+        return WikipediaQueryRun(
+            api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
+            callbacks=[DifyStdOutCallbackHandler()]
+        )

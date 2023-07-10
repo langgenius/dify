@@ -48,15 +48,18 @@ class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, Ope
         original_max_tokens = self.llm.max_tokens
         self.llm.max_tokens = 6
 
-        agent_decision = self.plan(
-            intermediate_steps=[],
-            callbacks=None,
-            input=query
+        prompt = self.prompt.format_prompt(input=query, agent_scratchpad=[])
+        messages = prompt.to_messages()
+
+        predicted_message = self.llm.predict_messages(
+            messages, functions=self.functions, callbacks=None
         )
+
+        function_call = predicted_message.additional_kwargs.get("function_call", {})
 
         self.llm.max_tokens = original_max_tokens
 
-        return isinstance(agent_decision, AgentAction)
+        return True if function_call else False
 
     def plan(
             self,
@@ -93,7 +96,8 @@ class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, Ope
         agent_decision = _parse_ai_message(predicted_message)
         return agent_decision
 
-    def get_system_message(self):
+    @classmethod
+    def get_system_message(cls):
         # get current time
         current_time = datetime.now()
         current_timezone = pytz.timezone('UTC')

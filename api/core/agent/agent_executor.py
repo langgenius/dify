@@ -5,7 +5,7 @@ from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent, AgentE
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
-from pydantic import BaseModel
+from pydantic import BaseModel, Extra
 
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMultiAIFunctionCallAgent
@@ -26,12 +26,18 @@ class AgentConfiguration(BaseModel):
     llm: BaseLanguageModel
     tools: list[BaseTool]
     summary_llm: BaseLanguageModel
-    memory: ReadOnlyConversationTokenDBBufferSharedMemory
+    memory: ReadOnlyConversationTokenDBBufferSharedMemory = None
     callbacks: Callbacks = None
     max_iterations: int = 6
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        extra = Extra.forbid
+        arbitrary_types_allowed = True
 
 
 class AgentExecutor:
@@ -48,18 +54,18 @@ class AgentExecutor:
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
-            agent = AutoSummarizingOpenAIFunctionCallAgent(
+            agent = AutoSummarizingOpenAIFunctionCallAgent.from_llm_and_tools(
                 llm=self.configuration.llm,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.buffer,  # used for read chat histories memory
+                extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
                 summary_llm=self.configuration.summary_llm,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.MULTI_FUNCTION_CALL:
-            agent = AutoSummarizingOpenMultiAIFunctionCallAgent(
+            agent = AutoSummarizingOpenMultiAIFunctionCallAgent.from_llm_and_tools(
                 llm=self.configuration.llm,
                 tools=self.configuration.tools,
-                extra_prompt_messages=self.configuration.memory.buffer,  # used for read chat histories memory
+                extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
                 summary_llm=self.configuration.summary_llm,
                 verbose=True
             )
@@ -71,7 +77,7 @@ class AgentExecutor:
     def should_use_agent(self, query: str) -> bool:
         return self.agent.should_use_agent(query)
 
-    def get_chain(self) -> AgentExecutor:
+    def run(self, query: str) -> str:
         agent_executor = LCAgentExecutor.from_agent_and_tools(
             agent=self.agent,
             tools=self.configuration.tools,
@@ -82,4 +88,4 @@ class AgentExecutor:
             verbose=True
         )
 
-        return agent_executor
+        return agent_executor.run(query)
