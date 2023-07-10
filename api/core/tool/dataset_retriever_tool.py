@@ -10,11 +10,9 @@ from core.llm.llm_builder import LLMBuilder
 from models.dataset import Dataset
 
 
-class DatasetTool(BaseTool):
-    """
-    Tool for querying a Dataset.
-    Only use for router chain.
-    """
+class DatasetRetrieverTool(BaseTool):
+    """Tool for querying a Dataset."""
+    # todo dataset id as tool argument
 
     dataset: Dataset
     k: int = 2

@@ -70,9 +70,9 @@ class Completion:
         )
 
         # build main chain include agent
-        main_chain = MainChainBuilder.to_langchain_components(
+        main_chain = MainChainBuilder.get_chains(
             tenant_id=app.tenant_id,
-            agent_mode=app_model_config.agent_mode_dict,
+            app_model_config=app_model_config,
             rest_tokens=rest_tokens_for_context_and_memory,
             memory=ReadOnlyConversationTokenDBStringBufferSharedMemory(memory=memory) if memory else None,
             conversation_message_task=conversation_message_task

@@ -88,6 +88,7 @@ class AppModelConfig(db.Model):
     user_input_form = db.Column(db.Text)
     pre_prompt = db.Column(db.Text)
     agent_mode = db.Column(db.Text)
+    sensitive_word_avoidance = db.Column(db.Text)
 
     @property
     def app(self):
@@ -115,6 +116,11 @@ class AppModelConfig(db.Model):
     @property
     def more_like_this_dict(self) -> dict:
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
+
+    @property
+    def sensitive_word_avoidance_dict(self) -> dict:
+        return json.loads(self.sensitive_word_avoidance) if self.sensitive_word_avoidance \
+            else {"enabled": False, "words": [], "canned_response": []}
 
     @property
     def user_input_form_list(self) -> dict:
@@ -235,6 +241,9 @@ class Conversation(db.Model):
                     if 'speech_to_text' in override_model_configs else {"enabled": False}
                 model_config['more_like_this'] = override_model_configs['more_like_this'] \
                     if 'more_like_this' in override_model_configs else {"enabled": False}
+                model_config['sensitive_word_avoidance'] = override_model_configs['sensitive_word_avoidance'] \
+                    if 'sensitive_word_avoidance' in override_model_configs \
+                    else {"enabled": False, "words": [], "canned_response": []}
                 model_config['user_input_form'] = override_model_configs['user_input_form']
             else:
                 model_config['configs'] = override_model_configs
@@ -251,6 +260,7 @@ class Conversation(db.Model):
             model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
             model_config['speech_to_text'] = app_model_config.speech_to_text_dict
             model_config['more_like_this'] = app_model_config.more_like_this_dict
+            model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
             model_config['user_input_form'] = app_model_config.user_input_form_list
 
         model_config['model_id'] = self.model_id

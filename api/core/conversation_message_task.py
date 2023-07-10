@@ -69,6 +69,7 @@ class ConversationMessageTask:
                 "suggested_questions": self.app_model_config.suggested_questions_list,
                 "suggested_questions_after_answer": self.app_model_config.suggested_questions_after_answer_dict,
                 "more_like_this": self.app_model_config.more_like_this_dict,
+                "sensitive_word_avoidance": self.app_model_config.sensitive_word_avoidance_dict,
                 "user_input_form": self.app_model_config.user_input_form_list,
             }
 

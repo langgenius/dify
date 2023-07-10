@@ -1,4 +1,4 @@
-from typing import Optional, List, cast
+from typing import Optional, List, cast, Tuple
 
 from langchain.chains import SequentialChain
 from langchain.chains.base import Chain
@@ -6,44 +6,54 @@ from langchain.memory.chat_memory import BaseChatMemory
 
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.chain.chain_builder import ChainBuilder
 from core.chain.multi_dataset_router_chain import MultiDatasetRouterChain
 from core.conversation_message_task import ConversationMessageTask
+from core.orchestrator_rule_parser import OrchestratorRuleParser
 from extensions.ext_database import db
 from models.dataset import Dataset
+from models.model import AppModelConfig
 
 
 class MainChainBuilder:
     @classmethod
-    def to_langchain_components(cls, tenant_id: str, agent_mode: dict, memory: Optional[BaseChatMemory],
-                                rest_tokens: int,
-                                conversation_message_task: ConversationMessageTask):
+    def get_chains(cls, tenant_id: str, app_model_config: AppModelConfig, memory: Optional[BaseChatMemory],
+                                rest_tokens: int, conversation_message_task: ConversationMessageTask):
         first_input_key = "input"
         final_output_key = "output"
 
         chains = []
 
-        chain_callback_handler = MainChainGatherCallbackHandler(conversation_message_task)
-
-        # agent mode
-        tool_chains, chains_output_key = cls.get_agent_chains(
+        # init orchestrator rule parser
+        orchestrator_rule_parser = OrchestratorRuleParser(
             tenant_id=tenant_id,
-            agent_mode=agent_mode,
+            app_model_config=app_model_config
+        )
+
+        # parse sensitive_word_avoidance_chain
+        sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain()
+        if sensitive_word_avoidance_chain:
+            chains.append(sensitive_word_avoidance_chain)
+
+        # parse agent chain
+        agent_chain = cls.get_agent_chain(
+            tenant_id=tenant_id,
+            agent_mode=app_model_config.agent_mode_dict,
             rest_tokens=rest_tokens,
             memory=memory,
             conversation_message_task=conversation_message_task
         )
-        chains += tool_chains
 
-        if chains_output_key:
-            final_output_key = chains_output_key
+        if agent_chain:
+            chains.append(agent_chain)
+            final_output_key = agent_chain.output_keys[0]
 
         if len(chains) == 0:
             return None
 
+        chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
         for chain in chains:
             chain = cast(Chain, chain)
-            chain.callbacks.append(chain_callback_handler)
+            chain.callbacks.append(chain_callback)
 
         # build main chain
         overall_chain = SequentialChain(
@@ -56,26 +66,20 @@ class MainChainBuilder:
         return overall_chain
 
     @classmethod
-    def get_agent_chains(cls, tenant_id: str, agent_mode: dict,
-                         rest_tokens: int,
-                         memory: Optional[BaseChatMemory],
-                         conversation_message_task: ConversationMessageTask):
+    def get_agent_chain(cls, tenant_id: str, agent_mode: dict,
+                        rest_tokens: int,
+                        memory: Optional[BaseChatMemory],
+                        conversation_message_task: ConversationMessageTask) -> Chain:
         # agent mode
-        chains = []
+        chain = None
         if agent_mode and agent_mode.get('enabled'):
             tools = agent_mode.get('tools', [])
 
-            pre_fixed_chains = []
-            # agent_tools = []
             datasets = []
             for tool in tools:
                 tool_type = list(tool.keys())[0]
                 tool_config = list(tool.values())[0]
-                if tool_type == 'sensitive-word-avoidance':
-                    chain = ChainBuilder.to_sensitive_word_avoidance_chain(tool_config)
-                    if chain:
-                        pre_fixed_chains.append(chain)
-                elif tool_type == "dataset":
+                if tool_type == "dataset":
                     # get dataset from dataset id
                     dataset = db.session.query(Dataset).filter(
                         Dataset.tenant_id == tenant_id,
@@ -84,9 +88,6 @@ class MainChainBuilder:
 
                     if dataset:
                         datasets.append(dataset)
-
-            # add pre-fixed chains
-            chains += pre_fixed_chains
 
             if len(datasets) > 0:
                 # tool to chain
@@ -97,14 +98,6 @@ class MainChainBuilder:
                     rest_tokens=rest_tokens,
                     callbacks=[DifyStdOutCallbackHandler()]
                 )
-                chains.append(multi_dataset_router_chain)
+                chain = multi_dataset_router_chain
 
-        final_output_key = cls.get_chains_output_key(chains)
-
-        return chains, final_output_key
-
-    @classmethod
-    def get_chains_output_key(cls, chains: List[Chain]):
-        if len(chains) > 0:
-            return chains[-1].output_keys[0]
-        return None
+        return chain

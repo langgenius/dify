@@ -52,7 +52,7 @@ class WebReaderToolInput(BaseModel):
 class WebReaderTool(BaseTool):
     """Reader tool for getting website title and contents. Gives more control than SimpleReaderTool."""
 
-    name: str = "read_page"
+    name: str = "web_reader"
     args_schema: Type[BaseModel] = WebReaderToolInput
     description: str = "use this to read a website. " \
                        "If you can answer the question based on the information provided, " \

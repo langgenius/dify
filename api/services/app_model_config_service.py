@@ -145,6 +145,33 @@ class AppModelConfigService:
         if not isinstance(config["more_like_this"]["enabled"], bool):
             raise ValueError("enabled in more_like_this must be of boolean type")
 
+        # sensitive_word_avoidance
+        if 'sensitive_word_avoidance' not in config or not config["sensitive_word_avoidance"]:
+            config["sensitive_word_avoidance"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["sensitive_word_avoidance"], dict):
+            raise ValueError("sensitive_word_avoidance must be of dict type")
+
+        if "enabled" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["enabled"]:
+            config["sensitive_word_avoidance"]["enabled"] = False
+
+        if not isinstance(config["sensitive_word_avoidance"]["enabled"], bool):
+            raise ValueError("enabled in sensitive_word_avoidance must be of boolean type")
+
+        if "words" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["words"]:
+            config["sensitive_word_avoidance"]["words"] = ""
+
+        if not isinstance(config["sensitive_word_avoidance"]["words"], str):
+            raise ValueError("words in sensitive_word_avoidance must be of string type")
+
+        if "canned_response" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["canned_response"]:
+            config["sensitive_word_avoidance"]["canned_response"] = ""
+
+        if not isinstance(config["sensitive_word_avoidance"]["canned_response"], str):
+            raise ValueError("canned_response in sensitive_word_avoidance must be of string type")
+
         # model
         if 'model' not in config:
             raise ValueError("model is required")
@@ -258,8 +285,8 @@ class AppModelConfigService:
 
         for tool in config["agent_mode"]["tools"]:
             key = list(tool.keys())[0]
-            if key not in ["sensitive-word-avoidance", "dataset"]:
-                raise ValueError("Keys in agent_mode.tools list can only be 'sensitive-word-avoidance' or 'dataset'")
+            if key not in ["dataset"]:
+                raise ValueError("Keys in agent_mode.tools list can only be 'dataset'")
 
             tool_item = tool[key]
 
@@ -269,19 +296,7 @@ class AppModelConfigService:
             if not isinstance(tool_item["enabled"], bool):
                 raise ValueError("enabled in agent_mode.tools must be of boolean type")
 
-            if key == "sensitive-word-avoidance":
-                if "words" not in tool_item or not tool_item["words"]:
-                    tool_item["words"] = ""
-
-                if not isinstance(tool_item["words"], str):
-                    raise ValueError("words in sensitive-word-avoidance must be of string type")
-
-                if "canned_response" not in tool_item or not tool_item["canned_response"]:
-                    tool_item["canned_response"] = ""
-
-                if not isinstance(tool_item["canned_response"], str):
-                    raise ValueError("canned_response in sensitive-word-avoidance must be of string type")
-            elif key == "dataset":
+            if key == "dataset":
                 if 'id' not in tool_item:
                     raise ValueError("id is required in dataset")
 
@@ -300,6 +315,7 @@ class AppModelConfigService:
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
             "more_like_this": config["more_like_this"],
+            "sensitive_word_avoidance": config["sensitive_word_avoidance"],
             "model": {
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],

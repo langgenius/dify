@@ -140,6 +140,7 @@ class CompletionService:
                     suggested_questions=json.dumps(model_config['suggested_questions']),
                     suggested_questions_after_answer=json.dumps(model_config['suggested_questions_after_answer']),
                     more_like_this=json.dumps(model_config['more_like_this']),
+                    sensitive_word_avoidance=json.dumps(model_config['sensitive_word_avoidance']),
                     model=json.dumps(model_config['model']),
                     user_input_form=json.dumps(model_config['user_input_form']),
                     pre_prompt=model_config['pre_prompt'],

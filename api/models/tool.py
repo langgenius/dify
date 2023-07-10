@@ -1,6 +1,19 @@
+import json
+from enum import Enum
+
 from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
+
+class ToolProviderName(Enum):
+    SERPAPI = 'serpapi'
+
+    @staticmethod
+    def value_of(value):
+        for member in ToolProviderName:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
 
 
 class ToolProvider(db.Model):
@@ -24,3 +37,10 @@ class ToolProvider(db.Model):
          Returns True if the encrypted_config is not None, indicating that the token is set.
          """
         return self.encrypted_config is not None
+
+    @property
+    def config(self):
+        """
+        Returns the decrypted config.
+        """
+        return json.loads(self.decrypt_config()) if self.encrypted_config is not None else None
