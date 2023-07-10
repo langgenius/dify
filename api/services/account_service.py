@@ -404,7 +404,7 @@ class RegisterService:
         token = str(uuid.uuid4())
         email_hash = sha256(account.email.encode()).hexdigest()
         cache_key = 'member_invite_token:{}, {}:{}'.format(str(tenant.id), email_hash, token)
-        redis_client.setex(cache_key, 600, str(account.id))
+        redis_client.setex(cache_key, 3600, str(account.id))
         return token
 
     @classmethod
