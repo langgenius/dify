@@ -96,6 +96,8 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setAllTaskList([]) // clear batch task running status
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    showResSidebar()
   }
 
   const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
@@ -227,6 +229,8 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    showResSidebar()
   }
 
   const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
