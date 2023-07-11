@@ -11,10 +11,13 @@ const getStar = async () => {
 }
 
 const GithubStar = async () => {
-  const githubRepo: GithubRepo = await getStar()
-
-  if (!githubRepo.stargazers_count)
+  let githubRepo: GithubRepo = { stargazers_count: 0 }
+  try {
+    githubRepo = await getStar()
+  }
+  catch (e) {
     return null
+  }
 
   return (
     <a
