@@ -11,17 +11,12 @@ import Indicator from '../indicator'
 import AccountSetting from '../account-setting'
 import AccountAbout from '../account-about'
 import WorkplaceSelector from './workplace-selector'
-import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
+import { useAppContext } from '@/context/app-context'
 
-type IAppSelectorProps = {
-  userProfile: UserProfileResponse
-  langeniusVersionInfo: LangGeniusVersionResponse
-}
-
-export default function AppSelector({ userProfile, langeniusVersionInfo }: IAppSelectorProps) {
+export default function AppSelector() {
   const itemClassName = `
     flex items-center w-full h-10 px-3 text-gray-700 text-[14px]
     rounded-lg font-normal hover:bg-gray-100 cursor-pointer
@@ -32,6 +27,7 @@ export default function AppSelector({ userProfile, langeniusVersionInfo }: IAppS
 
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
+  const { userProfile, langeniusVersionInfo } = useAppContext()
 
   const handleLogout = async () => {
     await logout({
