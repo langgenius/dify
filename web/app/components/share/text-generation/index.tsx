@@ -339,14 +339,20 @@ const TextGeneration: FC<IMainProps> = ({
             <div className={s.starIcon}></div>
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
-          {!isPC && (
-            <div
-              className='flex items-center justify-center cursor-pointer'
-              onClick={hideResSidebar}
-            >
-              <XMarkIcon className='w-4 h-4 text-gray-800' />
-            </div>
-          )}
+          <div className='flex items-center space-x-1'>
+            <Button className='h-8' >
+              Download
+            </Button>
+            {!isPC && (
+              <div
+                className='flex items-center justify-center cursor-pointer'
+                onClick={hideResSidebar}
+              >
+                <XMarkIcon className='w-4 h-4 text-gray-800' />
+              </div>
+            )}
+          </div>
+
         </div>
 
         <div className='grow overflow-y-auto'>
