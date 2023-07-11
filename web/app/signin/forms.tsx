@@ -2,9 +2,9 @@
 import React from 'react'
 import { useSearchParams } from 'next/navigation'
 
+import cn from 'classnames'
 import NormalForm from './normalForm'
 import OneMoreStep from './oneMoreStep'
-import classNames from 'classnames'
 
 const Forms = () => {
   const searchParams = useSearchParams()
@@ -19,7 +19,7 @@ const Forms = () => {
     }
   }
   return <div className={
-    classNames(
+    cn(
       'flex flex-col items-center w-full grow items-center justify-center',
       'px-6',
       'md:px-[108px]',
@@ -28,7 +28,6 @@ const Forms = () => {
     <div className='flex flex-col md:w-[400px]'>
       {getForm()}
     </div>
-    
   </div>
 }
 

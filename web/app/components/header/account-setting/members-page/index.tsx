@@ -30,6 +30,7 @@ const MembersPage = () => {
   const { userProfile } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
+  const [invitationLink, setInvitationLink] = useState('')
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
@@ -93,8 +94,9 @@ const MembersPage = () => {
         inviteModalVisible && (
           <InviteModal
             onCancel={() => setInviteModalVisible(false)}
-            onSend={() => {
+            onSend={(url) => {
               setInvitedModalVisible(true)
+              setInvitationLink(url)
               mutate()
             }}
           />
@@ -103,6 +105,7 @@ const MembersPage = () => {
       {
         invitedModalVisible && (
           <InvitedModal
+            invitationLink={invitationLink}
             onCancel={() => setInvitedModalVisible(false)}
           />
         )

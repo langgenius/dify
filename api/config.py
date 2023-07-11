@@ -151,6 +151,11 @@ class Config:
         self.WEB_API_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'WEB_API_CORS_ALLOW_ORIGINS', '*')
 
+        # mail settings
+        self.MAIL_TYPE = get_env('MAIL_TYPE')
+        self.MAIL_DEFAULT_SEND_FROM = get_env('MAIL_DEFAULT_SEND_FROM')
+        self.RESEND_API_KEY = get_env('RESEND_API_KEY')
+
         # sentry settings
         self.SENTRY_DSN = get_env('SENTRY_DSN')
         self.SENTRY_TRACES_SAMPLE_RATE = float(get_env('SENTRY_TRACES_SAMPLE_RATE'))
