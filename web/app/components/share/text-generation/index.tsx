@@ -255,7 +255,8 @@ const TextGeneration: FC<IMainProps> = ({
   }
 
   const fetchInitData = async () => {
-    await checkOrSetAccessToken()
+    if (!isInstalledApp)
+      await checkOrSetAccessToken()
 
     return Promise.all([isInstalledApp
       ? {
