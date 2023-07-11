@@ -155,7 +155,7 @@ def register_blueprints(app):
          resources={
              r"/*": {"origins": app.config['WEB_API_CORS_ALLOW_ORIGINS']}},
          supports_credentials=True,
-         allow_headers=['Content-Type', 'Authorization'],
+         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
          methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH'],
          expose_headers=['X-Version', 'X-Env']
          )

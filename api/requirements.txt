@@ -33,3 +33,4 @@ openpyxl==3.1.2
 chardet~=5.1.0
 docx2txt==0.8
 pypdfium2==4.16.0
+pyjwt~=2.6.0
