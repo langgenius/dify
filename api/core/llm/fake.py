@@ -53,4 +53,9 @@ class FakeLLM(SimpleChatModel):
 
         message = AIMessage(content=output_str)
         generation = ChatGeneration(message=message)
-        return ChatResult(generations=[generation])
+        llm_output = {"token_usage": {
+            'prompt_tokens': 0,
+            'completion_tokens': 0,
+            'total_tokens': 0,
+        }}
+        return ChatResult(generations=[generation], llm_output=llm_output)
