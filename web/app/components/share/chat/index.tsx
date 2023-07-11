@@ -6,9 +6,9 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import { useParams } from 'next/navigation'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
+import { checkOrSetAccessToken } from '../utils'
 import useConversation from './hooks/use-conversation'
 import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
@@ -17,7 +17,6 @@ import ConfigSence from '@/app/components/share/chat/config-scence'
 import Header from '@/app/components/share/header'
 import {
   delConversation,
-  fetchAccessToken,
   fetchAppInfo,
   fetchAppParams,
   fetchChatList,
@@ -68,7 +67,6 @@ const Main: FC<IMainProps> = ({
   // in mobile, show sidebar by click button
   const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
-  const params = useParams()
   useEffect(() => {
     if (siteInfo?.title) {
       if (plan !== 'basic')
@@ -311,31 +309,9 @@ const Main: FC<IMainProps> = ({
     return fetchConversations(isInstalledApp, installedAppInfo?.id, undefined, undefined, 100)
   }
 
-  const fetchAndSetAccessToken = async () => {
-    const sharedToken = params.token
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    const res = await fetchAccessToken(sharedToken)
-    accessTokenJson[sharedToken] = res.access_token
-    localStorage.setItem('token', JSON.stringify(accessTokenJson))
-    location.reload()
-  }
-
   const fetchInitData = async () => {
-    let appData: any = {}
-    try {
-      appData = await fetchAppInfo()
-    }
-    catch (e: any) {
-      if (e.code === 'unauthorized')
-        await fetchAndSetAccessToken()
-    }
+    await checkOrSetAccessToken()
+
     return Promise.all([isInstalledApp
       ? {
         app_id: installedAppInfo?.id,
@@ -346,7 +322,7 @@ const Main: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : appData, fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
   // init
