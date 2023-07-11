@@ -52,7 +52,6 @@ class AccountService:
     @staticmethod
     def update_account_password(account, password, new_password):
         """update account password"""
-        # todo: split validation and update
         if account.password and not compare_password(password, account.password, account.password_salt):
             raise CurrentPasswordIncorrectError("Current password is incorrect.")
 

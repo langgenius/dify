@@ -7,6 +7,12 @@ class RepeatPasswordNotMatchError(BaseHTTPException):
     code = 400
 
 
+class CurrentPasswordIncorrectError(BaseHTTPException):
+    error_code = 'current_password_incorrect'
+    description = "Current password is incorrect."
+    code = 400
+
+
 class ProviderRequestFailedError(BaseHTTPException):
     error_code = 'provider_request_failed'
     description = None
