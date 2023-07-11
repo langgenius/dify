@@ -1,20 +1,18 @@
 import logging
 import time
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult, HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain.schema import LLMResult, BaseMessage, BaseLanguageModel
 
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
-from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
-from core.llm.streamable_open_ai import StreamableOpenAI
 
 
 class LLMCallbackHandler(BaseCallbackHandler):
     raise_error: bool = True
 
-    def __init__(self, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
+    def __init__(self, llm: BaseLanguageModel,
                  conversation_message_task: ConversationMessageTask):
         self.llm = llm
         self.llm_message = LLMMessage()

@@ -1,7 +1,7 @@
 import enum
 from typing import Union, Optional
 
-from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent, AgentExecutor
+from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent
 from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -13,8 +13,6 @@ from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionC
 from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMultiAIFunctionCallAgent
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
-from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
-    ReadOnlyConversationTokenDBBufferSharedMemory
 
 
 class PlanningStrategy(str, enum.Enum):
@@ -41,6 +39,11 @@ class AgentConfiguration(BaseModel):
 
         extra = Extra.forbid
         arbitrary_types_allowed = True
+
+
+class AgentExecuteResult(BaseModel):
+    strategy: PlanningStrategy
+    output: str
 
 
 class AgentExecutor:
@@ -87,7 +90,7 @@ class AgentExecutor:
     def should_use_agent(self, query: str) -> bool:
         return self.agent.should_use_agent(query)
 
-    def run(self, query: str) -> str:
+    def run(self, query: str) -> AgentExecuteResult:
         agent_executor = LCAgentExecutor.from_agent_and_tools(
             agent=self.agent,
             tools=self.configuration.tools,
@@ -98,4 +101,9 @@ class AgentExecutor:
             verbose=True
         )
 
-        return agent_executor.run(query)
+        output = agent_executor.run(query)
+
+        return AgentExecuteResult(
+            output=output,
+            strategy=self.configuration.strategy
+        )

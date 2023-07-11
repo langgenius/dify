@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Optional, List, Union, Tuple
 
 from langchain.base_language import BaseLanguageModel
@@ -9,6 +8,7 @@ from langchain.llms import BaseLLM
 from langchain.schema import BaseMessage, HumanMessage
 from requests.exceptions import ChunkedEncodingError
 
+from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
@@ -16,6 +16,7 @@ from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCa
     DifyStdOutCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.llm.error import LLMBadRequestError
+from core.llm.fake import FakeLLM
 from core.llm.llm_builder import LLMBuilder
 from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.llm.streamable_open_ai import StreamableOpenAI
@@ -91,26 +92,21 @@ class Completion:
         )
 
         # run agent executor
-        executor_output = ''
+        agent_execute_result = None
         if agent_executor:
             should_use_agent = agent_executor.should_use_agent(query)
             if should_use_agent:
-                executor_output = agent_executor.run(query)
+                agent_execute_result = agent_executor.run(query)
 
         # run the final llm
         try:
-            # if executor_output and not app_model_config.pre_prompt:
-            #     # todo streaming flush the agent result to user, not call final llm
-            #     pass
-
-            # todo or use fake llm
             cls.run_final_llm(
                 tenant_id=app.tenant_id,
                 mode=app.mode,
                 app_model_config=app_model_config,
                 query=query,
                 inputs=inputs,
-                chain_output=executor_output,
+                agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
                 memory=memory,
                 streaming=streaming
@@ -125,9 +121,18 @@ class Completion:
 
     @classmethod
     def run_final_llm(cls, tenant_id: str, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
-                      chain_output: str,
+                      agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory], streaming: bool):
+        # When no extra pre prompt is specified,
+        # the output of the agent can be used directly as the main output content without calling LLM again
+        if not app_model_config.pre_prompt and agent_execute_result \
+                and agent_execute_result.strategy != PlanningStrategy.ROUTER:
+            final_llm = FakeLLM(response=agent_execute_result.output, streaming=streaming)
+            final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
+            response = final_llm.generate([[HumanMessage(content=query)]])
+            return response
+
         final_llm = LLMBuilder.to_llm_from_model(
             tenant_id=tenant_id,
             model=app_model_config.model_dict,
@@ -141,7 +146,7 @@ class Completion:
             pre_prompt=app_model_config.pre_prompt,
             query=query,
             inputs=inputs,
-            chain_output=chain_output,
+            agent_execute_result=agent_execute_result,
             memory=memory
         )
 
@@ -157,50 +162,11 @@ class Completion:
 
         return response
 
-    # @classmethod
-    # def simulate_output(cls, tenant_id: str, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
-    #                     conversation_message_task: ConversationMessageTask,
-    #                     executor_output: str, memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
-    #                     streaming: bool):
-    #     final_llm = LLMBuilder.to_llm_from_model(
-    #         tenant_id=tenant_id,
-    #         model=app_model_config.model_dict,
-    #         streaming=streaming
-    #     )
-    #
-    #     # get llm prompt
-    #     prompt, stop_words = cls.get_main_llm_prompt(
-    #         mode=mode,
-    #         llm=final_llm,
-    #         pre_prompt=app_model_config.pre_prompt,
-    #         query=query,
-    #         inputs=inputs,
-    #         chain_output=executor_output,
-    #         memory=memory
-    #     )
-    #
-    #     final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
-    #
-    #     llm_callback_handler = LLMCallbackHandler(llm, conversation_message_task)
-    #     llm_callback_handler
-    #     for token in executor_output:
-    #         if token:
-    #             sys.stdout.write(token)
-    #             sys.stdout.flush()
-    #             time.sleep(0.01)
-
     @classmethod
     def get_main_llm_prompt(cls, mode: str, llm: BaseLanguageModel, pre_prompt: str, query: str, inputs: dict,
-                            chain_output: Optional[str],
+                            agent_execute_result: Optional[AgentExecuteResult],
                             memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]) -> \
             Tuple[Union[str | List[BaseMessage]], Optional[List[str]]]:
-        # disable template string in query
-        # query_params = JinjaPromptTemplate.from_template(template=query).input_variables
-        # if query_params:
-        #     for query_param in query_params:
-        #         if query_param not in inputs:
-        #             inputs[query_param] = '{{' + query_param + '}}'
-
         if mode == 'completion':
             prompt_template = JinjaPromptTemplate.from_template(
                 template=("""Use the following CONTEXT as your learned knowledge:
@@ -213,18 +179,13 @@ When answer to user:
 - If you don't know when you are not sure, ask for clarification. 
 Avoid mentioning that you obtained the information from the context.
 And answer according to the language of the user's question.
-""" if chain_output else "")
+""" if agent_execute_result else "")
                          + (pre_prompt + "\n" if pre_prompt else "")
                          + "{{query}}\n"
             )
 
-            if chain_output:
-                inputs['context'] = chain_output
-                # context_params = JinjaPromptTemplate.from_template(template=chain_output).input_variables
-                # if context_params:
-                #     for context_param in context_params:
-                #         if context_param not in inputs:
-                #             inputs[context_param] = '{{' + context_param + '}}'
+            if agent_execute_result:
+                inputs['context'] = agent_execute_result.output
 
             prompt_inputs = {k: inputs[k] for k in prompt_template.input_variables if k in inputs}
             prompt_content = prompt_template.format(
@@ -254,8 +215,8 @@ And answer according to the language of the user's question.
                 if pre_prompt_inputs:
                     human_inputs.update(pre_prompt_inputs)
 
-            if chain_output:
-                human_inputs['context'] = chain_output
+            if agent_execute_result:
+                human_inputs['context'] = agent_execute_result.output
                 human_message_prompt += """Use the following CONTEXT as your learned knowledge.
 [CONTEXT]
 {{context}}
@@ -285,14 +246,6 @@ And answer according to the language of the user's question.
                               - memory.llm.max_tokens - curr_message_tokens
                 rest_tokens = max(rest_tokens, 0)
                 histories = cls.get_history_messages_from_memory(memory, rest_tokens)
-
-                # disable template string in query
-                # histories_params = JinjaPromptTemplate.from_template(template=histories).input_variables
-                # if histories_params:
-                #     for histories_param in histories_params:
-                #         if histories_param not in human_inputs:
-                #             human_inputs[histories_param] = '{{' + histories_param + '}}'
-
                 human_message_prompt += "\n\n" + histories
 
             human_message_prompt += query_prompt
@@ -308,7 +261,7 @@ And answer according to the language of the user's question.
             return messages, ['\nHuman:']
 
     @classmethod
-    def get_llm_callbacks(cls, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
+    def get_llm_callbacks(cls, llm: BaseLanguageModel,
                           streaming: bool,
                           conversation_message_task: ConversationMessageTask) -> List[BaseCallbackHandler]:
         llm_callback_handler = LLMCallbackHandler(llm, conversation_message_task)
@@ -319,8 +272,7 @@ And answer according to the language of the user's question.
 
     @classmethod
     def get_history_messages_from_memory(cls, memory: ReadOnlyConversationTokenDBBufferSharedMemory,
-                                         max_token_limit: int) -> \
-            str:
+                                         max_token_limit: int) -> str:
         """Get memory messages."""
         memory.max_token_limit = max_token_limit
         memory_key = memory.memory_variables[0]
@@ -369,7 +321,7 @@ And answer according to the language of the user's question.
             pre_prompt=app_model_config.pre_prompt,
             query=query,
             inputs=inputs,
-            chain_output=None,
+            agent_execute_result=None,
             memory=None
         )
 
