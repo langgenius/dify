@@ -52,7 +52,7 @@ class ConversationMessageTask:
             message=self.message,
             conversation=self.conversation,
             chain_pub=False,  # disabled currently
-            agent_thought_pub=False  # disabled currently
+            agent_thought_pub=True
         )
 
     def init(self):
@@ -207,7 +207,28 @@ class ConversationMessageTask:
 
         self._pub_handler.pub_chain(message_chain)
 
-    def on_agent_end(self, message_chain: MessageChain, agent_model_name: str,
+    def on_agent_start(self, message_chain: MessageChain, agent_loop: AgentLoop) -> MessageAgentThought:
+        message_agent_thought = MessageAgentThought(
+            message_id=self.message.id,
+            message_chain_id=message_chain.id,
+            position=agent_loop.position,
+            thought=agent_loop.thought,
+            tool=agent_loop.tool_name,
+            tool_input=agent_loop.tool_input,
+            message=agent_loop.prompt,
+            answer=agent_loop.completion,
+            created_by_role=('account' if isinstance(self.user, Account) else 'end_user'),
+            created_by=self.user.id
+        )
+
+        db.session.add(message_agent_thought)
+        db.session.flush()
+
+        self._pub_handler.pub_agent_thought(message_agent_thought)
+
+        return message_agent_thought
+
+    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_name: str,
                      agent_loop: AgentLoop):
         agent_message_unit_price = llm_constant.model_prices[agent_model_name]['prompt']
         agent_answer_unit_price = llm_constant.model_prices[agent_model_name]['completion']
@@ -222,33 +243,17 @@ class ConversationMessageTask:
             agent_answer_unit_price
         )
 
-        message_agent_loop = MessageAgentThought(
-            message_id=self.message.id,
-            message_chain_id=message_chain.id,
-            position=agent_loop.position,
-            thought=agent_loop.thought,
-            tool=agent_loop.tool_name,
-            tool_input=agent_loop.tool_input,
-            observation=agent_loop.tool_output,
-            tool_process_data='',  # currently not support
-            message=agent_loop.prompt,
-            message_token=loop_message_tokens,
-            message_unit_price=agent_message_unit_price,
-            answer=agent_loop.completion,
-            answer_token=loop_answer_tokens,
-            answer_unit_price=agent_answer_unit_price,
-            latency=agent_loop.latency,
-            tokens=agent_loop.prompt_tokens + agent_loop.completion_tokens,
-            total_price=loop_total_price,
-            currency=llm_constant.model_currency,
-            created_by_role=('account' if isinstance(self.user, Account) else 'end_user'),
-            created_by=self.user.id
-        )
-
-        db.session.add(message_agent_loop)
+        message_agent_thought.observation = agent_loop.tool_output
+        message_agent_thought.tool_process_data = ''  # currently not support
+        message_agent_thought.message_token = loop_message_tokens
+        message_agent_thought.message_unit_price = agent_message_unit_price
+        message_agent_thought.answer_token = loop_answer_tokens
+        message_agent_thought.answer_unit_price = agent_answer_unit_price
+        message_agent_thought.latency = agent_loop.latency
+        message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
+        message_agent_thought.total_price = loop_total_price
+        message_agent_thought.currency = llm_constant.model_currency
         db.session.flush()
-
-        self._pub_handler.pub_agent_thought(message_agent_loop)
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):
         dataset_query = DatasetQuery(
@@ -346,16 +351,14 @@ class PubHandler:
             content = {
                 'event': 'agent_thought',
                 'data': {
+                    'id': message_agent_thought.id,
                     'task_id': self._task_id,
                     'message_id': self._message.id,
                     'chain_id': message_agent_thought.message_chain_id,
-                    'agent_thought_id': message_agent_thought.id,
                     'position': message_agent_thought.position,
                     'thought': message_agent_thought.thought,
                     'tool': message_agent_thought.tool,
                     'tool_input': message_agent_thought.tool_input,
-                    'observation': message_agent_thought.observation,
-                    'answer': message_agent_thought.answer,
                     'mode': self._conversation.mode,
                     'conversation_id': self._conversation.id
                 }

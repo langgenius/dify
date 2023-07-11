@@ -2,12 +2,15 @@ import math
 from typing import Optional
 
 from langchain import WikipediaAPIWrapper
+from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
+from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
+from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
 from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
 from core.conversation_message_task import ConversationMessageTask
@@ -31,7 +34,7 @@ class OrchestratorRuleParser:
         self.agent_summary_model_name = "gpt-3.5-turbo-16k"
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
-                       rest_tokens: int, callbacks: Callbacks = None) \
+                       rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
             -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
@@ -43,12 +46,20 @@ class OrchestratorRuleParser:
             tool_configs = agent_mode_config.get('tools', [])
             agent_model_name = agent_mode_config.get('model_name', 'gpt-4')
 
+            # add agent callback to record agent thoughts
+            agent_callback = AgentLoopGatherCallbackHandler(
+                model_name=agent_model_name,
+                conversation_message_task=conversation_message_task
+            )
+
+            chain_callback.agent_callback = agent_callback
+
             agent_llm = LLMBuilder.to_llm(
                 tenant_id=self.tenant_id,
                 model_name=agent_model_name,
                 temperature=0,
-                max_tokens=800,
-                callbacks=[DifyStdOutCallbackHandler()]
+                max_tokens=1000,
+                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
             )
 
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
@@ -66,7 +77,12 @@ class OrchestratorRuleParser:
                 callbacks=[DifyStdOutCallbackHandler()]
             )
 
-            tools = self.to_tools(tool_configs, conversation_message_task, rest_tokens)
+            tools = self.to_tools(
+                tool_configs=tool_configs,
+                conversation_message_task=conversation_message_task,
+                rest_tokens=rest_tokens,
+                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
+            )
 
             if len(tools) == 0:
                 return None
@@ -77,7 +93,7 @@ class OrchestratorRuleParser:
                 tools=tools,
                 summary_llm=summary_llm,
                 memory=memory,
-                callbacks=callbacks,
+                callbacks=[chain_callback, agent_callback],
                 max_iterations=6,
                 max_execution_time=None,
                 early_stopping_method="generate"
@@ -112,13 +128,14 @@ class OrchestratorRuleParser:
         return None
 
     def to_tools(self, tool_configs: list, conversation_message_task: ConversationMessageTask,
-                 rest_tokens: int) -> list[BaseTool]:
+                 rest_tokens: int, callbacks: Callbacks = None) -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
         :param rest_tokens:
         :param tool_configs: app agent tool configs
         :param conversation_message_task:
+        :param callbacks:
         :return:
         """
         tools = []
@@ -139,6 +156,7 @@ class OrchestratorRuleParser:
                 tool = self.to_wikipedia_tool()
 
             if tool:
+                tool.callbacks = callbacks
                 tools.append(tool)
 
         return tools

@@ -88,7 +88,7 @@ class Completion:
             conversation_message_task=conversation_message_task,
             memory=memory,
             rest_tokens=rest_tokens_for_context_and_memory,
-            callbacks=[chain_callback]
+            chain_callback=chain_callback
         )
 
         # run agent executor
