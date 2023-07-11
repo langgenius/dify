@@ -55,9 +55,16 @@ class AccountService:
         # todo: split validation and update
         if account.password and not compare_password(password, account.password, account.password_salt):
             raise CurrentPasswordIncorrectError("Current password is incorrect.")
-        password_hashed = hash_password(new_password, account.password_salt)
+
+        # generate password salt
+        salt = secrets.token_bytes(16)
+        base64_salt = base64.b64encode(salt).decode()
+
+        # encrypt password with salt
+        password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
         account.password = base64_password_hashed
+        account.password_salt = base64_salt
         db.session.commit()
         return account
 
