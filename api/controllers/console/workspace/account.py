@@ -9,13 +9,12 @@ from flask_restful import Resource, reqparse, fields, marshal_with
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.workspace.error import AccountAlreadyInitedError, InvalidInvitationCodeError, \
-    RepeatPasswordNotMatchError
+    RepeatPasswordNotMatchError, CurrentPasswordIncorrectError
 from controllers.console.wraps import account_initialization_required
 from libs.helper import TimestampField, supported_language, timezone
 from extensions.ext_database import db
 from models.account import InvitationCode, AccountIntegrate
 from services.account_service import AccountService
-
 
 account_fields = {
     'id': fields.String,
@@ -195,8 +194,11 @@ class AccountPasswordApi(Resource):
         if args['new_password'] != args['repeat_new_password']:
             raise RepeatPasswordNotMatchError()
 
-        AccountService.update_account_password(
-            current_user, args['password'], args['new_password'])
+        try:
+            AccountService.update_account_password(
+                current_user, args['password'], args['new_password'])
+        except api.services.errors.account.CurrentPasswordIncorrectError:
+            raise CurrentPasswordIncorrectError()
 
         return {"result": "success"}
 
