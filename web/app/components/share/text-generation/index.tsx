@@ -7,6 +7,7 @@ import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
+import { checkOrSetAccessToken } from '../utils'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -76,9 +77,6 @@ const TextGeneration: FC<IMainProps> = ({
     const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
-  useEffect(() => {
-    fetchSavedMessage()
-  }, [])
   const handleSaveMessage = async (messageId: string) => {
     await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
@@ -256,7 +254,9 @@ const TextGeneration: FC<IMainProps> = ({
     setAllTaskList(newAllTaskList)
   }
 
-  const fetchInitData = () => {
+  const fetchInitData = async () => {
+    await checkOrSetAccessToken()
+
     return Promise.all([isInstalledApp
       ? {
         app_id: installedAppInfo?.id,
@@ -267,7 +267,7 @@ const TextGeneration: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchSavedMessage()])
   }
 
   useEffect(() => {
