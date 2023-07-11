@@ -22,6 +22,7 @@ account_fields = {
     'name': fields.String,
     'avatar': fields.String,
     'email': fields.String,
+    'is_password_set': fields.Boolean,
     'interface_language': fields.String,
     'interface_theme': fields.String,
     'timezone': fields.String,

@@ -39,6 +39,10 @@ class Account(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     @property
+    def is_password_set(self):
+        return self.password is not None
+
+    @property
     def current_tenant(self):
         return self._current_tenant
 
