@@ -10,6 +10,7 @@ import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
 import s from './style.module.css'
 import RunBatch from './run-batch'
+import ResDownload from './run-batch/res-download'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
@@ -24,7 +25,6 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
-
 const PARALLEL_LIMIT = 5
 enum TaskStatus {
   pending = 'pending',
@@ -340,9 +340,13 @@ const TextGeneration: FC<IMainProps> = ({
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-1'>
-            <Button className='h-8' >
-              Download
-            </Button>
+            {(allTaskFinished || true) && (
+              <ResDownload
+                isMobile={isMobile}
+                vars={promptConfig?.prompt_variables || []}
+                values={[['a', 'b', 'c']]}
+              />
+            )}
             {!isPC && (
               <div
                 className='flex items-center justify-center cursor-pointer'
