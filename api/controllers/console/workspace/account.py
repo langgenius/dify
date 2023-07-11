@@ -6,6 +6,7 @@ from flask import current_app, request
 from flask_login import login_required, current_user
 from flask_restful import Resource, reqparse, fields, marshal_with
 
+from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.workspace.error import AccountAlreadyInitedError, InvalidInvitationCodeError, \
@@ -197,7 +198,7 @@ class AccountPasswordApi(Resource):
         try:
             AccountService.update_account_password(
                 current_user, args['password'], args['new_password'])
-        except api.services.errors.account.CurrentPasswordIncorrectError:
+        except ServiceCurrentPasswordIncorrectError:
             raise CurrentPasswordIncorrectError()
 
         return {"result": "success"}
