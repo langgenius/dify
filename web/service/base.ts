@@ -141,8 +141,16 @@ const baseFetch = (
 ) => {
   const options = Object.assign({}, baseOptions, fetchOptions)
   if (isPublicAPI) {
-    const sharedToken = localStorage.getItem('accessToken') || ''
-    options.headers.set('Authorization', `Bearer ${sharedToken}`)
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
 
   if (deleteContentType) {

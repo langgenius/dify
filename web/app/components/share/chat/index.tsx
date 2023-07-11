@@ -312,9 +312,19 @@ const Main: FC<IMainProps> = ({
   }
 
   const fetchAndSetAccessToken = async () => {
-    const res = await fetchAccessToken(params.token)
-    localStorage.setItem('accessToken', res.access_token)
-    fetchInitData()
+    const sharedToken = params.token
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    const res = await fetchAccessToken(sharedToken)
+    accessTokenJson[sharedToken] = res.access_token
+    localStorage.setItem('token', JSON.stringify(accessTokenJson))
+    location.reload()
   }
 
   const fetchInitData = async () => {
