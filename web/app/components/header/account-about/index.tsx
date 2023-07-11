@@ -34,7 +34,7 @@ export default function AccountAbout({
         <div>
           <div className={classNames(
             s['logo-icon'],
-            'mx-auto mb-3 w-12 h-12 bg-white rounded border border-gray-200',
+            'mx-auto mb-3 w-12 h-12 bg-white rounded-xl border border-gray-200',
           )} />
           <div className={classNames(
             s['logo-text'],
