@@ -155,6 +155,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     }
   }, [controlClearMoreLikeThis])
 
+  // regeneration clear child
+  useEffect(() => {
+    if (isLoading)
+      setChildMessageId(null)
+  }, [isLoading])
+
   return (
     <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
       style={isTop
