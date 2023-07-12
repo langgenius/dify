@@ -24,7 +24,7 @@ const OPTION_MAP = {
  src="${url}/chatbot/${token}"
  style="width: 100%; height: 100%; min-height: 700px"
  frameborder="0" 
- allow="*">
+ allow="microphone">
 </iframe>`,
   },
   scripts: {
