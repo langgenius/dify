@@ -105,7 +105,7 @@ const TextGeneration: FC<IMainProps> = ({
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
   const exportRes = allTaskList.map((task) => {
-    if (!allTaskFinished || allTaskList.length === 0)
+    if (allTaskList.length > 0 && !allTaskFinished)
       return {}
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}
@@ -359,7 +359,7 @@ const TextGeneration: FC<IMainProps> = ({
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
-            {allTaskFinished && (
+            {allTaskList.length > 0 && allTaskFinished && (
               <ResDownload
                 isMobile={isMobile}
                 values={exportRes}
