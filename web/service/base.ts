@@ -340,7 +340,9 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
         onData?.(str, isFirstMessage, moreInfo)
       }, onCompleted)
     }).catch((e) => {
-      Toast.notify({ type: 'error', message: e })
+      if (e.toString() !== 'AbortError: The user aborted a request.')
+        Toast.notify({ type: 'error', message: e })
+
       onError?.(e)
     })
 }
