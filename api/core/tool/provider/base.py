@@ -17,6 +17,10 @@ class BaseToolProvider(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def encrypt_credentials(self, credentials: dict) -> Optional[dict]:
+        raise NotImplementedError
+
+    @abstractmethod
     def get_credentials(self, obfuscated: bool = False) -> Optional[dict]:
         raise NotImplementedError
 
@@ -30,11 +34,11 @@ class BaseToolProvider(ABC):
 
     def get_provider(self, must_enabled: bool = False) -> Optional[ToolProvider]:
         """
-        Returns the Provider instance for the given tenant_id and provider_name.
+        Returns the Provider instance for the given tenant_id and tool_name.
         """
         query = db.session.query(ToolProvider).filter(
             ToolProvider.tenant_id == self.tenant_id,
-            ToolProvider.provider_name == self.get_provider_name()
+            ToolProvider.tool_name == self.get_provider_name().value
         )
 
         if must_enabled:

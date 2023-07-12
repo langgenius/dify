@@ -16,6 +16,12 @@ class ToolProviderService:
             raise Exception('tool provider {} not found'.format(provider_name))
 
     def get_credentials(self, obfuscated: bool = False) -> Optional[dict]:
+        """
+        Returns the credentials for Tool as a dictionary.
+
+        :param obfuscated:
+        :return:
+        """
         return self.provider.get_credentials(obfuscated)
 
     def credentials_validate(self, credentials: dict):
@@ -26,3 +32,12 @@ class ToolProviderService:
         :raises: ValidateFailedError
         """
         return self.provider.credentials_validate(credentials)
+
+    def encrypt_credentials(self, credentials: dict):
+        """
+        Encrypts the given credentials.
+
+        :param credentials:
+        :return:
+        """
+        return self.provider.encrypt_credentials(credentials)

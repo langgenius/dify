@@ -2,6 +2,7 @@ from typing import Optional
 
 from core.tool.provider.base import BaseToolProvider
 from core.tool.provider.errors import ToolValidateFailedError
+from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper
 from models.tool import ToolProviderName
 
 
@@ -25,14 +26,14 @@ class SerpAPIToolProvider(BaseToolProvider):
         if not tool_provider:
             return None
 
-        config = tool_provider.config
-        if not config:
+        credentials = tool_provider.credentials
+        if not credentials:
             return None
 
-        if config.get('api_key'):
-            config['api_key'] = self.decrypt_token(config.get('api_key'), obfuscated)
+        if credentials.get('api_key'):
+            credentials['api_key'] = self.decrypt_token(credentials.get('api_key'), obfuscated)
 
-        return config
+        return credentials
 
     def credentials_to_func_kwargs(self) -> Optional[dict]:
         """
@@ -57,3 +58,20 @@ class SerpAPIToolProvider(BaseToolProvider):
         """
         if 'api_key' not in credentials or not credentials.get('api_key'):
             raise ToolValidateFailedError("SerpAPI api_key is required.")
+
+        api_key = credentials.get('api_key')
+
+        try:
+            OptimizedSerpAPIWrapper(serpapi_api_key=api_key).run(query='test')
+        except Exception as e:
+            raise ToolValidateFailedError("SerpAPI api_key is invalid. {}".format(e))
+
+    def encrypt_credentials(self, credentials: dict) -> Optional[dict]:
+        """
+        Encrypts the given credentials.
+
+        :param credentials:
+        :return:
+        """
+        credentials['api_key'] = self.encrypt_token(credentials.get('api_key'))
+        return credentials

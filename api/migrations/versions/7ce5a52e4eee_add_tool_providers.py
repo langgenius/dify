@@ -22,7 +22,7 @@ def upgrade():
     sa.Column('id', postgresql.UUID(), server_default=sa.text('uuid_generate_v4()'), nullable=False),
     sa.Column('tenant_id', postgresql.UUID(), nullable=False),
     sa.Column('tool_name', sa.String(length=40), nullable=False),
-    sa.Column('encrypted_config', sa.Text(), nullable=True),
+    sa.Column('encrypted_credentials', sa.Text(), nullable=True),
     sa.Column('is_enabled', sa.Boolean(), server_default=sa.text('false'), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
