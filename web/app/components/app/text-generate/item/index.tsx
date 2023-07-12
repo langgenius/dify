@@ -154,13 +154,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setCompletionRes('')
     }
   }, [controlClearMoreLikeThis])
-  console.log('code on')
 
   // regeneration clear child
   useEffect(() => {
     if (isLoading)
-      console.log('loading')
-    setChildMessageId(null)
+      setChildMessageId(null)
   }, [isLoading])
 
   return (
