@@ -103,6 +103,20 @@ const TextGeneration: FC<IMainProps> = ({
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
+  const exportRes = allTaskList.map((task) => {
+    if (!allTaskFinished || allTaskList.length === 0)
+      return {}
+    const batchCompletionResLatest = getBatchCompletionRes()
+    const res: Record<string, string> = {}
+    const { inputs, query } = task.params
+    promptConfig?.prompt_variables.forEach((v) => {
+      res[v.name] = inputs[v.key]
+    })
+    res[t('share.generation.queryTitle')] = query
+    res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
+    return res
+  })
   const checkBatchInputs = (data: string[][]) => {
     if (!data || data.length === 0) {
       notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
@@ -228,10 +242,9 @@ const TextGeneration: FC<IMainProps> = ({
     // clear run once task status
     setControlStopResponding(Date.now())
   }
-
-  const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
-    // console.log(taskId, isSuccess)
+  const handleCompleted = (completionRes: string, taskId?: number) => {
     const allTasklistLatest = getLatestTaskList()
+    const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
     const nextPendingTaskId = pendingTaskList[0]?.id
     // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
@@ -252,6 +265,12 @@ const TextGeneration: FC<IMainProps> = ({
     })
     // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
     setAllTaskList(newAllTaskList)
+    if (taskId) {
+      setBatchCompletionRes({
+        ...batchCompletionResLatest,
+        [`${taskId}`]: completionRes,
+      })
+    }
   }
 
   const fetchInitData = async () => {
@@ -343,8 +362,7 @@ const TextGeneration: FC<IMainProps> = ({
             {allTaskFinished && (
               <ResDownload
                 isMobile={isMobile}
-                vars={promptConfig?.prompt_variables || []}
-                values={[['a', 'b', 'c']]}
+                values={exportRes}
               />
             )}
             {!isPC && (
