@@ -22,6 +22,7 @@ const translation = {
     copy: 'Copy',
     lineBreak: 'Line break',
     sure: 'I\'m sure',
+    download: 'Download',
   },
   placeholder: {
     input: 'Please enter',
