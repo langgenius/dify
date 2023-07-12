@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
+import { HashtagIcon } from '@heroicons/react/24/solid'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
@@ -27,6 +28,8 @@ export type IGenerationItemProps = {
   isMobile?: boolean
   isInstalledApp: boolean
   installedAppId?: string
+  taskId?: string
+  controlClearMoreLikeThis?: number
 }
 
 export const SimpleBtn = ({ className, onClick, children }: {
@@ -81,6 +84,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   isMobile,
   isInstalledApp,
   installedAppId,
+  taskId,
+  controlClearMoreLikeThis,
 }) => {
   const { t } = useTranslation()
   const isTop = depth === 1
@@ -112,6 +117,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     isMobile,
     isInstalledApp,
     installedAppId,
+    controlClearMoreLikeThis,
   }
 
   const handleMoreLikeThis = async () => {
@@ -138,6 +144,14 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
     return res
   })()
+
+  useEffect(() => {
+    if (controlClearMoreLikeThis) {
+      setChildMessageId(null)
+      setCompletionRes('')
+    }
+  }, [controlClearMoreLikeThis])
+
   return (
     <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
       style={isTop
@@ -155,6 +169,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             className={cn(!isTop && 'rounded-br-xl border-l-2 border-primary-400', 'p-4')}
             style={mainStyle}
           >
+            {(isTop && taskId) && (
+              <div className='mb-2 text-gray-500 border border-gray-200 box-border flex items-center rounded-md italic text-[11px] pl-1 pr-1.5 font-medium w-fit group-hover:opacity-100'>
+                <HashtagIcon className='w-3 h-3 text-gray-400 fill-current mr-1 stroke-current stroke-1' />
+                {taskId}
+              </div>)
+            }
             <Markdown content={content} />
             {messageId && (
               <div className='flex items-center justify-between mt-3'>

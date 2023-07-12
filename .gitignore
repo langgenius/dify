@@ -109,6 +109,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+.conda/
 
 # Spyder project settings
 .spyderproject
@@ -147,3 +148,5 @@ docker/volumes/weaviate/*
 sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
+
+.vscode/

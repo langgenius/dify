@@ -44,6 +44,7 @@ class AzureProvider(BaseProvider):
         config['openai_api_type'] = 'azure'
         if model_id == 'text-embedding-ada-002':
             config['deployment'] = model_id.replace('.', '') if model_id else None
+            config['chunk_size'] = 1
         else:
             config['deployment_name'] = model_id.replace('.', '') if model_id else None
         return config
