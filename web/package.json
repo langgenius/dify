@@ -10,7 +10,8 @@
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
     "prepare": "cd ../ && husky install ./web/.husky",
-    "gen-icons": "node ./app/components/base/icons/script.js"
+    "gen-icons": "node ./app/components/base/icons/script.js",
+    "uglify-embed": "node ./bin/uglify-embed"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -97,7 +98,8 @@
     "eslint-plugin-react-hooks": "^4.6.0",
     "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",
-    "postcss": "^8.4.21"
+    "postcss": "^8.4.21",
+    "uglify-js": "^3.17.4"
   },
   "lint-staged": {
     "**/*.js?(x)": [

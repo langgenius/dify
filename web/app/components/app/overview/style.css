@@ -11,3 +11,8 @@
     transform: rotate(360deg);
   }
 }
+
+.codeBrowserIcon {
+  @apply w-4 h-4 bg-center bg-no-repeat;
+  background-image: url(./assets/code-browser.svg);
+}
