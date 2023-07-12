@@ -100,7 +100,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
         </div>
         <div className="self-stretch p-3 justify-start items-start gap-2 inline-flex">
           <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
-            <pre>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
+            <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
           </div>
         </div>
       </div>
