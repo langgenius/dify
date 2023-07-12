@@ -70,7 +70,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             raise ExceededLLMTokensLimitError(error_msg)
 
         summary_handler = SummarizerMixin(llm=self.summary_llm)
-        if self.moving_summary_buffer:
+        if self.moving_summary_buffer and 'chat_history' in kwargs:
             kwargs["chat_history"].pop()
 
         self.moving_summary_buffer = summary_handler.predict_new_summary(
@@ -78,6 +78,7 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             existing_summary=self.moving_summary_buffer
         )
 
-        kwargs["chat_history"].append(AIMessage(content=self.moving_summary_buffer))
+        if 'chat_history' in kwargs:
+            kwargs["chat_history"].append(AIMessage(content=self.moving_summary_buffer))
 
         return self.get_full_inputs([intermediate_steps[-1]], **kwargs)
