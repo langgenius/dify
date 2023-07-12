@@ -339,8 +339,8 @@ const TextGeneration: FC<IMainProps> = ({
             <div className={s.starIcon}></div>
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
-          <div className='flex items-center space-x-1'>
-            {(allTaskFinished || true) && (
+          <div className='flex items-center space-x-2'>
+            {allTaskFinished && (
               <ResDownload
                 isMobile={isMobile}
                 vars={promptConfig?.prompt_variables || []}
