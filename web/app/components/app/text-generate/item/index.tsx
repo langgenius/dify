@@ -128,6 +128,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     startQuerying()
     const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
     setCompletionRes(res.answer)
+    setChildFeedback({
+      rating: null,
+    })
     setChildMessageId(res.id)
     stopQuerying()
   }
