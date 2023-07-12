@@ -178,7 +178,7 @@ class LLMGenerator:
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
             model_name='gpt-3.5-turbo',
-            max_tokens=1000
+            max_tokens=100
         )
 
         if isinstance(llm, BaseChatModel):

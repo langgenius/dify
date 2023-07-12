@@ -71,18 +71,18 @@ class IndexingRunner:
                     dataset_document=dataset_document,
                     processing_rule=processing_rule
                 )
-                new_documents = []
-                for document in documents:
-                    response = LLMGenerator.generate_qa_document(dataset.tenant_id, document.page_content)
-                    document_qa_list = self.format_split_text(response)
-                    for result in document_qa_list:
-                        document = Document(page_content=result['question'], metadata={'source': result['answer']})
-                        new_documents.append(document)
+                # new_documents = []
+                # for document in documents:
+                #     response = LLMGenerator.generate_qa_document(dataset.tenant_id, document.page_content)
+                #     document_qa_list = self.format_split_text(response)
+                #     for result in document_qa_list:
+                #         document = Document(page_content=result['question'], metadata={'source': result['answer']})
+                #         new_documents.append(document)
                 # build index
                 self._build_index(
                     dataset=dataset,
                     dataset_document=dataset_document,
-                    documents=new_documents
+                    documents=documents
                 )
             except DocumentIsPausedException:
                 raise DocumentIsPausedException('Document paused, document id: {}'.format(dataset_document.id))
@@ -251,7 +251,8 @@ class IndexingRunner:
             documents = self._split_to_documents(
                 text_docs=text_docs,
                 splitter=splitter,
-                processing_rule=processing_rule
+                processing_rule=processing_rule,
+                tenant_id='84b2202c-c359-46b7-a810-bce50feaa4d1'
             )
             total_segments += len(documents)
             for document in documents:
@@ -311,7 +312,8 @@ class IndexingRunner:
                 documents = self._split_to_documents(
                     text_docs=documents,
                     splitter=splitter,
-                    processing_rule=processing_rule
+                    processing_rule=processing_rule,
+                    tenant_id='84b2202c-c359-46b7-a810-bce50feaa4d1'
                 )
                 total_segments += len(documents)
                 for document in documents:
@@ -414,7 +416,8 @@ class IndexingRunner:
         documents = self._split_to_documents(
             text_docs=text_docs,
             splitter=splitter,
-            processing_rule=processing_rule
+            processing_rule=processing_rule,
+            tenant_id=dataset.tenant_id
         )
 
         # save node to document segment
@@ -469,18 +472,18 @@ class IndexingRunner:
                 if document.page_content is None or not document.page_content.strip():
                     continue
 
-                response = LLMGenerator.generate_qa_document(processing_rule.tenant_id, document.page_content)
+                response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
                 document_qa_list = self.format_split_text(response)
+                qa_documents = []
                 for result in document_qa_list:
                     document = Document(page_content=result['question'], metadata={'source': result['answer']})
-                    new_documents.append(document)
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document.page_content)
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
 
-                document.metadata['doc_id'] = doc_id
-                document.metadata['doc_hash'] = hash
-
-                split_documents.append(document)
+                    document.metadata['doc_id'] = doc_id
+                    document.metadata['doc_hash'] = hash
+                    qa_documents.append(document)
+                split_documents.extend(qa_documents)
 
             all_documents.extend(split_documents)
 

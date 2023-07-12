@@ -51,6 +51,7 @@ GENERATOR_QA_PROMPT = (
     'Step3：可分解或结合多个信息与概念\n'
     'Step4：将这些关键信息与概念生成 10 个问题与答案，问题描述清楚并且详细完整,答案详细完整.\n'
     "按格式回答: Q1:\nA1:\nQ2:\nA2:...\n"
+    "只输出Step4中的内容"
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
