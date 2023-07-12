@@ -227,8 +227,8 @@ class CompletionService:
 
     @classmethod
     def countdown_and_close(cls, worker_thread, pubsub, user, generate_task_id) -> threading.Thread:
-        # wait for 5 minutes to close the thread
-        timeout = 300
+        # wait for 10 minutes to close the thread
+        timeout = 600
 
         def close_pubsub():
             sleep_iterations = 0

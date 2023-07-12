@@ -2,7 +2,6 @@ import math
 from typing import Optional
 
 from langchain import WikipediaAPIWrapper
-from langchain.callbacks.base import BaseCallbackHandler
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
@@ -58,7 +57,7 @@ class OrchestratorRuleParser:
                 tenant_id=self.tenant_id,
                 model_name=agent_model_name,
                 temperature=0,
-                max_tokens=1000,
+                max_tokens=1500,
                 callbacks=[agent_callback, DifyStdOutCallbackHandler()]
             )
 
