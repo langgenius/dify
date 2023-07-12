@@ -6,6 +6,11 @@ const translation = {
     addFeature: '添加功能',
     automatic: '自动编排',
     stopResponding: '停止响应',
+    agree: '赞同',
+    disagree: '反对',
+    cancelAgree: '取消赞同',
+    cancelDisagree: '取消反对',
+    userAction: '用户表示',
   },
   notSetAPIKey: {
     title: 'LLM 提供者的密钥未设置',
@@ -40,6 +45,11 @@ const translation = {
       description: '一次生成多条文本，可在此基础上编辑并继续生成',
       generateNumTip: '每次生成数',
       tip: '使用此功能将会额外消耗 tokens',
+    },
+    speechToText: {
+      title: '语音转文字',
+      description: '启用后，您可以使用语音输入。',
+      resDes: '语音输入已启用',
     },
     dataSet: {
       title: '上下文',
@@ -79,6 +89,7 @@ const translation = {
     valueOfVarRequired: '变量值必填',
     queryRequired: '主要文本必填',
     waitForResponse: '请等待上条信息响应完成',
+    waitForBatchResponse: '请等待批量任务完成',
   },
   chatSubTitle: '对话前提示词',
   completionSubTitle: '前缀提示词',

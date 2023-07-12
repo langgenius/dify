@@ -85,6 +85,9 @@ export type ModelConfig = {
   suggested_questions_after_answer: {
     enabled: boolean
   }
+  speech_to_text: {
+    enabled: boolean
+  }
   agent_mode: {
     enabled: boolean
     tools: ToolItem[]

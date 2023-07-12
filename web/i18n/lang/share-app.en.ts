@@ -30,7 +30,8 @@ const translation = {
   },
   generation: {
     tabs: {
-      create: 'Create',
+      create: 'Run Once',
+      batch: 'Run Batch',
       saved: 'Saved',
     },
     savedNoData: {
@@ -41,10 +42,22 @@ const translation = {
     title: 'AI Completion',
     queryTitle: 'Query content',
     queryPlaceholder: 'Write your query content...',
-    run: 'RUN',
+    run: 'Execute',
     copy: 'Copy',
     resultTitle: 'AI Completion',
     noData: 'AI will give you what you want here.',
+    csvUploadTitle: 'Drag and drop your CSV file here, or ',
+    browse: 'browse',
+    csvStructureTitle: 'The CSV file must conform to the following structure:',
+    downloadTemplate: 'Download the template here',
+    field: 'Field',
+    errorMsg: {
+      empty: 'Please input content in the uploaded file.',
+      fileStructNotMatch: 'The uploaded CSV file not match the struct.',
+      emptyLine: 'Row {{rowIndex}} is empty',
+      invalidLine: 'Row {{rowIndex}}: variables value can not be empty',
+      atLeastOne: 'Please input at least one row in the uploaded file.',
+    },
   },
 }
 

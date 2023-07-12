@@ -4,6 +4,7 @@ import uuid
 from core.constant import llm_constant
 from models.account import Account
 from services.dataset_service import DatasetService
+from core.llm.llm_builder import LLMBuilder
 
 
 class AppModelConfigService:
@@ -108,6 +109,26 @@ class AppModelConfigService:
 
         if not isinstance(config["suggested_questions_after_answer"]["enabled"], bool):
             raise ValueError("enabled in suggested_questions_after_answer must be of boolean type")
+
+        # speech_to_text
+        if 'speech_to_text' not in config or not config["speech_to_text"]:
+            config["speech_to_text"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["speech_to_text"], dict):
+            raise ValueError("speech_to_text must be of dict type")
+
+        if "enabled" not in config["speech_to_text"] or not config["speech_to_text"]["enabled"]:
+            config["speech_to_text"]["enabled"] = False
+
+        if not isinstance(config["speech_to_text"]["enabled"], bool):
+            raise ValueError("enabled in speech_to_text must be of boolean type")
+        
+        provider_name = LLMBuilder.get_default_provider(account.current_tenant_id)
+
+        if config["speech_to_text"]["enabled"] and provider_name != 'openai':
+            raise ValueError("provider not support speech to text")
 
         # more_like_this
         if 'more_like_this' not in config or not config["more_like_this"]:
@@ -277,6 +298,7 @@ class AppModelConfigService:
             "opening_statement": config["opening_statement"],
             "suggested_questions": config["suggested_questions"],
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
+            "speech_to_text": config["speech_to_text"],
             "more_like_this": config["more_like_this"],
             "model": {
                 "provider": config["model"]["provider"],
