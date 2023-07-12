@@ -4,6 +4,7 @@ import { useParams, usePathname } from 'next/navigation'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
+import { convertToMp3 } from './utils'
 import s from './index.module.css'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Loading02, XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -19,7 +20,12 @@ const VoiceInput = ({
   onConverted,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
-  const recorder = useRef(new Recorder())
+  const recorder = useRef(new Recorder({
+    sampleBits: 16,
+    sampleRate: 16000,
+    numChannels: 1,
+    compiling: false,
+  }))
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
   const drawRecordId = useRef<number | null>(null)
@@ -75,10 +81,10 @@ const VoiceInput = ({
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     ctx.clearRect(0, 0, canvas.width, canvas.height)
-    const wavBlob = recorder.current.getWAVBlob()
-    const wavFile = new File([wavBlob], 'a.wav', { type: 'audio/wav' })
+    const mp3Blob = convertToMp3(recorder.current)
+    const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
-    formData.append('file', wavFile)
+    formData.append('file', mp3File)
 
     let url = ''
     let isPublic = false
