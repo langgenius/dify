@@ -341,15 +341,16 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
       }
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
         if (moreInfo.errorMessage) {
-          console.log(moreInfo.errorMessage)
           onError?.(moreInfo.errorMessage)
-          Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+          console.log(111)
+          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.')
+            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
       }, onCompleted)
     }).catch((e) => {
-      console.log(e.toString())
+      console.log(222)
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })
 
