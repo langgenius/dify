@@ -33,7 +33,9 @@ const ActivateForm = () => {
       token,
     },
   }
-  const { data: checkRes, mutate: recheck } = useSWR(checkParams, invitationCheck)
+  const { data: checkRes, mutate: recheck } = useSWR(checkParams, invitationCheck, {
+    revalidateOnFocus: false,
+  })
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
