@@ -78,11 +78,11 @@ class Config:
 
     def __init__(self):
         # app settings
-        self.CONSOLE_API_URL = get_env('CONSOLE_API_URL') if get_env('CONSOLE_API_URL') else get_env('CONSOLE_URL')
-        self.CONSOLE_WEB_URL = get_env('CONSOLE_WEB_URL') if get_env('CONSOLE_WEB_URL') else get_env('CONSOLE_URL')
-        self.SERVICE_API_URL = get_env('SERVICE_API_URL') if get_env('SERVICE_API_URL') else get_env('API_URL')
-        self.APP_WEB_URL = get_env('APP_WEB_URL') if get_env('APP_WEB_URL') else get_env('APP_URL')
-        self.APP_API_URL = get_env('APP_API_URL') if get_env('APP_API_URL') else get_env('APP_URL')
+        self.CONSOLE_API_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_API_URL')
+        self.CONSOLE_WEB_URL = get_env('CONSOLE_URL') if get_env('CONSOLE_URL') else get_env('CONSOLE_WEB_URL')
+        self.SERVICE_API_URL = get_env('API_URL') if get_env('API_URL') else get_env('SERVICE_API_URL')
+        self.APP_WEB_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_WEB_URL')
+        self.APP_API_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_API_URL')
         self.CURRENT_VERSION = "0.3.7"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
