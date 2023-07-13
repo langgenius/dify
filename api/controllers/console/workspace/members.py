@@ -83,7 +83,7 @@ class MemberInviteEmailApi(Resource):
             'result': 'success',
             'account': account,
             'invite_url': '{}/activate?workspace_id={}&email={}&token={}'.format(
-                current_app.config.get("CONSOLE_URL"),
+                current_app.config.get("CONSOLE_WEB_URL"),
                 str(current_user.current_tenant_id),
                 invitee_email,
                 token

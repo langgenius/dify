@@ -37,7 +37,7 @@ def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspa
 <p>Thanks,</p>
 <p>Dify Team</p>""".format(inviter_name=inviter_name, workspace_name=workspace_name,
                            url='{}/activate?workspace_id={}&email={}&token={}'.format(
-                               current_app.config.get("CONSOLE_URL"),
+                               current_app.config.get("CONSOLE_WEB_URL"),
                                workspace_id,
                                to,
                                token)
