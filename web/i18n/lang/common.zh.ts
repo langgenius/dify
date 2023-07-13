@@ -21,6 +21,7 @@ const translation = {
     copy: '复制',
     lineBreak: '换行',
     sure: '我确定',
+    download: '下载',
   },
   placeholder: {
     input: '请输入',

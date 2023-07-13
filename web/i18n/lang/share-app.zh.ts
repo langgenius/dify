@@ -37,6 +37,7 @@ const translation = {
     },
     title: 'AI 智能书写',
     queryTitle: '查询内容',
+    completionResult: '生成结果',
     queryPlaceholder: '请输入文本内容',
     run: '运行',
     copy: '拷贝',
