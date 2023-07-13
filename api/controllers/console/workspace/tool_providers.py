@@ -21,18 +21,25 @@ class ToolProviderListApi(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
 
+        tool_credential_dict = {}
+        for tool_name in ToolProviderName:
+            tool_credential_dict[tool_name.value] = {
+                'tool_name': tool_name.value,
+                'is_enabled': False,
+                'credentials': None
+            }
+
         tool_providers = db.session.query(ToolProvider).filter(ToolProvider.tenant_id == tenant_id).all()
 
-        provider_list = [
-            {
-                'tool_name': p.tool_name,
-                'is_enabled': p.is_enabled,
-                'credentials': ToolProviderService(tenant_id, p.tool_name).get_credentials(obfuscated=True)
-            }
-            for p in tool_providers
-        ]
+        for p in tool_providers:
+            if p.is_enabled:
+                tool_credential_dict[p.tool_name] = {
+                    'tool_name': p.tool_name,
+                    'is_enabled': p.is_enabled,
+                    'credentials': ToolProviderService(tenant_id, p.tool_name).get_credentials(obfuscated=True)
+                }
 
-        return provider_list
+        return list(tool_credential_dict.values())
 
 
 class ToolProviderCredentialsApi(Resource):
