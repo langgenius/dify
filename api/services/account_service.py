@@ -293,8 +293,6 @@ class TenantService:
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
         """Remove member from tenant"""
-        # todo: check permission
-
         if operator.id == account.id and TenantService.check_member_permission(tenant, operator, account, 'remove'):
             raise CannotOperateSelfError("Cannot operate self.")
 
@@ -303,6 +301,12 @@ class TenantService:
             raise MemberNotInTenantError("Member not in tenant.")
 
         db.session.delete(ta)
+
+        account.initialized_at = None
+        account.status = AccountStatus.PENDING.value
+        account.password = None
+        account.password_salt = None
+
         db.session.commit()
 
     @staticmethod
