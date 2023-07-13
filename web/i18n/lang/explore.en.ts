@@ -2,6 +2,7 @@ const translation = {
   title: 'My Apps',
   sidebar: {
     discovery: 'Discovery',
+    chat: 'Chat',
     workspace: 'Workspace',
     action: {
       pin: 'Pin',
