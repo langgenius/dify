@@ -22,7 +22,7 @@ class DatasetRetrieverToolInput(BaseModel):
 
 class DatasetRetrieverTool(BaseTool):
     """Tool for querying a Dataset."""
-    name: str = "dataset_retriever"
+    name: str = "dataset"
     args_schema: Type[BaseModel] = DatasetRetrieverToolInput
     description: str = "use this to retrieve a dataset. "
 

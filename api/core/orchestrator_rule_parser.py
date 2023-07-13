@@ -231,6 +231,7 @@ class OrchestratorRuleParser:
 
     def to_wikipedia_tool(self) -> Optional[BaseTool]:
         return WikipediaQueryRun(
+            name="wikipedia",
             api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
             callbacks=[DifyStdOutCallbackHandler()]
         )
