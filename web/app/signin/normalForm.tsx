@@ -90,7 +90,7 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      router.push('/')
+      router.push('/apps')
     }
     finally {
       setIsLoading(false)

@@ -1,6 +1,5 @@
 'use client'
 import React, { useCallback, useEffect, useState } from 'react'
-// import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import s from './index.module.css'
 import Tooltip from '@/app/components/base/tooltip'
