@@ -98,7 +98,7 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        member = db.session.query(Account).filter(Account.id == member_id).first()
+        member = db.session.query(Account).filter(Account.id == str(member_id)).first()
         if not member:
             abort(404)
 
