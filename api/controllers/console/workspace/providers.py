@@ -3,6 +3,7 @@ import base64
 import json
 import logging
 
+from flask import current_app
 from flask_login import login_required, current_user
 from flask_restful import Resource, reqparse, abort
 from werkzeug.exceptions import Forbidden
@@ -203,7 +204,19 @@ class ProviderSystemApi(Resource):
             provider_model.is_valid = args['is_enabled']
             db.session.commit()
         elif not provider_model:
-            ProviderService.create_system_provider(tenant, provider, args['is_enabled'])
+            if provider == ProviderName.OPENAI.value:
+                quota_limit = current_app.config['OPENAI_HOSTED_QUOTA_LIMIT']
+            elif provider == ProviderName.ANTHROPIC.value:
+                quota_limit = current_app.config['ANTHROPIC_HOSTED_QUOTA_LIMIT']
+            else:
+                quota_limit = 0
+
+            ProviderService.create_system_provider(
+                tenant,
+                provider,
+                quota_limit,
+                args['is_enabled']
+            )
         else:
             abort(403)
 
