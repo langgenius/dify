@@ -1,6 +1,7 @@
 'use client'
 import React, { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 import Button from '@/app/components/base/button'
@@ -74,14 +75,14 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="w-full mx-auto">
-        <h2 className="text-3xl font-normal text-gray-900">{t('login.oneMoreStep')}</h2>
-        <p className='mt-2 text-sm text-gray-600 '>{t('login.createSample')}</p>
+        <h2 className="text-[32px] font-bold text-gray-900">{t('login.oneMoreStep')}</h2>
+        <p className='mt-1 text-sm text-gray-600 '>{t('login.createSample')}</p>
       </div>
 
-      <div className="w-full mx-auto mt-8">
-        <div className="space-y-6 bg-white">
-          <div className="">
-            <label className="flex items-center justify-between text-sm font-medium text-gray-900">
+      <div className="w-full mx-auto mt-6">
+        <div className="bg-white">
+          <div className="mb-5">
+            <label className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
               {t('login.invitationCode')}
               <Tooltip
                 clickable
@@ -103,16 +104,16 @@ const OneMoreStep = () => {
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
-                className={'appearance-none block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-primary-600 focus:border-primary-600 rounded-md shadow-sm placeholder-gray-400 sm:text-sm'}
+                placeholder={t('login.invitationCodePlaceholder') || ''}
+                className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
               />
             </div>
           </div>
-
-          <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700">
+          <div className='mb-5'>
+            <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
               {t('login.interfaceLanguage')}
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
@@ -125,8 +126,7 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div>
-
+          <div className='mb-4'>
             <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">
               {t('login.timezone')}
             </label>
@@ -143,6 +143,7 @@ const OneMoreStep = () => {
           <div>
             <Button
               type='primary'
+              className='w-full !fone-medium !text-sm'
               disabled={state.formState === 'processing'}
               onClick={() => {
                 dispatch({ type: 'formState', value: 'processing' })
@@ -150,6 +151,15 @@ const OneMoreStep = () => {
             >
               {t('login.go')}
             </Button>
+          </div>
+          <div className="block w-hull mt-2 text-xs text-gray-600">
+            {t('login.license.tip')}
+            &nbsp;
+            <Link
+              className='text-primary-600'
+              target={'_blank'}
+              href='https://docs.dify.ai/community/open-source'
+            >{t('login.license.link')}</Link>
           </div>
         </div>
       </div>

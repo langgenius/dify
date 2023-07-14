@@ -7,8 +7,10 @@ import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
+import { checkOrSetAccessToken } from '../utils'
 import s from './style.module.css'
 import RunBatch from './run-batch'
+import ResDownload from './run-batch/res-download'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
@@ -23,7 +25,6 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
-
 const PARALLEL_LIMIT = 5
 enum TaskStatus {
   pending = 'pending',
@@ -76,9 +77,6 @@ const TextGeneration: FC<IMainProps> = ({
     const res: any = await doFetchSavedMessage(isInstalledApp, installedAppInfo?.id)
     setSavedMessages(res.data)
   }
-  useEffect(() => {
-    fetchSavedMessage()
-  }, [])
   const handleSaveMessage = async (messageId: string) => {
     await saveMessage(messageId, isInstalledApp, installedAppInfo?.id)
     notify({ type: 'success', message: t('common.api.saved') })
@@ -98,6 +96,8 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setAllTaskList([]) // clear batch task running status
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    showResSidebar()
   }
 
   const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
@@ -105,6 +105,20 @@ const TextGeneration: FC<IMainProps> = ({
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
+  const exportRes = allTaskList.map((task) => {
+    if (allTaskList.length > 0 && !allTaskFinished)
+      return {}
+    const batchCompletionResLatest = getBatchCompletionRes()
+    const res: Record<string, string> = {}
+    const { inputs, query } = task.params
+    promptConfig?.prompt_variables.forEach((v) => {
+      res[v.name] = inputs[v.key]
+    })
+    res[t('share.generation.queryTitle')] = query
+    res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
+    return res
+  })
   const checkBatchInputs = (data: string[][]) => {
     if (!data || data.length === 0) {
       notify({ type: 'error', message: t('share.generation.errorMsg.empty') })
@@ -229,11 +243,12 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    showResSidebar()
   }
-
-  const handleCompleted = (taskId?: number, isSuccess?: boolean) => {
-    // console.log(taskId, isSuccess)
+  const handleCompleted = (completionRes: string, taskId?: number) => {
     const allTasklistLatest = getLatestTaskList()
+    const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
     const nextPendingTaskId = pendingTaskList[0]?.id
     // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
@@ -254,9 +269,18 @@ const TextGeneration: FC<IMainProps> = ({
     })
     // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
     setAllTaskList(newAllTaskList)
+    if (taskId) {
+      setBatchCompletionRes({
+        ...batchCompletionResLatest,
+        [`${taskId}`]: completionRes,
+      })
+    }
   }
 
-  const fetchInitData = () => {
+  const fetchInitData = async () => {
+    if (!isInstalledApp)
+      await checkOrSetAccessToken()
+
     return Promise.all([isInstalledApp
       ? {
         app_id: installedAppInfo?.id,
@@ -267,7 +291,7 @@ const TextGeneration: FC<IMainProps> = ({
         },
         plan: 'basic',
       }
-      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
+      : fetchAppInfo(), fetchAppParams(isInstalledApp, installedAppInfo?.id), fetchSavedMessage()])
   }
 
   useEffect(() => {
@@ -339,14 +363,23 @@ const TextGeneration: FC<IMainProps> = ({
             <div className={s.starIcon}></div>
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
-          {!isPC && (
-            <div
-              className='flex items-center justify-center cursor-pointer'
-              onClick={hideResSidebar}
-            >
-              <XMarkIcon className='w-4 h-4 text-gray-800' />
-            </div>
-          )}
+          <div className='flex items-center space-x-2'>
+            {allTaskList.length > 0 && allTaskFinished && (
+              <ResDownload
+                isMobile={isMobile}
+                values={exportRes}
+              />
+            )}
+            {!isPC && (
+              <div
+                className='flex items-center justify-center cursor-pointer'
+                onClick={hideResSidebar}
+              >
+                <XMarkIcon className='w-4 h-4 text-gray-800' />
+              </div>
+            )}
+          </div>
+
         </div>
 
         <div className='grow overflow-y-auto'>

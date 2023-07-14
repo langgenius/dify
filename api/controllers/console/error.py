@@ -18,3 +18,9 @@ class AccountNotLinkTenantError(BaseHTTPException):
     error_code = 'account_not_link_tenant'
     description = "Account not link tenant."
     code = 403
+
+
+class AlreadyActivateError(BaseHTTPException):
+    error_code = 'already_activate'
+    description = "Auth Token is invalid or account already activated, please check again."
+    code = 403

@@ -37,6 +37,8 @@ const AppContext = createContext<AppContextValue>({
     id: '',
     name: '',
     email: '',
+    avatar: '',
+    is_password_set: false,
   },
   mutateUserProfile: () => { },
   pageContainerRef: createRef(),

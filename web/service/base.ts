@@ -142,7 +142,15 @@ const baseFetch = (
   const options = Object.assign({}, baseOptions, fetchOptions)
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    options.headers.set('Authorization', `bearer ${sharedToken}`)
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
 
   if (deleteContentType) {
@@ -194,7 +202,7 @@ const baseFetch = (
               case 401: {
                 if (isPublicAPI) {
                   Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return
+                  return bodyJson.then((data: any) => Promise.reject(data))
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
                 if (IS_CE_EDITION) {
@@ -326,13 +334,16 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
         if (moreInfo.errorMessage) {
           onError?.(moreInfo.errorMessage)
-          Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.')
+            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
       }, onCompleted)
     }).catch((e) => {
-      Toast.notify({ type: 'error', message: e })
+      if (e.toString() !== 'AbortError: The user aborted a request.')
+        Toast.notify({ type: 'error', message: e })
+
       onError?.(e)
     })
 }

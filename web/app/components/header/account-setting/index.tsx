@@ -1,6 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import cn from 'classnames'
 import { AtSymbolIcon, CubeTransparentIcon, GlobeAltIcon, UserIcon, UsersIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { GlobeAltIcon as GlobalAltIconSolid, UserIcon as UserIconSolid, UsersIcon as UsersIconSolid } from '@heroicons/react/24/solid'
 import AccountPage from './account-page'
@@ -16,6 +17,10 @@ import { Database03 as Database03Solid } from '@/app/components/base/icons/src/v
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
+`
+
+const scrolledClassName = `
+  border-b shadow-xs bg-white/[.98]
 `
 
 type IAccountSettingProps = {
@@ -78,6 +83,22 @@ export default function AccountSetting({
       ],
     },
   ]
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrolled, setScrolled] = useState(false)
+  const scrollHandle = (e: any) => {
+    if (e.target.scrollTop > 0)
+      setScrolled(true)
+
+    else
+      setScrolled(false)
+  }
+  useEffect(() => {
+    const targetElement = scrollRef.current
+    targetElement?.addEventListener('scroll', scrollHandle)
+    return () => {
+      targetElement?.removeEventListener('scroll', scrollHandle)
+    }
+  }, [])
 
   return (
     <Modal
@@ -115,29 +136,19 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div className='w-[520px] h-[580px] px-6 py-4 overflow-y-auto'>
-          <div className='flex items-center justify-between h-6 mb-8 text-base font-medium text-gray-900 '>
+        <div ref={scrollRef} className='relative w-[520px] h-[580px] pb-4 overflow-y-auto'>
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900', scrolled && scrolledClassName)}>
             {[...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)?.name}
             <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
           </div>
-          {
-            activeMenu === 'account' && <AccountPage />
-          }
-          {
-            activeMenu === 'members' && <MembersPage />
-          }
-          {
-            activeMenu === 'integrations' && <IntegrationsPage />
-          }
-          {
-            activeMenu === 'language' && <LanguagePage />
-          }
-          {
-            activeMenu === 'provider' && <ProviderPage />
-          }
-          {
-            activeMenu === 'data-source' && <DataSourcePage />
-          }
+          <div className='px-6'>
+            {activeMenu === 'account' && <AccountPage />}
+            {activeMenu === 'members' && <MembersPage />}
+            {activeMenu === 'integrations' && <IntegrationsPage />}
+            {activeMenu === 'language' && <LanguagePage />}
+            {activeMenu === 'provider' && <ProviderPage />}
+            {activeMenu === 'data-source' && <DataSourcePage />}
+          </div>
         </div>
       </div>
     </Modal>
