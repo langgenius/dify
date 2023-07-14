@@ -29,7 +29,7 @@ const InstalledApp: FC<IInstalledAppProps> = ({
     <div className='h-full p-2'>
       {installedApp?.app.mode === 'chat'
         ? (
-          <ChatApp isInstalledApp installedAppInfo={installedApp}/>
+          <ChatApp isInstalledApp installedAppInfo={installedApp} />
         )
         : (
           <TextGenerationApp isInstalledApp installedAppInfo={installedApp}/>

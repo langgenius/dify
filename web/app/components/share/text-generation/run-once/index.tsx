@@ -10,7 +10,7 @@ import type { PromptConfig } from '@/models/debug'
 import Button from '@/app/components/base/button'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 
-export type IConfigSenceProps = {
+export type IRunOnceProps = {
   siteInfo: SiteInfo
   promptConfig: PromptConfig
   inputs: Record<string, any>
@@ -19,7 +19,7 @@ export type IConfigSenceProps = {
   onQueryChange: (query: string) => void
   onSend: () => void
 }
-const ConfigSence: FC<IConfigSenceProps> = ({
+const RunOnce: FC<IRunOnceProps> = ({
   promptConfig,
   inputs,
   onInputsChange,
@@ -85,7 +85,7 @@ const ConfigSence: FC<IConfigSenceProps> = ({
                 </div>
                 <Button
                   type="primary"
-                  className='w-[80px] !h-8 !p-0'
+                  className='!h-8 !pl-3 !pr-4'
                   onClick={onSend}
                   disabled={!query || query === ''}
                 >
@@ -100,4 +100,4 @@ const ConfigSence: FC<IConfigSenceProps> = ({
     </div>
   )
 }
-export default React.memo(ConfigSence)
+export default React.memo(RunOnce)

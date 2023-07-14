@@ -6,6 +6,11 @@ const translation = {
     addFeature: 'Add Feature',
     automatic: 'Automatic',
     stopResponding: 'Stop responding',
+    agree: 'like',
+    disagree: 'dislike',
+    cancelAgree: 'Cancel like',
+    cancelDisagree: 'Cancel dislike',
+    userAction: 'User ',
   },
   notSetAPIKey: {
     title: 'LLM provider key has not been set',
@@ -40,6 +45,11 @@ const translation = {
       description: 'Generate multiple texts at once, and then edit and continue to generate',
       generateNumTip: 'Number of each generated times',
       tip: 'Using this feature will incur additional tokens overhead',
+    },
+    speechToText: {
+      title: 'Speech to Text',
+      description: 'Once enabled, you can use voice input.',
+      resDes: 'Voice input is enabled',
     },
     dataSet: {
       title: 'Context',
@@ -81,6 +91,8 @@ const translation = {
     queryRequired: 'Request text is required.',
     waitForResponse:
       'Please wait for the response to the previous message to complete.',
+    waitForBatchResponse:
+      'Please wait for the response to the batch task to complete.',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',

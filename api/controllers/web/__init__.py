@@ -7,4 +7,4 @@ bp = Blueprint('web', __name__, url_prefix='/api')
 api = ExternalApi(bp)
 
 
-from . import completion, app, conversation, message, site, saved_message
+from . import completion, app, conversation, message, site, saved_message, audio, passport

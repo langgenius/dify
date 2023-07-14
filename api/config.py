@@ -83,7 +83,10 @@ class Config:
         self.SERVICE_API_URL = get_env('API_URL') if get_env('API_URL') else get_env('SERVICE_API_URL')
         self.APP_WEB_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_WEB_URL')
         self.APP_API_URL = get_env('APP_URL') if get_env('APP_URL') else get_env('APP_API_URL')
-        self.CURRENT_VERSION = "0.3.6"
+        self.CONSOLE_URL = get_env('CONSOLE_URL')
+        self.API_URL = get_env('API_URL')
+        self.APP_URL = get_env('APP_URL')
+        self.CURRENT_VERSION = "0.3.7"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
