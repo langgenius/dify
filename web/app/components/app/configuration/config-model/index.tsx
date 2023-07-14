@@ -17,7 +17,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 export type IConifgModelProps = {
   mode: string
   modelId: string
-  setModelId: (id: string) => void
+  setModelId: (id: string, provider: ProviderType) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -29,14 +29,14 @@ const options = [
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.chat },
   { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.chat },
   { id: 'gpt-4', name: 'gpt-4', type: AppType.chat }, // 8k version
-  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.chat, provide: ProviderType.anthropic }, // set 30k
-  { id: 'claude-2', name: 'claude-2', type: AppType.chat, provide: ProviderType.anthropic }, // set 30k
+  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
+  { id: 'claude-2', name: 'claude-2', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.completion },
   { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.completion },
   { id: 'text-davinci-003', name: 'text-davinci-003', type: AppType.completion },
   { id: 'gpt-4', name: 'gpt-4', type: AppType.completion }, // 8k version
-  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provide: ProviderType.anthropic }, // set 30k
-  { id: 'claude-2', name: 'claude-2', type: AppType.completion, provide: ProviderType.anthropic }, // set 30k
+  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
+  { id: 'claude-2', name: 'claude-2', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
 ]
 
 const getMaxToken = (modelId: string) => {
@@ -126,7 +126,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
     hideOption()
   }, triggerRef)
 
-  const handleSelectModel = (id: string) => {
+  const handleSelectModel = (id: string, provider = ProviderType.openai) => {
     return () => {
       if (id === 'gpt-4' && !canUseGPT4) {
         hideConfig()
@@ -144,7 +144,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
           max_tokens: 4000,
         })
       }
-      setModelId(id)
+      setModelId(id, provider)
     }
   }
 
@@ -241,7 +241,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
                 {isShowOption && (
                   <div className={cn(isChatApp ? 'min-w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
                     {availableModels.map(item => (
-                      <div key={item.id} onClick={handleSelectModel(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
+                      <div key={item.id} onClick={handleSelectModel(item.id, item.provider)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
                         <ModelIcon className='shrink-0 mr-2' />
                         <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
                       </div>
