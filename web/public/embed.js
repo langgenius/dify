@@ -10,8 +10,8 @@ document.body.onload = embedChatbot;
 
 async function embedChatbot () {
   const difyChatbotConfig = window.difyChatbotConfig;
-  if (!difyChatbotConfig || !difyChatbotConfig.token) {
-    console.error('difyChatbotConfig is empty or token is not provided')
+  if (!difyChatbotConfig || !difyChatbotConfig.token || !difyChatbotConfig.appBaseUrl) {
+    console.error('difyChatbotConfig is empty or token | appBaseUrl is not provided')
     return;
   }
   const isDev = !!difyChatbotConfig.isDev
@@ -53,7 +53,7 @@ async function embedChatbot () {
     iframe.allow = "fullscreen;microphone"
     iframe.title = "dify chatbot bubble window"
     iframe.id = 'dify-chatbot-bubble-window'
-    iframe.src = `https://${isDev ? 'dev.' : ''}udify.app/chatbot/${difyChatbotConfig.token}`;
+    iframe.src = `${difyChatbotConfig.appBaseUrl}/chatbot/${difyChatbotConfig.token}`;
     iframe.style.cssText = 'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 5rem; right: 1rem; width: 24rem; height: 40rem; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset;'
     document.body.appendChild(iframe);
   }
