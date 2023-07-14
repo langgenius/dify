@@ -11,18 +11,26 @@ services:
       LOG_LEVEL: INFO
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
-      # The base URL of console application, refers to the Console base URL of WEB service if console domain is
+      # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_URL: ''
+      CONSOLE_WEB_URL: ''
+      # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
+      # different from api or web app domain.
+      # example: http://cloud.dify.ai
+      CONSOLE_API_URL: ''
       # The URL for Service API endpoints，refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
-      API_URL: ''
-      # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
+      SERVICE_API_URL: ''
+      # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_URL: ''
+      APP_API_URL: ''
+      # The URL for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
+      # console or api domain.
+      # example: http://udify.app
+      APP_WEB_URL: ''
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
@@ -93,6 +101,12 @@ services:
       QDRANT_URL: 'https://your-qdrant-cluster-url.qdrant.tech/'
       # The Qdrant API key.
       QDRANT_API_KEY: 'ak-difyai'
+      # Mail configuration, support: resend
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
       # The sample rate for Sentry events. Default: `1.0`
@@ -146,6 +160,12 @@ services:
       VECTOR_STORE: weaviate
       WEAVIATE_ENDPOINT: http://weaviate:8080
       WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      # Mail configuration, support: resend
+      MAIL_TYPE: ''
+      # default send from email address, if not specified
+      MAIL_DEFAULT_SEND_FROM: 'YOUR EMAIL FROM (eg: no-reply <no-reply@dify.ai>)'
+      # the api-key for resend (https://resend.com)
+      RESEND_API_KEY: ''
     depends_on:
       - db
       - redis
@@ -160,14 +180,14 @@ services:
     restart: always
     environment:
       EDITION: SELF_HOSTED
-      # The base URL of console application, refers to the Console base URL of WEB service if console domain is
+      # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_URL: ''
-      # The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
+      CONSOLE_API_URL: ''
+      # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_URL: ''
+      APP_API_URL: ''
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
 
