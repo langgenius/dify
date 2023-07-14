@@ -28,7 +28,7 @@ export default function AppSelector({ userProfile, langeniusVersionInfo }: IAppS
     rounded-lg font-normal hover:bg-gray-100 cursor-pointer
   `
   const router = useRouter()
-  const [settingVisible, setSettingVisible] = useState(true)
+  const [settingVisible, setSettingVisible] = useState(false)
   const [aboutVisible, setAboutVisible] = useState(false)
 
   const { locale } = useContext(I18n)
