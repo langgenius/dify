@@ -73,7 +73,7 @@ class ProviderService:
         return llm_provider_service.get_encrypted_token(configs)
 
     @staticmethod
-    def create_system_provider(tenant: Tenant, provider_name: str = ProviderName.OPENAI.value,
+    def create_system_provider(tenant: Tenant, provider_name: str = ProviderName.OPENAI.value, quota_limit: int = 200,
                                is_valid: bool = True):
         if current_app.config['EDITION'] != 'CLOUD':
             return
@@ -90,7 +90,7 @@ class ProviderService:
                 provider_name=provider_name,
                 provider_type=ProviderType.SYSTEM.value,
                 quota_type=ProviderQuotaType.TRIAL.value,
-                quota_limit=200,
+                quota_limit=quota_limit,
                 encrypted_config='',
                 is_valid=is_valid,
             )

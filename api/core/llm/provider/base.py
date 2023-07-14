@@ -2,7 +2,7 @@ import base64
 from abc import ABC, abstractmethod
 from typing import Optional, Union
 
-from core import hosted_llm_credentials
+from core.constant import llm_constant
 from core.llm.error import QuotaExceededError, ModelCurrentlyNotSupportError, ProviderTokenNotInitError
 from extensions.ext_database import db
 from libs import rsa
@@ -22,7 +22,10 @@ class BaseProvider(ABC):
         """
         provider = self.get_provider(prefer_custom)
         if not provider:
-            raise ProviderTokenNotInitError()
+            raise ProviderTokenNotInitError(
+                f"No valid {llm_constant.models[model_id]} model provider credentials found. "
+                f"Please go to Settings -> Model Provider to complete your provider credentials."
+            )
 
         if provider.provider_type == ProviderType.SYSTEM.value:
             quota_used = provider.quota_used if provider.quota_used is not None else 0
@@ -46,7 +49,8 @@ class BaseProvider(ABC):
         return BaseProvider.get_valid_provider(self.tenant_id, self.get_provider_name().value, prefer_custom)
 
     @classmethod
-    def get_valid_provider(cls, tenant_id: str, provider_name: str = None, prefer_custom: bool = False) -> Optional[Provider]:
+    def get_valid_provider(cls, tenant_id: str, provider_name: str = None, prefer_custom: bool = False) -> Optional[
+        Provider]:
         """
         Returns the Provider instance for the given tenant_id and provider_name.
         If both CUSTOM and System providers exist, the preferred provider will be returned based on the prefer_custom flag.
@@ -76,14 +80,11 @@ class BaseProvider(ABC):
         else:
             return None
 
-    def get_hosted_credentials(self) -> str:
-        if self.get_provider_name() != ProviderName.OPENAI:
-            raise ProviderTokenNotInitError()
-
-        if not hosted_llm_credentials.openai or not hosted_llm_credentials.openai.api_key:
-            raise ProviderTokenNotInitError()
-
-        return hosted_llm_credentials.openai.api_key
+    def get_hosted_credentials(self) -> Union[str | dict]:
+        raise ProviderTokenNotInitError(
+            f"No valid {self.get_provider_name().value} model provider credentials found. "
+            f"Please go to Settings -> Model Provider to complete your provider credentials."
+        )
 
     def get_provider_configs(self, obfuscated: bool = False) -> Union[str | dict]:
         """

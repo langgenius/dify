@@ -50,7 +50,9 @@ DEFAULTS = {
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
     'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
-    'DEFAULT_LLM_PROVIDER': 'openai'
+    'DEFAULT_LLM_PROVIDER': 'openai',
+    'OPENAI_HOSTED_QUOTA_LIMIT': 200,
+    'ANTHROPIC_HOSTED_QUOTA_LIMIT': 1000,
 }
 
 
@@ -191,6 +193,10 @@ class Config:
 
         # hosted provider credentials
         self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
+        self.ANTHROPIC_API_KEY = get_env('ANTHROPIC_API_KEY')
+
+        self.OPENAI_HOSTED_QUOTA_LIMIT = get_env('OPENAI_HOSTED_QUOTA_LIMIT')
+        self.ANTHROPIC_HOSTED_QUOTA_LIMIT = get_env('ANTHROPIC_HOSTED_QUOTA_LIMIT')
 
         # By default it is False
         # You could disable it for compatibility with certain OpenAPI providers

@@ -1,6 +1,6 @@
 from extensions.ext_database import db
 from models.account import Tenant
-from models.provider import Provider, ProviderType
+from models.provider import Provider, ProviderType, ProviderName
 
 
 class WorkspaceService:
@@ -33,7 +33,7 @@ class WorkspaceService:
                 if provider.is_valid and provider.encrypted_config:
                     custom_provider = provider
             elif provider.provider_type == ProviderType.SYSTEM.value:
-                if provider.is_valid:
+                if provider.provider_name == ProviderName.OPENAI.value and provider.is_valid:
                     system_provider = provider
 
         if system_provider and not custom_provider:

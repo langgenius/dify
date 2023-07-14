@@ -81,7 +81,6 @@ class AzureProvider(BaseProvider):
         return config
 
     def get_token_type(self):
-        # TODO: change to dict when implemented
         return dict
 
     def config_validate(self, config: Union[dict | str]):
