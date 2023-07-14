@@ -12,6 +12,7 @@ import AccountSetting from '../account-setting'
 import AccountAbout from '../account-about'
 import WorkplaceSelector from './workplace-selector'
 import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import { KeyValidatorContextProvider } from '@/context/key-validator'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
@@ -27,7 +28,7 @@ export default function AppSelector({ userProfile, langeniusVersionInfo }: IAppS
     rounded-lg font-normal hover:bg-gray-100 cursor-pointer
   `
   const router = useRouter()
-  const [settingVisible, setSettingVisible] = useState(false)
+  const [settingVisible, setSettingVisible] = useState(true)
   const [aboutVisible, setAboutVisible] = useState(false)
 
   const { locale } = useContext(I18n)
@@ -130,7 +131,11 @@ export default function AppSelector({ userProfile, langeniusVersionInfo }: IAppS
         </Transition>
       </Menu>
       {
-        settingVisible && <AccountSetting onCancel={() => setSettingVisible(false)} />
+        settingVisible && (
+          <KeyValidatorContextProvider>
+            <AccountSetting onCancel={() => setSettingVisible(false)} />
+          </KeyValidatorContextProvider>
+        )
       }
       {
         aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langeniusVersionInfo={langeniusVersionInfo} />

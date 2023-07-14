@@ -8,11 +8,12 @@ import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
 import ProviderPage from './provider-page'
+import PluginPage from './plugin-page'
 import DataSourcePage from './data-source-page'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
-import { Database03 } from '@/app/components/base/icons/src/vender/line/development'
-import { Database03 as Database03Solid } from '@/app/components/base/icons/src/vender/solid/development'
+import { Database03, PuzzlePiece01 } from '@/app/components/base/icons/src/vender/line/development'
+import { Database03 as Database03Solid, PuzzlePiece01 as PuzzlePiece01Solid } from '@/app/components/base/icons/src/vender/solid/development'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -24,7 +25,7 @@ type IAccountSettingProps = {
 }
 export default function AccountSetting({
   onCancel,
-  activeTab = 'account',
+  activeTab = 'plugin',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
@@ -74,6 +75,12 @@ export default function AccountSetting({
           name: t('common.settings.dataSource'),
           icon: <Database03 className={iconClassName} />,
           activeIcon: <Database03Solid className={iconClassName} />,
+        },
+        {
+          key: 'plugin',
+          name: t('common.settings.plugin'),
+          icon: <PuzzlePiece01 className={iconClassName} />,
+          activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
         },
       ],
     },
@@ -137,6 +144,9 @@ export default function AccountSetting({
           }
           {
             activeMenu === 'data-source' && <DataSourcePage />
+          }
+          {
+            activeMenu === 'plugin' && <PluginPage />
           }
         </div>
       </div>
