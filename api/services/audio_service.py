@@ -27,7 +27,7 @@ class AudioService:
             message = f"Audio size larger than {FILE_SIZE} mb"
             raise AudioTooLargeServiceError(message)
         
-        provider_name = LLMBuilder.get_default_provider(tenant_id)
+        provider_name = LLMBuilder.get_default_provider(tenant_id, 'whisper-1')
         if provider_name != ProviderName.OPENAI.value:
             raise ProviderNotSupportSpeechToTextServiceError()
 
@@ -37,8 +37,3 @@ class AudioService:
         buffer.name = 'temp.mp3'
 
         return Whisper(provider_service.provider).transcribe(buffer)
-
-
-
-        
-        

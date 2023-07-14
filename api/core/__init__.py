@@ -13,8 +13,13 @@ class HostedOpenAICredential(BaseModel):
     api_key: str
 
 
+class HostedAnthropicCredential(BaseModel):
+    api_key: str
+
+
 class HostedLLMCredentials(BaseModel):
     openai: Optional[HostedOpenAICredential] = None
+    anthropic: Optional[HostedAnthropicCredential] = None
 
 
 hosted_llm_credentials = HostedLLMCredentials()
@@ -26,3 +31,6 @@ def init_app(app: Flask):
 
     if app.config.get("OPENAI_API_KEY"):
         hosted_llm_credentials.openai = HostedOpenAICredential(api_key=app.config.get("OPENAI_API_KEY"))
+
+    if app.config.get("ANTHROPIC_API_KEY"):
+        hosted_llm_credentials.anthropic = HostedAnthropicCredential(api_key=app.config.get("ANTHROPIC_API_KEY"))

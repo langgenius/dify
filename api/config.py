@@ -191,6 +191,7 @@ class Config:
 
         # hosted provider credentials
         self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
+        self.ANTHROPIC_API_KEY = get_env('ANTHROPIC_API_KEY')
 
         # By default it is False
         # You could disable it for compatibility with certain OpenAPI providers
