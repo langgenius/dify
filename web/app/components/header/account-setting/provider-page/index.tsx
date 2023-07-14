@@ -93,7 +93,7 @@ const ProviderPage = () => {
           ))
         }
       </div>
-      <div className='absolute bottom-0 w-full h-[42px] flex items-center bg-white text-xs text-gray-500'>
+      <div className='fixed bottom-0 w-[472px] h-[42px] flex items-center bg-white text-xs text-gray-500'>
         <LockClosedIcon className='w-3 h-3 mr-1' />
         {t('common.provider.encrypted.front')}
         <Link
