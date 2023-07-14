@@ -337,6 +337,53 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 ---
 
 <Heading
+  url='/conversations/{converation_id}'
+  method='DELETE'
+  title='Conversation deletion'
+  name='#delete'
+/>
+<Row>
+  <Col>
+    Delete conversation.
+
+    ### Request Body
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        The user identifier, defined by the developer, must ensure uniqueness within the app.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="DELETE" label="/conversations/{converation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+        curl --location --request DELETE 'https://cloud.langgenius.dev/api/conversations/{convsation_id}' \
+        --header 'Content-Type: application/json' \
+        --header 'Accept: application/json' \
+        --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+        --data '{
+            "user": "abc-123"
+        }'
+      ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+
+---
+
+<Heading
   url='/parameters'
   method='GET'
   title='Obtain application parameter information'
