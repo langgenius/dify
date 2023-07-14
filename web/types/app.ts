@@ -1,3 +1,8 @@
+export enum ProviderType {
+  openai = 'openai',
+  anthropic = 'anthropic',
+}
+
 export enum AppType {
   'chat' = 'chat',
   'completion' = 'completion',
