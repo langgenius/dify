@@ -368,6 +368,7 @@ And answer according to the language of the user's question.
             query=message.query,
             inputs=message.inputs,
             chain_output=None,
+            agent_execute_result=None,
             memory=None
         )
 

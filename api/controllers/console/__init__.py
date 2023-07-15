@@ -22,3 +22,6 @@ from .workspace import workspace, members, model_providers, account, tool_provid
 
 # Import explore controllers
 from .explore import installed_app, recommended_app, completion, conversation, message, parameter, saved_message, audio
+
+# Import universal chat controllers
+from .universal_chat import chat, conversation, message, parameter, audio
