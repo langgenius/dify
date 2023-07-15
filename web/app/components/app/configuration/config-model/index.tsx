@@ -198,7 +198,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
 
   useEffect(() => {
     const max = params[4].max
-    if (completionParams.max_tokens > max * 2 / 3)
+    if (currModel?.provider !== ProviderType.anthropic && completionParams.max_tokens > max * 2 / 3)
       setMaxTokenSettingTipVisible(true)
     else
       setMaxTokenSettingTipVisible(false)
