@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from core.agent.agent_executor import PlanningStrategy
 from core.constant import llm_constant
 from models.account import Account
 from services.dataset_service import DatasetService
@@ -288,16 +289,11 @@ class AppModelConfigService:
         if not isinstance(config["agent_mode"]["enabled"], bool):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
-        # provider
-        if 'model_provider' not in config["agent_mode"] or config["agent_mode"]["model_provider"] != "openai":
-            raise ValueError("agent_mode.model_provider must be 'openai'")
+        if "strategy" not in config["agent_mode"] or not config["agent_mode"]["strategy"]:
+            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
 
-        # model.name
-        if 'model_name' not in config["agent_mode"]:
-            raise ValueError("agent_mode.model_name is required")
-
-        if config["agent_mode"]["model_name"] not in SUPPORT_AGENT_MODELS:
-            raise ValueError("agent_mode.model_name must be in the specified model list")
+        if config["agent_mode"]["strategy"] not in PlanningStrategy.__members__:
+            raise ValueError("strategy in agent_mode must be in the specified strategy list")
 
         if "tools" not in config["agent_mode"] or not config["agent_mode"]["tools"]:
             config["agent_mode"]["tools"] = []

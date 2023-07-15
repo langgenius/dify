@@ -128,7 +128,7 @@ class AppModelConfig(db.Model):
 
     @property
     def agent_mode_dict(self) -> dict:
-        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "tools": []}
+        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
 
 
 class RecommendedApp(db.Model):

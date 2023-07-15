@@ -39,11 +39,12 @@ class OrchestratorRuleParser:
             return None
 
         agent_mode_config = self.app_model_config.agent_mode_dict
+        model_dict = self.app_model_config.model_dict
 
         chain = None
         if agent_mode_config and agent_mode_config.get('enabled'):
             tool_configs = agent_mode_config.get('tools', [])
-            agent_model_name = agent_mode_config.get('model_name', 'gpt-4')
+            agent_model_name = model_dict.get('name', 'gpt-4')
 
             # add agent callback to record agent thoughts
             agent_callback = AgentLoopGatherCallbackHandler(
