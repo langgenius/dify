@@ -32,12 +32,12 @@ class AnthropicProvider(BaseProvider):
     def get_provider_name(self):
         return ProviderName.ANTHROPIC
 
-    def get_provider_configs(self, obfuscated: bool = False) -> Union[str | dict]:
+    def get_provider_configs(self, obfuscated: bool = False, only_custom: bool = False) -> Union[str | dict]:
         """
         Returns the provider configs.
         """
         try:
-            config = self.get_provider_api_key()
+            config = self.get_provider_api_key(only_custom=only_custom)
         except:
             config = {
                 'anthropic_api_key': ''

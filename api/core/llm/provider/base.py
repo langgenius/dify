@@ -14,13 +14,13 @@ class BaseProvider(ABC):
     def __init__(self, tenant_id: str):
         self.tenant_id = tenant_id
 
-    def get_provider_api_key(self, model_id: Optional[str] = None, prefer_custom: bool = True) -> Union[str | dict]:
+    def get_provider_api_key(self, model_id: Optional[str] = None, only_custom: bool = False) -> Union[str | dict]:
         """
         Returns the decrypted API key for the given tenant_id and provider_name.
         If the provider is of type SYSTEM and the quota is exceeded, raises a QuotaExceededError.
         If the provider is not found or not valid, raises a ProviderTokenNotInitError.
         """
-        provider = self.get_provider(prefer_custom)
+        provider = self.get_provider(only_custom)
         if not provider:
             raise ProviderTokenNotInitError(
                 f"No valid {llm_constant.models[model_id]} model provider credentials found. "
@@ -41,19 +41,19 @@ class BaseProvider(ABC):
         else:
             return self.get_decrypted_token(provider.encrypted_config)
 
-    def get_provider(self, prefer_custom: bool) -> Optional[Provider]:
+    def get_provider(self, only_custom: bool = False) -> Optional[Provider]:
         """
         Returns the Provider instance for the given tenant_id and provider_name.
         If both CUSTOM and System providers exist, the preferred provider will be returned based on the prefer_custom flag.
         """
-        return BaseProvider.get_valid_provider(self.tenant_id, self.get_provider_name().value, prefer_custom)
+        return BaseProvider.get_valid_provider(self.tenant_id, self.get_provider_name().value, only_custom)
 
     @classmethod
-    def get_valid_provider(cls, tenant_id: str, provider_name: str = None, prefer_custom: bool = False) -> Optional[
+    def get_valid_provider(cls, tenant_id: str, provider_name: str = None, only_custom: bool = False) -> Optional[
         Provider]:
         """
         Returns the Provider instance for the given tenant_id and provider_name.
-        If both CUSTOM and System providers exist, the preferred provider will be returned based on the prefer_custom flag.
+        If both CUSTOM and System providers exist.
         """
         query = db.session.query(Provider).filter(
             Provider.tenant_id == tenant_id
@@ -62,23 +62,18 @@ class BaseProvider(ABC):
         if provider_name:
             query = query.filter(Provider.provider_name == provider_name)
 
-        providers = query.order_by(Provider.provider_type.desc() if prefer_custom else Provider.provider_type).all()
+        if only_custom:
+            query = query.filter(Provider.provider_type == ProviderType.CUSTOM.value)
 
-        custom_provider = None
-        system_provider = None
+        providers = query.order_by(Provider.provider_type.asc()).all()
 
         for provider in providers:
             if provider.provider_type == ProviderType.CUSTOM.value and provider.is_valid and provider.encrypted_config:
-                custom_provider = provider
+                return provider
             elif provider.provider_type == ProviderType.SYSTEM.value and provider.is_valid:
-                system_provider = provider
+                return provider
 
-        if custom_provider:
-            return custom_provider
-        elif system_provider:
-            return system_provider
-        else:
-            return None
+        return None
 
     def get_hosted_credentials(self) -> Union[str | dict]:
         raise ProviderTokenNotInitError(
@@ -86,12 +81,12 @@ class BaseProvider(ABC):
             f"Please go to Settings -> Model Provider to complete your provider credentials."
         )
 
-    def get_provider_configs(self, obfuscated: bool = False) -> Union[str | dict]:
+    def get_provider_configs(self, obfuscated: bool = False, only_custom: bool = False) -> Union[str | dict]:
         """
         Returns the provider configs.
         """
         try:
-            config = self.get_provider_api_key()
+            config = self.get_provider_api_key(only_custom=only_custom)
         except:
             config = ''
 
