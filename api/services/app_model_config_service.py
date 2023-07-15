@@ -7,6 +7,16 @@ from services.dataset_service import DatasetService
 from core.llm.llm_builder import LLMBuilder
 
 
+SUPPORT_AGENT_MODELS = [
+    "gpt-4",
+    "gpt-4-32k",
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-16k",
+]
+
+SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia"]
+
+
 class AppModelConfigService:
     @staticmethod
     def is_dataset_exists(account: Account, dataset_id: str) -> bool:
@@ -34,7 +44,8 @@ class AppModelConfigService:
         if not isinstance(cp["max_tokens"], int) or cp["max_tokens"] <= 0 or cp["max_tokens"] > \
                 llm_constant.max_context_token_length[model_name]:
             raise ValueError(
-                "max_tokens must be an integer greater than 0 and not exceeding the maximum value of the corresponding model")
+                "max_tokens must be an integer greater than 0 "
+                "and not exceeding the maximum value of the corresponding model")
 
         # temperature
         if 'temperature' not in cp:
@@ -277,6 +288,17 @@ class AppModelConfigService:
         if not isinstance(config["agent_mode"]["enabled"], bool):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
+        # provider
+        if 'model_provider' not in config["agent_mode"] or config["agent_mode"]["model_provider"] != "openai":
+            raise ValueError("agent_mode.model_provider must be 'openai'")
+
+        # model.name
+        if 'model_name' not in config["agent_mode"]:
+            raise ValueError("agent_mode.model_name is required")
+
+        if config["agent_mode"]["model_name"] not in SUPPORT_AGENT_MODELS:
+            raise ValueError("agent_mode.model_name must be in the specified model list")
+
         if "tools" not in config["agent_mode"] or not config["agent_mode"]["tools"]:
             config["agent_mode"]["tools"] = []
 
@@ -285,8 +307,8 @@ class AppModelConfigService:
 
         for tool in config["agent_mode"]["tools"]:
             key = list(tool.keys())[0]
-            if key not in ["dataset"]:
-                raise ValueError("Keys in agent_mode.tools list can only be 'dataset'")
+            if key not in SUPPORT_TOOLS:
+                raise ValueError("Keys in agent_mode.tools must be in the specified tool list")
 
             tool_item = tool[key]
 
