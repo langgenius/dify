@@ -55,13 +55,20 @@ const AutoHeightTextarea = forwardRef(
 
     return (
       <div className='relative'>
-        <div className={cn(className, 'invisible whitespace-pre-wrap break-all  overflow-y-auto')} style={{ minHeight, maxHeight }}>
+        <div className={cn(className, 'invisible whitespace-pre-wrap break-all  overflow-y-auto')} style={{
+          minHeight,
+          maxHeight,
+          paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
+        }}>
           {!value ? placeholder : value.replace(/\n$/, '\n ')}
         </div>
         <textarea
           ref={ref}
           autoFocus={autoFocus}
           className={cn(className, 'absolute inset-0 resize-none overflow-auto')}
+          style={{
+            paddingRight: (value && value.trim().length > 10000) ? 140 : 130,
+          }}
           placeholder={placeholder}
           onChange={onChange}
           onKeyDown={onKeyDown}
