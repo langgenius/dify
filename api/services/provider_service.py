@@ -41,9 +41,9 @@ class ProviderService:
             db.session.commit()
 
     @staticmethod
-    def get_obfuscated_api_key(tenant, provider_name: ProviderName):
+    def get_obfuscated_api_key(tenant, provider_name: ProviderName, only_custom: bool = False):
         llm_provider_service = LLMProviderService(tenant.id, provider_name.value)
-        return llm_provider_service.get_provider_configs(obfuscated=True)
+        return llm_provider_service.get_provider_configs(obfuscated=True, only_custom=only_custom)
 
     @staticmethod
     def get_token_type(tenant, provider_name: ProviderName):

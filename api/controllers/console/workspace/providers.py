@@ -51,7 +51,8 @@ class ProviderListApi(Resource):
                        'quota_used': p.quota_used
                    } if p.provider_type == ProviderType.SYSTEM.value else {}),
                 'token': ProviderService.get_obfuscated_api_key(current_user.current_tenant,
-                                                                ProviderName(p.provider_name))
+                                                                ProviderName(p.provider_name), only_custom=True)
+                if p.provider_type == ProviderType.CUSTOM.value else None
             }
             for p in providers
         ]
