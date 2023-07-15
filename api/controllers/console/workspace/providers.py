@@ -35,7 +35,7 @@ class ProviderListApi(Resource):
         plaintext, the rest is replaced by * and the last two bits are displayed in plaintext
         """
 
-        ProviderService.init_supported_provider(current_user.current_tenant, "cloud")
+        ProviderService.init_supported_provider(current_user.current_tenant)
         providers = Provider.query.filter_by(tenant_id=tenant_id).all()
 
         provider_list = [

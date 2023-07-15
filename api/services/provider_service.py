@@ -10,44 +10,34 @@ from models.provider import *
 class ProviderService:
 
     @staticmethod
-    def init_supported_provider(tenant, edition):
+    def init_supported_provider(tenant):
         """Initialize the model provider, check whether the supported provider has a record"""
 
-        providers = Provider.query.filter_by(tenant_id=tenant.id).all()
+        need_init_provider_names = [ProviderName.OPENAI.value, ProviderName.AZURE_OPENAI.value, ProviderName.ANTHROPIC.value]
 
-        openai_provider_exists = False
-        azure_openai_provider_exists = False
+        providers = db.session.query(Provider).filter(
+            Provider.tenant_id == tenant.id,
+            Provider.provider_type == ProviderType.CUSTOM.value,
+            Provider.provider_name.in_(need_init_provider_names)
+        ).all()
 
-        # TODO: The cloud version needs to construct the data of the SYSTEM type
-
+        exists_provider_names = []
         for provider in providers:
-            if provider.provider_name == ProviderName.OPENAI.value and provider.provider_type == ProviderType.CUSTOM.value:
-                openai_provider_exists = True
-            if provider.provider_name == ProviderName.AZURE_OPENAI.value and provider.provider_type == ProviderType.CUSTOM.value:
-                azure_openai_provider_exists = True
+            exists_provider_names.append(provider.provider_name)
 
-        # Initialize the model provider, check whether the supported provider has a record
+        not_exists_provider_names = list(set(need_init_provider_names) - set(exists_provider_names))
 
-        # Create default providers if they don't exist
-        if not openai_provider_exists:
-            openai_provider = Provider(
-                tenant_id=tenant.id,
-                provider_name=ProviderName.OPENAI.value,
-                provider_type=ProviderType.CUSTOM.value,
-                is_valid=False
-            )
-            db.session.add(openai_provider)
+        if not_exists_provider_names:
+            # Initialize the model provider, check whether the supported provider has a record
+            for provider_name in not_exists_provider_names:
+                provider = Provider(
+                    tenant_id=tenant.id,
+                    provider_name=provider_name,
+                    provider_type=ProviderType.CUSTOM.value,
+                    is_valid=False
+                )
+                db.session.add(provider)
 
-        if not azure_openai_provider_exists:
-            azure_openai_provider = Provider(
-                tenant_id=tenant.id,
-                provider_name=ProviderName.AZURE_OPENAI.value,
-                provider_type=ProviderType.CUSTOM.value,
-                is_valid=False
-            )
-            db.session.add(azure_openai_provider)
-
-        if not openai_provider_exists or not azure_openai_provider_exists:
             db.session.commit()
 
     @staticmethod
