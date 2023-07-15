@@ -123,9 +123,10 @@ class ProviderTokenApi(Resource):
                                       is_valid=token_is_valid)
             db.session.add(provider_model)
 
-        if provider_model.is_valid:
+        if provider in [ProviderName.OPENAI.value, ProviderName.AZURE_OPENAI.value] and provider_model.is_valid:
             other_providers = db.session.query(Provider).filter(
                 Provider.tenant_id == tenant.id,
+                Provider.provider_name.in_([ProviderName.OPENAI.value, ProviderName.AZURE_OPENAI.value]),
                 Provider.provider_name != provider,
                 Provider.provider_type == ProviderType.CUSTOM.value
             ).all()

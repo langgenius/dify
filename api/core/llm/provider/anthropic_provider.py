@@ -10,7 +10,7 @@ from core import hosted_llm_credentials
 from core.llm.error import ProviderTokenNotInitError
 from core.llm.provider.base import BaseProvider
 from core.llm.provider.errors import ValidateFailedError
-from models.provider import ProviderName
+from models.provider import ProviderName, ProviderType
 
 
 class AnthropicProvider(BaseProvider):
@@ -90,6 +90,13 @@ class AnthropicProvider(BaseProvider):
         if not provider:
             raise ValidateFailedError(f"OpenAI or Azure OpenAI provider must be configured first.")
 
+        if provider.provider_type == ProviderType.SYSTEM.value:
+            quota_used = provider.quota_used if provider.quota_used is not None else 0
+            quota_limit = provider.quota_limit if provider.quota_limit is not None else 0
+            if quota_used >= quota_limit:
+                raise ValidateFailedError(f"Your quota for Dify Hosted OpenAI has been exhausted, "
+                                          f"please configure OpenAI or Azure OpenAI provider first.")
+
         try:
             if not isinstance(config, dict):
                 raise ValueError('Config must be a object.')
@@ -112,8 +119,11 @@ class AnthropicProvider(BaseProvider):
             ]
 
             chat_llm(messages)
-        except (anthropic.APIStatusError, anthropic.APIConnectionError, anthropic.RateLimitError) as ex:
-            raise ValidateFailedError(f"Anthropic: {ex.message}")
+        except anthropic.APIConnectionError:
+            raise ValidateFailedError(f"Anthropic: Connection error.")
+        except (anthropic.APIStatusError, anthropic.RateLimitError) as ex:
+            raise ValidateFailedError(f"Anthropic: Error code: {ex.status_code} - "
+                                      f"{ex.body['error']['type']}: {ex.body['error']['message']}")
         except Exception as ex:
             logging.exception('Anthropic config validation failed')
             raise ex
