@@ -180,6 +180,22 @@ const translation = {
       useYourModel: '当前正在使用你自己的模型供应商。',
       close: '关闭',
     },
+    anthropicHosted: {
+      anthropicHosted: 'Anthropic Claude',
+      onTrial: '体验',
+      exhausted: '超出限额',
+      desc: '功能强大的模型，擅长执行从复杂对话和创意内容生成到详细指导的各种任务。',
+      callTimes: '调用次数',
+      usedUp: '试用额度已用完，请在下方添加自己的模型供应商',
+      useYourModel: '当前正在使用你自己的模型供应商。',
+      close: '关闭',
+    },
+    anthropic: {
+      using: '嵌入能力正在使用',
+      enableTip: '要启用 Anthropic 模型，您需要先绑定 OpenAI 或 Azure OpenAI 服务。',
+      notEnabled: '未启用',
+      keyFrom: '从 Anthropic 获取您的 API 密钥',
+    },
     encrypted: {
       front: '密钥将使用 ',
       back: ' 技术进行加密和存储。',
