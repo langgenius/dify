@@ -79,7 +79,7 @@ const AnthropicProvider = ({
         validatedIcon={getValidatedIcon()}
         validatedTip={getValidatedTip()}
       />
-      <Link className="inline-flex items-center mt-3 text-xs font-normal cursor-pointer text-primary-600 w-fit" href="https://platform.openai.com/account/api-keys" target={'_blank'}>
+      <Link className="inline-flex items-center mt-3 text-xs font-normal cursor-pointer text-primary-600 w-fit" href="https://docs.anthropic.com/claude/reference/getting-started-with-the-api" target={'_blank'}>
         {t('common.provider.anthropic.keyFrom')}
         <ArrowTopRightOnSquareIcon className='w-3 h-3 ml-1 text-primary-600' aria-hidden="true" />
       </Link>
