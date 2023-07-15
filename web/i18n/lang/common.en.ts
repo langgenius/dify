@@ -180,6 +180,22 @@ const translation = {
       useYourModel: 'Currently using own Model Provider.',
       close: 'Close',
     },
+    anthropicHosted: {
+      anthropicHosted: 'Anthropic Claude',
+      onTrial: 'ON TRIAL',
+      exhausted: 'QUOTA EXHAUSTED',
+      desc: 'Powerful model, which excels at a wide range of tasks from sophisticated dialogue and creative content generation to detailed instruction.',
+      callTimes: 'Call times',
+      usedUp: 'Trial quota used up. Add own Model Provider.',
+      useYourModel: 'Currently using own Model Provider.',
+      close: 'Close',
+    },
+    anthropic: {
+      using: 'The embedding capability is using',
+      enableTip: 'To enable the Anthropic model, you need to bind to OpenAI or Azure OpenAI Service first.',
+      notEnabled: 'Not enabled',
+      keyFrom: 'Get your API key from Anthropic',
+    },
     encrypted: {
       front: 'Your API KEY will be encrypted and stored using',
       back: ' technology.',
