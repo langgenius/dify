@@ -119,8 +119,8 @@ class AnthropicProvider(BaseProvider):
             ]
 
             chat_llm(messages)
-        except anthropic.APIConnectionError:
-            raise ValidateFailedError(f"Anthropic: Connection error.")
+        except anthropic.APIConnectionError as ex:
+            raise ValidateFailedError(f"Anthropic: Connection error, cause: {ex.__cause__}")
         except (anthropic.APIStatusError, anthropic.RateLimitError) as ex:
             raise ValidateFailedError(f"Anthropic: Error code: {ex.status_code} - "
                                       f"{ex.body['error']['type']}: {ex.body['error']['message']}")
