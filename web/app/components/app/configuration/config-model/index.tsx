@@ -13,6 +13,7 @@ import { AppType, ProviderType } from '@/types/app'
 import { TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { formatNumber } from '@/utils/format'
 
 export type IConifgModelProps = {
   mode: string
@@ -72,6 +73,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
+  const currModel = options.find(item => item.id === modelId)
   useClickAway(() => {
     hideConfig()
   }, configContentRef)
@@ -134,14 +136,15 @@ const ConifgModel: FC<IConifgModelProps> = ({
         onShowUseGPT4Confirm()
         return
       }
-      if (id !== 'gpt-4' && completionParams.max_tokens > 4000) {
+      const nextSelectModelMaxToken = getMaxToken(id)
+      if (completionParams.max_tokens > nextSelectModelMaxToken) {
         Toast.notify({
           type: 'warning',
-          message: t('common.model.params.setToCurrentModelMaxTokenTip'),
+          message: t('common.model.params.setToCurrentModelMaxTokenTip', { maxToken: formatNumber(nextSelectModelMaxToken) }),
         })
         onCompletionParamsChange({
           ...completionParams,
-          max_tokens: 4000,
+          max_tokens: nextSelectModelMaxToken,
         })
       }
       setModelId(id, provider)
