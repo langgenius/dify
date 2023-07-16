@@ -50,7 +50,8 @@ DEFAULTS = {
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
     'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
-    'DEFAULT_LLM_PROVIDER': 'openai'
+    'DEFAULT_LLM_PROVIDER': 'openai',
+    'TENANT_DOCUMENT_COUNT': 100
 }
 
 
