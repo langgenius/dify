@@ -2,6 +2,10 @@
 import os
 from datetime import datetime
 
+import requests
+
+from tasks.generate_test_task import generate_test_task
+
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
     monkey.patch_all()
@@ -198,6 +202,15 @@ def health():
         'version': app.config['CURRENT_VERSION']
     }), status=200, content_type="application/json")
 
+
+@app.route('/test')
+def test():
+    generate_test_task.delay()
+    res = requests.post('https://api.openai.com/v1/chat/completions')
+    print(res)
+    return Response(json.dumps({
+            'status': 'ok',
+        }), status=200, content_type="application/json")
 
 @app.route('/threads')
 def threads():

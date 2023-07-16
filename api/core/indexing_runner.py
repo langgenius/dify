@@ -6,6 +6,7 @@ import time
 import uuid
 from typing import Optional, List, cast
 
+import openai
 from flask import current_app
 from flask_login import current_user
 from langchain.embeddings import OpenAIEmbeddings
@@ -471,9 +472,41 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-
+                #
                 response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
                 document_qa_list = self.format_split_text(response)
+                # CONVERSATION_PROMPT = (
+                #     "你是出题人.\n"
+                #     "用户会发送一段长文本.\n请一步一步思考"
+                #     'Step1：了解并总结这段文本的主要内容\n'
+                #     'Step2：这段文本提到了哪些关键信息或概念\n'
+                #     'Step3：可分解或结合多个信息与概念\n'
+                #     'Step4：将这些关键信息与概念生成 10 个问题与答案，问题描述清楚并且详细完整,答案详细完整.\n'
+                #     "按格式回答: Q1:\nA1:\nQ2:\nA2:...\n"
+                # )
+                # openai.api_key = "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"
+                # response = openai.ChatCompletion.create(
+                #     model='gpt-3.5-turbo',
+                #     messages=[
+                #         {
+                #             'role': 'system',
+                #             'content': CONVERSATION_PROMPT
+                #         },
+                #         {
+                #             'role': 'user',
+                #             'content': document.page_content
+                #         }
+                #     ],
+                #     temperature=0,
+                #     stream=False,  # this time, we set stream=True
+                #
+                #     n=1,
+                #     top_p=1,
+                #     frequency_penalty=0,
+                #     presence_penalty=0
+                # )
+                # # response = LLMGenerator.generate_qa_document('84b2202c-c359-46b7-a810-bce50feaa4d1', doc.page_content)
+                # document_qa_list = self.format_split_text(response['choices'][0]['message']['content'])
                 qa_documents = []
                 for result in document_qa_list:
                     document = Document(page_content=result['question'], metadata={'source': result['answer']})
@@ -517,7 +550,22 @@ class IndexingRunner:
                     text = re.sub(pattern, '', text)
 
         return text
+    def format_split_text(self, text):
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
+        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
 
+        result = []  # 存储最终的结果
+        for match in matches:
+            q = match[0]
+            a = match[1]
+            if q and a:
+                # 如果Q和A都存在，就将其添加到结果中
+                result.append({
+                    "question": q,
+                    "answer": re.sub(r"\n\s*", "\n", a.strip())
+                })
+
+        return result
     def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
         """
         Build the index for the document.
