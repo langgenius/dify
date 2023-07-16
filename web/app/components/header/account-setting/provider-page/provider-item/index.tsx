@@ -5,14 +5,20 @@ import { useTranslation } from 'react-i18next'
 import Indicator from '../../../indicator'
 import OpenaiProvider from '../openai-provider'
 import AzureProvider from '../azure-provider'
+import AnthropicProvider from '../anthropic-provider'
 import type { ValidatedStatusState } from '../provider-input/useValidateToken'
 import { ValidatedStatus } from '../provider-input/useValidateToken'
 import s from './index.module.css'
-import type { Provider, ProviderAzureToken } from '@/models/common'
+import type { Provider, ProviderAnthropicToken, ProviderAzureToken } from '@/models/common'
 import { ProviderName } from '@/models/common'
 import { updateProviderAIKey } from '@/service/common'
 import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 
+const providerNameMap: Record<string, string> = {
+  openai: 'OpenAI',
+  azure_openai: 'Azure OpenAI Service',
+}
 type IProviderItemProps = {
   icon: string
   name: string
@@ -20,6 +26,7 @@ type IProviderItemProps = {
   activeId: string
   onActive: (v: string) => void
   onSave: () => void
+  providedOpenaiProvider?: Provider
 }
 const ProviderItem = ({
   activeId,
@@ -28,15 +35,18 @@ const ProviderItem = ({
   provider,
   onActive,
   onSave,
+  providedOpenaiProvider,
 }: IProviderItemProps) => {
   const { t } = useTranslation()
   const [validatedStatus, setValidatedStatus] = useState<ValidatedStatusState>()
   const [loading, setLoading] = useState(false)
   const { notify } = useContext(ToastContext)
-  const [token, setToken] = useState<ProviderAzureToken | string>(
+  const [token, setToken] = useState<ProviderAzureToken | string | ProviderAnthropicToken>(
     provider.provider_name === 'azure_openai'
       ? { openai_api_base: '', openai_api_key: '' }
-      : '',
+      : provider.provider_name === 'anthropic'
+        ? { anthropic_api_key: '' }
+        : '',
   )
   const id = `${provider.provider_name}-${provider.provider_type}`
   const isOpen = id === activeId
@@ -54,6 +64,8 @@ const ProviderItem = ({
     }
     if (provider.provider_name === ProviderName.OPENAI)
       return provider.token
+    if (provider.provider_name === ProviderName.ANTHROPIC)
+      return provider.token?.anthropic_api_key
   }
   const handleUpdateToken = async () => {
     if (loading)
@@ -81,7 +93,7 @@ const ProviderItem = ({
         <div className={cn(s[`icon-${icon}`], 'mr-3 w-6 h-6 rounded-md')} />
         <div className='grow text-sm font-medium text-gray-800'>{name}</div>
         {
-          providerTokenHasSetted() && !comingSoon && !isOpen && (
+          providerTokenHasSetted() && !comingSoon && !isOpen && provider.provider_name !== ProviderName.ANTHROPIC && (
             <div className='flex items-center mr-4'>
               {!isValid && <div className='text-xs text-[#D92D20]'>{t('common.provider.invalidApiKey')}</div>}
               <Indicator color={!isValid ? 'red' : 'green'} className='ml-2' />
@@ -89,7 +101,27 @@ const ProviderItem = ({
           )
         }
         {
-          !comingSoon && !isOpen && (
+          (providerTokenHasSetted() && !comingSoon && !isOpen && provider.provider_name === ProviderName.ANTHROPIC) && (
+            <div className='flex items-center mr-4'>
+              {
+                providedOpenaiProvider?.is_valid
+                  ? !isValid
+                    ? <div className='text-xs text-[#D92D20]'>{t('common.provider.invalidApiKey')}</div>
+                    : null
+                  : <div className='text-xs text-[#DC6803]'>{t('common.provider.anthropic.notEnabled')}</div>
+              }
+              <Indicator color={
+                providedOpenaiProvider?.is_valid
+                  ? isValid
+                    ? 'green'
+                    : 'red'
+                  : 'yellow'
+              } className='ml-2' />
+            </div>
+          )
+        }
+        {
+          !comingSoon && !isOpen && provider.provider_name !== ProviderName.ANTHROPIC && (
             <div className='
               px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
               text-xs font-medium text-gray-700 flex items-center
@@ -97,6 +129,34 @@ const ProviderItem = ({
               {providerTokenHasSetted() ? t('common.provider.editKey') : t('common.provider.addKey')}
             </div>
           )
+        }
+        {
+          (!comingSoon && !isOpen && provider.provider_name === ProviderName.ANTHROPIC)
+            ? providedOpenaiProvider?.is_enabled
+              ? (
+                <div className='
+                  px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
+                  text-xs font-medium text-gray-700 flex items-center
+                ' onClick={() => providedOpenaiProvider.is_valid && onActive(id)}>
+                  {providerTokenHasSetted() ? t('common.provider.editKey') : t('common.provider.addKey')}
+                </div>
+              )
+              : (
+                <Tooltip
+                  htmlContent={<div className='w-[320px]'>
+                    {t('common.provider.anthropic.enableTip')}
+                  </div>}
+                  position='bottom'
+                  selector='anthropic-provider-enable-top-tooltip'>
+                  <div className='
+                    px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-not-allowed
+                    text-xs font-medium text-gray-700 flex items-center opacity-50
+                  '>
+                    {t('common.provider.addKey')}
+                  </div>
+                </Tooltip>
+              )
+            : null
         }
         {
           comingSoon && !isOpen && (
@@ -145,6 +205,29 @@ const ProviderItem = ({
             onValidatedStatus={v => setValidatedStatus(v)}
             onTokenChange={v => setToken(v)}
           />
+        )
+      }
+      {
+        provider.provider_name === ProviderName.ANTHROPIC && isOpen && (
+          <AnthropicProvider
+            provider={provider}
+            onValidatedStatus={v => setValidatedStatus(v)}
+            onTokenChange={v => setToken(v)}
+          />
+        )
+      }
+      {
+        provider.provider_name === ProviderName.ANTHROPIC && !isOpen && providerTokenHasSetted() && providedOpenaiProvider?.is_valid && (
+          <div className='px-4 py-3 text-[13px] font-medium text-gray-700'>
+            {t('common.provider.anthropic.using')} {providerNameMap[providedOpenaiProvider.provider_name as string]}
+          </div>
+        )
+      }
+      {
+        provider.provider_name === ProviderName.ANTHROPIC && !isOpen && providerTokenHasSetted() && !providedOpenaiProvider?.is_valid && (
+          <div className='px-4 py-3 bg-[#FFFAEB] text-[13px] font-medium text-gray-700'>
+            {t('common.provider.anthropic.enableTip')}
+          </div>
         )
       }
     </div>

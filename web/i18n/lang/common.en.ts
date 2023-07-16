@@ -54,7 +54,7 @@ const translation = {
       maxTokenTip:
         'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
-      setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model 4,000.',
+      setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model {{maxToken}}.',
     },
     tone: {
       Creative: 'Creative',
@@ -179,6 +179,22 @@ const translation = {
       usedUp: 'Trial quota used up. Add own Model Provider.',
       useYourModel: 'Currently using own Model Provider.',
       close: 'Close',
+    },
+    anthropicHosted: {
+      anthropicHosted: 'Anthropic Claude',
+      onTrial: 'ON TRIAL',
+      exhausted: 'QUOTA EXHAUSTED',
+      desc: 'Powerful model, which excels at a wide range of tasks from sophisticated dialogue and creative content generation to detailed instruction.',
+      callTimes: 'Call times',
+      usedUp: 'Trial quota used up. Add own Model Provider.',
+      useYourModel: 'Currently using own Model Provider.',
+      close: 'Close',
+    },
+    anthropic: {
+      using: 'The embedding capability is using',
+      enableTip: 'To enable the Anthropic model, you need to bind to OpenAI or Azure OpenAI Service first.',
+      notEnabled: 'Not enabled',
+      keyFrom: 'Get your API key from Anthropic',
     },
     encrypted: {
       front: 'Your API KEY will be encrypted and stored using',

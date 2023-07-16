@@ -3,7 +3,7 @@ import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
   IWorkspace, LangGeniusVersionResponse, Member,
-  OauthResponse, Provider, ProviderAzureToken, TenantInfoResponse,
+  OauthResponse, Provider, ProviderAnthropicToken, ProviderAzureToken, TenantInfoResponse,
   UserProfileOriginResponse,
 } from '@/models/common'
 import type {
@@ -58,7 +58,7 @@ export const fetchProviders: Fetcher<Provider[] | null, { url: string; params: R
 export const validateProviderKey: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: { token: string } }> = ({ url, body }) => {
   return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
 }
-export const updateProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: string; body: { token: string | ProviderAzureToken } }> = ({ url, body }) => {
+export const updateProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: string; body: { token: string | ProviderAzureToken | ProviderAnthropicToken } }> = ({ url, body }) => {
   return post(url, { body }) as Promise<UpdateOpenAIKeyResponse>
 }
 

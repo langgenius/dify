@@ -54,7 +54,7 @@ const translation = {
       maxTokenTip:
         '生成的最大令牌数取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 半个中文字符。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
-      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 4,000。',
+      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}}。',
     },
     tone: {
       Creative: '创意',
@@ -179,6 +179,22 @@ const translation = {
       usedUp: '试用额度已用完，请在下方添加自己的模型供应商',
       useYourModel: '当前正在使用你自己的模型供应商。',
       close: '关闭',
+    },
+    anthropicHosted: {
+      anthropicHosted: 'Anthropic Claude',
+      onTrial: '体验',
+      exhausted: '超出限额',
+      desc: '功能强大的模型，擅长执行从复杂对话和创意内容生成到详细指导的各种任务。',
+      callTimes: '调用次数',
+      usedUp: '试用额度已用完，请在下方添加自己的模型供应商',
+      useYourModel: '当前正在使用你自己的模型供应商。',
+      close: '关闭',
+    },
+    anthropic: {
+      using: '嵌入能力正在使用',
+      enableTip: '要启用 Anthropic 模型，您需要先绑定 OpenAI 或 Azure OpenAI 服务。',
+      notEnabled: '未启用',
+      keyFrom: '从 Anthropic 获取您的 API 密钥',
     },
     encrypted: {
       front: '密钥将使用 ',
