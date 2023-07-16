@@ -50,7 +50,8 @@ DEFAULTS = {
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
     'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
-    'DEFAULT_LLM_PROVIDER': 'openai'
+    'DEFAULT_LLM_PROVIDER': 'openai',
+    'TENANT_DOCUMENT_COUNT': 100
 }
 
 
@@ -206,6 +207,8 @@ class Config:
         self.NOTION_INTEGRATION_TYPE = get_env('NOTION_INTEGRATION_TYPE')
         self.NOTION_INTERNAL_SECRET = get_env('NOTION_INTERNAL_SECRET')
         self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
+
+        self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
 
 
 class CloudEditionConfig(Config):
