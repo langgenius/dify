@@ -552,6 +552,10 @@ const Main: FC<IMainProps> = ({
     )
   }
 
+  const difyIcon = (
+    <div className={s.difyHeader}></div>
+  )
+
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
@@ -562,7 +566,8 @@ const Main: FC<IMainProps> = ({
     <div>
       <Header
         title={siteInfo.title}
-        icon={siteInfo.icon || ''}
+        icon=''
+        customerIcon={difyIcon}
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
         isMobile={isMobile}
@@ -624,6 +629,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
+                    answerIconClassName={s.difyIcon}
                   />
                 </div>
               </div>)
