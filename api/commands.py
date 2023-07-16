@@ -18,7 +18,8 @@ from models.model import Account
 import secrets
 import base64
 
-from models.provider import Provider
+from models.provider import Provider, ProviderName
+from services.provider_service import ProviderService
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -193,9 +194,40 @@ def recreate_all_dataset_indexes():
     click.echo(click.style('Congratulations! Recreate {} dataset indexes.'.format(recreate_count), fg='green'))
 
 
+@click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
+def sync_anthropic_hosted_providers():
+    click.echo(click.style('Start sync anthropic hosted providers.', fg='green'))
+    count = 0
+
+    page = 1
+    while True:
+        try:
+            tenants = db.session.query(Tenant).order_by(Tenant.created_at.desc()).paginate(page=page, per_page=50)
+        except NotFound:
+            break
+
+        page += 1
+        for tenant in tenants:
+            try:
+                click.echo('Syncing tenant anthropic hosted provider: {}'.format(tenant.id))
+                ProviderService.create_system_provider(
+                    tenant,
+                    ProviderName.ANTHROPIC.value,
+                    current_app.config['ANTHROPIC_HOSTED_QUOTA_LIMIT'],
+                    True
+                )
+                count += 1
+            except Exception as e:
+                click.echo(click.style('Sync tenant anthropic hosted provider error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                continue
+
+    click.echo(click.style('Congratulations! Synced {} anthropic hosted providers.'.format(count), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(generate_invitation_codes)
     app.cli.add_command(reset_encrypt_key_pair)
     app.cli.add_command(recreate_all_dataset_indexes)
+    app.cli.add_command(sync_anthropic_hosted_providers)

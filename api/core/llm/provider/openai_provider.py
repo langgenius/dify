@@ -4,6 +4,8 @@ from typing import Optional, Union
 import openai
 from openai.error import AuthenticationError, OpenAIError
 
+from core import hosted_llm_credentials
+from core.llm.error import ProviderTokenNotInitError
 from core.llm.moderation import Moderation
 from core.llm.provider.base import BaseProvider
 from core.llm.provider.errors import ValidateFailedError
@@ -42,3 +44,12 @@ class OpenAIProvider(BaseProvider):
         except Exception as ex:
             logging.exception('OpenAI config validation failed')
             raise ex
+
+    def get_hosted_credentials(self) -> Union[str | dict]:
+        if not hosted_llm_credentials.openai or not hosted_llm_credentials.openai.api_key:
+            raise ProviderTokenNotInitError(
+                f"No valid {self.get_provider_name().value} model provider credentials found. "
+                f"Please go to Settings -> Model Provider to complete your provider credentials."
+            )
+
+        return hosted_llm_credentials.openai.api_key

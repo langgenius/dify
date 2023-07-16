@@ -1,6 +1,8 @@
 from _decimal import Decimal
 
 models = {
+    'claude-instant-1': 'anthropic',  # 100,000 tokens
+    'claude-2': 'anthropic',  # 100,000 tokens
     'gpt-4': 'openai',  # 8,192 tokens
     'gpt-4-32k': 'openai',  # 32,768 tokens
     'gpt-3.5-turbo': 'openai',  # 4,096 tokens
@@ -10,10 +12,13 @@ models = {
     'text-curie-001': 'openai',  # 2,049 tokens
     'text-babbage-001': 'openai',  # 2,049 tokens
     'text-ada-001': 'openai',  # 2,049 tokens
-    'text-embedding-ada-002': 'openai'  # 8191 tokens, 1536 dimensions
+    'text-embedding-ada-002': 'openai',  # 8191 tokens, 1536 dimensions
+    'whisper-1': 'openai'
 }
 
 max_context_token_length = {
+    'claude-instant-1': 100000,
+    'claude-2': 100000,
     'gpt-4': 8192,
     'gpt-4-32k': 32768,
     'gpt-3.5-turbo': 4096,
@@ -23,17 +28,21 @@ max_context_token_length = {
     'text-curie-001': 2049,
     'text-babbage-001': 2049,
     'text-ada-001': 2049,
-    'text-embedding-ada-002': 8191
+    'text-embedding-ada-002': 8191,
 }
 
 models_by_mode = {
     'chat': [
+        'claude-instant-1',  # 100,000 tokens
+        'claude-2',  # 100,000 tokens
         'gpt-4',  # 8,192 tokens
         'gpt-4-32k',  # 32,768 tokens
         'gpt-3.5-turbo',  # 4,096 tokens
         'gpt-3.5-turbo-16k',  # 16,384 tokens
     ],
     'completion': [
+        'claude-instant-1',  # 100,000 tokens
+        'claude-2',  # 100,000 tokens
         'gpt-4',  # 8,192 tokens
         'gpt-4-32k',  # 32,768 tokens
         'gpt-3.5-turbo',  # 4,096 tokens
@@ -52,6 +61,14 @@ models_by_mode = {
 model_currency = 'USD'
 
 model_prices = {
+    'claude-instant-1': {
+        'prompt': Decimal('0.00163'),
+        'completion': Decimal('0.00551'),
+    },
+    'claude-2': {
+        'prompt': Decimal('0.01102'),
+        'completion': Decimal('0.03268'),
+    },
     'gpt-4': {
         'prompt': Decimal('0.03'),
         'completion': Decimal('0.06'),

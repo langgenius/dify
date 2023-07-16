@@ -23,6 +23,10 @@ class LLMGenerator:
     @classmethod
     def generate_conversation_name(cls, tenant_id: str, query, answer):
         prompt = CONVERSATION_TITLE_PROMPT
+
+        if len(query) > 2000:
+            query = query[:300] + "...[TRUNCATED]..." + query[-300:]
+
         prompt = prompt.format(query=query)
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
@@ -52,7 +56,17 @@ class LLMGenerator:
             if not message.answer:
                 continue
 
-            message_qa_text = "Human:" + message.query + "\nAI:" + message.answer + "\n"
+            if len(message.query) > 2000:
+                query = message.query[:300] + "...[TRUNCATED]..." + message.query[-300:]
+            else:
+                query = message.query
+
+            if len(message.answer) > 2000:
+                answer = message.answer[:300] + "...[TRUNCATED]..." + message.answer[-300:]
+            else:
+                answer = message.answer
+
+            message_qa_text = "\n\nHuman:" + query + "\n\nAssistant:" + answer
             if rest_tokens - TokenCalculator.get_num_tokens(model, context + message_qa_text) > 0:
                 context += message_qa_text
 
