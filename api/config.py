@@ -207,6 +207,8 @@ class Config:
         self.NOTION_INTERNAL_SECRET = get_env('NOTION_INTERNAL_SECRET')
         self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
 
+        self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
+
 
 class CloudEditionConfig(Config):
 
