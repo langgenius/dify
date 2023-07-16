@@ -3,6 +3,7 @@ import React from 'react'
 import AppIcon from '@/app/components/base/app-icon'
 export type IHeaderProps = {
   title: string
+  customerIcon?: React.ReactNode
   icon: string
   icon_background: string
   isMobile?: boolean
@@ -11,6 +12,7 @@ export type IHeaderProps = {
 const Header: FC<IHeaderProps> = ({
   title,
   isMobile,
+  customerIcon,
   icon,
   icon_background,
   isEmbedScene = false,
@@ -25,7 +27,7 @@ const Header: FC<IHeaderProps> = ({
       >
         <div></div>
         <div className="flex items-center space-x-2">
-          <AppIcon size="small" icon={icon} background={icon_background} />
+          {customerIcon || <AppIcon size="small" icon={icon} background={icon_background} />}
           <div
             className={`text-sm text-gray-800 font-bold ${
               isEmbedScene ? 'text-white' : ''
