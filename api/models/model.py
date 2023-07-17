@@ -130,6 +130,22 @@ class AppModelConfig(db.Model):
     def agent_mode_dict(self) -> dict:
         return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
 
+    def to_dict(self) -> dict:
+        return {
+            "provider": "",
+            "model_id": "",
+            "configs": {},
+            "opening_statement": self.opening_statement,
+            "suggested_questions": self.suggested_questions_list,
+            "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
+            "speech_to_text": self.speech_to_text_dict,
+            "more_like_this": self.more_like_this_dict,
+            "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
+            "model": self.model_dict,
+            "user_input_form": self.user_input_form_list,
+            "pre_prompt": self.pre_prompt,
+            "agent_mode": self.agent_mode_dict
+        }
 
 class RecommendedApp(db.Model):
     __tablename__ = 'recommended_apps'
