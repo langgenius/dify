@@ -18,7 +18,7 @@ conversation_fields = {
     'status': fields.String,
     'introduction': fields.String,
     'created_at': TimestampField,
-    'agent_mode': fields.Raw,  # todo ADD AGENT MODE INFO
+    'model_config': fields.Raw,
 }
 
 conversation_infinite_scroll_pagination_fields = {
@@ -60,7 +60,12 @@ class UniversalChatConversationApi(UniversalChatResource):
     def delete(self, universal_app, c_id):
         app_model = universal_app
         conversation_id = str(c_id)
-        ConversationService.delete(app_model, conversation_id, current_user)
+
+        try:
+            ConversationService.delete(app_model, conversation_id, current_user)
+        except ConversationNotExistsError:
+            raise NotFound("Conversation Not Exists.")
+
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}, 204
@@ -110,4 +115,4 @@ api.add_resource(UniversalChatConversationRenameApi, '/universal-chat/conversati
 api.add_resource(UniversalChatConversationListApi, '/universal-chat/conversations')
 api.add_resource(UniversalChatConversationApi, '/universal-chat/conversations/<uuid:c_id>')
 api.add_resource(UniversalChatConversationPinApi, '/universal-chat/conversations/<uuid:c_id>/pin')
-api.add_resource(UniversalChatConversationUnPinApi, '/universal-chat>/conversations/<uuid:c_id>/unpin')
+api.add_resource(UniversalChatConversationUnPinApi, '/universal-chat/conversations/<uuid:c_id>/unpin')

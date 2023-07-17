@@ -418,6 +418,11 @@ class Message(db.Model):
     def in_debug_mode(self):
         return self.override_model_configs is not None
 
+    @property
+    def agent_thoughts(self):
+        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id)\
+            .order_by(MessageAgentThought.position.asc()).all()
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
