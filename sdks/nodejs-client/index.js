@@ -20,11 +20,11 @@ export const routes = {
   },
   getConversationMessages: {
     method: "GET",
-    url: () => "/messages",
+    url: () => `/messages`,
   },
   getConversations: {
     method: "GET",
-    url: () => "/conversations",
+    url: () => `/conversations`,
   },
   renameConversation: {
     method: "PATCH",
