@@ -1,4 +1,9 @@
 from langchain import SerpAPIWrapper
+from pydantic import Field, BaseModel
+
+
+class OptimizedSerpAPIInput(BaseModel):
+    query: str = Field(..., description="search query.")
 
 
 class OptimizedSerpAPIWrapper(SerpAPIWrapper):
