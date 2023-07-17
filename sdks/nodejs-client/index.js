@@ -30,6 +30,10 @@ export const routes = {
     method: "PATCH",
     url: (conversation_id) => `/conversations/${conversation_id}`,
   },
+  deleteConversation: {
+    method: "DELETE",
+    url: (conversation_id) => `/conversations/${conversation_id}`,
+  },
 };
 
 export class DifyClient {
@@ -182,6 +186,15 @@ export class ChatClient extends DifyClient {
     return this.sendRequest(
       routes.renameConversation.method,
       routes.renameConversation.url(conversation_id),
+      data
+    );
+  }
+
+  deleteConversation(conversation_id, user) {
+    const data = { user };
+    return this.sendRequest(
+      routes.deleteConversation.method,
+      routes.deleteConversation.url(conversation_id),
       data
     );
   }
