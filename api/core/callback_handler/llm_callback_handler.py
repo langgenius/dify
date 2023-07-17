@@ -1,20 +1,18 @@
 import logging
 import time
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult, HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain.schema import LLMResult, BaseMessage, BaseLanguageModel
 
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
-from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
-from core.llm.streamable_open_ai import StreamableOpenAI
 
 
 class LLMCallbackHandler(BaseCallbackHandler):
     raise_error: bool = True
 
-    def __init__(self, llm: Union[StreamableOpenAI, StreamableChatOpenAI],
+    def __init__(self, llm: BaseLanguageModel,
                  conversation_message_task: ConversationMessageTask):
         self.llm = llm
         self.llm_message = LLMMessage()
@@ -69,9 +67,8 @@ class LLMCallbackHandler(BaseCallbackHandler):
         if not self.conversation_message_task.streaming:
             self.conversation_message_task.append_message_text(response.generations[0][0].text)
             self.llm_message.completion = response.generations[0][0].text
-            self.llm_message.completion_tokens = response.llm_output['token_usage']['completion_tokens']
-        else:
-            self.llm_message.completion_tokens = self.llm.get_num_tokens(self.llm_message.completion)
+
+        self.llm_message.completion_tokens = self.llm.get_num_tokens(self.llm_message.completion)
 
         self.conversation_message_task.save_message(self.llm_message)
 

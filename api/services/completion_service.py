@@ -140,6 +140,7 @@ class CompletionService:
                     suggested_questions=json.dumps(model_config['suggested_questions']),
                     suggested_questions_after_answer=json.dumps(model_config['suggested_questions_after_answer']),
                     more_like_this=json.dumps(model_config['more_like_this']),
+                    sensitive_word_avoidance=json.dumps(model_config['sensitive_word_avoidance']),
                     model=json.dumps(model_config['model']),
                     user_input_form=json.dumps(model_config['user_input_form']),
                     pre_prompt=model_config['pre_prompt'],
@@ -226,8 +227,8 @@ class CompletionService:
 
     @classmethod
     def countdown_and_close(cls, worker_thread, pubsub, user, generate_task_id) -> threading.Thread:
-        # wait for 5 minutes to close the thread
-        timeout = 300
+        # wait for 10 minutes to close the thread
+        timeout = 600
 
         def close_pubsub():
             sleep_iterations = 0
@@ -467,16 +468,14 @@ class CompletionService:
     def get_agent_thought_response_data(cls, data: dict):
         response_data = {
             'event': 'agent_thought',
-            'id': data.get('agent_thought_id'),
+            'id': data.get('id'),
             'chain_id': data.get('chain_id'),
             'task_id': data.get('task_id'),
             'message_id': data.get('message_id'),
             'position': data.get('position'),
             'thought': data.get('thought'),
-            'tool': data.get('tool'),  # todo use real dataset obj replace it
+            'tool': data.get('tool'),
             'tool_input': data.get('tool_input'),
-            'observation': data.get('observation'),
-            'answer': data.get('answer') if not data.get('thought') else '',
             'created_at': int(time.time())
         }
 

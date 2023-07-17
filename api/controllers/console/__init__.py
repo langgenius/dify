@@ -18,7 +18,10 @@ from .auth import login, oauth, data_source_oauth, activate
 from .datasets import datasets, datasets_document, datasets_segments, file, hit_testing, data_source
 
 # Import workspace controllers
-from .workspace import workspace, members, providers, account
+from .workspace import workspace, members, model_providers, account, tool_providers
 
 # Import explore controllers
 from .explore import installed_app, recommended_app, completion, conversation, message, parameter, saved_message, audio
+
+# Import universal chat controllers
+from .universal_chat import chat, conversation, message, parameter, audio

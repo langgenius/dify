@@ -3,6 +3,7 @@ from typing import List, Optional, Any, Dict
 from langchain.callbacks.manager import Callbacks
 from langchain.chat_models import ChatAnthropic
 from langchain.schema import BaseMessage, LLMResult
+from pydantic import root_validator
 
 from core.llm.wrappers.anthropic_wrapper import handle_anthropic_exceptions
 
@@ -11,6 +12,12 @@ class StreamableChatAnthropic(ChatAnthropic):
     """
     Wrapper around Anthropic's large language model.
     """
+
+    @root_validator()
+    def prepare_params(cls, values: Dict) -> Dict:
+        values['model_name'] = values.get('model')
+        values['max_tokens'] = values.get('max_tokens_to_sample')
+        return values
 
     @handle_anthropic_exceptions
     def generate(

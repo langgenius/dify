@@ -17,9 +17,15 @@ A single API encompassing plugin capabilities, context enhancement, and more, sa
 Visual data analysis, log review, and annotation for applications
 Dify is compatible with Langchain, meaning we'll gradually support multiple LLMs, currently supported:
 
-- GPT 3 (text-davinci-003)
-- GPT 3.5 Turbo(ChatGPT)
-- GPT-4
+* **OpenAI** ：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003
+
+* **Azure OpenAI**
+
+* **Antropic**：Claude2、Claude-instant
+> We've got 1000 free trial credits available for all cloud service users to try out the Claude model.Visit [Dify.ai](https://dify.ai) and
+try it now.
+
+* **hugging face Hub**：Coming soon.
 
 ## Use Cloud Services
 
