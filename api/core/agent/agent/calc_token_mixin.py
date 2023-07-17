@@ -5,6 +5,8 @@ from langchain.base_language import BaseLanguageModel
 from langchain.chat_models.openai import ChatOpenAI
 from langchain.schema import BaseMessage
 
+from core.constant import llm_constant
+
 
 class CalcTokenMixin:
 
@@ -21,7 +23,7 @@ class CalcTokenMixin:
         :return:
         """
         llm = cast(ChatOpenAI, llm)
-        llm_max_tokens = OpenAI.modelname_to_contextsize(llm.model_name)
+        llm_max_tokens = llm_constant.max_context_token_length[llm.model_name]
         completion_max_tokens = llm.max_tokens
         used_tokens = self.get_num_tokens_from_messages(llm, messages, **kwargs)
         rest_tokens = llm_max_tokens - completion_max_tokens - used_tokens

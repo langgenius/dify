@@ -128,7 +128,9 @@ class Completion:
         # the output of the agent can be used directly as the main output content without calling LLM again
         if not app_model_config.pre_prompt and agent_execute_result \
                 and agent_execute_result.strategy != PlanningStrategy.ROUTER:
-            final_llm = FakeLLM(response=agent_execute_result.output, streaming=streaming)
+            final_llm = FakeLLM(response=agent_execute_result.output,
+                                origin_llm=agent_execute_result.configuration.llm,
+                                streaming=streaming)
             final_llm.callbacks = cls.get_llm_callbacks(final_llm, streaming, conversation_message_task)
             response = final_llm.generate([[HumanMessage(content=query)]])
             return response

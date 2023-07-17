@@ -65,7 +65,8 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         # kwargs={}
         if self._current_loop and self._current_loop.status == 'llm_started':
             self._current_loop.status = 'llm_end'
-            self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
+            if response.llm_output:
+                self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
             completion_generation = response.generations[0][0]
             if isinstance(completion_generation, ChatGeneration):
                 completion_message = completion_generation.message
@@ -77,7 +78,8 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             else:
                 self._current_loop.completion = completion_generation.text
 
-            self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
+            if response.llm_output:
+                self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

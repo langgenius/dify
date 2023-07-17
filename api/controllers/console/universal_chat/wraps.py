@@ -16,7 +16,7 @@ def universal_chat_app_required(view=None):
             # get universal chat app
             universal_app = db.session.query(App).filter(
                 App.tenant_id == current_user.current_tenant_id,
-                App.is_universal is True
+                App.is_universal == True
             ).first()
 
             if universal_app is None:
@@ -28,9 +28,10 @@ def universal_chat_app_required(view=None):
                     is_universal=True,
                     icon='',
                     icon_background='',
-                    description='Universal Chat',
                     api_rpm=0,
                     api_rph=0,
+                    enable_site=False,
+                    enable_api=False,
                     status='normal'
                 )
 
@@ -60,12 +61,15 @@ def universal_chat_app_required(view=None):
                     }),
                     user_input_form=json.dumps([]),
                     pre_prompt=None,
-                    agent_mode=json.dumps({"enabled": True, "strategy": None, "tools": []}),
+                    agent_mode=json.dumps({"enabled": True, "strategy": "function_call", "tools": []}),
                 )
 
                 app_model_config.app_id = universal_app.id
                 db.session.add(app_model_config)
                 db.session.flush()
+
+                universal_app.app_model_config_id = app_model_config.id
+                db.session.commit()
 
             return view(universal_app, *args, **kwargs)
         return decorated

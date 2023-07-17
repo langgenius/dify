@@ -3,7 +3,7 @@ from typing import List, Optional, Any, Mapping
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.chat_models.base import SimpleChatModel
-from langchain.schema import BaseMessage, ChatResult, AIMessage, ChatGeneration
+from langchain.schema import BaseMessage, ChatResult, AIMessage, ChatGeneration, BaseLanguageModel
 
 
 class FakeLLM(SimpleChatModel):
@@ -12,6 +12,7 @@ class FakeLLM(SimpleChatModel):
     streaming: bool = False
     """Whether to stream the results or not."""
     response: str
+    origin_llm: Optional[BaseLanguageModel] = None
 
     @property
     def _llm_type(self) -> str:
@@ -32,10 +33,7 @@ class FakeLLM(SimpleChatModel):
         return {"response": self.response}
 
     def get_num_tokens(self, text: str) -> int:
-        return 0
-
-    def get_messages_tokens(self, messages: List[BaseMessage]) -> int:
-        return 0
+        return self.origin_llm.get_num_tokens(text) if self.origin_llm else 0
 
     def _generate(
         self,

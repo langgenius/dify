@@ -11,8 +11,11 @@ from pydantic import BaseModel, Extra
 from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMultiAIFunctionCallAgent
+from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
+
+from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
 class PlanningStrategy(str, enum.Enum):
@@ -44,6 +47,7 @@ class AgentConfiguration(BaseModel):
 class AgentExecuteResult(BaseModel):
     strategy: PlanningStrategy
     output: str
+    configuration: AgentConfiguration
 
 
 class AgentExecutor:
@@ -56,6 +60,7 @@ class AgentExecutor:
             agent = AutoSummarizingStructuredChatAgent.from_llm_and_tools(
                 llm=self.configuration.llm,
                 tools=self.configuration.tools,
+                output_parser=StructuredChatOutputParser(),
                 summary_llm=self.configuration.summary_llm,
                 verbose=True
             )
@@ -76,6 +81,7 @@ class AgentExecutor:
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
+            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
                 llm=self.configuration.llm,
                 tools=self.configuration.tools,
@@ -105,5 +111,6 @@ class AgentExecutor:
 
         return AgentExecuteResult(
             output=output,
-            strategy=self.configuration.strategy
+            strategy=self.configuration.strategy,
+            configuration=self.configuration
         )

@@ -10,9 +10,9 @@ class AgentLoop(BaseModel):
     tool_output: str = None
 
     prompt: str = None
-    prompt_tokens: int = None
+    prompt_tokens: int = 0
     completion: str = None
-    completion_tokens: int = None
+    completion_tokens: int = 0
 
     latency: float = None
 

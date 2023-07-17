@@ -119,7 +119,10 @@ def get_url(url: str) -> str:
 
     head_response = requests.head(url, headers=headers, allow_redirects=True)
 
-    # 检查响应的Content-Type头部是否在支持的类型范围内
+    if head_response.status_code != 200:
+        return "URL returned status code {}.".format(head_response.status_code)
+
+    # check content-type
     main_content_type = head_response.headers.get('Content-Type').split(';')[0].strip()
     if main_content_type not in supported_content_types:
         return "Unsupported content-type [{}] of URL.".format(main_content_type)
