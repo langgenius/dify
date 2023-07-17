@@ -316,7 +316,7 @@ class AppModelConfigService:
         if "strategy" not in config["agent_mode"] or not config["agent_mode"]["strategy"]:
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
 
-        if config["agent_mode"]["strategy"] not in PlanningStrategy.__members__:
+        if config["agent_mode"]["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
             raise ValueError("strategy in agent_mode must be in the specified strategy list")
 
         if "tools" not in config["agent_mode"] or not config["agent_mode"]["tools"]:

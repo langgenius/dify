@@ -6,7 +6,7 @@ from typing import Any, Dict, List, Union, Optional
 
 from langchain.agents import openai_functions_agent, openai_functions_multi_agent
 from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentAction, AgentFinish, LLMResult
+from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.conversation_message_task import ConversationMessageTask
@@ -66,12 +66,17 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         if self._current_loop and self._current_loop.status == 'llm_started':
             self._current_loop.status = 'llm_end'
             self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
-            completion_message = response.generations[0][0].message
-            if 'function_call' in completion_message.additional_kwargs:
-                self._current_loop.completion \
-                    = json.dumps({'function_call': completion_message.additional_kwargs['function_call']})
+            completion_generation = response.generations[0][0]
+            if isinstance(completion_generation, ChatGeneration):
+                completion_message = completion_generation.message
+                if 'function_call' in completion_message.additional_kwargs:
+                    self._current_loop.completion \
+                        = json.dumps({'function_call': completion_message.additional_kwargs['function_call']})
+                else:
+                    self._current_loop.completion = response.generations[0][0].text
             else:
-                self._current_loop.completion = response.generations[0][0].text
+                self._current_loop.completion = completion_generation.text
+
             self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
 
     def on_llm_error(

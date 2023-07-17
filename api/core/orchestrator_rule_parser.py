@@ -30,7 +30,6 @@ class OrchestratorRuleParser:
     def __init__(self, tenant_id: str, app_model_config: AppModelConfig):
         self.tenant_id = tenant_id
         self.app_model_config = app_model_config
-        self.agent_summary_model_name = "gpt-3.5-turbo-16k"
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                        rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
@@ -71,7 +70,7 @@ class OrchestratorRuleParser:
 
             summary_llm = LLMBuilder.to_llm(
                 tenant_id=self.tenant_id,
-                model_name=self.agent_summary_model_name,
+                model_name=agent_model_name,
                 temperature=0,
                 max_tokens=500,
                 callbacks=[DifyStdOutCallbackHandler()]
