@@ -143,6 +143,7 @@ class Completion:
         prompt, stop_words = cls.get_main_llm_prompt(
             mode=mode,
             llm=final_llm,
+            model=app_model_config.model_dict,
             pre_prompt=app_model_config.pre_prompt,
             query=query,
             inputs=inputs,
@@ -154,6 +155,7 @@ class Completion:
 
         cls.recale_llm_max_tokens(
             final_llm=final_llm,
+            model=app_model_config.model_dict,
             prompt=prompt,
             mode=mode
         )
@@ -163,16 +165,18 @@ class Completion:
         return response
 
     @classmethod
-    def get_main_llm_prompt(cls, mode: str, llm: BaseLanguageModel, pre_prompt: str, query: str, inputs: dict,
+    def get_main_llm_prompt(cls, mode: str, llm: BaseLanguageModel, model: dict,
+                            pre_prompt: str, query: str, inputs: dict,
                             agent_execute_result: Optional[AgentExecuteResult],
                             memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]) -> \
             Tuple[Union[str | List[BaseMessage]], Optional[List[str]]]:
         if mode == 'completion':
             prompt_template = JinjaPromptTemplate.from_template(
-                template=("""Use the following CONTEXT as your learned knowledge:
-[CONTEXT]
+                template=("""Use the following context as your learned knowledge, inside <context></context> XML tags.
+
+<context>
 {{context}}
-[END CONTEXT]
+</context>
 
 When answer to user:
 - If you don't know, just say that you don't know.
@@ -217,10 +221,11 @@ And answer according to the language of the user's question.
 
             if agent_execute_result:
                 human_inputs['context'] = agent_execute_result.output
-                human_message_prompt += """Use the following CONTEXT as your learned knowledge.
-[CONTEXT]
+                human_message_prompt += """Use the following context as your learned knowledge, inside <context></context> XML tags.
+
+<context>
 {{context}}
-[END CONTEXT]
+</context>
 
 When answer to user:
 - If you don't know, just say that you don't know.
@@ -232,7 +237,7 @@ And answer according to the language of the user's question.
             if pre_prompt:
                 human_message_prompt += pre_prompt
 
-            query_prompt = "\nHuman: {{query}}\nAI: "
+            query_prompt = "\n\nHuman: {{query}}\n\nAssistant: "
 
             if memory:
                 # append chat histories
@@ -241,12 +246,17 @@ And answer according to the language of the user's question.
                     inputs=human_inputs
                 )
 
-                curr_message_tokens = memory.llm.get_messages_tokens([tmp_human_message])
-                rest_tokens = llm_constant.max_context_token_length[memory.llm.model_name] \
-                              - memory.llm.max_tokens - curr_message_tokens
+                curr_message_tokens = memory.llm.get_num_tokens_from_messages([tmp_human_message])
+                model_name = model['name']
+                max_tokens = model.get("completion_params").get('max_tokens')
+                rest_tokens = llm_constant.max_context_token_length[model_name] \
+                              - max_tokens - curr_message_tokens
                 rest_tokens = max(rest_tokens, 0)
                 histories = cls.get_history_messages_from_memory(memory, rest_tokens)
-                human_message_prompt += "\n\n" + histories
+                human_message_prompt += "\n\n" if human_message_prompt else ""
+                human_message_prompt += "Here is the chat histories between human and assistant, " \
+                                        "inside <histories></histories> XML tags.\n\n<histories>"
+                human_message_prompt += histories + "</histories>"
 
             human_message_prompt += query_prompt
 
@@ -311,13 +321,15 @@ And answer according to the language of the user's question.
             model=app_model_config.model_dict
         )
 
-        model_limited_tokens = llm_constant.max_context_token_length[llm.model_name]
-        max_tokens = llm.max_tokens
+        model_name = app_model_config.model_dict.get("name")
+        model_limited_tokens = llm_constant.max_context_token_length[model_name]
+        max_tokens = app_model_config.model_dict.get("completion_params").get('max_tokens')
 
         # get prompt without memory and context
         prompt, _ = cls.get_main_llm_prompt(
             mode=mode,
             llm=llm,
+            model=app_model_config.model_dict,
             pre_prompt=app_model_config.pre_prompt,
             query=query,
             inputs=inputs,
@@ -336,16 +348,17 @@ And answer according to the language of the user's question.
         return rest_tokens
 
     @classmethod
-    def recale_llm_max_tokens(cls, final_llm: Union[StreamableOpenAI, StreamableChatOpenAI],
+    def recale_llm_max_tokens(cls, final_llm: BaseLanguageModel, model: dict,
                               prompt: Union[str, List[BaseMessage]], mode: str):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_limited_tokens = llm_constant.max_context_token_length[final_llm.model_name]
-        max_tokens = final_llm.max_tokens
+        model_name = model.get("name")
+        model_limited_tokens = llm_constant.max_context_token_length[model_name]
+        max_tokens = model.get("completion_params").get('max_tokens')
 
         if mode == 'completion' and isinstance(final_llm, BaseLLM):
             prompt_tokens = final_llm.get_num_tokens(prompt)
         else:
-            prompt_tokens = final_llm.get_messages_tokens(prompt)
+            prompt_tokens = final_llm.get_num_tokens_from_messages(prompt)
 
         if prompt_tokens + max_tokens > model_limited_tokens:
             max_tokens = max(model_limited_tokens - prompt_tokens, 16)
@@ -354,9 +367,10 @@ And answer according to the language of the user's question.
     @classmethod
     def generate_more_like_this(cls, task_id: str, app: App, message: Message, pre_prompt: str,
                                 app_model_config: AppModelConfig, user: Account, streaming: bool):
-        llm: StreamableOpenAI = LLMBuilder.to_llm(
+
+        llm = LLMBuilder.to_llm_from_model(
             tenant_id=app.tenant_id,
-            model_name='gpt-3.5-turbo',
+            model=app_model_config.model_dict,
             streaming=streaming
         )
 
@@ -364,6 +378,7 @@ And answer according to the language of the user's question.
         original_prompt, _ = cls.get_main_llm_prompt(
             mode="completion",
             llm=llm,
+            model=app_model_config.model_dict,
             pre_prompt=pre_prompt,
             query=message.query,
             inputs=message.inputs,
@@ -395,6 +410,7 @@ And answer according to the language of the user's question.
 
         cls.recale_llm_max_tokens(
             final_llm=llm,
+            model=app_model_config.model_dict,
             prompt=prompt,
             mode='completion'
         )

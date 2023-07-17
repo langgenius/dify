@@ -184,7 +184,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {taskId}
               </div>)
             }
-            <Markdown content={content} />
+            <div className='flex'>
+              <div className='grow w-0'>
+                <Markdown content={content} />
+              </div>
+            </div>
             {messageId && (
               <div className='flex items-center justify-between mt-3'>
                 <div className='flex items-center'>

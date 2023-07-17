@@ -1,5 +1,5 @@
 # -*- coding:utf-8 -*-
-
+from flask import current_app
 from flask_login import login_required, current_user
 from flask_restful import Resource, reqparse, marshal_with, abort, fields, marshal
 
@@ -60,7 +60,8 @@ class MemberInviteEmailApi(Resource):
         inviter = current_user
 
         try:
-            RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role, inviter=inviter)
+            token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
+                                                      inviter=inviter)
             account = db.session.query(Account, TenantAccountJoin.role).join(
                 TenantAccountJoin, Account.id == TenantAccountJoin.account_id
             ).filter(Account.email == args['email']).first()
@@ -78,7 +79,16 @@ class MemberInviteEmailApi(Resource):
 
         # todo:413
 
-        return {'result': 'success', 'account': account}, 201
+        return {
+            'result': 'success',
+            'account': account,
+            'invite_url': '{}/activate?workspace_id={}&email={}&token={}'.format(
+                current_app.config.get("CONSOLE_WEB_URL"),
+                str(current_user.current_tenant_id),
+                invitee_email,
+                token
+            )
+        }, 201
 
 
 class MemberCancelInviteApi(Resource):
@@ -88,7 +98,7 @@ class MemberCancelInviteApi(Resource):
     @login_required
     @account_initialization_required
     def delete(self, member_id):
-        member = Account.query.get(str(member_id))
+        member = db.session.query(Account).filter(Account.id == str(member_id)).first()
         if not member:
             abort(404)
 

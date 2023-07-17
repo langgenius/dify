@@ -101,8 +101,8 @@ class MessageMoreLikeThisApi(WebApiResource):
             raise NotFound("Message Not Exists.")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
@@ -129,8 +129,8 @@ def compact_response(response: Union[dict | Generator]) -> Response:
                 yield "data: " + json.dumps(api.handle_error(NotFound("Message Not Exists.")).get_json()) + "\n\n"
             except MoreLikeThisDisabledError:
                 yield "data: " + json.dumps(api.handle_error(AppMoreLikeThisDisabledError()).get_json()) + "\n\n"
-            except ProviderTokenNotInitError:
-                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError()).get_json()) + "\n\n"
+            except ProviderTokenNotInitError as ex:
+                yield "data: " + json.dumps(api.handle_error(ProviderNotInitializeError(ex.description)).get_json()) + "\n\n"
             except QuotaExceededError:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
@@ -167,8 +167,8 @@ class MessageSuggestedQuestionApi(WebApiResource):
             raise NotFound("Conversation not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:

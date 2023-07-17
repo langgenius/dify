@@ -2,6 +2,8 @@
 import os
 from datetime import datetime
 
+from werkzeug.exceptions import Forbidden
+
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
     monkey.patch_all()
@@ -15,7 +17,7 @@ import flask_login
 from flask_cors import CORS
 
 from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage
+    ext_database, ext_storage, ext_mail
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
@@ -27,7 +29,7 @@ from events import event_handlers
 import core
 from config import Config, CloudEditionConfig
 from commands import register_commands
-from models.account import TenantAccountJoin
+from models.account import TenantAccountJoin, AccountStatus
 from models.model import Account, EndUser, App
 
 import warnings
@@ -83,6 +85,7 @@ def initialize_extensions(app):
     ext_celery.init_app(app)
     ext_session.init_app(app)
     ext_login.init_app(app)
+    ext_mail.init_app(app)
     ext_sentry.init_app(app)
 
 
@@ -100,6 +103,9 @@ def load_user(user_id):
         account = db.session.query(Account).filter(Account.id == account_id).first()
 
         if account:
+            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+                raise Forbidden('Account is banned or closed.')
+
             workspace_id = session.get('workspace_id')
             if workspace_id:
                 tenant_account_join = db.session.query(TenantAccountJoin).filter(
@@ -149,6 +155,10 @@ def register_blueprints(app):
     from controllers.web import bp as web_bp
     from controllers.console import bp as console_app_bp
 
+    CORS(service_api_bp,
+         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
+         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         )
     app.register_blueprint(service_api_bp)
 
     CORS(web_bp,

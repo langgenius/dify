@@ -17,7 +17,7 @@ class IndexBuilder:
 
             model_credentials = LLMBuilder.get_model_credentials(
                 tenant_id=dataset.tenant_id,
-                model_provider=LLMBuilder.get_default_provider(dataset.tenant_id),
+                model_provider=LLMBuilder.get_default_provider(dataset.tenant_id, 'text-embedding-ada-002'),
                 model_name='text-embedding-ada-002'
             )
 

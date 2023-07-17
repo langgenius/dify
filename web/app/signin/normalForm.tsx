@@ -2,16 +2,15 @@
 import React, { useEffect, useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { IS_CE_EDITION } from '@/config'
 import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
+import Toast from '../components/base/toast'
 import style from './page.module.css'
 // import Tooltip from '@/app/components/base/tooltip/index'
-import Toast from '../components/base/toast'
+import { IS_CE_EDITION, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
-import { apiPrefix } from '@/config'
 
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
@@ -91,8 +90,9 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      router.push('/')
-    } finally {
+      router.push('/apps')
+    }
+    finally {
       setIsLoading(false)
     }
   }
@@ -132,8 +132,8 @@ const NormalForm = () => {
   return (
     <>
       <div className="w-full mx-auto">
-        <h2 className="text-3xl font-normal text-gray-900">{t('login.pageTitle')}</h2>
-        <p className='mt-2 text-sm text-gray-600 '>{t('login.welcome')}</p>
+        <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
+        <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
       </div>
 
       <div className="w-full mx-auto mt-8">
@@ -145,7 +145,7 @@ const NormalForm = () => {
                   <Button
                     type='default'
                     disabled={isLoading}
-                    className='w-full'
+                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
                   >
                     <>
                       <span className={
@@ -154,7 +154,7 @@ const NormalForm = () => {
                           'w-5 h-5 mr-2',
                         )
                       } />
-                      <span className="truncate">{t('login.withGitHub')}</span>
+                      <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
                     </>
                   </Button>
                 </a>
@@ -164,7 +164,7 @@ const NormalForm = () => {
                   <Button
                     type='default'
                     disabled={isLoading}
-                    className='w-full'
+                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
                   >
                     <>
                       <span className={
@@ -173,7 +173,7 @@ const NormalForm = () => {
                           'w-5 h-5 mr-2',
                         )
                       } />
-                      <span className="truncate">{t('login.withGoogle')}</span>
+                      <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
                     </>
                   </Button>
                 </a>
@@ -192,9 +192,9 @@ const NormalForm = () => {
                 </div>
               </div> */}
 
-              <form className="space-y-6" onSubmit={() => { }}>
-                <div>
-                  <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <form onSubmit={() => { }}>
+                <div className='mb-5'>
+                  <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
                     {t('login.email')}
                   </label>
                   <div className="mt-1">
@@ -204,13 +204,14 @@ const NormalForm = () => {
                       id="email"
                       type="email"
                       autoComplete="email"
-                      className={'appearance-none block w-full px-3 py-2 border border-gray-300 focus:outline-none focus:ring-primary-500 focus:border-primary-500 rounded-md shadow-sm placeholder-gray-400 sm:text-sm'}
+                      placeholder={t('login.emailPlaceholder') || ''}
+                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                     />
                   </div>
                 </div>
 
-                <div>
-                  <label htmlFor="password" className="flex items-center justify-between text-sm font-medium text-gray-700">
+                <div className='mb-4'>
+                  <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                     <span>{t('login.password')}</span>
                     {/* <Tooltip
                       selector='forget-password'
@@ -235,10 +236,8 @@ const NormalForm = () => {
                       onChange={e => setPassword(e.target.value)}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
-                      className={`appearance-none block w-full px-3 py-2
-                  border border-gray-300
-                  focus:outline-none focus:ring-indigo-500 focus:border-indigo-500
-                  rounded-md shadow-sm placeholder-gray-400 sm:text-sm pr-10`}
+                      placeholder={t('login.passwordPlaceholder') || ''}
+                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                       <button
@@ -252,18 +251,19 @@ const NormalForm = () => {
                   </div>
                 </div>
 
-                <div>
+                <div className='mb-2'>
                   <Button
                     type='primary'
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
+                    className="w-full !fone-medium !text-sm"
                   >{t('login.signBtn')}</Button>
                 </div>
               </form>
             </>
           }
           {/*  agree to our Terms and Privacy Policy. */}
-          <div className="block mt-6 text-xs text-gray-600">
+          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
             <Link
