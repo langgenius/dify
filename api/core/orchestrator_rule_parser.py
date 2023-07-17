@@ -5,6 +5,7 @@ from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
+from pydantic import BaseModel, Field
 
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
@@ -17,7 +18,7 @@ from core.llm.llm_builder import LLMBuilder
 from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tool.provider.serpapi_provider import SerpAPIToolProvider
-from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper
+from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
@@ -224,15 +225,20 @@ class OrchestratorRuleParser:
                         "is not up to date."
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
+            args_schema=OptimizedSerpAPIInput,
             callbacks=[DifyStdOutCallbackHandler()]
         )
 
         return tool
 
     def to_wikipedia_tool(self) -> Optional[BaseTool]:
+        class WikipediaInput(BaseModel):
+            query: str = Field(..., description="search query.")
+
         return WikipediaQueryRun(
             name="wikipedia",
             api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
+            args_schema=WikipediaInput,
             callbacks=[DifyStdOutCallbackHandler()]
         )
 
