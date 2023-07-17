@@ -27,12 +27,10 @@ class StorageMock {
 let localStorage, sessionStorage
 
 try {
-  console.log('1')
   localStorage = globalThis.localStorage
   sessionStorage = globalThis.sessionStorage
 }
 catch (e) {
-  console.log('2')
   localStorage = new StorageMock()
   sessionStorage = new StorageMock()
 }
