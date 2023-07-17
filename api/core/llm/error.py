@@ -40,6 +40,9 @@ class ProviderTokenNotInitError(Exception):
     """
     description = "Provider Token Not Init"
 
+    def __init__(self, *args, **kwargs):
+        self.description = args[0] if args else self.description
+
 
 class QuotaExceededError(Exception):
     """

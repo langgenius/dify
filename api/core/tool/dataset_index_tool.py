@@ -30,7 +30,7 @@ class DatasetTool(BaseTool):
         else:
             model_credentials = LLMBuilder.get_model_credentials(
                 tenant_id=self.dataset.tenant_id,
-                model_provider=LLMBuilder.get_default_provider(self.dataset.tenant_id),
+                model_provider=LLMBuilder.get_default_provider(self.dataset.tenant_id, 'text-embedding-ada-002'),
                 model_name='text-embedding-ada-002'
             )
 
@@ -60,7 +60,7 @@ class DatasetTool(BaseTool):
     async def _arun(self, tool_input: str) -> str:
         model_credentials = LLMBuilder.get_model_credentials(
             tenant_id=self.dataset.tenant_id,
-            model_provider=LLMBuilder.get_default_provider(self.dataset.tenant_id),
+            model_provider=LLMBuilder.get_default_provider(self.dataset.tenant_id, 'text-embedding-ada-002'),
             model_name='text-embedding-ada-002'
         )
 
