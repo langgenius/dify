@@ -128,6 +128,9 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     startQuerying()
     const res: any = await fetchMoreLikeThis(messageId as string, isInstalledApp, installedAppId)
     setCompletionRes(res.answer)
+    setChildFeedback({
+      rating: null,
+    })
     setChildMessageId(res.id)
     stopQuerying()
   }
@@ -152,6 +155,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     }
   }, [controlClearMoreLikeThis])
 
+  // regeneration clear child
+  useEffect(() => {
+    if (isLoading)
+      setChildMessageId(null)
+  }, [isLoading])
+
   return (
     <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
       style={isTop
@@ -175,7 +184,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {taskId}
               </div>)
             }
-            <Markdown content={content} />
+            <div className='flex'>
+              <div className='grow w-0'>
+                <Markdown content={content} />
+              </div>
+            </div>
             {messageId && (
               <div className='flex items-center justify-between mt-3'>
                 <div className='flex items-center'>

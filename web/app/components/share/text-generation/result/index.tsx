@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useGetState } from 'ahooks'
 import { t } from 'i18next'
 import cn from 'classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
@@ -27,7 +27,7 @@ export type IResultProps = {
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
   taskId?: number
-  onCompleted: (taskId?: number, success?: boolean) => void
+  onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
 }
 
 const Result: FC<IResultProps> = ({
@@ -53,7 +53,7 @@ const Result: FC<IResultProps> = ({
       setResponsingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, setCompletionRes] = useState('')
+  const [completionRes, setCompletionRes, getCompletionRes] = useGetState('')
   const { notify } = Toast
   const isNoData = !completionRes
 
@@ -141,11 +141,11 @@ const Result: FC<IResultProps> = ({
       onCompleted: () => {
         setResponsingFalse()
         setMessageId(tempMessageId)
-        onCompleted(taskId, true)
+        onCompleted(getCompletionRes(), taskId, true)
       },
       onError() {
         setResponsingFalse()
-        onCompleted(taskId, false)
+        onCompleted(getCompletionRes(), taskId, false)
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
