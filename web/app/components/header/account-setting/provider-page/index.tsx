@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import ProviderItem from './provider-item'
 import OpenaiHostedProvider from './openai-hosted-provider'
+import AnthropicHostedProvider from './anthropic-hosted-provider'
 import type { ProviderHosted } from '@/models/common'
 import { fetchProviders } from '@/service/common'
 import { IS_CE_EDITION } from '@/config'
@@ -17,6 +18,10 @@ const providersMap: { [k: string]: any } = {
   'azure_openai-custom': {
     icon: 'azure',
     name: 'Azure OpenAI Service',
+  },
+  'anthropic-custom': {
+    icon: 'anthropic',
+    name: 'Anthropic',
   },
 }
 
@@ -65,6 +70,8 @@ const ProviderPage = () => {
     }
   })
   const providerHosted = data?.filter(provider => provider.provider_name === 'openai' && provider.provider_type === 'system')?.[0]
+  const anthropicHosted = data?.filter(provider => provider.provider_name === 'anthropic' && provider.provider_type === 'system')?.[0]
+  const providedOpenaiProvider = data?.find(provider => provider.is_enabled && (provider.provider_name === 'openai' || provider.provider_name === 'azure_openai'))
 
   return (
     <div className='pb-7'>
@@ -73,6 +80,16 @@ const ProviderPage = () => {
           <>
             <div>
               <OpenaiHostedProvider provider={providerHosted as ProviderHosted} />
+            </div>
+            <div className='my-5 w-full h-0 border-[0.5px] border-gray-100' />
+          </>
+        )
+      }
+      {
+        anthropicHosted && !IS_CE_EDITION && (
+          <>
+            <div>
+              <AnthropicHostedProvider provider={anthropicHosted as ProviderHosted} />
             </div>
             <div className='my-5 w-full h-0 border-[0.5px] border-gray-100' />
           </>
@@ -89,11 +106,12 @@ const ProviderPage = () => {
               activeId={activeProviderId}
               onActive={aid => setActiveProviderId(aid)}
               onSave={() => mutate()}
+              providedOpenaiProvider={providedOpenaiProvider}
             />
           ))
         }
       </div>
-      <div className='absolute bottom-0 w-full h-[42px] flex items-center bg-white text-xs text-gray-500'>
+      <div className='fixed bottom-0 w-[472px] h-[42px] flex items-center bg-white text-xs text-gray-500'>
         <LockClosedIcon className='w-3 h-3 mr-1' />
         {t('common.provider.encrypted.front')}
         <Link

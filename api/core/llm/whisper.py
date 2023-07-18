@@ -1,6 +1,7 @@
 import openai
+
+from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 from models.provider import ProviderName
-from core.llm.error_handle_wraps import handle_llm_exceptions
 from core.llm.provider.base import BaseProvider
 
 
@@ -13,7 +14,7 @@ class Whisper:
             self.client = openai.Audio
             self.credentials = provider.get_credentials()
 
-    @handle_llm_exceptions
+    @handle_openai_exceptions
     def transcribe(self, file):
         return self.client.transcribe(
             model='whisper-1', 

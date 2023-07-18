@@ -16,6 +16,7 @@ import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
+import { ProviderType } from '@/types/app'
 import type { AppDetailResponse } from '@/models/app'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchTenantInfo } from '@/service/common'
@@ -67,7 +68,7 @@ const Configuration: FC = () => {
     frequency_penalty: 1, // -2-2
   })
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
-    provider: 'openai',
+    provider: ProviderType.openai,
     model_id: 'gpt-3.5-turbo',
     configs: {
       prompt_template: '',
@@ -84,8 +85,9 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
 
-  const setModelId = (modelId: string) => {
+  const setModelId = (modelId: string, provider: ProviderType) => {
     const newModelConfig = produce(modelConfig, (draft: any) => {
+      draft.provider = provider
       draft.model_id = modelId
     })
     setModelConfig(newModelConfig)

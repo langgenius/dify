@@ -4,6 +4,9 @@ import datetime
 import time
 import random
 from typing import Optional, List
+
+from flask import current_app
+
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 
@@ -374,6 +377,12 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+        # check document limit
+        if current_app.config['EDITION'] == 'CLOUD':
+            documents_count = DocumentService.get_tenant_documents_count()
+            tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
+            if documents_count > tenant_document_count:
+                raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -522,6 +531,14 @@ class DocumentService:
         return document
 
     @staticmethod
+    def get_tenant_documents_count():
+        documents_count = Document.query.filter(Document.completed_at.isnot(None),
+                                                Document.enabled == True,
+                                                Document.archived == False,
+                                                Document.tenant_id == current_user.current_tenant_id).count()
+        return documents_count
+
+    @staticmethod
     def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                         account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                         created_from: str = 'web'):
@@ -616,6 +633,12 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
+        # check document limit
+        if current_app.config['EDITION'] == 'CLOUD':
+            documents_count = DocumentService.get_tenant_documents_count()
+            tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
+            if documents_count > tenant_document_count:
+                raise ValueError(f"over document limit {tenant_document_count}.")
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,

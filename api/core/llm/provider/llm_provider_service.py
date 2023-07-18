@@ -31,11 +31,11 @@ class LLMProviderService:
     def get_credentials(self, model_id: Optional[str] = None) -> dict:
         return self.provider.get_credentials(model_id)
 
-    def get_provider_configs(self, obfuscated: bool = False) -> Union[str | dict]:
-        return self.provider.get_provider_configs(obfuscated)
+    def get_provider_configs(self, obfuscated: bool = False, only_custom: bool = False) -> Union[str | dict]:
+        return self.provider.get_provider_configs(obfuscated=obfuscated, only_custom=only_custom)
 
-    def get_provider_db_record(self, prefer_custom: bool = False) -> Optional[Provider]:
-        return self.provider.get_provider(prefer_custom)
+    def get_provider_db_record(self) -> Optional[Provider]:
+        return self.provider.get_provider()
 
     def config_validate(self, config: Union[dict | str]):
         """

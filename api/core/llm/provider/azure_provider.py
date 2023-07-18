@@ -52,12 +52,12 @@ class AzureProvider(BaseProvider):
     def get_provider_name(self):
         return ProviderName.AZURE_OPENAI
 
-    def get_provider_configs(self, obfuscated: bool = False) -> Union[str | dict]:
+    def get_provider_configs(self, obfuscated: bool = False, only_custom: bool = False) -> Union[str | dict]:
         """
         Returns the provider configs.
         """
         try:
-            config = self.get_provider_api_key()
+            config = self.get_provider_api_key(only_custom=only_custom)
         except:
             config = {
                 'openai_api_type': 'azure',
@@ -81,7 +81,6 @@ class AzureProvider(BaseProvider):
         return config
 
     def get_token_type(self):
-        # TODO: change to dict when implemented
         return dict
 
     def config_validate(self, config: Union[dict | str]):

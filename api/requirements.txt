@@ -10,7 +10,7 @@ flask-session2==1.3.1
 flask-cors==3.0.10
 gunicorn~=20.1.0
 gevent~=22.10.2
-langchain==0.0.209
+langchain==0.0.230
 openai~=0.27.5
 psycopg2-binary~=2.9.6
 pycryptodome==3.17
@@ -35,3 +35,4 @@ docx2txt==0.8
 pypdfium2==4.16.0
 resend~=0.5.1
 pyjwt~=2.6.0
+anthropic~=0.3.4
