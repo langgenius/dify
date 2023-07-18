@@ -423,7 +423,11 @@ class DocumentService:
             position = DocumentService.get_documents_position(dataset.id)
             document_ids = []
             if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                upload_file_list = []
+                if created_from == 'api':
+                    upload_file_list = [document_data['data_source']['info']['upload_file_id']]
+                else:
+                    upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
                 for file_id in upload_file_list:
                     file = db.session.query(UploadFile).filter(
                         UploadFile.tenant_id == dataset.tenant_id,
