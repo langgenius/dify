@@ -4,7 +4,7 @@ require_relative "lib/dify_client/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "dify_client"
-  spec.version       = Ruby::Client::VERSION
+  spec.version       = DifyClient::VERSION
   spec.authors       = ["crazywoola"]
   spec.email         = ["427733928@qq.com"]
 
