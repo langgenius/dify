@@ -10,9 +10,9 @@ import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
 import s from './style.module.css'
+import Init from './init'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
-import ConfigSence from '@/app/components/share/chat/config-scence'
 import {
   delConversation,
   fetchAppParams,
@@ -34,7 +34,6 @@ import Loading from '@/app/components/base/loading'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
-
 const APP_ID = 'universal-chat'
 const isUniversalChat = true
 
@@ -163,12 +162,6 @@ const Main: FC<IMainProps> = () => {
     // parse variables in introduction
     setChatList(generateNewChatListWithOpenstatement('', inputs))
   }
-  const hasSetInputs = (() => {
-    if (!isNewConversation)
-      return true
-
-    return isChatStarted
-  })()
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
@@ -518,6 +511,15 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
+  const [plugins, setPlugins] = useState<Record<string, boolean>>({})
+  const handlePluginsChange = (key, value) => {
+    setPlugins({
+      ...plugins,
+      [key]: value,
+    })
+  }
+  const [contexts, setContexts] = useState<any[]>([])
+
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
@@ -552,43 +554,34 @@ const Main: FC<IMainProps> = () => {
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
-          <ConfigSence
-            conversationName={conversationName}
-            hasSetInputs={hasSetInputs}
-            isPublicVersion={true}
-            siteInfo={siteInfo}
-            promptConfig={promptConfig}
-            onStartChat={handleStartChat}
-            canEidtInpus={canEditInpus}
-            savedInputs={currInputs as Record<string, any>}
-            onInputsChange={setCurrInputs}
-          />
-
-          {
-            hasSetInputs && (
-              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
-                <div className='h-full overflow-y-auto' ref={chatListDomRef}>
-                  <Chat
-                    chatList={chatList}
-                    onSend={handleSend}
-                    isHideFeedbackEdit
-                    onFeedback={handleFeedback}
-                    isResponsing={isResponsing}
-                    canStopResponsing={!!messageTaskId}
-                    abortResponsing={async () => {
-                      await stopChatMessageResponding(APP_ID, messageTaskId)
-                      setHasStopResponded(true)
-                      setResponsingFalse()
-                    }}
-                    checkCanSend={checkCanSend}
-                    controlFocus={controlFocus}
-                    isShowSuggestion={doShowSuggestion}
-                    suggestionList={suggestQuestions}
-                    isShowSpeechToText={speechToTextConfig?.enabled}
-                  />
-                </div>
-              </div>)
-          }
+          <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
+            <div className='h-full overflow-y-auto' ref={chatListDomRef}>
+              <Chat
+                configElem={<Init
+                  plugins={plugins}
+                  onPluginChange={handlePluginsChange}
+                  contexts={contexts}
+                  onContextChange={setContexts}
+                />}
+                chatList={chatList}
+                onSend={handleSend}
+                isHideFeedbackEdit
+                onFeedback={handleFeedback}
+                isResponsing={isResponsing}
+                canStopResponsing={!!messageTaskId}
+                abortResponsing={async () => {
+                  await stopChatMessageResponding(APP_ID, messageTaskId)
+                  setHasStopResponded(true)
+                  setResponsingFalse()
+                }}
+                checkCanSend={checkCanSend}
+                controlFocus={controlFocus}
+                isShowSuggestion={doShowSuggestion}
+                suggestionList={suggestQuestions}
+                isShowSpeechToText={speechToTextConfig?.enabled}
+              />
+            </div>
+          </div>
 
           {isShowConfirm && (
             <Confirm

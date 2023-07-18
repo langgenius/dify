@@ -41,6 +41,7 @@ export type SubmitAnnotationFunc = (messageId: string, content: string) => Promi
 export type DisplayScene = 'web' | 'console'
 
 export type IChatProps = {
+  configElem?: React.ReactNode
   chatList: IChatItem[]
   /**
    * Whether to display the editing area and rating status
@@ -412,6 +413,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar 
 }
 
 const Chat: FC<IChatProps> = ({
+  configElem,
   chatList,
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
@@ -509,8 +511,9 @@ const Chat: FC<IChatProps> = ({
 
   return (
     <div className={cn('px-3.5', 'h-full')}>
+      {chatList.length === 0 && (configElem || null)}
       {/* Chat List */}
-      <div className="h-full space-y-[30px]">
+      <div className={cn((chatList.length === 0 && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id

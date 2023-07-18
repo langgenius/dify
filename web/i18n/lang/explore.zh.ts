@@ -35,6 +35,10 @@ const translation = {
     Programming: '编程',
     HR: '人力资源',
   },
+  universalChat: {
+    welcome: '开始和 Dify 聊天吧',
+    welcomeDescribe: '您的 AI 对话伴侣，为您提供个性化的帮助',
+  },
 }
 
 export default translation

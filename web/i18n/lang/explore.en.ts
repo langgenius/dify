@@ -35,6 +35,10 @@ const translation = {
     Programming: 'Programming',
     HR: 'HR',
   },
+  universalChat: {
+    welcome: 'Start chat with Dify',
+    welcomeDescribe: 'Your AI conversation companion for personalized assistance',
+  },
 }
 
 export default translation
