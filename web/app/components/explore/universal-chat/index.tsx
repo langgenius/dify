@@ -34,6 +34,8 @@ import Loading from '@/app/components/base/loading'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
+import type { DataSet } from '@/models/datasets'
+
 const APP_ID = 'universal-chat'
 const isUniversalChat = true
 
@@ -518,7 +520,7 @@ const Main: FC<IMainProps> = () => {
       [key]: value,
     })
   }
-  const [contexts, setContexts] = useState<any[]>([])
+  const [dataSets, setDateSets] = useState<DataSet[]>([])
 
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
@@ -560,8 +562,8 @@ const Main: FC<IMainProps> = () => {
                 configElem={<Init
                   plugins={plugins}
                   onPluginChange={handlePluginsChange}
-                  contexts={contexts}
-                  onContextChange={setContexts}
+                  dataSets={dataSets}
+                  onDataSetsChange={setDateSets}
                 />}
                 chatList={chatList}
                 onSend={handleSend}

@@ -1,25 +1,33 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import DataConfig from './data-config'
 
 export type IConfigProps = {
   className?: string
   plugins: Record<string, boolean>
   onPluginChange: (key: string, value: boolean) => void
-  contexts: any[]
-  onContextChange: (contexts: any[]) => void
+  dataSets: any[]
+  onDataSetsChange: (contexts: any[]) => void
 }
 
 const Config: FC<IConfigProps> = ({
   className,
   plugins,
   onPluginChange,
-  contexts,
-  onContextChange,
+  dataSets,
+  onDataSetsChange,
 }) => {
   return (
     <div className={className}>
-      Config content
+      <div >
+
+      </div>
+
+      <DataConfig
+        dataSets={dataSets}
+        onChange={onDataSetsChange}
+      />
     </div>
   )
 }
