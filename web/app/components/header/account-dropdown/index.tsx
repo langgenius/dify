@@ -117,7 +117,7 @@ export default function AppSelector() {
                   <Menu.Item>
                     <div className='p-1' onClick={() => handleLogout()}>
                       <div
-                        className='flex items-center justify-between h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-100'
+                        className='flex items-center justify-between h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-50'
                       >
                         <div className='font-normal text-[14px] text-gray-700'>{t('common.userProfile.logout')}</div>
                         <LogOut01 className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
