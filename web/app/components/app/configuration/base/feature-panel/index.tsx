@@ -7,7 +7,7 @@ export type IFeaturePanelProps = {
   className?: string
   headerIcon?: ReactNode
   title: ReactNode
-  headerRight: ReactNode
+  headerRight?: ReactNode
   hasHeaderBottomBorder?: boolean
   isFocus?: boolean
   noBodySpacing?: boolean

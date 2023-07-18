@@ -38,6 +38,24 @@ const translation = {
   universalChat: {
     welcome: 'Start chat with Dify',
     welcomeDescribe: 'Your AI conversation companion for personalized assistance',
+    plugins: {
+      name: 'Plugins',
+      google_search: {
+        name: 'Google Search',
+        more: {
+          left: 'Enable the plugin, ',
+          link: 'set up your SerpAPI key',
+          right: ' first.',
+        },
+      },
+      web_reader: {
+        name: 'Web Reader',
+        description: 'Get needed information from any web link',
+      },
+      wikipedia: {
+        name: 'Wikipedia',
+      },
+    },
   },
 }
 

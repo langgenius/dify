@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import DataConfig from './data-config'
+import PluginConfig from './plug-config'
 
 export type IConfigProps = {
   className?: string
@@ -23,7 +24,10 @@ const Config: FC<IConfigProps> = ({
       <div >
 
       </div>
-
+      <PluginConfig
+        config={plugins}
+        onChange={onPluginChange}
+      />
       <DataConfig
         dataSets={dataSets}
         onChange={onDataSetsChange}

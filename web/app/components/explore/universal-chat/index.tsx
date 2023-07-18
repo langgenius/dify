@@ -513,8 +513,12 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
-  const [plugins, setPlugins] = useState<Record<string, boolean>>({})
-  const handlePluginsChange = (key, value) => {
+  const [plugins, setPlugins] = useState<Record<string, boolean>>({
+    google_search: false,
+    web_reader: true,
+    wikipedia: true,
+  })
+  const handlePluginsChange = (key: string, value: boolean) => {
     setPlugins({
       ...plugins,
       [key]: value,
