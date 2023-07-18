@@ -1,10 +1,11 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { XMarkIcon } from '@heroicons/react/24/outline'
 import classNames from 'classnames'
 import Link from 'next/link'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
+import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { Dify } from '@/app/components/base/icons/src/public/common'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 
@@ -30,16 +31,15 @@ export default function AccountAbout({
       className={s.modal}
     >
       <div className='relative'>
-        <XMarkIcon className='absolute top-0 -right-2 w-4 h-4 cursor-pointer' onClick={onCancel} />
+        <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
+          <XClose className='w-4 h-4 text-gray-500' />
+        </div>
         <div>
           <div className={classNames(
             s['logo-icon'],
-            'mx-auto mb-3 w-12 h-12 bg-white rounded-xl border border-gray-200',
+            'mx-auto mb-3 w-12 h-12 bg-white rounded-xl border-[0.5px] border-gray-200',
           )} />
-          <div className={classNames(
-            s['logo-text'],
-            'mx-auto mb-2',
-          )} />
+          <Dify className='mx-auto mb-2' />
           <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-gray-700'>
             <div>© 2023 LangGenius, Inc., Contributors.</div>
@@ -55,7 +55,7 @@ export default function AccountAbout({
             </div>
           </div>
         </div>
-        <div className='mb-4 h-0 border-[0.5px] border-gray-200' />
+        <div className='mb-4 -mx-8 h-[0.5px] bg-gray-200' />
         <div className='flex justify-between items-center'>
           <div className='text-xs font-medium text-gray-800'>
             {
