@@ -1,15 +1,19 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import InvitationLink from './invitation-link'
+import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import s from './index.module.css'
+import { IS_CE_EDITION } from '@/config'
 
-interface IInvitedModalProps {
-  onCancel: () => void,
+type IInvitedModalProps = {
+  invitationLink: string
+  onCancel: () => void
 }
 const InvitedModal = ({
-  onCancel
+  invitationLink,
+  onCancel,
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
 
@@ -27,10 +31,21 @@ const InvitedModal = ({
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
         </div>
         <div className='mb-1 text-xl font-semibold text-gray-900'>{t('common.members.invitationSent')}</div>
-        <div className='mb-10 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
+        {!IS_CE_EDITION && (
+          <div className='mb-10 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
+        )}
+        {IS_CE_EDITION && (
+          <>
+            <div className='mb-5 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
+            <div className='mb-9'>
+              <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
+              <InvitationLink value={invitationLink} />
+            </div>
+          </>
+        )}
         <div className='flex justify-end'>
-          <Button 
-            className='w-[96px] text-sm font-medium' 
+          <Button
+            className='w-[96px] text-sm font-medium'
             onClick={onCancel}
             type='primary'
           >

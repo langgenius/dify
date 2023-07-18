@@ -20,7 +20,7 @@ def get_oauth_providers():
                                    client_secret=current_app.config.get(
                                        'NOTION_CLIENT_SECRET'),
                                    redirect_uri=current_app.config.get(
-                                       'CONSOLE_URL') + '/console/api/oauth/data-source/callback/notion')
+                                       'CONSOLE_API_URL') + '/console/api/oauth/data-source/callback/notion')
 
         OAUTH_PROVIDERS = {
             'notion': notion_oauth
@@ -42,7 +42,7 @@ class OAuthDataSource(Resource):
         if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
             internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
             oauth_provider.save_internal_access_token(internal_secret)
-            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success')
         else:
             auth_url = oauth_provider.get_authorization_url()
             return redirect(auth_url)
@@ -66,12 +66,12 @@ class OAuthDataSourceCallback(Resource):
                     f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
                 return {'error': 'OAuth data source process failed'}, 400
 
-            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=success')
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success')
         elif 'error' in request.args:
             error = request.args.get('error')
-            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source={error}')
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source={error}')
         else:
-            return redirect(f'{current_app.config.get("CONSOLE_URL")}?oauth_data_source=access_denied')
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=access_denied')
 
 
 class OAuthDataSourceSync(Resource):

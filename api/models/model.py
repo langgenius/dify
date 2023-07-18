@@ -56,7 +56,8 @@ class App(db.Model):
 
     @property
     def api_base_url(self):
-        return (current_app.config['API_URL'] if current_app.config['API_URL'] else request.host_url.rstrip('/')) + '/v1'
+        return (current_app.config['SERVICE_API_URL'] if current_app.config['SERVICE_API_URL']
+                else request.host_url.rstrip('/')) + '/v1'
 
     @property
     def tenant(self):
@@ -515,7 +516,7 @@ class Site(db.Model):
 
     @property
     def app_base_url(self):
-        return (current_app.config['APP_URL'] if current_app.config['APP_URL'] else request.host_url.rstrip('/'))
+        return (current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
 
 
 class ApiToken(db.Model):

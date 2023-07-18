@@ -56,7 +56,7 @@ class ConversationMessageTask:
         )
 
     def init(self):
-        provider_name = LLMBuilder.get_default_provider(self.app.tenant_id)
+        provider_name = LLMBuilder.get_default_provider(self.app.tenant_id, self.model_name)
         self.model_dict['provider'] = provider_name
 
         override_model_configs = None
@@ -89,7 +89,7 @@ class ConversationMessageTask:
                 system_message = PromptBuilder.to_system_message(self.app_model_config.pre_prompt, self.inputs)
                 system_instruction = system_message.content
                 llm = LLMBuilder.to_llm(self.tenant_id, self.model_name)
-                system_instruction_tokens = llm.get_messages_tokens([system_message])
+                system_instruction_tokens = llm.get_num_tokens_from_messages([system_message])
 
         if not self.conversation:
             self.is_new_conversation = True
@@ -185,6 +185,7 @@ class ConversationMessageTask:
         if provider and provider.provider_type == ProviderType.SYSTEM.value:
             db.session.query(Provider).filter(
                 Provider.tenant_id == self.app.tenant_id,
+                Provider.provider_name == provider.provider_name,
                 Provider.quota_limit > Provider.quota_used
             ).update({'quota_used': Provider.quota_used + 1})
 

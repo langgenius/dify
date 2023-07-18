@@ -7,7 +7,7 @@ from typing import Optional, List, Dict, Any
 
 from pydantic import root_validator
 
-from core.llm.error_handle_wraps import handle_llm_exceptions, handle_llm_exceptions_async
+from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 
 
 class StreamableChatOpenAI(ChatOpenAI):
@@ -48,30 +48,7 @@ class StreamableChatOpenAI(ChatOpenAI):
             "organization": self.openai_organization if self.openai_organization else None,
         }
 
-    def get_messages_tokens(self, messages: List[BaseMessage]) -> int:
-        """Get the number of tokens in a list of messages.
-
-        Args:
-            messages: The messages to count the tokens of.
-
-        Returns:
-            The number of tokens in the messages.
-        """
-        tokens_per_message = 5
-        tokens_per_request = 3
-
-        message_tokens = tokens_per_request
-        message_strs = ''
-        for message in messages:
-            message_strs += message.content
-            message_tokens += tokens_per_message
-
-        # calc once
-        message_tokens += self.get_num_tokens(message_strs)
-
-        return message_tokens
-
-    @handle_llm_exceptions
+    @handle_openai_exceptions
     def generate(
             self,
             messages: List[List[BaseMessage]],
@@ -81,12 +58,18 @@ class StreamableChatOpenAI(ChatOpenAI):
     ) -> LLMResult:
         return super().generate(messages, stop, callbacks, **kwargs)
 
-    @handle_llm_exceptions_async
-    async def agenerate(
-            self,
-            messages: List[List[BaseMessage]],
-            stop: Optional[List[str]] = None,
-            callbacks: Callbacks = None,
-            **kwargs: Any,
-    ) -> LLMResult:
-        return await super().agenerate(messages, stop, callbacks, **kwargs)
+    @classmethod
+    def get_kwargs_from_model_params(cls, params: dict):
+        model_kwargs = {
+            'top_p': params.get('top_p', 1),
+            'frequency_penalty': params.get('frequency_penalty', 0),
+            'presence_penalty': params.get('presence_penalty', 0),
+        }
+
+        del params['top_p']
+        del params['frequency_penalty']
+        del params['presence_penalty']
+
+        params['model_kwargs'] = model_kwargs
+
+        return params

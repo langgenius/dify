@@ -10,6 +10,8 @@ export type UserProfileResponse = {
   id: string
   name: string
   email: string
+  avatar: string
+  is_password_set: boolean
   interface_language?: string
   interface_theme?: string
   timezone?: string
@@ -57,14 +59,19 @@ export type Member = Pick<UserProfileResponse, 'id' | 'name' | 'email' | 'last_l
 export enum ProviderName {
   OPENAI = 'openai',
   AZURE_OPENAI = 'azure_openai',
+  ANTHROPIC = 'anthropic',
 }
 export type ProviderAzureToken = {
   openai_api_base?: string
   openai_api_key?: string
 }
+export type ProviderAnthropicToken = {
+  anthropic_api_key?: string
+}
 export type ProviderTokenType = {
   [ProviderName.OPENAI]: string
   [ProviderName.AZURE_OPENAI]: ProviderAzureToken
+  [ProviderName.ANTHROPIC]: ProviderAnthropicToken
 }
 export type Provider = {
   [Name in ProviderName]: {

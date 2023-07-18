@@ -48,7 +48,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
             })
 
         self.llm_message.prompt = real_prompts
-        self.llm_message.prompt_tokens = self.llm.get_messages_tokens(messages[0])
+        self.llm_message.prompt_tokens = self.llm.get_num_tokens_from_messages(messages[0])
 
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any

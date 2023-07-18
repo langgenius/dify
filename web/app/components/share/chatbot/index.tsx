@@ -552,6 +552,10 @@ const Main: FC<IMainProps> = ({
     )
   }
 
+  const difyIcon = (
+    <div className={s.difyHeader}></div>
+  )
+
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
@@ -562,7 +566,8 @@ const Main: FC<IMainProps> = ({
     <div>
       <Header
         title={siteInfo.title}
-        icon={siteInfo.icon || ''}
+        icon=''
+        customerIcon={difyIcon}
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
         isMobile={isMobile}
@@ -604,7 +609,7 @@ const Main: FC<IMainProps> = ({
 
           {
             hasSetInputs && (
-              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[66px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
+              <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
                 <div className='h-full overflow-y-auto' ref={chatListDomRef}>
                   <Chat
                     chatList={chatList}
@@ -624,6 +629,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
+                    answerIconClassName={s.difyIcon}
                   />
                 </div>
               </div>)

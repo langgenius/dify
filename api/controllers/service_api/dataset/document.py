@@ -85,8 +85,8 @@ class DocumentListApi(DatasetApiResource):
                 dataset_process_rule=dataset.latest_process_rule,
                 created_from='api'
             )
-        except ProviderTokenNotInitError:
-            raise ProviderNotInitializeError()
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         document = documents[0]
         if doc_type and doc_metadata:
             metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]

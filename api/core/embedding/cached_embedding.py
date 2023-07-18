@@ -4,6 +4,7 @@ from typing import List
 from langchain.embeddings.base import Embeddings
 from sqlalchemy.exc import IntegrityError
 
+from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import Embedding
@@ -49,6 +50,7 @@ class CacheEmbedding(Embeddings):
         text_embeddings.extend(embedding_results)
         return text_embeddings
 
+    @handle_openai_exceptions
     def embed_query(self, text: str) -> List[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
