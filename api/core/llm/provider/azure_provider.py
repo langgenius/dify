@@ -97,12 +97,11 @@ class AzureProvider(BaseProvider):
             models = self.get_models(credentials=config)
 
             if not models:
-                raise ValidateFailedError("Please add deployments for 'text-davinci-003', "
+                raise ValidateFailedError("Please add deployments for "
                                           "'gpt-3.5-turbo', 'text-embedding-ada-002' (required) "
-                                          "and 'gpt-4', 'gpt-35-turbo-16k' (optional).")
+                                          "and 'gpt-4', 'gpt-35-turbo-16k', 'text-davinci-003' (optional).")
 
             fixed_model_ids = [
-                'text-davinci-003',
                 'gpt-35-turbo',
                 'text-embedding-ada-002'
             ]
