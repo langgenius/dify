@@ -14,14 +14,14 @@ from models.dataset import DocumentSegment
 
 
 @shared_task
-def add_segment_to_index_task(segment_id: str):
+def enable_segment_to_index_task(segment_id: str):
     """
-    Async Add segment to index
+    Async enable segment to index
     :param segment_id:
 
-    Usage: add_segment_to_index.delay(segment_id)
+    Usage: enable_segment_to_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start add segment to index: {}'.format(segment_id), fg='green'))
+    logging.info(click.style('Start enable segment to index: {}'.format(segment_id), fg='green'))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
@@ -71,9 +71,9 @@ def add_segment_to_index_task(segment_id: str):
             index.add_texts([document])
 
         end_at = time.perf_counter()
-        logging.info(click.style('Segment added to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
+        logging.info(click.style('Segment enabled to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
     except Exception as e:
-        logging.exception("add segment to index failed")
+        logging.exception("enable segment to index failed")
         segment.enabled = False
         segment.disabled_at = datetime.datetime.utcnow()
         segment.status = 'error'

@@ -100,21 +100,21 @@ class IndexingRunner:
                 db.session.commit()
 
     def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
-        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
+        matches = re.findall(regex, text, re.MULTILINE)
 
-        result = []  # 存储最终的结果
+        result = []
         for match in matches:
             q = match[0]
             a = match[1]
             if q and a:
-                # 如果Q和A都存在，就将其添加到结果中
                 result.append({
                     "question": q,
                     "answer": re.sub(r"\n\s*", "\n", a.strip())
                 })
 
         return result
+
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
         try:
@@ -249,11 +249,10 @@ class IndexingRunner:
             splitter = self._get_splitter(processing_rule)
 
             # split to documents
-            documents = self._split_to_documents(
+            documents = self._split_to_documents_for_estimate(
                 text_docs=text_docs,
                 splitter=splitter,
-                processing_rule=processing_rule,
-                tenant_id='84b2202c-c359-46b7-a810-bce50feaa4d1'
+                processing_rule=processing_rule
             )
             total_segments += len(documents)
             for document in documents:
@@ -310,11 +309,10 @@ class IndexingRunner:
                 splitter = self._get_splitter(processing_rule)
 
                 # split to documents
-                documents = self._split_to_documents(
+                documents = self._split_to_documents_for_estimate(
                     text_docs=documents,
                     splitter=splitter,
-                    processing_rule=processing_rule,
-                    tenant_id='84b2202c-c359-46b7-a810-bce50feaa4d1'
+                    processing_rule=processing_rule
                 )
                 total_segments += len(documents)
                 for document in documents:
@@ -418,7 +416,8 @@ class IndexingRunner:
             text_docs=text_docs,
             splitter=splitter,
             processing_rule=processing_rule,
-            tenant_id=dataset.tenant_id
+            tenant_id=dataset.tenant_id,
+            document_form=dataset_document.doc_form
         )
 
         # save node to document segment
@@ -455,7 +454,7 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                            processing_rule: DatasetProcessRule, tenant_id) -> List[Document]:
+                            processing_rule: DatasetProcessRule, tenant_id: str, document_form: str) -> List[Document]:
         """
         Split the text documents into nodes.
         """
@@ -472,51 +471,59 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
-                #
-                response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
-                document_qa_list = self.format_split_text(response)
-                # CONVERSATION_PROMPT = (
-                #     "你是出题人.\n"
-                #     "用户会发送一段长文本.\n请一步一步思考"
-                #     'Step1：了解并总结这段文本的主要内容\n'
-                #     'Step2：这段文本提到了哪些关键信息或概念\n'
-                #     'Step3：可分解或结合多个信息与概念\n'
-                #     'Step4：将这些关键信息与概念生成 10 个问题与答案，问题描述清楚并且详细完整,答案详细完整.\n'
-                #     "按格式回答: Q1:\nA1:\nQ2:\nA2:...\n"
-                # )
-                # openai.api_key = "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"
-                # response = openai.ChatCompletion.create(
-                #     model='gpt-3.5-turbo',
-                #     messages=[
-                #         {
-                #             'role': 'system',
-                #             'content': CONVERSATION_PROMPT
-                #         },
-                #         {
-                #             'role': 'user',
-                #             'content': document.page_content
-                #         }
-                #     ],
-                #     temperature=0,
-                #     stream=False,  # this time, we set stream=True
-                #
-                #     n=1,
-                #     top_p=1,
-                #     frequency_penalty=0,
-                #     presence_penalty=0
-                # )
-                # # response = LLMGenerator.generate_qa_document('84b2202c-c359-46b7-a810-bce50feaa4d1', doc.page_content)
-                # document_qa_list = self.format_split_text(response['choices'][0]['message']['content'])
-                qa_documents = []
-                for result in document_qa_list:
-                    document = Document(page_content=result['question'], metadata={'source': result['answer']})
+                if document_form == 'text_model':
+                    # text model document
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(document.page_content)
 
                     document.metadata['doc_id'] = doc_id
                     document.metadata['doc_hash'] = hash
-                    qa_documents.append(document)
-                split_documents.extend(qa_documents)
+
+                    split_documents.append(document)
+                elif document_form == 'qa_model':
+                    # qa model document
+                    response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
+                    document_qa_list = self.format_split_text(response)
+                    qa_documents = []
+                    for result in document_qa_list:
+                        qa_document = Document(page_content=result['question'], metadata=document.metadata)
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(document.page_content)
+                        qa_document.metadata['answer'] = result['answer']
+                        qa_document.metadata['doc_id'] = doc_id
+                        qa_document.metadata['doc_hash'] = hash
+                        qa_documents.append(qa_document)
+                    split_documents.extend(qa_documents)
+
+            all_documents.extend(split_documents)
+
+        return all_documents
+
+    def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
+                                         processing_rule: DatasetProcessRule) -> List[Document]:
+        """
+        Split the text documents into nodes.
+        """
+        all_documents = []
+        for text_doc in text_docs:
+            # document clean
+            document_text = self._document_clean(text_doc.page_content, processing_rule)
+            text_doc.page_content = document_text
+
+            # parse document to nodes
+            documents = splitter.split_documents([text_doc])
+
+            split_documents = []
+            for document in documents:
+                if document.page_content is None or not document.page_content.strip():
+                    continue
+                doc_id = str(uuid.uuid4())
+                hash = helper.generate_text_hash(document.page_content)
+
+                document.metadata['doc_id'] = doc_id
+                document.metadata['doc_hash'] = hash
+
+                split_documents.append(document)
 
             all_documents.extend(split_documents)
 
@@ -550,6 +557,7 @@ class IndexingRunner:
                     text = re.sub(pattern, '', text)
 
         return text
+
     def format_split_text(self, text):
         regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
         matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
@@ -566,6 +574,7 @@ class IndexingRunner:
                 })
 
         return result
+
     def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
         """
         Build the index for the document.

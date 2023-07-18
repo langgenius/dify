@@ -330,6 +330,9 @@ class DocumentSegment(db.Model):
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False,
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_by = db.Column(UUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
     indexing_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)
     error = db.Column(db.Text, nullable=True)

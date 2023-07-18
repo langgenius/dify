@@ -49,7 +49,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                     segments = db.session.query(DocumentSegment).filter(
                         DocumentSegment.document_id == dataset_document.id,
                         DocumentSegment.enabled == True
-                    ) .order_by(DocumentSegment.position.asc()).all()
+                    ).order_by(DocumentSegment.position.asc()).all()
 
                     documents = []
                     for segment in segments:

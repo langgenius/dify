@@ -60,6 +60,7 @@ document_fields = {
     'display_status': fields.String,
     'word_count': fields.Integer,
     'hit_count': fields.Integer,
+    'doc_form': fields.String,
 }
 
 document_with_segments_fields = {
@@ -85,6 +86,7 @@ document_with_segments_fields = {
     'completed_segments': fields.Integer,
     'total_segments': fields.Integer
 }
+
 
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:

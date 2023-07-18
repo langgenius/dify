@@ -68,7 +68,7 @@ class DatesetDocumentStore:
         self, docs: Sequence[Document], allow_update: bool = True
     ) -> None:
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
-            DocumentSegment.document == self._document_id
+            DocumentSegment.document_id == self._document_id
         ).scalar()
 
         if max_position is None:
@@ -105,9 +105,14 @@ class DatesetDocumentStore:
                     tokens=tokens,
                     created_by=self._user_id,
                 )
+                if 'answer' in doc.metadata and doc.metadata['answer']:
+                    segment_document.answer = doc.metadata.pop('answer', '')
+
                 db.session.add(segment_document)
             else:
                 segment_document.content = doc.page_content
+                if 'answer' in doc.metadata and doc.metadata['answer']:
+                    segment_document.answer = doc.metadata.pop('answer', '')
                 segment_document.index_node_hash = doc.metadata['doc_hash']
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
