@@ -128,9 +128,13 @@ class LLMBuilder:
             azure_openai_provider = BaseProvider.get_valid_provider(tenant_id, ProviderName.AZURE_OPENAI.value)
 
             provider = None
-            if openai_provider:
+            if openai_provider and openai_provider.provider_type == ProviderType.CUSTOM.value:
                 provider = openai_provider
-            elif azure_openai_provider:
+            elif azure_openai_provider and azure_openai_provider.provider_type == ProviderType.CUSTOM.value:
+                provider = azure_openai_provider
+            elif openai_provider and openai_provider.provider_type == ProviderType.SYSTEM.value:
+                provider = openai_provider
+            elif azure_openai_provider and azure_openai_provider.provider_type == ProviderType.SYSTEM.value:
                 provider = azure_openai_provider
 
             if not provider:
@@ -139,9 +143,6 @@ class LLMBuilder:
                     f"Please go to Settings -> Model Provider to complete your provider credentials."
                 )
 
-            if provider.provider_type == ProviderType.SYSTEM.value:
-                provider_name = 'openai'
-            else:
-                provider_name = provider.provider_name
+            provider_name = provider.provider_name
 
         return provider_name

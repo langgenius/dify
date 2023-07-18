@@ -54,7 +54,7 @@ async function embedChatbot () {
     iframe.title = "dify chatbot bubble window"
     iframe.id = 'dify-chatbot-bubble-window'
     iframe.src = `https://${isDev ? 'dev.' : ''}udify.app/chatbot/${difyChatbotConfig.token}`;
-    iframe.style.cssText = 'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 5rem; right: 1rem; width: 24rem; height: 40rem; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset;'
+    iframe.style.cssText = 'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 5rem; right: 1rem; width: 24rem; height: 40rem; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;'
     document.body.appendChild(iframe);
   }
 
