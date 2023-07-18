@@ -20,7 +20,7 @@ import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 export default function AppSelector() {
   const itemClassName = `
     flex items-center w-full h-9 px-3 text-gray-700 text-[14px]
-    rounded-lg font-normal hover:bg-gray-100 cursor-pointer
+    rounded-lg font-normal hover:bg-gray-50 cursor-pointer
   `
   const router = useRouter()
   const [settingVisible, setSettingVisible] = useState(false)
@@ -101,7 +101,7 @@ export default function AppSelector() {
                         }
                         target='_blank'>
                         <div>{t('common.userProfile.helpCenter')}</div>
-                        <ArrowUpRight className='hidden w-4 h-4 text-gray-500 group-hover:flex' />
+                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
                     </Menu.Item>
                     <Menu.Item>
@@ -120,7 +120,7 @@ export default function AppSelector() {
                         className='flex items-center justify-between h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-100'
                       >
                         <div className='font-normal text-[14px] text-gray-700'>{t('common.userProfile.logout')}</div>
-                        <LogOut01 className='hidden w-4 h-4 text-gray-500 group-hover:flex' />
+                        <LogOut01 className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </div>
                     </div>
                   </Menu.Item>
