@@ -1,9 +1,9 @@
 # frozen_string_literal: true
 
-require_relative "lib/dify/client/version"
+require_relative "lib/dify_client/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "dify-client"
+  spec.name          = "dify_client"
   spec.version       = Ruby::Client::VERSION
   spec.authors       = ["crazywoola"]
   spec.email         = ["427733928@qq.com"]
