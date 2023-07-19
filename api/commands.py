@@ -2,6 +2,7 @@ import datetime
 import logging
 import random
 import string
+import time
 
 import click
 from flask import current_app
@@ -13,7 +14,7 @@ from libs.helper import email as email_validate
 from extensions.ext_database import db
 from libs.rsa import generate_key_pair
 from models.account import InvitationCode, Tenant
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetQuery, Document, DocumentSegment
 from models.model import Account
 import secrets
 import base64
@@ -172,7 +173,7 @@ def recreate_all_dataset_indexes():
     page = 1
     while True:
         try:
-            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality')\
+            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality') \
                 .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
         except NotFound:
             break
@@ -188,10 +189,65 @@ def recreate_all_dataset_indexes():
                 else:
                     click.echo('passed.')
             except Exception as e:
-                click.echo(click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                click.echo(
+                    click.style('Recreate dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
                 continue
 
     click.echo(click.style('Congratulations! Recreate {} dataset indexes.'.format(recreate_count), fg='green'))
+
+
+@click.command('clean-unused-dataset-indexes', help='Clean unused dataset indexes.')
+def clean_unused_dataset_indexes():
+    click.echo(click.style('Start clean unused dataset indexes.', fg='green'))
+    clean_days = int(current_app.config.get('CLEAN_DAY_SETTING'))
+    start_at = time.perf_counter()
+    thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
+    page = 1
+    while True:
+        try:
+            datasets = db.session.query(Dataset).filter(Dataset.created_at < thirty_days_ago) \
+                .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
+        except NotFound:
+            break
+        page += 1
+        for dataset in datasets:
+            dataset_query = db.session.query(DatasetQuery).filter(
+                DatasetQuery.created_at > thirty_days_ago,
+                DatasetQuery.dataset_id == dataset.id
+            ).all()
+            if not dataset_query:
+                documents = db.session.query(Document).filter(
+                    Document.dataset_id == dataset.id,
+                    Document.indexing_status == 'completed',
+                    Document.enabled == True,
+                    Document.archived == False,
+                    Document.updated_at < thirty_days_ago
+                ).all()
+                if documents:
+                    for document in documents:
+                        click.style('Start clean document segments from index: {}'.format(document.id),
+                                    fg='green')
+                        document.enabled = False
+                        db.session.commit()
+                        try:
+                            # remove index
+                            vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+                            kw_index = IndexBuilder.get_index(dataset, 'economy')
+
+                            # delete from vector index
+                            if vector_index:
+                                vector_index.delete_by_document_id(document.id)
+
+                            # delete from keyword index
+                            segments = db.session.query(DocumentSegment).filter(
+                                DocumentSegment.document_id == document.id).all()
+                            index_node_ids = [segment.index_node_id for segment in segments]
+                            if index_node_ids:
+                                kw_index.delete_by_ids(index_node_ids)
+                        except Exception:
+                            logging.exception("clean document from index failed: {}".format(document.id))
+    end_at = time.perf_counter()
+    click.echo(click.style('Cleaned unused dataset from db success latency: {}'.format(end_at - start_at), fg='green'))
 
 
 @click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
@@ -218,7 +274,9 @@ def sync_anthropic_hosted_providers():
                 )
                 count += 1
             except Exception as e:
-                click.echo(click.style('Sync tenant anthropic hosted provider error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                click.echo(click.style(
+                    'Sync tenant anthropic hosted provider error: {} {}'.format(e.__class__.__name__, str(e)),
+                    fg='red'))
                 continue
 
     click.echo(click.style('Congratulations! Synced {} anthropic hosted providers.'.format(count), fg='green'))
@@ -231,3 +289,4 @@ def register_commands(app):
     app.cli.add_command(reset_encrypt_key_pair)
     app.cli.add_command(recreate_all_dataset_indexes)
     app.cli.add_command(sync_anthropic_hosted_providers)
+    app.cli.add_command(clean_unused_dataset_indexes)
