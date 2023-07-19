@@ -2,11 +2,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import { ProviderType } from '@/types/app'
+import { MODEL_LIST } from '@/config'
 
-export type IModelIconProps = { provider?: ProviderType; className?: string }
+export type IModelIconProps = { modelId?: string; provider?: ProviderType; className?: string }
 
-const ModelIcon: FC<IModelIconProps> = ({ provider, className }) => {
-  if (provider === ProviderType.anthropic) {
+const ModelIcon: FC<IModelIconProps> = ({ modelId, provider, className }) => {
+  const model = MODEL_LIST.find(item => item.id === modelId)
+  if (provider === ProviderType.anthropic || model?.provider === ProviderType.anthropic) {
     return (
       <svg className={`w-4 h-4 ${className}`} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
         <rect width="24" height="24" rx="6" fill="#CA9F7B"/>

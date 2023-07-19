@@ -35,6 +35,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
+import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 
 const APP_ID = 'universal-chat'
 const isUniversalChat = true
@@ -562,12 +563,16 @@ const Main: FC<IMainProps> = () => {
         )
         }>
           <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px]  mb-3.5 overflow-hidden')}>
-            {!isNewConversation && (
+            {(!isNewConversation || isResponsing) && (
               <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
                 <div className='text-gray-900'>{conversationName}</div>
+                <div className='flex items-center shrink-0 ml-2'>
+                  <ConfigSummary modelId={modelId} pluginIds={Object.keys(plugins).filter(key => plugins[key])}
+                  />
+                </div>
               </div>
             )}
-            <div className={cn(!isNewConversation && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
+            <div className={cn((!isNewConversation || isResponsing) && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
               <Chat
                 configElem={<Init
                   modelId={modelId}
