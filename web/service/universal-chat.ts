@@ -16,7 +16,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
   onError: IOnError
   getAbortController?: (abortController: AbortController) => void
 }) => {
-  return ssePost(getUrl('chat-messages'), {
+  return ssePost(getUrl('messages'), {
     body: {
       ...body,
       response_mode: 'streaming',

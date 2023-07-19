@@ -45,6 +45,9 @@ type IOtherOptions = {
 }
 
 function unicodeToChar(text: string) {
+  if (!text)
+    return ''
+
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
     return String.fromCharCode(parseInt(p1, 16))
   })
@@ -101,13 +104,18 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               onCompleted && onCompleted(true)
               return
             }
-            // can not use format here. Because message is splited.
-            onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
-              conversationId: bufferObj.conversation_id,
-              taskId: bufferObj.task_id,
-              messageId: bufferObj.id,
-            })
-            isFirstMessage = false
+            if (bufferObj.event === 'message') {
+              // can not use format here. Because message is splited.
+              onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
+                conversationId: bufferObj.conversation_id,
+                taskId: bufferObj.task_id,
+                messageId: bufferObj.id,
+              })
+              isFirstMessage = false
+            }
+            else if (bufferObj.event === 'agent_thought') {
+              console.log(bufferObj)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -333,6 +341,7 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
       }
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
         if (moreInfo.errorMessage) {
+          // debugger
           onError?.(moreInfo.errorMessage)
           if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.')
             Toast.notify({ type: 'error', message: moreInfo.errorMessage })
@@ -343,7 +352,6 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })
-
       onError?.(e)
     })
 }

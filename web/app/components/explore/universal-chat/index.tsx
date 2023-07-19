@@ -35,7 +35,6 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
-import { UNIVERSAL_CHAT_MODEL_LIST as MODEL_LIST } from '@/config'
 
 const APP_ID = 'universal-chat'
 const isUniversalChat = true
@@ -384,9 +383,14 @@ const Main: FC<IMainProps> = () => {
       return
     }
     const data = {
-      inputs: currInputs,
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
+      model: modelId,
+      tools: Object.keys(plugins).map(key => ({
+        [key]: {
+          enabled: plugins[key],
+        },
+      })),
     }
 
     // qustion
@@ -419,6 +423,7 @@ const Main: FC<IMainProps> = () => {
     setHasStopResponded(false)
     setResponsingTrue()
     setIsShowSuggestion(false)
+
     sendChatMessage(data, {
       getAbortController: (abortController) => {
         setAbortController(abortController)
@@ -514,8 +519,8 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
-  const [modelId, setModeId] = useState('gpt-3.5-turbo')
-  const currModel = MODEL_LIST.find(item => item.id === modelId)
+  const [modelId, setModeId] = useState('claude-2') // gpt-4, claude-2
+  // const currModel = MODEL_LIST.find(item => item.id === modelId)
 
   const [plugins, setPlugins] = useState<Record<string, boolean>>({
     google_search: false,
