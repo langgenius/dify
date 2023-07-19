@@ -7,7 +7,6 @@ import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import { UNIVERSAL_CHAT_MODEL_LIST as MODEL_LIST } from '@/config'
 
-console.log(MODEL_LIST)
 export type IModelConfigProps = {
   modelId: string
   onChange: (model: string) => void

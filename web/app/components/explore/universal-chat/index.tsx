@@ -229,6 +229,7 @@ const Main: FC<IMainProps> = () => {
       setConversationIdChangeBecauseOfNew(false)
     }
     // trigger handleConversationSwitch
+    setCurrConversationId(id, APP_ID)
     setIsShowSuggestion(false)
     hideSidebar()
   }
