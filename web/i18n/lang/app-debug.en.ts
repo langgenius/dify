@@ -87,7 +87,7 @@ const translation = {
   },
   errorMessage: {
     nameOfKeyRequired: 'name of the key: {{key}} required',
-    valueOfVarRequired: 'Variables value can not be empty',
+    valueOfVarRequired: '{{key}} value can not be empty',
     queryRequired: 'Request text is required.',
     waitForResponse:
       'Please wait for the response to the previous message to complete.',
