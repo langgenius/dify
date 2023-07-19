@@ -86,7 +86,7 @@ const translation = {
   },
   errorMessage: {
     nameOfKeyRequired: '变量 {{key}} 对应的名称必填',
-    valueOfVarRequired: '变量值必填',
+    valueOfVarRequired: '{{key}}必填',
     queryRequired: '主要文本必填',
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',

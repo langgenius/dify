@@ -13,6 +13,7 @@ import { useAppContext } from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import Avatar from '@/app/components/base/avatar'
+import { IS_CE_EDITION } from '@/config'
 
 const titleClassName = `
   text-sm font-medium text-gray-900
@@ -136,11 +137,13 @@ export default function AccountPage() {
         <div className={titleClassName}>{t('common.account.email')}</div>
         <div className={classNames(inputClassName, 'cursor-pointer')}>{userProfile.email}</div>
       </div>
-      <div className='mb-8'>
-        <div className='mb-1 text-sm font-medium text-gray-900'>{t('common.account.password')}</div>
-        <div className='mb-2 text-xs text-gray-500'>{t('common.account.passwordTip')}</div>
-        <Button className='font-medium !text-gray-700 !px-3 !py-[7px] !text-[13px]' onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</Button>
-      </div>
+      {IS_CE_EDITION && (
+        <div className='mb-8'>
+          <div className='mb-1 text-sm font-medium text-gray-900'>{t('common.account.password')}</div>
+          <div className='mb-2 text-xs text-gray-500'>{t('common.account.passwordTip')}</div>
+          <Button className='font-medium !text-gray-700 !px-3 !py-[7px] !text-[13px]' onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</Button>
+        </div>
+      )}
       {!!apps.length && (
         <>
           <div className='mb-6 border-[0.5px] border-gray-100' />

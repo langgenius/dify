@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState, useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import TemplateVarPanel, { PanelTitle, VarOpBtnGroup } from '../value-panel'
 import s from './style.module.css'
+import { AppInfo, ChatBtn, EditBtn, FootLogo, PromptTemplate } from './massive-component'
 import type { SiteInfo } from '@/models/share'
 import type { PromptConfig } from '@/models/debug'
 import { ToastContext } from '@/app/components/base/toast'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import TemplateVarPanel, { PanelTitle, VarOpBtnGroup } from '../value-panel'
-import { AppInfo, PromptTemplate, ChatBtn, EditBtn, FootLogo } from './massive-component'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -38,15 +38,15 @@ const Welcome: FC<IWelcomeProps> = ({
   onStartChat,
   canEidtInpus,
   savedInputs,
-  onInputsChange
+  onInputsChange,
 }) => {
   const { t } = useTranslation()
   const hasVar = promptConfig.prompt_variables.length > 0
   const [isFold, setIsFold] = useState<boolean>(true)
   const [inputs, setInputs] = useState<Record<string, any>>((() => {
-    if (hasSetInputs) {
+    if (hasSetInputs)
       return savedInputs
-    }
+
     const res: Record<string, any> = {}
     if (promptConfig) {
       promptConfig.prompt_variables.forEach((item) => {
@@ -65,7 +65,8 @@ const Welcome: FC<IWelcomeProps> = ({
         })
       }
       setInputs(res)
-    } else {
+    }
+    else {
       setInputs(savedInputs)
     }
   }, [savedInputs])
@@ -98,24 +99,26 @@ const Welcome: FC<IWelcomeProps> = ({
         {promptConfig.prompt_variables.map(item => (
           <div className='tablet:flex tablet:!h-9 mobile:space-y-2 tablet:space-y-0 mobile:text-xs tablet:text-sm' key={item.key}>
             <label className={`flex-shrink-0 flex items-center mobile:text-gray-700 tablet:text-gray-900 mobile:font-medium pc:font-normal ${s.formLabel}`}>{item.name}</label>
-            {item.type === 'select' ? (
-              <Select
-                className='w-full'
-                defaultValue={inputs?.[item.key]}
-                onSelect={(i) => { setInputs({ ...inputs, [item.key]: i.value }) }}
-                items={(item.options || []).map(i => ({ name: i, value: i }))}
-                allowSearch={false}
-                bgClassName='bg-gray-50'
-              />
-            ) : (
-              <input
-                placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                value={inputs?.[item.key] || ''}
-                onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
-                className={`w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50`}
-                maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
-              />
-            )}
+            {item.type === 'select'
+              ? (
+                <Select
+                  className='w-full'
+                  defaultValue={inputs?.[item.key]}
+                  onSelect={(i) => { setInputs({ ...inputs, [item.key]: i.value }) }}
+                  items={(item.options || []).map(i => ({ name: i, value: i }))}
+                  allowSearch={false}
+                  bgClassName='bg-gray-50'
+                />
+              )
+              : (
+                <input
+                  placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                  value={inputs?.[item.key] || ''}
+                  onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                  className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
+                  maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+                />
+              )}
           </div>
         ))}
       </div>
@@ -124,34 +127,33 @@ const Welcome: FC<IWelcomeProps> = ({
 
   const canChat = () => {
     const prompt_variables = promptConfig?.prompt_variables
-    if (!inputs || !prompt_variables || prompt_variables?.length === 0) {
+    if (!inputs || !prompt_variables || prompt_variables?.length === 0)
       return true
-    }
-    let hasEmptyInput = false
+
+    let hasEmptyInput = ''
     const requiredVars = prompt_variables?.filter(({ key, name, required }) => {
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
     }) || [] // compatible with old version
-    requiredVars.forEach(({ key }) => {
-      if (hasEmptyInput) {
+    requiredVars.forEach(({ key, name }) => {
+      if (hasEmptyInput)
         return
-      }
-      if (!inputs?.[key]) {
-        hasEmptyInput = true
-      }
+
+      if (!inputs?.[key])
+        hasEmptyInput = name
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired'))
+      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
       return false
     }
     return !hasEmptyInput
   }
 
   const handleChat = () => {
-    if (!canChat()) {
+    if (!canChat())
       return
-    }
+
     onStartChat(inputs)
   }
 
@@ -211,9 +213,9 @@ const Welcome: FC<IWelcomeProps> = ({
     return (
       <VarOpBtnGroup
         onConfirm={() => {
-          if (!canChat()) {
+          if (!canChat())
             return
-          }
+
           onInputsChange(inputs)
           setIsFold(true)
         }}
@@ -269,9 +271,9 @@ const Welcome: FC<IWelcomeProps> = ({
   }
 
   const renderHasSetInputsPrivate = () => {
-    if (!canEidtInpus || !hasVar) {
+    if (!canEidtInpus || !hasVar)
       return null
-    }
+
     return (
       <TemplateVarPanel
         isFold={isFold}
@@ -293,9 +295,9 @@ const Welcome: FC<IWelcomeProps> = ({
   }
 
   const renderHasSetInputs = () => {
-    if (!isPublicVersion && !canEidtInpus || !hasVar) {
+    if ((!isPublicVersion && !canEidtInpus) || !hasVar)
       return null
-    }
+
     return (
       <div
         className='pt-[88px] mb-5'
@@ -312,11 +314,13 @@ const Welcome: FC<IWelcomeProps> = ({
         {
           !hasSetInputs && (
             <div className='mobile:pt-[72px] tablet:pt-[128px] pc:pt-[200px]'>
-              {hasVar ? (
-                renderVarPanel()
-              ) : (
-                renderNoVarPanel()
-              )}
+              {hasVar
+                ? (
+                  renderVarPanel()
+                )
+                : (
+                  renderNoVarPanel()
+                )}
             </div>
           )
         }

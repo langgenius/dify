@@ -1,0 +1,39 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "14",
+			"height": "14",
+			"viewBox": "0 0 14 14",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "chevron-right"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M5.25 10.5L8.75 7L5.25 3.5",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			}
+		]
+	},
+	"name": "ChevronRight"
+}
