@@ -19,8 +19,33 @@ from services.dataset_service import DocumentService
 
 
 class DocumentListApi(DatasetApiResource):
-    """Resource for documents."""
+    """
+    Resource for documents.
 
+    Request example:
+        POST /v1/documents
+        Headers: Authorization: Bearer dataset-xxx
+        Body:
+        {
+            "name": "api_insert_data_name",
+            "doc_type": "im_chat_log",
+            "doc_metadata": {
+                "chat_platform": "lt",
+                "chat_participants/group_name": "7d202b9bf50da74c084baae18b39944b",
+                "start_date": "2023-07-12",
+                "end_date": "2023-07-12",
+                "participants": "shaddock",
+                "topicsKeywords": "拆迁",
+                "fileType": "text"
+            },
+            "text": "testdata\n"
+        }
+
+        :return: The created document_id
+        {
+            "id": "a80560e5-ebe4-4f2c-8941-3ec9dbe81722"
+        }
+    """
     def post(self, dataset):
         """Create document."""
         parser = reqparse.RequestParser()
