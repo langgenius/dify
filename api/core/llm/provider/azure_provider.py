@@ -9,6 +9,9 @@ from core.llm.provider.errors import ValidateFailedError
 from models.provider import ProviderName
 
 
+AZURE_OPENAI_API_VERSION = '2023-06-01-preview'
+
+
 class AzureProvider(BaseProvider):
     def get_models(self, model_id: Optional[str] = None, credentials: Optional[dict] = None) -> list[dict]:
         credentials = self.get_credentials(model_id) if not credentials else credentials
@@ -61,7 +64,7 @@ class AzureProvider(BaseProvider):
         except:
             config = {
                 'openai_api_type': 'azure',
-                'openai_api_version': '2023-03-15-preview',
+                'openai_api_version': AZURE_OPENAI_API_VERSION,
                 'openai_api_base': '',
                 'openai_api_key': ''
             }
@@ -70,7 +73,7 @@ class AzureProvider(BaseProvider):
             if not config.get('openai_api_key'):
                 config = {
                     'openai_api_type': 'azure',
-                    'openai_api_version': '2023-03-15-preview',
+                    'openai_api_version': AZURE_OPENAI_API_VERSION,
                     'openai_api_base': '',
                     'openai_api_key': ''
                 }
@@ -92,7 +95,7 @@ class AzureProvider(BaseProvider):
                 raise ValueError('Config must be a object.')
 
             if 'openai_api_version' not in config:
-                config['openai_api_version'] = '2023-03-15-preview'
+                config['openai_api_version'] = AZURE_OPENAI_API_VERSION
 
             models = self.get_models(credentials=config)
 
@@ -131,7 +134,7 @@ class AzureProvider(BaseProvider):
         """
         return json.dumps({
             'openai_api_type': 'azure',
-            'openai_api_version': '2023-03-15-preview',
+            'openai_api_version': AZURE_OPENAI_API_VERSION,
             'openai_api_base': config['openai_api_base'],
             'openai_api_key': self.encrypt_token(config['openai_api_key'])
         })
