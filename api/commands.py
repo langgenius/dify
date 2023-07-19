@@ -221,31 +221,27 @@ def clean_unused_dataset_indexes():
                     Document.indexing_status == 'completed',
                     Document.enabled == True,
                     Document.archived == False,
-                    Document.updated_at < thirty_days_ago
+                    Document.updated_at > thirty_days_ago
                 ).all()
-                if documents:
-                    for document in documents:
-                        click.style('Start clean document segments from index: {}'.format(document.id),
-                                    fg='green')
-                        document.enabled = False
+                if not documents and len(documents) > 0:
+                    try:
+                        update_params = {
+                            Document.enabled: False
+                        }
+
+                        Document.query.filter_by(dataset_id=dataset.id).update(update_params)
                         db.session.commit()
-                        try:
-                            # remove index
-                            vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-                            kw_index = IndexBuilder.get_index(dataset, 'economy')
-
-                            # delete from vector index
-                            if vector_index:
-                                vector_index.delete_by_document_id(document.id)
-
-                            # delete from keyword index
-                            segments = db.session.query(DocumentSegment).filter(
-                                DocumentSegment.document_id == document.id).all()
-                            index_node_ids = [segment.index_node_id for segment in segments]
-                            if index_node_ids:
-                                kw_index.delete_by_ids(index_node_ids)
-                        except Exception:
-                            logging.exception("clean document from index failed: {}".format(document.id))
+                        # remove index
+                        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+                        kw_index = IndexBuilder.get_index(dataset, 'economy')
+                        # delete from vector index
+                        if vector_index:
+                            vector_index.delete()
+                        kw_index.delete()
+                    except Exception as e:
+                        click.echo(
+                            click.style('clean dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
+                                        fg='red'))
     end_at = time.perf_counter()
     click.echo(click.style('Cleaned unused dataset from db success latency: {}'.format(end_at - start_at), fg='green'))
 
