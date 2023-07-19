@@ -40,7 +40,7 @@ const Config: FC = () => {
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
   const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
-  const targetProvider = userInfo?.providers?.find(({ token_is_set, is_valid }) => token_is_set && is_valid)
+  const openaiProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && provider_name === 'openai')
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
@@ -92,7 +92,7 @@ const Config: FC = () => {
     },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && targetProvider?.provider_name === 'openai'))
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && openaiProvider))
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -122,7 +122,7 @@ const Config: FC = () => {
             isChatApp={isChatApp}
             config={featureConfig}
             onChange={handleFeatureChange}
-            showSpeechToTextItem={targetProvider?.provider_name === 'openai'}
+            showSpeechToTextItem={!!openaiProvider}
           />
         )}
         {showAutomatic && (
