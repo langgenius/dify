@@ -509,11 +509,13 @@ const Chat: FC<IChatProps> = ({
     })
   }
 
+  const hasChatStart = chatList.some(item => !item.isAnswer)
+
   return (
     <div className={cn('px-3.5', 'h-full')}>
-      {chatList.length === 0 && (configElem || null)}
+      {!hasChatStart && (configElem || null)}
       {/* Chat List */}
-      <div className={cn((chatList.length === 0 && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
+      <div className={cn((!hasChatStart && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id

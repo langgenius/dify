@@ -155,15 +155,6 @@ const Main: FC<IMainProps> = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
-  const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
-  const handleStartChat = (inputs: Record<string, any>) => {
-    createNewChat()
-    setConversationIdChangeBecauseOfNew(true)
-    setCurrInputs(inputs)
-    setChatStarted()
-    // parse variables in introduction
-    setChatList(generateNewChatListWithOpenstatement('', inputs))
-  }
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
@@ -175,6 +166,7 @@ const Main: FC<IMainProps> = () => {
     // update inputs of current conversation
     let notSyncToStateIntroduction = ''
     let notSyncToStateInputs: Record<string, any> | undefined | null = {}
+    // debugger
     if (!isNewConversation) {
       const item = allConversationList.find(item => item.id === currConversationId)
       notSyncToStateInputs = item?.inputs || {}
@@ -213,7 +205,7 @@ const Main: FC<IMainProps> = () => {
       })
     }
 
-    if (isNewConversation && isChatStarted)
+    if (isNewConversation)
       setChatList(generateNewChatListWithOpenstatement())
 
     setControlFocus(Date.now())
@@ -459,7 +451,6 @@ const Main: FC<IMainProps> = () => {
         }
         setConversationIdChangeBecauseOfNew(false)
         resetNewConversationInputs()
-        setChatNotStarted()
         setCurrConversationId(tempNewConversationId, APP_ID, true)
         if (suggestedQuestionsAfterAnswerConfig?.enabled && !getHasStopResponded()) {
           const { data }: any = await fetchSuggestedQuestions(responseItem.id)
