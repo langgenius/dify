@@ -44,14 +44,13 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
             if dataset_documents:
                 # save vector index
                 index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=True)
+                documents = []
                 for dataset_document in dataset_documents:
                     # delete from vector index
                     segments = db.session.query(DocumentSegment).filter(
                         DocumentSegment.document_id == dataset_document.id,
                         DocumentSegment.enabled == True
                     ) .order_by(DocumentSegment.position.asc()).all()
-
-                    documents = []
                     for segment in segments:
                         document = Document(
                             page_content=segment.content,
@@ -65,8 +64,8 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
                         documents.append(document)
 
-                    # save vector index
-                    index.add_texts(documents)
+                # save vector index
+                index.add_texts(documents)
 
         end_at = time.perf_counter()
         logging.info(
