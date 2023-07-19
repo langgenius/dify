@@ -1,11 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import ModelConfig from './model-config'
 import DataConfig from './data-config'
-import PluginConfig from './plug-config'
+import PluginConfig from './plugins-config'
 
 export type IConfigProps = {
   className?: string
+  readonly?: boolean
+  modelId: string
+  onModelChange: (modelId: string) => void
   plugins: Record<string, boolean>
   onPluginChange: (key: string, value: boolean) => void
   dataSets: any[]
@@ -14,6 +18,9 @@ export type IConfigProps = {
 
 const Config: FC<IConfigProps> = ({
   className,
+  readonly,
+  modelId,
+  onModelChange,
   plugins,
   onPluginChange,
   dataSets,
@@ -21,9 +28,11 @@ const Config: FC<IConfigProps> = ({
 }) => {
   return (
     <div className={className}>
-      <div >
-
-      </div>
+      <ModelConfig
+        readonly={readonly}
+        modelId={modelId}
+        onChange={onModelChange}
+      />
       <PluginConfig
         config={plugins}
         onChange={onPluginChange}

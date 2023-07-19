@@ -35,6 +35,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
+import { UNIVERSAL_CHAT_MODEL_LIST as MODEL_LIST } from '@/config'
 
 const APP_ID = 'universal-chat'
 const isUniversalChat = true
@@ -513,6 +514,9 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
+  const [modelId, setModeId] = useState('gpt-3.5-turbo')
+  const currModel = MODEL_LIST.find(item => item.id === modelId)
+
   const [plugins, setPlugins] = useState<Record<string, boolean>>({
     google_search: false,
     web_reader: true,
@@ -564,6 +568,8 @@ const Main: FC<IMainProps> = () => {
             <div className='h-full overflow-y-auto' ref={chatListDomRef}>
               <Chat
                 configElem={<Init
+                  modelId={modelId}
+                  onModelChange={setModeId}
                   plugins={plugins}
                   onPluginChange={handlePluginsChange}
                   dataSets={dataSets}
