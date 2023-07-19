@@ -215,7 +215,7 @@ def clean_unused_dataset_indexes():
                 DatasetQuery.created_at > thirty_days_ago,
                 DatasetQuery.dataset_id == dataset.id
             ).all()
-            if not dataset_query:
+            if not dataset_query or len(dataset_query) == 0:
                 documents = db.session.query(Document).filter(
                     Document.dataset_id == dataset.id,
                     Document.indexing_status == 'completed',
