@@ -122,6 +122,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                           items={(options || []).map(i => ({ name: i, value: i }))}
                           allowSearch={false}
                           bgClassName='bg-gray-50'
+                          overlayClassName='z-[11]'
                         />
                       )
                       : (
