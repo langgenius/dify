@@ -223,8 +223,14 @@ def clean_unused_dataset_indexes():
                     Document.archived == False,
                     Document.updated_at > thirty_days_ago
                 ).all()
-                if not documents:
+                if not documents and len(documents) > 0:
                     try:
+                        update_params = {
+                            Document.enabled: False
+                        }
+
+                        Document.query.filter_by(dataset_id=dataset.id).update(update_params)
+                        db.session.commit()
                         # remove index
                         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
                         kw_index = IndexBuilder.get_index(dataset, 'economy')
