@@ -193,7 +193,7 @@ class LLMGenerator:
         llm: StreamableOpenAI = LLMBuilder.to_llm(
             tenant_id=tenant_id,
             model_name='gpt-3.5-turbo',
-            max_tokens=1000
+            max_tokens=2000
         )
 
         if isinstance(llm, BaseChatModel):
@@ -201,4 +201,5 @@ class LLMGenerator:
 
         response = llm.generate([prompt])
         answer = response.generations[0][0].text
+        total_token = response.llm_output['token_usage']['total_tokens']
         return answer.strip()

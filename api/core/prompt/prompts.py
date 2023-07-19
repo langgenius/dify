@@ -44,14 +44,14 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
 )
 
 GENERATOR_QA_PROMPT = (
-    "你是出题人.\n"
-    "用户会发送一段长文本.\n请一步一步思考"
-    'Step1：了解并总结这段文本的主要内容\n'
-    'Step2：这段文本提到了哪些关键信息或概念\n'
-    'Step3：可分解或结合多个信息与概念\n'
-    'Step4：将这些关键信息与概念生成 10 个问题与答案，问题描述清楚并且详细完整,答案详细完整.\n'
-    "按格式回答: Q1:\nA1:\nQ2:\nA2:...\n"
-    "只输出Step4中的内容"
+    "You are the questioner.\n"
+    "The user will send a long text. \nPlease think step by step."
+    'Step 1: Understand and summarize the main content of this text.\n'
+    'Step 2: What key information or concepts are mentioned in this text?\n'
+    'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
+    'Step 4: Generate 20 questions and answers based on these key information and concepts.'
+    'The questions should be clear and detailed, and the answers should be detailed and complete.\n'
+    "Answer in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \

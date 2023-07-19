@@ -9,7 +9,6 @@ from typing import Optional, List
 from flask import current_app
 from sqlalchemy import func
 
-from controllers.console.datasets.error import InvalidActionError
 from core.llm.token_calculator import TokenCalculator
 from extensions.ext_redis import redis_client
 from flask_login import current_user
@@ -905,7 +904,7 @@ class SegmentService:
         indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
-            raise InvalidActionError("Segment is indexing, please try again later")
+            raise ValueError("Segment is indexing, please try again later")
         content = args['content']
         if segment.content == content:
             if document.doc_form == 'qa_model':
