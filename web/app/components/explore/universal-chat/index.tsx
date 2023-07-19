@@ -561,8 +561,13 @@ const Main: FC<IMainProps> = () => {
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
-          <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>
-            <div className='h-full overflow-y-auto' ref={chatListDomRef}>
+          <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px]  mb-3.5 overflow-hidden')}>
+            {!isNewConversation && (
+              <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
+                <div className='text-gray-900'>{conversationName}</div>
+              </div>
+            )}
+            <div className={cn(!isNewConversation && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
               <Chat
                 configElem={<Init
                   modelId={modelId}
