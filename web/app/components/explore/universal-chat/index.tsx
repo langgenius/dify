@@ -37,6 +37,7 @@ import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
+import { fetchDatasets } from '@/service/datasets'
 
 const APP_ID = 'universal-chat'
 const DEFAULT_MODEL_ID = 'claude-2' // gpt-4, claude-2
@@ -165,7 +166,7 @@ const Main: FC<IMainProps> = () => {
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
 
-  const handleConversationSwitch = () => {
+  const handleConversationSwitch = async () => {
     if (!inited)
       return
 
@@ -195,8 +196,13 @@ const Main: FC<IMainProps> = () => {
             pluginConfig[pluginName] = item[pluginName].enabled
         })
         setPlugins(pluginConfig)
-        console.log('datasetIds', datasetIds)
-        setDateSets([])
+        if (datasetIds.length > 0) {
+          const { data } = await fetchDatasets({ url: '/datasets', params: { page: 1, ids: datasetIds } })
+          setDateSets(data)
+        }
+        else {
+          setDateSets([])
+        }
       }
       else {
         setModeId(DEFAULT_MODEL_ID)
@@ -238,7 +244,9 @@ const Main: FC<IMainProps> = () => {
     setControlFocus(Date.now())
   }
 
-  useEffect(handleConversationSwitch, [currConversationId, inited])
+  useEffect(() => {
+    handleConversationSwitch()
+  }, [currConversationId, inited])
 
   const handleConversationIdChange = (id: string) => {
     if (id === '-1') {
