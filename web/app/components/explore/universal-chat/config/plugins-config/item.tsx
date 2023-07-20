@@ -27,7 +27,7 @@ const Item: FC<IItemProps> = ({
   return (
     <div className={cn('bg-white rounded-xl border border-gray-200 overflow-hidden', s.shadow)}>
       <div className='flex justify-between items-center min-h-[48px] px-2'>
-        <div className='flex space-x-2 '>
+        <div className='flex items-center space-x-2'>
           {icon}
           <div className='leading-[18px]'>
             <div className='text-[13px] font-medium text-gray-800'>{name}</div>

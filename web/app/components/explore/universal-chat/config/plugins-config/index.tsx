@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Item from './item'
 import FeaturePanel from '@/app/components/app/configuration/base/feature-panel'
-
+import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 export type IPluginsProps = {
   readonly?: boolean
   config: Record<string, boolean>
@@ -12,9 +12,9 @@ export type IPluginsProps = {
 }
 
 const plugins = [
-  { key: 'google_search', icon: '' },
-  { key: 'web_reader', icon: '' },
-  { key: 'wikipedia', icon: '' },
+  { key: 'google_search', icon: <Google /> },
+  { key: 'web_reader', icon: <WebReader /> },
+  { key: 'wikipedia', icon: <Wikipedia /> },
 ]
 const Plugins: FC<IPluginsProps> = ({
   readonly,
