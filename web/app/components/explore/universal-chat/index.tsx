@@ -39,7 +39,12 @@ import ConfigSummary from '@/app/components/explore/universal-chat/config-view/s
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 
 const APP_ID = 'universal-chat'
-
+const DEFAULT_MODEL_ID = 'claude-2' // gpt-4, claude-2
+const DEFAULT_PLUGIN = {
+  google_search: false,
+  web_reader: true,
+  wikipedia: true,
+}
 export type IMainProps = {}
 
 const Main: FC<IMainProps> = () => {
@@ -169,7 +174,7 @@ const Main: FC<IMainProps> = () => {
     let notSyncToStateInputs: Record<string, any> | undefined | null = {}
     // debugger
     if (!isNewConversation) {
-      const item = allConversationList.find(item => item.id === currConversationId)
+      const item = allConversationList.find(item => item.id === currConversationId) as any
       notSyncToStateInputs = item?.inputs || {}
       setCurrInputs(notSyncToStateInputs)
       notSyncToStateIntroduction = item?.introduction || ''
@@ -177,6 +182,27 @@ const Main: FC<IMainProps> = () => {
         name: item?.name || '',
         introduction: notSyncToStateIntroduction,
       })
+      const modelConfig = item?.model_config
+      if (modelConfig) {
+        setModeId(modelConfig.model_id)
+        const pluginConfig: Record<string, boolean> = {}
+        const datasetIds: string[] = []
+        modelConfig.agent_mode.tools.forEach((item) => {
+          const pluginName = Object.keys(item)[0]
+          if (pluginName === 'dataset')
+            datasetIds.push(item.dataset.id)
+          else
+            pluginConfig[pluginName] = item[pluginName].enabled
+        })
+        setPlugins(pluginConfig)
+        console.log('datasetIds', datasetIds)
+        setDateSets([])
+      }
+      else {
+        setModeId(DEFAULT_MODEL_ID)
+        setPlugins(DEFAULT_PLUGIN)
+        setDateSets([])
+      }
     }
     else {
       notSyncToStateInputs = newConversationInputs
@@ -211,6 +237,7 @@ const Main: FC<IMainProps> = () => {
 
     setControlFocus(Date.now())
   }
+
   useEffect(handleConversationSwitch, [currConversationId, inited])
 
   const handleConversationIdChange = (id: string) => {
@@ -289,7 +316,6 @@ const Main: FC<IMainProps> = () => {
     (async () => {
       try {
         const [conversationData, appParams]: any = await fetchInitData()
-        // debugger
         const prompt_template = ''
         // handle current conversation id
         const { data: allConversations } = conversationData as { data: ConversationItem[]; has_more: boolean }
@@ -376,15 +402,24 @@ const Main: FC<IMainProps> = () => {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
     }
+    const formattedPlugins = Object.keys(plugins).map(key => ({
+      [key]: {
+        enabled: plugins[key],
+      },
+    }))
+    const formattedDataSets = dataSets.map(({ id }) => {
+      return {
+        dataset: {
+          enabled: true,
+          id,
+        },
+      }
+    })
     const data = {
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
       model: modelId,
-      tools: Object.keys(plugins).map(key => ({
-        [key]: {
-          enabled: plugins[key],
-        },
-      })),
+      tools: [...formattedPlugins, ...formattedDataSets],
     }
 
     // qustion
@@ -512,14 +547,10 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
-  const [modelId, setModeId] = useState('claude-2') // gpt-4, claude-2
+  const [modelId, setModeId] = useState(DEFAULT_MODEL_ID)
   // const currModel = MODEL_LIST.find(item => item.id === modelId)
 
-  const [plugins, setPlugins] = useState<Record<string, boolean>>({
-    google_search: false,
-    web_reader: true,
-    wikipedia: true,
-  })
+  const [plugins, setPlugins] = useState<Record<string, boolean>>(DEFAULT_PLUGIN)
   const handlePluginsChange = (key: string, value: boolean) => {
     setPlugins({
       ...plugins,
