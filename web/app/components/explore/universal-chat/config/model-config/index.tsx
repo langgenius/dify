@@ -30,7 +30,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
       <div className='text-sm font-semibold text-gray-800'>Model</div>
       <div className="relative" style={{ zIndex: 30 }}>
         <div ref={triggerRef} onClick={() => !readonly && toogleOption()} className={cn(readonly ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
-          <ModelIcon provider={currModel?.provider} />
+          <ModelIcon modelId={currModel?.id} />
           <div className="text-sm gray-900">{currModel?.name}</div>
           {!readonly && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
         </div>
@@ -38,7 +38,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
           <div className={cn('min-w-[159px] absolute right-0 bg-gray-50 rounded-lg shadow')}>
             {MODEL_LIST.map(item => (
               <div key={item.id} onClick={() => onChange?.(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
-                <ModelIcon className='shrink-0 mr-2' provider={item?.provider} />
+                <ModelIcon className='shrink-0 mr-2' modelId={item?.id} />
                 <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
               </div>
             ))}
