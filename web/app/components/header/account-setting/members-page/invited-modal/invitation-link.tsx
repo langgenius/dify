@@ -1,9 +1,10 @@
 'use client'
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
 import s from './index.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
+import { randomString } from '@/app/components/app-sidebar/basic'
 
 type IInvitationLinkProps = {
   value?: string
@@ -13,6 +14,7 @@ const InvitationLink = ({
   value = '',
 }: IInvitationLinkProps) => {
   const [isCopied, setIsCopied] = useState(false)
+  const selector = useRef(`invite-link-${randomString(4)}`)
   const [_, copy] = useCopyToClipboard()
 
   const copyHandle = useCallback(() => {
@@ -37,7 +39,7 @@ const InvitationLink = ({
       <div className="flex items-center flex-grow h-5">
         <div className='flex-grow bg-gray-100 text-[13px] relative h-full'>
           <Tooltip
-            selector="top-uniq"
+            selector={selector.current}
             content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
             className='z-10'
           >
@@ -46,7 +48,7 @@ const InvitationLink = ({
         </div>
         <div className="flex-shrink-0 h-4 bg-gray-200 border" />
         <Tooltip
-          selector="top-uniq"
+          selector={selector.current}
           content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           className='z-10'
         >
