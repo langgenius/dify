@@ -30,7 +30,10 @@ const OPTION_MAP = {
   scripts: {
     getContent: (url: string, token: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = { token: '${token}'${isTestEnv ? ', isDev: true' : ''} }
+  window.difyChatbotConfig = {
+    // baseUrl: '${url}', // self-host need set.
+    token: '${token}'${isTestEnv ? ',isDev: true' : ''}
+  }
 </script>
 <script
  src="${url}/embed.min.js"
