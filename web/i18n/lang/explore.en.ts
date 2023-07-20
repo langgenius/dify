@@ -56,6 +56,11 @@ const translation = {
         name: 'Wikipedia',
       },
     },
+    thought: {
+      show: 'Show',
+      hide: 'Hide',
+      processOfThought: ' the process of thinking',
+    },
     viewConfigDetailTip: 'In conversation, cannot change above settings',
   },
 }

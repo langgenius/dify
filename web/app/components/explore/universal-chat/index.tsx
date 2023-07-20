@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 /* eslint-disable @typescript-eslint/no-use-before-define */
 'use client'
 import type { FC } from 'react'
@@ -274,7 +275,6 @@ const Main: FC<IMainProps> = () => {
   }, [chatList, currConversationId])
 
   // user can not edit inputs if user had send message
-  const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
   const createNewChat = async () => {
     // if new chat is already exist, do not create new chat
     abortController?.abort()

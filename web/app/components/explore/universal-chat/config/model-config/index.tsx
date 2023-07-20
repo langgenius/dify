@@ -30,7 +30,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
       <div className='text-sm font-semibold text-gray-800'>Model</div>
       <div className="relative" style={{ zIndex: 30 }}>
         <div ref={triggerRef} onClick={() => !readonly && toogleOption()} className={cn(readonly ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
-          <ModelIcon modelId={currModel?.id} />
+          <ModelIcon modelId={currModel?.id as string} />
           <div className="text-sm gray-900">{currModel?.name}</div>
           {!readonly && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
         </div>

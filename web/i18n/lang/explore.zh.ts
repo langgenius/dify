@@ -55,6 +55,11 @@ const translation = {
         name: '维基百科',
       },
     },
+    thought: {
+      show: '显示',
+      hide: '隐藏',
+      processOfThought: '思考过程',
+    },
     viewConfigDetailTip: '在对话中，无法更改上述设置',
   },
 }
