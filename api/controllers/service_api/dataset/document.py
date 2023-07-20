@@ -67,7 +67,7 @@ class DocumentListApi(DatasetApiResource):
         file_key = 'upload_files/' + dataset.tenant_id + '/' + file_uuid + '.txt'
 
         # save file to storage
-        storage.save(file_key, args.get('text'))
+        storage.save(file_key, args.get('text').encode())
 
         # save file to db
         config = current_app.config
