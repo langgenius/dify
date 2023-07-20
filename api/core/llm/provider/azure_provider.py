@@ -18,7 +18,7 @@ class AzureProvider(BaseProvider):
         credentials = self.get_credentials('text-embedding-ada-002') if not credentials else credentials
         try:
             result = openai.Embedding.create(input=['test'],
-                                             engine='text-embedding-ada-0021',
+                                             engine='text-embedding-ada-002',
                                              timeout=60,
                                              api_key=str(credentials.get('openai_api_key')),
                                              api_base=str(credentials.get('openai_api_base')),
