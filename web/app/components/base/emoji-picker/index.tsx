@@ -3,16 +3,16 @@
 import type { ChangeEvent, FC } from 'react'
 import React, { useState } from 'react'
 import data from '@emoji-mart/data'
-import { SearchIndex, init } from 'emoji-mart'
+import { SearchIndex } from 'emoji-mart'
 import cn from 'classnames'
 import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import dynamic from 'next/dynamic'
 import s from './style.module.css'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
-
 import Modal from '@/app/components/base/modal'
 
 declare global {
@@ -27,7 +27,10 @@ declare global {
   }
 }
 
-init({ data })
+dynamic(
+  () => import('emoji-mart').then(mod => mod.default.init(data)) as any,
+  { ssr: false },
+)
 
 async function search(value: string) {
   const emojis = await SearchIndex.search(value) || []
