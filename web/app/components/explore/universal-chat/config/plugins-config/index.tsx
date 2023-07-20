@@ -6,8 +6,9 @@ import Item from './item'
 import FeaturePanel from '@/app/components/app/configuration/base/feature-panel'
 
 export type IPluginsProps = {
+  readonly?: boolean
   config: Record<string, boolean>
-  onChange: (key: string, value: boolean) => void
+  onChange?: (key: string, value: boolean) => void
 }
 
 const plugins = [
@@ -16,6 +17,7 @@ const plugins = [
   { key: 'wikipedia', icon: '' },
 ]
 const Plugins: FC<IPluginsProps> = ({
+  readonly,
   config,
   onChange,
 }) => {
@@ -28,7 +30,7 @@ const Plugins: FC<IPluginsProps> = ({
     if (key === 'web_reader')
       res.description = t(`explore.universalChat.plugins.${key}.description`)
 
-    if (key === 'google_search') {
+    if (key === 'google_search' && !readonly) {
       res.more = (
         <div className='border-t border-[#FEF0C7] flex items-center h-[34px] pl-2 bg-[#FFFAEB] text-gray-700 text-xs '>
           <span className='whitespace-pre'>{t('explore.universalChat.plugins.google_search.more.left')}</span>
@@ -61,7 +63,8 @@ const Plugins: FC<IPluginsProps> = ({
             description={item.description}
             more={item.more}
             enabled={config[item.key]}
-            onChange={enabled => onChange(item.key, enabled)}
+            onChange={enabled => onChange?.(item.key, enabled)}
+            readonly={readonly}
           />
         ))}
       </div>

@@ -12,6 +12,7 @@ export type IItemProps = {
   more?: React.ReactNode
   enabled: boolean
   onChange: (enabled: boolean) => void
+  readonly?: boolean
 }
 
 const Item: FC<IItemProps> = ({
@@ -21,6 +22,7 @@ const Item: FC<IItemProps> = ({
   more,
   enabled,
   onChange,
+  readonly,
 }) => {
   return (
     <div className={cn('bg-white rounded-xl border border-gray-200 overflow-hidden', s.shadow)}>
@@ -32,7 +34,7 @@ const Item: FC<IItemProps> = ({
             {description && <div className='text-xs leading-[18px] text-gray-500'>{description}</div>}
           </div>
         </div>
-        <Switch size='md' defaultValue={enabled} onChange={onChange} />
+        <Switch size='md' defaultValue={enabled} onChange={onChange} disabled={readonly} />
       </div>
       {more}
     </div>

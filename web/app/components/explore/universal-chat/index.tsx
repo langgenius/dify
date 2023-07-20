@@ -36,9 +36,9 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
+import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 
 const APP_ID = 'universal-chat'
-const isUniversalChat = true
 
 export type IMainProps = {}
 
@@ -566,9 +566,10 @@ const Main: FC<IMainProps> = () => {
             {(!isNewConversation || isResponsing) && (
               <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
                 <div className='text-gray-900'>{conversationName}</div>
-                <div className='flex items-center shrink-0 ml-2'>
+                <div className='flex items-center shrink-0 ml-2 space-x-2'>
                   <ConfigSummary modelId={modelId} pluginIds={Object.keys(plugins).filter(key => plugins[key])}
                   />
+                  <ConfigDetail modelId={modelId} plugins={plugins} dataSets={dataSets}/>
                 </div>
               </div>
             )}

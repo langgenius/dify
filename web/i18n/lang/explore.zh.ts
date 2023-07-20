@@ -55,6 +55,7 @@ const translation = {
         name: '维基百科',
       },
     },
+    viewConfigDetailTip: '在对话中，无法更改上述设置',
   },
 }
 

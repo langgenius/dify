@@ -9,11 +9,11 @@ export type IConfigProps = {
   className?: string
   readonly?: boolean
   modelId: string
-  onModelChange: (modelId: string) => void
+  onModelChange?: (modelId: string) => void
   plugins: Record<string, boolean>
-  onPluginChange: (key: string, value: boolean) => void
+  onPluginChange?: (key: string, value: boolean) => void
   dataSets: any[]
-  onDataSetsChange: (contexts: any[]) => void
+  onDataSetsChange?: (contexts: any[]) => void
 }
 
 const Config: FC<IConfigProps> = ({
@@ -34,13 +34,17 @@ const Config: FC<IConfigProps> = ({
         onChange={onModelChange}
       />
       <PluginConfig
+        readonly={readonly}
         config={plugins}
         onChange={onPluginChange}
       />
-      <DataConfig
-        dataSets={dataSets}
-        onChange={onDataSetsChange}
-      />
+      {(!readonly || (readonly && dataSets.length > 0)) && (
+        <DataConfig
+          readonly={readonly}
+          dataSets={dataSets}
+          onChange={onDataSetsChange}
+        />
+      )}
     </div>
   )
 }

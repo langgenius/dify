@@ -56,6 +56,7 @@ const translation = {
         name: 'Wikipedia',
       },
     },
+    viewConfigDetailTip: 'In conversation, cannot change above settings',
   },
 }
 

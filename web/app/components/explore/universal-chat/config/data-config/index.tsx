@@ -12,11 +12,13 @@ import SelectDataSet from '@/app/components/app/configuration/dataset-config/sel
 import type { DataSet } from '@/models/datasets'
 
 type Props = {
+  readonly?: boolean
   dataSets: DataSet[]
-  onChange: (data: DataSet[]) => void
+  onChange?: (data: DataSet[]) => void
 }
 
 const DatasetConfig: FC<Props> = ({
+  readonly,
   dataSets,
   onChange,
 }) => {
@@ -42,22 +44,22 @@ const DatasetConfig: FC<Props> = ({
           }
         })
       })
-      onChange(newSelected)
+      onChange?.(newSelected)
     }
     else {
-      onChange(data)
+      onChange?.(data)
     }
     hideSelectDataSet()
   }
   const onRemove = (id: string) => {
-    onChange(dataSets.filter(item => item.id !== id))
+    onChange?.(dataSets.filter(item => item.id !== id))
   }
 
   return (
     <FeaturePanel
       className='mt-3'
       title={t('appDebug.feature.dataSet.title')}
-      headerRight={<OperationBtn type="add" onClick={showSelectDataSet} />}
+      headerRight={!readonly && <OperationBtn type="add" onClick={showSelectDataSet} />}
       hasHeaderBottomBorder={!hasData}
     >
       {hasData
@@ -69,6 +71,8 @@ const DatasetConfig: FC<Props> = ({
                 key={item.id}
                 config={item}
                 onRemove={onRemove}
+                readonly={readonly}
+                // TODO: readonly remove btn
               />
             ))}
           </div>

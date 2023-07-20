@@ -9,7 +9,7 @@ import { UNIVERSAL_CHAT_MODEL_LIST as MODEL_LIST } from '@/config'
 
 export type IModelConfigProps = {
   modelId: string
-  onChange: (model: string) => void
+  onChange?: (model: string) => void
   readonly?: boolean
 }
 
@@ -37,7 +37,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
         {isShowOption && (
           <div className={cn('min-w-[159px] absolute right-0 bg-gray-50 rounded-lg shadow')}>
             {MODEL_LIST.map(item => (
-              <div key={item.id} onClick={() => onChange(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
+              <div key={item.id} onClick={() => onChange?.(item.id)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
                 <ModelIcon className='shrink-0 mr-2' provider={item?.provider} />
                 <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
               </div>
