@@ -53,7 +53,8 @@ DEFAULTS = {
     'DEFAULT_LLM_PROVIDER': 'openai',
     'OPENAI_HOSTED_QUOTA_LIMIT': 200,
     'ANTHROPIC_HOSTED_QUOTA_LIMIT': 1000,
-    'TENANT_DOCUMENT_COUNT': 100
+    'TENANT_DOCUMENT_COUNT': 100,
+    'CLEAN_DAY_SETTING': 30
 }
 
 
@@ -89,7 +90,7 @@ class Config:
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
-        self.CURRENT_VERSION = "0.3.9"
+        self.CURRENT_VERSION = "0.3.10"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -215,6 +216,7 @@ class Config:
         self.NOTION_INTEGRATION_TOKEN = get_env('NOTION_INTEGRATION_TOKEN')
 
         self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
+        self.CLEAN_DAY_SETTING = get_env('CLEAN_DAY_SETTING')
 
 
 class CloudEditionConfig(Config):

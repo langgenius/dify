@@ -51,7 +51,9 @@ const List: FC<IListProps> = ({
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
+        let lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
+        if (lastId === '-1')
+          lastId = undefined
         let res: any
         if (isUniversalChat)
           res = await fetchUniversalConversations(lastId, isPinned)
