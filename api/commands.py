@@ -225,26 +225,22 @@ def clean_unused_dataset_indexes():
                 ).all()
                 if not documents or len(documents) == 0:
                     try:
-                        all_documents = db.session.query(Document).filter(
-                            Document.dataset_id == dataset.id,
-                            Document.indexing_status == 'completed',
-                            Document.enabled == True,
-                            Document.archived == False,
-                        ).all()
-                        if all_documents and len(all_documents)>0:
-                            update_params = {
-                                Document.enabled: False
-                            }
+                        # remove index
+                        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+                        kw_index = IndexBuilder.get_index(dataset, 'economy')
+                        # delete from vector index
+                        if vector_index:
+                            vector_index.delete()
+                        kw_index.delete()
+                        # update document
+                        update_params = {
+                            Document.enabled: False
+                        }
 
-                            Document.query.filter_by(dataset_id=dataset.id).update(update_params)
-                            db.session.commit()
-                            # remove index
-                            vector_index = IndexBuilder.get_index(dataset, 'high_quality')
-                            kw_index = IndexBuilder.get_index(dataset, 'economy')
-                            # delete from vector index
-                            if vector_index:
-                                vector_index.delete()
-                            kw_index.delete()
+                        Document.query.filter_by(dataset_id=dataset.id).update(update_params)
+                        db.session.commit()
+                        click.echo(click.style('Cleaned unused dataset {} from db success!'.format(dataset.id),
+                                               fg='green'))
                     except Exception as e:
                         click.echo(
                             click.style('clean dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
