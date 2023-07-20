@@ -155,6 +155,7 @@ const Chat: FC<IChatProps> = ({
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
+            const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
             return <Answer
               key={item.id}
               item={item}
@@ -165,6 +166,7 @@ const Chat: FC<IChatProps> = ({
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
               answerIconClassName={answerIconClassName}
+              thoughts={thoughts}
             />
           }
           return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />
@@ -201,7 +203,7 @@ const Chat: FC<IChatProps> = ({
                   {/* has scrollbar would hide part of first item */}
                   <div ref={suggestionListRef} className={cn(!hasScrollbar && 'justify-center', 'flex overflow-x-auto pb-2')}>
                     {suggestionList?.map((item, index) => (
-                      <div className='shrink-0 flex justify-center mr-2'>
+                      <div key={item} className='shrink-0 flex justify-center mr-2'>
                         <Button
                           key={index}
                           onClick={() => setQuery(item)}

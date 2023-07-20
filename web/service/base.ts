@@ -30,6 +30,7 @@ export type IOnDataMoreInfo = {
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
+export type IOnThought = (though: { id: string; tool: string; thought: string }) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string) => void
 
@@ -39,6 +40,7 @@ type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   onData?: IOnData // for stream
+  onThought?: IOnThought
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -61,7 +63,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted) => {
+const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -114,7 +116,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               isFirstMessage = false
             }
             else if (bufferObj.event === 'agent_thought') {
-              console.log(bufferObj)
+              onThought?.(bufferObj as any)
             }
           }
         })
@@ -306,7 +308,7 @@ export const upload = (options: any): Promise<any> => {
   })
 }
 
-export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onThought, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -348,7 +350,7 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted)
+      }, onCompleted, onThought)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

@@ -27,7 +27,7 @@ import {
 } from '@/service/universal-chat'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
+import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Loading from '@/app/components/base/loading'
@@ -38,7 +38,6 @@ import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 import { fetchDatasets } from '@/service/datasets'
-
 const APP_ID = 'universal-chat'
 const DEFAULT_MODEL_ID = 'claude-2' // gpt-4, claude-2
 const DEFAULT_PLUGIN = {
@@ -177,7 +176,7 @@ const Main: FC<IMainProps> = () => {
     if (!isNewConversation) {
       const item = allConversationList.find(item => item.id === currConversationId) as any
       notSyncToStateInputs = item?.inputs || {}
-      setCurrInputs(notSyncToStateInputs)
+      // setCurrInputs(notSyncToStateInputs)
       notSyncToStateIntroduction = item?.introduction || ''
       setExistConversationInfo({
         name: item?.name || '',
@@ -188,7 +187,7 @@ const Main: FC<IMainProps> = () => {
         setModeId(modelConfig.model_id)
         const pluginConfig: Record<string, boolean> = {}
         const datasetIds: string[] = []
-        modelConfig.agent_mode.tools.forEach((item) => {
+        modelConfig.agent_mode.tools.forEach((item: any) => {
           const pluginName = Object.keys(item)[0]
           if (pluginName === 'dataset')
             datasetIds.push(item.dataset.id)
@@ -228,6 +227,7 @@ const Main: FC<IMainProps> = () => {
             isAnswer: false,
           })
           newChatList.push({
+            ...item,
             id: item.id,
             content: item.answer,
             feedback: item.feedback,
@@ -272,6 +272,7 @@ const Main: FC<IMainProps> = () => {
     if (chatListDomRef.current)
       chatListDomRef.current.scrollTop = chatListDomRef.current.scrollHeight
   }, [chatList, currConversationId])
+
   // user can not edit inputs if user had send message
   const canEditInpus = !chatList.some(item => item.isAnswer === false) && isNewConversation
   const createNewChat = async () => {
@@ -289,6 +290,9 @@ const Main: FC<IMainProps> = () => {
         introduction: conversationIntroduction,
       })
     }))
+    setModeId(DEFAULT_MODEL_ID)
+    setPlugins(DEFAULT_PLUGIN)
+    setDateSets([])
   }
 
   // sometime introduction is not applied to state
@@ -435,6 +439,7 @@ const Main: FC<IMainProps> = () => {
     const questionItem = {
       id: questionId,
       content: message,
+      agent_thoughts: [],
       isAnswer: false,
     }
 
@@ -449,9 +454,10 @@ const Main: FC<IMainProps> = () => {
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
+      agent_thoughts: [],
       isAnswer: true,
     }
 
@@ -466,6 +472,7 @@ const Main: FC<IMainProps> = () => {
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        // console.log('get message...')
         responseItem.content = responseItem.content + message
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
@@ -501,6 +508,11 @@ const Main: FC<IMainProps> = () => {
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+      },
+      onThought(thought) {
+        // thought then start to return message
+        // console.log('thought...');
+        (responseItem as any).agent_thoughts.push(thought)
       },
       onError() {
         setResponsingFalse()

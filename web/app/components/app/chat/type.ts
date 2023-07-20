@@ -16,9 +16,15 @@ export type SubmitAnnotationFunc = (messageId: string, content: string) => Promi
 
 export type DisplayScene = 'web' | 'console'
 
+export type ThoughtItem = {
+  id: string
+  tool: string // plugin or dataset
+  thought: string
+}
 export type IChatItem = {
   id: string
   content: string
+  agent_thoughts?: ThoughtItem[]
   /**
    * Specific message type
    */

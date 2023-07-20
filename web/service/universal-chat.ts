@@ -1,8 +1,8 @@
-import type { IOnCompleted, IOnData, IOnError } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnThought } from './base'
 import {
   del, get, patch, post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat'
+import type { Feedbacktype } from '@/app/components/app/chat/type'
 
 const baseUrl = 'universal-chat'
 
@@ -10,10 +10,11 @@ function getUrl(url: string) {
   return `${baseUrl}/${url.startsWith('/') ? url.slice(1) : url}`
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onThought, getAbortController }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
+  onThought: IOnThought
   getAbortController?: (abortController: AbortController) => void
 }) => {
   return ssePost(getUrl('messages'), {
@@ -21,7 +22,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onError, getAbortController })
+  }, { onData, onCompleted, onThought, onError, getAbortController })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {

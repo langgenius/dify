@@ -3,7 +3,7 @@ import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat'
+import type { Feedbacktype } from '@/app/components/app/chat/type'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {
   switch (action) {

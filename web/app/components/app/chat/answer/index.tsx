@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '../type'
+import type { DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc, ThoughtItem } from '../type'
 import { randomString } from '../../../app-sidebar/basic'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
@@ -13,13 +13,13 @@ import { EditIcon, EditIconSolid, OpeningStatementIcon, RatingIcon } from '../ic
 import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
+import Thought from '../thought'
 import type { Annotation, MessageRating } from '@/models/log'
 import AppContext from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
 import { Markdown } from '@/app/components/base/markdown'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
-
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
   return <div className='flex items-center my-2'>
@@ -43,9 +43,10 @@ export type IAnswerProps = {
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIconClassName?: string
+  thoughts?: ThoughtItem[]
 }
 // The component needs to maintain its own state to control whether to display input component
-const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName }) => {
+const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -54,6 +55,23 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
+  // const thoughtList = [
+  //   {
+  //     id: '1',
+  //     tool: 'google_search',
+  //     thought: 'Searching Wikipedia with Donald Trump..',
+  //   },
+  //   {
+  //     id: '2',
+  //     tool: 'google_search',
+  //     thought: 'Searching Wikipedia with Donald Trump..',
+  //   },
+  //   {
+  //     id: '3',
+  //     tool: 'google_search',
+  //     thought: 'Searching Wikipedia with Donald Trump..',
+  //   },
+  // ]
 
   /**
  * Render feedback results (distinguish between users and administrators)
@@ -184,7 +202,12 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                     </div>
                   )
                   : (
-                    <Markdown content={content} />
+                    <div>
+                      {(thoughts && thoughts.length > 0) && (
+                        <Thought list={thoughts || []}/>
+                      )}
+                      <Markdown content={content} />
+                    </div>
                   )}
                 {!showEdit
                   ? (annotation?.content
