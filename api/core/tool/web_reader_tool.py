@@ -74,33 +74,36 @@ class WebReaderTool(BaseTool):
                 self.url = url
             else:
                 page_contents = self.page_contents
+        except Exception as e:
+            return f'Read this website failed, caused by: {str(e)}.'
 
-            if summary:
-                character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                    chunk_size=self.summary_chunk_tokens,
-                    chunk_overlap=self.summary_chunk_overlap,
-                    separators=self.summary_separators
-                )
+        if summary:
+            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                chunk_size=self.summary_chunk_tokens,
+                chunk_overlap=self.summary_chunk_overlap,
+                separators=self.summary_separators
+            )
 
-                texts = character_splitter.split_text(page_contents)
-                docs = [Document(page_content=t) for t in texts]
+            texts = character_splitter.split_text(page_contents)
+            docs = [Document(page_content=t) for t in texts]
 
-                # only use first 10 docs
-                if len(docs) > 10:
-                    docs = docs[:10]
+            # only use first 10 docs
+            if len(docs) > 10:
+                docs = docs[:10]
 
-                chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
+            chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
+            try:
                 page_contents = chain.run(docs)
                 # todo use cache
-            else:
-                page_contents = page_result(page_contents, cursor, self.max_chunk_length)
+            except Exception as e:
+                return f'Read this website failed, caused by: {str(e)}.'
+        else:
+            page_contents = page_result(page_contents, cursor, self.max_chunk_length)
 
-                if self.continue_reading and len(page_contents) >= self.max_chunk_length:
-                    page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
-                                     f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
-                                     f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
-        except Exception as e:
-            return f'failed to read the website, cause {str(e)}.'
+            if self.continue_reading and len(page_contents) >= self.max_chunk_length:
+                page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
+                                 f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
+                                 f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
 
         return page_contents
 
