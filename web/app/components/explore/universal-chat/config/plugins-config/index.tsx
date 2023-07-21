@@ -99,7 +99,7 @@ const Plugins: FC<IPluginsProps> = ({
       </FeaturePanel>
       {
         showSetSerpAPIKeyModal && (
-          <AccountSetting activeTab="data-source" onCancel={async () => {
+          <AccountSetting activeTab="plugin" onCancel={async () => {
             setShowSetAPIKeyModal(false)
             await checkSerpApiKey()
           }} />

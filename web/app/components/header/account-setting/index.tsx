@@ -155,7 +155,7 @@ export default function AccountSetting({
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
-            {activeMenu === 'data-source' && <PluginPage />}
+            {activeMenu === 'plugin' && <PluginPage />}
           </div>
         </div>
       </div>
