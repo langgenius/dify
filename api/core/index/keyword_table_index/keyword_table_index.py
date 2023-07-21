@@ -205,6 +205,16 @@ class KeywordTableIndex(BaseIndex):
             document_segment.keywords = keywords
             db.session.commit()
 
+    def create_segment_keywords(self, node_id: str, keywords: List[str]):
+        keyword_table = self._get_dataset_keyword_table()
+        self._update_segment_keywords(node_id, keywords)
+        keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
+        self._save_dataset_keyword_table(keyword_table)
+
+    def update_segment_keywords_index(self, node_id: str, keywords: List[str]):
+        keyword_table = self._get_dataset_keyword_table()
+        keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
+        self._save_dataset_keyword_table(keyword_table)
 
 class KeywordTableRetriever(BaseRetriever, BaseModel):
     index: KeywordTableIndex

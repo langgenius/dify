@@ -31,7 +31,8 @@ from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 from tasks.update_segment_index_task import update_segment_index_task
-
+from tasks.update_segment_keyword_index_task\
+    import update_segment_keyword_index_task
 
 
 class DatasetService:
@@ -896,7 +897,7 @@ class SegmentService:
         db.session.commit()
         indexing_cache_key = 'segment_{}_indexing'.format(segment_document.id)
         redis_client.setex(indexing_cache_key, 600, 1)
-        create_segment_to_index_task.delay(segment_document.id)
+        create_segment_to_index_task.delay(segment_document.id, args['keywords'])
         return segment_document
 
     @classmethod
@@ -909,8 +910,12 @@ class SegmentService:
         if segment.content == content:
             if document.doc_form == 'qa_model':
                 segment.answer = args['answer']
+                segment.keywords = args['keywords']
             db.session.add(segment)
             db.session.commit()
+            # update segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
+            update_segment_keyword_index_task.delay(segment.id)
         else:
             segment_hash = helper.generate_text_hash(content)
             # calc embedding use tokens
@@ -928,5 +933,5 @@ class SegmentService:
             db.session.commit()
             # update segment index task
             redis_client.setex(indexing_cache_key, 600, 1)
-            update_segment_index_task.delay(segment.id)
+            update_segment_index_task.delay(segment.id, args['keywords'])
         return segment
