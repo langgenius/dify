@@ -18,7 +18,7 @@ const SecretKeyGenerateModal = ({
   isShow = false,
   onClose,
   newKey,
-  className
+  className,
 }: ISecretKeyGenerateModalProps) => {
   const { t } = useTranslation()
   return (
