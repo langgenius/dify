@@ -58,7 +58,7 @@ const KeyInput = ({
       '>
         <input
           className='
-            w-full py-[9px]
+            w-full py-[9px] mr-2
             text-xs font-medium text-gray-700 leading-[18px]
             appearance-none outline-none bg-transparent
           '

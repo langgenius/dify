@@ -11,7 +11,7 @@ const PluginPage = () => {
   const { data: plugins, mutate } = useSWR('/workspaces/current/tool-providers', fetchPluginProviders)
 
   const Plugin_MAP: Record<string, any> = {
-    serpapi: (plugin: PluginProvider) => <SerpapiPlugin plugin={plugin} onUpdate={() => mutate()} />,
+    serpapi: (plugin: PluginProvider) => <SerpapiPlugin key='serpapi' plugin={plugin} onUpdate={() => mutate()} />,
   }
 
   return (
@@ -19,7 +19,7 @@ const PluginPage = () => {
       <div>
         {plugins?.map(plugin => Plugin_MAP[plugin.tool_name](plugin))}
       </div>
-      <div className='absolute bottom-0 w-full h-[42px] flex items-center bg-white text-xs text-gray-500'>
+      <div className='fixed bottom-0 w-[472px] h-[42px] flex items-center bg-white text-xs text-gray-500'>
         <LockClosedIcon className='w-3 h-3 mr-1' />
         {t('common.provider.encrypted.front')}
         <Link
