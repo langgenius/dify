@@ -43,7 +43,7 @@ const translation = {
         '较高的 Temperature 设置将导致更多样和创造性的输出，而较低的 Temperature 将产生更保守的输出并且类似于训练数据。',
       topP: '采样范围',
       topPTip:
-        'Top P值越高，输出与训练文本越相似，Top P值越低，输出越有创意和变化。它可用于使输出更适合特定用例。',
+        'Top P值越低，输出与训练文本越相似，Top P值越高，输出越有创意和变化。它可用于使输出更适合特定用例。',
       presencePenalty: '词汇控制',
       presencePenaltyTip:
         'Presence penalty 是根据新词是否出现在目前的文本中来对其进行惩罚。正值将降低模型谈论新话题的可能性。',
