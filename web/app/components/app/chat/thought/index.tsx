@@ -8,6 +8,8 @@ import s from './style.module.css'
 import { DataSet, Search, ThoughtList, WebReader } from '@/app/components/base/icons/src/public/thought'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
+// https://www.freecodecamp.org/news/how-to-write-a-regular-expression-for-a-url/
+const urlRegex = /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?\/[a-zA-Z0-9]{2,}|((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)|(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?/gi
 export type IThoughtProps = {
   list: ThoughtItem[]
 }
@@ -32,7 +34,11 @@ const Thought: FC<IThoughtProps> = ({
   const renderItem = (item: ThoughtItem) => (
     <div className='flex space-x-1 py-[3px] leading-[18px]' key={item.id}>
       <div className='flex items-center h-[18px] shrink-0'>{getIcon(item.tool)}</div>
-      <div>{item.thought}</div>
+      <div dangerouslySetInnerHTML={{
+        __html: item.thought.replace(urlRegex, (url) => {
+          return `<a href="${url}" class="text-[#155EEF]">${url}</a>`
+        }),
+      }}></div>
     </div>
   )
   return (
