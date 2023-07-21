@@ -80,6 +80,7 @@ class OrchestratorRuleParser:
             tools = self.to_tools(
                 tool_configs=tool_configs,
                 conversation_message_task=conversation_message_task,
+                model_name=agent_model_name,
                 rest_tokens=rest_tokens,
                 callbacks=[agent_callback, DifyStdOutCallbackHandler()]
             )
@@ -128,12 +129,13 @@ class OrchestratorRuleParser:
         return None
 
     def to_tools(self, tool_configs: list, conversation_message_task: ConversationMessageTask,
-                 rest_tokens: int, callbacks: Callbacks = None) -> list[BaseTool]:
+                 model_name: str, rest_tokens: int, callbacks: Callbacks = None) -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
         :param rest_tokens:
         :param tool_configs: app agent tool configs
+        :param model_name:
         :param conversation_message_task:
         :param callbacks:
         :return:
@@ -149,7 +151,7 @@ class OrchestratorRuleParser:
             if tool_type == "dataset":
                 tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens)
             elif tool_type == "web_reader":
-                tool = self.to_web_reader_tool()
+                tool = self.to_web_reader_tool(model_name)
             elif tool_type == "google_search":
                 tool = self.to_google_search_tool()
             elif tool_type == "wikipedia":
@@ -189,7 +191,7 @@ class OrchestratorRuleParser:
 
         return tool
 
-    def to_web_reader_tool(self) -> Optional[BaseTool]:
+    def to_web_reader_tool(self, model_name: str) -> Optional[BaseTool]:
         """
         A tool for reading web pages
 
@@ -197,7 +199,7 @@ class OrchestratorRuleParser:
         """
         summary_llm = LLMBuilder.to_llm(
             tenant_id=self.tenant_id,
-            model_name="gpt-3.5-turbo-16k",
+            model_name=model_name,
             temperature=0,
             max_tokens=500,
             callbacks=[DifyStdOutCallbackHandler()]
