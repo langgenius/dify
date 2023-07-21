@@ -67,37 +67,40 @@ class WebReaderTool(BaseTool):
     llm: BaseLanguageModel
 
     def _run(self, url: str, summary: bool = False, cursor: int = 0) -> str:
-        if not self.page_contents or self.url != url:
-            page_contents = get_url(url)
-            self.page_contents = page_contents
-            self.url = url
-        else:
-            page_contents = self.page_contents
+        try:
+            if not self.page_contents or self.url != url:
+                page_contents = get_url(url)
+                self.page_contents = page_contents
+                self.url = url
+            else:
+                page_contents = self.page_contents
 
-        if summary:
-            character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
-                chunk_size=self.summary_chunk_tokens,
-                chunk_overlap=self.summary_chunk_overlap,
-                separators=self.summary_separators
-            )
+            if summary:
+                character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
+                    chunk_size=self.summary_chunk_tokens,
+                    chunk_overlap=self.summary_chunk_overlap,
+                    separators=self.summary_separators
+                )
 
-            texts = character_splitter.split_text(page_contents)
-            docs = [Document(page_content=t) for t in texts]
+                texts = character_splitter.split_text(page_contents)
+                docs = [Document(page_content=t) for t in texts]
 
-            # only use first 10 docs
-            if len(docs) > 10:
-                docs = docs[:10]
+                # only use first 10 docs
+                if len(docs) > 10:
+                    docs = docs[:10]
 
-            chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
-            page_contents = chain.run(docs)
-            # todo use cache
-        else:
-            page_contents = page_result(page_contents, cursor, self.max_chunk_length)
+                chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
+                page_contents = chain.run(docs)
+                # todo use cache
+            else:
+                page_contents = page_result(page_contents, cursor, self.max_chunk_length)
 
-            if self.continue_reading and len(page_contents) >= self.max_chunk_length:
-                page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
-                                 f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
-                                 f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
+                if self.continue_reading and len(page_contents) >= self.max_chunk_length:
+                    page_contents += f"\nPAGE WAS TRUNCATED. IF YOU FIND INFORMATION THAT CAN ANSWER QUESTION " \
+                                     f"THEN DIRECT ANSWER AND STOP INVOKING web_reader TOOL, OTHERWISE USE " \
+                                     f"CURSOR={cursor+len(page_contents)} TO CONTINUE READING."
+        except Exception as e:
+            return f'failed to read the website, cause {str(e)}.'
 
         return page_contents
 
@@ -117,7 +120,7 @@ def get_url(url: str) -> str:
     }
     supported_content_types = file_extractor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
 
-    head_response = requests.head(url, headers=headers, allow_redirects=True)
+    head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
 
     if head_response.status_code != 200:
         return "URL returned status code {}.".format(head_response.status_code)
@@ -130,7 +133,7 @@ def get_url(url: str) -> str:
     if main_content_type in file_extractor.SUPPORT_URL_CONTENT_TYPES:
         return FileExtractor.load_from_url(url, return_text=True)
 
-    response = requests.get(url, headers=headers, allow_redirects=True)
+    response = requests.get(url, headers=headers, allow_redirects=True, timeout=30)
     a = extract_using_readabilipy(response.text)
 
     if not a['plain_text'] or not a['plain_text'].strip():
