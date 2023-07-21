@@ -30,13 +30,13 @@ const Thought: FC<IThoughtProps> = ({
   const [isShowDetail, setIsShowDetail] = React.useState(false)
 
   const renderItem = (item: ThoughtItem) => (
-    <div className='flex space-x-1 items-center h-6' key={item.id}>
-      <div className='shrink-0'>{getIcon(item.tool)}</div>
+    <div className='flex space-x-1 py-[3px] leading-[18px]' key={item.id}>
+      <div className='flex items-center h-[18px] shrink-0'>{getIcon(item.tool)}</div>
       <div>{item.thought}</div>
     </div>
   )
   return (
-    <div className={cn(s.wrap, 'inline-block mb-2 px-2 py-0.5 rounded-md text-xs text-gray-500 font-medium')} >
+    <div className={cn(s.wrap, !isShowDetail && s.wrapHoverEffect, 'inline-block mb-2 px-2 py-0.5 rounded-md text-xs text-gray-500 font-medium')} >
       <div className='flex items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsShowDetail(!isShowDetail)} >
         <ThoughtList />
         <div>{t(`explore.universalChat.thought.${isShowDetail ? 'hide' : 'show'}`)}{t('explore.universalChat.thought.processOfThought')}</div>
