@@ -1,7 +1,7 @@
 """add_qa_model_support
 
 Revision ID: 8d2d099ceb74
-Revises: 2beac44e5f5f
+Revises: 7ce5a52e4eee
 Create Date: 2023-07-18 15:25:15.293438
 
 """
@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '8d2d099ceb74'
-down_revision = '2beac44e5f5f'
+down_revision = '7ce5a52e4eee'
 branch_labels = None
 depends_on = None
 
