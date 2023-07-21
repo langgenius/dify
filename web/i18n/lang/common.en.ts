@@ -91,6 +91,7 @@ const translation = {
     language: 'Language',
     provider: 'Model Provider',
     dataSource: 'Data Source',
+    plugin: 'Plugins',
   },
   account: {
     avatar: 'Avatar',
@@ -222,6 +223,13 @@ const translation = {
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },
+    },
+  },
+  plugin: {
+    serpapi: {
+      apiKey: 'API Key',
+      apiKeyPlaceholder: 'Enter your API key',
+      keyFrom: 'Get your SerpAPI key from SerpAPI Account Page',
     },
   },
   about: {

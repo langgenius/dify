@@ -124,4 +124,4 @@ def compact_response(response: Union[dict | Generator]) -> Response:
 
 
 api.add_resource(UniversalChatApi, '/universal-chat/messages')
-api.add_resource(UniversalChatStopApi, 'universal-chat/messages/<string:task_id>/stop')
+api.add_resource(UniversalChatStopApi, '/universal-chat/messages/<string:task_id>/stop')
