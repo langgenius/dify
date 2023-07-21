@@ -14,36 +14,26 @@ from models.dataset import DocumentSegment
 
 
 @shared_task
-def add_segment_to_index_task(segment_id: str):
+def update_segment_index_task(segment_id: str):
     """
-    Async Add segment to index
+    Async update segment index
     :param segment_id:
 
-    Usage: add_segment_to_index.delay(segment_id)
+    Usage: update_segment_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start add segment to index: {}'.format(segment_id), fg='green'))
+    logging.info(click.style('Start update segment index: {}'.format(segment_id), fg='green'))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
         raise NotFound('Segment not found')
 
-    if segment.status != 'completed':
+    if segment.status != 'updating':
         return
 
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
     try:
-        document = Document(
-            page_content=segment.content,
-            metadata={
-                "doc_id": segment.index_node_id,
-                "doc_hash": segment.index_node_hash,
-                "document_id": segment.document_id,
-                "dataset_id": segment.dataset_id,
-            }
-        )
-
         dataset = segment.dataset
 
         if not dataset:
@@ -60,6 +50,35 @@ def add_segment_to_index_task(segment_id: str):
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
             return
 
+        # update segment status to indexing
+        update_params = {
+            DocumentSegment.status: "indexing",
+            DocumentSegment.indexing_at: datetime.datetime.utcnow()
+        }
+        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.commit()
+
+        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
+        kw_index = IndexBuilder.get_index(dataset, 'economy')
+
+        # delete from vector index
+        if vector_index:
+            vector_index.delete_by_ids([segment.index_node_id])
+
+        # delete from keyword index
+        kw_index.delete_by_ids([segment.index_node_id])
+
+        # add new index
+        document = Document(
+            page_content=segment.content,
+            metadata={
+                "doc_id": segment.index_node_id,
+                "doc_hash": segment.index_node_hash,
+                "document_id": segment.document_id,
+                "dataset_id": segment.dataset_id,
+            }
+        )
+
         # save vector index
         index = IndexBuilder.get_index(dataset, 'high_quality')
         if index:
@@ -70,10 +89,18 @@ def add_segment_to_index_task(segment_id: str):
         if index:
             index.add_texts([document])
 
+        # update segment to completed
+        update_params = {
+            DocumentSegment.status: "completed",
+            DocumentSegment.completed_at: datetime.datetime.utcnow()
+        }
+        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.commit()
+
         end_at = time.perf_counter()
-        logging.info(click.style('Segment added to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
+        logging.info(click.style('Segment update index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
     except Exception as e:
-        logging.exception("add segment to index failed")
+        logging.exception("update segment index failed")
         segment.enabled = False
         segment.disabled_at = datetime.datetime.utcnow()
         segment.status = 'error'

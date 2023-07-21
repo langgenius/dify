@@ -6,6 +6,7 @@ import time
 import uuid
 from typing import Optional, List, cast
 
+import openai
 from flask import current_app
 from flask_login import current_user
 from langchain.embeddings import OpenAIEmbeddings
@@ -16,6 +17,7 @@ from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.embedding.cached_embedding import CacheEmbedding
+from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
@@ -70,7 +72,13 @@ class IndexingRunner:
                     dataset_document=dataset_document,
                     processing_rule=processing_rule
                 )
-
+                # new_documents = []
+                # for document in documents:
+                #     response = LLMGenerator.generate_qa_document(dataset.tenant_id, document.page_content)
+                #     document_qa_list = self.format_split_text(response)
+                #     for result in document_qa_list:
+                #         document = Document(page_content=result['question'], metadata={'source': result['answer']})
+                #         new_documents.append(document)
                 # build index
                 self._build_index(
                     dataset=dataset,
@@ -90,6 +98,22 @@ class IndexingRunner:
                 dataset_document.error = str(e)
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
+
+    def format_split_text(self, text):
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
+        matches = re.findall(regex, text, re.MULTILINE)
+
+        result = []
+        for match in matches:
+            q = match[0]
+            a = match[1]
+            if q and a:
+                result.append({
+                    "question": q,
+                    "answer": re.sub(r"\n\s*", "\n", a.strip())
+                })
+
+        return result
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
@@ -225,7 +249,7 @@ class IndexingRunner:
             splitter = self._get_splitter(processing_rule)
 
             # split to documents
-            documents = self._split_to_documents(
+            documents = self._split_to_documents_for_estimate(
                 text_docs=text_docs,
                 splitter=splitter,
                 processing_rule=processing_rule
@@ -285,7 +309,7 @@ class IndexingRunner:
                 splitter = self._get_splitter(processing_rule)
 
                 # split to documents
-                documents = self._split_to_documents(
+                documents = self._split_to_documents_for_estimate(
                     text_docs=documents,
                     splitter=splitter,
                     processing_rule=processing_rule
@@ -391,7 +415,9 @@ class IndexingRunner:
         documents = self._split_to_documents(
             text_docs=text_docs,
             splitter=splitter,
-            processing_rule=processing_rule
+            processing_rule=processing_rule,
+            tenant_id=dataset.tenant_id,
+            document_form=dataset_document.doc_form
         )
 
         # save node to document segment
@@ -428,7 +454,7 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                            processing_rule: DatasetProcessRule) -> List[Document]:
+                            processing_rule: DatasetProcessRule, tenant_id: str, document_form: str) -> List[Document]:
         """
         Split the text documents into nodes.
         """
@@ -445,7 +471,52 @@ class IndexingRunner:
             for document in documents:
                 if document.page_content is None or not document.page_content.strip():
                     continue
+                if document_form == 'text_model':
+                    # text model document
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document.page_content)
 
+                    document.metadata['doc_id'] = doc_id
+                    document.metadata['doc_hash'] = hash
+
+                    split_documents.append(document)
+                elif document_form == 'qa_model':
+                    # qa model document
+                    response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
+                    document_qa_list = self.format_split_text(response)
+                    qa_documents = []
+                    for result in document_qa_list:
+                        qa_document = Document(page_content=result['question'], metadata=document.metadata.copy())
+                        doc_id = str(uuid.uuid4())
+                        hash = helper.generate_text_hash(result['question'])
+                        qa_document.metadata['answer'] = result['answer']
+                        qa_document.metadata['doc_id'] = doc_id
+                        qa_document.metadata['doc_hash'] = hash
+                        qa_documents.append(qa_document)
+                    split_documents.extend(qa_documents)
+
+            all_documents.extend(split_documents)
+
+        return all_documents
+
+    def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
+                                         processing_rule: DatasetProcessRule) -> List[Document]:
+        """
+        Split the text documents into nodes.
+        """
+        all_documents = []
+        for text_doc in text_docs:
+            # document clean
+            document_text = self._document_clean(text_doc.page_content, processing_rule)
+            text_doc.page_content = document_text
+
+            # parse document to nodes
+            documents = splitter.split_documents([text_doc])
+
+            split_documents = []
+            for document in documents:
+                if document.page_content is None or not document.page_content.strip():
+                    continue
                 doc_id = str(uuid.uuid4())
                 hash = helper.generate_text_hash(document.page_content)
 
@@ -486,6 +557,23 @@ class IndexingRunner:
                     text = re.sub(pattern, '', text)
 
         return text
+
+    def format_split_text(self, text):
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
+        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
+
+        result = []  # 存储最终的结果
+        for match in matches:
+            q = match[0]
+            a = match[1]
+            if q and a:
+                # 如果Q和A都存在，就将其添加到结果中
+                result.append({
+                    "question": q,
+                    "answer": re.sub(r"\n\s*", "\n", a.strip())
+                })
+
+        return result
 
     def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
         """

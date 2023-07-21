@@ -199,6 +199,7 @@ class CompletionService:
                     conversation = db.session.query(Conversation).filter_by(id=conversation.id).first()
 
                 # run
+
                 Completion.generate(
                     task_id=generate_task_id,
                     app=app_model,
