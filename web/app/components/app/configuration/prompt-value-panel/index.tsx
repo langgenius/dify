@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
+import { Transition } from '@headlessui/react'
 import VarIcon from '../base/icons/var-icon'
 import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
@@ -13,6 +14,7 @@ import { AppType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
+import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type IPromptValuePanelProps = {
   appType: AppType
@@ -37,6 +39,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { modelConfig, inputs, setInputs } = useContext(ConfigContext)
+  const [promptPreviewCollapse, setPromptPreviewCollapse] = useState(false)
+  const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -65,27 +69,65 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   const promptPreview = (
     <div className='pt-3 pb-4 rounded-t-xl bg-indigo-25'>
       <div className="px-4">
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 cursor-pointer" onClick={() => setPromptPreviewCollapse(!promptPreviewCollapse)}>
           {starIcon}
           <div className="text-xs font-medium text-indigo-600 uppercase">{t('appDebug.inputs.previewTitle')}</div>
-        </div>
-        <div className='mt-2  leading-normal'>
           {
-            (promptTemplate && promptTemplate?.trim())
-              ? (
-                <div
-                  className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
-                  dangerouslySetInnerHTML={{
-                    __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
-                  }}
-                >
-                </div>
-              )
-              : (
-                <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
-              )
+            promptPreviewCollapse
+              ? <ChevronRight className='w-3 h-3 text-gray-700' />
+              : <ChevronDown className='w-3 h-3 text-gray-700' />
           }
         </div>
+        <Transition
+          as={Fragment}
+          appear={true}
+          show={!promptPreviewCollapse}
+          enter="transition-[max-height] duration-[10s]"
+          enterFrom="max-h-0"
+          enterTo="max-h-[9999px]"
+          leave="transition-[max-height] duration-[10s]"
+          leaveFrom="max-h-[9999px]"
+          leaveTo="max-h-0"
+        >
+          <div className='mt-2  leading-normal overflow-hidden'>
+            {
+              (promptTemplate && promptTemplate?.trim())
+                ? (
+                  <div
+                    className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
+                    dangerouslySetInnerHTML={{
+                      __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
+                    }}
+                  >
+                  </div>
+                )
+                : (
+                  <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
+                )
+            }
+          </div>
+        </Transition>
+        {/* {
+          !promptPreviewCollapse && (
+            <div className='mt-2  leading-normal'>
+              {
+                (promptTemplate && promptTemplate?.trim())
+                  ? (
+                    <div
+                      className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
+                      dangerouslySetInnerHTML={{
+                        __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
+                      }}
+                    >
+                    </div>
+                  )
+                  : (
+                    <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
+                  )
+              }
+            </div>
+          )
+        } */}
       </div>
     </div>
   )
@@ -96,53 +138,68 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     }}>
       {promptPreview}
 
-      <div className="mt-5 px-4">
-        <div className='mb-4 '>
-          <div className='flex items-center space-x-1'>
+      <div className={
+        `${userInputFieldCollapse ? 'mt-3' : 'mt-4'} px-4 bg-white`
+      }>
+        <div className={
+          `${!userInputFieldCollapse && 'mb-4'}`
+        }>
+          <div className='flex items-center space-x-1 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className='flex items-center justify-center w-4 h-4'><VarIcon /></div>
             <div className='text-sm font-semibold text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
+            {
+              userInputFieldCollapse
+                ? <ChevronRight className='w-3 h-3 text-gray-700' />
+                : <ChevronDown className='w-3 h-3 text-gray-700' />
+            }
           </div>
-          {appType === AppType.completion && promptVariables.length > 0 && (
+          {appType === AppType.completion && promptVariables.length > 0 && !userInputFieldCollapse && (
             <div className="mt-1 text-xs leading-normal text-gray-500">{t('appDebug.inputs.completionVarTip')}</div>
           )}
         </div>
         {
-          promptVariables.length > 0
-            ? (
-              <div className="space-y-3 ">
-                {promptVariables.map(({ key, name, type, options, max_length, required }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
-                    {type === 'select'
-                      ? (
-                        <Select
-                          className='w-full'
-                          defaultValue={inputs[key] as string}
-                          onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                          items={(options || []).map(i => ({ name: i, value: i }))}
-                          allowSearch={false}
-                          bgClassName='bg-gray-50'
-                          overlayClassName='z-[11]'
-                        />
-                      )
-                      : (
-                        <input
-                          className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-                          placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                          type="text"
-                          value={inputs[key] ? `${inputs[key]}` : ''}
-                          onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                          maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
-                        />
-                      )}
+          !userInputFieldCollapse && (
+            <>
+              {
+                promptVariables.length > 0
+                  ? (
+                    <div className="space-y-3 ">
+                      {promptVariables.map(({ key, name, type, options, max_length, required }) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                          {type === 'select'
+                            ? (
+                              <Select
+                                className='w-full'
+                                defaultValue={inputs[key] as string}
+                                onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
+                                items={(options || []).map(i => ({ name: i, value: i }))}
+                                allowSearch={false}
+                                bgClassName='bg-gray-50'
+                                overlayClassName='z-[11]'
+                              />
+                            )
+                            : (
+                              <input
+                                className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                                placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                                type="text"
+                                value={inputs[key] ? `${inputs[key]}` : ''}
+                                onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                                maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                              />
+                            )}
 
-                  </div>
-                ))}
-              </div>
-            )
-            : (
-              <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
-            )
+                        </div>
+                      ))}
+                    </div>
+                  )
+                  : (
+                    <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
+                  )
+              }
+            </>
+          )
         }
       </div>
 
