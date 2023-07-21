@@ -31,3 +31,7 @@ export const updatePinStatus = (id: string, isPinned: boolean) => {
     },
   })
 }
+
+export const getToolProviders = () => {
+  return get('/workspaces/current/tool-providers')
+}
