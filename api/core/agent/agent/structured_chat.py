@@ -1,12 +1,50 @@
-from typing import List, Tuple, Any, Union
+from typing import List, Tuple, Any, Union, Sequence, Optional
 
-from langchain.agents import StructuredChatAgent
+from langchain import BasePromptTemplate
+from langchain.agents import StructuredChatAgent, AgentOutputParser, Agent
+from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
 from langchain.base_language import BaseLanguageModel
+from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.summary import SummarizerMixin
 from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage
+from langchain.tools import BaseTool
+from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
+
+
+FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
+The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
+Valid "action" values: "Final Answer" or {tool_names}
+
+Provide only ONE action per $JSON_BLOB, as shown:
+
+```
+{{{{
+  "action": $TOOL_NAME,
+  "action_input": $INPUT
+}}}}
+```
+
+Follow this format:
+
+Question: input question to answer
+Thought: consider previous and subsequent steps
+Action:
+```
+$JSON_BLOB
+```
+Observation: action result
+... (repeat Thought/Action/Observation N times)
+Thought: I know what to respond
+Action:
+```
+{{{{
+  "action": "Final Answer",
+  "action_input": "Final response to human"
+}}}}
+```"""
 
 
 class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
@@ -82,3 +120,32 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             kwargs["chat_history"].append(AIMessage(content=self.moving_summary_buffer))
 
         return self.get_full_inputs([intermediate_steps[-1]], **kwargs)
+
+    @classmethod
+    def from_llm_and_tools(
+            cls,
+            llm: BaseLanguageModel,
+            tools: Sequence[BaseTool],
+            callback_manager: Optional[BaseCallbackManager] = None,
+            output_parser: Optional[AgentOutputParser] = None,
+            prefix: str = PREFIX,
+            suffix: str = SUFFIX,
+            human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
+            format_instructions: str = FORMAT_INSTRUCTIONS,
+            input_variables: Optional[List[str]] = None,
+            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            **kwargs: Any,
+    ) -> Agent:
+        return super().from_llm_and_tools(
+            llm=llm,
+            tools=tools,
+            callback_manager=callback_manager,
+            output_parser=output_parser,
+            prefix=prefix,
+            suffix=suffix,
+            human_message_template=human_message_template,
+            format_instructions=format_instructions,
+            input_variables=input_variables,
+            memory_prompts=memory_prompts,
+            **kwargs,
+        )
