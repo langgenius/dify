@@ -28,7 +28,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
   return (
     <div className='flex items-center justify-between h-[52px] px-3 rounded-xl bg-gray-50'>
       <div className='text-sm font-semibold text-gray-800'>Model</div>
-      <div className="relative" style={{ zIndex: 30 }}>
+      <div className="relative z-10">
         <div ref={triggerRef} onClick={() => !readonly && toogleOption()} className={cn(readonly ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
           <ModelIcon modelId={currModel?.id as string} />
           <div className="text-sm gray-900">{currModel?.name}</div>
