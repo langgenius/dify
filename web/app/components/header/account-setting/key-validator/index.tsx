@@ -3,7 +3,7 @@ import Operate from './Operate'
 import KeyInput from './KeyInput'
 import { useValidate } from './hooks'
 import type { Form, KeyFrom, Status, ValidateValue } from './declarations'
-import { useKeyValidatorContext } from '@/context/key-validator'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 
 export type KeyValidatorProps = {
@@ -23,7 +23,8 @@ const KeyValidator = ({
   keyFrom,
   onSave,
 }: KeyValidatorProps) => {
-  const { trigger } = useKeyValidatorContext()
+  const triggerKey = `plugins/${type}`
+  const { eventEmitter } = useEventEmitterContextContext()
   const [isOpen, setIsOpen] = useState(false)
   const prevValue = forms.reduce((prev: ValidateValue, next: Form) => {
     prev[next.key] = next.value
@@ -32,8 +33,8 @@ const KeyValidator = ({
   const [value, setValue] = useState(prevValue)
   const [validate, validating, validatedStatusState] = useValidate(value)
 
-  trigger?.useSubscription((v) => {
-    if (v !== type) {
+  eventEmitter?.useSubscription((v) => {
+    if (v !== triggerKey) {
       setIsOpen(false)
       setValue(prevValue)
       validate({ before: () => false })
@@ -41,22 +42,22 @@ const KeyValidator = ({
   })
 
   const handleCancel = () => {
-    trigger?.emit('')
+    eventEmitter?.emit('')
   }
 
   const handleSave = async () => {
     if (await onSave(value))
-      trigger?.emit('')
+      eventEmitter?.emit('')
   }
 
   const handleAdd = () => {
     setIsOpen(true)
-    trigger?.emit(type)
+    eventEmitter?.emit(triggerKey)
   }
 
   const handleEdit = () => {
     setIsOpen(true)
-    trigger?.emit(type)
+    eventEmitter?.emit(triggerKey)
   }
 
   const handleChange = (form: Form, val: string) => {
