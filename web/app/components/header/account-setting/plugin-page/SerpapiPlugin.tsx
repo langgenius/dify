@@ -4,6 +4,7 @@ import SerpapiLogo from '../../assets/serpapi.png'
 import KeyValidator from '../key-validator'
 import type { Form, ValidateValue } from '../key-validator/declarations'
 import { updatePluginKey, validatePluginKey } from './utils'
+import { useToastContext } from '@/app/components/base/toast'
 import type { PluginProvider } from '@/models/common'
 
 type SerpapiPluginProps = {
@@ -15,6 +16,7 @@ const SerpapiPlugin = ({
   onUpdate,
 }: SerpapiPluginProps) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
 
   const forms: Form[] = [{
     key: 'api_key',
@@ -51,6 +53,7 @@ const SerpapiPlugin = ({
     })
 
     if (res.status === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       onUpdate()
       return true
     }
