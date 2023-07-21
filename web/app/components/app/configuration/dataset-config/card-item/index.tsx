@@ -1,19 +1,19 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import cn from 'classnames'
-import TypeIcon from '../type-icon'
 import { useTranslation } from 'react-i18next'
-import { formatNumber } from '@/utils/format'
+import TypeIcon from '../type-icon'
 import RemoveIcon from '../../base/icons/remove-icon'
 import s from './style.module.css'
+import { formatNumber } from '@/utils/format'
 
-export interface ICardItemProps {
+export type ICardItemProps = {
   className?: string
   config: any
   onRemove: (id: string) => void
+  readonly?: boolean
 }
-
-
 
 // const RemoveIcon = ({ className, onClick }: { className: string, onClick: () => void }) => (
 //   <svg className={className} onClick={onClick} width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -24,7 +24,8 @@ export interface ICardItemProps {
 const CardItem: FC<ICardItemProps> = ({
   className,
   config,
-  onRemove
+  onRemove,
+  readonly,
 }) => {
   const { t } = useTranslation()
 
@@ -44,7 +45,7 @@ const CardItem: FC<ICardItemProps> = ({
         </div>
       </div>
 
-      <RemoveIcon className={`${s.deleteBtn} shrink-0`} onClick={() => onRemove(config.id)} />
+      {!readonly && <RemoveIcon className={`${s.deleteBtn} shrink-0`} onClick={() => onRemove(config.id)} />}
     </div>
   )
 }

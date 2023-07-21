@@ -1,4 +1,6 @@
 /* eslint-disable import/no-mutable-exports */
+import { AppType, ProviderType } from '@/types/app'
+
 const isDevelopment = process.env.NODE_ENV === 'development'
 
 export let apiPrefix = ''
@@ -37,6 +39,21 @@ export const PUBLIC_API_PREFIX: string = publicApiPrefix
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition')
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 
+export const MODEL_LIST = [
+  { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.chat },
+  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.chat },
+  { id: 'gpt-4', name: 'gpt-4', type: AppType.chat }, // 8k version
+  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
+  { id: 'claude-2', name: 'claude-2', type: AppType.chat, provider: ProviderType.anthropic }, // set 30k
+  { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.completion },
+  { id: 'gpt-3.5-turbo-16k', name: 'gpt-3.5-turbo-16k', type: AppType.completion },
+  { id: 'text-davinci-003', name: 'text-davinci-003', type: AppType.completion },
+  { id: 'gpt-4', name: 'gpt-4', type: AppType.completion }, // 8k version
+  { id: 'claude-instant-1', name: 'claude-instant-1', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
+  { id: 'claude-2', name: 'claude-2', type: AppType.completion, provider: ProviderType.anthropic }, // set 30k
+]
+const UNIVERSAL_CHAT_MODEL_ID_LIST = ['gpt-3.5-turbo', 'gpt-3.5-turbo-16k', 'gpt-4', 'claude-2']
+export const UNIVERSAL_CHAT_MODEL_LIST = MODEL_LIST.filter(({ id, type }) => UNIVERSAL_CHAT_MODEL_ID_LIST.includes(id) && (type === AppType.chat))
 export const TONE_LIST = [
   {
     id: 1,

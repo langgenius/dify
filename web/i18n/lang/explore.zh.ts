@@ -2,6 +2,7 @@ const translation = {
   title: '我的应用',
   sidebar: {
     discovery: '发现',
+    chat: '聊天',
     workspace: '工作区',
     action: {
       pin: '置顶',
@@ -33,6 +34,33 @@ const translation = {
     Translate: '翻译',
     Programming: '编程',
     HR: '人力资源',
+  },
+  universalChat: {
+    welcome: '开始和 Dify 聊天吧',
+    welcomeDescribe: '您的 AI 对话伴侣，为您提供个性化的帮助',
+    plugins: {
+      google_search: {
+        name: '谷歌搜索',
+        more: {
+          left: '启用插件，首先',
+          link: '设置您的 SerpAPI 密钥',
+          right: '',
+        },
+      },
+      web_reader: {
+        name: '解析链接',
+        description: '从任何网页链接获取所需信息',
+      },
+      wikipedia: {
+        name: '维基百科',
+      },
+    },
+    thought: {
+      show: '显示',
+      hide: '隐藏',
+      processOfThought: '思考过程',
+    },
+    viewConfigDetailTip: '在对话中，无法更改上述设置',
   },
 }
 

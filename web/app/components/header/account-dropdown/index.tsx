@@ -10,6 +10,7 @@ import Indicator from '../indicator'
 import AccountSetting from '../account-setting'
 import AccountAbout from '../account-about'
 import WorkplaceSelector from './workplace-selector'
+import { KeyValidatorContextProvider } from '@/context/key-validator'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
 import { logout } from '@/service/common'
@@ -131,7 +132,11 @@ export default function AppSelector() {
         }
       </Menu>
       {
-        settingVisible && <AccountSetting onCancel={() => setSettingVisible(false)} />
+        settingVisible && (
+          <KeyValidatorContextProvider>
+            <AccountSetting onCancel={() => setSettingVisible(false)} />
+          </KeyValidatorContextProvider>
+        )
       }
       {
         aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langeniusVersionInfo={langeniusVersionInfo} />
