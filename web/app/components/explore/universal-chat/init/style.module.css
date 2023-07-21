@@ -6,10 +6,4 @@
   text-fill-color: transparent;
 }
 
-.line {
-  width: 720px;
-  border-top: 1px solid #eee; /* TODO: gradient */ 
-  /* border-image-source: linear-gradient(90deg, rgba(242, 244, 247, 0) 0%, #F2F4F7 49.17%, rgba(242, 244, 247, 0) 100%); */
-}
-
 
