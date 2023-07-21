@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import style from './style.module.css'
@@ -43,10 +43,15 @@ const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
 type Option = keyof typeof OPTION_MAP
 
+type OptionStatus = {
+  iframe: boolean
+  scripts: boolean
+}
+
 const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState({ iframe: false, scripts: false })
+  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false })
   const [_, copy] = useCopyToClipboard()
 
   const { langeniusVersionInfo } = useAppContext()
@@ -55,6 +60,19 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
     copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
     setIsCopied({ ...isCopied, [option]: true })
   }
+
+  // when toggle option, reset then copy status
+  const resetCopyStatus = () => {
+    const cache = { ...isCopied }
+    Object.keys(cache).forEach((key) => {
+      cache[key as keyof OptionStatus] = false
+    })
+    setIsCopied(cache)
+  }
+
+  useEffect(() => {
+    resetCopyStatus()
+  }, [isShow])
 
   return (
     <Modal
@@ -77,7 +95,10 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
                 style[`${v}Icon`],
                 option === v && style.active,
               )}
-              onClick={() => setOption(v as Option)}
+              onClick={() => {
+                setOption(v as Option)
+                resetCopyStatus()
+              }}
             ></div>
           )
         })}
