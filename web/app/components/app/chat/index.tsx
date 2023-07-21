@@ -46,6 +46,7 @@ export type IChatProps = {
   suggestionList?: string[]
   isShowSpeechToText?: boolean
   answerIconClassName?: string
+  isShowConfigElem?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -69,6 +70,7 @@ const Chat: FC<IChatProps> = ({
   suggestionList,
   isShowSpeechToText,
   answerIconClassName,
+  isShowConfigElem,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -145,13 +147,11 @@ const Chat: FC<IChatProps> = ({
     })
   }
 
-  const hasChatStart = chatList.some(item => !item.isAnswer)
-
   return (
     <div className={cn('px-3.5', 'h-full')}>
-      {!hasChatStart && (configElem || null)}
+      {isShowConfigElem && (configElem || null)}
       {/* Chat List */}
-      <div className={cn((!hasChatStart && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
+      <div className={cn((isShowConfigElem && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
         {chatList.map((item) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id

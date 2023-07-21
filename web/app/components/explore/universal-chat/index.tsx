@@ -472,7 +472,6 @@ const Main: FC<IMainProps> = () => {
         setAbortController(abortController)
       },
       onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
-        // console.log('get message...')
         responseItem.content = responseItem.content + message
         responseItem.id = messageId
         if (isFirstMessage && newConversationId)
@@ -511,7 +510,6 @@ const Main: FC<IMainProps> = () => {
       },
       onThought(thought) {
         // thought then start to return message
-        // console.log('thought...');
         (responseItem as any).agent_thoughts.push(thought)
       },
       onError() {
@@ -626,6 +624,7 @@ const Main: FC<IMainProps> = () => {
             )}
             <div className={cn((!isNewConversation || isResponsing) && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
               <Chat
+                isShowConfigElem={isNewConversation && !chatList.some(item => item.isAnswer)}
                 configElem={<Init
                   modelId={modelId}
                   onModelChange={setModeId}
