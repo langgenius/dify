@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from typing import Optional, List
 
 import click
 from celery import shared_task
@@ -14,11 +15,11 @@ from models.dataset import DocumentSegment
 
 
 @shared_task
-def create_segment_to_index_task(segment_id: str):
+def create_segment_to_index_task(segment_id: str, keywords: Optional[List[str]] = None):
     """
     Async create segment to index
     :param segment_id:
-
+    :param keywords:
     Usage: create_segment_to_index_task.delay(segment_id)
     """
     logging.info(click.style('Start create segment to index: {}'.format(segment_id), fg='green'))
@@ -75,7 +76,10 @@ def create_segment_to_index_task(segment_id: str):
         # save keyword index
         index = IndexBuilder.get_index(dataset, 'economy')
         if index:
-            index.add_texts([document])
+            if keywords and len(keywords) > 0:
+                index.create_segment_keywords(segment.index_node_id, keywords)
+            else:
+                index.add_texts([document])
 
         # update segment to completed
         update_params = {

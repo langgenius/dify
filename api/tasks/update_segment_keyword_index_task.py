@@ -15,22 +15,18 @@ from models.dataset import DocumentSegment
 
 
 @shared_task
-def update_segment_index_task(segment_id: str, keywords: Optional[List[str]] = None):
+def update_segment_keyword_index_task(segment_id: str):
     """
     Async update segment index
     :param segment_id:
-    :param keywords:
-    Usage: update_segment_index_task.delay(segment_id)
+    Usage: update_segment_keyword_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start update segment index: {}'.format(segment_id), fg='green'))
+    logging.info(click.style('Start update segment keyword index: {}'.format(segment_id), fg='green'))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
         raise NotFound('Segment not found')
-
-    if segment.status != 'updating':
-        return
 
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
@@ -51,20 +47,7 @@ def update_segment_index_task(segment_id: str, keywords: Optional[List[str]] = N
             logging.info(click.style('Segment {} document status is invalid, pass.'.format(segment.id), fg='cyan'))
             return
 
-        # update segment status to indexing
-        update_params = {
-            DocumentSegment.status: "indexing",
-            DocumentSegment.indexing_at: datetime.datetime.utcnow()
-        }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
-        db.session.commit()
-
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         kw_index = IndexBuilder.get_index(dataset, 'economy')
-
-        # delete from vector index
-        if vector_index:
-            vector_index.delete_by_ids([segment.index_node_id])
 
         # delete from keyword index
         kw_index.delete_by_ids([segment.index_node_id])
@@ -80,26 +63,10 @@ def update_segment_index_task(segment_id: str, keywords: Optional[List[str]] = N
             }
         )
 
-        # save vector index
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.add_texts([document], duplicate_check=True)
-
         # save keyword index
         index = IndexBuilder.get_index(dataset, 'economy')
         if index:
-            if keywords and len(keywords) > 0:
-                index.create_segment_keywords(segment.index_node_id, keywords)
-            else:
-                index.add_texts([document])
-
-        # update segment to completed
-        update_params = {
-            DocumentSegment.status: "completed",
-            DocumentSegment.completed_at: datetime.datetime.utcnow()
-        }
-        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
-        db.session.commit()
+            index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
 
         end_at = time.perf_counter()
         logging.info(click.style('Segment update index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
