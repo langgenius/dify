@@ -205,12 +205,11 @@ const Main: FC<IMainProps> = () => {
         }
       }
       else {
-        setModeId(DEFAULT_MODEL_ID)
-        setPlugins(DEFAULT_PLUGIN)
-        setDateSets([])
+        configSetDefaultValue()
       }
     }
     else {
+      configSetDefaultValue()
       notSyncToStateInputs = newConversationInputs
       setCurrInputs(notSyncToStateInputs)
     }
@@ -290,9 +289,7 @@ const Main: FC<IMainProps> = () => {
         introduction: conversationIntroduction,
       })
     }))
-    setModeId(DEFAULT_MODEL_ID)
-    setPlugins(DEFAULT_PLUGIN)
-    setDateSets([])
+    configSetDefaultValue()
   }
 
   // sometime introduction is not applied to state
@@ -576,6 +573,11 @@ const Main: FC<IMainProps> = () => {
     })
   }
   const [dataSets, setDateSets] = useState<DataSet[]>([])
+  const configSetDefaultValue = () => {
+    setModeId(DEFAULT_MODEL_ID)
+    setPlugins(DEFAULT_PLUGIN)
+    setDateSets([])
+  }
 
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
