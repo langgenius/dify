@@ -26,9 +26,12 @@ const Plugins: FC<IPluginsProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const [isLoading, setIsLoading] = React.useState(true)
+  const [isLoading, setIsLoading] = React.useState(!readonly)
   const [isSerpApiValid, setIsSerpApiValid] = React.useState(false)
   const checkSerpApiKey = async () => {
+    if (readonly)
+      return
+
     const provides: any = await getToolProviders()
     const isSerpApiValid = !!provides.find((v: any) => v.tool_name === 'serpapi' && v.is_enabled)
     setIsSerpApiValid(isSerpApiValid)
