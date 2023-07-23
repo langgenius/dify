@@ -7,12 +7,17 @@ import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import s from './index.module.css'
-import type { File } from '@/models/datasets'
+import type { File, MysqlConnection } from '@/models/datasets'
 import type { DataSourceNotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
+
+const inputClassName = `
+  mt-2 w-full px-3 py-2 bg-gray-100 rounded
+  text-sm font-normal text-gray-800
+`
 
 type IStepOneProps = {
   datasetId?: string
@@ -27,6 +32,8 @@ type IStepOneProps = {
   updateNotionPages: (value: any[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
+  mysqlConnection?: MysqlConnection
+  setMysqlConnection?: (value: MysqlConnection) => void
 }
 
 type Page = DataSourceNotionPage & { workspace_id: string }
@@ -39,12 +46,18 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
 
   return (
     <div className={s.notionConnectionTip}>
-      <span className={s.notionIcon}/>
+      <span className={s.notionIcon} />
       <div className={s.title}>{t('datasetCreation.stepOne.notionSyncTitle')}</div>
       <div className={s.tip}>{t('datasetCreation.stepOne.notionSyncTip')}</div>
       <Button className='h-8' type='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
     </div>
   )
+}
+
+const defaultMysqlConnection = {
+  host: 'localhost',
+  port: 3306,
+  user: 'root',
 }
 
 const StepOne = ({
@@ -60,6 +73,8 @@ const StepOne = ({
   updateFile,
   notionPages = [],
   updateNotionPages,
+  mysqlConnection = defaultMysqlConnection,
+  setMysqlConnection,
 }: IStepOneProps) => {
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
@@ -94,6 +109,8 @@ const StepOne = ({
       return true
     return false
   }, [files])
+
+  const { host, port, user, password, db } = mysqlConnection!
   return (
     <div className='flex w-full h-full'>
       <div className='grow overflow-y-auto relative'>
@@ -148,6 +165,19 @@ const StepOne = ({
                   <span className={cn(s.datasetIcon, s.web)} />
                   {t('datasetCreation.stepOne.dataSourceType.web')}
                 </div>
+                <div
+                  className={cn(s.dataSourceItem, dataSourceType === DataSourceType.MYSQL && s.active)}
+                  onClick={() => {
+                    if (dataSourceTypeDisable)
+                      return
+                    changeType(DataSourceType.MYSQL)
+                    hideFilePreview()
+                    hideNotionPagePreview()
+                  }}
+                >
+                  <span className={cn(s.datasetIcon, s.mysql)} />
+                  {t('datasetCreation.stepOne.dataSourceType.mysql')}
+                </div>
               </div>
             )
           }
@@ -175,6 +205,43 @@ const StepOne = ({
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
               )}
+            </>
+          )}
+          {dataSourceType === DataSourceType.MYSQL && (
+            <>
+              <div className='mb-8 w-[640px]'>
+                <input
+                  className={inputClassName}
+                  value={host}
+                  onChange={e => setMysqlConnection && setMysqlConnection({ ...mysqlConnection, host: e.target.value })}
+                  placeholder={t('datasetCreation.stepOne.mysql.hostPlaceholder') || ''}
+                />
+                <input
+                  className={inputClassName}
+                  value={port}
+                  onChange={e => setMysqlConnection && setMysqlConnection({ ...mysqlConnection, port: parseInt(e.target.value) })}
+                  placeholder={t('datasetCreation.stepOne.mysql.portPlaceholder') || ''}
+                />
+                <input
+                  className={inputClassName}
+                  value={user}
+                  onChange={e => setMysqlConnection && setMysqlConnection({ ...mysqlConnection, user: e.target.value })}
+                  placeholder={t('datasetCreation.stepOne.mysql.userPlaceholder') || ''}
+                />
+                <input
+                  className={inputClassName}
+                  value={password}
+                  onChange={e => setMysqlConnection && setMysqlConnection({ ...mysqlConnection, password: e.target.value })}
+                  placeholder={t('datasetCreation.stepOne.mysql.passwordPlaceholder') || ''}
+                />
+                <input
+                  className={inputClassName}
+                  value={db}
+                  onChange={e => setMysqlConnection && setMysqlConnection({ ...mysqlConnection, db: e.target.value })}
+                  placeholder={t('datasetCreation.stepOne.mysql.databasePlaceholder') || ''}
+                />
+              </div>
+              <Button disabled={!mysqlConnection} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
           {!datasetId && (

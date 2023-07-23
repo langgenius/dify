@@ -18,6 +18,7 @@ const translation = {
       file: 'Import from text file',
       notion: 'Sync from Notion',
       web: 'Sync from web site',
+      mysql: 'Sync from MySQL database',
     },
     uploader: {
       title: 'Upload text file',
@@ -48,6 +49,13 @@ const translation = {
       cancelButton: 'Cancel',
       confirmButton: 'Create',
       failed: 'Creation failed',
+    },
+    mysql: {
+      hostPlaceholder: 'Please input host',
+      portPlaceholder: 'Please input port',
+      databasePlaceholder: 'Please input database',
+      userPlaceholder: 'Please input username',
+      passwordPlaceholder: 'Please input password',
     },
   },
   stepTwo: {

@@ -238,8 +238,10 @@ class DatasetIndexingEstimateApi(Resource):
         elif args['info_list']['data_source_type'] == 'notion_import':
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],
-                                                                args['process_rule'])
+            response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],args['process_rule'])
+        elif args['info_list']['data_source_type'] == 'mysql_import':
+            indexing_runner = IndexingRunner()
+            response = indexing_runner.mysql_indexing_estimate(args['info_list']['mysql_connection'],args['process_rule'])
         else:
             raise ValueError('Data source type not support')
         return response, 200

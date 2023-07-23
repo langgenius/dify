@@ -5,6 +5,7 @@ export enum DataSourceType {
   FILE = 'upload_file',
   NOTION = 'notion_import',
   WEB = 'web_import',
+  MYSQL = 'mysql_import',
 }
 
 export type DataSet = {
@@ -369,4 +370,12 @@ export type RelatedApp = {
 export type RelatedAppResponse = {
   data: Array<RelatedApp>
   total: number
+}
+
+export type MysqlConnection = {
+  host?: string
+  port?: number
+  user?: string
+  password?: string
+  db?: string
 }

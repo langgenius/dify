@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, createDocumentResponse } from '@/models/datasets'
+import type { DataSet, MysqlConnection, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource, fetchTenantInfo } from '@/service/common'
 import { fetchDataDetail } from '@/service/datasets'
 import type { DataSourceNotionPage } from '@/models/common'
@@ -33,6 +33,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [fileList, setFiles] = useState<any[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
+  const [mysqlConnection, setMysqlConnection] = useState<MysqlConnection | undefined>(undefined)
 
   const [notionPages, setNotionPages] = useState<Page[]>([])
   const updateNotionPages = (value: Page[]) => {
@@ -130,6 +131,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           notionPages={notionPages}
           updateNotionPages={updateNotionPages}
           onStepChange={nextStep}
+          mysqlConnection={mysqlConnection}
+          setMysqlConnection={setMysqlConnection}
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={hasSetAPIKEY}
@@ -142,6 +145,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}
+          mysqlConnection={mysqlConnection}
         />}
         {step === 3 && <StepThree
           datasetId={datasetId}
@@ -154,7 +158,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         await checkAPIKey()
         hideSetAPIkey()
       }} />}
-      {isShowDataSourceSetting && <AccountSetting activeTab="data-source" onCancel={hideDataSourceSetting}/>}
+      {isShowDataSourceSetting && <AccountSetting activeTab="data-source" onCancel={hideDataSourceSetting} />}
     </div>
   )
 }

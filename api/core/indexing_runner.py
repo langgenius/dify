@@ -5,6 +5,7 @@ import re
 import time
 import uuid
 from typing import Optional, List, cast
+import pymysql
 
 from flask import current_app
 from flask_login import current_user
@@ -305,6 +306,61 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
+    def mysql_indexing_estimate(self, mysql_connection: dict, tmp_processing_rule: dict) -> dict:
+        """
+        Estimate the indexing for the document.
+        """
+        # load data from mysql
+        db = pymysql.connect(
+            host=mysql_connection['host'],
+            user=mysql_connection['user'],
+            password=mysql_connection['password'],
+            db=mysql_connection['db'],
+            port=mysql_connection['port'],
+            cursorclass=pymysql.cursors.DictCursor
+        )
+        cursor = db.cursor()
+        cursor.execute("SHOW TABLES")
+        tables = cursor.fetchall()
+        tokens = 0
+        preview_texts = []
+        total_segments = 0
+        for table in tables:
+            cursor.execute(f"SELECT * FROM {table['Tables_in_' + mysql_connection['db']]}")
+            data = cursor.fetchall()
+            for row in data:
+                for column in row:
+                    if isinstance(column, str):
+                        processing_rule = DatasetProcessRule(
+                            mode=tmp_processing_rule["mode"],
+                            rules=json.dumps(tmp_processing_rule["rules"])
+                        )
+
+                        # get splitter
+                        splitter = self._get_splitter(processing_rule)
+
+                        # split to documents
+                        documents = self._split_to_documents(
+                            text_docs=[Document(page_content=column)],
+                            splitter=splitter,
+                            processing_rule=processing_rule
+                        )
+                        total_segments += len(documents)
+                        for document in documents:
+                            if len(preview_texts) < 5:
+                                preview_texts.append(document.page_content)
+
+                            tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, document.page_content)
+        return {
+            "total_segments": total_segments,
+            "tokens": tokens,
+            "total_price": '{:f}'.format(TokenCalculator.get_token_price(self.embedding_model_name, tokens)),
+            "currency": TokenCalculator.get_currency(self.embedding_model_name),
+            "preview": preview_texts
+        }
+
+
+    
     def _load_data(self, dataset_document: DatasetDocument) -> List[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:

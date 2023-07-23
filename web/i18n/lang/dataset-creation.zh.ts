@@ -18,6 +18,7 @@ const translation = {
       file: '导入已有文本',
       notion: '同步自 Notion 内容',
       web: '同步自 Web 站点',
+      mysql: '同步自 MySQL 数据库',
     },
     uploader: {
       title: '上传文本文件',
@@ -48,6 +49,13 @@ const translation = {
       cancelButton: '取消',
       confirmButton: '创建',
       failed: '创建失败',
+    },
+    mysql: {
+      hostPlaceholder: '请输入主机地址',
+      portPlaceholder: '请输入端口号',
+      databasePlaceholder: '请输入数据库名称',
+      userPlaceholder: '请输入用户名',
+      passwordPlaceholder: '请输入密码',
     },
   },
   stepTwo: {

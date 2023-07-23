@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import PreviewItem from './preview-item'
 import s from './index.module.css'
-import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, MysqlConnection, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -43,6 +43,7 @@ type StepTwoProps = {
   updateResultCache?: (res: createDocumentResponse) => void
   onSave?: () => void
   onCancel?: () => void
+  mysqlConnection?: MysqlConnection
 }
 
 enum SegmentType {
@@ -69,6 +70,7 @@ const StepTwo = ({
   updateResultCache,
   onSave,
   onCancel,
+  mysqlConnection,
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const { mutateDatasetRes } = useDatasetDetailContext()
@@ -224,6 +226,16 @@ const StepTwo = ({
         info_list: {
           data_source_type: dataSourceType,
           notion_info_list: getNotionInfo(),
+        },
+        indexing_technique: getIndexing_technique(),
+        process_rule: getProcessRule(),
+      }
+    }
+    if (dataSourceType === DataSourceType.MYSQL) {
+      params = {
+        info_list: {
+          data_source_type: dataSourceType,
+          mysql_connection: mysqlConnection,
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
