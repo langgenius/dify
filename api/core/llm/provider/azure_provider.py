@@ -9,7 +9,7 @@ from core.llm.provider.errors import ValidateFailedError
 from models.provider import ProviderName
 
 
-AZURE_OPENAI_API_VERSION = '2023-06-01-preview'
+AZURE_OPENAI_API_VERSION = '2023-07-01-preview'
 
 
 class AzureProvider(BaseProvider):
@@ -45,9 +45,10 @@ class AzureProvider(BaseProvider):
         """
         config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
+        config['openai_api_version'] = AZURE_OPENAI_API_VERSION
         if model_id == 'text-embedding-ada-002':
             config['deployment'] = model_id.replace('.', '') if model_id else None
-            config['chunk_size'] = 1
+            config['chunk_size'] = 16
         else:
             config['deployment_name'] = model_id.replace('.', '') if model_id else None
         return config

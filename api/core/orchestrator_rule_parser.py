@@ -3,6 +3,7 @@ from typing import Optional
 
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
+from langchain.chat_models import ChatOpenAI
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 from pydantic import BaseModel, Field
@@ -15,7 +16,6 @@ from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHan
 from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
 from core.conversation_message_task import ConversationMessageTask
 from core.llm.llm_builder import LLMBuilder
-from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
@@ -64,8 +64,8 @@ class OrchestratorRuleParser:
 
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 
-            # only OpenAI chat model support function call, use ReACT instead
-            if not isinstance(agent_llm, StreamableChatOpenAI) \
+            # only OpenAI chat model (include Azure) support function call, use ReACT instead
+            if not isinstance(agent_llm, ChatOpenAI) \
                     and planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
                 planning_strategy = PlanningStrategy.REACT
 
