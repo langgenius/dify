@@ -1,12 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { Fragment, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
-import { Transition } from '@headlessui/react'
 import VarIcon from '../base/icons/var-icon'
 import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
@@ -67,7 +66,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const promptPreview = (
-    <div className='pt-3 pb-4 rounded-t-xl bg-indigo-25'>
+    <div className='py-3 rounded-t-xl bg-indigo-25'>
       <div className="px-4">
         <div className="flex items-center space-x-1 cursor-pointer" onClick={() => setPromptPreviewCollapse(!promptPreviewCollapse)}>
           {starIcon}
@@ -78,36 +77,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               : <ChevronDown className='w-3 h-3 text-gray-700' />
           }
         </div>
-        <Transition
-          as={Fragment}
-          appear={true}
-          show={!promptPreviewCollapse}
-          enter="transition-[max-height] duration-[10s]"
-          enterFrom="max-h-0"
-          enterTo="max-h-[9999px]"
-          leave="transition-[max-height] duration-[10s]"
-          leaveFrom="max-h-[9999px]"
-          leaveTo="max-h-0"
-        >
-          <div className='mt-2  leading-normal overflow-hidden'>
-            {
-              (promptTemplate && promptTemplate?.trim())
-                ? (
-                  <div
-                    className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
-                    dangerouslySetInnerHTML={{
-                      __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
-                    }}
-                  >
-                  </div>
-                )
-                : (
-                  <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
-                )
-            }
-          </div>
-        </Transition>
-        {/* {
+        {
           !promptPreviewCollapse && (
             <div className='mt-2  leading-normal'>
               {
@@ -127,26 +97,24 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               }
             </div>
           )
-        } */}
+        }
       </div>
     </div>
   )
 
   return (
-    <div className="pb-5 border border-gray-200 bg-white rounded-xl" style={{
+    <div className="pb-3 border border-gray-200 bg-white rounded-xl" style={{
       boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
     }}>
       {promptPreview}
 
-      <div className={
-        `${userInputFieldCollapse ? 'mt-3' : 'mt-4'} px-4 bg-white`
-      }>
+      <div className={'mt-3 px-4 bg-white'}>
         <div className={
-          `${!userInputFieldCollapse && 'mb-4'}`
+          `${!userInputFieldCollapse && 'mb-2'}`
         }>
           <div className='flex items-center space-x-1 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className='flex items-center justify-center w-4 h-4'><VarIcon /></div>
-            <div className='text-sm font-semibold text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
+            <div className='text-xs font-medium text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
             {
               userInputFieldCollapse
                 ? <ChevronRight className='w-3 h-3 text-gray-700' />
@@ -206,7 +174,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       {
         appType === AppType.completion && (
           <div className='px-4'>
-            <div className="mt-5 border-b border-gray-100"></div>
+            <div className="mt-3 border-b border-gray-100"></div>
             <div className="mt-4">
               <div>
                 <div className="text-[13px] text-gray-900 font-medium">{t('appDebug.inputs.queryTitle')}</div>
