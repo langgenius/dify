@@ -47,7 +47,7 @@ class AgentConfiguration(BaseModel):
 
 class AgentExecuteResult(BaseModel):
     strategy: PlanningStrategy
-    output: str
+    output: Optional[str]
     configuration: AgentConfiguration
 
 
