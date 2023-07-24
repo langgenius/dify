@@ -480,7 +480,7 @@ const Main: FC<IMainProps> = () => {
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
             if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
+              draft.push({ ...questionItem } as any)
 
             draft.push({ ...responseItem })
           })
@@ -506,9 +506,20 @@ const Main: FC<IMainProps> = () => {
         }
       },
       onThought(thought) {
-        // debugger
-        // thought then start to return message
+        if (thought.thought === '[DONE]')
+          return
+        responseItem.id = thought.message_id;
+        // thought finished then start to return message
         (responseItem as any).agent_thoughts.push(thought)
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        // console.log('start render thought')
+        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()

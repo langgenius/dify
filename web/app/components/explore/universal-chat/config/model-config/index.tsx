@@ -4,6 +4,7 @@ import React from 'react'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import { UNIVERSAL_CHAT_MODEL_LIST as MODEL_LIST } from '@/config'
 
@@ -18,6 +19,8 @@ const ModelConfig: FC<IModelConfigProps> = ({
   onChange,
   readonly,
 }) => {
+  const { t } = useTranslation()
+
   const currModel = MODEL_LIST.find(item => item.id === modelId)
   const [isShowOption, { setFalse: hideOption, toggle: toogleOption }] = useBoolean(false)
   const triggerRef = React.useRef(null)
@@ -27,7 +30,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
 
   return (
     <div className='flex items-center justify-between h-[52px] px-3 rounded-xl bg-gray-50'>
-      <div className='text-sm font-semibold text-gray-800'>Model</div>
+      <div className='text-sm font-semibold text-gray-800'>{t('explore.universalChat.model')}</div>
       <div className="relative z-10">
         <div ref={triggerRef} onClick={() => !readonly && toogleOption()} className={cn(readonly ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
           <ModelIcon modelId={currModel?.id as string} />

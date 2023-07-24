@@ -1,6 +1,7 @@
 /* eslint-disable no-new, prefer-promise-reject-errors */
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
+import type { ThoughtItem } from '@/app/components/app/chat/type'
 
 const TIME_OUT = 100000
 
@@ -30,7 +31,7 @@ export type IOnDataMoreInfo = {
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
-export type IOnThought = (though: { id: string; tool: string; thought: string }) => void
+export type IOnThought = (though: ThoughtItem) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string) => void
 

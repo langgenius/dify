@@ -47,6 +47,7 @@ export type IChatProps = {
   isShowSpeechToText?: boolean
   answerIconClassName?: string
   isShowConfigElem?: boolean
+  isThoughting?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -156,6 +157,7 @@ const Chat: FC<IChatProps> = ({
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
             const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
+            const isThinking = item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.find(item => item.thought !== '[DONE]')
             return <Answer
               key={item.id}
               item={item}
@@ -167,6 +169,7 @@ const Chat: FC<IChatProps> = ({
               isResponsing={isResponsing && isLast}
               answerIconClassName={answerIconClassName}
               thoughts={thoughts}
+              isThinking={isThinking}
             />
           }
           return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />

@@ -5,13 +5,14 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { ThoughtItem } from '../type'
 import s from './style.module.css'
-import { DataSet, Search, ThoughtList, WebReader } from '@/app/components/base/icons/src/public/thought'
+import { DataSet, Loading as LodingIcon, Search, ThoughtList, WebReader } from '@/app/components/base/icons/src/public/thought'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 // https://www.freecodecamp.org/news/how-to-write-a-regular-expression-for-a-url/
 const urlRegex = /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?\/[a-zA-Z0-9]{2,}|((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)|(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?/gi
 export type IThoughtProps = {
   list: ThoughtItem[]
+  isThinking?: boolean
 }
 
 const getIcon = (toolId: string) => {
@@ -27,6 +28,7 @@ const getIcon = (toolId: string) => {
 
 const Thought: FC<IThoughtProps> = ({
   list,
+  isThinking,
 }) => {
   const { t } = useTranslation()
   const [isShowDetail, setIsShowDetail] = React.useState(false)
@@ -62,8 +64,11 @@ const Thought: FC<IThoughtProps> = ({
   return (
     <div className={cn(s.wrap, !isShowDetail && s.wrapHoverEffect, 'inline-block mb-2 px-2 py-0.5 rounded-md text-xs text-gray-500 font-medium')} >
       <div className='flex items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsShowDetail(!isShowDetail)} >
-        <ThoughtList />
-        <div>{t(`explore.universalChat.thought.${isShowDetail ? 'hide' : 'show'}`)}{t('explore.universalChat.thought.processOfThought')}</div>
+        {!isThinking ? <ThoughtList /> : <div className='animate-spin'><LodingIcon /></div>}
+        <div dangerouslySetInnerHTML= {{
+          __html: isThinking ? getThoughtText(list[0]) : (t(`explore.universalChat.thought.${isShowDetail ? 'hide' : 'show'}`) + t('explore.universalChat.thought.processOfThought')),
+        }}
+        ></div>
         <ChevronDown className={isShowDetail ? 'rotate-180' : '' } />
       </div>
       {isShowDetail && (

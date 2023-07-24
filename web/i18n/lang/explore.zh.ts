@@ -2,7 +2,7 @@ const translation = {
   title: '我的应用',
   sidebar: {
     discovery: '发现',
-    chat: '聊天',
+    chat: '智聊',
     workspace: '工作区',
     action: {
       pin: '置顶',
@@ -38,7 +38,9 @@ const translation = {
   universalChat: {
     welcome: '开始和 Dify 聊天吧',
     welcomeDescribe: '您的 AI 对话伴侣，为您提供个性化的帮助',
+    model: '模型',
     plugins: {
+      name: '插件',
       google_search: {
         name: '谷歌搜索',
         more: {
