@@ -1,3 +1,4 @@
+import re
 from typing import List, Tuple, Any, Union, Sequence, Optional
 
 from langchain import BasePromptTemplate
@@ -7,6 +8,7 @@ from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.summary import SummarizerMixin
+from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
 from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
@@ -120,6 +122,35 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             kwargs["chat_history"].append(AIMessage(content=self.moving_summary_buffer))
 
         return self.get_full_inputs([intermediate_steps[-1]], **kwargs)
+
+    @classmethod
+    def create_prompt(
+            cls,
+            tools: Sequence[BaseTool],
+            prefix: str = PREFIX,
+            suffix: str = SUFFIX,
+            human_message_template: str = HUMAN_MESSAGE_TEMPLATE,
+            format_instructions: str = FORMAT_INSTRUCTIONS,
+            input_variables: Optional[List[str]] = None,
+            memory_prompts: Optional[List[BasePromptTemplate]] = None,
+    ) -> BasePromptTemplate:
+        tool_strings = []
+        for tool in tools:
+            args_schema = re.sub("}", "}}}}", re.sub("{", "{{{{", str(tool.args)))
+            tool_strings.append(f"{tool.name}: {tool.description}, args: {args_schema}")
+        formatted_tools = "\n".join(tool_strings)
+        tool_names = ", ".join([('"' + tool.name + '"') for tool in tools])
+        format_instructions = format_instructions.format(tool_names=tool_names)
+        template = "\n\n".join([prefix, formatted_tools, format_instructions, suffix])
+        if input_variables is None:
+            input_variables = ["input", "agent_scratchpad"]
+        _memory_prompts = memory_prompts or []
+        messages = [
+            SystemMessagePromptTemplate.from_template(template),
+            *_memory_prompts,
+            HumanMessagePromptTemplate.from_template(human_message_template),
+        ]
+        return ChatPromptTemplate(input_variables=input_variables, messages=messages)
 
     @classmethod
     def from_llm_and_tools(
