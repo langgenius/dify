@@ -2,7 +2,7 @@ from typing import List, Optional, Any, Dict
 
 from langchain.callbacks.manager import Callbacks
 from langchain.chat_models import ChatAnthropic
-from langchain.schema import BaseMessage, LLMResult
+from langchain.schema import BaseMessage, LLMResult, SystemMessage, AIMessage, HumanMessage, ChatMessage
 from pydantic import root_validator
 
 from core.llm.wrappers.anthropic_wrapper import handle_anthropic_exceptions
@@ -44,3 +44,16 @@ class StreamableChatAnthropic(ChatAnthropic):
         del params['presence_penalty']
 
         return params
+
+    def _convert_one_message_to_text(self, message: BaseMessage) -> str:
+        if isinstance(message, ChatMessage):
+            message_text = f"\n\n{message.role.capitalize()}: {message.content}"
+        elif isinstance(message, HumanMessage):
+            message_text = f"{self.HUMAN_PROMPT} {message.content}"
+        elif isinstance(message, AIMessage):
+            message_text = f"{self.AI_PROMPT} {message.content}"
+        elif isinstance(message, SystemMessage):
+            message_text = f"<admin>{message.content}</admin>"
+        else:
+            raise ValueError(f"Got unknown type {message}")
+        return message_text

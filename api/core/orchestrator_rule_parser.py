@@ -158,7 +158,7 @@ class OrchestratorRuleParser:
                 tool = self.to_wikipedia_tool()
 
             if tool:
-                tool.callbacks = callbacks
+                tool.callbacks.extend(callbacks)
                 tools.append(tool)
 
         return tools
@@ -186,7 +186,7 @@ class OrchestratorRuleParser:
         tool = DatasetRetrieverTool.from_dataset(
             dataset=dataset,
             k=k,
-            callbacks=[DatasetToolCallbackHandler(conversation_message_task), DifyStdOutCallbackHandler()]
+            callbacks=[DatasetToolCallbackHandler(conversation_message_task)]
         )
 
         return tool

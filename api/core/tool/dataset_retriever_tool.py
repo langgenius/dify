@@ -32,7 +32,7 @@ class DatasetRetrieverTool(BaseTool):
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
-        description = dataset.description
+        description = dataset.description.replace('\n', '').replace('\r', '')
         if not description:
             description = 'useful for when you want to answer queries about the ' + dataset.name
 
