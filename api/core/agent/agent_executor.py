@@ -1,4 +1,5 @@
 import enum
+import logging
 from typing import Union, Optional
 
 from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent
@@ -107,7 +108,11 @@ class AgentExecutor:
             callbacks=self.configuration.callbacks
         )
 
-        output = agent_executor.run(query)
+        try:
+            output = agent_executor.run(query)
+        except Exception:
+            logging.exception("agent_executor run failed")
+            output = None
 
         return AgentExecuteResult(
             output=output,
