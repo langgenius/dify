@@ -1,8 +1,9 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import s from './style.module.css'
+import { randomString } from '@/app/components/app-sidebar/basic'
 import Tooltip from '@/app/components/base/tooltip'
 
 type IInputCopyProps = {
@@ -13,12 +14,14 @@ type IInputCopyProps = {
 }
 
 const InputCopy = ({
-  value,
+  value = '',
   className,
   readOnly = true,
   children,
 }: IInputCopyProps) => {
   const [isCopied, setIsCopied] = useState(false)
+
+  const selector = useRef(`input-tooltip-${randomString(4)}`)
 
   useEffect(() => {
     if (isCopied) {
@@ -38,7 +41,7 @@ const InputCopy = ({
         {children}
         <div className='flex-grow bg-gray-50 text-[13px] relative h-full'>
           <Tooltip
-            selector="top-uniq"
+            selector={selector.current}
             content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
             className='z-10'
           >
@@ -50,7 +53,7 @@ const InputCopy = ({
         </div>
         <div className="flex-shrink-0 h-4 bg-gray-200 border" />
         <Tooltip
-          selector="top-uniq"
+          selector={selector.current}
           content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           className='z-10'
         >

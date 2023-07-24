@@ -48,7 +48,10 @@ const List: FC<IListProps> = ({
   useInfiniteScroll(
     async () => {
       if (!isNoMore) {
-        const lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
+        let lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
+        if (lastId === '-1')
+          lastId = undefined
+
         const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
         onMoreLoaded({ data: conversations, has_more })
       }
