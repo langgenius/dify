@@ -126,7 +126,7 @@ class Completion:
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory], streaming: bool):
         # When no extra pre prompt is specified,
         # the output of the agent can be used directly as the main output content without calling LLM again
-        if not app_model_config.pre_prompt and agent_execute_result \
+        if not app_model_config.pre_prompt and agent_execute_result and agent_execute_result.output \
                 and agent_execute_result.strategy != PlanningStrategy.ROUTER:
             final_llm = FakeLLM(response=agent_execute_result.output,
                                 origin_llm=agent_execute_result.configuration.llm,
