@@ -2,7 +2,7 @@
 
 import type { FC } from 'react'
 import React from 'react'
-import '@/i18n/i18next-config'
+import { changeLanguage } from '@/i18n/i18next-config'
 import I18NContext from '@/context/i18n'
 import type { Locale } from '@/i18n'
 import { getLocaleOnClient, setLocaleOnClient } from '@/i18n/client'
@@ -16,11 +16,16 @@ export type II18nProps = {
 const I18n: FC<II18nProps> = ({
   dictionary,
   children,
+  locale,
 }) => {
-  const locale = getLocaleOnClient()
+  const clientLocale = getLocaleOnClient()
+
+  // force to change language if server have the locale to resolve the UI hydrate error
+  locale && changeLanguage(locale)
+
   return (
     <I18NContext.Provider value={{
-      locale,
+      locale: locale || clientLocale,
       i18n: dictionary,
       setLocaleOnClient,
     }}>
