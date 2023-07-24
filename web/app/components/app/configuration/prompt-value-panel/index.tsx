@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
@@ -13,6 +13,7 @@ import { AppType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
+import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type IPromptValuePanelProps = {
   appType: AppType
@@ -37,6 +38,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { modelConfig, inputs, setInputs } = useContext(ConfigContext)
+  const [promptPreviewCollapse, setPromptPreviewCollapse] = useState(false)
+  const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -63,93 +66,115 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   }
 
   const promptPreview = (
-    <div className='pt-3 pb-4 rounded-t-xl bg-indigo-25'>
+    <div className='py-3 rounded-t-xl bg-indigo-25'>
       <div className="px-4">
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 cursor-pointer" onClick={() => setPromptPreviewCollapse(!promptPreviewCollapse)}>
           {starIcon}
           <div className="text-xs font-medium text-indigo-600 uppercase">{t('appDebug.inputs.previewTitle')}</div>
-        </div>
-        <div className='mt-2  leading-normal'>
           {
-            (promptTemplate && promptTemplate?.trim())
-              ? (
-                <div
-                  className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
-                  dangerouslySetInnerHTML={{
-                    __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
-                  }}
-                >
-                </div>
-              )
-              : (
-                <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
-              )
+            promptPreviewCollapse
+              ? <ChevronRight className='w-3 h-3 text-gray-700' />
+              : <ChevronDown className='w-3 h-3 text-gray-700' />
           }
         </div>
+        {
+          !promptPreviewCollapse && (
+            <div className='mt-2  leading-normal'>
+              {
+                (promptTemplate && promptTemplate?.trim())
+                  ? (
+                    <div
+                      className="max-h-48 overflow-y-auto text-sm text-gray-700 break-all"
+                      dangerouslySetInnerHTML={{
+                        __html: format(replaceStringWithValuesWithFormat(promptTemplate.replace(/</g, '&lt;').replace(/>/g, '&gt;'), promptVariables, inputs)),
+                      }}
+                    >
+                    </div>
+                  )
+                  : (
+                    <div className='text-xs text-gray-500'>{t('appDebug.inputs.noPrompt')}</div>
+                  )
+              }
+            </div>
+          )
+        }
       </div>
     </div>
   )
 
   return (
-    <div className="pb-5 border border-gray-200 bg-white rounded-xl" style={{
+    <div className="pb-3 border border-gray-200 bg-white rounded-xl" style={{
       boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
     }}>
       {promptPreview}
 
-      <div className="mt-5 px-4">
-        <div className='mb-4 '>
-          <div className='flex items-center space-x-1'>
+      <div className={'mt-3 px-4 bg-white'}>
+        <div className={
+          `${!userInputFieldCollapse && 'mb-2'}`
+        }>
+          <div className='flex items-center space-x-1 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
             <div className='flex items-center justify-center w-4 h-4'><VarIcon /></div>
-            <div className='text-sm font-semibold text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
+            <div className='text-xs font-medium text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
+            {
+              userInputFieldCollapse
+                ? <ChevronRight className='w-3 h-3 text-gray-700' />
+                : <ChevronDown className='w-3 h-3 text-gray-700' />
+            }
           </div>
-          {appType === AppType.completion && promptVariables.length > 0 && (
+          {appType === AppType.completion && promptVariables.length > 0 && !userInputFieldCollapse && (
             <div className="mt-1 text-xs leading-normal text-gray-500">{t('appDebug.inputs.completionVarTip')}</div>
           )}
         </div>
         {
-          promptVariables.length > 0
-            ? (
-              <div className="space-y-3 ">
-                {promptVariables.map(({ key, name, type, options, max_length, required }) => (
-                  <div key={key} className="flex items-center justify-between">
-                    <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
-                    {type === 'select'
-                      ? (
-                        <Select
-                          className='w-full'
-                          defaultValue={inputs[key] as string}
-                          onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                          items={(options || []).map(i => ({ name: i, value: i }))}
-                          allowSearch={false}
-                          bgClassName='bg-gray-50'
-                          overlayClassName='z-[11]'
-                        />
-                      )
-                      : (
-                        <input
-                          className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-                          placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                          type="text"
-                          value={inputs[key] ? `${inputs[key]}` : ''}
-                          onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                          maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
-                        />
-                      )}
+          !userInputFieldCollapse && (
+            <>
+              {
+                promptVariables.length > 0
+                  ? (
+                    <div className="space-y-3 ">
+                      {promptVariables.map(({ key, name, type, options, max_length, required }) => (
+                        <div key={key} className="flex items-center justify-between">
+                          <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                          {type === 'select'
+                            ? (
+                              <Select
+                                className='w-full'
+                                defaultValue={inputs[key] as string}
+                                onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
+                                items={(options || []).map(i => ({ name: i, value: i }))}
+                                allowSearch={false}
+                                bgClassName='bg-gray-50'
+                                overlayClassName='z-[11]'
+                              />
+                            )
+                            : (
+                              <input
+                                className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                                placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                                type="text"
+                                value={inputs[key] ? `${inputs[key]}` : ''}
+                                onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                                maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                              />
+                            )}
 
-                  </div>
-                ))}
-              </div>
-            )
-            : (
-              <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
-            )
+                        </div>
+                      ))}
+                    </div>
+                  )
+                  : (
+                    <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
+                  )
+              }
+            </>
+          )
         }
       </div>
 
       {
         appType === AppType.completion && (
           <div className='px-4'>
-            <div className="mt-5 border-b border-gray-100"></div>
+            <div className="mt-3 border-b border-gray-100"></div>
             <div className="mt-4">
               <div>
                 <div className="text-[13px] text-gray-900 font-medium">{t('appDebug.inputs.queryTitle')}</div>
