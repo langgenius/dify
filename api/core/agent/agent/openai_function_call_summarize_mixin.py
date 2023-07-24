@@ -4,11 +4,12 @@ from langchain.chat_models import ChatOpenAI
 from langchain.chat_models.openai import _convert_message_to_dict
 from langchain.memory.summary import SummarizerMixin
 from langchain.schema import SystemMessage, HumanMessage, BaseMessage, AIMessage, BaseLanguageModel
+from pydantic import BaseModel
 
 from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError, CalcTokenMixin
 
 
-class OpenAIFunctionCallSummarizeMixin(CalcTokenMixin):
+class OpenAIFunctionCallSummarizeMixin(BaseModel, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
     summary_llm: BaseLanguageModel
