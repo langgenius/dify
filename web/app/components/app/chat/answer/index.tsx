@@ -196,6 +196,9 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                     <div className='text-xs text-gray-500'>{t('appDebug.openingStatement.title')}</div>
                   </div>
                 )}
+                {(thoughts && thoughts.length > 0) && (
+                  <Thought list={thoughts || []} isThinking={isThinking} />
+                )}
                 {(isResponsing && !content)
                   ? (
                     <div className='flex items-center justify-center w-6 h-5'>
@@ -204,9 +207,6 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                   )
                   : (
                     <div>
-                      {(thoughts && thoughts.length > 0) && (
-                        <Thought list={thoughts || []} isThinking={isThinking} />
-                      )}
                       <Markdown content={content} />
                     </div>
                   )}

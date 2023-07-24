@@ -518,7 +518,6 @@ const Main: FC<IMainProps> = () => {
               draft.push({ ...questionItem })
             draft.push({ ...responseItem })
           })
-        // console.log('start render thought')
         setChatList(newListWithAnswer)
       },
       onError() {
