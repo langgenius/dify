@@ -4,7 +4,6 @@ import React from 'react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
-import useSWR from 'swr'
 import DatasetConfig from '../dataset-config'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
@@ -20,7 +19,7 @@ import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
-import { fetchTenantInfo } from '@/service/common'
+import { useProviderContext } from '@/context/provider-context'
 
 const Config: FC = () => {
   const {
@@ -39,8 +38,7 @@ const Config: FC = () => {
     setSpeechToTextConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
-  const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
-  const openaiProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && provider_name === 'openai')
+  const { currentProvider } = useProviderContext()
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
@@ -92,7 +90,7 @@ const Config: FC = () => {
     },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && openaiProvider))
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && currentProvider?.provider_name === 'openai'))
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -122,7 +120,7 @@ const Config: FC = () => {
             isChatApp={isChatApp}
             config={featureConfig}
             onChange={handleFeatureChange}
-            showSpeechToTextItem={!!openaiProvider}
+            showSpeechToTextItem={currentProvider?.provider_name === 'openai'}
           />
         )}
         {showAutomatic && (
@@ -162,7 +160,7 @@ const Config: FC = () => {
                 }
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
-              isShowSpeechText={featureConfig.speechToText}
+              isShowSpeechText={featureConfig.speechToText && currentProvider?.provider_name === 'openai'}
             />
           )
         }
