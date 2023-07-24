@@ -20,6 +20,7 @@ export type ThoughtItem = {
   id: string
   tool: string // plugin or dataset
   thought: string
+  tool_input: string
 }
 export type IChatItem = {
   id: string

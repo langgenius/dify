@@ -60,6 +60,14 @@ const translation = {
       show: 'Show',
       hide: 'Hide',
       processOfThought: ' the process of thinking',
+      res: {
+        webReader: {
+          normal: 'Reading {url}',
+          hasPageInfo: 'Reading next page of {url}',
+        },
+        search: 'Searching {{query}}',
+        dataset: 'Retrieving dataset {{datasetName}}',
+      },
     },
     viewConfigDetailTip: 'In conversation, cannot change above settings',
   },

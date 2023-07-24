@@ -506,6 +506,7 @@ const Main: FC<IMainProps> = () => {
         }
       },
       onThought(thought) {
+        // debugger
         // thought then start to return message
         (responseItem as any).agent_thoughts.push(thought)
       },

@@ -30,14 +30,32 @@ const Thought: FC<IThoughtProps> = ({
 }) => {
   const { t } = useTranslation()
   const [isShowDetail, setIsShowDetail] = React.useState(false)
-
+  const getThoughtText = (item: ThoughtItem) => {
+    try {
+      const input = JSON.parse(item.tool_input)
+      switch (item.tool) {
+        case 'dataset':
+        //   debugger
+          return t('explore.universalChat.thought.res.dataset', { input: input.dataset_id })
+        case 'web_reader':
+          return t(`explore.universalChat.thought.res.webReader.${!input.cursor ? 'normal' : 'hasPageInfo'}`).replace('{url}', `<a href="${input.url}" class="text-[#155EEF]">${input.url}</a>`)
+        default: // google, wikipedia
+          return t('explore.universalChat.thought.res.search', { query: input.query })
+      }
+    }
+    catch (error) {
+      console.error(error)
+      return item
+    }
+  }
   const renderItem = (item: ThoughtItem) => (
     <div className='flex space-x-1 py-[3px] leading-[18px]' key={item.id}>
       <div className='flex items-center h-[18px] shrink-0'>{getIcon(item.tool)}</div>
       <div dangerouslySetInnerHTML={{
-        __html: item.thought.replace(urlRegex, (url) => {
-          return `<a href="${url}" class="text-[#155EEF]">${url}</a>`
-        }),
+        __html: getThoughtText(item),
+        // item.thought.replace(urlRegex, (url) => {
+        //   return `<a href="${url}" class="text-[#155EEF]">${url}</a>`
+        // }),
       }}></div>
     </div>
   )

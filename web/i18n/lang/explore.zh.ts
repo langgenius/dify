@@ -59,6 +59,14 @@ const translation = {
       show: '显示',
       hide: '隐藏',
       processOfThought: '思考过程',
+      res: {
+        webReader: {
+          normal: '解析链接 {url}',
+          hasPageInfo: '解析链接 {url} 的下一页',
+        },
+        search: '搜索 {{query}}',
+        dataset: '检索数据集 {{dataset}}',
+      },
     },
     viewConfigDetailTip: '在对话中，无法更改上述设置',
   },
