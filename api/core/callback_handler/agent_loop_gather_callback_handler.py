@@ -106,7 +106,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     ) -> Any:
         """Run on agent action."""
         tool = action.tool
-        tool_input = json.dumps({"input": action.tool_input}
+        tool_input = json.dumps({"query": action.tool_input}
                                 if isinstance(action.tool_input, str) else action.tool_input)
         completion = None
         if isinstance(action, openai_functions_agent.base._FunctionsAgentAction) \
