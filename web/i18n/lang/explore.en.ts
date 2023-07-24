@@ -38,6 +38,7 @@ const translation = {
   universalChat: {
     welcome: 'Start chat with Dify',
     welcomeDescribe: 'Your AI conversation companion for personalized assistance',
+    model: 'Model',
     plugins: {
       name: 'Plugins',
       google_search: {
