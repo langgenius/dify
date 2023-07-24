@@ -44,9 +44,10 @@ export type IAnswerProps = {
   isResponsing?: boolean
   answerIconClassName?: string
   thoughts?: ThoughtItem[]
+  isThinking?: boolean
 }
 // The component needs to maintain its own state to control whether to display input component
-const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts }) => {
+const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts, isThinking }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -204,7 +205,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                   : (
                     <div>
                       {(thoughts && thoughts.length > 0) && (
-                        <Thought list={thoughts || []}/>
+                        <Thought list={thoughts || []} isThinking={isThinking} />
                       )}
                       <Markdown content={content} />
                     </div>
