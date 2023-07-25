@@ -9,8 +9,6 @@ import { DataSet as DataSetIcon, Loading as LodingIcon, Search, ThoughtList, Web
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import type { DataSet } from '@/models/datasets'
 
-// https://www.freecodecamp.org/news/how-to-write-a-regular-expression-for-a-url/
-const urlRegex = /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?\/[a-zA-Z0-9]{2,}|((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)|(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?/gi
 export type IThoughtProps = {
   list: ThoughtItem[]
   isThinking?: boolean

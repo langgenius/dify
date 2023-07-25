@@ -40,7 +40,7 @@ import ConfigSummary from '@/app/components/explore/universal-chat/config-view/s
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 import { fetchDatasets } from '@/service/datasets'
 const APP_ID = 'universal-chat'
-const DEFAULT_MODEL_ID = 'claude-2' // gpt-4, claude-2
+const DEFAULT_MODEL_ID = 'gpt-3.5-turbo' // gpt-4, claude-2
 const DEFAULT_PLUGIN = {
   google_search: false,
   web_reader: true,
@@ -235,11 +235,14 @@ const Main: FC<IMainProps> = () => {
           })
         })
         setChatList(newChatList)
+        setErrorHappened(false)
       })
     }
 
-    if (isNewConversation)
+    if (isNewConversation) {
       setChatList(generateNewChatListWithOpenstatement())
+      setErrorHappened(false)
+    }
 
     setControlFocus(Date.now())
   }
@@ -405,7 +408,7 @@ const Main: FC<IMainProps> = () => {
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
-
+  const [errorHappened, setErrorHappened] = useState(false)
   const handleSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -462,6 +465,7 @@ const Main: FC<IMainProps> = () => {
 
     setHasStopResponded(false)
     setResponsingTrue()
+    setErrorHappened(false)
     setIsShowSuggestion(false)
 
     sendChatMessage(data, {
@@ -509,8 +513,8 @@ const Main: FC<IMainProps> = () => {
         if (thought.thought === '[DONE]')
           return
         responseItem.id = thought.message_id;
-        // thought finished then start to return message
-        (responseItem as any).agent_thoughts.push(thought)
+        // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
+        (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought] // .push(thought)
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
@@ -521,7 +525,9 @@ const Main: FC<IMainProps> = () => {
         setChatList(newListWithAnswer)
       },
       onError() {
+        setErrorHappened(true)
         setResponsingFalse()
+
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
@@ -625,7 +631,7 @@ const Main: FC<IMainProps> = () => {
         )
         }>
           <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px]  mb-3.5 overflow-hidden')}>
-            {(!isNewConversation || isResponsing) && (
+            {(!isNewConversation || isResponsing || errorHappened) && (
               <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
                 <div className='text-gray-900'>{conversationName}</div>
                 <div className='flex items-center shrink-0 ml-2 space-x-2'>
@@ -637,7 +643,7 @@ const Main: FC<IMainProps> = () => {
             )}
             <div className={cn((!isNewConversation || isResponsing) && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
               <Chat
-                isShowConfigElem={isNewConversation && !chatList.some(item => item.isAnswer)}
+                isShowConfigElem={isNewConversation && chatList.length === 0}
                 configElem={<Init
                   modelId={modelId}
                   onModelChange={setModeId}
