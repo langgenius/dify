@@ -148,6 +148,7 @@ export type InitialDocumentDetail = {
   display_status: DocumentDisplayStatus
   completed_segments?: number
   total_segments?: number
+  doc_form: 'text_model' | 'qa_model'
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -171,6 +172,7 @@ export type DocumentListResponse = {
 export type CreateDocumentReq = {
   original_document_id?: string
   indexing_technique?: string
+  doc_form: 'text_model' | 'qa_model'
   data_source: DataSource
   process_rule: ProcessRule
 }
@@ -293,6 +295,7 @@ export type SegmentDetailModel = {
   completed_at: number
   error: string | null
   stopped_at: number
+  answer?: string
 }
 
 export type SegmentsResponse = {
