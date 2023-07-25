@@ -310,6 +310,8 @@ const translation = {
     characters: 'characters',
     hitCount: 'hit count',
     vectorHash: 'Vector hash: ',
+    questionPlaceholder: 'add question here',
+    answerPlaceholder: 'add answer here',
   },
 }
 

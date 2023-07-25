@@ -295,6 +295,7 @@ export type SegmentDetailModel = {
   completed_at: number
   error: string | null
   stopped_at: number
+  answer?: string
 }
 
 export type SegmentsResponse = {

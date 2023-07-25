@@ -309,6 +309,8 @@ const translation = {
     characters: '字符',
     hitCount: '命中次数',
     vectorHash: '向量哈希：',
+    questionPlaceholder: '在这里添加问题',
+    answerPlaceholder: '在这里添加答案',
   },
 }
 

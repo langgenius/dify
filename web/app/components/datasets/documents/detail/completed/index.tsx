@@ -23,6 +23,8 @@ import type { SegmentDetailModel, SegmentsQuery, SegmentsResponse } from '@/mode
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
 import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
+import Button from '@/app/components/base/button'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -53,28 +55,82 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const [isEditing, setIsEditing] = useState(false)
+  const [question, setQuestion] = useState(segInfo?.content || '')
+  const [answer, setAnswer] = useState(segInfo?.answer || '')
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setQuestion(segInfo?.content || '')
+    setAnswer(segInfo?.answer || '')
+  }
+  const handleSave = () => {}
 
   const renderContent = () => {
     if (segInfo?.answer) {
       return (
         <>
           <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
-          <div className='mb-4 text-md text-gray-800'>{segInfo.answer}</div>
+          <AutoHeightTextarea
+            outerClassName='mb-4'
+            className='leading-6 text-md text-gray-800'
+            value={question}
+            placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+            onChange={e => setQuestion(e.target.value)}
+            disabled={!isEditing}
+          />
           <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
-          <div className='text-md text-gray-800'>{segInfo.content}</div>
+          <AutoHeightTextarea
+            outerClassName='mb-4'
+            className='leading-6 text-md text-gray-800'
+            value={answer}
+            placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
+            onChange={e => setAnswer(e.target.value)}
+            disabled={!isEditing}
+            autoFocus
+          />
         </>
       )
     }
 
-    return segInfo?.content
+    return (
+      <AutoHeightTextarea
+        className='leading-6 text-md text-gray-800'
+        value={question}
+        placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+        onChange={e => setQuestion(e.target.value)}
+        disabled={!isEditing}
+        autoFocus
+      />
+    )
   }
 
   return (
     <div className={'flex flex-col relative'}>
-      <div className='absolute right-0 top-0 flex items-center'>
-        <div className='flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
-          <Edit03 className='w-4 h-4 text-gray-500' />
-        </div>
+      <div className='absolute right-0 top-0 flex items-center h-7'>
+        {
+          isEditing
+            ? (
+              <>
+                <Button
+                  className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
+                  onClick={handleCancel}>
+                  {t('common.operation.cancel')}
+                </Button>
+                <Button
+                  type='primary'
+                  className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+                  onClick={handleSave}>
+                  {t('common.operation.save')}
+                </Button>
+              </>
+            )
+            : (
+              <div className='flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+                <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+              </div>
+            )
+        }
         <div className='mx-3 w-[1px] h-3 bg-gray-200' />
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
