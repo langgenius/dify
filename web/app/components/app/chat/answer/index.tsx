@@ -20,6 +20,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { Markdown } from '@/app/components/base/markdown'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
+import type { DataSet } from '@/models/datasets'
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
   return <div className='flex items-center my-2'>
@@ -45,9 +46,10 @@ export type IAnswerProps = {
   answerIconClassName?: string
   thoughts?: ThoughtItem[]
   isThinking?: boolean
+  dataSets?: DataSet[]
 }
 // The component needs to maintain its own state to control whether to display input component
-const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts, isThinking }) => {
+const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts, isThinking, dataSets }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -197,7 +199,11 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                   </div>
                 )}
                 {(thoughts && thoughts.length > 0) && (
-                  <Thought list={thoughts || []} isThinking={isThinking} />
+                  <Thought
+                    list={thoughts || []}
+                    isThinking={isThinking}
+                    dataSets={dataSets}
+                  />
                 )}
                 {(isResponsing && !content)
                   ? (

@@ -662,6 +662,7 @@ const Main: FC<IMainProps> = () => {
                 isShowSuggestion={doShowSuggestion}
                 suggestionList={suggestQuestions}
                 isShowSpeechToText={speechToTextConfig?.enabled}
+                dataSets={dataSets}
               />
             </div>
           </div>

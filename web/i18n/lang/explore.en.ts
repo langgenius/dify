@@ -67,7 +67,7 @@ const translation = {
           hasPageInfo: 'Reading next page of {url}',
         },
         search: 'Searching {{query}}',
-        dataset: 'Retrieving dataset {{datasetName}}',
+        dataset: 'Retrieving dataset {datasetName}',
       },
     },
     viewConfigDetailTip: 'In conversation, cannot change above settings',

@@ -5,20 +5,22 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { ThoughtItem } from '../type'
 import s from './style.module.css'
-import { DataSet, Loading as LodingIcon, Search, ThoughtList, WebReader } from '@/app/components/base/icons/src/public/thought'
+import { DataSet as DataSetIcon, Loading as LodingIcon, Search, ThoughtList, WebReader } from '@/app/components/base/icons/src/public/thought'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
+import type { DataSet } from '@/models/datasets'
 
 // https://www.freecodecamp.org/news/how-to-write-a-regular-expression-for-a-url/
 const urlRegex = /(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?\/[a-zA-Z0-9]{2,}|((https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z]{2,}(\.[a-zA-Z]{2,})(\.[a-zA-Z]{2,})?)|(https:\/\/www\.|http:\/\/www\.|https:\/\/|http:\/\/)?[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}\.[a-zA-Z0-9]{2,}(\.[a-zA-Z0-9]{2,})?/gi
 export type IThoughtProps = {
   list: ThoughtItem[]
   isThinking?: boolean
+  dataSets?: DataSet[]
 }
 
 const getIcon = (toolId: string) => {
   switch (toolId) {
     case 'dataset':
-      return <DataSet />
+      return <DataSetIcon />
     case 'web_reader':
       return <WebReader />
     default:
@@ -29,16 +31,20 @@ const getIcon = (toolId: string) => {
 const Thought: FC<IThoughtProps> = ({
   list,
   isThinking,
+  dataSets,
 }) => {
   const { t } = useTranslation()
   const [isShowDetail, setIsShowDetail] = React.useState(false)
+
   const getThoughtText = (item: ThoughtItem) => {
     try {
       const input = JSON.parse(item.tool_input)
+
       switch (item.tool) {
         case 'dataset':
-        //   debugger
-          return t('explore.universalChat.thought.res.dataset', { input: input.dataset_id })
+          // eslint-disable-next-line no-case-declarations
+          const datasetName = dataSets?.find(item => item.id === input.dataset_id)?.name || 'unknown dataset'
+          return t('explore.universalChat.thought.res.dataset').replace('{datasetName}', `<span class="text-gray-700">${datasetName}</span>`)
         case 'web_reader':
           return t(`explore.universalChat.thought.res.webReader.${!input.cursor ? 'normal' : 'hasPageInfo'}`).replace('{url}', `<a href="${input.url}" class="text-[#155EEF]">${input.url}</a>`)
         default: // google, wikipedia

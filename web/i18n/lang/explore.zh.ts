@@ -67,7 +67,7 @@ const translation = {
           hasPageInfo: '解析链接 {url} 的下一页',
         },
         search: '搜索 {{query}}',
-        dataset: '检索数据集 {{dataset}}',
+        dataset: '检索数据集 {datasetName}',
       },
     },
     viewConfigDetailTip: '在对话中，无法更改上述设置',
