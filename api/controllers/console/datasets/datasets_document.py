@@ -589,7 +589,8 @@ class DocumentDetailApi(DocumentResource):
                 'segment_count': document.segment_count,
                 'average_segment_length': document.average_segment_length,
                 'hit_count': document.hit_count,
-                'display_status': document.display_status
+                'display_status': document.display_status,
+                'doc_form': document.doc_form
             }
         else:
             process_rules = DatasetService.get_process_rules(dataset_id)
@@ -620,7 +621,8 @@ class DocumentDetailApi(DocumentResource):
                 'segment_count': document.segment_count,
                 'average_segment_length': document.average_segment_length,
                 'hit_count': document.hit_count,
-                'display_status': document.display_status
+                'display_status': document.display_status,
+                'doc_form': document.doc_form
             }
 
         return response, 200
