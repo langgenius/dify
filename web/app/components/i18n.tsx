@@ -11,7 +11,6 @@ export type II18nProps = {
   locale: Locale
   dictionary: Record<string, any>
   children: React.ReactNode
-  // setLocaleOnClient: (locale: Locale) => void
 }
 const I18n: FC<II18nProps> = ({
   dictionary,
