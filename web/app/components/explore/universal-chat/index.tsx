@@ -38,6 +38,8 @@ import Confirm from '@/app/components/base/confirm'
 import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 import { fetchDatasets } from '@/service/datasets'
+import ItemOperation from '@/app/components/explore/item-operation'
+
 const APP_ID = 'universal-chat'
 const DEFAULT_MODEL_ID = 'gpt-3.5-turbo' // gpt-4, claude-2
 const DEFAULT_PLUGIN = {
@@ -130,12 +132,14 @@ const Main: FC<IMainProps> = () => {
   }
   const handlePin = async (id: string) => {
     await pinConversation(id)
+    setControlItemOpHide(Date.now())
     notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
   }
 
   const handleUnpin = async (id: string) => {
     await unpinConversation(id)
+    setControlItemOpHide(Date.now())
     notify({ type: 'success', message: t('common.api.success') })
     noticeUpdateList()
   }
@@ -149,6 +153,7 @@ const Main: FC<IMainProps> = () => {
 
   const didDelete = async () => {
     await delConversation(toDeleteConversationId)
+    setControlItemOpHide(Date.now())
     notify({ type: 'success', message: t('common.api.success') })
     hideConfirm()
     if (currConversationId === toDeleteConversationId)
@@ -592,7 +597,8 @@ const Main: FC<IMainProps> = () => {
     setPlugins(DEFAULT_PLUGIN)
     setDateSets([])
   }
-
+  const isCurrConversationPinned = !!pinnedConversationList.find(item => item.id === currConversationId)
+  const [controlItemOpHide, setControlItemOpHide] = useState(0)
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
@@ -632,11 +638,19 @@ const Main: FC<IMainProps> = () => {
               <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
                 <div className='text-gray-900'>{conversationName}</div>
                 <div className='flex items-center shrink-0 ml-2 space-x-2'>
-                  <div>
-                    <ConfigSummary
-                      modelId={modelId}
-                      plugins={plugins}
-                      dataSets={dataSets}
+                  <ConfigSummary
+                    modelId={modelId}
+                    plugins={plugins}
+                    dataSets={dataSets}
+                  />
+                  <div className={cn('flex w-8 h-8 justify-center items-center shrink-0 rounded-lg border border-gray-200')} onClick={e => e.stopPropagation()}>
+                    <ItemOperation
+                      key={controlItemOpHide}
+                      className='!w-8 !h-8'
+                      isPinned={isCurrConversationPinned}
+                      togglePin={() => isCurrConversationPinned ? handleUnpin(currConversationId) : handlePin(currConversationId)}
+                      isShowDelete
+                      onDelete={() => handleDelete(currConversationId)}
                     />
                   </div>
                 </div>
