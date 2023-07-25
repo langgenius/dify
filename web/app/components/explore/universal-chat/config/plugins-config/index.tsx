@@ -78,7 +78,7 @@ const Plugins: FC<IPluginsProps> = ({
       >
         {isLoading
           ? (
-            <div className='flex items-center h-[200px]'>
+            <div className='flex items-center h-[166px]'>
               <Loading type='area' />
             </div>
           )
