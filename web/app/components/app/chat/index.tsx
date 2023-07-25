@@ -161,7 +161,7 @@ const Chat: FC<IChatProps> = ({
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
             const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
-            const isThinking = item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.find(item => item.thought !== '[DONE]')
+            const isThinking = item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
               item={item}
