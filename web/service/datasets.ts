@@ -1,7 +1,26 @@
 import type { Fetcher } from 'swr'
 import qs from 'qs'
 import { del, get, patch, post, put } from './base'
-import type { CreateDocumentReq, DataSet, DataSetListResponse, DocumentDetailResponse, DocumentListResponse, FileIndexingEstimateResponse, HitTestingRecordsResponse, HitTestingResponse, IndexingEstimateResponse, IndexingStatusBatchResponse, IndexingStatusResponse, ProcessRuleResponse, RelatedAppResponse, SegmentsQuery, SegmentsResponse, createDocumentResponse } from '@/models/datasets'
+import type {
+  CreateDocumentReq,
+  DataSet,
+  DataSetListResponse,
+  DocumentDetailResponse,
+  DocumentListResponse,
+  FileIndexingEstimateResponse,
+  HitTestingRecordsResponse,
+  HitTestingResponse,
+  IndexingEstimateResponse,
+  IndexingStatusBatchResponse,
+  IndexingStatusResponse,
+  ProcessRuleResponse,
+  RelatedAppResponse,
+  SegmentDetailModel,
+  SegmentUpdator,
+  SegmentsQuery,
+  SegmentsResponse,
+  createDocumentResponse,
+} from '@/models/datasets'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 
 // apis for documents in a dataset
@@ -135,6 +154,10 @@ export const enableSegment: Fetcher<CommonResponse, { datasetId: string; segment
 
 export const disableSegment: Fetcher<CommonResponse, { datasetId: string; segmentId: string }> = ({ datasetId, segmentId }) => {
   return patch(`/datasets/${datasetId}/segments/${segmentId}/disable`) as Promise<CommonResponse>
+}
+
+export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, segmentId, body }) => {
+  return patch(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
 }
 
 // hit testing

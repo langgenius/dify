@@ -373,3 +373,8 @@ export type RelatedAppResponse = {
   data: Array<RelatedApp>
   total: number
 }
+
+export type SegmentUpdator = {
+  content: string
+  answer?: string
+}
