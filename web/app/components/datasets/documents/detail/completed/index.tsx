@@ -1,27 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import React, { memo, useState, useEffect, useMemo } from 'react'
+import React, { memo, useEffect, useMemo, useState } from 'react'
 import { HashtagIcon } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { omitBy, isNil, debounce } from 'lodash-es'
-import { formatNumber } from '@/utils/format'
+import { debounce, isNil, omitBy } from 'lodash-es'
+import cn from 'classnames'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
 import s from './style.module.css'
+import InfiniteVirtualList from './InfiniteVirtualList'
+import { formatNumber } from '@/utils/format'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
-import { SimpleSelect, Item } from '@/app/components/base/select'
+import type { Item } from '@/app/components/base/select'
+import { SimpleSelect } from '@/app/components/base/select'
 import { disableSegment, enableSegment, fetchSegments } from '@/service/datasets'
-import type { SegmentDetailModel, SegmentsResponse, SegmentsQuery } from '@/models/datasets'
+import type { SegmentDetailModel, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
-import InfiniteVirtualList from "./InfiniteVirtualList";
-import cn from 'classnames'
+import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -41,19 +42,46 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
+  onCancel: () => void
 }
 /**
  * Show all the contents of the segment
  */
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
-  onChangeSwitch }) => {
+  onChangeSwitch,
+  onCancel,
+}) => {
   const { t } = useTranslation()
 
+  const renderContent = () => {
+    if (segInfo?.answer) {
+      return (
+        <>
+          <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
+          <div className='mb-4 text-md text-gray-800'>{segInfo.answer}</div>
+          <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
+          <div className='text-md text-gray-800'>{segInfo.content}</div>
+        </>
+      )
+    }
+
+    return segInfo?.content
+  }
+
   return (
-    <div className={'flex flex-col'}>
-      <SegmentIndexTag positionId={segInfo?.position || ''} className='w-fit mb-6' />
-      <div className={s.segModalContent}>{segInfo?.content}</div>
+    <div className={'flex flex-col relative'}>
+      <div className='absolute right-0 top-0 flex items-center'>
+        <div className='flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+          <Edit03 className='w-4 h-4 text-gray-500' />
+        </div>
+        <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+        <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
+          <XClose className='w-4 h-4 text-gray-500' />
+        </div>
+      </div>
+      <SegmentIndexTag positionId={segInfo?.position || ''} className='w-fit mt-[2px] mb-6' />
+      <div className={s.segModalContent}>{renderContent()}</div>
       <div className={s.keywordTitle}>{t('datasetDocuments.segment.keywords')}</div>
       <div className={s.keywordWrapper}>
         {!segInfo?.keywords?.length
@@ -74,7 +102,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
           <Switch
             size='md'
             defaultValue={segInfo?.enabled}
-            onChange={async val => {
+            onChange={async (val) => {
               await onChangeSwitch?.(segInfo?.id || '', val)
             }}
           />
@@ -115,18 +143,12 @@ const Completed: FC<ICompletedProps> = () => {
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState<number | undefined>()
 
-  useEffect(() => {
-    if (lastSegmentsRes !== undefined) {
-      getSegments(false)
-    }
-  }, [selectedStatus, searchValue])
-
   const onChangeStatus = ({ value }: Item) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
   }
 
   const getSegments = async (needLastId?: boolean) => {
-    const finalLastId = lastSegmentsRes?.data?.[lastSegmentsRes.data.length - 1]?.id || '';
+    const finalLastId = lastSegmentsRes?.data?.[lastSegmentsRes.data.length - 1]?.id || ''
     setLoading(true)
     const [e, res] = await asyncRunSafe<SegmentsResponse>(fetchSegments({
       datasetId,
@@ -136,15 +158,21 @@ const Completed: FC<ICompletedProps> = () => {
         limit: 9,
         keyword: searchValue,
         enabled: selectedStatus === 'all' ? 'all' : !!selectedStatus,
-      }, isNil) as SegmentsQuery
+      }, isNil) as SegmentsQuery,
     }) as Promise<SegmentsResponse>)
     if (!e) {
       setAllSegments([...(!needLastId ? [] : allSegments), ...splitArray(res.data || [])])
       setLastSegmentsRes(res)
-      if (!lastSegmentsRes) { setTotal(res?.total || 0) }
+      if (!lastSegmentsRes)
+        setTotal(res?.total || 0)
     }
     setLoading(false)
   }
+
+  useEffect(() => {
+    if (lastSegmentsRes !== undefined)
+      getSegments(false)
+  }, [selectedStatus, searchValue])
 
   const onClickCard = (detail: SegmentDetailModel) => {
     setCurrSegment({ segInfo: detail, showModal: true })
@@ -161,13 +189,13 @@ const Completed: FC<ICompletedProps> = () => {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       for (const item of allSegments) {
         for (const seg of item) {
-          if (seg.id === segId) {
+          if (seg.id === segId)
             seg.enabled = enabled
-          }
         }
       }
       setAllSegments([...allSegments])
-    } else {
+    }
+    else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
     }
   }
@@ -196,8 +224,8 @@ const Completed: FC<ICompletedProps> = () => {
         onChangeSwitch={onChangeSwitch}
         onClick={onClickCard}
       />
-      <Modal isShow={currSegment.showModal} onClose={onCloseModal} className='!max-w-[640px]' closable>
-        <SegmentDetail segInfo={currSegment.segInfo ?? { id: '' }} onChangeSwitch={onChangeSwitch} />
+      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px]'>
+        <SegmentDetail segInfo={currSegment.segInfo ?? { id: '' }} onChangeSwitch={onChangeSwitch} onCancel={onCloseModal} />
       </Modal>
     </>
   )

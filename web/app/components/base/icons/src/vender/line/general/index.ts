@@ -1,3 +1,4 @@
+export { default as Edit03 } from './Edit03'
 export { default as Loading02 } from './Loading02'
 export { default as Trash03 } from './Trash03'
 export { default as XClose } from './XClose'
