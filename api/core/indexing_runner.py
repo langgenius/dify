@@ -229,7 +229,7 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict) -> dict:
+    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict, doc_from: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
@@ -261,7 +261,19 @@ class IndexingRunner:
 
                 tokens += TokenCalculator.get_num_tokens(self.embedding_model_name,
                                                          self.filter_string(document.page_content))
-
+        if doc_from and doc_from == 'qa_model':
+            if len(preview_texts) > 0:
+                # qa model document
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0])
+                document_qa_list = self.format_split_text(response)
+                return {
+                    "total_segments": total_segments,
+                    "tokens": total_segments * 2000,
+                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', tokens, 'completion')),
+                    "currency": TokenCalculator.get_currency(self.embedding_model_name),
+                    "qa_preview": document_qa_list,
+                    "preview": preview_texts
+                }
         return {
             "total_segments": total_segments,
             "tokens": tokens,
@@ -270,7 +282,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict) -> dict:
+    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict, doc_from: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
