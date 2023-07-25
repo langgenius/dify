@@ -70,7 +70,7 @@ const Thought: FC<IThoughtProps> = ({
       <div className='flex items-center h-6 space-x-1 cursor-pointer' onClick={() => setIsShowDetail(!isShowDetail)} >
         {!isThinking ? <ThoughtList /> : <div className='animate-spin'><LodingIcon /></div>}
         <div dangerouslySetInnerHTML= {{
-          __html: isThinking ? getThoughtText(list[0]) : (t(`explore.universalChat.thought.${isShowDetail ? 'hide' : 'show'}`) + t('explore.universalChat.thought.processOfThought')),
+          __html: isThinking ? getThoughtText(list[list.length - 1]) : (t(`explore.universalChat.thought.${isShowDetail ? 'hide' : 'show'}`) + t('explore.universalChat.thought.processOfThought')),
         }}
         ></div>
         <ChevronDown className={isShowDetail ? 'rotate-180' : '' } />

@@ -510,10 +510,8 @@ const Main: FC<IMainProps> = () => {
         }
       },
       onThought(thought) {
-        if (thought.thought === '[DONE]')
-          return
-        responseItem.id = thought.message_id;
         // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
+        responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought] // .push(thought)
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
