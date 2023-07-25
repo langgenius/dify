@@ -2,7 +2,7 @@ from langchain.callbacks.manager import Callbacks, CallbackManagerForLLMRun
 from langchain.chat_models.openai import _convert_dict_to_message
 from langchain.schema import BaseMessage, LLMResult, ChatResult, ChatGeneration
 from langchain.chat_models import AzureChatOpenAI
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple, Union
 
 from pydantic import root_validator
 
@@ -10,6 +10,11 @@ from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 
 
 class StreamableAzureChatOpenAI(AzureChatOpenAI):
+    request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 120.0)
+    """Timeout for requests to OpenAI completion API. Default is 600 seconds."""
+    max_retries: int = 2
+    """Maximum number of retries to make when generating."""
+
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""

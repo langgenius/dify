@@ -1,5 +1,6 @@
 from typing import List, Optional, Any, Dict
 
+from httpx import Timeout
 from langchain.callbacks.manager import Callbacks
 from langchain.chat_models import ChatAnthropic
 from langchain.schema import BaseMessage, LLMResult, SystemMessage, AIMessage, HumanMessage, ChatMessage
@@ -12,6 +13,8 @@ class StreamableChatAnthropic(ChatAnthropic):
     """
     Wrapper around Anthropic's large language model.
     """
+
+    default_request_timeout: Optional[float] = Timeout(timeout=120.0, connect=5.0)
 
     @root_validator()
     def prepare_params(cls, values: Dict) -> Dict:
