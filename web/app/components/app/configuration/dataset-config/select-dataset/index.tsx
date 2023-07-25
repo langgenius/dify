@@ -128,8 +128,12 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   <div className='max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap'>{item.name}</div>
                 </div>
 
-                <div className='max-w-[140px] flex text-xs text-gray-500  overflow-hidden text-ellipsis whitespace-nowrap'>
-                  {formatNumber(item.word_count)} {t('appDebug.feature.dataSet.words')} · {formatNumber(item.document_count)} {t('appDebug.feature.dataSet.textBlocks')}
+                <div className='flex text-xs text-gray-500 overflow-hidden whitespace-nowrap'>
+                  <span className='max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.word_count)}</span>
+                  {t('appDebug.feature.dataSet.words')}
+                  <span className='px-0.5'>·</span>
+                  <span className='max-w-[100px] min-w-[8px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.document_count)} </span>
+                  {t('appDebug.feature.dataSet.textBlocks')}
                 </div>
               </div>
             ))}
