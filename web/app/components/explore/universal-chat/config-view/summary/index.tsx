@@ -16,12 +16,12 @@ export type ISummaryProps = {
 
 const getColorInfo = (modelId: string) => {
   if (modelId === 'gpt-4')
-    return 'bg-[#EBE9FE] border-[#F4F3FF]'
+    return s.gpt4
 
   if (modelId === 'claude-2')
-    return 'bg-[#F9EBDF] border-[#FCF3EB]'
+    return s.claude
 
-  return 'bg-[#D3F8DF] border-[#EDFCF2]'
+  return s.gpt3
 }
 
 const getPlugIcon = (pluginId: string) => {
