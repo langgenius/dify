@@ -40,7 +40,7 @@ import ConfigSummary from '@/app/components/explore/universal-chat/config-view/s
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 import { fetchDatasets } from '@/service/datasets'
 const APP_ID = 'universal-chat'
-const DEFAULT_MODEL_ID = 'claude-2' // gpt-4, claude-2
+const DEFAULT_MODEL_ID = 'gpt-3.5-turbo' // gpt-4, claude-2
 const DEFAULT_PLUGIN = {
   google_search: false,
   web_reader: true,
