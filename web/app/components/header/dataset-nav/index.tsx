@@ -1,3 +1,5 @@
+'use client'
+
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useRouter } from 'next/navigation'

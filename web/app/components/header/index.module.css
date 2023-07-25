@@ -15,23 +15,8 @@
   background-size: contain;
 }
 
-.github-icon {
-  width: 18px;
-  height: 18px;
-  background: url(./assets/github-icon.svg) center center no-repeat;
-  background-size: contain;
-}
-
 .alpha {
   width: 12px;
   height: 12px;
   background: url(./assets/alpha.svg) center center no-repeat;
-}
-
-.beaker-icon {
-  width: 12px;
-  height: 12px;
-  margin-right: 4px;
-  background: url(./assets/beaker.svg) center center no-repeat;
-  background-size: contain;
 }
