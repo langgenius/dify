@@ -1,3 +1,4 @@
+export { default as Edit03 } from './Edit03'
 export { default as Check } from './Check'
 export { default as LinkExternal02 } from './LinkExternal02'
 export { default as Loading02 } from './Loading02'
