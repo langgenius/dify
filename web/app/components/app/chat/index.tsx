@@ -19,6 +19,8 @@ import VoiceInput from '@/app/components/base/voice-input'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import type { DataSet } from '@/models/datasets'
+
 export type IChatProps = {
   configElem?: React.ReactNode
   chatList: IChatItem[]
@@ -48,6 +50,7 @@ export type IChatProps = {
   answerIconClassName?: string
   isShowConfigElem?: boolean
   isThoughting?: boolean
+  dataSets?: DataSet[]
 }
 
 const Chat: FC<IChatProps> = ({
@@ -72,6 +75,7 @@ const Chat: FC<IChatProps> = ({
   isShowSpeechToText,
   answerIconClassName,
   isShowConfigElem,
+  dataSets,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -170,6 +174,7 @@ const Chat: FC<IChatProps> = ({
               answerIconClassName={answerIconClassName}
               thoughts={thoughts}
               isThinking={isThinking}
+              dataSets={dataSets}
             />
           }
           return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />
