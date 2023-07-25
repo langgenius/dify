@@ -67,11 +67,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         <>
           <div className='flex mb-2'>
             <div className='mr-2 text-[13px] font-semibold text-gray-400'>Q</div>
-            <div className='text-[13px]'>{answer}</div>
+            <div className='text-[13px]'>{content}</div>
           </div>
           <div className='flex'>
             <div className='mr-2 text-[13px] font-semibold text-gray-400'>A</div>
-            <div className='text-[13px]'>{content}</div>
+            <div className='text-[13px]'>{answer}</div>
           </div>
         </>
       )

@@ -73,6 +73,8 @@ const translation = {
     click: 'Go to settings',
     economical: 'Economical',
     economicalTip: 'Use offline vector engines, keyword indexes, etc. to reduce accuracy without spending tokens',
+    QATitle: 'Segmenting in Question & Answer format',
+    QATip: 'Enable this option will consume more tokens',
     emstimateCost: 'Estimation',
     emstimateSegment: 'Estimated segments',
     segmentCount: 'segments',

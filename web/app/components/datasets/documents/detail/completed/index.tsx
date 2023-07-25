@@ -18,11 +18,13 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { disableSegment, enableSegment, fetchSegments } from '@/service/datasets'
-import type { SegmentDetailModel, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
+import { disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
+import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
 import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
+import Button from '@/app/components/base/button'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -42,6 +44,7 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
+  onUpdate: (segmentId: string, q: string, a: string) => void
   onCancel: () => void
 }
 /**
@@ -50,31 +53,89 @@ type ISegmentDetailProps = {
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
   onChangeSwitch,
+  onUpdate,
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const [isEditing, setIsEditing] = useState(false)
+  const [question, setQuestion] = useState(segInfo?.content || '')
+  const [answer, setAnswer] = useState(segInfo?.answer || '')
+
+  const handleCancel = () => {
+    setIsEditing(false)
+    setQuestion(segInfo?.content || '')
+    setAnswer(segInfo?.answer || '')
+  }
+  const handleSave = () => {
+    onUpdate(segInfo?.id || '', question, answer)
+  }
 
   const renderContent = () => {
     if (segInfo?.answer) {
       return (
         <>
           <div className='mb-1 text-xs font-medium text-gray-500'>QUESTION</div>
-          <div className='mb-4 text-md text-gray-800'>{segInfo.answer}</div>
+          <AutoHeightTextarea
+            outerClassName='mb-4'
+            className='leading-6 text-md text-gray-800'
+            value={question}
+            placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+            onChange={e => setQuestion(e.target.value)}
+            disabled={!isEditing}
+          />
           <div className='mb-1 text-xs font-medium text-gray-500'>ANSWER</div>
-          <div className='text-md text-gray-800'>{segInfo.content}</div>
+          <AutoHeightTextarea
+            outerClassName='mb-4'
+            className='leading-6 text-md text-gray-800'
+            value={answer}
+            placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
+            onChange={e => setAnswer(e.target.value)}
+            disabled={!isEditing}
+            autoFocus
+          />
         </>
       )
     }
 
-    return segInfo?.content
+    return (
+      <AutoHeightTextarea
+        className='leading-6 text-md text-gray-800'
+        value={question}
+        placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+        onChange={e => setQuestion(e.target.value)}
+        disabled={!isEditing}
+        autoFocus
+      />
+    )
   }
 
   return (
     <div className={'flex flex-col relative'}>
-      <div className='absolute right-0 top-0 flex items-center'>
-        <div className='flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
-          <Edit03 className='w-4 h-4 text-gray-500' />
-        </div>
+      <div className='absolute right-0 top-0 flex items-center h-7'>
+        {
+          isEditing
+            ? (
+              <>
+                <Button
+                  className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
+                  onClick={handleCancel}>
+                  {t('common.operation.cancel')}
+                </Button>
+                <Button
+                  type='primary'
+                  className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+                  onClick={handleSave}>
+                  {t('common.operation.save')}
+                </Button>
+              </>
+            )
+            : (
+              <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+                <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
+                <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+              </div>
+            )
+        }
         <div className='mx-3 w-[1px] h-3 bg-gray-200' />
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
@@ -131,7 +192,7 @@ type ICompletedProps = {
 const Completed: FC<ICompletedProps> = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { datasetId = '', documentId = '' } = useContext(DocumentContext)
+  const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean }>({ showModal: false })
 
@@ -200,6 +261,29 @@ const Completed: FC<ICompletedProps> = () => {
     }
   }
 
+  const handleUpdateSegment = async (segmentId: string, question: string, answer: string) => {
+    const params: SegmentUpdator = { content: question }
+    if (docForm === 'qa_model')
+      params.answer = answer
+
+    const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
+    notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+    onCloseModal()
+    for (const item of allSegments) {
+      for (const seg of item) {
+        if (seg.id === segmentId) {
+          seg.answer = res.data.answer
+          seg.content = res.data.content
+          seg.word_count = res.data.word_count
+          seg.hit_count = res.data.hit_count
+          seg.index_node_hash = res.data.index_node_hash
+          seg.enabled = res.data.enabled
+        }
+      }
+    }
+    setAllSegments([...allSegments])
+  }
+
   return (
     <>
       <div className={s.docSearchWrapper}>
@@ -224,8 +308,13 @@ const Completed: FC<ICompletedProps> = () => {
         onChangeSwitch={onChangeSwitch}
         onClick={onClickCard}
       />
-      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px]'>
-        <SegmentDetail segInfo={currSegment.segInfo ?? { id: '' }} onChangeSwitch={onChangeSwitch} onCancel={onCloseModal} />
+      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
+        <SegmentDetail
+          segInfo={currSegment.segInfo ?? { id: '' }}
+          onChangeSwitch={onChangeSwitch}
+          onUpdate={handleUpdateSegment}
+          onCancel={onCloseModal}
+        />
       </Modal>
     </>
   )

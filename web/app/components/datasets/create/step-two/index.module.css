@@ -291,7 +291,7 @@
 }
 
 .source {
-  @apply flex justify-between items-center mt-8 px-6 py-4 rounded-xl bg-gray-50;
+  @apply flex justify-between items-center mt-8 px-6 py-4 rounded-xl bg-gray-50 border border-gray-100;
 }
 
 .source .divider {
