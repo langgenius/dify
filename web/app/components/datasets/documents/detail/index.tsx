@@ -114,7 +114,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={`box-border h-full w-full overflow-y-scroll ${embedding ? 'py-12 px-16' : 'pb-[30px] pt-3 px-6'}`}>
-              {embedding ? <Embedding detail={documentDetail} /> : <Completed />}
+              {embedding ? <Embedding detail={documentDetail} detailUpdate={detailMutate} /> : <Completed />}
             </div>
           }
           {showMetadata && <Metadata

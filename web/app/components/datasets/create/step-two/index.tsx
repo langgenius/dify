@@ -24,6 +24,8 @@ import { formatNumber } from '@/utils/format'
 import type { DataSourceNotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import Switch from '@/app/components/base/switch'
+import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 
 type Page = DataSourceNotionPage & { workspace_id: string }
@@ -52,6 +54,10 @@ enum SegmentType {
 enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
+}
+enum DocForm {
+  TEXT = 'text_model',
+  QA = 'qa_model',
 }
 
 const StepTwo = ({
@@ -87,6 +93,9 @@ const StepTwo = ({
       || hasSetAPIKEY
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
+  )
+  const [docForm, setDocForm] = useState<DocForm | string>(
+    datasetId && documentDetail ? documentDetail.doc_form : DocForm.TEXT,
   )
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
   const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
@@ -205,6 +214,7 @@ const StepTwo = ({
     }) as NotionInfo[]
   }
 
+  // TODO
   const getFileIndexingEstimateParams = () => {
     let params
     if (dataSourceType === DataSourceType.FILE) {
@@ -237,6 +247,7 @@ const StepTwo = ({
     if (isSetting) {
       params = {
         original_document_id: documentDetail?.id,
+        doc_form: docForm,
         process_rule: getProcessRule(),
       } as CreateDocumentReq
     }
@@ -250,6 +261,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
+        doc_form: docForm,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -325,6 +337,13 @@ const StepTwo = ({
     }
   }
 
+  const handleCheck = (state: boolean) => {
+    if (state)
+      setDocForm(DocForm.QA)
+    else
+      setDocForm(DocForm.TEXT)
+  }
+
   useEffect(() => {
     // fetch rules
     if (!isSetting) {
@@ -351,6 +370,11 @@ const StepTwo = ({
       }
     }
   }, [showPreview])
+
+  useEffect(() => {
+    if (indexingType === IndexingType.ECONOMICAL && docForm === DocForm.QA)
+      setDocForm(DocForm.TEXT)
+  }, [indexingType, docForm])
 
   useEffect(() => {
     // get indexing type by props
@@ -527,6 +551,24 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
+            {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
+              <div className='flex justify-between items-center mt-3 px-5 py-4 rounded-xl bg-gray-50 border border-gray-100'>
+                <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
+                  <MessageChatSquare className='w-4 h-4' />
+                </div>
+                <div className='grow mx-3'>
+                  <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
+                  <div className='text-[13px] leading-[18px] text-gray-500'>{t('datasetCreation.stepTwo.QATip')}</div>
+                </div>
+                <div className='shrink-0'>
+                  <Switch
+                    defaultValue={docForm === DocForm.QA}
+                    onChange={handleCheck}
+                    size='md'
+                  />
+                </div>
+              </div>
+            )}
             <div className={s.source}>
               <div className={s.sourceContent}>
                 {dataSourceType === DataSourceType.FILE && (
@@ -602,6 +644,7 @@ const StepTwo = ({
       {(showPreview)
         ? (
           <div ref={previewScrollRef} className={cn(s.previewWrap, 'relativeh-full overflow-y-scroll border-l border-[#F2F4F7]')}>
+            {/* TODO preview switch */}
             <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`, ' flex items-center justify-between px-8')}>
               <span>{t('datasetCreation.stepTwo.previewTitle')}</span>
               <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
