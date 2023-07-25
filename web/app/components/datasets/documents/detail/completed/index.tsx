@@ -18,8 +18,8 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { disableSegment, enableSegment, fetchSegments } from '@/service/datasets'
-import type { SegmentDetailModel, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
+import { disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
+import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
 import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -44,6 +44,7 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
+  onUpdate: (segmentId: string, q: string, a: string) => void
   onCancel: () => void
 }
 /**
@@ -52,6 +53,7 @@ type ISegmentDetailProps = {
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
   onChangeSwitch,
+  onUpdate,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -64,7 +66,9 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
     setQuestion(segInfo?.content || '')
     setAnswer(segInfo?.answer || '')
   }
-  const handleSave = () => {}
+  const handleSave = () => {
+    onUpdate(segInfo?.id || '', question, answer)
+  }
 
   const renderContent = () => {
     if (segInfo?.answer) {
@@ -126,7 +130,8 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
               </>
             )
             : (
-              <div className='flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+              <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+                <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
                 <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
               </div>
             )
@@ -187,7 +192,7 @@ type ICompletedProps = {
 const Completed: FC<ICompletedProps> = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { datasetId = '', documentId = '' } = useContext(DocumentContext)
+  const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean }>({ showModal: false })
 
@@ -256,6 +261,29 @@ const Completed: FC<ICompletedProps> = () => {
     }
   }
 
+  const handleUpdateSegment = async (segmentId: string, question: string, answer: string) => {
+    const params: SegmentUpdator = { content: question }
+    if (docForm === 'qa_model')
+      params.answer = answer
+
+    const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
+    notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+    onCloseModal()
+    for (const item of allSegments) {
+      for (const seg of item) {
+        if (seg.id === segmentId) {
+          seg.answer = res.data.answer
+          seg.content = res.data.content
+          seg.word_count = res.data.word_count
+          seg.hit_count = res.data.hit_count
+          seg.index_node_hash = res.data.index_node_hash
+          seg.enabled = res.data.enabled
+        }
+      }
+    }
+    setAllSegments([...allSegments])
+  }
+
   return (
     <>
       <div className={s.docSearchWrapper}>
@@ -280,8 +308,13 @@ const Completed: FC<ICompletedProps> = () => {
         onChangeSwitch={onChangeSwitch}
         onClick={onClickCard}
       />
-      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px]'>
-        <SegmentDetail segInfo={currSegment.segInfo ?? { id: '' }} onChangeSwitch={onChangeSwitch} onCancel={onCloseModal} />
+      <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
+        <SegmentDetail
+          segInfo={currSegment.segInfo ?? { id: '' }}
+          onChangeSwitch={onChangeSwitch}
+          onUpdate={handleUpdateSegment}
+          onCancel={onCloseModal}
+        />
       </Modal>
     </>
   )
