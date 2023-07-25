@@ -495,9 +495,10 @@ const Main: FC<IMainProps> = () => {
         setChatList(newListWithAnswer)
       },
       async onCompleted(hasError?: boolean) {
-        setResponsingFalse()
-        if (hasError)
+        if (hasError) {
+          setResponsingFalse()
           return
+        }
 
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: allConversations }: any = await fetchAllConversations()
@@ -512,6 +513,7 @@ const Main: FC<IMainProps> = () => {
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+        setResponsingFalse()
       },
       onThought(thought) {
         // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
@@ -528,12 +530,11 @@ const Main: FC<IMainProps> = () => {
       },
       onError() {
         setErrorHappened(true)
-        setResponsingFalse()
-
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {
           draft.splice(draft.findIndex(item => item.id === placeholderAnswerId), 1)
         }))
+        setResponsingFalse()
       },
     })
   }
@@ -633,8 +634,8 @@ const Main: FC<IMainProps> = () => {
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
-          <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px]  mb-3.5 overflow-hidden')}>
-            {(!isNewConversation || isResponsing || errorHappened) && (
+          {(!isNewConversation || isResponsing || errorHappened) && (
+            <div className='mb-5 antialiased font-sans shrink-0 relative mobile:min-h-[48px] tablet:min-h-[64px]'>
               <div className='absolute z-10 top-0 left-0 right-0 flex items-center justify-between border-b border-gray-100 mobile:h-12 tablet:h-16 px-8 bg-white'>
                 <div className='text-gray-900'>{conversationName}</div>
                 <div className='flex items-center shrink-0 ml-2 space-x-2'>
@@ -655,8 +656,10 @@ const Main: FC<IMainProps> = () => {
                   </div>
                 </div>
               </div>
-            )}
-            <div className={cn((!isNewConversation || isResponsing) && 'pt-[90px]', 'pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
+            </div>
+          )}
+          <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto  mb-3.5 overflow-hidden')}>
+            <div className={cn('pc:w-[794px] max-w-full mobile:w-full mx-auto h-full overflow-y-auto')} ref={chatListDomRef}>
               <Chat
                 isShowConfigElem={isNewConversation && chatList.length === 0}
                 configElem={<Init

@@ -4,7 +4,9 @@ import UniversalChat from '@/app/components/explore/universal-chat'
 
 const Chat: FC = () => {
   return (
-    <UniversalChat />
+    <div className='h-full p-2'>
+      <UniversalChat />
+    </div>
   )
 }
 
