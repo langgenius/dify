@@ -37,6 +37,8 @@ class CompletionService:
         if not query:
             raise ValueError('query is required')
 
+        query = query.replace('\x00', '')
+
         conversation_id = args['conversation_id'] if 'conversation_id' in args else None
 
         conversation = None
@@ -370,7 +372,7 @@ class CompletionService:
                     if len(value) > max_length:
                         raise ValueError(f'{variable} in input form must be less than {max_length} characters')
 
-            filtered_inputs[variable] = value
+            filtered_inputs[variable] = value.replace('\x00', '') if value else None
 
         return filtered_inputs
 
