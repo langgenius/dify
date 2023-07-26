@@ -466,7 +466,8 @@ const Main: FC<IMainProps> = () => {
       isAnswer: true,
     }
 
-    let tempNewConversationId = ''
+    const prevTempNewConversationId = getCurrConversationId() || '-1'
+    let tempNewConversationId = prevTempNewConversationId
 
     setHasStopResponded(false)
     setResponsingTrue()
@@ -485,9 +486,8 @@ const Main: FC<IMainProps> = () => {
           tempNewConversationId = newConversationId
 
         setMessageTaskId(taskId)
-
         // has switched to other conversation
-        if (tempNewConversationId !== getCurrConversationId()) {
+        if (prevTempNewConversationId !== getCurrConversationId()) {
           setIsResponsingConCurrCon(false)
           return
         }
@@ -530,7 +530,8 @@ const Main: FC<IMainProps> = () => {
         responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought] // .push(thought)
         // has switched to other conversation
-        if (tempNewConversationId !== getCurrConversationId()) {
+
+        if (prevTempNewConversationId !== getCurrConversationId()) {
           setIsResponsingConCurrCon(false)
           return
         }
