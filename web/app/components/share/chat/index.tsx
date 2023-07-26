@@ -461,8 +461,8 @@ const Main: FC<IMainProps> = ({
       content: '',
       isAnswer: true,
     }
-
-    let tempNewConversationId = ''
+    const prevTempNewConversationId = getCurrConversationId() || '-1'
+    let tempNewConversationId = prevTempNewConversationId
 
     setHasStopResponded(false)
     setResponsingTrue()
@@ -480,7 +480,7 @@ const Main: FC<IMainProps> = ({
 
         setMessageTaskId(taskId)
         // has switched to other conversation
-        if (tempNewConversationId !== getCurrConversationId()) {
+        if (prevTempNewConversationId !== getCurrConversationId()) {
           setIsResponsingConCurrCon(false)
           return
         }

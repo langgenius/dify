@@ -49,7 +49,6 @@ export type IChatProps = {
   isShowSpeechToText?: boolean
   answerIconClassName?: string
   isShowConfigElem?: boolean
-  isThoughting?: boolean
   dataSets?: DataSet[]
 }
 
@@ -183,7 +182,8 @@ const Chat: FC<IChatProps> = ({
       {
         !isHideSendInput && (
           <div className={cn(!feedbackDisabled && '!left-3.5 !right-3.5', 'absolute z-10 bottom-0 left-0 right-0')}>
-            {(isResponsing && canStopResponsing) && (
+            {/* Thinking is sync and can not be stopped */}
+            {(isResponsing && canStopResponsing && !!chatList[chatList.length - 1]?.content) && (
               <div className='flex justify-center mb-4'>
                 <Button className='flex items-center space-x-1 bg-white' onClick={() => abortResponsing?.()}>
                   {stopIcon}
