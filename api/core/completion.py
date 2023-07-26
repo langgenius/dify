@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Optional, List, Union, Tuple
 
 from langchain.base_language import BaseLanguageModel
@@ -269,6 +270,9 @@ And answer according to the language of the user's question.
             )
 
             messages.append(human_message)
+
+            for message in messages:
+                message.content = re.sub(r'<\|.*?\|>', '', message.content)
 
             return messages, ['\nHuman:', '</histories>']
 
