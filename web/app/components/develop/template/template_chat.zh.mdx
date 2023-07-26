@@ -379,6 +379,51 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
 </Row>
 
+---
+
+<Heading
+  url='/audio-to-text'
+  method='POST'
+  title='语音转文字'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    语音转文字，仅支持 openai 模型。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='file' type='file' key='file'>
+        语音文件
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n-F file=@localfilename`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "name": "",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "text": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
