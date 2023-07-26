@@ -19,8 +19,11 @@ const I18n: FC<II18nProps> = ({
 }) => {
   const clientLocale = getLocaleOnClient()
 
-  // force to change language if server have the locale to resolve the UI hydrate error
-  locale && changeLanguage(locale)
+  // Although this Component has marked the `use client`, but will invoke at the server side at the same time
+  // When invoke at the server side, the i18n instance always return the default language, that will cause  the instance language not match the current locale, so we need to force update language
+  // This would not invoke at the client side
+  if (typeof window === 'undefined')
+    locale && changeLanguage(locale)
 
   return (
     <I18NContext.Provider value={{
