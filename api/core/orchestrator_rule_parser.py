@@ -97,7 +97,7 @@ class OrchestratorRuleParser:
                 memory=memory,
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=6,
-                max_execution_time=None,
+                max_execution_time=400.0,
                 early_stopping_method="generate"
             )
 
