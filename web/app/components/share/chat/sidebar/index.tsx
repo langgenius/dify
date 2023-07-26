@@ -129,12 +129,12 @@ const Sidebar: FC<ISidebarProps> = ({
           </div>
         )}
         {/* unpinned list */}
-        <div className={cn('mt-4 px-4', !hasPinned && 'flex flex-col flex-grow')}>
+        <div className={cn('grow flex flex-col mt-4 px-4', !hasPinned && 'flex flex-col flex-grow')}>
           {(hasPinned && list.length > 0) && (
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.unpinnedTitle')}</div>
           )}
           <List
-            className={cn(hasPinned ? maxListHeight : 'flex-grow')}
+            className={cn('flex-grow h-0')}
             currentId={currentId}
             onCurrentIdChange={onCurrentIdChange}
             list={list}
