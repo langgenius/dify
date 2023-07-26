@@ -257,8 +257,8 @@ And answer according to the language of the user's question.
                 histories = cls.get_history_messages_from_memory(memory, rest_tokens)
                 human_message_prompt += "\n\n" if human_message_prompt else ""
                 human_message_prompt += "Here is the chat histories between human and assistant, " \
-                                        "inside <histories></histories> XML tags.\n\n<histories>"
-                human_message_prompt += histories + "</histories>"
+                                        "inside <histories></histories> XML tags.\n\n<histories>\n"
+                human_message_prompt += histories + "\n</histories>"
 
             human_message_prompt += query_prompt
 
@@ -270,7 +270,7 @@ And answer according to the language of the user's question.
 
             messages.append(human_message)
 
-            return messages, ['\nHuman:']
+            return messages, ['\nHuman:', '</histories>']
 
     @classmethod
     def get_llm_callbacks(cls, llm: BaseLanguageModel,

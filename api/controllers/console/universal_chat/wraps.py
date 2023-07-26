@@ -60,7 +60,7 @@ def universal_chat_app_required(view=None):
                         }
                     }),
                     user_input_form=json.dumps([]),
-                    pre_prompt=None,
+                    pre_prompt='',
                     agent_mode=json.dumps({"enabled": True, "strategy": "function_call", "tools": []}),
                 )
 
