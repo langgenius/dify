@@ -44,9 +44,7 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
 )
 
 GENERATOR_QA_PROMPT = (
-    "You are the questioner.\n"
-    "Based on the language of the input text from the user, reply using the same language."
-    "The user will send a long text. \nPlease think step by step."
+    "Please respond according to the language of the user's input text. If the text is in language [A], you must also reply in language [A].\n"
     'Step 1: Understand and summarize the main content of this text.\n'
     'Step 2: What key information or concepts are mentioned in this text?\n'
     'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
