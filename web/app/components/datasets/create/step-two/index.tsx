@@ -7,7 +7,7 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
-import PreviewItem from './preview-item'
+import PreviewItem, { PreviewType } from './preview-item'
 import s from './index.module.css'
 import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -97,6 +97,7 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     datasetId && documentDetail ? documentDetail.doc_form : DocForm.TEXT,
   )
+  const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
   const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
   const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
@@ -154,9 +155,9 @@ const StepTwo = ({
     }
   }
 
-  const fetchFileIndexingEstimate = async () => {
+  const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams())
+    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm))
     if (segmentationType === SegmentType.CUSTOM)
       setCustomFileIndexingEstimate(res)
 
@@ -214,8 +215,7 @@ const StepTwo = ({
     }) as NotionInfo[]
   }
 
-  // TODO
-  const getFileIndexingEstimateParams = () => {
+  const getFileIndexingEstimateParams = (docForm: DocForm) => {
     let params
     if (dataSourceType === DataSourceType.FILE) {
       params = {
@@ -227,6 +227,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
+        doc_form: docForm,
       }
     }
     if (dataSourceType === DataSourceType.NOTION) {
@@ -237,6 +238,7 @@ const StepTwo = ({
         },
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
+        doc_form: docForm,
       }
     }
     return params
@@ -337,11 +339,20 @@ const StepTwo = ({
     }
   }
 
-  const handleCheck = (state: boolean) => {
+  const handleSwitch = (state: boolean) => {
     if (state)
       setDocForm(DocForm.QA)
     else
       setDocForm(DocForm.TEXT)
+  }
+
+  const previewSwitch = async () => {
+    setPreviewSwitched(true)
+    if (segmentationType === SegmentType.AUTO)
+      setAutomaticFileIndexingEstimate(null)
+    else
+      setCustomFileIndexingEstimate(null)
+    await fetchFileIndexingEstimate(DocForm.QA)
   }
 
   useEffect(() => {
@@ -390,10 +401,12 @@ const StepTwo = ({
       setAutomaticFileIndexingEstimate(null)
       setShowPreview()
       fetchFileIndexingEstimate()
+      setPreviewSwitched(false)
     }
     else {
       hidePreview()
       setCustomFileIndexingEstimate(null)
+      setPreviewSwitched(false)
     }
   }, [segmentationType, indexType])
 
@@ -563,7 +576,7 @@ const StepTwo = ({
                 <div className='shrink-0'>
                   <Switch
                     defaultValue={docForm === DocForm.QA}
-                    onChange={handleCheck}
+                    onChange={handleSwitch}
                     size='md'
                   />
                 </div>
@@ -644,24 +657,45 @@ const StepTwo = ({
       {(showPreview)
         ? (
           <div ref={previewScrollRef} className={cn(s.previewWrap, 'relativeh-full overflow-y-scroll border-l border-[#F2F4F7]')}>
-            {/* TODO preview switch */}
-            <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`, ' flex items-center justify-between px-8')}>
-              <span>{t('datasetCreation.stepTwo.previewTitle')}</span>
-              <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
-                <XMarkIcon className='h-4 w-4'></XMarkIcon>
+            <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
+              <div className='flex items-center justify-between px-8'>
+                <div className='grow flex items-center'>
+                  <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
+                  {docForm === DocForm.QA && !previewSwitched && (
+                    <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                  )}
+                </div>
+                <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+                  <XMarkIcon className='h-4 w-4'></XMarkIcon>
+                </div>
               </div>
+              {docForm === DocForm.QA && !previewSwitched && (
+                <div className='px-8 pr-12 text-xs text-gray-500'>
+                  <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
+                  <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
+                </div>
+              )}
             </div>
             <div className='my-4 px-8 space-y-4'>
-              {fileIndexingEstimate?.preview
-                ? (
-                  <>
-                    {fileIndexingEstimate?.preview.map((item, index) => (
-                      <PreviewItem key={item} content={item} index={index + 1} />
-                    ))}
-                  </>
-                )
-                : <div className='flex items-center justify-center h-[200px]'><Loading type='area'></Loading></div>
-              }
+              {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
+                <>
+                  {fileIndexingEstimate?.qa_preview.map((item, index) => (
+                    <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
+                  ))}
+                </>
+              )}
+              {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
+                <>
+                  {fileIndexingEstimate?.preview.map((item, index) => (
+                    <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
+                  ))}
+                </>
+              )}
+              {!fileIndexingEstimate?.preview && !fileIndexingEstimate?.qa_preview && (
+                <div className='flex items-center justify-center h-[200px]'>
+                  <Loading type='area' />
+                </div>
+              )}
             </div>
           </div>
         )

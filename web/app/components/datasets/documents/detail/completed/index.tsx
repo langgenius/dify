@@ -25,6 +25,7 @@ import type { CommonResponse } from '@/models/common'
 import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import Button from '@/app/components/base/button'
+import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -183,13 +184,15 @@ export const splitArray = (arr: any[], size = 3) => {
 }
 
 type ICompletedProps = {
+  showNewSegmentModal: boolean
+  onNewSegmentModalChange: (state: boolean) => void
   // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
  * Support search and filter
  */
-const Completed: FC<ICompletedProps> = () => {
+const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModalChange }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
@@ -329,6 +332,12 @@ const Completed: FC<ICompletedProps> = () => {
           onCancel={onCloseModal}
         />
       </Modal>
+      <NewSegmentModal
+        isShow={showNewSegmentModal}
+        docForm={docForm}
+        onCancel={() => onNewSegmentModalChange(false)}
+        onSave={() => getSegments(false)}
+      />
     </>
   )
 }

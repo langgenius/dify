@@ -17,6 +17,7 @@ const translation = {
     action: {
       uploadFile: '上传新文件',
       settings: '分段设置',
+      add: '添加新分段',
       archive: '归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
@@ -315,6 +316,8 @@ const translation = {
     answerEmpty: '答案不能为空',
     contentPlaceholder: '在这里添加内容',
     contentEmpty: '内容不能为空',
+    newTextSegment: '新文本分段',
+    newQaSegment: '新问答分段',
   },
 }
 
