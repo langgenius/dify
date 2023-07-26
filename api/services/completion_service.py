@@ -180,9 +180,9 @@ class CompletionService:
     @classmethod
     def get_real_user_instead_of_proxy_obj(cls, user: Union[Account, EndUser]):
         if isinstance(user, Account):
-            user = db.session.query(Account).get(user.id)
+            user = db.session.query(Account).filter(Account.id == user.id).first()
         elif isinstance(user, EndUser):
-            user = db.session.query(EndUser).get(user.id)
+            user = db.session.query(EndUser).filter(EndUser.id == user.id).first()
         else:
             raise Exception("Unknown user type")
 
