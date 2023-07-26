@@ -46,7 +46,7 @@ class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, Ope
         :return:
         """
         original_max_tokens = self.llm.max_tokens
-        self.llm.max_tokens = 6
+        self.llm.max_tokens = 15
 
         prompt = self.prompt.format_prompt(input=query, agent_scratchpad=[])
         messages = prompt.to_messages()
