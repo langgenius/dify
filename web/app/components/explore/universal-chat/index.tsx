@@ -73,7 +73,6 @@ const Main: FC<IMainProps> = () => {
   const [inited, setInited] = useState<boolean>(false)
   // in mobile, show sidebar by click button
   const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
-
   /*
   * conversation info
   */
@@ -86,6 +85,7 @@ const Main: FC<IMainProps> = () => {
     pinnedConversationList,
     setPinnedConversationList,
     currConversationId,
+    getCurrConversationId,
     setCurrConversationId,
     getConversationIdFromStorage,
     isNewConversation,
@@ -219,7 +219,7 @@ const Main: FC<IMainProps> = () => {
     }
 
     // update chat list of current conversation
-    if (!isNewConversation && !conversationIdChangeBecauseOfNew && !isResponsing) {
+    if (!isNewConversation && !conversationIdChangeBecauseOfNew) {
       fetchChatList(currConversationId).then((res: any) => {
         const { data } = res
         const newChatList: IChatItem[] = generateNewChatListWithOpenstatement(notSyncToStateIntroduction, notSyncToStateInputs)
@@ -413,6 +413,7 @@ const Main: FC<IMainProps> = () => {
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [errorHappened, setErrorHappened] = useState(false)
+  const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
   const handleSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -471,6 +472,7 @@ const Main: FC<IMainProps> = () => {
     setResponsingTrue()
     setErrorHappened(false)
     setIsShowSuggestion(false)
+    setIsResponsingConCurrCon(true)
 
     sendChatMessage(data, {
       getAbortController: (abortController) => {
@@ -483,6 +485,13 @@ const Main: FC<IMainProps> = () => {
           tempNewConversationId = newConversationId
 
         setMessageTaskId(taskId)
+
+        // has switched to other conversation
+        if (tempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return
+        }
+
         // closesure new list is outdated.
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -492,6 +501,7 @@ const Main: FC<IMainProps> = () => {
 
             draft.push({ ...responseItem })
           })
+
         setChatList(newListWithAnswer)
       },
       async onCompleted(hasError?: boolean) {
@@ -508,7 +518,7 @@ const Main: FC<IMainProps> = () => {
         setConversationIdChangeBecauseOfNew(false)
         resetNewConversationInputs()
         setCurrConversationId(tempNewConversationId, APP_ID, true)
-        if (suggestedQuestionsAfterAnswerConfig?.enabled && !getHasStopResponded()) {
+        if (getIsResponsingConIsCurrCon() && suggestedQuestionsAfterAnswerConfig?.enabled && !getHasStopResponded()) {
           const { data }: any = await fetchSuggestedQuestions(responseItem.id)
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
@@ -519,6 +529,11 @@ const Main: FC<IMainProps> = () => {
         // thought finished then start to return message. Warning: use push agent_thoughts.push would caused problem when the thought is more then 2
         responseItem.id = thought.message_id;
         (responseItem as any).agent_thoughts = [...(responseItem as any).agent_thoughts, thought] // .push(thought)
+        // has switched to other conversation
+        if (tempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return
+        }
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
@@ -675,7 +690,7 @@ const Main: FC<IMainProps> = () => {
                 isHideFeedbackEdit
                 onFeedback={handleFeedback}
                 isResponsing={isResponsing}
-                canStopResponsing={!!messageTaskId}
+                canStopResponsing={!!messageTaskId && isResponsingConIsCurrCon}
                 abortResponsing={async () => {
                   await stopChatMessageResponding(messageTaskId)
                   setHasStopResponded(true)
