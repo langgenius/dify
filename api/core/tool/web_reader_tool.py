@@ -88,9 +88,9 @@ class WebReaderTool(BaseTool):
             texts = character_splitter.split_text(page_contents)
             docs = [Document(page_content=t) for t in texts]
 
-            # only use first 10 docs
-            if len(docs) > 10:
-                docs = docs[:10]
+            # only use first 5 docs
+            if len(docs) > 5:
+                docs = docs[:5]
 
             chain = load_summarize_chain(self.llm, chain_type="refine", callbacks=self.callbacks)
             try:
@@ -124,7 +124,7 @@ def get_url(url: str) -> str:
     }
     supported_content_types = file_extractor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
 
-    head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=10)
+    head_response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
     if head_response.status_code != 200:
         return "URL returned status code {}.".format(head_response.status_code)
@@ -137,7 +137,7 @@ def get_url(url: str) -> str:
     if main_content_type in file_extractor.SUPPORT_URL_CONTENT_TYPES:
         return FileExtractor.load_from_url(url, return_text=True)
 
-    response = requests.get(url, headers=headers, allow_redirects=True, timeout=30)
+    response = requests.get(url, headers=headers, allow_redirects=True, timeout=(5, 30))
     a = extract_using_readabilipy(response.text)
 
     if not a['plain_text'] or not a['plain_text'].strip():
