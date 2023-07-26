@@ -28,7 +28,6 @@ import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
 import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -102,10 +101,10 @@ export const OperationAction: FC<{
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
-}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
-  const { id, enabled = false, archived = false, data_source_type, doc_form } = detail || {}
+  showNewSegmentModal?: () => void
+}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '', showNewSegmentModal }) => {
+  const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
-  const [showNewSegmentModal, setShowNewSegmentModal] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
@@ -191,7 +190,7 @@ export const OperationAction: FC<{
               </div>
               {
                 !isListScene && (
-                  <div className={s.actionItem} onClick={() => setShowNewSegmentModal(true)}>
+                  <div className={s.actionItem} onClick={showNewSegmentModal}>
                     <FilePlus02 className='w-4 h-4 text-gray-500' />
                     <span className={s.actionName}>{t('datasetDocuments.list.action.add')}</span>
                   </div>
@@ -243,12 +242,6 @@ export const OperationAction: FC<{
         </div>
       </div>
     </Modal>}
-    <NewSegmentModal
-      isShow={showNewSegmentModal}
-      onCancel={() => setShowNewSegmentModal(false)}
-      docForm={doc_form}
-      onSave={() => {}}
-    />
   </div>
 }
 
