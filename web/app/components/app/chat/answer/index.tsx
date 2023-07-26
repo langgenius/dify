@@ -58,23 +58,6 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
-  // const thoughtList = [
-  //   {
-  //     id: '1',
-  //     tool: 'google_search',
-  //     thought: 'Searching Wikipedia with Donald Trump..',
-  //   },
-  //   {
-  //     id: '2',
-  //     tool: 'google_search',
-  //     thought: 'Searching Wikipedia with Donald Trump..',
-  //   },
-  //   {
-  //     id: '3',
-  //     tool: 'google_search',
-  //     thought: 'Searching Wikipedia with Donald Trump..',
-  //   },
-  // ]
 
   /**
  * Render feedback results (distinguish between users and administrators)
