@@ -160,6 +160,10 @@ export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string
   return patch(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
 }
 
+export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, body }) => {
+  return post(`/datasets/${datasetId}/documents/${documentId}/segment`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
+}
+
 // hit testing
 export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string }> = ({ datasetId, queryText }) => {
   return post(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText } }) as Promise<HitTestingResponse>

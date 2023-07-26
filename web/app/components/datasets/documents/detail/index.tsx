@@ -100,6 +100,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               enabled: documentDetail?.enabled || false,
               archived: documentDetail?.archived || false,
               id: documentId,
+              doc_form: documentDetail?.doc_form || '',
             }}
             datasetId={datasetId}
             onUpdate={handleOperate}
