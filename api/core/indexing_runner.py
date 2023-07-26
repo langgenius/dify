@@ -229,7 +229,7 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict, doc_from: str = None) -> dict:
+    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict, doc_form: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
@@ -261,7 +261,7 @@ class IndexingRunner:
 
                 tokens += TokenCalculator.get_num_tokens(self.embedding_model_name,
                                                          self.filter_string(document.page_content))
-        if doc_from and doc_from == 'qa_model':
+        if doc_form and doc_form == 'qa_model':
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0])
