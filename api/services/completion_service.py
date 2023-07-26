@@ -174,7 +174,7 @@ class CompletionService:
 
         generate_worker_thread.start()
 
-        # wait for 5 minutes to close the thread
+        # wait for 10 minutes to close the thread
         cls.countdown_and_close(generate_worker_thread, pubsub, user, generate_task_id)
 
         return cls.compact_response(pubsub, streaming)
@@ -235,6 +235,9 @@ class CompletionService:
         def close_pubsub():
             sleep_iterations = 0
             while sleep_iterations < timeout and worker_thread.is_alive():
+                if sleep_iterations > 0 and sleep_iterations % 10 == 0:
+                    PubHandler.ping(user, generate_task_id)
+
                 time.sleep(1)
                 sleep_iterations += 1
 
@@ -421,6 +424,8 @@ class CompletionService:
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
                                 yield "data: " + json.dumps(cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
+                            else:
+                                yield "data: " + json.dumps(result) + "\n\n"
                 except ValueError as e:
                     if e.args[0] != "I/O operation on closed file.":  # ignore this error
                         logging.exception(e)

@@ -393,6 +393,15 @@ class PubHandler:
         return redis_client.get(self._stopped_cache_key) is not None
 
     @classmethod
+    def ping(cls, user: Union[Account | EndUser], task_id: str):
+        content = {
+            'event': 'ping'
+        }
+
+        channel = cls.generate_channel_name(user, task_id)
+        redis_client.publish(channel, json.dumps(content))
+
+    @classmethod
     def stop(cls, user: Union[Account | EndUser], task_id: str):
         stopped_cache_key = cls.generate_stopped_cache_key(user, task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
