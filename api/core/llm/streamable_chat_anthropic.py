@@ -14,7 +14,7 @@ class StreamableChatAnthropic(ChatAnthropic):
     Wrapper around Anthropic's large language model.
     """
 
-    default_request_timeout: Optional[float] = Timeout(timeout=120.0, connect=5.0)
+    default_request_timeout: Optional[float] = Timeout(timeout=300.0, connect=5.0)
 
     @root_validator()
     def prepare_params(cls, values: Dict) -> Dict:

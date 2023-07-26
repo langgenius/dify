@@ -11,7 +11,7 @@ from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 class StreamableAzureOpenAI(AzureOpenAI):
     openai_api_type: str = "azure"
     openai_api_version: str = ""
-    request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 120.0)
+    request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 300.0)
     """Timeout for requests to OpenAI completion API. Default is 600 seconds."""
     max_retries: int = 2
     """Maximum number of retries to make when generating."""
