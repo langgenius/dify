@@ -401,17 +401,14 @@ const StepTwo = ({
       setAutomaticFileIndexingEstimate(null)
       setShowPreview()
       fetchFileIndexingEstimate()
+      setPreviewSwitched(false)
     }
     else {
       hidePreview()
       setCustomFileIndexingEstimate(null)
+      setPreviewSwitched(false)
     }
   }, [segmentationType, indexType])
-
-  useEffect(() => {
-    if (docForm === DocForm.TEXT)
-      setPreviewSwitched(false)
-  }, [docForm])
 
   return (
     <div className='flex w-full h-full'>
@@ -680,14 +677,14 @@ const StepTwo = ({
               )}
             </div>
             <div className='my-4 px-8 space-y-4'>
-              {previewSwitched && fileIndexingEstimate?.qa_preview && (
+              {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
                 <>
                   {fileIndexingEstimate?.qa_preview.map((item, index) => (
                     <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
                   ))}
                 </>
               )}
-              {!previewSwitched && fileIndexingEstimate?.preview && (
+              {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
                 <>
                   {fileIndexingEstimate?.preview.map((item, index) => (
                     <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
