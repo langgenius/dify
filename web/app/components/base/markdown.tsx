@@ -10,11 +10,15 @@ import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 // import { copyToClipboard } from "../utils";
 // https://txtfiddle.com/~hlshwya/extract-urls-from-text
-const urlRegex = /\b((https?|ftp|file):\/\/|(www|ftp)\.)[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/ig
+// const urlRegex = /\b((https?|ftp|file):\/\/|(www|ftp)\.)[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/ig
 
-function highlightURL(content: string) {
-  return content.replace(urlRegex, '[$&]($&)')
-}
+// function highlightURL(content: string) {
+//   return content.replace(urlRegex, (url) => {
+//     // fix http:// in [] will be parsed to link agin
+//     const res = `[${url.replace('://', ':&#47;&#47;')}](${url})`
+//     return res
+//   })
+// }
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -88,7 +92,7 @@ export function Markdown(props: { content: string }) {
         linkTarget={'_blank'}
       >
         {/* Markdown detect has problem. */}
-        {highlightURL(props.content)}
+        {props.content}
       </ReactMarkdown>
     </div>
   )
