@@ -677,7 +677,7 @@ const Main: FC<IMainProps> = () => {
                 isResponsing={isResponsing}
                 canStopResponsing={!!messageTaskId}
                 abortResponsing={async () => {
-                  await stopChatMessageResponding(APP_ID, messageTaskId)
+                  await stopChatMessageResponding(messageTaskId)
                   setHasStopResponded(true)
                   setResponsingFalse()
                 }}
