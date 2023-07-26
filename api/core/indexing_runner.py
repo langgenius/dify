@@ -497,7 +497,7 @@ class IndexingRunner:
             # parse document to nodes
             documents = splitter.split_documents([text_doc])
 
-            def format_document(flask_app: Flask, document_node: Document, split_documents: List) -> List[Document]:
+            def format_document(flask_app: Flask, document_node: Document, split_documents: List[Document]) -> List[Document]:
                 with flask_app.app_context():
                     print("process:"+document_node.page_content)
                     format_documents = []
@@ -528,7 +528,7 @@ class IndexingRunner:
                             qa_documents.append(qa_document)
                         format_documents.extend(qa_documents)
 
-                    split_documents.append(format_documents)
+                    split_documents.extend(format_documents)
             split_documents = []
             threads = []
             for doc in documents:
