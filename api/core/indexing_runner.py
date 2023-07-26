@@ -1,13 +1,15 @@
+import concurrent
 import datetime
 import json
 import logging
 import re
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, cast
 
 import openai
-from flask import current_app
+from flask import current_app, Flask
 from flask_login import current_user
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import Document
@@ -229,7 +231,8 @@ class IndexingRunner:
             dataset_document.stopped_at = datetime.datetime.utcnow()
             db.session.commit()
 
-    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict, doc_form: str = None) -> dict:
+    def file_indexing_estimate(self, file_details: List[UploadFile], tmp_processing_rule: dict,
+                               doc_form: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
@@ -269,7 +272,8 @@ class IndexingRunner:
                 return {
                     "total_segments": total_segments,
                     "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
+                    "total_price": '{:f}'.format(
+                        TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
                     "currency": TokenCalculator.get_currency(self.embedding_model_name),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -340,7 +344,8 @@ class IndexingRunner:
                 return {
                     "total_segments": total_segments,
                     "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
+                    "total_price": '{:f}'.format(
+                        TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
                     "currency": TokenCalculator.get_currency(self.embedding_model_name),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -492,32 +497,44 @@ class IndexingRunner:
             documents = splitter.split_documents([text_doc])
 
             split_documents = []
-            for document in documents:
-                if document.page_content is None or not document.page_content.strip():
-                    continue
-                if document_form == 'text_model':
-                    # text model document
-                    doc_id = str(uuid.uuid4())
-                    hash = helper.generate_text_hash(document.page_content)
 
-                    document.metadata['doc_id'] = doc_id
-                    document.metadata['doc_hash'] = hash
-
-                    split_documents.append(document)
-                elif document_form == 'qa_model':
-                    # qa model document
-                    response = LLMGenerator.generate_qa_document(tenant_id, document.page_content)
-                    document_qa_list = self.format_split_text(response)
-                    qa_documents = []
-                    for result in document_qa_list:
-                        qa_document = Document(page_content=result['question'], metadata=document.metadata.copy())
+            def format_document(flask_app: Flask, document_node: Document) -> List[Document]:
+                with flask_app.app_context():
+                    print("process:"+document_node.page_content)
+                    format_documents = []
+                    if document_node.page_content is None or not document_node.page_content.strip():
+                        return format_documents
+                    if document_form == 'text_model':
+                        # text model document
                         doc_id = str(uuid.uuid4())
-                        hash = helper.generate_text_hash(result['question'])
-                        qa_document.metadata['answer'] = result['answer']
-                        qa_document.metadata['doc_id'] = doc_id
-                        qa_document.metadata['doc_hash'] = hash
-                        qa_documents.append(qa_document)
-                    split_documents.extend(qa_documents)
+                        hash = helper.generate_text_hash(document_node.page_content)
+
+                        document_node.metadata['doc_id'] = doc_id
+                        document_node.metadata['doc_hash'] = hash
+
+                        format_documents.append(document_node)
+                    elif document_form == 'qa_model':
+
+                        # qa model document
+                        response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content)
+                        document_qa_list = self.format_split_text(response)
+                        qa_documents = []
+                        for result in document_qa_list:
+                            qa_document = Document(page_content=result['question'], metadata=document_node.metadata.copy())
+                            doc_id = str(uuid.uuid4())
+                            hash = helper.generate_text_hash(result['question'])
+                            qa_document.metadata['answer'] = result['answer']
+                            qa_document.metadata['doc_id'] = doc_id
+                            qa_document.metadata['doc_hash'] = hash
+                            qa_documents.append(qa_document)
+                        format_documents.extend(qa_documents)
+
+                    return format_documents
+
+            with ThreadPoolExecutor() as executor:
+                future_to_doc = {executor.submit(format_document, current_app._get_current_object(), doc): doc for doc in documents}
+                for future in concurrent.futures.as_completed(future_to_doc):
+                    split_documents.extend(future.result())
 
             all_documents.extend(split_documents)
 
