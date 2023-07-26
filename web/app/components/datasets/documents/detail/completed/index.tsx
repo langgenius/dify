@@ -101,7 +101,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
       <AutoHeightTextarea
         className='leading-6 text-md text-gray-800'
         value={question}
-        placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+        placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
         onChange={e => setQuestion(e.target.value)}
         disabled={!isEditing}
         autoFocus
@@ -262,9 +262,22 @@ const Completed: FC<ICompletedProps> = () => {
   }
 
   const handleUpdateSegment = async (segmentId: string, question: string, answer: string) => {
-    const params: SegmentUpdator = { content: question }
-    if (docForm === 'qa_model')
+    const params: SegmentUpdator = { content: '' }
+    if (docForm === 'qa_model') {
+      if (!question.trim())
+        return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
+      if (!answer.trim())
+        return notify({ type: 'error', message: t('datasetDocuments.segment.answerEmpty') })
+
+      params.content = question
       params.answer = answer
+    }
+    else {
+      if (!question.trim())
+        return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+
+      params.content = question
+    }
 
     const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
     notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })

@@ -311,7 +311,11 @@ const translation = {
     hitCount: 'hit count',
     vectorHash: 'Vector hash: ',
     questionPlaceholder: 'add question here',
+    questionEmpty: 'Question can not be empty',
     answerPlaceholder: 'add answer here',
+    answerEmpty: 'Answer can not be empty',
+    contentPlaceholder: 'add content here',
+    contentEmpty: 'Content can not be empty',
   },
 }
 
