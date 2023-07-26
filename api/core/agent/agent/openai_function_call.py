@@ -107,3 +107,14 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
                                      "Current time: {}\n"
                                      "Respond directly if appropriate.".format(
             current_time.strftime("%Y-%m-%d %H:%M:%S %Z%z")))
+
+    def return_stopped_response(
+            self,
+            early_stopping_method: str,
+            intermediate_steps: List[Tuple[AgentAction, str]],
+            **kwargs: Any,
+    ) -> AgentFinish:
+        try:
+            return super().return_stopped_response(early_stopping_method, intermediate_steps, **kwargs)
+        except ValueError:
+            return AgentFinish({"output": "I'm sorry, I don't know how to respond to that."}, "")
