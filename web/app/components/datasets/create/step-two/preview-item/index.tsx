@@ -1,10 +1,21 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
-export interface IPreviewItemProps {
+export type IPreviewItemProps = {
+  type: string
   index: number
-  content: string
+  content?: string
+  qa?: {
+    answer: string
+    question: string
+  }
+}
+
+export enum PreviewType {
+  TEXT = 'text',
+  QA = 'QA',
 }
 
 const sharpIcon = (
@@ -21,12 +32,16 @@ const textIcon = (
 )
 
 const PreviewItem: FC<IPreviewItemProps> = ({
+  type = PreviewType.TEXT,
   index,
   content,
+  qa,
 }) => {
   const { t } = useTranslation()
-  const charNums = (content || '').length
-  const formatedIndex = (() => (index + '').padStart(3, '0'))()
+  const charNums = type === PreviewType.TEXT
+    ? (content || '').length
+    : (qa?.answer || '').length + (qa?.question || '').length
+  const formatedIndex = (() => String(index).padStart(3, '0'))()
 
   return (
     <div className='p-4 rounded-xl bg-gray-50'>
@@ -41,7 +56,21 @@ const PreviewItem: FC<IPreviewItemProps> = ({
         </div>
       </div>
       <div className='mt-2 max-h-[120px] line-clamp-6 overflow-hidden text-sm text-gray-800'>
-        <div style={{ whiteSpace: 'pre-line'}}>{content}</div>
+        {type === PreviewType.TEXT && (
+          <div style={{ whiteSpace: 'pre-line' }}>{content}</div>
+        )}
+        {type === PreviewType.QA && (
+          <div style={{ whiteSpace: 'pre-line' }}>
+            <div className='flex'>
+              <div className='shrink-0 mr-2 text-medium text-gray-400'>Q</div>
+              <div style={{ whiteSpace: 'pre-line' }}>{qa?.question}</div>
+            </div>
+            <div className='flex'>
+              <div className='shrink-0 mr-2 text-medium text-gray-400'>A</div>
+              <div style={{ whiteSpace: 'pre-line' }}>{qa?.answer}</div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

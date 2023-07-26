@@ -42,12 +42,18 @@ export type DataSetListResponse = {
   total: number
 }
 
+export type QA = {
+  question: string
+  answer: string
+}
+
 export type IndexingEstimateResponse = {
   tokens: number
   total_price: number
   currency: string
   total_segments: number
   preview: string[]
+  qa_preview?: QA[]
 }
 
 export type FileIndexingEstimateResponse = {
