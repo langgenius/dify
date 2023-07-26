@@ -45,7 +45,8 @@ class WebReaderToolInput(BaseModel):
         default=0,
         description="Start reading from this character."
         "Use when the first response was truncated"
-        "and you want to continue reading the page.",
+        "and you want to continue reading the page."
+        "The value cannot exceed 24000.",
     )
 
 
