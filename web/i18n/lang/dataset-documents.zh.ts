@@ -310,7 +310,11 @@ const translation = {
     hitCount: '命中次数',
     vectorHash: '向量哈希：',
     questionPlaceholder: '在这里添加问题',
+    questionEmpty: '问题不能为空',
     answerPlaceholder: '在这里添加答案',
+    answerEmpty: '答案不能为空',
+    contentPlaceholder: '在这里添加内容',
+    contentEmpty: '内容不能为空',
   },
 }
 

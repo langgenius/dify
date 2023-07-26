@@ -269,7 +269,7 @@ class IndexingRunner:
                 return {
                     "total_segments": total_segments,
                     "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', tokens, 'completion')),
+                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
                     "currency": TokenCalculator.get_currency(self.embedding_model_name),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -282,7 +282,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict, doc_from: str = None) -> dict:
+    def notion_indexing_estimate(self, notion_info_list: list, tmp_processing_rule: dict, doc_form: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
@@ -332,7 +332,19 @@ class IndexingRunner:
                         preview_texts.append(document.page_content)
 
                     tokens += TokenCalculator.get_num_tokens(self.embedding_model_name, document.page_content)
-
+        if doc_form and doc_form == 'qa_model':
+            if len(preview_texts) > 0:
+                # qa model document
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0])
+                document_qa_list = self.format_split_text(response)
+                return {
+                    "total_segments": total_segments,
+                    "tokens": total_segments * 2000,
+                    "total_price": '{:f}'.format(TokenCalculator.get_token_price('gpt-3.5-turbo', total_segments * 2000, 'completion')),
+                    "currency": TokenCalculator.get_currency(self.embedding_model_name),
+                    "qa_preview": document_qa_list,
+                    "preview": preview_texts
+                }
         return {
             "total_segments": total_segments,
             "tokens": tokens,
