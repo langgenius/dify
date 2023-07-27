@@ -45,8 +45,12 @@ const Thought: FC<IThoughtProps> = ({
           return t('explore.universalChat.thought.res.dataset').replace('{datasetName}', `<span class="text-gray-700">${datasetName}</span>`)
         case 'web_reader':
           return t(`explore.universalChat.thought.res.webReader.${!input.cursor ? 'normal' : 'hasPageInfo'}`).replace('{url}', `<a href="${input.url}" class="text-[#155EEF]">${input.url}</a>`)
-        default: // google, wikipedia
-          return t('explore.universalChat.thought.res.search', { query: input.query })
+        case 'google_search':
+          return t('explore.universalChat.thought.res.google', { query: input.query })
+        case 'wikipedia':
+          return t('explore.universalChat.thought.res.wikipedia', { query: input.query })
+        default:
+          return `Unknown tool: ${item.tool}`
       }
     }
     catch (error) {
