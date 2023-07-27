@@ -31,6 +31,7 @@ class AgentConfiguration(BaseModel):
     llm: BaseLanguageModel
     tools: list[BaseTool]
     summary_llm: BaseLanguageModel
+    dataset_llm: BaseLanguageModel
     memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
@@ -84,7 +85,7 @@ class AgentExecutor:
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
             self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
-                llm=self.configuration.llm,
+                llm=self.configuration.dataset_llm,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,
                 verbose=True

@@ -73,7 +73,6 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             ),
             **kwargs: Any,
     ) -> BaseSingleActionAgent:
-        llm.model_name = 'gpt-3.5-turbo'
         return super().from_llm_and_tools(
             llm=llm,
             tools=tools,

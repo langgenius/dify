@@ -32,6 +32,7 @@ class OrchestratorRuleParser:
         self.tenant_id = tenant_id
         self.app_model_config = app_model_config
         self.agent_summary_model_name = "gpt-3.5-turbo-16k"
+        self.dataset_retrieve_model_name = "gpt-3.5-turbo"
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                        rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
@@ -89,11 +90,20 @@ class OrchestratorRuleParser:
             if len(tools) == 0:
                 return None
 
+            dataset_llm = LLMBuilder.to_llm(
+                tenant_id=self.tenant_id,
+                model_name=self.dataset_retrieve_model_name,
+                temperature=0,
+                max_tokens=500,
+                callbacks=[DifyStdOutCallbackHandler()]
+            )
+
             agent_configuration = AgentConfiguration(
                 strategy=planning_strategy,
                 llm=agent_llm,
                 tools=tools,
                 summary_llm=summary_llm,
+                dataset_llm=dataset_llm,
                 memory=memory,
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=10,
