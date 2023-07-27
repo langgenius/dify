@@ -49,6 +49,8 @@ const Thought: FC<IThoughtProps> = ({
           return t('explore.universalChat.thought.res.google', { query: input.query })
         case 'wikipedia':
           return t('explore.universalChat.thought.res.wikipedia', { query: input.query })
+        case 'current_datetime':
+          return t('explore.universalChat.thought.res.date')
         default:
           return `Unknown tool: ${item.tool}`
       }

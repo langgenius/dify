@@ -69,6 +69,7 @@ const translation = {
         google: 'Searching Google {{query}}',
         wikipedia: 'Searching Wikipedia {{query}}',
         dataset: 'Retrieving dataset {datasetName}',
+        date: 'Searching date',
       },
     },
     viewConfigDetailTip: 'In conversation, cannot change above settings',
