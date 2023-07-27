@@ -496,8 +496,9 @@ class IndexingRunner:
 
             # parse document to nodes
             documents = splitter.split_documents([text_doc])
+            split_documents = []
 
-            def format_document(flask_app: Flask, document_node: Document, split_documents: List[Document]) -> List[Document]:
+            def format_document(flask_app: Flask, document_node: Document) -> List[Document]:
                 with flask_app.app_context():
                     print("process:"+document_node.page_content)
                     format_documents = []
@@ -528,20 +529,19 @@ class IndexingRunner:
                             qa_documents.append(qa_document)
                         format_documents.extend(qa_documents)
 
-                    split_documents.extend(format_documents)
-            split_documents = []
-            threads = []
-            for doc in documents:
-                document_format_thread = threading.Thread(target=format_document, kwargs={
-                    'flask_app': current_app._get_current_object(), 'document_node': doc, 'split_documents': split_documents})
-                threads.append(document_format_thread)
-                document_format_thread.start()
-            for thread in threads:
-                thread.join()
-            # with ThreadPoolExecutor() as executor:
-            #     future_to_doc = {executor.submit(format_document, current_app._get_current_object(), doc): doc for doc in documents}
-            #     for future in concurrent.futures.as_completed(future_to_doc):
-            #         split_documents.extend(future.result())
+                    return format_documents
+            # threads = []
+            # for doc in documents:
+            #     document_format_thread = threading.Thread(target=format_document, kwargs={
+            #         'flask_app': current_app._get_current_object(), 'document_node': doc, 'split_documents': split_documents})
+            #     threads.append(document_format_thread)
+            #     document_format_thread.start()
+            # for thread in threads:
+            #     thread.join()
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                future_to_doc = {executor.submit(format_document, current_app._get_current_object(), doc): doc for doc in documents}
+                for future in concurrent.futures.as_completed(future_to_doc):
+                    split_documents.extend(future.result())
 
             all_documents.extend(split_documents)
 
