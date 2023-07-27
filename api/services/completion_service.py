@@ -425,6 +425,8 @@ class CompletionService:
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
                                 yield "data: " + json.dumps(cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'ping':
+                                yield "event: ping\n\n"
                             else:
                                 yield "data: " + json.dumps(result) + "\n\n"
                 except ValueError as e:
