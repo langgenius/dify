@@ -47,6 +47,28 @@ const DEFAULT_PLUGIN = {
   web_reader: true,
   wikipedia: true,
 }
+const CONFIG_KEY = 'universal-chat-config'
+type CONFIG = {
+  modelId: string
+  plugin: {
+    google_search: boolean
+    web_reader: boolean
+    wikipedia: boolean
+  }
+}
+let prevConfig: null | CONFIG = localStorage.getItem(CONFIG_KEY) ? JSON.parse(localStorage.getItem(CONFIG_KEY) as string) as CONFIG : null
+const setPrevConfig = (config: CONFIG) => {
+  prevConfig = config
+  localStorage.setItem(CONFIG_KEY, JSON.stringify(prevConfig))
+}
+const getInitConfig = (type: 'model' | 'plugin') => {
+  if (type === 'model')
+    return prevConfig?.modelId || DEFAULT_MODEL_ID
+
+  if (type === 'plugin')
+    return prevConfig?.plugin || DEFAULT_PLUGIN
+}
+
 export type IMainProps = {}
 
 const Main: FC<IMainProps> = () => {
@@ -415,6 +437,13 @@ const Main: FC<IMainProps> = () => {
   const [errorHappened, setErrorHappened] = useState(false)
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
   const handleSend = async (message: string) => {
+    if (isNewConversation) {
+      setPrevConfig({
+        modelId,
+        plugin: plugins as any,
+      })
+    }
+
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
@@ -598,10 +627,10 @@ const Main: FC<IMainProps> = () => {
     )
   }
 
-  const [modelId, setModeId] = useState(DEFAULT_MODEL_ID)
+  const [modelId, setModeId] = useState<string>(getInitConfig('model') as string)
   // const currModel = MODEL_LIST.find(item => item.id === modelId)
 
-  const [plugins, setPlugins] = useState<Record<string, boolean>>(DEFAULT_PLUGIN)
+  const [plugins, setPlugins] = useState<Record<string, boolean>>(getInitConfig('plugin') as Record<string, boolean>)
   const handlePluginsChange = (key: string, value: boolean) => {
     setPlugins({
       ...plugins,
@@ -610,8 +639,8 @@ const Main: FC<IMainProps> = () => {
   }
   const [dataSets, setDateSets] = useState<DataSet[]>([])
   const configSetDefaultValue = () => {
-    setModeId(DEFAULT_MODEL_ID)
-    setPlugins(DEFAULT_PLUGIN)
+    setModeId(getInitConfig('model') as string)
+    setPlugins(getInitConfig('plugin') as any)
     setDateSets([])
   }
   const isCurrConversationPinned = !!pinnedConversationList.find(item => item.id === currConversationId)
