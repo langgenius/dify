@@ -203,7 +203,7 @@ class Conversation(db.Model):
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     status = db.Column(db.String(255), nullable=False)
     from_source = db.Column(db.String(255), nullable=False)
-    from_end_user_id = db.Column(UUID)
+    from_end_user_id = db.Column(UUID, db.ForeignKey('end_users.id'))
     from_account_id = db.Column(UUID)
     read_at = db.Column(db.DateTime)
     read_account_id = db.Column(UUID)
@@ -212,6 +212,8 @@ class Conversation(db.Model):
 
     messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
     message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
+
+    end_user = db.relationship("EndUser", backref="conversations")
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
 
