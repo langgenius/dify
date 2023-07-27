@@ -21,6 +21,7 @@ from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
+from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
@@ -167,6 +168,8 @@ class OrchestratorRuleParser:
                 tool = self.to_google_search_tool()
             elif tool_type == "wikipedia":
                 tool = self.to_wikipedia_tool()
+            elif tool_type == "current_datetime":
+                tool = self.to_current_datetime_tool()
 
             if tool:
                 tool.callbacks.extend(callbacks)
@@ -235,10 +238,20 @@ class OrchestratorRuleParser:
             name="google_search",
             description="A tool for performing a Google search and extracting snippets and webpages "
                         "when you need to search for something you don't know or when your information "
-                        "is not up to date."
+                        "is not up to date. "
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
             args_schema=OptimizedSerpAPIInput,
+            callbacks=[DifyStdOutCallbackHandler()]
+        )
+
+        return tool
+
+    def to_current_datetime_tool(self) -> Optional[BaseTool]:
+        tool = Tool(
+            name="current_datetime",
+            description="A tool when you want to get the current date or time. ",
+            func=helper.get_current_datetime,
             callbacks=[DifyStdOutCallbackHandler()]
         )
 

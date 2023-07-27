@@ -1,7 +1,5 @@
-from datetime import datetime
 from typing import List, Tuple, Any, Union, Sequence, Optional
 
-import pytz
 from langchain.agents import BaseMultiActionAgent
 from langchain.agents.openai_functions_multi_agent.base import OpenAIMultiFunctionsAgent, _format_intermediate_steps, \
     _parse_ai_message
@@ -99,11 +97,6 @@ class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, Ope
     @classmethod
     def get_system_message(cls):
         # get current time
-        current_time = datetime.now()
-        current_timezone = pytz.timezone('UTC')
-        current_time = current_timezone.localize(current_time)
-
         return SystemMessage(content="You are a helpful AI assistant.\n"
-                                     "Current time: {}\n"
-                                     "Respond directly if appropriate.".format(
-            current_time.strftime("%Y-%m-%d %H:%M:%S %Z%z")))
+                                     "The current date or current time you know is wrong.\n"
+                                     "Respond directly if appropriate.")
