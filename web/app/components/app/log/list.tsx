@@ -412,7 +412,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </thead>
         <tbody className="text-gray-500">
           {logs.data.map((log) => {
-            const endUser = log.from_end_user_id?.slice(0, 8)
+            const endUser = log.from_end_user_session_id
             const leftValue = get(log, isChatMode ? 'summary' : 'message.query')
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
