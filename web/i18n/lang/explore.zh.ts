@@ -69,6 +69,7 @@ const translation = {
         google: '搜索谷歌 {{query}}',
         wikipedia: '搜索维基百科 {{query}}',
         dataset: '检索数据集 {datasetName}',
+        date: '查询日期',
       },
     },
     viewConfigDetailTip: '在对话中，无法更改上述设置',
