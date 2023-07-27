@@ -91,6 +91,7 @@ const translation = {
     language: '语言',
     provider: '模型供应商',
     dataSource: '数据来源',
+    plugin: '插件',
   },
   account: {
     avatar: '头像',
@@ -222,6 +223,13 @@ const translation = {
         addPages: '添加页面',
         preview: '预览',
       },
+    },
+  },
+  plugin: {
+    serpapi: {
+      apiKey: 'API Key',
+      apiKeyPlaceholder: '输入你的 API 密钥',
+      keyFrom: '从 SerpAPI 帐户页面获取您的 SerpAPI 密钥',
     },
   },
   about: {

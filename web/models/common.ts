@@ -142,3 +142,11 @@ export type DataSourceNotion = {
 export type GithubRepo = {
   stargazers_count: number
 }
+
+export type PluginProvider = {
+  tool_name: string
+  is_enabled: boolean
+  credentials: {
+    api_key: string
+  } | null
+}

@@ -10,6 +10,7 @@ import cn from 'classnames'
 import s from './style.module.css'
 import type { ConversationItem } from '@/models/share'
 import { fetchConversations } from '@/service/share'
+import { fetchConversations as fetchUniversalConversations } from '@/service/universal-chat'
 import ItemOperation from '@/app/components/explore/item-operation'
 
 export type IListProps = {
@@ -19,6 +20,7 @@ export type IListProps = {
   list: ConversationItem[]
   isClearConversationList: boolean
   isInstalledApp: boolean
+  isUniversalChat?: boolean
   installedAppId?: string
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
   isNoMore: boolean
@@ -35,6 +37,7 @@ const List: FC<IListProps> = ({
   list,
   isClearConversationList,
   isInstalledApp,
+  isUniversalChat,
   installedAppId,
   onMoreLoaded,
   isNoMore,
@@ -51,8 +54,12 @@ const List: FC<IListProps> = ({
         let lastId = !isClearConversationList ? list[list.length - 1]?.id : undefined
         if (lastId === '-1')
           lastId = undefined
-
-        const { data: conversations, has_more }: any = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
+        let res: any
+        if (isUniversalChat)
+          res = await fetchUniversalConversations(lastId, isPinned)
+        else
+          res = await fetchConversations(isInstalledApp, installedAppId, lastId, isPinned)
+        const { data: conversations, has_more }: any = res
         onMoreLoaded({ data: conversations, has_more })
       }
       return { list: [] }
@@ -68,7 +75,7 @@ const List: FC<IListProps> = ({
   return (
     <nav
       ref={listRef}
-      className={cn(className, 'shrink-0 space-y-1 bg-white pb-[85px] overflow-y-auto')}
+      className={cn(className, 'shrink-0 space-y-1 bg-white overflow-y-auto overflow-x-hidden')}
     >
       {list.map((item) => {
         const isCurrent = item.id === currentId

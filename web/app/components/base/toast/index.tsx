@@ -9,7 +9,7 @@ import {
   InformationCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/20/solid'
-import { createContext } from 'use-context-selector'
+import { createContext, useContext } from 'use-context-selector'
 
 export type IToastProps = {
   type?: 'success' | 'error' | 'warning' | 'info'
@@ -24,6 +24,7 @@ type IToastContext = {
 const defaultDuring = 3000
 
 export const ToastContext = createContext<IToastContext>({} as IToastContext)
+export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
   type = 'info',
   duration,
@@ -31,9 +32,9 @@ const Toast = ({
   children,
 }: IToastProps) => {
   // sometimes message is react node array. Not handle it.
-  if (typeof message !== 'string') {
+  if (typeof message !== 'string')
     return null
-  }
+
   return <div className={classNames(
     'fixed rounded-md p-4 my-4 mx-8 z-50',
     'top-0',

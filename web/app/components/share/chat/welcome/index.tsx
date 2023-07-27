@@ -25,7 +25,7 @@ export type IWelcomeProps = {
   canEidtInpus: boolean
   savedInputs: Record<string, any>
   onInputsChange: (inputs: Record<string, any>) => void
-  plan: string
+  plan?: string
 }
 
 const Welcome: FC<IWelcomeProps> = ({
