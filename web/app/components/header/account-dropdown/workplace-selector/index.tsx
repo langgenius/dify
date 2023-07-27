@@ -1,7 +1,6 @@
 import { Fragment } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
 import { Menu, Transition } from '@headlessui/react'
 import cn from 'classnames'
 import s from './index.module.css'
@@ -26,7 +25,6 @@ const itemCheckClassName = `
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
-  const router = useRouter()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWrokspace = workspaces.filter(item => item.current)?.[0]
@@ -35,7 +33,7 @@ const WorkplaceSelector = () => {
     try {
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      router.replace('/apps')
+      location.assign(`${location.origin}`)
     }
     catch (e) {
       notify({ type: 'error', message: t('common.provider.saveFailed') })

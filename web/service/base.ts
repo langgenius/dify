@@ -1,6 +1,7 @@
 /* eslint-disable no-new, prefer-promise-reject-errors */
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
+import type { ThoughtItem } from '@/app/components/app/chat/type'
 
 const TIME_OUT = 100000
 
@@ -30,6 +31,7 @@ export type IOnDataMoreInfo = {
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
+export type IOnThought = (though: ThoughtItem) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string) => void
 
@@ -39,12 +41,16 @@ type IOtherOptions = {
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   onData?: IOnData // for stream
+  onThought?: IOnThought
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
 }
 
 function unicodeToChar(text: string) {
+  if (!text)
+    return ''
+
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
     return String.fromCharCode(parseInt(p1, 16))
   })
@@ -58,7 +64,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted) => {
+const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -101,13 +107,18 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               onCompleted && onCompleted(true)
               return
             }
-            // can not use format here. Because message is splited.
-            onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
-              conversationId: bufferObj.conversation_id,
-              taskId: bufferObj.task_id,
-              messageId: bufferObj.id,
-            })
-            isFirstMessage = false
+            if (bufferObj.event === 'message') {
+              // can not use format here. Because message is splited.
+              onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
+                conversationId: bufferObj.conversation_id,
+                taskId: bufferObj.task_id,
+                messageId: bufferObj.id,
+              })
+              isFirstMessage = false
+            }
+            else if (bufferObj.event === 'agent_thought') {
+              onThought?.(bufferObj as any)
+            }
           }
         })
         buffer = lines[lines.length - 1]
@@ -298,7 +309,7 @@ export const upload = (options: any): Promise<any> => {
   })
 }
 
-export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onThought, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -333,17 +344,17 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
       }
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
         if (moreInfo.errorMessage) {
+          // debugger
           onError?.(moreInfo.errorMessage)
           if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.')
             Toast.notify({ type: 'error', message: moreInfo.errorMessage })
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted)
+      }, onCompleted, onThought)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })
-
       onError?.(e)
     })
 }

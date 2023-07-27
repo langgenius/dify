@@ -95,6 +95,7 @@ class CompletionConversationApi(Resource):
         'status': fields.String,
         'from_source': fields.String,
         'from_end_user_id': fields.String,
+        'from_end_user_session_id': fields.String(attribute='end_user.session_id'),
         'from_account_id': fields.String,
         'read_at': TimestampField,
         'created_at': TimestampField,
@@ -135,6 +136,8 @@ class CompletionConversationApi(Resource):
 
         query = db.select(Conversation).where(Conversation.app_id == app.id, Conversation.mode == 'completion')
 
+        query = query.options(joinedload(Conversation.end_user))
+
         if args['keyword']:
             query = query.join(
                 Message, Message.conversation_id == Conversation.id
@@ -160,7 +163,7 @@ class CompletionConversationApi(Resource):
 
         if args['end']:
             end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
-            end_datetime = end_datetime.replace(second=0)
+            end_datetime = end_datetime.replace(second=59)
 
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
@@ -246,6 +249,7 @@ class ChatConversationApi(Resource):
         'status': fields.String,
         'from_source': fields.String,
         'from_end_user_id': fields.String,
+        'from_end_user_session_id': fields.String(attribute='end_user.session_id'),
         'from_account_id': fields.String,
         'summary': fields.String(attribute='summary_or_query'),
         'read_at': TimestampField,
@@ -288,6 +292,8 @@ class ChatConversationApi(Resource):
 
         query = db.select(Conversation).where(Conversation.app_id == app.id, Conversation.mode == 'chat')
 
+        query = query.options(joinedload(Conversation.end_user))
+
         if args['keyword']:
             query = query.join(
                 Message, Message.conversation_id == Conversation.id
@@ -316,7 +322,7 @@ class ChatConversationApi(Resource):
 
         if args['end']:
             end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
-            end_datetime = end_datetime.replace(second=0)
+            end_datetime = end_datetime.replace(second=59)
 
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)

@@ -10,6 +10,9 @@ from core.llm.provider.errors import ValidateFailedError
 from models.provider import ProviderName
 
 
+AZURE_OPENAI_API_VERSION = '2023-07-01-preview'
+
+
 class AzureProvider(BaseProvider):
     def get_models(self, model_id: Optional[str] = None, credentials: Optional[dict] = None) -> list[dict]:
         return []
@@ -50,9 +53,10 @@ class AzureProvider(BaseProvider):
         """
         config = self.get_provider_api_key(model_id=model_id)
         config['openai_api_type'] = 'azure'
+        config['openai_api_version'] = AZURE_OPENAI_API_VERSION
         if model_id == 'text-embedding-ada-002':
             config['deployment'] = model_id.replace('.', '') if model_id else None
-            config['chunk_size'] = 1
+            config['chunk_size'] = 16
         else:
             config['deployment_name'] = model_id.replace('.', '') if model_id else None
         return config
@@ -69,7 +73,7 @@ class AzureProvider(BaseProvider):
         except:
             config = {
                 'openai_api_type': 'azure',
-                'openai_api_version': '2023-03-15-preview',
+                'openai_api_version': AZURE_OPENAI_API_VERSION,
                 'openai_api_base': '',
                 'openai_api_key': ''
             }
@@ -78,7 +82,7 @@ class AzureProvider(BaseProvider):
             if not config.get('openai_api_key'):
                 config = {
                     'openai_api_type': 'azure',
-                    'openai_api_version': '2023-03-15-preview',
+                    'openai_api_version': AZURE_OPENAI_API_VERSION,
                     'openai_api_base': '',
                     'openai_api_key': ''
                 }
@@ -100,7 +104,7 @@ class AzureProvider(BaseProvider):
                 raise ValueError('Config must be a object.')
 
             if 'openai_api_version' not in config:
-                config['openai_api_version'] = '2023-03-15-preview'
+                config['openai_api_version'] = AZURE_OPENAI_API_VERSION
 
             self.check_embedding_model(credentials=config)
         except ValidateFailedError as e:
@@ -119,7 +123,7 @@ class AzureProvider(BaseProvider):
         """
         return json.dumps({
             'openai_api_type': 'azure',
-            'openai_api_version': '2023-03-15-preview',
+            'openai_api_version': AZURE_OPENAI_API_VERSION,
             'openai_api_base': config['openai_api_base'],
             'openai_api_key': self.encrypt_token(config['openai_api_key'])
         })

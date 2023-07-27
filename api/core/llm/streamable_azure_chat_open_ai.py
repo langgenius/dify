@@ -1,7 +1,8 @@
-from langchain.callbacks.manager import Callbacks
-from langchain.schema import BaseMessage, LLMResult
+from langchain.callbacks.manager import Callbacks, CallbackManagerForLLMRun
+from langchain.chat_models.openai import _convert_dict_to_message
+from langchain.schema import BaseMessage, LLMResult, ChatResult, ChatGeneration
 from langchain.chat_models import AzureChatOpenAI
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple, Union
 
 from pydantic import root_validator
 
@@ -9,6 +10,11 @@ from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 
 
 class StreamableAzureChatOpenAI(AzureChatOpenAI):
+    request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 300.0)
+    """Timeout for requests to OpenAI completion API. Default is 600 seconds."""
+    max_retries: int = 1
+    """Maximum number of retries to make when generating."""
+
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""
@@ -71,3 +77,43 @@ class StreamableAzureChatOpenAI(AzureChatOpenAI):
         params['model_kwargs'] = model_kwargs
 
         return params
+
+    def _generate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[CallbackManagerForLLMRun] = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        message_dicts, params = self._create_message_dicts(messages, stop)
+        params = {**params, **kwargs}
+        if self.streaming:
+            inner_completion = ""
+            role = "assistant"
+            params["stream"] = True
+            function_call: Optional[dict] = None
+            for stream_resp in self.completion_with_retry(
+                messages=message_dicts, **params
+            ):
+                if len(stream_resp["choices"]) > 0:
+                    role = stream_resp["choices"][0]["delta"].get("role", role)
+                    token = stream_resp["choices"][0]["delta"].get("content") or ""
+                    inner_completion += token
+                    _function_call = stream_resp["choices"][0]["delta"].get("function_call")
+                    if _function_call:
+                        if function_call is None:
+                            function_call = _function_call
+                        else:
+                            function_call["arguments"] += _function_call["arguments"]
+                    if run_manager:
+                        run_manager.on_llm_new_token(token)
+            message = _convert_dict_to_message(
+                {
+                    "content": inner_completion,
+                    "role": role,
+                    "function_call": function_call,
+                }
+            )
+            return ChatResult(generations=[ChatGeneration(message=message)])
+        response = self.completion_with_retry(messages=message_dicts, **params)
+        return self._create_chat_result(response)

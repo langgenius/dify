@@ -24,6 +24,7 @@ model_config_fields = {
     'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
     'speech_to_text': fields.Raw(attribute='speech_to_text_dict'),
     'more_like_this': fields.Raw(attribute='more_like_this_dict'),
+    'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
     'model': fields.Raw(attribute='model_dict'),
     'user_input_form': fields.Raw(attribute='user_input_form_list'),
     'pre_prompt': fields.String,
@@ -96,7 +97,8 @@ class AppListApi(Resource):
         args = parser.parse_args()
 
         app_models = db.paginate(
-            db.select(App).where(App.tenant_id == current_user.current_tenant_id).order_by(App.created_at.desc()),
+            db.select(App).where(App.tenant_id == current_user.current_tenant_id,
+                                 App.is_universal == False).order_by(App.created_at.desc()),
             page=args['page'],
             per_page=args['limit'],
             error_out=False)
@@ -147,6 +149,7 @@ class AppListApi(Resource):
                 suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
                 speech_to_text=json.dumps(model_configuration['speech_to_text']),
                 more_like_this=json.dumps(model_configuration['more_like_this']),
+                sensitive_word_avoidance=json.dumps(model_configuration['sensitive_word_avoidance']),
                 model=json.dumps(model_configuration['model']),
                 user_input_form=json.dumps(model_configuration['user_input_form']),
                 pre_prompt=model_configuration['pre_prompt'],
@@ -438,6 +441,7 @@ class AppCopy(Resource):
             suggested_questions_after_answer=app_config.suggested_questions_after_answer,
             speech_to_text=app_config.speech_to_text,
             more_like_this=app_config.more_like_this,
+            sensitive_word_avoidance=app_config.sensitive_word_avoidance,
             model=app_config.model,
             user_input_form=app_config.user_input_form,
             pre_prompt=app_config.pre_prompt,

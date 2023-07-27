@@ -38,6 +38,8 @@ def decode_jwt_token():
     app_model = db.session.query(App).filter(App.id == decoded['app_id']).first()
     if not app_model:
         raise NotFound()
+    if app_model.enable_site is False:
+        raise Unauthorized('Site is disabled.')
     end_user = db.session.query(EndUser).filter(EndUser.id == decoded['end_user_id']).first()
     if not end_user:
         raise NotFound()

@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from core.agent.agent_executor import PlanningStrategy
 from core.constant import llm_constant
 from models.account import Account
 from services.dataset_service import DatasetService
@@ -31,6 +32,16 @@ MODELS_BY_APP_MODE = {
     ]
 }
 
+SUPPORT_AGENT_MODELS = [
+    "gpt-4",
+    "gpt-4-32k",
+    "gpt-3.5-turbo",
+    "gpt-3.5-turbo-16k",
+]
+
+SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia"]
+
+
 class AppModelConfigService:
     @staticmethod
     def is_dataset_exists(account: Account, dataset_id: str) -> bool:
@@ -58,7 +69,8 @@ class AppModelConfigService:
         if not isinstance(cp["max_tokens"], int) or cp["max_tokens"] <= 0 or cp["max_tokens"] > \
                 llm_constant.max_context_token_length[model_name]:
             raise ValueError(
-                "max_tokens must be an integer greater than 0 and not exceeding the maximum value of the corresponding model")
+                "max_tokens must be an integer greater than 0 "
+                "and not exceeding the maximum value of the corresponding model")
 
         # temperature
         if 'temperature' not in cp:
@@ -148,11 +160,6 @@ class AppModelConfigService:
 
         if not isinstance(config["speech_to_text"]["enabled"], bool):
             raise ValueError("enabled in speech_to_text must be of boolean type")
-        
-        provider_name = LLMBuilder.get_default_provider(account.current_tenant_id, 'whisper-1')
-
-        if config["speech_to_text"]["enabled"] and provider_name != 'openai':
-            raise ValueError("provider not support speech to text")
 
         # more_like_this
         if 'more_like_this' not in config or not config["more_like_this"]:
@@ -168,6 +175,33 @@ class AppModelConfigService:
 
         if not isinstance(config["more_like_this"]["enabled"], bool):
             raise ValueError("enabled in more_like_this must be of boolean type")
+
+        # sensitive_word_avoidance
+        if 'sensitive_word_avoidance' not in config or not config["sensitive_word_avoidance"]:
+            config["sensitive_word_avoidance"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["sensitive_word_avoidance"], dict):
+            raise ValueError("sensitive_word_avoidance must be of dict type")
+
+        if "enabled" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["enabled"]:
+            config["sensitive_word_avoidance"]["enabled"] = False
+
+        if not isinstance(config["sensitive_word_avoidance"]["enabled"], bool):
+            raise ValueError("enabled in sensitive_word_avoidance must be of boolean type")
+
+        if "words" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["words"]:
+            config["sensitive_word_avoidance"]["words"] = ""
+
+        if not isinstance(config["sensitive_word_avoidance"]["words"], str):
+            raise ValueError("words in sensitive_word_avoidance must be of string type")
+
+        if "canned_response" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["canned_response"]:
+            config["sensitive_word_avoidance"]["canned_response"] = ""
+
+        if not isinstance(config["sensitive_word_avoidance"]["canned_response"], str):
+            raise ValueError("canned_response in sensitive_word_avoidance must be of string type")
 
         # model
         if 'model' not in config:
@@ -274,6 +308,12 @@ class AppModelConfigService:
         if not isinstance(config["agent_mode"]["enabled"], bool):
             raise ValueError("enabled in agent_mode must be of boolean type")
 
+        if "strategy" not in config["agent_mode"] or not config["agent_mode"]["strategy"]:
+            config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
+
+        if config["agent_mode"]["strategy"] not in [member.value for member in list(PlanningStrategy.__members__.values())]:
+            raise ValueError("strategy in agent_mode must be in the specified strategy list")
+
         if "tools" not in config["agent_mode"] or not config["agent_mode"]["tools"]:
             config["agent_mode"]["tools"] = []
 
@@ -282,8 +322,8 @@ class AppModelConfigService:
 
         for tool in config["agent_mode"]["tools"]:
             key = list(tool.keys())[0]
-            if key not in ["sensitive-word-avoidance", "dataset"]:
-                raise ValueError("Keys in agent_mode.tools list can only be 'sensitive-word-avoidance' or 'dataset'")
+            if key not in SUPPORT_TOOLS:
+                raise ValueError("Keys in agent_mode.tools must be in the specified tool list")
 
             tool_item = tool[key]
 
@@ -293,19 +333,7 @@ class AppModelConfigService:
             if not isinstance(tool_item["enabled"], bool):
                 raise ValueError("enabled in agent_mode.tools must be of boolean type")
 
-            if key == "sensitive-word-avoidance":
-                if "words" not in tool_item or not tool_item["words"]:
-                    tool_item["words"] = ""
-
-                if not isinstance(tool_item["words"], str):
-                    raise ValueError("words in sensitive-word-avoidance must be of string type")
-
-                if "canned_response" not in tool_item or not tool_item["canned_response"]:
-                    tool_item["canned_response"] = ""
-
-                if not isinstance(tool_item["canned_response"], str):
-                    raise ValueError("canned_response in sensitive-word-avoidance must be of string type")
-            elif key == "dataset":
+            if key == "dataset":
                 if 'id' not in tool_item:
                     raise ValueError("id is required in dataset")
 
@@ -324,6 +352,7 @@ class AppModelConfigService:
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
             "more_like_this": config["more_like_this"],
+            "sensitive_word_avoidance": config["sensitive_word_avoidance"],
             "model": {
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],

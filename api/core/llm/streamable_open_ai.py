@@ -2,7 +2,7 @@ import os
 
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult
-from typing import Optional, List, Dict, Any, Mapping
+from typing import Optional, List, Dict, Any, Mapping, Union, Tuple
 from langchain import OpenAI
 from pydantic import root_validator
 
@@ -10,6 +10,10 @@ from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 
 
 class StreamableOpenAI(OpenAI):
+    request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 300.0)
+    """Timeout for requests to OpenAI completion API. Default is 600 seconds."""
+    max_retries: int = 1
+    """Maximum number of retries to make when generating."""
 
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:

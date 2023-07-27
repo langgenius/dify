@@ -11,6 +11,7 @@ import AppInfo from '@/app/components/share/chat/sidebar/app-info'
 // import Card from './card'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import { fetchConversations } from '@/service/share'
+import { fetchConversations as fetchUniversalConversations } from '@/service/universal-chat'
 
 export type ISidebarProps = {
   copyRight: string
@@ -22,6 +23,7 @@ export type ISidebarProps = {
   isClearPinnedConversationList: boolean
   isInstalledApp: boolean
   installedAppId?: string
+  isUniversalChat?: boolean
   siteInfo: SiteInfo
   onMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
   onPinnedMoreLoaded: (res: { data: ConversationItem[]; has_more: boolean }) => void
@@ -43,6 +45,7 @@ const Sidebar: FC<ISidebarProps> = ({
   isClearPinnedConversationList,
   isInstalledApp,
   installedAppId,
+  isUniversalChat,
   siteInfo,
   onMoreLoaded,
   onPinnedMoreLoaded,
@@ -57,8 +60,14 @@ const Sidebar: FC<ISidebarProps> = ({
   const [hasPinned, setHasPinned] = useState(false)
 
   const checkHasPinned = async () => {
-    const { data }: any = await fetchConversations(isInstalledApp, installedAppId, undefined, true)
-    setHasPinned(data.length > 0)
+    let res: any
+    if (isUniversalChat)
+      res = await fetchUniversalConversations(undefined, true)
+
+    else
+      res = await fetchConversations(isInstalledApp, installedAppId, undefined, true)
+
+    setHasPinned(res.data.length > 0)
   }
 
   useEffect(() => {
@@ -70,13 +79,13 @@ const Sidebar: FC<ISidebarProps> = ({
       checkHasPinned()
   }, [controlUpdateList])
 
-  const maxListHeight = isInstalledApp ? 'max-h-[30vh]' : 'max-h-[40vh]'
+  const maxListHeight = (isInstalledApp || isUniversalChat) ? 'max-h-[30vh]' : 'max-h-[40vh]'
 
   return (
     <div
       className={
         cn(
-          isInstalledApp ? 'tablet:h-[calc(100vh_-_74px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
+          (isInstalledApp || isUniversalChat) ? 'tablet:h-[calc(100vh_-_74px)]' : 'tablet:h-[calc(100vh_-_3rem)]',
           'shrink-0 flex flex-col bg-white pc:w-[244px] tablet:w-[192px] mobile:w-[240px]  border-r border-gray-200 mobile:h-screen',
         )
       }
@@ -109,6 +118,7 @@ const Sidebar: FC<ISidebarProps> = ({
               isClearConversationList={isClearPinnedConversationList}
               isInstalledApp={isInstalledApp}
               installedAppId={installedAppId}
+              isUniversalChat={isUniversalChat}
               onMoreLoaded={onPinnedMoreLoaded}
               isNoMore={isPinnedNoMore}
               isPinned={true}
@@ -119,18 +129,19 @@ const Sidebar: FC<ISidebarProps> = ({
           </div>
         )}
         {/* unpinned list */}
-        <div className={cn('mt-4 px-4', !hasPinned && 'flex flex-col flex-grow')}>
+        <div className={cn('grow flex flex-col mt-4 px-4', !hasPinned && 'flex flex-col flex-grow')}>
           {(hasPinned && list.length > 0) && (
             <div className='mb-1.5 leading-[18px] text-xs text-gray-500 font-medium uppercase'>{t('share.chat.unpinnedTitle')}</div>
           )}
           <List
-            className={cn(hasPinned ? maxListHeight : 'flex-grow')}
+            className={cn('flex-grow h-0')}
             currentId={currentId}
             onCurrentIdChange={onCurrentIdChange}
             list={list}
             isClearConversationList={isClearConversationList}
             isInstalledApp={isInstalledApp}
             installedAppId={installedAppId}
+            isUniversalChat={isUniversalChat}
             onMoreLoaded={onMoreLoaded}
             isNoMore={isNoMore}
             isPinned={false}
@@ -141,9 +152,11 @@ const Sidebar: FC<ISidebarProps> = ({
         </div>
 
       </div>
-      <div className="flex flex-shrink-0 pr-4 pb-4 pl-4">
-        <div className="text-gray-400 font-normal text-xs">© {copyRight} {(new Date()).getFullYear()}</div>
-      </div>
+      {!isUniversalChat && (
+        <div className="flex flex-shrink-0 pr-4 pb-4 pl-4">
+          <div className="text-gray-400 font-normal text-xs">© {copyRight} {(new Date()).getFullYear()}</div>
+        </div>
+      )}
     </div>
   )
 }
