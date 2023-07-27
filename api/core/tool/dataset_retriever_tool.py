@@ -110,7 +110,7 @@ class DatasetRetrieverTool(BaseTool):
             if segments:
                 for segment in segments:
                     if segment.answer:
-                        document_context_list.append(segment.answer)
+                        document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer}')
                     else:
                         document_context_list.append(segment.content)
 
