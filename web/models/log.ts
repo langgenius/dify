@@ -79,6 +79,7 @@ export type CompletionConversationGeneralDetail = {
   status: 'normal' | 'finished'
   from_source: 'api' | 'console'
   from_end_user_id: string
+  from_end_user_session_id: string
   from_account_id: string
   read_at: Date
   created_at: number
