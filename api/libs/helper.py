@@ -158,4 +158,4 @@ def generate_text_hash(text: str) -> str:
 def get_current_datetime(type: str) -> str:
     # get current time
     current_time = datetime.utcnow()
-    return current_time.strftime("%Y-%m-%d %H:%M:%S %Z%z")
+    return current_time.strftime("%Y-%m-%d %H:%M:%S UTC+0000 %A")

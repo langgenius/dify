@@ -250,7 +250,8 @@ class OrchestratorRuleParser:
     def to_current_datetime_tool(self) -> Optional[BaseTool]:
         tool = Tool(
             name="current_datetime",
-            description="A tool when you want to get the current date or time. ",
+            description="A tool when you want to get the current date, time, week, month or year, "
+                        "and the time zone is UTC. Result is \"<date> <time> <timezone> <week>\".",
             func=helper.get_current_datetime,
             callbacks=[DifyStdOutCallbackHandler()]
         )
