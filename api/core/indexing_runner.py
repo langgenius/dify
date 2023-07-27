@@ -10,6 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional, List, cast
 
 import openai
+from billiard.pool import Pool
 from flask import current_app, Flask
 from flask_login import current_user
 from langchain.embeddings import OpenAIEmbeddings
@@ -538,6 +539,11 @@ class IndexingRunner:
             #     document_format_thread.start()
             # for thread in threads:
             #     thread.join()
+            # with Pool(5) as pool:
+            #     for doc in documents:
+            #         result = pool.apply_async(format_document, kwds={'flask_app': current_app._get_current_object(), 'document_node': doc, 'split_documents': split_documents})
+            #         if result.ready():
+            #             split_documents.extend(result.get())
             with ThreadPoolExecutor(max_workers=10) as executor:
                 future_to_doc = {executor.submit(format_document, current_app._get_current_object(), doc): doc for doc in documents}
                 for future in concurrent.futures.as_completed(future_to_doc):
