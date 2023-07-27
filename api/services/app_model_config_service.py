@@ -39,7 +39,7 @@ SUPPORT_AGENT_MODELS = [
     "gpt-3.5-turbo-16k",
 ]
 
-SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia"]
+SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 
 
 class AppModelConfigService:
