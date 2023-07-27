@@ -910,6 +910,7 @@ class SegmentService:
         if segment.content == content:
             if document.doc_form == 'qa_model':
                 segment.answer = args['answer']
+            if args['keywords']:
                 segment.keywords = args['keywords']
             db.session.add(segment)
             db.session.commit()
