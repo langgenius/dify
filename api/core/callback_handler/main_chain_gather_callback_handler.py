@@ -20,15 +20,13 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
         self._current_chain_result = None
         self._current_chain_message = None
         self.conversation_message_task = conversation_message_task
-        self.agent_loop_gather_callback_handler = AgentLoopGatherCallbackHandler(
-            llm_constant.agent_model_name,
-            conversation_message_task
-        )
+        self.agent_callback = None
 
     def clear_chain_results(self) -> None:
         self._current_chain_result = None
         self._current_chain_message = None
-        self.agent_loop_gather_callback_handler.current_chain = None
+        if self.agent_callback:
+            self.agent_callback.current_chain = None
 
     @property
     def always_verbose(self) -> bool:
@@ -58,7 +56,8 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
                     started_at=time.perf_counter()
                 )
                 self._current_chain_message = self.conversation_message_task.init_chain(self._current_chain_result)
-                self.agent_loop_gather_callback_handler.current_chain = self._current_chain_message
+                if self.agent_callback:
+                    self.agent_callback.current_chain = self._current_chain_message
 
     def on_chain_end(self, outputs: Dict[str, Any], **kwargs: Any) -> None:
         """Print out that we finished a chain."""

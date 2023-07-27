@@ -40,6 +40,7 @@ class App(db.Model):
     api_rph = db.Column(db.Integer, nullable=False)
     is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -88,6 +89,7 @@ class AppModelConfig(db.Model):
     user_input_form = db.Column(db.Text)
     pre_prompt = db.Column(db.Text)
     agent_mode = db.Column(db.Text)
+    sensitive_word_avoidance = db.Column(db.Text)
 
     @property
     def app(self):
@@ -117,13 +119,34 @@ class AppModelConfig(db.Model):
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
 
     @property
+    def sensitive_word_avoidance_dict(self) -> dict:
+        return json.loads(self.sensitive_word_avoidance) if self.sensitive_word_avoidance \
+            else {"enabled": False, "words": [], "canned_response": []}
+
+    @property
     def user_input_form_list(self) -> dict:
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
     def agent_mode_dict(self) -> dict:
-        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "tools": []}
+        return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
 
+    def to_dict(self) -> dict:
+        return {
+            "provider": "",
+            "model_id": "",
+            "configs": {},
+            "opening_statement": self.opening_statement,
+            "suggested_questions": self.suggested_questions_list,
+            "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
+            "speech_to_text": self.speech_to_text_dict,
+            "more_like_this": self.more_like_this_dict,
+            "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
+            "model": self.model_dict,
+            "user_input_form": self.user_input_form_list,
+            "pre_prompt": self.pre_prompt,
+            "agent_mode": self.agent_mode_dict
+        }
 
 class RecommendedApp(db.Model):
     __tablename__ = 'recommended_apps'
@@ -237,6 +260,9 @@ class Conversation(db.Model):
                     if 'speech_to_text' in override_model_configs else {"enabled": False}
                 model_config['more_like_this'] = override_model_configs['more_like_this'] \
                     if 'more_like_this' in override_model_configs else {"enabled": False}
+                model_config['sensitive_word_avoidance'] = override_model_configs['sensitive_word_avoidance'] \
+                    if 'sensitive_word_avoidance' in override_model_configs \
+                    else {"enabled": False, "words": [], "canned_response": []}
                 model_config['user_input_form'] = override_model_configs['user_input_form']
             else:
                 model_config['configs'] = override_model_configs
@@ -253,6 +279,7 @@ class Conversation(db.Model):
             model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
             model_config['speech_to_text'] = app_model_config.speech_to_text_dict
             model_config['more_like_this'] = app_model_config.more_like_this_dict
+            model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
             model_config['user_input_form'] = app_model_config.user_input_form_list
 
         model_config['model_id'] = self.model_id
@@ -392,6 +419,11 @@ class Message(db.Model):
     @property
     def in_debug_mode(self):
         return self.override_model_configs is not None
+
+    @property
+    def agent_thoughts(self):
+        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id)\
+            .order_by(MessageAgentThought.position.asc()).all()
 
 
 class MessageFeedback(db.Model):

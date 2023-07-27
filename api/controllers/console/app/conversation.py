@@ -163,7 +163,7 @@ class CompletionConversationApi(Resource):
 
         if args['end']:
             end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
-            end_datetime = end_datetime.replace(second=0)
+            end_datetime = end_datetime.replace(second=59)
 
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
@@ -322,7 +322,7 @@ class ChatConversationApi(Resource):
 
         if args['end']:
             end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
-            end_datetime = end_datetime.replace(second=0)
+            end_datetime = end_datetime.replace(second=59)
 
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
