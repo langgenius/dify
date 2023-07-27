@@ -396,22 +396,19 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 
     <Properties>
       <Property name='file' type='file' key='file'>
-        audio file
+        Audio file.    
+        File uploads are currently limited to 15 MB and the following input file types are supported: mp3, mp4, mpeg, mpga, m4a, wav, and webm.
       </Property>
     </Properties>
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n-F file=@localfilename`}>
+    <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "name": "",
-        "user": "abc-123"
-    }'
+    --form 'file=@localfile;type=audio/mp3'
     ```
 
     </CodeGroup>
