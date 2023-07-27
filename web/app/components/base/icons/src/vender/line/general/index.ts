@@ -1,5 +1,4 @@
 export { default as Check } from './Check'
-<<<<<<<<< Temporary merge branch 1
 export { default as Edit03 } from './Edit03'
 export { default as Hash02 } from './Hash02'
 export { default as LinkExternal02 } from './LinkExternal02'
