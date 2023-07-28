@@ -28,7 +28,7 @@ const AutoHeightTextarea = forwardRef<HTMLTextAreaElement, AutoHeightTextareaPro
           ref.current?.focus()
         }
       }
-    }, [autoFocus, disabled, ref, value])
+    }, [autoFocus, disabled, ref])
     return (
       <div className={outerClassName}>
         <div className='relative'>
