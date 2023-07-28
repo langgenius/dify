@@ -10,6 +10,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from core.llm.token_calculator import TokenCalculator
+from events.event_handlers.document_index_event import document_index_created
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 
@@ -520,6 +521,7 @@ class DocumentService:
             db.session.commit()
 
             # trigger async task
+            #document_index_created.send(dataset.id, document_ids=document_ids)
             document_indexing_task.delay(dataset.id, document_ids)
 
         return documents, batch

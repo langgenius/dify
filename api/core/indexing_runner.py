@@ -7,6 +7,7 @@ import re
 import threading
 import time
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from multiprocessing import Process
 from typing import Optional, List, cast
 
@@ -14,7 +15,6 @@ import openai
 from billiard.pool import Pool
 from flask import current_app, Flask
 from flask_login import current_user
-from gevent.threadpool import ThreadPoolExecutor
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
@@ -516,43 +516,65 @@ class IndexingRunner:
                 model_name='gpt-3.5-turbo',
                 max_tokens=2000
             )
-            self.format_document(llm, documents, split_documents, document_form)
+            threads = []
+            for doc in documents:
+                document_format_thread = threading.Thread(target=self.format_document, kwargs={
+                    'llm': llm, 'document_node': doc, 'split_documents': split_documents, 'document_form': document_form})
+                threads.append(document_format_thread)
+                document_format_thread.start()
+            for thread in threads:
+                thread.join()
+            #asyncio.run(self.format_document(llm, documents, split_documents, document_form))
+            #     threads.append(task)
+            # await asyncio.gather(*threads)
+            # asyncio.run(main())
+            #await asyncio.gather(say('Hello', 2), say('World', 1))
+            # with Pool(5) as pool:
+            #     for doc in documents:
+            #         result = pool.apply_async(format_document, kwds={'flask_app': current_app._get_current_object(), 'document_node': doc, 'split_documents': split_documents})
+            #         if result.ready():
+            #             split_documents.extend(result.get())
+            # with ThreadPoolExecutor() as executor:
+            #     future_to_doc = {executor.submit(self.format_document, llm, doc, document_form): doc for doc in documents}
+            #     for future in concurrent.futures.as_completed(future_to_doc):
+            #         split_documents.extend(future.result())
+            #self.format_document(llm, documents, split_documents, document_form)
             all_documents.extend(split_documents)
 
         return all_documents
 
-    def format_document(self, llm: StreamableOpenAI, documents: List[Document], split_documents: List, document_form: str):
-        for document_node in documents:
-            format_documents = []
-            if document_node.page_content is None or not document_node.page_content.strip():
-                return format_documents
-            if document_form == 'text_model':
-                # text model document
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document_node.page_content)
+    def format_document(self, llm: StreamableOpenAI, document_node, split_documents: List, document_form: str):
+        format_documents = []
+        if document_node.page_content is None or not document_node.page_content.strip():
+            return format_documents
+        if document_form == 'text_model':
+            # text model document
+            doc_id = str(uuid.uuid4())
+            hash = helper.generate_text_hash(document_node.page_content)
 
-                document_node.metadata['doc_id'] = doc_id
-                document_node.metadata['doc_hash'] = hash
+            document_node.metadata['doc_id'] = doc_id
+            document_node.metadata['doc_hash'] = hash
 
-                format_documents.append(document_node)
-            elif document_form == 'qa_model':
-                try:
-                    # qa model document
-                    response = LLMGenerator.generate_qa_document_sync(llm, document_node.page_content)
-                    document_qa_list = self.format_split_text(response)
-                    qa_documents = []
-                    for result in document_qa_list:
-                        qa_document = Document(page_content=result['question'], metadata=document_node.metadata.copy())
-                        doc_id = str(uuid.uuid4())
-                        hash = helper.generate_text_hash(result['question'])
-                        qa_document.metadata['answer'] = result['answer']
-                        qa_document.metadata['doc_id'] = doc_id
-                        qa_document.metadata['doc_hash'] = hash
-                        qa_documents.append(qa_document)
-                    format_documents.extend(qa_documents)
-                except Exception:
-                    continue
-            split_documents.extend(format_documents)
+            format_documents.append(document_node)
+        elif document_form == 'qa_model':
+            try:
+                # qa model document
+                response = LLMGenerator.generate_qa_document_sync(llm, document_node.page_content)
+                document_qa_list = self.format_split_text(response)
+                qa_documents = []
+                for result in document_qa_list:
+                    qa_document = Document(page_content=result['question'], metadata=document_node.metadata.copy())
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(result['question'])
+                    qa_document.metadata['answer'] = result['answer']
+                    qa_document.metadata['doc_id'] = doc_id
+                    qa_document.metadata['doc_hash'] = hash
+                    qa_documents.append(qa_document)
+                format_documents.extend(qa_documents)
+            except Exception:
+                logging.error("sss")
+        split_documents.extend(format_documents)
+
 
     def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
                                          processing_rule: DatasetProcessRule) -> List[Document]:
