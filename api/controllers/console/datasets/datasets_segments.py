@@ -292,4 +292,3 @@ api.add_resource(DatasetDocumentSegmentAddApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment')
 api.add_resource(DatasetDocumentSegmentUpdateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>')
-
