@@ -2,9 +2,9 @@ import React from 'react'
 import {
   InformationCircleIcon,
 } from '@heroicons/react/24/outline'
+import cn from 'classnames'
 import Tooltip from '../base/tooltip'
 import AppIcon from '../base/app-icon'
-
 const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_'
 
 export function randomString(length: number) {
@@ -21,6 +21,7 @@ export type IAppBasicProps = {
   type: string | React.ReactNode
   hoverTip?: string
   textStyle?: { main?: string; extra?: string }
+  isExtraInLine?: boolean
 }
 
 const ApiSvg = <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -61,7 +62,7 @@ const ICON_MAP = {
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app', isExtraInLine }: IAppBasicProps) {
   return (
     <div className="flex items-start">
       {icon && icon_background && iconType === 'app' && (
@@ -75,7 +76,7 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
         </div>
 
       }
-      <div className="group">
+      <div className={cn('group', isExtraInLine && 'flex items-end space-x-2')}>
         <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 ${textStyle?.main}`}>
           {name}
           {hoverTip

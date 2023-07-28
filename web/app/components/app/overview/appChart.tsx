@@ -231,6 +231,7 @@ const Chart: React.FC<IChartProps> = ({
       </div>
       <div className='mb-4'>
         <Basic
+          isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
           name={chartType !== 'costs' ? (sumData.toLocaleString() + unit) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
           type={!CHART_TYPE_CONFIG[chartType].showTokens
             ? ''
