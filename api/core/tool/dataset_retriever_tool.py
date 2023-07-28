@@ -32,10 +32,11 @@ class DatasetRetrieverTool(BaseTool):
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
-        description = dataset.description.replace('\n', '').replace('\r', '')
+        description = dataset.description
         if not description:
             description = 'useful for when you want to answer queries about the ' + dataset.name
 
+        description = description.replace('\n', '').replace('\r', '')
         description += '\nID of dataset MUST be ' + dataset.id
         return cls(
             tenant_id=dataset.tenant_id,

@@ -23,7 +23,7 @@ export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
   const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
-  const currentProvider = userInfo?.providers?.find(({ token_is_set, is_valid }) => token_is_set && is_valid)
+  const currentProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && (provider_name === 'openai' || provider_name === 'azure_openai'))
 
   return (
     <ProviderContext.Provider value={{ currentProvider }}>
