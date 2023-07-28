@@ -81,6 +81,7 @@ const translation = {
   analysis: {
     title: 'Analysis',
     ms: 'ms',
+    tokenPS: 'Token/s',
     totalMessages: {
       title: 'Total Messages',
       explanation: 'Daily AI interactions count; prompt engineering/debugging excluded.',
@@ -105,6 +106,10 @@ const translation = {
     avgResponseTime: {
       title: 'Avg. Response Time',
       explanation: 'Time (ms) for AI to process/respond; for text-based apps.',
+    },
+    tps: {
+      title: 'Token Output Speed',
+      explanation: 'Measure the performance of the LLM. Count the Tokens output speed of LLM from the beginning of the request to the completion of the output.',
     },
   },
 }
