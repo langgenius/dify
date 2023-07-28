@@ -30,6 +30,12 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
   const [answer, setAnswer] = useState('')
   const { datasetId, documentId } = useParams()
 
+  const handleCancel = () => {
+    setQuestion('')
+    setAnswer('')
+    onCancel()
+  }
+
   const handleSave = async () => {
     const params: SegmentUpdator = { content: '' }
     if (docForm === 'qa_model') {
@@ -50,7 +56,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
 
     await addSegment({ datasetId, documentId, body: params })
     notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    onCancel()
+    handleCancel()
     onSave()
   }
 
@@ -94,7 +100,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
     <Modal isShow={isShow} onClose={() => {}} className='pt-8 px-8 pb-6 !max-w-[640px] !rounded-xl'>
       <div className={'flex flex-col relative'}>
         <div className='absolute right-0 -top-0.5 flex items-center h-6'>
-          <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
+          <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={handleCancel}>
             <XClose className='w-4 h-4 text-gray-500' />
           </div>
         </div>
@@ -116,7 +122,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
         <div className='flex justify-end'>
           <Button
             className='mr-2 !h-9 !px-4 !py-2 text-sm font-medium text-gray-700 !rounded-lg'
-            onClick={onCancel}>
+            onClick={handleCancel}>
             {t('common.operation.cancel')}
           </Button>
           <Button
