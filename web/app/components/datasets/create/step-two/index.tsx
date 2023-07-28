@@ -165,10 +165,11 @@ const StepTwo = ({
       setAutomaticFileIndexingEstimate(res)
   }
 
-  const confirmChangeCustomConfig = async () => {
+  const confirmChangeCustomConfig = () => {
     setCustomFileIndexingEstimate(null)
     setShowPreview()
-    await fetchFileIndexingEstimate()
+    fetchFileIndexingEstimate()
+    setPreviewSwitched(false)
   }
 
   const getIndexing_technique = () => indexingType || indexType
@@ -698,7 +699,12 @@ const StepTwo = ({
                   ))}
                 </>
               )}
-              {!fileIndexingEstimate?.preview && !fileIndexingEstimate?.qa_preview && (
+              {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
+                <div className='flex items-center justify-center h-[200px]'>
+                  <Loading type='area' />
+                </div>
+              )}
+              {!previewSwitched && !fileIndexingEstimate?.preview && (
                 <div className='flex items-center justify-center h-[200px]'>
                   <Loading type='area' />
                 </div>
