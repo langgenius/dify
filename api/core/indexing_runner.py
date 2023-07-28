@@ -557,8 +557,8 @@ class IndexingRunner:
                     qa_document.metadata['doc_hash'] = hash
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
-            except Exception:
-                logging.error("sss")
+            except Exception as e:
+                logging.error(str(e))
         split_documents.extend(format_documents)
 
 
