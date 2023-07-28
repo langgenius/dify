@@ -516,7 +516,7 @@ class IndexingRunner:
                 model_name='gpt-3.5-turbo',
                 max_tokens=2000
             )
-            threads = []
+            #threads = []
             # for doc in documents:
             #     document_format_thread = threading.Thread(target=self.format_document, kwargs={
             #         'llm': llm, 'document_node': doc, 'split_documents': split_documents, 'document_form': document_form})
@@ -524,7 +524,7 @@ class IndexingRunner:
             #     document_format_thread.start()
             # for thread in threads:
             #     thread.join()
-            asyncio.run(self.format_document(llm, documents, split_documents, document_form))
+            #asyncio.run(self.format_document(llm, documents, split_documents, document_form))
             #     threads.append(task)
             # await asyncio.gather(*threads)
             # asyncio.run(main())
@@ -538,12 +538,12 @@ class IndexingRunner:
             #     future_to_doc = {executor.submit(format_document, current_app._get_current_object(), doc): doc for doc in documents}
             #     for future in concurrent.futures.as_completed(future_to_doc):
             #         split_documents.extend(future.result())
-
+            self.format_document(llm, documents, split_documents, document_form)
             all_documents.extend(split_documents)
 
         return all_documents
 
-    async def format_document(self, llm: StreamableOpenAI, documents: List[Document], split_documents: List, document_form: str):
+    def format_document(self, llm: StreamableOpenAI, documents: List[Document], split_documents: List, document_form: str):
         for document_node in documents:
             print("process:" + document_node.page_content)
             format_documents = []
@@ -561,7 +561,7 @@ class IndexingRunner:
             elif document_form == 'qa_model':
 
                 # qa model document
-                response = await LLMGenerator.generate_qa_document(llm, document_node.page_content)
+                response = LLMGenerator.generate_qa_document_sync(llm, document_node.page_content)
                 document_qa_list = self.format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
