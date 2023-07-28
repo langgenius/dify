@@ -346,6 +346,13 @@ const StepTwo = ({
       setDocForm(DocForm.TEXT)
   }
 
+  const changeToEconomicalType = () => {
+    if (!hasSetIndexType) {
+      setIndexType(IndexingType.ECONOMICAL)
+      setDocForm(DocForm.TEXT)
+    }
+  }
+
   const previewSwitch = async () => {
     setPreviewSwitched(true)
     if (segmentationType === SegmentType.AUTO)
@@ -545,7 +552,7 @@ const StepTwo = ({
                     hasSetIndexType && s.disabled,
                     hasSetIndexType && '!w-full',
                   )}
-                  onClick={() => !hasSetIndexType && setIndexType(IndexingType.ECONOMICAL)}
+                  onClick={changeToEconomicalType}
                 >
                   <span className={cn(s.typeIcon, s.economical)} />
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
@@ -564,7 +571,7 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
+            {indexType === IndexingType.QUALIFIED && (
               <div className='flex justify-between items-center mt-3 px-5 py-4 rounded-xl bg-gray-50 border border-gray-100'>
                 <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
                   <MessageChatSquare className='w-4 h-4' />
