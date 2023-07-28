@@ -16,6 +16,7 @@ from models.dataset import DocumentSegment
 
 from libs.helper import TimestampField
 from services.dataset_service import DatasetService, DocumentService, SegmentService
+from tasks.test_task import test_task
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.remove_segment_from_index_task import remove_segment_from_index_task
 
@@ -284,6 +285,15 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         }, 200
 
 
+class DatasetDocumentTest(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self):
+        test_task.delay()
+        return 200
+
+
 api.add_resource(DatasetDocumentSegmentListApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments')
 api.add_resource(DatasetDocumentSegmentApi,
@@ -292,3 +302,5 @@ api.add_resource(DatasetDocumentSegmentAddApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment')
 api.add_resource(DatasetDocumentSegmentUpdateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>')
+api.add_resource(DatasetDocumentTest,
+                 '/datasets/test')
