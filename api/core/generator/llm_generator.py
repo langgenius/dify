@@ -188,18 +188,13 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
-    def generate_qa_document(cls, tenant_id: str, query):
+    async def generate_qa_document(cls, llm: StreamableOpenAI, query):
         prompt = GENERATOR_QA_PROMPT
-        llm: StreamableOpenAI = LLMBuilder.to_llm(
-            tenant_id=tenant_id,
-            model_name='gpt-3.5-turbo',
-            max_tokens=2000
-        )
+
 
         if isinstance(llm, BaseChatModel):
             prompt = [SystemMessage(content=prompt), HumanMessage(content=query)]
 
         response = llm.generate([prompt])
         answer = response.generations[0][0].text
-        total_token = response.llm_output['token_usage']['total_tokens']
         return answer.strip()
