@@ -274,10 +274,10 @@ class IndexingRunner:
                 # qa model document
                 llm: StreamableOpenAI = LLMBuilder.to_llm(
                     tenant_id=current_user.current_tenant_id,
-                    model_name='claude-2',
-                    max_tokens=5000
+                    model_name='gpt-3.5-turbo',
+                    max_tokens=2000
                 )
-                response = LLMGenerator.generate_qa_document(llm, preview_texts[0])
+                response = LLMGenerator.generate_qa_document_sync(llm, preview_texts[0])
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,
@@ -351,10 +351,10 @@ class IndexingRunner:
                 # qa model document
                 llm: StreamableOpenAI = LLMBuilder.to_llm(
                     tenant_id=current_user.current_tenant_id,
-                    model_name='claude-2',
-                    max_tokens=5000
+                    model_name='gpt-3.5-turbo',
+                    max_tokens=2000
                 )
-                response = LLMGenerator.generate_qa_document(llm, preview_texts[0])
+                response = LLMGenerator.generate_qa_document_sync(llm, preview_texts[0])
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,

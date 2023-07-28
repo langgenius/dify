@@ -165,10 +165,11 @@ const StepTwo = ({
       setAutomaticFileIndexingEstimate(res)
   }
 
-  const confirmChangeCustomConfig = async () => {
+  const confirmChangeCustomConfig = () => {
     setCustomFileIndexingEstimate(null)
     setShowPreview()
-    await fetchFileIndexingEstimate()
+    fetchFileIndexingEstimate()
+    setPreviewSwitched(false)
   }
 
   const getIndexing_technique = () => indexingType || indexType
@@ -344,6 +345,13 @@ const StepTwo = ({
       setDocForm(DocForm.QA)
     else
       setDocForm(DocForm.TEXT)
+  }
+
+  const changeToEconomicalType = () => {
+    if (!hasSetIndexType) {
+      setIndexType(IndexingType.ECONOMICAL)
+      setDocForm(DocForm.TEXT)
+    }
   }
 
   const previewSwitch = async () => {
@@ -545,7 +553,7 @@ const StepTwo = ({
                     hasSetIndexType && s.disabled,
                     hasSetIndexType && '!w-full',
                   )}
-                  onClick={() => !hasSetIndexType && setIndexType(IndexingType.ECONOMICAL)}
+                  onClick={changeToEconomicalType}
                 >
                   <span className={cn(s.typeIcon, s.economical)} />
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
@@ -564,7 +572,7 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
+            {indexType === IndexingType.QUALIFIED && (
               <div className='flex justify-between items-center mt-3 px-5 py-4 rounded-xl bg-gray-50 border border-gray-100'>
                 <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
                   <MessageChatSquare className='w-4 h-4' />
@@ -691,7 +699,12 @@ const StepTwo = ({
                   ))}
                 </>
               )}
-              {!fileIndexingEstimate?.preview && !fileIndexingEstimate?.qa_preview && (
+              {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
+                <div className='flex items-center justify-center h-[200px]'>
+                  <Loading type='area' />
+                </div>
+              )}
+              {!previewSwitched && !fileIndexingEstimate?.preview && (
                 <div className='flex items-center justify-center h-[200px]'>
                   <Loading type='area' />
                 </div>

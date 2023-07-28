@@ -198,3 +198,15 @@ class LLMGenerator:
         response = llm.generate([prompt])
         answer = response.generations[0][0].text
         return answer.strip()
+
+    @classmethod
+    def generate_qa_document_sync(cls, llm: StreamableOpenAI, query):
+        prompt = GENERATOR_QA_PROMPT
+
+
+        if isinstance(llm, BaseChatModel):
+            prompt = [SystemMessage(content=prompt), HumanMessage(content=query)]
+
+        response = llm.generate([prompt])
+        answer = response.generations[0][0].text
+        return answer.strip()
