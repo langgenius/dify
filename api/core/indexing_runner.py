@@ -524,21 +524,6 @@ class IndexingRunner:
                 document_format_thread.start()
             for thread in threads:
                 thread.join()
-            #asyncio.run(self.format_document(llm, documents, split_documents, document_form))
-            #     threads.append(task)
-            # await asyncio.gather(*threads)
-            # asyncio.run(main())
-            #await asyncio.gather(say('Hello', 2), say('World', 1))
-            # with Pool(5) as pool:
-            #     for doc in documents:
-            #         result = pool.apply_async(format_document, kwds={'flask_app': current_app._get_current_object(), 'document_node': doc, 'split_documents': split_documents})
-            #         if result.ready():
-            #             split_documents.extend(result.get())
-            # with ThreadPoolExecutor() as executor:
-            #     future_to_doc = {executor.submit(self.format_document, llm, doc, document_form): doc for doc in documents}
-            #     for future in concurrent.futures.as_completed(future_to_doc):
-            #         split_documents.extend(future.result())
-            #self.format_document(llm, documents, split_documents, document_form)
             all_documents.extend(split_documents)
 
         return all_documents
