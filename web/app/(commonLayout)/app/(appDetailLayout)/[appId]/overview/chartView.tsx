@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { fetchAppDetail } from '@/service/apps'
 import type { PeriodParams } from '@/app/components/app/overview/appChart'
-import { AvgResponseTime, AvgSessionInteractions, ConversationsChart, CostChart, EndUsersChart, UserSatisfactionRate } from '@/app/components/app/overview/appChart'
+import { AvgResponseTime, AvgSessionInteractions, ConversationsChart, CostChart, EndUsersChart, TokenPerSecond, UserSatisfactionRate } from '@/app/components/app/overview/appChart'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_LIST } from '@/app/components/app/log/filter'
@@ -65,10 +65,17 @@ export default function ChartView({ appId }: IChartViewProps) {
             )}
         </div>
         <div className='flex-1 ml-3'>
-          <UserSatisfactionRate period={period} id={appId} />
+          <TokenPerSecond period={period} id={appId} />
         </div>
       </div>
-      <CostChart period={period} id={appId} />
+      <div className='flex flex-row w-full mb-6'>
+        <div className='flex-1 ml-3'>
+          <UserSatisfactionRate period={period} id={appId} />
+        </div>
+        <div className='flex-1 ml-3'>
+          <CostChart period={period} id={appId} />
+        </div>
+      </div>
     </div>
   )
 }
