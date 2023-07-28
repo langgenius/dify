@@ -227,7 +227,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     if (!e) {
       setAllSegments([...(!needLastId ? [] : allSegments), ...splitArray(res.data || [])])
       setLastSegmentsRes(res)
-      if (!lastSegmentsRes)
+      if (!lastSegmentsRes || !needLastId)
         setTotal(res?.total || 0)
     }
     setLoading(false)

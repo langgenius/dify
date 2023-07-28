@@ -1,18 +1,19 @@
-import React, { FC, CSSProperties } from "react";
-import { FixedSizeList as List } from "react-window";
-import InfiniteLoader from "react-window-infinite-loader";
-import type { SegmentDetailModel } from "@/models/datasets";
-import SegmentCard from "./SegmentCard";
-import s from "./style.module.css";
+import type { CSSProperties, FC } from 'react'
+import React from 'react'
+import { FixedSizeList as List } from 'react-window'
+import InfiniteLoader from 'react-window-infinite-loader'
+import SegmentCard from './SegmentCard'
+import s from './style.module.css'
+import type { SegmentDetailModel } from '@/models/datasets'
 
 type IInfiniteVirtualListProps = {
-  hasNextPage?: boolean; // Are there more items to load? (This information comes from the most recent API request.)
-  isNextPageLoading: boolean; // Are we currently loading a page of items? (This may be an in-flight flag in your Redux store for example.)
-  items: Array<SegmentDetailModel[]>; // Array of items loaded so far.
-  loadNextPage: () => Promise<any>; // Callback function responsible for loading the next page of items.
-  onClick: (detail: SegmentDetailModel) => void;
-  onChangeSwitch: (segId: string, enabled: boolean) => Promise<void>;
-};
+  hasNextPage?: boolean // Are there more items to load? (This information comes from the most recent API request.)
+  isNextPageLoading: boolean // Are we currently loading a page of items? (This may be an in-flight flag in your Redux store for example.)
+  items: Array<SegmentDetailModel[]> // Array of items loaded so far.
+  loadNextPage: () => Promise<any> // Callback function responsible for loading the next page of items.
+  onClick: (detail: SegmentDetailModel) => void
+  onChangeSwitch: (segId: string, enabled: boolean) => Promise<void>
+}
 
 const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
   hasNextPage,
@@ -23,28 +24,29 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
   onChangeSwitch,
 }) => {
   // If there are more items to be loaded then add an extra row to hold a loading indicator.
-  const itemCount = hasNextPage ? items.length + 1 : items.length;
+  const itemCount = hasNextPage ? items.length + 1 : items.length
 
   // Only load 1 page of items at a time.
   // Pass an empty callback to InfiniteLoader in case it asks us to load more than once.
-  const loadMoreItems = isNextPageLoading ? () => { } : loadNextPage;
+  const loadMoreItems = isNextPageLoading ? () => { } : loadNextPage
 
   // Every row is loaded except for our loading indicator row.
-  const isItemLoaded = (index: number) => !hasNextPage || index < items.length;
+  const isItemLoaded = (index: number) => !hasNextPage || index < items.length
 
   // Render an item or a loading indicator.
   const Item = ({ index, style }: { index: number; style: CSSProperties }) => {
-    let content;
+    let content
     if (!isItemLoaded(index)) {
       content = (
         <>
-          {[1, 2, 3].map((v) => (
+          {[1, 2, 3].map(v => (
             <SegmentCard loading={true} detail={{ position: v } as any} />
           ))}
         </>
-      );
-    } else {
-      content = items[index].map((segItem) => (
+      )
+    }
+    else {
+      content = items[index].map(segItem => (
         <SegmentCard
           key={segItem.id}
           detail={segItem}
@@ -52,15 +54,15 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
           onChangeSwitch={onChangeSwitch}
           loading={false}
         />
-      ));
+      ))
     }
 
     return (
       <div style={style} className={s.cardWrapper}>
         {content}
       </div>
-    );
-  };
+    )
+  }
 
   return (
     <InfiniteLoader
@@ -73,7 +75,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
           ref={ref}
           className="List"
           height={800}
-          width={"100%"}
+          width={'100%'}
           itemSize={200}
           itemCount={itemCount}
           onItemsRendered={onItemsRendered}
@@ -82,6 +84,6 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
         </List>
       )}
     </InfiniteLoader>
-  );
-};
-export default InfiniteVirtualList;
+  )
+}
+export default InfiniteVirtualList
