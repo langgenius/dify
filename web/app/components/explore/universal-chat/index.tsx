@@ -76,6 +76,9 @@ const Main: FC<IMainProps> = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
+  useEffect(() => {
+    document.title = `${t('explore.sidebar.chat')} -  Dify`
+  }, [])
   /*
   * app info
   */
