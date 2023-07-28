@@ -30,6 +30,7 @@ type Props = {
   datasetId?: string
   documentId?: string
   indexingType?: string
+  detailUpdate: VoidFunction
 }
 
 const StopIcon: FC<{ className?: string }> = ({ className }) => {
@@ -108,7 +109,7 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse; docName?: string }> = (
   </div>
 }
 
-const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: dstId, documentId: docId, indexingType }) => {
+const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: dstId, documentId: docId, indexingType, detailUpdate }) => {
   const onTop = stopPosition === 'top'
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -145,6 +146,7 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
       const indexingStatusDetail = getIndexingStatusDetail()
       if (indexingStatusDetail?.indexing_status === 'completed') {
         stopQueryStatus()
+        detailUpdate()
         return
       }
       fetchIndexingStatus()

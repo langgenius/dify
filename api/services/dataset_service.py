@@ -3,16 +3,20 @@ import logging
 import datetime
 import time
 import random
+import uuid
 from typing import Optional, List
 
 from flask import current_app
+from sqlalchemy import func
 
+from core.llm.token_calculator import TokenCalculator
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
+from libs import helper
 from models.account import Account
 from models.dataset import Dataset, Document, DatasetQuery, DatasetProcessRule, AppDatasetJoin, DocumentSegment
 from models.model import UploadFile
@@ -25,6 +29,10 @@ from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
+from tasks.create_segment_to_index_task import create_segment_to_index_task
+from tasks.update_segment_index_task import update_segment_index_task
+from tasks.update_segment_keyword_index_task\
+    import update_segment_keyword_index_task
 
 
 class DatasetService:
@@ -308,6 +316,7 @@ class DocumentService:
         ).all()
 
         return documents
+
     @staticmethod
     def get_document_file_detail(file_id: str):
         file_detail = db.session.query(UploadFile). \
@@ -440,6 +449,7 @@ class DocumentService:
                     }
                     document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
+                                                             document_data["doc_form"],
                                                              data_source_info, created_from, position,
                                                              account, file_name, batch)
                     db.session.add(document)
@@ -484,6 +494,7 @@ class DocumentService:
                             }
                             document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                                      document_data["data_source"]["type"],
+                                                                     document_data["doc_form"],
                                                                      data_source_info, created_from, position,
                                                                      account, page['page_name'], batch)
                             # if page['type'] == 'database':
@@ -514,8 +525,9 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
-    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, data_source_info: dict,
-                      created_from: str, position: int, account: Account, name: str, batch: str):
+    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
+                      data_source_info: dict, created_from: str, position: int, account: Account, name: str,
+                      batch: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -527,6 +539,7 @@ class DocumentService:
             name=name,
             created_from=created_from,
             created_by=account.id,
+            doc_form=document_form
         )
         return document
 
@@ -618,6 +631,7 @@ class DocumentService:
         document.splitting_completed_at = None
         document.updated_at = datetime.datetime.utcnow()
         document.created_from = created_from
+        document.doc_form = document_data['doc_form']
         db.session.add(document)
         db.session.commit()
         # update document segment
@@ -667,7 +681,7 @@ class DocumentService:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)
         else:
-            if ('data_source' not in args and not args['data_source'])\
+            if ('data_source' not in args and not args['data_source']) \
                     and ('process_rule' not in args and not args['process_rule']):
                 raise ValueError("Data source or Process rule is required")
             else:
@@ -694,10 +708,12 @@ class DocumentService:
             raise ValueError("Data source info is required")
 
         if args['data_source']['type'] == 'upload_file':
-            if 'file_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list']['file_info_list']:
+            if 'file_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
+                'file_info_list']:
                 raise ValueError("File source info is required")
         if args['data_source']['type'] == 'notion_import':
-            if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list']['notion_info_list']:
+            if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
+                'notion_info_list']:
                 raise ValueError("Notion source info is required")
 
     @classmethod
@@ -843,3 +859,80 @@ class DocumentService:
 
             if not isinstance(args['process_rule']['rules']['segmentation']['max_tokens'], int):
                 raise ValueError("Process rule segmentation max_tokens is invalid")
+
+
+class SegmentService:
+    @classmethod
+    def segment_create_args_validate(cls, args: dict, document: Document):
+        if document.doc_form == 'qa_model':
+            if 'answer' not in args or not args['answer']:
+                raise ValueError("Answer is required")
+
+    @classmethod
+    def create_segment(cls, args: dict, document: Document):
+        content = args['content']
+        doc_id = str(uuid.uuid4())
+        segment_hash = helper.generate_text_hash(content)
+        # calc embedding use tokens
+        tokens = TokenCalculator.get_num_tokens('text-embedding-ada-002', content)
+        max_position = db.session.query(func.max(DocumentSegment.position)).filter(
+            DocumentSegment.document_id == document.id
+        ).scalar()
+        segment_document = DocumentSegment(
+            tenant_id=current_user.current_tenant_id,
+            dataset_id=document.dataset_id,
+            document_id=document.id,
+            index_node_id=doc_id,
+            index_node_hash=segment_hash,
+            position=max_position + 1 if max_position else 1,
+            content=content,
+            word_count=len(content),
+            tokens=tokens,
+            created_by=current_user.id
+        )
+        if document.doc_form == 'qa_model':
+            segment_document.answer = args['answer']
+
+        db.session.add(segment_document)
+        db.session.commit()
+        indexing_cache_key = 'segment_{}_indexing'.format(segment_document.id)
+        redis_client.setex(indexing_cache_key, 600, 1)
+        create_segment_to_index_task.delay(segment_document.id, args['keywords'])
+        return segment_document
+
+    @classmethod
+    def update_segment(cls, args: dict, segment: DocumentSegment, document: Document):
+        indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
+        cache_result = redis_client.get(indexing_cache_key)
+        if cache_result is not None:
+            raise ValueError("Segment is indexing, please try again later")
+        content = args['content']
+        if segment.content == content:
+            if document.doc_form == 'qa_model':
+                segment.answer = args['answer']
+            if args['keywords']:
+                segment.keywords = args['keywords']
+            db.session.add(segment)
+            db.session.commit()
+            # update segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
+            update_segment_keyword_index_task.delay(segment.id)
+        else:
+            segment_hash = helper.generate_text_hash(content)
+            # calc embedding use tokens
+            tokens = TokenCalculator.get_num_tokens('text-embedding-ada-002', content)
+            segment.content = content
+            segment.index_node_hash = segment_hash
+            segment.word_count = len(content)
+            segment.tokens = tokens
+            segment.status = 'updating'
+            segment.updated_by = current_user.id
+            segment.updated_at = datetime.datetime.utcnow()
+            if document.doc_form == 'qa_model':
+                segment.answer = args['answer']
+            db.session.add(segment)
+            db.session.commit()
+            # update segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
+            update_segment_index_task.delay(segment.id, args['keywords'])
+        return segment

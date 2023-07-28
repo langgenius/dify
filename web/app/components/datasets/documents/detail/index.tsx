@@ -27,7 +27,7 @@ export const BackCircleBtn: FC<{ onClick: () => void }> = ({ onClick }) => {
   )
 }
 
-export const DocumentContext = createContext<{ datasetId?: string; documentId?: string }>({})
+export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
 type DocumentTitleProps = {
   extension?: string
@@ -54,6 +54,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [showMetadata, setShowMetadata] = useState(true)
+  const [showNewSegmentModal, setShowNewSegmentModal] = useState(false)
 
   const { data: documentDetail, error, mutate: detailMutate } = useSWR({
     action: 'fetchDocumentDetail',
@@ -87,7 +88,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   }
 
   return (
-    <DocumentContext.Provider value={{ datasetId, documentId }}>
+    <DocumentContext.Provider value={{ datasetId, documentId, docForm: documentDetail?.doc_form || '' }}>
       <div className='flex flex-col h-full'>
         <div className='flex h-16 border-b-gray-100 border-b items-center p-4'>
           <BackCircleBtn onClick={backToPrev} />
@@ -100,10 +101,12 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               enabled: documentDetail?.enabled || false,
               archived: documentDetail?.archived || false,
               id: documentId,
+              doc_form: documentDetail?.doc_form || '',
             }}
             datasetId={datasetId}
             onUpdate={handleOperate}
             className='!w-[216px]'
+            showNewSegmentModal={() => setShowNewSegmentModal(true)}
           />
           <button
             className={cn(style.layoutRightIcon, showMetadata ? style.iconShow : style.iconClose)}
@@ -114,7 +117,13 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type='app' />
             : <div className={`box-border h-full w-full overflow-y-scroll ${embedding ? 'py-12 px-16' : 'pb-[30px] pt-3 px-6'}`}>
-              {embedding ? <Embedding detail={documentDetail} /> : <Completed />}
+              {embedding
+                ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
+                : <Completed
+                  showNewSegmentModal={showNewSegmentModal}
+                  onNewSegmentModalChange={setShowNewSegmentModal}
+                />
+              }
             </div>
           }
           {showMetadata && <Metadata

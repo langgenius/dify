@@ -1,6 +1,7 @@
 import datetime
 import logging
 import time
+from typing import Optional, List
 
 import click
 from celery import shared_task
@@ -14,26 +15,33 @@ from models.dataset import DocumentSegment
 
 
 @shared_task
-def add_segment_to_index_task(segment_id: str):
+def create_segment_to_index_task(segment_id: str, keywords: Optional[List[str]] = None):
     """
-    Async Add segment to index
+    Async create segment to index
     :param segment_id:
-
-    Usage: add_segment_to_index.delay(segment_id)
+    :param keywords:
+    Usage: create_segment_to_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start add segment to index: {}'.format(segment_id), fg='green'))
+    logging.info(click.style('Start create segment to index: {}'.format(segment_id), fg='green'))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()
     if not segment:
         raise NotFound('Segment not found')
 
-    if segment.status != 'completed':
+    if segment.status != 'waiting':
         return
 
     indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
 
     try:
+        # update segment status to indexing
+        update_params = {
+            DocumentSegment.status: "indexing",
+            DocumentSegment.indexing_at: datetime.datetime.utcnow()
+        }
+        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.commit()
         document = Document(
             page_content=segment.content,
             metadata={
@@ -68,12 +76,23 @@ def add_segment_to_index_task(segment_id: str):
         # save keyword index
         index = IndexBuilder.get_index(dataset, 'economy')
         if index:
-            index.add_texts([document])
+            if keywords and len(keywords) > 0:
+                index.create_segment_keywords(segment.index_node_id, keywords)
+            else:
+                index.add_texts([document])
+
+        # update segment to completed
+        update_params = {
+            DocumentSegment.status: "completed",
+            DocumentSegment.completed_at: datetime.datetime.utcnow()
+        }
+        DocumentSegment.query.filter_by(id=segment.id).update(update_params)
+        db.session.commit()
 
         end_at = time.perf_counter()
-        logging.info(click.style('Segment added to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
+        logging.info(click.style('Segment created to index: {} latency: {}'.format(segment.id, end_at - start_at), fg='green'))
     except Exception as e:
-        logging.exception("add segment to index failed")
+        logging.exception("create segment to index failed")
         segment.enabled = False
         segment.disabled_at = datetime.datetime.utcnow()
         segment.status = 'error'
