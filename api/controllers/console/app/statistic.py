@@ -412,12 +412,13 @@ class TokensPerSecondStatistic(Resource):
         parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
         args = parser.parse_args()
 
-        sql_query = '''
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-                    (sum(answer_tokens) / provider_response_latency) as tokens_per_second
-                    FROM messages
-                    WHERE app_id = :app_id
-                '''
+        sql_query = '''SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+    CASE 
+        WHEN SUM(provider_response_latency) = 0 THEN 0
+        ELSE (SUM(answer_tokens) / SUM(provider_response_latency))
+    END as tokens_per_second
+FROM messages
+WHERE app_id = :app_id'''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
 
         timezone = pytz.timezone(account.timezone)
