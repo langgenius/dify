@@ -219,7 +219,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
       documentId,
       params: omitBy({
         last_id: !needLastId ? undefined : finalLastId,
-        limit: 9,
+        limit: 12,
         keyword: searchValue,
         enabled: selectedStatus === 'all' ? 'all' : !!selectedStatus,
       }, isNil) as SegmentsQuery,
@@ -231,6 +231,14 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         setTotal(res?.total || 0)
     }
     setLoading(false)
+  }
+
+  const resetList = () => {
+    setLastSegmentsRes(undefined)
+    setAllSegments([])
+    setLoading(false)
+    setTotal(undefined)
+    getSegments(false)
   }
 
   useEffect(() => {
@@ -336,7 +344,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         isShow={showNewSegmentModal}
         docForm={docForm}
         onCancel={() => onNewSegmentModalChange(false)}
-        onSave={() => getSegments(false)}
+        onSave={resetList}
       />
     </>
   )
