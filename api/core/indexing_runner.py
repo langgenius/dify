@@ -524,7 +524,6 @@ class IndexingRunner:
         return all_documents
 
     def format_document(self, llm: StreamableOpenAI, document_node, split_documents, document_form: str):
-        print(document_node.page_content)
         format_documents = []
         if document_node.page_content is None or not document_node.page_content.strip():
             return format_documents
