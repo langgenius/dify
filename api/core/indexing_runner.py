@@ -507,25 +507,18 @@ class IndexingRunner:
                 model_name='gpt-3.5-turbo',
                 max_tokens=2000
             )
-            # threads = []
-            # for doc in documents:
-            #     document_format_thread = threading.Thread(target=self.format_document, kwargs={
-            #         'llm': llm, 'document_node': doc, 'split_documents': split_documents, 'document_form': document_form})
-            #     threads.append(document_format_thread)
-            #     document_format_thread.start()
-            # for thread in threads:
-            #     thread.join()
+            for i in range(0, len(documents), 10):
+                threads = []
+                sub_documents = documents[i:i + 10]
+                for doc in sub_documents:
+                    document_format_thread = threading.Thread(target=self.format_document, kwargs={
+                        'llm': llm, 'document_node': doc, 'split_documents': split_documents,
+                        'document_form': document_form})
+                    threads.append(document_format_thread)
+                    document_format_thread.start()
+                for thread in threads:
+                    thread.join()
 
-            def worker(doc):
-                return self.format_document(llm=llm, document_node=doc, split_documents=split_documents,
-                                            document_form=document_form)
-
-            with ThreadPoolExecutor(max_workers=10) as executor:  # max_workers 控制并发线程数
-                executor.map(worker, documents)
-            # with ThreadPoolExecutor() as executor:
-            #     future_to_doc = {executor.submit(self.format_document, llm, doc, document_form): doc for doc in documents}
-            #     for future in concurrent.futures.as_completed(future_to_doc):
-            #         split_documents.extend(future.result())
             all_documents.extend(split_documents)
 
         return all_documents
