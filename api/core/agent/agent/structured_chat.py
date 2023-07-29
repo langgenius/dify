@@ -9,7 +9,7 @@ from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.summary import SummarizerMixin
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
-from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage
+from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage, OutputParserException
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
@@ -94,7 +94,12 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             full_inputs = self.summarize_messages(intermediate_steps, **kwargs)
 
         full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
-        return self.output_parser.parse(full_output)
+
+        try:
+            return self.output_parser.parse(full_output)
+        except OutputParserException:
+            return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
+                                          "I don't know how to respond to that."}, "")
 
     def summarize_messages(self, intermediate_steps: List[Tuple[AgentAction, str]], **kwargs):
         if len(intermediate_steps) >= 2:
