@@ -7,20 +7,34 @@
 		"dockerfile": "Dockerfile"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
 		"ghcr.io/dhoeric/features/act:1": {},
-		"ghcr.io/devcontainers/features/node:1": {},
-		"ghcr.io/devcontainers-contrib/features/npm-package:1": {}
+		"ghcr.io/devcontainers/features/node:1": {
+			"nodeGypDependencies": true,
+			"version": "lts"
+		},
+		"ghcr.io/devcontainers-contrib/features/npm-package:1": {
+			"package": "typescript",
+			"version": "latest"
+		},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"moby": true,
+			"azureDnsAutoDetection": true,
+			"installDockerBuildx": true,
+			"version": "latest",
+			"dockerDashComposeVersion": "v2"
+		}
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.pylint",
-				"GitHub.copilot"
+				"GitHub.copilot",
+				"ms-python.python"
 			]
 		}
 	},
-	"postStartCommand": "cd api && pip install -r requirements.txt"
+	"postStartCommand": "cd api && pip install -r requirements.txt",
+	"postCreateCommand": "cd web && npm install"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
