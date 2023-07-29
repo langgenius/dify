@@ -515,15 +515,22 @@ class IndexingRunner:
             #     document_format_thread.start()
             # for thread in threads:
             #     thread.join()
-            with ThreadPoolExecutor() as executor:
-                future_to_doc = {executor.submit(self.format_document, llm, doc, document_form): doc for doc in documents}
-                for future in concurrent.futures.as_completed(future_to_doc):
-                    split_documents.extend(future.result())
+
+            def worker(doc):
+                return self.format_document(llm=llm, document_node=doc, split_documents=split_documents,
+                                            document_form=document_form)
+
+            with ThreadPoolExecutor(max_workers=10) as executor:  # max_workers 控制并发线程数
+                executor.map(worker, documents)
+            # with ThreadPoolExecutor() as executor:
+            #     future_to_doc = {executor.submit(self.format_document, llm, doc, document_form): doc for doc in documents}
+            #     for future in concurrent.futures.as_completed(future_to_doc):
+            #         split_documents.extend(future.result())
             all_documents.extend(split_documents)
 
         return all_documents
 
-    def format_document(self, llm: StreamableOpenAI, document_node, document_form: str):
+    def format_document(self, llm: StreamableOpenAI, document_node, split_documents, document_form: str):
         print(document_node.page_content)
         format_documents = []
         if document_node.page_content is None or not document_node.page_content.strip():
@@ -554,7 +561,7 @@ class IndexingRunner:
                 format_documents.extend(qa_documents)
             except Exception as e:
                 logging.error(str(e))
-        return format_documents
+        split_documents.extend(format_documents)
 
 
     def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
