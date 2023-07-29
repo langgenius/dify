@@ -139,7 +139,6 @@ To protect your privacy, please avoid posting security issues on GitHub. Instead
 This software uses the following open-source software:
 
 - Chase, H. (2022). LangChain [Computer software]. https://github.com/hwchase17/langchain
-- Liu, J. (2022). LlamaIndex [Computer software]. doi: 10.5281/zenodo.1234.
 
 For more information, please refer to the official website or license text of the respective software.
 
