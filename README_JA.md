@@ -114,7 +114,6 @@ A: 現在、英語と中国語に対応しており、言語パックを寄贈�
 本ソフトウェアは、以下のオープンソースソフトウェアを使用しています:
 
 - Chase, H. (2022). LangChain [Computer software]. https://github.com/hwchase17/langchain
-- Liu, J. (2022). LlamaIndex [Computer software]. doi: 10.5281/zenodo.1234.
 
 詳しくは、各ソフトウェアの公式サイトまたはライセンス文をご参照ください。
 
