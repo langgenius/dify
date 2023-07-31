@@ -11,7 +11,7 @@ from extensions.ext_database import db
 from models.dataset import Document
 
 
-@shared_task
+@shared_task(queue='dataset')
 def document_indexing_task(dataset_id: str, document_ids: list):
     """
     Async process document

@@ -11,7 +11,7 @@ from models.dataset import DocumentSegment, Dataset
 from models.dataset import Document as DatasetDocument
 
 
-@shared_task
+@shared_task(queue='dataset')
 def deal_dataset_vector_index_task(dataset_id: str, action: str):
     """
     Async deal dataset from index
