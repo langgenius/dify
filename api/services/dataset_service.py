@@ -498,18 +498,8 @@ class DocumentService:
                                                                      document_data["doc_form"],
                                                                      data_source_info, created_from, position,
                                                                      account, page['page_name'], batch)
-                            # if page['type'] == 'database':
-                            #     document.splitting_completed_at = datetime.datetime.utcnow()
-                            #     document.cleaning_completed_at = datetime.datetime.utcnow()
-                            #     document.parsing_completed_at = datetime.datetime.utcnow()
-                            #     document.completed_at = datetime.datetime.utcnow()
-                            #     document.indexing_status = 'completed'
-                            #     document.word_count = 0
-                            #     document.tokens = 0
-                            #     document.indexing_latency = 0
                             db.session.add(document)
                             db.session.flush()
-                            # if page['type'] != 'database':
                             document_ids.append(document.id)
                             documents.append(document)
                             position += 1
@@ -521,8 +511,7 @@ class DocumentService:
             db.session.commit()
 
             # trigger async task
-            #document_index_created.send(dataset.id, document_ids=document_ids)
-            document_indexing_task.delay(dataset.id, document_ids)
+            document_indexing_task.delay(dataset.id, document_ids, document_data['doc_language'])
 
         return documents, batch
 
