@@ -31,7 +31,7 @@ Performance Impact: While usually minimal, programs running inside a devcontaine
 
 ## Troubleshooting
 if you see such error message when you open this project in codespaces:
-![Alt text](image.png)
+![Alt text](troubleshooting.png)
 
 a simple workaround is change `/signin` endpoint into another one, then login with github account and close the tab, then change it back to `/signin` endpoin. Then all things will be fine.
 The reason is `signin` endpoin is not allowed in codespaces, details can be found [here](https://github.com/orgs/community/discussions/5204)
