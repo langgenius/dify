@@ -95,7 +95,7 @@ class CompletionConversationApi(Resource):
         'status': fields.String,
         'from_source': fields.String,
         'from_end_user_id': fields.String,
-        'from_end_user_session_id': fields.String(attribute='end_user.session_id'),
+        'from_end_user_session_id': fields.String(),
         'from_account_id': fields.String,
         'read_at': TimestampField,
         'created_at': TimestampField,
@@ -135,8 +135,6 @@ class CompletionConversationApi(Resource):
         app = _get_app(app_id, 'completion')
 
         query = db.select(Conversation).where(Conversation.app_id == app.id, Conversation.mode == 'completion')
-
-        query = query.options(joinedload(Conversation.end_user))
 
         if args['keyword']:
             query = query.join(
