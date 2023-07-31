@@ -29,3 +29,8 @@ Learning Curve: For developers unfamiliar with Docker and VS Code, using devcont
 
 Performance Impact: While usually minimal, programs running inside a devcontainer may be slightly slower than those running directly on the host.
 
+## Troubleshooting
+if you see such error message when you open this project in codespaces:
+![Alt text](image.png)
+
+a simple workaround is change `/signin` endpoint into another one, then login with github account and close the tab, then change it back to `/signin` endpoin. Then all things will be fine.
