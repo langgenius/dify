@@ -1,3 +1,5 @@
+'use client'
+import React, { useEffect, useState } from 'react'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import type { GithubRepo } from '@/models/common'
 
@@ -10,18 +12,26 @@ const getStar = async () => {
   return res.json()
 }
 
-const GithubStar = async () => {
-  let githubRepo: GithubRepo = { stargazers_count: 0 }
+const GithubStar = () => {
+  const [githubRepo, setGithubRepo] = useState<GithubRepo>({ stargazers_count: 6000 })
+  const [isFetched, setIsFetched] = useState(false)
+  useEffect(() => {
+    (async () => {
+      try {
+        if (process.env.NODE_ENV === 'development')
+          return
 
-  if (process.env.NODE_ENV === 'development')
-    return null
+        await setGithubRepo(await getStar())
+        setIsFetched(true)
+      }
+      catch (e) {
 
-  try {
-    githubRepo = await getStar()
-  }
-  catch (e) {
+      }
+    })()
+  }, [])
+
+  if (!isFetched)
     return null
-  }
 
   return (
     <a

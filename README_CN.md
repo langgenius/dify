@@ -134,7 +134,6 @@ A: 现已支持英文与中文，你可以为我们贡献语言包。
 本软件使用了以下开源软件：
 
 - Chase, H. (2022). LangChain [Computer software]. https://github.com/hwchase17/langchain
-- Liu, J. (2022). LlamaIndex [Computer software]. doi: 10.5281/zenodo.1234.
 
 更多信息，请参考相应软件的官方网站或许可证文本。
 
