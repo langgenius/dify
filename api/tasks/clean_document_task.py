@@ -9,7 +9,7 @@ from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset
 
 
-@shared_task
+@shared_task(queue='dataset')
 def clean_document_task(document_id: str, dataset_id: str):
     """
     Clean document when document deleted.
