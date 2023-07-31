@@ -34,7 +34,7 @@
 		}
 	},
 	"postStartCommand": "cd api && pip install -r requirements.txt",
-	"postCreateCommand": "cd web && npm install"
+	"postCreateCommand": "cd web && npm install",
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
