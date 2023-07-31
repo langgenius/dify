@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from models.model import Conversation, Message
 
 
-@shared_task
+@shared_task(queue='generation')
 def generate_conversation_summary_task(conversation_id: str):
     """
     Async Generate conversation summary

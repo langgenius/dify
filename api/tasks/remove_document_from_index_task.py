@@ -11,7 +11,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment, Document
 
 
-@shared_task
+@shared_task(queue='dataset')
 def remove_document_from_index_task(document_id: str):
     """
     Async Remove document from index

@@ -14,7 +14,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 
 
-@shared_task
+@shared_task(queue='dataset')
 def update_segment_keyword_index_task(segment_id: str):
     """
     Async update segment index

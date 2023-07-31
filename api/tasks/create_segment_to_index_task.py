@@ -14,7 +14,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 
 
-@shared_task
+@shared_task(queue='dataset')
 def create_segment_to_index_task(segment_id: str, keywords: Optional[List[str]] = None):
     """
     Async create segment to index
