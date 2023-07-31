@@ -249,7 +249,7 @@ class ChatConversationApi(Resource):
         'status': fields.String,
         'from_source': fields.String,
         'from_end_user_id': fields.String,
-        'from_end_user_session_id': fields.String(attribute='end_user.session_id'),
+        'from_end_user_session_id': fields.String,
         'from_account_id': fields.String,
         'summary': fields.String(attribute='summary_or_query'),
         'read_at': TimestampField,
@@ -291,8 +291,6 @@ class ChatConversationApi(Resource):
         app = _get_app(app_id, 'chat')
 
         query = db.select(Conversation).where(Conversation.app_id == app.id, Conversation.mode == 'chat')
-
-        query = query.options(joinedload(Conversation.end_user))
 
         if args['keyword']:
             query = query.join(
