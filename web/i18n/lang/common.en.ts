@@ -23,6 +23,7 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    setup: 'Setup',
   },
   placeholder: {
     input: 'Please enter',

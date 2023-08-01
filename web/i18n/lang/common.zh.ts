@@ -23,6 +23,7 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    setup: '设置',
   },
   placeholder: {
     input: '请输入',
