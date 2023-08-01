@@ -46,7 +46,7 @@ const ModelSelector = () => {
         >
           <Popover.Panel className={cn(
             s.options,
-            'absolute top-10 p-1 w-full max-h-[366px] border-[0.5px] border-gray-200 rounded-lg overflow-auto',
+            'absolute top-10 p-1 w-full max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg overflow-auto z-10',
           )}>
             <div className='px-2 pt-2 pb-1'>
               <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
