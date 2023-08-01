@@ -26,7 +26,7 @@ qdrant_client~=1.1.6
 mailchimp-transactional~=1.0.50
 scikit-learn==1.2.2
 sentry-sdk[flask]~=1.21.1
-jieba==0.42.1
+jieba==0.42
 celery==5.2.7
 redis~=4.5.4
 openpyxl==3.1.2
