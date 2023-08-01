@@ -202,6 +202,20 @@ const translation = {
       back: ' 技术进行加密和存储。',
     },
   },
+  modelProvider: {
+    systemReasoningModel: {
+      key: 'System Reasoning Model',
+      tip: 'System Reasoning Model',
+    },
+    embeddingModel: {
+      key: 'Embedding Model',
+      tip: 'Embedding Model',
+    },
+    searchModel: 'Search model',
+    noModelFound: 'No model found for {{model}}',
+    models: 'Models',
+    showMoreModelProvider: 'Show more model provider',
+  },
   dataSource: {
     add: '添加数据源',
     connect: '绑定',

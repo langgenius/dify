@@ -202,6 +202,20 @@ const translation = {
       back: ' technology.',
     },
   },
+  modelProvider: {
+    systemReasoningModel: {
+      key: 'System Reasoning Model',
+      tip: 'System Reasoning Model',
+    },
+    embeddingModel: {
+      key: 'Embedding Model',
+      tip: 'Embedding Model',
+    },
+    searchModel: 'Search model',
+    noModelFound: 'No model found for {{model}}',
+    models: 'Models',
+    showMoreModelProvider: 'Show more model provider',
+  },
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
