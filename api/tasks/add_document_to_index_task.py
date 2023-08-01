@@ -14,7 +14,7 @@ from models.dataset import DocumentSegment
 from models.dataset import Document as DatasetDocument
 
 
-@shared_task
+@shared_task(queue='dataset')
 def add_document_to_index_task(dataset_document_id: str):
     """
     Async Add document to index

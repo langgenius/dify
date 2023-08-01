@@ -153,3 +153,9 @@ def get_remote_ip(request):
 def generate_text_hash(text: str) -> str:
     hash_text = str(text) + 'None'
     return sha256(hash_text.encode()).hexdigest()
+
+
+def get_current_datetime(type: str) -> str:
+    # get current time
+    current_time = datetime.utcnow()
+    return current_time.strftime("%Y-%m-%d %H:%M:%S UTC+0000 %A")

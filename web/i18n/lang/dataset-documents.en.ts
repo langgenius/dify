@@ -17,6 +17,7 @@ const translation = {
     action: {
       uploadFile: 'Upload new file',
       settings: 'Segment settings',
+      add: 'Add new segment',
       archive: 'Archive',
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
@@ -310,6 +311,14 @@ const translation = {
     characters: 'characters',
     hitCount: 'hit count',
     vectorHash: 'Vector hash: ',
+    questionPlaceholder: 'add question here',
+    questionEmpty: 'Question can not be empty',
+    answerPlaceholder: 'add answer here',
+    answerEmpty: 'Answer can not be empty',
+    contentPlaceholder: 'add content here',
+    contentEmpty: 'Content can not be empty',
+    newTextSegment: 'New Text Segment',
+    newQaSegment: 'New Q&A Segment',
   },
 }
 

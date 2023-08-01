@@ -43,7 +43,8 @@ const Summary: FC<ISummaryProps> = ({
   plugins,
   dataSets,
 }) => {
-  const pluginIds = Object.keys(plugins).filter(key => plugins[key])
+  // current_datetime is not configable and do not have icon
+  const pluginIds = Object.keys(plugins).filter(key => plugins[key] && key !== 'current_datetime')
   const [isShowConfig, { setFalse: hideConfig, toggle: toggleShowConfig }] = useBoolean(false)
   const configContentRef = React.useRef(null)
 

@@ -206,6 +206,8 @@ class Document(db.Model):
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
     doc_type = db.Column(db.String(40), nullable=True)
     doc_metadata = db.Column(db.JSON, nullable=True)
+    doc_form = db.Column(db.String(
+        255), nullable=False, server_default=db.text("'text_model'::character varying"))
 
     DATA_SOURCES = ['upload_file', 'notion_import']
 
@@ -308,6 +310,7 @@ class DocumentSegment(db.Model):
     document_id = db.Column(UUID, nullable=False)
     position = db.Column(db.Integer, nullable=False)
     content = db.Column(db.Text, nullable=False)
+    answer = db.Column(db.Text, nullable=True)
     word_count = db.Column(db.Integer, nullable=False)
     tokens = db.Column(db.Integer, nullable=False)
 
@@ -326,6 +329,9 @@ class DocumentSegment(db.Model):
                        server_default=db.text("'waiting'::character varying"))
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_by = db.Column(UUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False,
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
     indexing_at = db.Column(db.DateTime, nullable=True)
     completed_at = db.Column(db.DateTime, nullable=True)

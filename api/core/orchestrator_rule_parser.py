@@ -21,6 +21,7 @@ from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
+from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
@@ -32,6 +33,7 @@ class OrchestratorRuleParser:
         self.tenant_id = tenant_id
         self.app_model_config = app_model_config
         self.agent_summary_model_name = "gpt-3.5-turbo-16k"
+        self.dataset_retrieve_model_name = "gpt-3.5-turbo"
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                        rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
@@ -89,11 +91,20 @@ class OrchestratorRuleParser:
             if len(tools) == 0:
                 return None
 
+            dataset_llm = LLMBuilder.to_llm(
+                tenant_id=self.tenant_id,
+                model_name=self.dataset_retrieve_model_name,
+                temperature=0,
+                max_tokens=500,
+                callbacks=[DifyStdOutCallbackHandler()]
+            )
+
             agent_configuration = AgentConfiguration(
                 strategy=planning_strategy,
                 llm=agent_llm,
                 tools=tools,
                 summary_llm=summary_llm,
+                dataset_llm=dataset_llm,
                 memory=memory,
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=10,
@@ -157,6 +168,8 @@ class OrchestratorRuleParser:
                 tool = self.to_google_search_tool()
             elif tool_type == "wikipedia":
                 tool = self.to_wikipedia_tool()
+            elif tool_type == "current_datetime":
+                tool = self.to_current_datetime_tool()
 
             if tool:
                 tool.callbacks.extend(callbacks)
@@ -225,10 +238,21 @@ class OrchestratorRuleParser:
             name="google_search",
             description="A tool for performing a Google search and extracting snippets and webpages "
                         "when you need to search for something you don't know or when your information "
-                        "is not up to date."
+                        "is not up to date. "
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
             args_schema=OptimizedSerpAPIInput,
+            callbacks=[DifyStdOutCallbackHandler()]
+        )
+
+        return tool
+
+    def to_current_datetime_tool(self) -> Optional[BaseTool]:
+        tool = Tool(
+            name="current_datetime",
+            description="A tool when you want to get the current date, time, week, month or year, "
+                        "and the time zone is UTC. Result is \"<date> <time> <timezone> <week>\".",
+            func=helper.get_current_datetime,
             callbacks=[DifyStdOutCallbackHandler()]
         )
 

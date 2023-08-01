@@ -220,6 +220,7 @@ class DatasetIndexingEstimateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
@@ -234,12 +235,12 @@ class DatasetIndexingEstimateApi(Resource):
                 raise NotFound("File not found.")
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.file_indexing_estimate(file_details, args['process_rule'])
+            response = indexing_runner.file_indexing_estimate(file_details, args['process_rule'], args['doc_form'])
         elif args['info_list']['data_source_type'] == 'notion_import':
 
             indexing_runner = IndexingRunner()
             response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],
-                                                                args['process_rule'])
+                                                                args['process_rule'], args['doc_form'])
         else:
             raise ValueError('Data source type not support')
         return response, 200

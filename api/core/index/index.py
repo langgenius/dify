@@ -22,6 +22,7 @@ class IndexBuilder:
             )
 
             embeddings = CacheEmbedding(OpenAIEmbeddings(
+                max_retries=1,
                 **model_credentials
             ))
 

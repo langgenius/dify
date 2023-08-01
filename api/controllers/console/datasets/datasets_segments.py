@@ -15,8 +15,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 
 from libs.helper import TimestampField
-from services.dataset_service import DatasetService, DocumentService
-from tasks.add_segment_to_index_task import add_segment_to_index_task
+from services.dataset_service import DatasetService, DocumentService, SegmentService
+from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.remove_segment_from_index_task import remove_segment_from_index_task
 
 segment_fields = {
@@ -24,6 +24,7 @@ segment_fields = {
     'position': fields.Integer,
     'document_id': fields.String,
     'content': fields.String,
+    'answer': fields.String,
     'word_count': fields.Integer,
     'tokens': fields.Integer,
     'keywords': fields.List(fields.String),
@@ -125,6 +126,7 @@ class DatasetDocumentSegmentListApi(Resource):
 
         return {
             'data': marshal(segments, segment_fields),
+            'doc_form': document.doc_form,
             'has_more': has_more,
             'limit': limit,
             'total': total
@@ -180,7 +182,7 @@ class DatasetDocumentSegmentApi(Resource):
             # Set cache to prevent indexing the same segment multiple times
             redis_client.setex(indexing_cache_key, 600, 1)
 
-            add_segment_to_index_task.delay(segment.id)
+            enable_segment_to_index_task.delay(segment.id)
 
             return {'result': 'success'}, 200
         elif action == "disable":
@@ -202,7 +204,91 @@ class DatasetDocumentSegmentApi(Resource):
             raise InvalidActionError()
 
 
+class DatasetDocumentSegmentAddApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id, document_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound('Document not found.')
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument('content', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('answer', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('keywords', type=list, required=False, nullable=True, location='json')
+        args = parser.parse_args()
+        SegmentService.segment_create_args_validate(args, document)
+        segment = SegmentService.create_segment(args, document)
+        return {
+            'data': marshal(segment, segment_fields),
+            'doc_form': document.doc_form
+        }, 200
+
+
+class DatasetDocumentSegmentUpdateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self, dataset_id, document_id, segment_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound('Dataset not found.')
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound('Document not found.')
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id),
+            DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound('Segment not found.')
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument('content', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('answer', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('keywords', type=list, required=False, nullable=True, location='json')
+        args = parser.parse_args()
+        SegmentService.segment_create_args_validate(args, document)
+        segment = SegmentService.update_segment(args, segment, document)
+        return {
+            'data': marshal(segment, segment_fields),
+            'doc_form': document.doc_form
+        }, 200
+
+
 api.add_resource(DatasetDocumentSegmentListApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments')
 api.add_resource(DatasetDocumentSegmentApi,
                  '/datasets/<uuid:dataset_id>/segments/<uuid:segment_id>/<string:action>')
+api.add_resource(DatasetDocumentSegmentAddApi,
+                 '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment')
+api.add_resource(DatasetDocumentSegmentUpdateApi,
+                 '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>')

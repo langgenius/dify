@@ -43,6 +43,21 @@ class UniversalChatApi(UniversalChatResource):
         args['model_config']['model']['provider'] = llm_constant.models[args['model']]
         args['model_config']['agent_mode']['tools'] = args['tools']
 
+        if not args['model_config']['agent_mode']['tools']:
+            args['model_config']['agent_mode']['tools'] = [
+                {
+                    "current_datetime": {
+                        "enabled": True
+                    }
+                }
+            ]
+        else:
+            args['model_config']['agent_mode']['tools'].append({
+                    "current_datetime": {
+                        "enabled": True
+                    }
+                })
+
         args['inputs'] = {}
 
         del args['model']

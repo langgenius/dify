@@ -60,6 +60,7 @@ document_fields = {
     'display_status': fields.String,
     'word_count': fields.Integer,
     'hit_count': fields.Integer,
+    'doc_form': fields.String,
 }
 
 document_with_segments_fields = {
@@ -85,6 +86,7 @@ document_with_segments_fields = {
     'completed_segments': fields.Integer,
     'total_segments': fields.Integer
 }
+
 
 class DocumentResource(Resource):
     def get_document(self, dataset_id: str, document_id: str) -> Document:
@@ -269,6 +271,7 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument('process_rule', type=dict, required=False, location='json')
         parser.add_argument('duplicate', type=bool, nullable=False, location='json')
         parser.add_argument('original_document_id', type=str, required=False, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args['indexing_technique']:
@@ -313,6 +316,7 @@ class DatasetInitApi(Resource):
                             nullable=False, location='json')
         parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         # validate args
@@ -488,6 +492,8 @@ class DocumentBatchIndexingStatusApi(DocumentResource):
                                                           DocumentSegment.status != 're_segment').count()
             document.completed_segments = completed_segments
             document.total_segments = total_segments
+            if document.is_paused:
+                document.indexing_status = 'paused'
             documents_status.append(marshal(document, self.document_status_fields))
         data = {
             'data': documents_status
@@ -583,7 +589,8 @@ class DocumentDetailApi(DocumentResource):
                 'segment_count': document.segment_count,
                 'average_segment_length': document.average_segment_length,
                 'hit_count': document.hit_count,
-                'display_status': document.display_status
+                'display_status': document.display_status,
+                'doc_form': document.doc_form
             }
         else:
             process_rules = DatasetService.get_process_rules(dataset_id)
@@ -614,7 +621,8 @@ class DocumentDetailApi(DocumentResource):
                 'segment_count': document.segment_count,
                 'average_segment_length': document.average_segment_length,
                 'hit_count': document.hit_count,
-                'display_status': document.display_status
+                'display_status': document.display_status,
+                'doc_form': document.doc_form
             }
 
         return response, 200

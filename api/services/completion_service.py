@@ -201,6 +201,7 @@ class CompletionService:
                     conversation = db.session.query(Conversation).filter_by(id=conversation.id).first()
 
                 # run
+
                 Completion.generate(
                     task_id=generate_task_id,
                     app=app_model,
@@ -390,8 +391,8 @@ class CompletionService:
                         result = json.loads(result)
                         if result.get('error'):
                             cls.handle_error(result)
-
-                        return cls.get_message_response_data(result.get('data'))
+                        if 'data' in result:
+                            return cls.get_message_response_data(result.get('data'))
             except ValueError as e:
                 if e.args[0] != "I/O operation on closed file.":  # ignore this error
                     raise CompletionStoppedError()
