@@ -398,9 +398,74 @@ class AverageResponseTimeStatistic(Resource):
         })
 
 
+class TokensPerSecondStatistic(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_id):
+        account = current_user
+        app_id = str(app_id)
+        app_model = _get_app(app_id)
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('start', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
+        parser.add_argument('end', type=datetime_string('%Y-%m-%d %H:%M'), location='args')
+        args = parser.parse_args()
+
+        sql_query = '''SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
+    CASE 
+        WHEN SUM(provider_response_latency) = 0 THEN 0
+        ELSE (SUM(answer_tokens) / SUM(provider_response_latency))
+    END as tokens_per_second
+FROM messages
+WHERE app_id = :app_id'''
+        arg_dict = {'tz': account.timezone, 'app_id': app_model.id}
+
+        timezone = pytz.timezone(account.timezone)
+        utc_timezone = pytz.utc
+
+        if args['start']:
+            start_datetime = datetime.strptime(args['start'], '%Y-%m-%d %H:%M')
+            start_datetime = start_datetime.replace(second=0)
+
+            start_datetime_timezone = timezone.localize(start_datetime)
+            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += ' and created_at >= :start'
+            arg_dict['start'] = start_datetime_utc
+
+        if args['end']:
+            end_datetime = datetime.strptime(args['end'], '%Y-%m-%d %H:%M')
+            end_datetime = end_datetime.replace(second=0)
+
+            end_datetime_timezone = timezone.localize(end_datetime)
+            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += ' and created_at < :end'
+            arg_dict['end'] = end_datetime_utc
+
+        sql_query += ' GROUP BY date order by date'
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+
+        response_data = []
+
+        for i in rs:
+            response_data.append({
+                'date': str(i.date),
+                'tps': round(i.tokens_per_second, 4)
+            })
+
+        return jsonify({
+            'data': response_data
+        })
+
+
 api.add_resource(DailyConversationStatistic, '/apps/<uuid:app_id>/statistics/daily-conversations')
 api.add_resource(DailyTerminalsStatistic, '/apps/<uuid:app_id>/statistics/daily-end-users')
 api.add_resource(DailyTokenCostStatistic, '/apps/<uuid:app_id>/statistics/token-costs')
 api.add_resource(AverageSessionInteractionStatistic, '/apps/<uuid:app_id>/statistics/average-session-interactions')
 api.add_resource(UserSatisfactionRateStatistic, '/apps/<uuid:app_id>/statistics/user-satisfaction-rate')
 api.add_resource(AverageResponseTimeStatistic, '/apps/<uuid:app_id>/statistics/average-response-time')
+api.add_resource(TokensPerSecondStatistic, '/apps/<uuid:app_id>/statistics/tokens-per-second')
