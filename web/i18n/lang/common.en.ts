@@ -232,6 +232,10 @@ const translation = {
     },
     addApiKey: 'Add your API key',
     invalidApiKey: 'Invalid API key',
+    encrypted: {
+      front: 'Your API KEY will be encrypted and stored using',
+      back: ' technology.',
+    },
   },
   dataSource: {
     add: 'Add a data source',

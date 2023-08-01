@@ -16,6 +16,7 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
   return Object.keys(attrs).reduce((acc: Attrs, key) => {
     const val = attrs[key]
     key = key.replace(/([-]\w)/g, (g: string) => g[1].toUpperCase())
+    key = key.replace(/([:]\w)/g, (g: string) => g[1].toUpperCase())
     switch (key) {
       case 'class':
         acc.className = val

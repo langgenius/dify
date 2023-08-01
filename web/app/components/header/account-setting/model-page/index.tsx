@@ -3,30 +3,40 @@ import { useTranslation } from 'react-i18next'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
+import ModelModal from './model-modal'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const MODEL_LIST = [
   {
-    key: 'azure',
-    type: 'specific',
+    key: 'azure_openai',
+    type: 'add',
   },
   {
     key: 'replicate',
-    type: 'specific',
+    type: 'add',
   },
   {
-    key: 'hugging-face',
-    type: 'customized',
+    key: 'huggingface_hub',
+    type: 'add',
   },
   {
     key: 'tongyi',
-    type: 'customized',
+    type: 'setup',
+  },
+  {
+    key: 'minimax',
+    type: 'setup',
+  },
+  {
+    key: 'chatglm',
+    type: 'setup',
   },
 ]
 
 const ModelPage = () => {
   const { t } = useTranslation()
   const [showMoreModel, setShowMoreModel] = useState(false)
+  const [modelModalShow, setModelModalShow] = useState(false)
 
   return (
     <div className='pt-1'>
@@ -48,7 +58,12 @@ const ModelPage = () => {
       </div>
       {
         MODEL_LIST.slice(0, showMoreModel ? MODEL_LIST.length : 3).map(model => (
-          <ModelItem key={model.key} type={model.type} />
+          <ModelItem
+            key={model.key}
+            provider={model.key}
+            type={model.type}
+            onOperate={() => setModelModalShow(true)}
+          />
         ))
       }
       {
@@ -59,6 +74,10 @@ const ModelPage = () => {
           </div>
         )
       }
+      <ModelModal
+        isShow={modelModalShow}
+        onCancel={() => setModelModalShow(false)}
+      />
     </div>
   )
 }
