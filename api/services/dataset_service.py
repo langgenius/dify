@@ -32,8 +32,9 @@ from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.create_segment_to_index_task import create_segment_to_index_task
 from tasks.update_segment_index_task import update_segment_index_task
-from tasks.update_segment_keyword_index_task\
-    import update_segment_keyword_index_task
+from tasks.recover_document_indexing_task import recover_document_indexing_task
+from tasks.update_segment_keyword_index_task import update_segment_keyword_index_task
+from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 
 
 class DatasetService:
@@ -373,7 +374,7 @@ class DocumentService:
         indexing_cache_key = 'document_{}_is_paused'.format(document.id)
         redis_client.delete(indexing_cache_key)
         # trigger async task
-        document_indexing_task.delay(document.dataset_id, document.id)
+        recover_document_indexing_task.delay(document.dataset_id, document.id)
 
     @staticmethod
     def get_documents_position(dataset_id):
@@ -451,6 +452,7 @@ class DocumentService:
                     document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
                                                              document_data["doc_form"],
+                                                             document_data["doc_language"],
                                                              data_source_info, created_from, position,
                                                              account, file_name, batch)
                     db.session.add(document)
@@ -496,6 +498,7 @@ class DocumentService:
                             document = DocumentService.save_document(dataset, dataset_process_rule.id,
                                                                      document_data["data_source"]["type"],
                                                                      document_data["doc_form"],
+                                                                     document_data["doc_language"],
                                                                      data_source_info, created_from, position,
                                                                      account, page['page_name'], batch)
                             db.session.add(document)
@@ -511,14 +514,15 @@ class DocumentService:
             db.session.commit()
 
             # trigger async task
-            document_indexing_task.delay(dataset.id, document_ids, document_data['doc_language'])
+            document_indexing_task.delay(dataset.id, document_ids)
 
         return documents, batch
 
     @staticmethod
     def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
-                      data_source_info: dict, created_from: str, position: int, account: Account, name: str,
-                      batch: str):
+                      document_language: str, data_source_info: dict, created_from: str, position: int,
+                      account: Account,
+                      name: str, batch: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -530,7 +534,8 @@ class DocumentService:
             name=name,
             created_from=created_from,
             created_by=account.id,
-            doc_form=document_form
+            doc_form=document_form,
+            doc_language=document_language
         )
         return document
 
@@ -927,3 +932,17 @@ class SegmentService:
             redis_client.setex(indexing_cache_key, 600, 1)
             update_segment_index_task.delay(segment.id, args['keywords'])
         return segment
+
+    @classmethod
+    def delete_segment(cls, segment: DocumentSegment, document: Document, dataset: Dataset):
+        indexing_cache_key = 'segment_{}_delete_indexing'.format(segment.id)
+        cache_result = redis_client.get(indexing_cache_key)
+        if cache_result is not None:
+            raise ValueError("Segment is deleting.")
+        # send delete segment index task
+        redis_client.setex(indexing_cache_key, 600, 1)
+        # enabled segment need to delete index
+        if segment.enabled:
+            delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
+        db.session.delete(segment)
+        db.session.commit()

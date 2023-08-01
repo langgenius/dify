@@ -539,7 +539,8 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         document.completed_segments = completed_segments
         document.total_segments = total_segments
-
+        if document.is_paused:
+            document.indexing_status = 'paused'
         return marshal(document, self.document_status_fields)
 
 
@@ -795,6 +796,22 @@ class DocumentStatusApi(DocumentResource):
                 redis_client.setex(indexing_cache_key, 600, 1)
 
                 remove_document_from_index_task.delay(document_id)
+
+            return {'result': 'success'}, 200
+        elif action == "un_archive":
+            if not document.archived:
+                raise InvalidActionError('Document is not archived.')
+
+            document.archived = False
+            document.archived_at = None
+            document.archived_by = None
+            document.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            # Set cache to prevent indexing the same document multiple times
+            redis_client.setex(indexing_cache_key, 600, 1)
+
+            add_document_to_index_task.delay(document_id)
 
             return {'result': 'success'}, 200
         else:
