@@ -8,11 +8,6 @@ function useCopyToClipboard(): [CopiedValue, CopyFn] {
   const [copiedText, setCopiedText] = useState<CopiedValue>(null)
 
   const copy: CopyFn = useCallback(async (text: string) => {
-    if (!navigator?.clipboard) {
-      console.warn('Clipboard not supported')
-      return false
-    }
-
     try {
       writeText(text)
       setCopiedText(text)
