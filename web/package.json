@@ -24,7 +24,7 @@
     "@next/mdx": "^13.2.4",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
-    "@tailwindcss/line-clamp": "^0.4.2",
+    "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "@types/crypto-js": "^4.1.1",
     "@types/lodash-es": "^4.17.7",
