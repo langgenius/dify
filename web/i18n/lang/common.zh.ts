@@ -204,6 +204,8 @@ const translation = {
     },
   },
   modelProvider: {
+    selectModel: 'Select your model',
+    setupModelFirst: 'Please set up your model first',
     systemReasoningModel: {
       key: 'System Reasoning Model',
       tip: 'System Reasoning Model',
@@ -212,6 +214,7 @@ const translation = {
       key: 'Embedding Model',
       tip: 'Embedding Model',
     },
+    quota: 'Quota',
     searchModel: 'Search model',
     noModelFound: 'No model found for {{model}}',
     models: 'Models',
@@ -229,6 +232,8 @@ const translation = {
       callTimes: 'Call times',
       tokens: 'Tokens',
       buyQuota: 'Buy Quota',
+      priorityUse: 'Priority use',
+      removeKey: 'Remove API Key',
     },
     addApiKey: 'Add your API key',
     invalidApiKey: 'Invalid API key',

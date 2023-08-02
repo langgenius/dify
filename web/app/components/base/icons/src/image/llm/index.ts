@@ -1,0 +1,5 @@
+export { default as MinimaxText } from './MinimaxText'
+export { default as Minimax } from './Minimax'
+export { default as TongyiTextCn } from './TongyiTextCn'
+export { default as TongyiText } from './TongyiText'
+export { default as Tongyi } from './Tongyi'

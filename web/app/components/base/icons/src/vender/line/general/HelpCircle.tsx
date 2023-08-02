@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import data from './MinimaxText.json'
+import data from './HelpCircle.json'
 import IconBase from '@/app/components/base/icons/IconBase'
 import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBase'
 
