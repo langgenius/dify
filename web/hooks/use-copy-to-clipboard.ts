@@ -8,16 +8,9 @@ function useCopyToClipboard(): [CopiedValue, CopyFn] {
   const [copiedText, setCopiedText] = useState<CopiedValue>(null)
 
   const copy: CopyFn = useCallback(async (text: string) => {
-    try {
-      writeText(text)
-      setCopiedText(text)
-      return true
-    }
-    catch (error) {
-      console.warn('Copy failed', error)
-      setCopiedText(null)
-      return false
-    }
+    writeText(text)
+    setCopiedText(text)
+    return true
   }, [])
 
   return [copiedText, copy]
