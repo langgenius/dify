@@ -95,7 +95,7 @@ const Apps: FC = () => {
         onChange={setCurrCategory}
       />
       <div
-        className='flex mt-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
+        className='flex mt-6 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
         style={{
           maxHeight: 'calc(100vh - 243px)',
         }}

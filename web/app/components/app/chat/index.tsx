@@ -193,7 +193,7 @@ const Chat: FC<IChatProps> = ({
             )}
             {
               isShowSuggestion && (
-                <div className='pt-2 mb-2 '>
+                <div className='pt-2'>
                   <div className='flex items-center justify-center mb-2.5'>
                     <div className='grow h-[1px]'
                       style={{

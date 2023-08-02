@@ -231,6 +231,7 @@ const Chart: React.FC<IChartProps> = ({
       </div>
       <div className='mb-4'>
         <Basic
+          isExtraInLine={CHART_TYPE_CONFIG[chartType].showTokens}
           name={chartType !== 'costs' ? (sumData.toLocaleString() + unit) : `${sumData < 1000 ? sumData : (`${formatNumber(Math.round(sumData / 1000))}k`)}`}
           type={!CHART_TYPE_CONFIG[chartType].showTokens
             ? ''
@@ -313,6 +314,23 @@ export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
     isAvg
     unit={t('appOverview.analysis.ms') as string}
     {...(noDataFlag && { yMax: 500 })}
+  />
+}
+
+export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
+  const { t } = useTranslation()
+  const { data: response } = useSWR({ url: `/apps/${id}/statistics/tokens-per-second`, params: period.query }, getAppStatistics)
+  if (!response)
+    return <Loading />
+  const noDataFlag = !response.data || response.data.length === 0
+  return <Chart
+    basicInfo={{ title: t('appOverview.analysis.tps.title'), explanation: t('appOverview.analysis.tps.explanation'), timePeriod: period.name }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'tps' }) } as any}
+    valueKey='tps'
+    chartType='conversations'
+    isAvg
+    unit={t('appOverview.analysis.tokenPS') as string}
+    {...(noDataFlag && { yMax: 100 })}
   />
 }
 
