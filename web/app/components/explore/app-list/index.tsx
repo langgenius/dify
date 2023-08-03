@@ -101,7 +101,7 @@ const Apps: FC = () => {
         }}
       >
         <nav
-          className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pb-10grow shrink-0`}>
+          className={`${s.appList} grid content-start gap-4 px-12 shrink-0`}>
           {currList.map(app => (
             <AppCard
               key={app.app_id}
