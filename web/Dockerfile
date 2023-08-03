@@ -1,4 +1,4 @@
-FROM langgenius/base:1.0.0-bullseye-slim
+FROM langgenius/base:1.0.1-bullseye-slim
 
 LABEL maintainer="takatost@gmail.com"
 
