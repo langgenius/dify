@@ -1,46 +1,36 @@
-import type { FC } from 'react'
+import type { FC, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import type { I18NText } from '../declarations'
 import Indicator from '../../../indicator'
 import PrioritySelector from './PrioritySelector'
 import { IS_CE_EDITION } from '@/config'
+import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import { InfoCircle, Plus } from '@/app/components/base/icons/src/vender/line/general'
-import { Anthropic, AnthropicText, OpenaiBlack, OpenaiText } from '@/app/components/base/icons/src/public/llm'
-
-const PROVIDER_MAP = {
-  openai: {
-    bgColor: 'bg-gray-200',
-    title: <OpenaiText className='h-5' />,
-    desc: <OpenaiBlack className='w-6 h-6' />,
-  },
-  anthropic: {
-    bgColor: 'bg-[#F0F0EB]',
-    title: <AnthropicText className='h-5' />,
-    desc: <Anthropic className='w-6 h-6' />,
-  },
-}
 
 type ModelCardProps = {
-  type?: 'openai' | 'anthropic'
+  provider: { key: string; type: string; bgColor: string; icon: ReactElement; desc: I18NText; iconText?: ReactElement }
   onOpenModal: () => void
 }
 
 const ModelCard: FC<ModelCardProps> = ({
-  type = 'openai',
+  provider,
   onOpenModal,
 }) => {
+  const { locale } = useContext(I18n)
   const { t } = useTranslation()
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
-      <div className={`flex px-4 pt-4 pb-3 rounded-t-lg ${PROVIDER_MAP[type].bgColor}`}>
+      <div className={`flex px-4 pt-4 pb-3 rounded-t-lg ${provider.bgColor}`}>
         <div className='mr-3'>
           <div className='mb-1'>
-            {PROVIDER_MAP[type].title}
+            {provider.iconText}
           </div>
-          <div className='text-xs text-black opacity-60'>{t(`common.modelProvider.card.${type}.desc`)}</div>
+          <div className='text-xs text-black opacity-60'>{provider.desc[locale]}</div>
         </div>
-        {PROVIDER_MAP[type].desc}
+        {provider.icon}
       </div>
       {
         !IS_CE_EDITION && (
