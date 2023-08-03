@@ -11,13 +11,7 @@ const translation = {
       explanation: 'Ready-to-use AI WebApp',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
-      share: {
-        entry: 'Share',
-        explanation: 'Share the following URL to invite more people to access the application.',
-        shareUrl: 'Share URL',
-        copyLink: 'Copy Link',
-        regenerate: 'Regenerate',
-      },
+      regenerate: 'Regenerate',
       preUseReminder: 'Please enable WebApp before continuing.',
       settings: {
         entry: 'Settings',
@@ -47,7 +41,7 @@ const translation = {
       },
       customize: {
         way: 'way',
-        entry: 'Want to customize your WebApp?',
+        entry: 'Customize',
         title: 'Customize AI WebApp',
         explanation: 'You can customize the frontend of the Web App to fit your scenario and style needs.',
         way1: {

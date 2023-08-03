@@ -4,7 +4,7 @@ import { t } from 'i18next'
 import s from './index.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
-import { randomString } from '@/app/components/app-sidebar/basic'
+import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
   value?: string
