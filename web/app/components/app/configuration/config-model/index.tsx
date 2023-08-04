@@ -266,9 +266,8 @@ const ConifgModel: FC<IConifgModelProps> = ({
                 <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>
                   <>
                     {TONE_LIST.slice(0, 3).map(tone => (
-                      <>
+                      <div className='grow flex items-center' key={tone.id}>
                         <Radio
-                          key={tone.id}
                           value={tone.id}
                           className={cn(tone.id === toneId && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-2 !justify-center text-[13px] font-medium')}
                           labelClassName={cn(tone.id === toneId
@@ -286,7 +285,7 @@ const ConifgModel: FC<IConifgModelProps> = ({
                           </>
                         </Radio>
                         {tone.id !== toneId && tone.id + 1 !== toneId && (<div className='h-5 border-r border-gray-200'></div>)}
-                      </>
+                      </div>
                     ))}
                   </>
                   <Radio
