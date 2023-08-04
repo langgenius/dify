@@ -1,4 +1,4 @@
-FROM node:18-alpine
+FROM node:18.17.0-bullseye-slim
 
 LABEL maintainer="takatost@gmail.com"
 
