@@ -20,6 +20,7 @@ import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAn
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 
+// import s from
 export type IConifgModelProps = {
   mode: string
   modelId: string
@@ -151,6 +152,11 @@ const ConifgModel: FC<IConifgModelProps> = ({
 
   // tone is a preset of completionParams.
   const [toneId, setToneId] = React.useState(matchToneId(completionParams)) // default is Balanced
+  const toneTabBgClassName = ({
+    1: 'bg-[#F5F8FF]',
+    2: 'bg-[#F4F3FF]',
+    3: 'bg-[#F6FEFC]',
+  })[toneId] || ''
   // set completionParams by toneId
   const handleToneChange = (id: number) => {
     if (id === 4)
@@ -253,27 +259,37 @@ const ConifgModel: FC<IConifgModelProps> = ({
 
             {/* Response type */}
             <div className="mt-5 mb-4">
-              <div className="mb-4 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
-              <Radio.Group value={toneId} onChange={handleToneChange}>
+              <div className="mb-3 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
+              <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>
                 <>
                   {TONE_LIST.slice(0, 3).map(tone => (
-                    <Radio
-                      key={tone.id}
-                      value={tone.id}
-                      className="grow !px-0 !justify-center "
-                      labelClassName='flex items-center space-x-2 text-[#667085]'
-                    >
-                      <>
-                        {getToneIcon(tone.id)}
-                        <div>{t(`common.model.tone.${tone.name}`) as string}</div>
-                      </>
-                    </Radio>
+                    <>
+                      <Radio
+                        key={tone.id}
+                        value={tone.id}
+                        className={cn(tone.id === toneId && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-2 !justify-center text-[13px] font-medium')}
+                        labelClassName={cn(tone.id === toneId
+                          ? ({
+                            1: 'text-[#6938EF]',
+                            2: 'text-[#444CE7]',
+                            3: 'text-[#107569]',
+                          })[toneId]
+                          : 'text-[#667085]', 'flex items-center space-x-2')}
+                      >
+                        <>
+                          {getToneIcon(tone.id)}
+                          <div>{t(`common.model.tone.${tone.name}`) as string}</div>
+                          <div className=""></div>
+                        </>
+                      </Radio>
+                      {tone.id !== toneId && tone.id + 1 !== toneId && (<div className='h-5 border-r border-gray-200'></div>)}
+                    </>
                   ))}
                 </>
-                <div className="ml-[2px] mr-[3px] h-5 border-r border-gray-200"></div>
                 <Radio
                   value={TONE_LIST[3].id}
-                  labelClassName='flex items-center space-x-2 text-[#667085]'
+                  className={cn(toneId === 4 && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-2 !justify-center text-[13px] font-medium')}
+                  labelClassName={cn('flex items-center space-x-2 ', toneId === 4 ? 'text-[#155EEF]' : 'text-[#667085]')}
                 >
                   <>
                     {getToneIcon(TONE_LIST[3].id)}
