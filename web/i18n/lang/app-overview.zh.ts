@@ -17,6 +17,7 @@ const translation = {
         shareUrl: '分享 URL',
         copyLink: '复制链接',
         regenerate: '重新生成',
+        linkCopied: '已复制',
       },
       preUseReminder: '使用前请先打开开关',
       settings: {
