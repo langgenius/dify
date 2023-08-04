@@ -19,6 +19,7 @@ const translation = {
       settings: '分段设置',
       add: '添加新分段',
       archive: '归档',
+      unarchive: '撤销归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
       sync: '同步',

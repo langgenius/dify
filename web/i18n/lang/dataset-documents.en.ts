@@ -19,6 +19,7 @@ const translation = {
       settings: 'Segment settings',
       add: 'Add new segment',
       archive: 'Archive',
+      unarchive: 'Unarchive',
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
       sync: 'Sync',

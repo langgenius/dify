@@ -118,6 +118,10 @@ export const archiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ dataset
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/archive`) as Promise<CommonResponse>
 }
 
+export const unArchiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return patch(`/datasets/${datasetId}/documents/${documentId}/status/un_archive`) as Promise<CommonResponse>
+}
+
 export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/enable`) as Promise<CommonResponse>
 }
