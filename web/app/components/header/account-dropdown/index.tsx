@@ -23,7 +23,7 @@ export default function AppSelector() {
     rounded-lg font-normal hover:bg-gray-50 cursor-pointer
   `
   const router = useRouter()
-  const [settingVisible, setSettingVisible] = useState(false)
+  const [settingVisible, setSettingVisible] = useState(true)
   const [aboutVisible, setAboutVisible] = useState(false)
 
   const { locale } = useContext(I18n)

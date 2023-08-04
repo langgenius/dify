@@ -220,12 +220,6 @@ const translation = {
     models: 'Models',
     showMoreModelProvider: 'Show more model provider',
     card: {
-      openai: {
-        desc: 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
-      },
-      anthropic: {
-        desc: 'Anthropic’s powerful models, such as Claude 2 and Claude Instant.',
-      },
       quota: 'QUOTA',
       onTrial: 'On Trial',
       paid: 'Paid',
