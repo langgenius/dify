@@ -1,4 +1,4 @@
-FROM langgenius/base:1.0.1-bullseye-slim
+FROM node:18-alpine
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -12,6 +12,8 @@ EXPOSE 3000
 WORKDIR /app/web
 
 COPY package.json /app/web/package.json
+
+RUN npm install pm2 -g
 
 RUN npm install --only=prod
 
