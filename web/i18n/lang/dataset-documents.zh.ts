@@ -319,6 +319,7 @@ const translation = {
     contentEmpty: '内容不能为空',
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
+    delete: '删除这个分段？',
   },
 }
 

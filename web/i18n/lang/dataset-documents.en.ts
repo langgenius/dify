@@ -320,6 +320,7 @@ const translation = {
     contentEmpty: 'Content can not be empty',
     newTextSegment: 'New Text Segment',
     newQaSegment: 'New Q&A Segment',
+    delete: 'Delete this segment ?',
   },
 }
 

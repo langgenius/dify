@@ -168,6 +168,10 @@ export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string },
   return post(`/datasets/${datasetId}/documents/${documentId}/segment`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
 }
 
+export const deleteSegment: Fetcher<CommonResponse, { datasetId: string; documentId: string; segmentId: string }> = ({ datasetId, documentId, segmentId }) => {
+  return del(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`) as Promise<CommonResponse>
+}
+
 // hit testing
 export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string }> = ({ datasetId, queryText }) => {
   return post(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText } }) as Promise<HitTestingResponse>
