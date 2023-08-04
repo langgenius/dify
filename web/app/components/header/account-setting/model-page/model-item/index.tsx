@@ -1,8 +1,10 @@
+import { useState } from 'react'
 import type { FC, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '../../../indicator'
 import Operation from './Operation'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm/common'
 
 type ModelItemProps = {
   provider: { key: string; type: string; icon: ReactElement }
@@ -14,6 +16,7 @@ const ModelItem: FC<ModelItemProps> = ({
   onOpenModal,
 }) => {
   const { t } = useTranslation()
+  const [confirmShow, setConfirmShow] = useState(false)
 
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
@@ -33,7 +36,7 @@ const ModelItem: FC<ModelItemProps> = ({
           >
             {t('common.operation.edit')}
           </Button>
-          <Operation />
+          <Operation onOperate={() => setConfirmShow(true)} />
         </div>
       </div>
       <div className='px-3 pb-3'>
@@ -53,7 +56,7 @@ const ModelItem: FC<ModelItemProps> = ({
             >
               {t('common.operation.edit')}
             </Button>
-            <Operation />
+            <Operation onOperate={() => setConfirmShow(true)} />
           </div>
         </div>
         <div className='flex mb-1 px-3 py-2 bg-white rounded-lg shadow-xs last:mb-0'>
@@ -72,10 +75,16 @@ const ModelItem: FC<ModelItemProps> = ({
             >
               {t('common.operation.edit')}
             </Button>
-            <Operation />
+            <Operation onOperate={() => setConfirmShow(true)} />
           </div>
         </div>
       </div>
+      <Confirm
+        isShow={confirmShow}
+        onCancel={() => setConfirmShow(false)}
+        title='xxxx-xxx'
+        desc='xxxxx'
+      />
     </div>
   )
 }

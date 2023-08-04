@@ -30,7 +30,7 @@ type IAccountSettingProps = {
 }
 export default function AccountSetting({
   onCancel,
-  activeTab = 'provider',
+  activeTab = 'account',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
