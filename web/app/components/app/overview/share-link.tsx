@@ -6,9 +6,9 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import copy from 'copy-to-clipboard'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 
 import './style.css'
 
@@ -24,7 +24,6 @@ const ShareLinkModal: FC<IShareLinkProps> = ({
   onClose,
   onGenerateCode,
 }) => {
-  const [_, copy] = useCopyToClipboard()
   const [genLoading, setGenLoading] = useState(false)
   const { t } = useTranslation()
   return <Modal

@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import copy from 'copy-to-clipboard'
 import style from './style.module.css'
 import Modal from '@/app/components/base/modal'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
@@ -52,7 +52,6 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
   const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false })
-  const [_, copy] = useCopyToClipboard()
 
   const { langeniusVersionInfo } = useAppContext()
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
