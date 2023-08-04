@@ -11,7 +11,7 @@ on:
 jobs:
   build-and-push:
     runs-on:
-      labels: windows-latest
+      labels: ubuntu-latest
     if: github.event.pull_request.draft == false
     steps:
     - name: Set up QEMU
