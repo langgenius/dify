@@ -27,6 +27,7 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { IS_CE_EDITION } from '@/config'
 
 type Page = DataSourceNotionPage & { workspace_id: string }
 
@@ -572,7 +573,7 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {indexType === IndexingType.QUALIFIED && (
+            {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
               <div className='flex justify-between items-center mt-3 px-5 py-4 rounded-xl bg-gray-50 border border-gray-100'>
                 <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
                   <MessageChatSquare className='w-4 h-4' />

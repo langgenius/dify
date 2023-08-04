@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import useSWR, { useSWRConfig } from 'swr'
 import { useContext } from 'use-context-selector'
+import copy from 'copy-to-clipboard'
 import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
@@ -16,7 +17,6 @@ import type { CreateApiKeyResponse } from '@/models/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 import I18n from '@/context/i18n'
 
 type ISecretKeyModalProps = {
@@ -39,7 +39,6 @@ const SecretKeyModal = ({
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
 
   const [delKeyID, setDelKeyId] = useState('')
-  const [_, copy] = useCopyToClipboard()
 
   const { locale } = useContext(I18n)
 
