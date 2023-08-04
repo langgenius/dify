@@ -2,9 +2,9 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
+import copy from 'copy-to-clipboard'
 import Tooltip from '../tooltip'
 import copyStyle from './style.module.css'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 
 type Props = {
   content: string
@@ -16,7 +16,6 @@ const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
 const CopyFeedback = ({ content, selectorId, className }: Props) => {
   const { t } = useTranslation()
-  const [_, copy] = useCopyToClipboard()
   const [isCopied, setIsCopied] = useState<boolean>(false)
 
   const onClickCopy = debounce(() => {
