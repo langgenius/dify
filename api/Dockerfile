@@ -18,8 +18,6 @@ WORKDIR /app/api
 RUN apt-get update && \
     apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
 
-RUN pip3 install gunicorn
-
 COPY requirements.txt /app/api/requirements.txt
 
 RUN pip install -r requirements.txt
