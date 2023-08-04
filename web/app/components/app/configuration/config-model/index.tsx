@@ -15,6 +15,11 @@ import { MODEL_LIST, TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { formatNumber } from '@/utils/format'
+import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
+import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
+import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
+import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+
 export type IConifgModelProps = {
   mode: string
   modelId: string
@@ -177,6 +182,16 @@ const ConifgModel: FC<IConifgModelProps> = ({
   const ableStyle = 'bg-indigo-25 border-[#2A87F5] cursor-pointer'
   const diabledStyle = 'bg-[#FFFCF5] border-[#F79009]'
 
+  const getToneIcon = (toneId: number) => {
+    const className = 'w-[14px] h-[14px]'
+    const res = ({
+      1: <Brush01 className={className}/>,
+      2: <Scales02 className={className} />,
+      3: <Target04 className={className} />,
+      4: <Sliders02 className={className} />,
+    })[toneId]
+    return res
+  }
   useEffect(() => {
     const max = params[4].max
     if (currModel?.provider !== ProviderType.anthropic && completionParams.max_tokens > max * 2 / 3)
@@ -242,11 +257,29 @@ const ConifgModel: FC<IConifgModelProps> = ({
               <Radio.Group value={toneId} onChange={handleToneChange}>
                 <>
                   {TONE_LIST.slice(0, 3).map(tone => (
-                    <Radio key={tone.id} value={tone.id} className="grow !px-0 !justify-center">{t(`common.model.tone.${tone.name}`) as string}</Radio>
+                    <Radio
+                      key={tone.id}
+                      value={tone.id}
+                      className="grow !px-0 !justify-center "
+                      labelClassName='flex items-center space-x-2 text-[#667085]'
+                    >
+                      <>
+                        {getToneIcon(tone.id)}
+                        <div>{t(`common.model.tone.${tone.name}`) as string}</div>
+                      </>
+                    </Radio>
                   ))}
                 </>
                 <div className="ml-[2px] mr-[3px] h-5 border-r border-gray-200"></div>
-                <Radio value={TONE_LIST[3].id}>{t(`common.model.tone.${TONE_LIST[3].name}`) as string}</Radio>
+                <Radio
+                  value={TONE_LIST[3].id}
+                  labelClassName='flex items-center space-x-2 text-[#667085]'
+                >
+                  <>
+                    {getToneIcon(TONE_LIST[3].id)}
+                    <div>{t(`common.model.tone.${TONE_LIST[3].name}`) as string}</div>
+                  </>
+                </Radio>
               </Radio.Group>
             </div>
 

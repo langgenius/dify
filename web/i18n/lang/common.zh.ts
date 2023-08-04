@@ -23,6 +23,7 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    setup: '设置',
   },
   placeholder: {
     input: '请输入',
@@ -200,6 +201,45 @@ const translation = {
     encrypted: {
       front: '密钥将使用 ',
       back: ' 技术进行加密和存储。',
+    },
+  },
+  modelProvider: {
+    selectModel: 'Select your model',
+    setupModelFirst: 'Please set up your model first',
+    systemReasoningModel: {
+      key: 'System Reasoning Model',
+      tip: 'System Reasoning Model',
+    },
+    embeddingModel: {
+      key: 'Embedding Model',
+      tip: 'Embedding Model',
+    },
+    quota: 'Quota',
+    searchModel: 'Search model',
+    noModelFound: 'No model found for {{model}}',
+    models: 'Models',
+    showMoreModelProvider: 'Show more model provider',
+    card: {
+      openai: {
+        desc: 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
+      },
+      anthropic: {
+        desc: 'Anthropic’s powerful models, such as Claude 2 and Claude Instant.',
+      },
+      quota: 'QUOTA',
+      onTrial: 'On Trial',
+      paid: 'Paid',
+      callTimes: 'Call times',
+      tokens: 'Tokens',
+      buyQuota: 'Buy Quota',
+      priorityUse: 'Priority use',
+      removeKey: 'Remove API Key',
+    },
+    addApiKey: 'Add your API key',
+    invalidApiKey: 'Invalid API key',
+    encrypted: {
+      front: 'Your API KEY will be encrypted and stored using',
+      back: ' technology.',
     },
   },
   dataSource: {
