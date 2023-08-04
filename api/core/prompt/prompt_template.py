@@ -14,7 +14,6 @@ class JinjaPromptTemplate(PromptTemplate):
     def from_template(cls, template: str, **kwargs: Any) -> PromptTemplate:
         """Load a prompt template from a template."""
         env = Environment()
-        template = template.replace("{{}}", "{}")
         ast = env.parse(template)
         input_variables = meta.find_undeclared_variables(ast)
 

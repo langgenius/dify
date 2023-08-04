@@ -1,7 +1,7 @@
 """add_qa_model_support
 
 Revision ID: 8d2d099ceb74
-Revises: a5b56fb053ef
+Revises: 7ce5a52e4eee
 Create Date: 2023-07-18 15:25:15.293438
 
 """

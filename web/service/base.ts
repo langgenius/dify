@@ -135,6 +135,14 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
       }
       if (!hasError)
         read()
+    }).catch((e: any) => {
+      onData('', false, {
+        conversationId: undefined,
+        messageId: '',
+        errorMessage: `${e}`,
+      })
+      hasError = true
+      onCompleted && onCompleted(true)
     })
   }
   read()
