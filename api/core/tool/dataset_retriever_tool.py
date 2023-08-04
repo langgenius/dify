@@ -109,7 +109,11 @@ class DatasetRetrieverTool(BaseTool):
                                                     ).all()
 
             if segments:
-                for segment in segments:
+                index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
+                sorted_segments = sorted(segments,
+                                         key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
+                                                                                           float('inf')))
+                for segment in sorted_segments:
                     if segment.answer:
                         document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer}')
                     else:
