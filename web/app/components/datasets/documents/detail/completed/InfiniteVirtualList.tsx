@@ -13,6 +13,7 @@ type IInfiniteVirtualListProps = {
   loadNextPage: () => Promise<any> // Callback function responsible for loading the next page of items.
   onClick: (detail: SegmentDetailModel) => void
   onChangeSwitch: (segId: string, enabled: boolean) => Promise<void>
+  onDelete: (segId: string) => Promise<void>
 }
 
 const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
@@ -22,6 +23,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
   loadNextPage,
   onClick: onClickCard,
   onChangeSwitch,
+  onDelete,
 }) => {
   // If there are more items to be loaded then add an extra row to hold a loading indicator.
   const itemCount = hasNextPage ? items.length + 1 : items.length
@@ -52,6 +54,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
           detail={segItem}
           onClick={() => onClickCard(segItem)}
           onChangeSwitch={onChangeSwitch}
+          onDelete={onDelete}
           loading={false}
         />
       ))

@@ -22,7 +22,7 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -86,7 +86,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -116,6 +116,9 @@ export const OperationAction: FC<{
     switch (operationName) {
       case 'archive':
         opApi = archiveDocument
+        break
+      case 'un_archive':
+        opApi = unArchiveDocument
         break
       case 'enable':
         opApi = enableDocument
@@ -211,6 +214,12 @@ export const OperationAction: FC<{
             <ArchiveIcon />
             <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
           </div>}
+          {archived && (
+            <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
+              <ArchiveIcon />
+              <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
+            </div>
+          )}
           <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
             <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
             <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('datasetDocuments.list.action.delete')}</span>

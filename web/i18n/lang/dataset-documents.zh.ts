@@ -19,6 +19,7 @@ const translation = {
       settings: '分段设置',
       add: '添加新分段',
       archive: '归档',
+      unarchive: '撤销归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
       sync: '同步',
@@ -318,6 +319,7 @@ const translation = {
     contentEmpty: '内容不能为空',
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
+    delete: '删除这个分段？',
   },
 }
 
