@@ -2,6 +2,7 @@ FROM node:18.17.0-alpine
 
 LABEL maintainer="takatost@gmail.com"
 
+ENV NODE_ENV=production
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
 ENV CONSOLE_API_URL http://127.0.0.1:5001
