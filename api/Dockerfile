@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.10-alpine3.18
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -15,8 +15,7 @@ EXPOSE 5001
 
 WORKDIR /app/api
 
-RUN apt-get update && \
-    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
+RUN apk add --no-cache bash curl wget vim build-base python3-dev libffi-dev
 
 COPY requirements.txt /app/api/requirements.txt
 
