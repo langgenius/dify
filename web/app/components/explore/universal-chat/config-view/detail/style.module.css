@@ -1,5 +1,5 @@
 .btn {
-  background: url(~@/app/components/datasets/documents/assets/action.svg) center center no-repeat transparent;
+  background: url(~@/assets/action.svg) center center no-repeat transparent;
   background-size: 16px 16px;
   /* mask-image: ; */
 }

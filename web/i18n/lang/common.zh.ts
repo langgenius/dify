@@ -23,6 +23,8 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    delete: '删除',
+    settings: '设置',
   },
   placeholder: {
     input: '请输入',
@@ -32,6 +34,7 @@ const translation = {
     char: '个字符',
   },
   actionMsg: {
+    noModification: '暂无修改',
     modifiedSuccessfully: '修改成功',
     modificationFailed: '修改失败',
     copySuccessfully: '复制成功',
