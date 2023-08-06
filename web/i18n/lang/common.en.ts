@@ -25,6 +25,7 @@ const translation = {
     download: 'Download',
     delete: 'Delete',
     settings: 'Settings',
+    setup: 'Setup',
   },
   placeholder: {
     input: 'Please enter',
@@ -200,6 +201,43 @@ const translation = {
       notEnabled: 'Not enabled',
       keyFrom: 'Get your API key from Anthropic',
     },
+    encrypted: {
+      front: 'Your API KEY will be encrypted and stored using',
+      back: ' technology.',
+    },
+  },
+  modelProvider: {
+    selectModel: 'Select your model',
+    setupModelFirst: 'Please set up your model first',
+    systemReasoningModel: {
+      key: 'System Reasoning Model',
+      tip: 'System Reasoning Model',
+    },
+    embeddingModel: {
+      key: 'Embedding Model',
+      tip: 'Embedding Model',
+    },
+    speechToTextModel: {
+      key: 'Speech-to-Text Model',
+      tip: 'Speech-to-Text Model',
+    },
+    quota: 'Quota',
+    searchModel: 'Search model',
+    noModelFound: 'No model found for {{model}}',
+    models: 'Models',
+    showMoreModelProvider: 'Show more model provider',
+    card: {
+      quota: 'QUOTA',
+      onTrial: 'On Trial',
+      paid: 'Paid',
+      callTimes: 'Call times',
+      tokens: 'Tokens',
+      buyQuota: 'Buy Quota',
+      priorityUse: 'Priority use',
+      removeKey: 'Remove API Key',
+    },
+    addApiKey: 'Add your API key',
+    invalidApiKey: 'Invalid API key',
     encrypted: {
       front: 'Your API KEY will be encrypted and stored using',
       back: ' technology.',

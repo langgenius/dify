@@ -1,5 +1,6 @@
 .modal {
-  max-width: 720px !important;
+  max-width: 1024px !important;
+  border-radius: 12px !important;
   padding: 0 !important;
   overflow-y: auto;
 }

@@ -297,18 +297,12 @@ class AppNameApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     def post(self, app_id):
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
-            raise Forbidden()
+        app_id = str(app_id)
+        app = _get_app(app_id, current_user.current_tenant_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
         args = parser.parse_args()
-
-        app = db.get_or_404(App, str(app_id))
-        if app.tenant_id != flask.session.get('tenant_id'):
-            raise Unauthorized()
 
         app.name = args.get('name')
         app.updated_at = datetime.utcnow()
@@ -322,19 +316,13 @@ class AppIconApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     def post(self, app_id):
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
-            raise Forbidden()
+        app_id = str(app_id)
+        app = _get_app(app_id, current_user.current_tenant_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
-
-        app = db.get_or_404(App, str(app_id))
-        if app.tenant_id != flask.session.get('tenant_id'):
-            raise Unauthorized()
 
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
@@ -489,6 +477,7 @@ api.add_resource(AppTemplateApi, '/app-templates')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
 api.add_resource(AppCopy, '/apps/<uuid:app_id>/copy')
 api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
+api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
 api.add_resource(AppRateLimit, '/apps/<uuid:app_id>/rate-limit')

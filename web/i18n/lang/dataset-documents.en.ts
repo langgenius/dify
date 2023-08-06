@@ -19,6 +19,7 @@ const translation = {
       settings: 'Segment settings',
       add: 'Add new segment',
       archive: 'Archive',
+      unarchive: 'Unarchive',
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
       sync: 'Sync',
@@ -319,6 +320,7 @@ const translation = {
     contentEmpty: 'Content can not be empty',
     newTextSegment: 'New Text Segment',
     newQaSegment: 'New Q&A Segment',
+    delete: 'Delete this segment ?',
   },
 }
 

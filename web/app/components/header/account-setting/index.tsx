@@ -8,9 +8,9 @@ import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
-import ProviderPage from './provider-page'
 import PluginPage from './plugin-page'
 import DataSourcePage from './data-source-page'
+import ModelPage from './model-page'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 import { Database03, PuzzlePiece01 } from '@/app/components/base/icons/src/vender/line/development'
@@ -143,17 +143,17 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div ref={scrollRef} className='relative w-[520px] h-[580px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900', scrolled && scrolledClassName)}>
+        <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
+          <div className={cn('sticky top-0 px-8 py-4 flex items-center justify-between h-14 bg-white text-base font-medium text-gray-900', scrolled && scrolledClassName)}>
             {[...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)?.name}
             <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
           </div>
-          <div className='px-6'>
+          <div className='px-8'>
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
-            {activeMenu === 'provider' && <ProviderPage />}
+            {activeMenu === 'provider' && <ModelPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
             {activeMenu === 'plugin' && <PluginPage />}
           </div>

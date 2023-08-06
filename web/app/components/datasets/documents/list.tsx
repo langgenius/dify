@@ -22,7 +22,7 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
@@ -86,7 +86,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -117,6 +117,9 @@ export const OperationAction: FC<{
       case 'archive':
         opApi = archiveDocument
         break
+      case 'un_archive':
+        opApi = unArchiveDocument
+        break
       case 'enable':
         opApi = enableDocument
         break
@@ -138,74 +141,10 @@ export const OperationAction: FC<{
     onUpdate(operationName)
   }
 
-  const Operations = (props: any) => <div className='w-full py-1'>
-    {!isListScene && <>
-      <div className='flex justify-between items-center mx-4 pt-2'>
-        <span className={cn(s.actionName, 'font-medium')}>
-          {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
-        </span>
-        <Tooltip
-          selector={`detail-switch-${id}`}
-          content={t('datasetDocuments.list.action.enableWarning') as string}
-          className='!font-semibold'
-          disabled={!archived}
-        >
-          <div>
-            <Switch
-              defaultValue={archived ? false : enabled}
-              onChange={v => !archived && onOperate(v ? 'enable' : 'disable')}
-              disabled={archived}
-              size='md'
-            />
-          </div>
-        </Tooltip>
-      </div>
-      <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
-        {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}
-      </div>
-      <Divider />
-    </>}
-    {!archived && (
-      <>
-        <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
-          <SettingsIcon />
-          <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
-        </div>
-        {
-          !isListScene && (
-            <div className={s.actionItem} onClick={showNewSegmentModal}>
-              <FilePlus02 className='w-4 h-4 text-gray-500' />
-              <span className={s.actionName}>{t('datasetDocuments.list.action.add')}</span>
-            </div>
-          )
-        }
-        {
-          data_source_type === 'notion_import' && (
-            <div className={s.actionItem} onClick={() => onOperate('sync')}>
-              <SyncIcon />
-              <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
-            </div>
-          )
-        }
-        <Divider className='my-1' />
-      </>
-    )}
-    {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
-      <ArchiveIcon />
-      <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
-    </div>}
-    <div
-      className={cn(s.actionItem, s.deleteActionItem, 'group')}
-      onClick={() => {
-        setShowModal(true)
-        props?.onClose()
-      }}>
-      <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
-      <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('datasetDocuments.list.action.delete')}</span>
-    </div>
-  </div>
-
-  return <div className='flex items-center' onClick={e => e.stopPropagation()}>
+  return <div
+    className='flex items-center'
+    onClick={e => e.stopPropagation()}
+  >
     {isListScene && <>
       {archived
         ? <Tooltip selector={`list-switch-${id}`} content={t('datasetDocuments.list.action.enableWarning') as string} className='!font-semibold'>
@@ -218,7 +157,75 @@ export const OperationAction: FC<{
       <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />
     </>}
     <Popover
-      htmlContent={<Operations />}
+      htmlContent={
+        <div className='w-full py-1'>
+          {!isListScene && <>
+            <div className='flex justify-between items-center mx-4 pt-2'>
+              <span className={cn(s.actionName, 'font-medium')}>
+                {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
+              </span>
+              <Tooltip
+                selector={`detail-switch-${id}`}
+                content={t('datasetDocuments.list.action.enableWarning') as string}
+                className='!font-semibold'
+                disabled={!archived}
+              >
+                <div>
+                  <Switch
+                    defaultValue={archived ? false : enabled}
+                    onChange={v => !archived && onOperate(v ? 'enable' : 'disable')}
+                    disabled={archived}
+                    size='md'
+                  />
+                </div>
+              </Tooltip>
+            </div>
+            <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
+              {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}
+            </div>
+            <Divider />
+          </>}
+          {!archived && (
+            <>
+              <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
+                <SettingsIcon />
+                <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
+              </div>
+              {
+                !isListScene && (
+                  <div className={s.actionItem} onClick={showNewSegmentModal}>
+                    <FilePlus02 className='w-4 h-4 text-gray-500' />
+                    <span className={s.actionName}>{t('datasetDocuments.list.action.add')}</span>
+                  </div>
+                )
+              }
+              {
+                data_source_type === 'notion_import' && (
+                  <div className={s.actionItem} onClick={() => onOperate('sync')}>
+                    <SyncIcon />
+                    <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                  </div>
+                )
+              }
+              <Divider className='my-1' />
+            </>
+          )}
+          {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
+            <ArchiveIcon />
+            <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
+          </div>}
+          {archived && (
+            <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
+              <ArchiveIcon />
+              <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
+            </div>
+          )}
+          <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
+            <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
+            <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('datasetDocuments.list.action.delete')}</span>
+          </div>
+        </div>
+      }
       trigger='click'
       position='br'
       btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
