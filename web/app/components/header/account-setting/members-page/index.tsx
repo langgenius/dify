@@ -30,7 +30,7 @@ const MembersPage = () => {
   const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
-  const [invitationLink, setInvitationLink] = useState('')
+  const [invitationLinks, setInvitationLinks] = useState<string[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
@@ -78,7 +78,7 @@ const MembersPage = () => {
                   <div className='shrink-0 w-[96px] flex items-center'>
                     {
                       (owner && account.role !== 'owner')
-                        ? <Operation member={account} onOperate={() => mutate()} />
+                        ? <Operation member={account} onOperate={mutate} />
                         : <div className='px-3 text-[13px] text-gray-700'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>
@@ -92,9 +92,9 @@ const MembersPage = () => {
         inviteModalVisible && (
           <InviteModal
             onCancel={() => setInviteModalVisible(false)}
-            onSend={(url) => {
+            onSend={(urls) => {
               setInvitedModalVisible(true)
-              setInvitationLink(url)
+              setInvitationLinks(urls)
               mutate()
             }}
           />
@@ -103,7 +103,7 @@ const MembersPage = () => {
       {
         invitedModalVisible && (
           <InvitedModal
-            invitationLink={invitationLink}
+            invitationLinks={invitationLinks}
             onCancel={() => setInvitedModalVisible(false)}
           />
         )

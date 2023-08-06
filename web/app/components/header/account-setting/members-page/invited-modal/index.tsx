@@ -8,11 +8,11 @@ import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
 
 type IInvitedModalProps = {
-  invitationLink: string
+  invitationLinks: string[]
   onCancel: () => void
 }
 const InvitedModal = ({
-  invitationLink,
+  invitationLinks,
   onCancel,
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
@@ -39,7 +39,11 @@ const InvitedModal = ({
             <div className='mb-5 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
             <div className='mb-9'>
               <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
-              <InvitationLink value={invitationLink} />
+              {
+                invitationLinks?.map((invitationLink, index) => (
+                  <InvitationLink key={index} value={invitationLink} />
+                ))
+              }
             </div>
           </>
         )}

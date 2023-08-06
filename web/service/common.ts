@@ -70,8 +70,8 @@ export const fetchAccountIntegrates: Fetcher<{ data: AccountIntegrate[] | null }
   return get(url, { params }) as Promise<{ data: AccountIntegrate[] | null }>
 }
 
-export const inviteMember: Fetcher<CommonResponse & { account: Member; invite_url: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<CommonResponse & { account: Member; invite_url: string }>
+export const inviteMember: Fetcher<CommonResponse & { account: Member; invite_urls: string[] }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & { account: Member; invite_urls: string[] }>
 }
 
 export const updateMemberRole: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
