@@ -176,7 +176,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.3.12
+    image: khiemnt/dify-web:latest
     restart: always
     environment:
       EDITION: SELF_HOSTED

@@ -29,7 +29,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v4
       with:
-        images: langgenius/dify-web
+        images: khiemnt/dify-web
         tags: |
           type=raw,value=latest,enable={{is_default_branch}}
           type=ref,event=branch
