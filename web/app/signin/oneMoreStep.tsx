@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip/index'
 
@@ -12,6 +13,7 @@ import { timezones } from '@/utils/timezone'
 import { languageMaps, languages } from '@/utils/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import I18n from '@/context/i18n'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -45,6 +47,7 @@ const reducer = (state: IState, action: any) => {
 const OneMoreStep = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formState: 'initial',
@@ -158,7 +161,7 @@ const OneMoreStep = () => {
             <Link
               className='text-primary-600'
               target={'_blank'}
-              href='https://docs.dify.ai/community/open-source'
+              href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
             >{t('login.license.link')}</Link>
           </div>
         </div>
