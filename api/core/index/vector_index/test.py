@@ -17,7 +17,7 @@ from core.data_loader.loader.excel import ExcelLoader
 from core.generator.llm_generator import LLMGenerator
 from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
 
-OPENAI_API_KEY = "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"  # example: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+OPENAI_API_KEY = ""  # example: "sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 ## Set up environment variables
 environ["OPENAI_API_KEY"] = OPENAI_API_KEY
 environ["MINIMAX_GROUP_ID"] = "1686736670459291"
