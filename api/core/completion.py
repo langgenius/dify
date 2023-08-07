@@ -19,8 +19,6 @@ from core.conversation_message_task import ConversationMessageTask, Conversation
 from core.llm.error import LLMBadRequestError
 from core.llm.fake import FakeLLM
 from core.llm.llm_builder import LLMBuilder
-from core.llm.streamable_chat_open_ai import StreamableChatOpenAI
-from core.llm.streamable_open_ai import StreamableOpenAI
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
 from core.orchestrator_rule_parser import OrchestratorRuleParser
@@ -300,7 +298,7 @@ And answer according to the language of the user's question.
                                      conversation: Conversation,
                                      **kwargs) -> ReadOnlyConversationTokenDBBufferSharedMemory:
         # only for calc token in memory
-        memory_llm = LLMBuilder.to_llm_from_model(
+        memory_model_instance = LLMBuilder.to_llm_from_model(
             tenant_id=tenant_id,
             model=app_model_config.model_dict
         )
@@ -308,7 +306,7 @@ And answer according to the language of the user's question.
         # use llm config from conversation
         memory = ReadOnlyConversationTokenDBBufferSharedMemory(
             conversation=conversation,
-            llm=memory_llm,
+            model_instance=memory_model_instance,
             max_token_limit=kwargs.get("max_token_limit", 2048),
             memory_key=kwargs.get("memory_key", "chat_history"),
             return_messages=kwargs.get("return_messages", True),

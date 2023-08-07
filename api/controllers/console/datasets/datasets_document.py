@@ -384,7 +384,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 indexing_runner = IndexingRunner()
 
-                response = indexing_runner.file_indexing_estimate([file], data_process_rule_dict)
+                response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, [file], data_process_rule_dict)
 
         return response
 
@@ -445,11 +445,12 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise NotFound("File not found.")
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.file_indexing_estimate(file_details, data_process_rule_dict)
+            response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details, data_process_rule_dict)
         elif dataset.data_source_type:
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.notion_indexing_estimate(info_list,
+            response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
+                                                                info_list,
                                                                 data_process_rule_dict)
         else:
             raise ValueError('Data source type not support')

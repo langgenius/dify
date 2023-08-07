@@ -1,0 +1,15 @@
+{
+    "support_provider_types": [
+        "system",
+        "custom"
+    ],
+    "system_config": {
+        "supported_quota_types": [
+            "trail",
+            "paid"
+        ],
+        "quota_unit": "tokens",
+        "quota_limit": 1000000000
+    },
+    "model_flexibility": "fixed"
+}

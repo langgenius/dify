@@ -113,7 +113,7 @@ class ProviderModel(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
-class TenantDefaultModels(db.Model):
+class TenantDefaultModel(db.Model):
     """
     Provider model representing the API tenant_default_models and their configurations.
     """
@@ -128,7 +128,6 @@ class TenantDefaultModels(db.Model):
     provider_name = db.Column(db.String(40), nullable=False)
     model_name = db.Column(db.String(40), nullable=False)
     model_type = db.Column(db.String(40), nullable=False)
-    updated_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 

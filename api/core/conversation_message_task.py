@@ -8,7 +8,8 @@ from core.callback_handler.entity.llm_message import LLMMessage
 from core.callback_handler.entity.chain_result import ChainResult
 from core.constant import llm_constant
 from core.llm.llm_builder import LLMBuilder
-from core.llm.provider.llm_provider_service import LLMProviderService
+from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.message import to_prompt_messages
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from events.message_event import message_was_created
@@ -41,6 +42,7 @@ class ConversationMessageTask:
         self.message = None
 
         self.model_dict = self.app_model_config.model_dict
+        self.provider_name = self.model_dict.get('provider')
         self.model_name = self.model_dict.get('name')
         self.mode = app.mode
 
@@ -56,9 +58,6 @@ class ConversationMessageTask:
         )
 
     def init(self):
-        provider_name = LLMBuilder.get_default_provider(self.app.tenant_id, self.model_name)
-        self.model_dict['provider'] = provider_name
-
         override_model_configs = None
         if self.is_override:
             override_model_configs = {
@@ -89,15 +88,19 @@ class ConversationMessageTask:
             if self.app_model_config.pre_prompt:
                 system_message = PromptBuilder.to_system_message(self.app_model_config.pre_prompt, self.inputs)
                 system_instruction = system_message.content
-                llm = LLMBuilder.to_llm(self.tenant_id, self.model_name)
-                system_instruction_tokens = llm.get_num_tokens_from_messages([system_message])
+                model_instance = ModelFactory.get_text_generation_model(
+                    tenant_id=self.tenant_id,
+                    model_provider_name=self.provider_name,
+                    model_name=self.model_name
+                )
+                system_instruction_tokens = model_instance.get_num_tokens(to_prompt_messages([system_message]))
 
         if not self.conversation:
             self.is_new_conversation = True
             self.conversation = Conversation(
                 app_id=self.app_model_config.app_id,
                 app_model_config_id=self.app_model_config.id,
-                model_provider=self.model_dict.get('provider'),
+                model_provider=self.provider_name,
                 model_id=self.model_name,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=self.mode,
@@ -117,7 +120,7 @@ class ConversationMessageTask:
 
         self.message = Message(
             app_id=self.app_model_config.app_id,
-            model_provider=self.model_dict.get('provider'),
+            model_provider=self.provider_name,
             model_id=self.model_name,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=self.conversation.id,
