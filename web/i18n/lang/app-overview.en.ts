@@ -15,6 +15,7 @@ const translation = {
         entry: 'Share',
         explanation: 'Share the following URL to invite more people to access the application.',
         shareUrl: 'Share URL',
+        linkCopied: 'Copied',
         copyLink: 'Copy Link',
         regenerate: 'Regenerate',
       },
