@@ -110,7 +110,7 @@ function AppCard({
 
   return (
     <div
-      className={`flex flex-col w-full shadow-sm border-[0.5px] rounded-lg border-gray-200 ${className ?? ''}`}
+      className={`flex flex-col w-full shadow-xs border-[0.5px] rounded-lg border-gray-200 ${className ?? ''}`}
     >
       <div className={`px-6 py-4 ${customBgColor ?? bgColor} rounded-lg`}>
         <div className="mb-2.5 flex flex-row items-start justify-between">

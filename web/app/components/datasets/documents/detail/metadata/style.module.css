@@ -6,13 +6,13 @@
 }
 .iconWrapper {
   @apply box-border cursor-pointer h-8 w-8 inline-flex items-center justify-center;
-  @apply border-[#EAECF5] border rounded-lg hover:border-primary-200 hover:bg-primary-25 hover:shadow-[0px_4px_8px_-2px_rgba(16,24,40,0.1),0px_2px_4px_-2px_rgba(16,24,40,0.06)];
+  @apply border-[#EAECF5] border rounded-lg hover:border-primary-200 hover:bg-primary-25 hover:shadow-md;
 }
 .icon {
   @apply h-4 w-4 stroke-current stroke-[2px] text-gray-700 group-hover:stroke-primary-600;
 }
 .iconCheck {
-  @apply border-primary-400 border-[1.5px] bg-primary-25 shadow-[0px_1px_3px_rgba(16,24,40,0.1),0px_1px_2px_rgba(16,24,40,0.06)] !important;
+  @apply border-primary-400 border-[1.5px] bg-primary-25 shadow-sm !important;
 }
 .commonIcon {
   @apply w-4 h-4 inline-block align-middle bg-gray-700 hover:bg-primary-600;
