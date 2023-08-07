@@ -108,7 +108,7 @@ const ModelPage = () => {
   }
 
   return (
-    <div className='pt-1'>
+    <div className='pt-1 -mt-2'>
       <div className='grid grid-cols-3 gap-4 mb-5'>
         <div className='w-full'>
           <div className={titleClassName}>
