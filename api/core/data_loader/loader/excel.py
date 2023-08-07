@@ -38,7 +38,7 @@ class ExcelLoader(BaseLoader):
                 else:
                     row_dict = dict(zip(keys, list(map(str, row))))
                     row_dict = {k: v for k, v in row_dict.items() if v}
-                    item = ''.join(f'{k}:{v}\n' for k, v in row_dict.items())
+                    item = ''.join(f'{k}:{v};' for k, v in row_dict.items())
                     document = Document(page_content=item, metadata={'source': self._file_path})
                     data.append(document)
 
