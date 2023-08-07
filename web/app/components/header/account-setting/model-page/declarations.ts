@@ -1,3 +1,5 @@
+import type { ValidateCallback } from '../key-validator/declarations'
+
 export type FormValue = Record<string, string>
 export type I18NText = {
   'en': string
@@ -18,6 +20,7 @@ export type Field = {
   options?: Option[]
   placeholder?: I18NText
   help?: I18NText
+  validate?: ValidateCallback
 }
 
 export type Config = {

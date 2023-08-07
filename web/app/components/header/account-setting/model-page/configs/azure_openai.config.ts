@@ -62,6 +62,14 @@ export default {
         'en': 'Enter your API Endpoint, eg: https://example.com/xxx',
         'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx',
       },
+      validate: {
+        before: () => {
+          return true
+        },
+        run: () => {
+          return Promise.resolve({ status: 'error', message: 'invalid' })
+        },
+      },
     },
     {
       visible: () => true,

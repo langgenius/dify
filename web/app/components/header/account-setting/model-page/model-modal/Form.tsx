@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue } from '../declarations'
+import { Input, InputWithStatus } from './Input'
 import I18n from '@/context/i18n'
 import Switch from '@/app/components/base/switch'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
@@ -44,9 +45,17 @@ const Form: FC<FormProps> = ({
       return (
         <div key={field.key} className='py-3'>
           <div className={nameClassName}>{field.label[locale]}</div>
-          <input
-            placeholder={field?.placeholder?.[locale]}
-          />
+          {
+            field.validate
+              ? (
+                <InputWithStatus
+                  field={field}
+                  formValue={value || {}}
+                  onChange={v => setValue(v)}
+                />
+              )
+              : <Input />
+          }
         </div>
       )
     }
