@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import cn from 'classnames'
 import useSWR from 'swr'
 import dayjs from 'dayjs'
@@ -8,17 +8,21 @@ import relativeTime from 'dayjs/plugin/relativeTime'
 import { useContext } from 'use-context-selector'
 import { UserPlusIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import { property } from 'lodash-es'
 import s from './index.module.css'
 import InviteModal from './invite-modal'
 import InvitedModal from './invited-modal'
 import Operation from './operation'
+import RenameWorkspaceModal from './rename-modal'
 import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 import { useWorkspacesContext } from '@/context/workspace-context'
+import type { IWorkspace } from '@/models/common'
 
 dayjs.extend(relativeTime)
+
 const MembersPage = () => {
   const { t } = useTranslation()
   const RoleMap = {
@@ -30,12 +34,14 @@ const MembersPage = () => {
   const { userProfile } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
+  const [renameWorkspaceModalVisible, setRenameWorkspaceModalVisible] = useState(false)
   const [invitationLink, setInvitationLink] = useState('')
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
-  const accounts = data?.accounts || []
-  const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
-  const { workspaces } = useWorkspacesContext()
-  const currentWrokspace = workspaces.filter(item => item.current)?.[0]
+
+  const { workspaces, reloadWorkspaces } = useWorkspacesContext()
+  const owner = useMemo(() => data?.accounts?.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email, [data?.accounts, userProfile.email])
+  const currentWrokspace = useMemo<IWorkspace>(() => workspaces.filter(property('current'))[0], [workspaces])
+  const accounts = data?.accounts ?? []
 
   return (
     <>
@@ -43,16 +49,27 @@ const MembersPage = () => {
         <div className='flex items-center mb-4 p-3 bg-gray-50 rounded-2xl'>
           <div className={cn(s['logo-icon'], 'shrink-0')}></div>
           <div className='grow mx-2'>
-            <div className='text-sm font-medium text-gray-900'>{currentWrokspace?.name}</div>
+            <div className='text-sm font-medium text-gray-900'>{currentWrokspace.name}</div>
             <div className='text-xs text-gray-500'>{t('common.userProfile.workspace')}</div>
           </div>
-          <div className='
+          <div className='flex justify-between space-x-2'>
+            {
+              <div className='
+              shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
+              text-[13px] font-medium text-primary-600 bg-white
+              shadow-xs rounded-lg cursor-pointer
+                ' onClick={() => setRenameWorkspaceModalVisible(true)}>
+                {t('common.members.rename')}
+              </div>
+            }
+            <div className='
             shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
             text-[13px] font-medium text-primary-600 bg-white
             shadow-xs rounded-lg cursor-pointer
           ' onClick={() => setInviteModalVisible(true)}>
-            <UserPlusIcon className='w-4 h-4 mr-2 ' />
-            {t('common.members.invite')}
+              <UserPlusIcon className='w-4 h-4 mr-2 ' />
+              {t('common.members.invite')}
+            </div>
           </div>
         </div>
         <div>
@@ -109,6 +126,14 @@ const MembersPage = () => {
             onCancel={() => setInvitedModalVisible(false)}
           />
         )
+      }
+      {
+        renameWorkspaceModalVisible
+          && <RenameWorkspaceModal
+            onCancel={() => setRenameWorkspaceModalVisible(false)}
+            workspace={currentWrokspace}
+            onRenamed={reloadWorkspaces}
+          />
       }
     </>
   )

@@ -115,6 +115,7 @@ const translation = {
   members: {
     team: 'Team',
     invite: 'Add',
+    rename: 'Rename',
     name: 'NAME',
     lastActive: 'LAST ACTIVE',
     role: 'ROLES',
@@ -141,6 +142,10 @@ const translation = {
     disinvite: 'Cancel the invitation',
     deleteMember: 'Delete Member',
     you: '(You)',
+    workspaceName: 'Workspace Name',
+    renameWorkspace: 'Rename Workspace',
+    renamePlaceholder: 'Input A New Workspace Name',
+    workspaceNameInvalid: 'Invalid Workspace Name',
   },
   integrations: {
     connected: 'Connected',

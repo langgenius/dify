@@ -185,6 +185,22 @@ class TenantService:
         return ta
 
     @staticmethod
+    def rename_tenant(account: Account, tenant_id: str, name: str) -> Tenant:
+        """Rename tenant"""
+
+        ta = TenantAccountJoin.query.filter_by(tenant_id=tenant_id, account_id=account.id).first()
+        if ta is None or ta.role == TenantAccountJoinRole.NORMAL.value:
+            TenantNotFound("Tenant not found for the account.")
+        if ta.role == TenantAccountJoinRole.NORMAL.value:
+            raise NoPermissionError("You have no permission to rename the tenant.")
+
+        tenant = Tenant.query.filter_by(id=tenant_id).first()
+        tenant.name = name
+
+        db.session.commit()
+        return tenant
+
+    @staticmethod
     def get_join_tenants(account: Account) -> List[Tenant]:
         """Get account join tenants"""
         return db.session.query(Tenant).join(

@@ -11,7 +11,7 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.wraps import account_initialization_required
 from libs.helper import TimestampField
 from extensions.ext_database import db
-from models.account import Tenant
+from models.account import Tenant, TenantAccountJoin
 from services.account_service import TenantService
 from services.workspace_service import WorkspaceService
 
@@ -71,6 +71,20 @@ class TenantApi(Resource):
         return WorkspaceService.get_tenant_info(tenant), 200
 
 
+class TenantRenameApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def put(self, tenant_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=True, location='json')
+        args = parser.parse_args()
+
+        TenantService.rename_tenant(current_user, tenant_id, args['name'])
+
+        return {'result': 'success'}, 200
+
+
 class SwitchWorkspaceApi(Resource):
     @setup_required
     @login_required
@@ -93,5 +107,6 @@ class SwitchWorkspaceApi(Resource):
 
 api.add_resource(TenantListApi, '/workspaces')  # GET for getting all tenants
 api.add_resource(TenantApi, '/workspaces/current', endpoint='workspaces_current')  # GET for getting current tenant info
+api.add_resource(TenantRenameApi, '/workspaces/<tenant_id>/name')  # Rename tenant
 api.add_resource(TenantApi, '/info', endpoint='info')  # Deprecated
 api.add_resource(SwitchWorkspaceApi, '/workspaces/switch')  # POST for switching tenant

@@ -115,6 +115,7 @@ const translation = {
   members: {
     team: '团队',
     invite: '添加',
+    rename: '重命名',
     name: '姓名',
     lastActive: '上次活动时间',
     role: '角色',
@@ -141,6 +142,10 @@ const translation = {
     disinvite: '取消邀请',
     deleteMember: '删除成员',
     you: '（你）',
+    workspaceName: '工作空间名称',
+    renameWorkspace: '重命名工作空间',
+    renamePlaceholder: '输入新的工作空间名称',
+    workspaceNameInvalid: '工作空间名称无效',
   },
   integrations: {
     connected: '登录方式',

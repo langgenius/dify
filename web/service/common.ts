@@ -95,6 +95,10 @@ export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace 
   return post(url, { body }) as Promise<CommonResponse & { new_tenant: IWorkspace }>
 }
 
+export const renameWorkspace: Fetcher<CommonResponse & { new_name: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return put(url, { body }) as Promise<CommonResponse & { new_name: string }>
+}
+
 export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string }> = ({ url }) => {
   return get(url) as Promise<{ data: DataSourceNotion[] }>
 }
