@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import type { FC, ReactElement } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Indicator from '../../../indicator'
 import Operation from './Operation'
+import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm/common'
 
 type ModelItemProps = {
-  provider: { key: string; type: string; icon: ReactElement }
+  provider: { key: string; type: string; icon: { 'en': ReactElement; 'zh-Hans': ReactElement } }
   onOpenModal: () => void
 }
 
@@ -15,13 +17,14 @@ const ModelItem: FC<ModelItemProps> = ({
   provider,
   onOpenModal,
 }) => {
+  const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const [confirmShow, setConfirmShow] = useState(false)
 
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
       <div className='flex justify-between items-center px-4 h-14'>
-        {provider.icon}
+        {provider.icon[locale]}
         <Button
           className='!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
           onClick={onOpenModal}

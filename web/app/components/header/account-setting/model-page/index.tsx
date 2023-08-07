@@ -21,6 +21,7 @@ import {
 import {
   MinimaxText,
   TongyiText,
+  TongyiTextCn,
 } from '@/app/components/base/icons/src/image/llm'
 
 const MODEL_CARD_LIST = [
@@ -33,7 +34,7 @@ const MODEL_CARD_LIST = [
     config: config.openai,
     desc: {
       'en': 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
-      'zh-Hans': 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
+      'zh-Hans': 'OpenAI提供的模型，例如GPT-3.5-Turbo和GPT-4。',
     },
   },
   {
@@ -45,7 +46,7 @@ const MODEL_CARD_LIST = [
     config: config.anthropic,
     desc: {
       'en': 'Anthropic’s powerful models, such as Claude 2 and Claude Instant.',
-      'zh-Hans': 'Anthropic’s powerful models, such as Claude 2 and Claude Instant.',
+      'zh-Hans': 'Anthropic 的强大模型，例如 Claude 2 和 Claude Instant。',
     },
   },
 ]
@@ -54,37 +55,55 @@ const MODEL_LIST = [
   {
     key: 'azure_openai',
     type: 'add',
-    icon: <AzureOpenaiServiceText className='h-6' />,
+    icon: {
+      'en': <AzureOpenaiServiceText className='h-6' />,
+      'zh-Hans': <AzureOpenaiServiceText className='h-6' />,
+    },
     config: config.azure_openai,
   },
   {
     key: 'replicate',
     type: 'add',
-    icon: <ReplicateText className='h-6' />,
+    icon: {
+      'en': <ReplicateText className='h-6' />,
+      'zh-Hans': <ReplicateText className='h-6' />,
+    },
     config: config.replicate,
   },
   {
     key: 'huggingface_hub',
     type: 'add',
-    icon: <HuggingfaceText className='h-6' />,
+    icon: {
+      'en': <HuggingfaceText className='h-6' />,
+      'zh-Hans': <HuggingfaceText className='h-6' />,
+    },
     config: config.huggingface_hub,
   },
   {
     key: 'tongyi',
     type: 'setup',
-    icon: <TongyiText className='w-[88px] h-6' />,
+    icon: {
+      'en': <TongyiText className='w-[88px] h-6' />,
+      'zh-Hans': <TongyiTextCn className='w-[100px] h-6' />,
+    },
     config: config.tongyi,
   },
   {
     key: 'minimax',
     type: 'setup',
-    icon: <MinimaxText className='w-[84px] h-6' />,
+    icon: {
+      'en': <MinimaxText className='w-[84px] h-6' />,
+      'zh-Hans': <MinimaxText className='w-[84px] h-6' />,
+    },
     config: config.minimax,
   },
   {
     key: 'chatglm',
     type: 'setup',
-    icon: <ChatglmText className='h-6' />,
+    icon: {
+      'en': <ChatglmText className='h-6' />,
+      'zh-Hans': <ChatglmText className='h-6' />,
+    },
     config: config.chatglm,
   },
 ]

@@ -8,6 +8,7 @@ import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import { InfoCircle, Plus } from '@/app/components/base/icons/src/vender/line/general'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ModelCardProps = {
   provider: { key: string; type: string; bgColor: string; icon: ReactElement; desc: I18NText; iconText?: ReactElement }
@@ -43,7 +44,14 @@ const ModelCard: FC<ModelCardProps> = ({
               <div className='flex items-center text-gray-700'>
                 <div className='mr-1 text-sm font-medium'>200</div>
                 <div className='mr-1 text-sm'>{t('common.modelProvider.card.callTimes')}</div>
-                <InfoCircle className='w-3 h-3 text-gray-400 hover:text-gray-700' />
+                <Tooltip
+                  selector={`setting-model-card-${provider.key}`}
+                  htmlContent={
+                    <div className='w-[261px] text-gray-500'>{t('common.modelProvider.card.tip')}</div>
+                  }
+                >
+                  <InfoCircle className='w-3 h-3 text-gray-400 hover:text-gray-700' />
+                </Tooltip>
               </div>
             </div>
             <Button className='mt-1.5 !px-3 !h-8 !text-[13px] font-medium rounded-lg' type='primary'>{t('common.modelProvider.card.buyQuota')}</Button>

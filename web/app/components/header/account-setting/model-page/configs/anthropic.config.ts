@@ -32,6 +32,7 @@ export default {
       key: 'customApiDomain',
       required: true,
       switch: true,
+      switchKey: 'showCustomApiDomain',
       label: {
         'en': 'Custom API Domain',
         'zh-Hans': '自定义 API 域名',

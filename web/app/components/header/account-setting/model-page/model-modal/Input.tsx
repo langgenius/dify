@@ -11,7 +11,16 @@ import {
 import { ValidatedStatus } from '../../key-validator/declarations'
 import I18n from '@/context/i18n'
 
-const Input = () => {
+type InputProps = {
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+}
+const Input: FC<InputProps> = ({
+  value,
+  onChange,
+  placeholder,
+}) => {
   return (
     <input
       className={`
@@ -21,7 +30,9 @@ const Input = () => {
         focus:bg-white focus:border-gray-300 focus:shadow-xs
         placeholder:text-sm placeholder:text-gray-400
       `}
-      placeholder='aaa'
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
     />
   )
 }

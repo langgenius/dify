@@ -232,6 +232,7 @@ const translation = {
       buyQuota: 'Buy Quota',
       priorityUse: 'Priority use',
       removeKey: 'Remove API Key',
+      tip: 'Priority will be given to the paid quota. The 200 trial quota will be used after the paid quota is exhausted.',
     },
     addApiKey: 'Add your API key',
     invalidApiKey: 'Invalid API key',

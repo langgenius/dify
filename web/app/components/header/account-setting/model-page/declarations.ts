@@ -1,6 +1,6 @@
 import type { ValidateCallback } from '../key-validator/declarations'
 
-export type FormValue = Record<string, string>
+export type FormValue = Record<string, string | boolean>
 export type I18NText = {
   'en': string
   'zh-Hans': string
@@ -16,6 +16,7 @@ export type Field = {
   required?: boolean
   obfuscated?: boolean
   switch?: boolean
+  switchKey?: string
   label: I18NText
   options?: Option[]
   placeholder?: I18NText

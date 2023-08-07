@@ -6,6 +6,7 @@ import { Input, InputWithStatus } from './Input'
 import I18n from '@/context/i18n'
 import Switch from '@/app/components/base/switch'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import Tooltip from '@/app/components/base/tooltip'
 
 type FormProps = {
   initValue?: FormValue
@@ -23,22 +24,38 @@ const Form: FC<FormProps> = ({
   const { locale } = useContext(I18n)
   const [value, setValue] = useState(initValue)
 
-  const handleFormChange = (k: string, v: string) => {
+  const handleFormChange = (k: string, v: string | boolean) => {
     setValue({ ...value, [k]: v })
   }
 
   const renderField = (field: Field) => {
     if (field.type === 'text' && field.visible(value)) {
-      if (field.switch) {
+      if (field.switch && field.switchKey) {
         return (
           <div key={field.key} className='py-3'>
             <div className='flex items-center'>
-              <Switch onChange={() => {}} />
+              <Switch size='l' onChange={v => handleFormChange(field?.switchKey || '', v)} />
               <div className='ml-2 text-sm font-medium text-gray-900'>{field.label[locale]}</div>
-              <div className='flex items-center justify-center ml-1'>
-                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
-              </div>
+              <Tooltip
+                selector={`setting-model-provider-form-${field.key}`}
+                content={field.help?.[locale]}
+              >
+                <div className='flex items-center justify-center ml-1'>
+                  <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+                </div>
+              </Tooltip>
             </div>
+            {
+              value?.[field.switchKey] && (
+                <div className='mt-2'>
+                  <Input
+                    value={value?.[field.key] as string}
+                    onChange={v => handleFormChange(field.key, v)}
+                    placeholder={field.placeholder?.[locale] || ''}
+                  />
+                </div>
+              )
+            }
           </div>
         )
       }
@@ -54,7 +71,13 @@ const Form: FC<FormProps> = ({
                   onChange={v => setValue(v)}
                 />
               )
-              : <Input />
+              : (
+                <Input
+                  value={value?.[field.key] as string}
+                  onChange={v => handleFormChange(field.key, v)}
+                  placeholder={field?.placeholder?.[locale] || ''}
+                />
+              )
           }
         </div>
       )
