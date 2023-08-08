@@ -20,7 +20,7 @@ const Overview = async ({
       {/* <WelcomeBanner /> */}
       <ApikeyInfoPanel
         isCloud={true}
-        used={200}
+        used={100}
         total={200}
       />
       <div className='flex flex-row items-center justify-between mb-4 text-xl text-gray-900'>
