@@ -144,7 +144,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div ref={scrollRef} className='relative w-[520px] h-[580px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900', scrolled && scrolledClassName)}>
+          <div className={cn('sticky top-0 px-6 py-4 flex items-center justify-between h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
             {[...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)?.name}
             <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
           </div>
