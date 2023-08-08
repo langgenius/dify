@@ -1,3 +1,4 @@
+import datetime
 import json
 from collections import defaultdict
 
@@ -164,7 +165,7 @@ class ProviderService:
                             })
                         provider_parameter_dict[key]['models'] = models
 
-            provider_config_dict['providers'] = provider_parameter_dict.values()
+            provider_config_dict['providers'] = list(provider_parameter_dict.values())
             providers_list[model_provider_name] = provider_config_dict
 
         return providers_list
@@ -219,6 +220,7 @@ class ProviderService:
         if provider:
             provider.encrypted_config = json.dumps(encrypted_config)
             provider.is_valid = True
+            provider.updated_at = datetime.datetime.utcnow()
             db.session.commit()
         else:
             provider = Provider(
@@ -470,10 +472,10 @@ class ProviderService:
                 }
 
                 if provider.provider_type == ProviderType.SYSTEM.value:
-                    valid_model_dict['quota_type'] = provider.quota_type
-                    valid_model_dict['quota_unit'] = model_provider_rule['system_config']['quota_unit']
-                    valid_model_dict['quota_limit'] = provider.quota_limit
-                    valid_model_dict['quota_used'] = provider.quota_used
+                    valid_model_dict['model_provider']['quota_type'] = provider.quota_type
+                    valid_model_dict['model_provider']['quota_unit'] = model_provider_rule['system_config']['quota_unit']
+                    valid_model_dict['model_provider']['quota_limit'] = provider.quota_limit
+                    valid_model_dict['model_provider']['quota_used'] = provider.quota_used
 
                 valid_model_list.append(valid_model_dict)
 

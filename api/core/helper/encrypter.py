@@ -12,7 +12,7 @@ def obfuscated_token(token: str):
 
 def encrypt_token(tenant_id: str, token: str):
     tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
-    encrypted_token = rsa.encrypt(token.encode(), tenant.encrypt_public_key)
+    encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)
     return base64.b64encode(encrypted_token).decode()
 
 

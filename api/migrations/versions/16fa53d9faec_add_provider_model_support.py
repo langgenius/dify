@@ -52,7 +52,6 @@ def upgrade():
     sa.Column('tenant_id', postgresql.UUID(), nullable=False),
     sa.Column('provider_name', sa.String(length=40), nullable=False),
     sa.Column('preferred_provider_type', sa.String(length=40), nullable=False),
-    sa.Column('updated_by', postgresql.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='tenant_preferred_model_provider_pkey')

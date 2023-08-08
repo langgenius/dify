@@ -146,6 +146,5 @@ class TenantPreferredModelProvider(db.Model):
     tenant_id = db.Column(UUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
     preferred_provider_type = db.Column(db.String(40), nullable=False)
-    updated_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

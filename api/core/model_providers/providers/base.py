@@ -55,7 +55,7 @@ class BaseModelProvider(BaseModel, ABC):
         provider_models = db.session.query(ProviderModel).filter(
             ProviderModel.tenant_id == self.provider.tenant_id,
             ProviderModel.provider_name == self.provider.provider_name,
-            ProviderModel.model_type == model_type,
+            ProviderModel.model_type == model_type.value,
             ProviderModel.is_valid == True
         ).order_by(ProviderModel.created_at.asc()).all()
 
