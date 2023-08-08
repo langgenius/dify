@@ -6,6 +6,7 @@ import cn from 'classnames'
 import Progress from './progress'
 import Button from '@/app/components/base/button'
 import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import AccountSetting from '@/app/components/header/account-setting'
 
 type Props = {
   isCloud: boolean
@@ -22,6 +23,8 @@ const APIKeyInfoPanel: FC<Props> = ({
 
   const usedPercent = Math.round(used / total * 100)
   const exhausted = isCloud && usedPercent === 100
+  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
+
   const [isShow, setIsShow] = useState(true)
   if (!(isShow))
     return null
@@ -55,7 +58,13 @@ const APIKeyInfoPanel: FC<Props> = ({
           <Progress className='mt-2' value={usedPercent} />
         </div>
       )}
-      <Button type='primary' className='space-x-2'>
+      <Button
+        type='primary'
+        className='space-x-2'
+        onClick={() => {
+          setShowSetAPIKeyModal(true)
+        }}
+      >
         <div className='text-sm font-medium'>{t('appOverview.apiKeyInfo.setAPIBtn')}</div>
         <LinkExternal02 className='w-4 h-4' />
       </Button>
@@ -74,6 +83,14 @@ const APIKeyInfoPanel: FC<Props> = ({
         className='absolute right-4 top-4 flex items-center justify-center w-8 h-8 cursor-pointer '>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>
+
+      {
+        showSetAPIKeyModal && (
+          <AccountSetting activeTab="provider" onCancel={async () => {
+            setShowSetAPIKeyModal(false)
+          }} />
+        )
+      }
     </div>
   )
 }
