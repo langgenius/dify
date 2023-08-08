@@ -6,6 +6,11 @@ export type OauthResponse = {
   redirect_url: string
 }
 
+export type SetupStatusResponse = {
+  step: 'finished' | 'not_started'
+  setup_at?: Date
+}
+
 export type UserProfileResponse = {
   id: string
   name: string
