@@ -1,5 +1,8 @@
 import decimal
 
+from replicate.exceptions import ModelError, ReplicateError
+
+from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.embeddings.replicate_embedding import ReplicateEmbeddings
 from core.model_providers.models.embedding.base import BaseEmbedding
@@ -25,3 +28,9 @@ class ReplicateEmbedding(BaseEmbedding):
 
     def get_currency(self):
         raise 'USD'
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, (ModelError, ReplicateError)):
+            return LLMBadRequestError(f"Replicate: {str(ex)}")
+        else:
+            return ex

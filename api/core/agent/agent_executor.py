@@ -3,7 +3,6 @@ import logging
 from typing import Union, Optional
 
 from langchain.agents import BaseSingleActionAgent, BaseMultiActionAgent
-from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool
@@ -16,6 +15,7 @@ from core.agent.agent.output_parser.structured_chat import StructuredChatOutputP
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
+from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
@@ -28,10 +28,10 @@ class PlanningStrategy(str, enum.Enum):
 
 class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
-    llm: BaseLanguageModel
+    model_instance: BaseLLM
     tools: list[BaseTool]
-    summary_llm: BaseLanguageModel
-    dataset_llm: BaseLanguageModel
+    summary_model_instance: BaseLLM
+    dataset_model_instance: BaseLLM
     memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
@@ -60,32 +60,32 @@ class AgentExecutor:
     def _init_agent(self) -> Union[BaseSingleActionAgent | BaseMultiActionAgent]:
         if self.configuration.strategy == PlanningStrategy.REACT:
             agent = AutoSummarizingStructuredChatAgent.from_llm_and_tools(
-                llm=self.configuration.llm,
+                llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 output_parser=StructuredChatOutputParser(),
-                summary_llm=self.configuration.summary_llm,
+                summary_llm=self.configuration.summary_model_instance.client,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
             agent = AutoSummarizingOpenAIFunctionCallAgent.from_llm_and_tools(
-                llm=self.configuration.llm,
+                llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
-                summary_llm=self.configuration.summary_llm,
+                summary_llm=self.configuration.summary_model_instance.client,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.MULTI_FUNCTION_CALL:
             agent = AutoSummarizingOpenMultiAIFunctionCallAgent.from_llm_and_tools(
-                llm=self.configuration.llm,
+                llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
-                summary_llm=self.configuration.summary_llm,
+                summary_llm=self.configuration.summary_model_instance.client,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
             self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
-                llm=self.configuration.dataset_llm,
+                llm=self.configuration.dataset_model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,
                 verbose=True

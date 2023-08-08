@@ -1,7 +1,7 @@
 import decimal
 import logging
 from functools import wraps
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import openai
 from langchain.callbacks.manager import Callbacks
@@ -10,7 +10,7 @@ from langchain.schema import LLMResult
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.llms.azure_chat_open_ai import EnhanceAzureChatOpenAI
 from core.third_party.langchain.llms.azure_open_ai import EnhanceAzureOpenAI
-from core.third_party.langchain.llms.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, LLMAuthorizationError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
@@ -19,59 +19,34 @@ from core.model_providers.models.entity.model_params import ModelMode, ModelKwar
 AZURE_OPENAI_API_VERSION = '2023-07-01-preview'
 
 
-def handle_azure_openai_exceptions(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except openai.error.InvalidRequestError as e:
-            logging.exception("Invalid request to Azure OpenAI API.")
-            raise LLMBadRequestError(str(e))
-        except openai.error.APIConnectionError as e:
-            logging.exception("Failed to connect to Azure OpenAI API.")
-            raise LLMAPIConnectionError(e.__class__.__name__ + ":" + str(e))
-        except (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout) as e:
-            logging.exception("Azure OpenAI service unavailable.")
-            raise LLMAPIUnavailableError(e.__class__.__name__ + ":" + str(e))
-        except openai.error.RateLimitError as e:
-            raise LLMRateLimitError('Azure ' + str(e))
-        except openai.error.AuthenticationError as e:
-            raise LLMAuthorizationError('Azure ' + str(e))
-        except openai.error.OpenAIError as e:
-            raise LLMBadRequestError('Azure ' + e.__class__.__name__ + ":" + str(e))
-
-    return wrapper
-
-
 class AzureOpenAIModel(BaseLLM):
     def __init__(self, model_provider: BaseModelProvider,
                  name: str,
                  model_kwargs: ModelKwargs,
                  streaming: bool = False,
                  callbacks: Callbacks = None):
-        credentials = model_provider.get_model_credentials(
-            model_name=name,
-            model_type=self.type
-        )
-
-        model_rules = model_provider.get_model_parameter_rules(name, self.type)
-        provider_model_kwargs = self._to_model_kwargs_input(model_rules, model_kwargs)
-
-        if name == 'text-davinci-003':
+        if self.name == 'text-davinci-003':
             self.model_mode = ModelMode.COMPLETION
+        else:
+            self.model_mode = ModelMode.CHAT
+
+        super().__init__(model_provider, name, model_kwargs, streaming, callbacks)
+
+    def _init_client(self) -> Any:
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+        if self.name == 'text-davinci-003':
             client = EnhanceAzureOpenAI(
-                deployment_name=name,
-                streaming=streaming,
+                deployment_name=self.name,
+                streaming=self.streaming,
                 request_timeout=60,
                 openai_api_type='azure',
                 openai_api_version=AZURE_OPENAI_API_VERSION,
-                openai_api_key=credentials.get('openai_api_key'),
-                openai_api_base=credentials.get('openai_api_base'),
-                callbacks=callbacks,
+                openai_api_key=self.credentials.get('openai_api_key'),
+                openai_api_base=self.credentials.get('openai_api_base'),
+                callbacks=self.callbacks,
                 **provider_model_kwargs
             )
         else:
-            self.model_mode = ModelMode.CHAT
             extra_model_kwargs = {
                 'top_p': provider_model_kwargs.get('top_p'),
                 'frequency_penalty': provider_model_kwargs.get('frequency_penalty'),
@@ -79,22 +54,21 @@ class AzureOpenAIModel(BaseLLM):
             }
 
             client = EnhanceAzureChatOpenAI(
-                deployment_name=name,
+                deployment_name=self.name,
                 temperature=provider_model_kwargs.get('temperature'),
                 max_tokens=provider_model_kwargs.get('max_tokens'),
                 model_kwargs=extra_model_kwargs,
-                streaming=streaming,
+                streaming=self.streaming,
                 request_timeout=60,
                 openai_api_type='azure',
                 openai_api_version=AZURE_OPENAI_API_VERSION,
-                openai_api_key=credentials.get('openai_api_key'),
-                openai_api_base=credentials.get('openai_api_base'),
-                callbacks=callbacks,
+                openai_api_key=self.credentials.get('openai_api_key'),
+                openai_api_base=self.credentials.get('openai_api_base'),
+                callbacks=self.callbacks,
             )
 
-        super().__init__(model_provider, client, name, model_rules, model_kwargs, streaming)
+        return client
 
-    @handle_azure_openai_exceptions
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
              callbacks: Callbacks = None,
@@ -160,3 +134,39 @@ class AzureOpenAIModel(BaseLLM):
 
     def get_currency(self):
         raise 'USD'
+
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
+        if self.name == 'text-davinci-003':
+            for k, v in provider_model_kwargs.items():
+                if hasattr(self.client, k):
+                    setattr(self.client, k, v)
+        else:
+            extra_model_kwargs = {
+                'top_p': provider_model_kwargs.get('top_p'),
+                'frequency_penalty': provider_model_kwargs.get('frequency_penalty'),
+                'presence_penalty': provider_model_kwargs.get('presence_penalty'),
+            }
+
+            self.client.temperature = provider_model_kwargs.get('temperature')
+            self.client.max_tokens = provider_model_kwargs.get('max_tokens')
+            self.client.model_kwargs = extra_model_kwargs
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, openai.error.InvalidRequestError):
+            logging.warning("Invalid request to Azure OpenAI API.")
+            return LLMBadRequestError(str(ex))
+        elif isinstance(ex, openai.error.APIConnectionError):
+            logging.warning("Failed to connect to Azure OpenAI API.")
+            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+        elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
+            logging.warning("Azure OpenAI service unavailable.")
+            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+        elif isinstance(ex, openai.error.RateLimitError):
+            return LLMRateLimitError('Azure ' + str(ex))
+        elif isinstance(ex, openai.error.AuthenticationError):
+            raise LLMAuthorizationError('Azure ' + str(ex))
+        elif isinstance(ex, openai.error.OpenAIError):
+            return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
+        else:
+            return ex

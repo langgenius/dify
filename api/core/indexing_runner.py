@@ -16,7 +16,7 @@ from core.data_loader.loader.notion import NotionLoader
 from core.docstore.dataset_docstore import DatesetDocumentStore
 from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
-from core.llm.error import ProviderTokenNotInitError
+from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import MessageType
 from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter

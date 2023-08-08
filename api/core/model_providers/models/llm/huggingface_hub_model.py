@@ -1,66 +1,42 @@
 import decimal
 from functools import wraps
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from langchain import HuggingFaceHub
 from langchain.callbacks.manager import Callbacks
 from langchain.llms import HuggingFaceEndpoint
 from langchain.schema import LLMResult
 
-from core.model_providers.providers.base import BaseModelProvider
-from core.third_party.langchain.llms.error import LLMBadRequestError
+from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
 
 
-def handle_huggingface_hub_exceptions(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except Exception as e:
-            raise LLMBadRequestError(f"Huggingface Hub: {str(e)}")
-
-    return wrapper
-
-
 class HuggingfaceHubModel(BaseLLM):
-    def __init__(self, model_provider: BaseModelProvider,
-                 name: str,
-                 model_kwargs: ModelKwargs,
-                 streaming: bool = False,
-                 callbacks: Callbacks = None):
-        credentials = model_provider.get_model_credentials(
-            model_name=name,
-            model_type=self.type
-        )
+    model_mode: ModelMode = ModelMode.COMPLETION
 
-        model_rules = model_provider.get_model_parameter_rules(name, self.type)
-        provider_model_kwargs = self._to_model_kwargs_input(model_rules, model_kwargs)
-
-        if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+    def _init_client(self) -> Any:
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+        if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             client = HuggingFaceEndpoint(
-                endpoint_url=credentials['huggingfacehub_endpoint_url'],
+                endpoint_url=self.credentials['huggingfacehub_endpoint_url'],
                 task="text2text-generation",
                 model_kwargs=provider_model_kwargs,
-                huggingfacehub_api_token=credentials['huggingfacehub_api_token'],
-                callbacks=callbacks
+                huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
+                callbacks=self.callbacks,
             )
         else:
             client = HuggingFaceHub(
-                repo_id=name,
+                repo_id=self.name,
                 task='text2text-generation',
                 model_kwargs=provider_model_kwargs,
-                huggingfacehub_api_token=credentials['huggingfacehub_api_token'],
-                callbacks=callbacks
+                huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
+                callbacks=self.callbacks,
             )
 
-        self.model_mode = ModelMode.COMPLETION
+        return client
 
-        super().__init__(model_provider, client, name, model_rules, model_kwargs, streaming)
-
-    @handle_huggingface_hub_exceptions
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
              callbacks: Callbacks = None,
@@ -92,3 +68,10 @@ class HuggingfaceHubModel(BaseLLM):
 
     def get_currency(self):
         raise 'RMB'
+
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
+        self.client.model_kwargs = provider_model_kwargs
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        return LLMBadRequestError(f"Huggingface Hub: {str(ex)}")

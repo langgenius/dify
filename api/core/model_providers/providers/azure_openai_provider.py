@@ -15,7 +15,7 @@ from core.model_providers.models.llm.azure_openai_model import AzureOpenAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
 from core.third_party.langchain.llms.azure_chat_open_ai import EnhanceAzureChatOpenAI
-from core.third_party.langchain.llms.error import LLMNotExistsError
+from core.model_providers.error import LLMNotExistsError
 from models.provider import ProviderType
 
 BASE_MODELS = [

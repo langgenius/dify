@@ -141,18 +141,23 @@ class ModelProviderFactory:
             ).all()
 
         if preferred_provider_type == ProviderType.SYSTEM.value:
-            quota_type_to_provider_dict = {provider.quota_type: provider for provider in providers}
+            quota_type_to_provider_dict = {}
+            for provider in providers:
+                if provider.quota_type == 'trail':
+                    provider.quota_type = ProviderQuotaType.TRIAL.value
+                    db.session.commit()
+                quota_type_to_provider_dict[provider.quota_type] = provider
 
             model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
 
-            if ProviderQuotaType.PAID.value in model_provider_rules['system_config']['support_quota_types'] \
-                    and ProviderQuotaType.PAID.value in quota_type_to_provider_dict:
+            if ProviderQuotaType.PAID.value in model_provider_rules['system_config']['supported_quota_types'] \
+                    and ProviderQuotaType.PAID.value in quota_type_to_provider_dict.keys():
                 provider = quota_type_to_provider_dict[ProviderQuotaType.PAID.value]
                 if provider.quota_limit > provider.quota_used:
                     return quota_type_to_provider_dict[ProviderQuotaType.PAID.value]
 
-            if ProviderQuotaType.TRIAL.value in model_provider_rules['system_config']['support_quota_types'] \
-                    and ProviderQuotaType.TRIAL.value in quota_type_to_provider_dict:
+            if ProviderQuotaType.TRIAL.value in model_provider_rules['system_config']['supported_quota_types'] \
+                    and ProviderQuotaType.TRIAL.value in quota_type_to_provider_dict.keys():
                 return quota_type_to_provider_dict[ProviderQuotaType.TRIAL.value]
         elif preferred_provider_type == ProviderType.CUSTOM.value:
             return providers[0] if providers else None

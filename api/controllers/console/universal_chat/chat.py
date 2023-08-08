@@ -14,7 +14,7 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
 from controllers.console.universal_chat.wraps import UniversalChatResource
 from core.constant import llm_constant
 from core.conversation_message_task import PubHandler
-from core.llm.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
+from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
     LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, LLMAuthorizationError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService

@@ -49,7 +49,7 @@ class LLMGenerator:
         prompt = CONVERSATION_SUMMARY_PROMPT
         prompt_with_empty_context = prompt.format(context='')
         prompt_tokens = model_instance.get_num_tokens([PromptMessage(content=prompt_with_empty_context)])
-        max_context_token_length = model_instance.model_provider.get_model_parameter_rules().max_tokens.max
+        max_context_token_length = model_instance.model_rules.max_tokens.max
         rest_tokens = max_context_token_length - prompt_tokens - max_tokens - 1
 
         context = ''

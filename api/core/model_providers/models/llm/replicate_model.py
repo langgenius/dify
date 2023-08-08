@@ -1,28 +1,17 @@
 import decimal
 from functools import wraps
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult, get_buffer_string
 from replicate.exceptions import ReplicateError, ModelError
 
 from core.model_providers.providers.base import BaseModelProvider
-from core.third_party.langchain.llms.error import LLMBadRequestError
+from core.model_providers.error import LLMBadRequestError
 from core.third_party.langchain.llms.replicate_llm import EnhanceReplicate
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
-
-
-def handle_replicate_exceptions(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except (ModelError, ReplicateError) as e:
-            raise LLMBadRequestError(f"Replicate: {str(e)}")
-
-    return wrapper
 
 
 class ReplicateModel(BaseLLM):
@@ -31,27 +20,21 @@ class ReplicateModel(BaseLLM):
                  model_kwargs: ModelKwargs,
                  streaming: bool = False,
                  callbacks: Callbacks = None):
-        credentials = model_provider.get_model_credentials(
-            model_name=name,
-            model_type=self.type
-        )
-
-        model_rules = model_provider.get_model_parameter_rules(name, self.type)
-        provider_model_kwargs = self._to_model_kwargs_input(model_rules, model_kwargs)
-
-        client = EnhanceReplicate(
-            model=name + ':' + credentials.get('model_version'),
-            input=provider_model_kwargs,
-            streaming=streaming,
-            callbacks=callbacks,
-            replicate_api_token=credentials.get('replicate_api_token'),
-        )
-
         self.model_mode = ModelMode.CHAT if name.endswith('-chat') else ModelMode.COMPLETION
 
-        super().__init__(model_provider, client, name, model_rules, model_kwargs, streaming)
+        super().__init__(model_provider, name, model_kwargs, streaming, callbacks)
 
-    @handle_replicate_exceptions
+    def _init_client(self) -> Any:
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+
+        return EnhanceReplicate(
+            model=self.name + ':' + self.credentials.get('model_version'),
+            input=provider_model_kwargs,
+            streaming=self.streaming,
+            replicate_api_token=self.credentials.get('replicate_api_token'),
+            callbacks=self.callbacks,
+        )
+
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
              callbacks: Callbacks = None,
@@ -104,3 +87,13 @@ class ReplicateModel(BaseLLM):
 
     def get_currency(self):
         raise 'USD'
+
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
+        self.client.input = provider_model_kwargs
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, (ModelError, ReplicateError)):
+            return LLMBadRequestError(f"Replicate: {str(ex)}")
+        else:
+            return ex

@@ -13,7 +13,7 @@ class WorkspaceService:
             'status': tenant.status,
             'created_at': tenant.created_at,
             'providers': [],
-            'in_trail': False,
+            'in_trial': False,
             'trial_end_reason': 'using_custom'
         }
 
@@ -43,7 +43,7 @@ class WorkspaceService:
             if quota_used >= quota_limit:
                 tenant_info['trial_end_reason'] = 'trial_exceeded'
             else:
-                tenant_info['in_trail'] = True
+                tenant_info['in_trial'] = True
                 tenant_info['trial_end_reason'] = None
 
         return tenant_info

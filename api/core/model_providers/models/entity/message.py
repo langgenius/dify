@@ -44,3 +44,10 @@ def to_prompt_messages(messages: list[BaseMessage]):
         elif isinstance(message, SystemMessage):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.SYSTEM))
     return prompt_messages
+
+
+def str_to_prompt_messages(texts: list[str]):
+    prompt_messages = []
+    for text in texts:
+        prompt_messages.append(PromptMessage(content=text))
+    return prompt_messages

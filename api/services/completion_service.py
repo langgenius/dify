@@ -11,7 +11,7 @@ from sqlalchemy import and_
 
 from core.completion import Completion
 from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
-from core.llm.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client

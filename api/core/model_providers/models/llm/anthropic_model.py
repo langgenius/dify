@@ -1,68 +1,34 @@
 import decimal
 import logging
 from functools import wraps
-from typing import List, Optional
+from typing import List, Optional, Any
 
 import anthropic
 from langchain.callbacks.manager import Callbacks
 from langchain.chat_models import ChatAnthropic
 from langchain.schema import LLMResult
 
-from core.model_providers.providers.base import BaseModelProvider
-from core.third_party.langchain.llms.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, LLMAuthorizationError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
 
 
-def handle_anthropic_exceptions(func):
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        try:
-            return func(*args, **kwargs)
-        except anthropic.APIConnectionError as e:
-            logging.exception("Failed to connect to Anthropic API.")
-            raise LLMAPIConnectionError(f"Anthropic: The server could not be reached, cause: {e.__cause__}")
-        except anthropic.RateLimitError:
-            raise LLMRateLimitError("Anthropic: A 429 status code was received; we should back off a bit.")
-        except anthropic.AuthenticationError as e:
-            raise LLMAuthorizationError(f"Anthropic: {e.message}")
-        except anthropic.BadRequestError as e:
-            raise LLMBadRequestError(f"Anthropic: {e.message}")
-        except anthropic.APIStatusError as e:
-            raise LLMAPIUnavailableError(f"Anthropic: code: {e.status_code}, cause: {e.message}")
-
-    return wrapper
-
-
 class AnthropicModel(BaseLLM):
     model_mode: ModelMode = ModelMode.CHAT
 
-    def __init__(self, model_provider: BaseModelProvider,
-                 name: str,
-                 model_kwargs: ModelKwargs,
-                 streaming: bool = False,
-                 callbacks: Callbacks = None):
-        credentials = model_provider.get_model_credentials(
-            model_name=name,
-            model_type=self.type
-        )
-
-        model_rules = model_provider.get_model_parameter_rules(name, self.type)
-        provider_model_kwargs = self._to_model_kwargs_input(model_rules, model_kwargs)
-        client = ChatAnthropic(
-            model=name,
-            streaming=streaming,
+    def _init_client(self) -> Any:
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+        return ChatAnthropic(
+            model=self.name,
+            streaming=self.streaming,
+            callbacks=self.callbacks,
             default_request_timeout=60,
-            callbacks=callbacks,
-            **credentials,
+            **self.credentials,
             **provider_model_kwargs
         )
 
-        super().__init__(model_provider, client, name, model_rules, model_kwargs, streaming)
-
-    @handle_anthropic_exceptions
     def _run(self, messages: List[PromptMessage],
              stop: Optional[List[str]] = None,
              callbacks: Callbacks = None,
@@ -113,3 +79,25 @@ class AnthropicModel(BaseLLM):
 
     def get_currency(self):
         raise 'USD'
+
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
+        for k, v in provider_model_kwargs.items():
+            if hasattr(self.client, k):
+                setattr(self.client, k, v)
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, anthropic.APIConnectionError):
+            logging.warning("Failed to connect to Anthropic API.")
+            return LLMAPIConnectionError(f"Anthropic: The server could not be reached, cause: {ex.__cause__}")
+        elif isinstance(ex, anthropic.RateLimitError):
+            return LLMRateLimitError("Anthropic: A 429 status code was received; we should back off a bit.")
+        elif isinstance(ex, anthropic.AuthenticationError):
+            return LLMAuthorizationError(f"Anthropic: {ex.message}")
+        elif isinstance(ex, anthropic.BadRequestError):
+            return LLMBadRequestError(f"Anthropic: {ex.message}")
+        elif isinstance(ex, anthropic.APIStatusError):
+            return LLMAPIUnavailableError(f"Anthropic: code: {ex.status_code}, cause: {ex.message}")
+        else:
+            return ex
+

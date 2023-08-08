@@ -61,13 +61,12 @@ class OrchestratorRuleParser:
                 model_provider_name=agent_provider_name,
                 model_name=agent_model_name,
                 model_kwargs=ModelKwargs(
-                    temperature=0,
+                    temperature=0.2,
+                    top_p=0.3,
                     max_tokens=1500
                 ),
-                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
+                callbacks=[agent_callback]
             )
-
-            agent_llm = agent_model_instance.client
 
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 
@@ -82,11 +81,8 @@ class OrchestratorRuleParser:
                 model_kwargs=ModelKwargs(
                     temperature=0,
                     max_tokens=500
-                ),
-                callbacks=[DifyStdOutCallbackHandler()]
+                )
             )
-
-            summary_llm = summary_model_instance.client
 
             tools = self.to_tools(
                 tool_configs=tool_configs,
@@ -103,18 +99,15 @@ class OrchestratorRuleParser:
                 model_kwargs=ModelKwargs(
                     temperature=0,
                     max_tokens=500
-                ),
-                callbacks=[DifyStdOutCallbackHandler()]
+                )
             )
-
-            dataset_llm = dataset_model_instance.client
 
             agent_configuration = AgentConfiguration(
                 strategy=planning_strategy,
-                llm=agent_llm,
+                model_instance=agent_model_instance,
                 tools=tools,
-                summary_llm=summary_llm,
-                dataset_llm=dataset_llm,
+                summary_model_instance=summary_model_instance,
+                dataset_model_instance=dataset_model_instance,
                 memory=memory,
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=10,
@@ -225,8 +218,7 @@ class OrchestratorRuleParser:
             model_kwargs=ModelKwargs(
                 temperature=0,
                 max_tokens=500
-            ),
-            callbacks=[DifyStdOutCallbackHandler()]
+            )
         )
 
         summary_llm = summary_model_instance.client

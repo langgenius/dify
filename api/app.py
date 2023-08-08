@@ -16,6 +16,7 @@ from flask import Flask, request, Response, session
 import flask_login
 from flask_cors import CORS
 
+from core.model_providers.providers import hosted
 from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
     ext_database, ext_storage, ext_mail
 from extensions.ext_database import db
@@ -70,7 +71,7 @@ def create_app(test_config=None) -> Flask:
     register_blueprints(app)
     register_commands(app)
 
-    core.init_app(app)
+    hosted.init_app(app)
 
     return app
 

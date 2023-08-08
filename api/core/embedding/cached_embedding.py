@@ -4,14 +4,14 @@ from typing import List
 from langchain.embeddings.base import Embeddings
 from sqlalchemy.exc import IntegrityError
 
-from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
+from core.model_providers.models.embedding.base import BaseEmbedding
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import Embedding
 
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, embeddings: Embeddings):
+    def __init__(self, embeddings: BaseEmbedding):
         self._embeddings = embeddings
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
@@ -27,7 +27,10 @@ class CacheEmbedding(Embeddings):
             else:
                 embedding_queue_texts.append(text)
 
-        embedding_results = self._embeddings.embed_documents(embedding_queue_texts)
+        try:
+            embedding_results = self._embeddings.client.embed_documents(embedding_queue_texts)
+        except Exception as ex:
+            raise self._embeddings.handle_exceptions(ex)
 
         i = 0
         for text in embedding_queue_texts:
@@ -44,13 +47,12 @@ class CacheEmbedding(Embeddings):
             except:
                 logging.exception('Failed to add embedding to db')
                 continue
-
-            i += 1
+            finally:
+                i += 1
 
         text_embeddings.extend(embedding_results)
         return text_embeddings
 
-    @handle_openai_exceptions
     def embed_query(self, text: str) -> List[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
@@ -59,7 +61,10 @@ class CacheEmbedding(Embeddings):
         if embedding:
             return embedding.get_embedding()
 
-        embedding_results = self._embeddings.embed_query(text)
+        try:
+            embedding_results = self._embeddings.client.embed_query(text)
+        except Exception as ex:
+            raise self._embeddings.handle_exceptions(ex)
 
         try:
             embedding = Embedding(hash=hash)
@@ -72,3 +77,5 @@ class CacheEmbedding(Embeddings):
             logging.exception('Failed to add embedding to db')
 
         return embedding_results
+
+

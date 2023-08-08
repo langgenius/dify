@@ -1,5 +1,7 @@
+import os
 from typing import Optional
 
+import langchain
 from flask import Flask
 from pydantic import BaseModel
 
@@ -36,15 +38,18 @@ hosted_model_providers = HostedModelProviders()
 
 
 def init_app(app: Flask):
+    if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+        langchain.verbose = True
+
     if app.config.get("HOSTED_OPENAI_ENABLED"):
         hosted_model_providers.openai = HostedOpenAI(
-            api_base=app.config.get("HOSTED_OPENAI_API_KEY"),
-            api_organization=app.config.get("HOSTED_OPENAI_API_KEY"),
+            api_base=app.config.get("HOSTED_OPENAI_API_BASE"),
+            api_organization=app.config.get("HOSTED_OPENAI_API_ORGANIZATION"),
             api_key=app.config.get("HOSTED_OPENAI_API_KEY"),
             quota_limit=app.config.get("HOSTED_OPENAI_QUOTA_LIMIT"),
         )
 
-    if app.config.get("HOSTED_AZURE_ENABLED"):
+    if app.config.get("HOSTED_AZURE_OPENAI_ENABLED"):
         hosted_model_providers.azure_openai = HostedAzureOpenAI(
             api_base=app.config.get("HOSTED_AZURE_OPENAI_API_BASE"),
             api_key=app.config.get("HOSTED_AZURE_OPENAI_API_KEY"),

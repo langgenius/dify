@@ -4,14 +4,12 @@ from typing import List
 
 import numpy as np
 from flask import current_app
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from sklearn.manifold import TSNE
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.vector_index.vector_index import VectorIndex
-from core.llm.llm_builder import LLMBuilder
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.account import Account
@@ -34,7 +32,7 @@ class HitTestingService:
             tenant_id=dataset.tenant_id
         )
 
-        embeddings = CacheEmbedding(embedding_model.client)
+        embeddings = CacheEmbedding(embedding_model)
 
         vector_index = VectorIndex(
             dataset=dataset,

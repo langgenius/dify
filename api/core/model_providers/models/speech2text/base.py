@@ -14,6 +14,16 @@ class BaseSpeech2Text(BaseProviderModel):
         super().__init__(model_provider, client)
         self.name = name
 
-    @abstractmethod
     def run(self, file):
+        try:
+            self._run(file)
+        except Exception as ex:
+            raise self.handle_exceptions(ex)
+
+    @abstractmethod
+    def _run(self, file):
+        raise NotImplementedError
+
+    @abstractmethod
+    def handle_exceptions(self, ex: Exception) -> Exception:
         raise NotImplementedError

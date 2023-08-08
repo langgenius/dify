@@ -17,7 +17,7 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.conversation_message_task import PubHandler
-from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from flask_restful import Resource, reqparse

@@ -7,7 +7,6 @@ from core.callback_handler.entity.dataset_query import DatasetQueryObj
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.callback_handler.entity.chain_result import ChainResult
 from core.constant import llm_constant
-from core.llm.llm_builder import LLMBuilder
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import to_prompt_messages
 from core.prompt.prompt_builder import PromptBuilder
@@ -17,7 +16,6 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DatasetQuery
 from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, MessageChain
-from models.provider import ProviderType, Provider
 
 
 class ConversationMessageTask:
@@ -166,8 +164,6 @@ class ConversationMessageTask:
         self.message.provider_response_latency = llm_message.latency
         self.message.total_price = total_price
 
-        self.update_provider_quota()
-
         db.session.commit()
 
         message_was_created.send(
@@ -178,20 +174,6 @@ class ConversationMessageTask:
 
         if not by_stopped:
             self.end()
-
-    def update_provider_quota(self):
-        llm_provider_service = LLMProviderService(
-            tenant_id=self.app.tenant_id,
-            provider_name=self.message.model_provider,
-        )
-
-        provider = llm_provider_service.get_provider_db_record()
-        if provider and provider.provider_type == ProviderType.SYSTEM.value:
-            db.session.query(Provider).filter(
-                Provider.tenant_id == self.app.tenant_id,
-                Provider.provider_name == provider.provider_name,
-                Provider.quota_limit > Provider.quota_used
-            ).update({'quota_used': Provider.quota_used + 1})
 
     def init_chain(self, chain_result: ChainResult):
         message_chain = MessageChain(

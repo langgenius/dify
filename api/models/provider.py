@@ -138,7 +138,7 @@ class TenantPreferredModelProvider(db.Model):
     """
     __tablename__ = 'tenant_preferred_model_providers'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='tenant_default_model_pkey'),
+        db.PrimaryKeyConstraint('id', name='tenant_preferred_model_provider_pkey'),
         db.Index('tenant_preferred_model_provider_tenant_provider_idx', 'tenant_id', 'provider_name'),
     )
 

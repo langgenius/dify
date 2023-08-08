@@ -4,7 +4,8 @@ from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, BaseLanguageModel, SystemMessage
+from langchain.schema import AgentAction, AgentFinish, SystemMessage
+from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
 
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool

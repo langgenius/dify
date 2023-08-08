@@ -79,7 +79,7 @@ class ProviderService:
 
             provider_parameter_dict = {}
             if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
-                    and ProviderQuotaType.TRIAL.value in model_provider_rule['system_config']['support_quota_types']:
+                    and ProviderQuotaType.TRIAL.value in model_provider_rule['system_config']['supported_quota_types']:
                 provider_parameter_dict[ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value] = {
                     "provider_name": model_provider_name,
                     "provider_type": ProviderType.SYSTEM.value,
@@ -92,7 +92,7 @@ class ProviderService:
                     "last_used": None  # need update
                 }
             elif ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
-                    and ProviderQuotaType.PAID.value in model_provider_rule['system_config']['support_quota_types']:
+                    and ProviderQuotaType.PAID.value in model_provider_rule['system_config']['supported_quota_types']:
                 provider_parameter_dict[ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value] = {
                     "provider_name": model_provider_name,
                     "provider_type": ProviderType.SYSTEM.value,
@@ -118,11 +118,15 @@ class ProviderService:
 
             current_providers = provider_name_to_provider_dict[model_provider_name]
             for provider in current_providers:
+                if provider.quota_type == 'trail':
+                    provider.quota_type = ProviderQuotaType.TRIAL.value
+                    db.session.commit()
+
                 if provider.provider_type == ProviderType.SYSTEM.value \
                         and provider.quota_type == ProviderQuotaType.TRIAL.value \
                         and (
                         ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value) in provider_parameter_dict:
-                    # if trail
+                    # if trial
                     key = ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value
                     provider_parameter_dict[key]['quota_unit'] = provider.quota_unit
                     provider_parameter_dict[key]['quota_used'] = provider.quota_used

@@ -1,6 +1,5 @@
 from typing import cast, List
 
-from langchain import OpenAI
 from langchain.base_language import BaseLanguageModel
 from langchain.chat_models.openai import ChatOpenAI
 from langchain.schema import BaseMessage

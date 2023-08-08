@@ -1,7 +1,11 @@
 import decimal
+import logging
 
+import openai
 from langchain.embeddings import OpenAIEmbeddings
 
+from core.model_providers.error import LLMBadRequestError, LLMAuthorizationError, LLMRateLimitError, \
+    LLMAPIUnavailableError, LLMAPIConnectionError
 from core.model_providers.models.embedding.base import BaseEmbedding
 from core.model_providers.providers.base import BaseModelProvider
 
@@ -35,3 +39,22 @@ class AzureOpenAIEmbedding(BaseEmbedding):
 
     def get_currency(self):
         raise 'USD'
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, openai.error.InvalidRequestError):
+            logging.warning("Invalid request to Azure OpenAI API.")
+            return LLMBadRequestError(str(ex))
+        elif isinstance(ex, openai.error.APIConnectionError):
+            logging.warning("Failed to connect to Azure OpenAI API.")
+            return LLMAPIConnectionError(ex.__class__.__name__ + ":" + str(ex))
+        elif isinstance(ex, (openai.error.APIError, openai.error.ServiceUnavailableError, openai.error.Timeout)):
+            logging.warning("Azure OpenAI service unavailable.")
+            return LLMAPIUnavailableError(ex.__class__.__name__ + ":" + str(ex))
+        elif isinstance(ex, openai.error.RateLimitError):
+            return LLMRateLimitError('Azure ' + str(ex))
+        elif isinstance(ex, openai.error.AuthenticationError):
+            raise LLMAuthorizationError('Azure ' + str(ex))
+        elif isinstance(ex, openai.error.OpenAIError):
+            return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
+        else:
+            return ex

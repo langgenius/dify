@@ -1,5 +1,4 @@
-import decimal
-from _decimal import Decimal
+from abc import abstractmethod
 from typing import Any
 
 import tiktoken
@@ -39,3 +38,7 @@ class BaseEmbedding(BaseProviderModel):
 
     def get_currency(self):
         raise 'USD'
+
+    @abstractmethod
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        raise NotImplementedError

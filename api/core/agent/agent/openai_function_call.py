@@ -6,7 +6,8 @@ from langchain.agents.openai_functions_agent.base import _parse_ai_message, \
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, SystemMessage, BaseLanguageModel
+from langchain.schema import AgentAction, AgentFinish, SystemMessage
+from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
 
 from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError

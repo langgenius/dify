@@ -55,7 +55,7 @@ def upgrade():
     sa.Column('updated_by', postgresql.UUID(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='tenant_default_model_pkey')
+    sa.PrimaryKeyConstraint('id', name='tenant_preferred_model_provider_pkey')
     )
     with op.batch_alter_table('tenant_preferred_model_providers', schema=None) as batch_op:
         batch_op.create_index('tenant_preferred_model_provider_tenant_provider_idx', ['tenant_id', 'provider_name'], unique=False)

@@ -50,9 +50,12 @@ DEFAULTS = {
     'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
     'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
-    'DEFAULT_LLM_PROVIDER': 'openai',
-    'OPENAI_HOSTED_QUOTA_LIMIT': 200,
-    'ANTHROPIC_HOSTED_QUOTA_LIMIT': 1000,
+    'HOSTED_OPENAI_ENABLED': 'False',
+    'HOSTED_AZURE_OPENAI_ENABLED': 'False',
+    'HOSTED_ANTHROPIC_ENABLED': 'False',
+    'HOSTED_OPENAI_QUOTA_LIMIT': 200,
+    'HOSTED_AZURE_OPENAI_QUOTA_LIMIT': 200,
+    'HOSTED_ANTHROPIC_QUOTA_LIMIT': 1000,
     'TENANT_DOCUMENT_COUNT': 100,
     'CLEAN_DAY_SETTING': 30
 }
@@ -194,19 +197,25 @@ class Config:
         self.BROKER_USE_SSL = self.CELERY_BROKER_URL.startswith('rediss://')
 
         # hosted provider credentials
-        self.OPENAI_API_KEY = get_env('OPENAI_API_KEY')
-        self.ANTHROPIC_API_KEY = get_env('ANTHROPIC_API_KEY')
+        self.HOSTED_OPENAI_ENABLED = get_bool_env('HOSTED_OPENAI_ENABLED')
+        self.HOSTED_OPENAI_API_KEY = get_env('HOSTED_OPENAI_API_KEY')
+        self.HOSTED_OPENAI_API_BASE = get_env('HOSTED_OPENAI_API_BASE')
+        self.HOSTED_OPENAI_API_ORGANIZATION = get_env('HOSTED_OPENAI_API_ORGANIZATION')
+        self.HOSTED_OPENAI_QUOTA_LIMIT = get_env('HOSTED_OPENAI_QUOTA_LIMIT')
 
-        self.OPENAI_HOSTED_QUOTA_LIMIT = get_env('OPENAI_HOSTED_QUOTA_LIMIT')
-        self.ANTHROPIC_HOSTED_QUOTA_LIMIT = get_env('ANTHROPIC_HOSTED_QUOTA_LIMIT')
+        self.HOSTED_AZURE_OPENAI_ENABLED = get_bool_env('HOSTED_AZURE_OPENAI_ENABLED')
+        self.HOSTED_AZURE_OPENAI_API_KEY = get_env('HOSTED_AZURE_OPENAI_API_KEY')
+        self.HOSTED_AZURE_OPENAI_API_BASE = get_env('HOSTED_AZURE_OPENAI_API_BASE')
+        self.HOSTED_AZURE_OPENAI_QUOTA_LIMIT = get_env('HOSTED_AZURE_OPENAI_QUOTA_LIMIT')
+
+        self.HOSTED_ANTHROPIC_ENABLED = get_bool_env('HOSTED_ANTHROPIC_ENABLED')
+        self.HOSTED_ANTHROPIC_API_BASE = get_env('HOSTED_ANTHROPIC_API_BASE')
+        self.HOSTED_ANTHROPIC_API_KEY = get_env('HOSTED_ANTHROPIC_API_KEY')
+        self.HOSTED_ANTHROPIC_QUOTA_LIMIT = get_env('HOSTED_ANTHROPIC_QUOTA_LIMIT')
 
         # By default it is False
         # You could disable it for compatibility with certain OpenAPI providers
         self.DISABLE_PROVIDER_CONFIG_VALIDATION = get_bool_env('DISABLE_PROVIDER_CONFIG_VALIDATION')
-
-        # For temp use only
-        # set default LLM provider, default is 'openai', support `azure_openai`
-        self.DEFAULT_LLM_PROVIDER = get_env('DEFAULT_LLM_PROVIDER')
 
         # notion import setting
         self.NOTION_CLIENT_ID = get_env('NOTION_CLIENT_ID')

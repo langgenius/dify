@@ -5,7 +5,7 @@
     ],
     "system_config": {
         "supported_quota_types": [
-            "trail",
+            "trial",
             "paid"
         ],
         "quota_unit": "times",

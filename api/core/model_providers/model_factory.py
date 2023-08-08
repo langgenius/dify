@@ -15,6 +15,30 @@ from models.provider import TenantDefaultModel
 class ModelFactory:
 
     @classmethod
+    def get_text_generation_model_from_model_config(cls, tenant_id: str,
+                                                    model_config: dict,
+                                                    streaming: bool = False,
+                                                    callbacks: Callbacks = None) -> Optional[BaseLLM]:
+        provider_name = model_config.get("provider")
+        model_name = model_config.get("name")
+        completion_params = model_config.get("completion_params", {})
+
+        return cls.get_text_generation_model(
+            tenant_id=tenant_id,
+            model_provider_name=provider_name,
+            model_name=model_name,
+            model_kwargs=ModelKwargs(
+                temperature=completion_params.get('temperature', 0),
+                max_tokens=completion_params.get('max_tokens', 256),
+                top_p=completion_params.get('top_p', 0),
+                frequency_penalty=completion_params.get('frequency_penalty', 0.1),
+                presence_penalty=completion_params.get('presence_penalty', 0.1)
+            ),
+            streaming=streaming,
+            callbacks=callbacks
+        )
+
+    @classmethod
     def get_text_generation_model(cls,
                                   tenant_id: str,
                                   model_provider_name: Optional[str] = None,

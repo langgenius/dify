@@ -1,7 +1,9 @@
 import decimal
+import logging
 
 from langchain.embeddings import MiniMaxEmbeddings
 
+from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.embedding.base import BaseEmbedding
 from core.model_providers.providers.base import BaseModelProvider
 
@@ -25,3 +27,9 @@ class MinimaxEmbedding(BaseEmbedding):
 
     def get_currency(self):
         raise 'RMB'
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        if isinstance(ex, ValueError):
+            return LLMBadRequestError(f"Minimax: {str(ex)}")
+        else:
+            return ex

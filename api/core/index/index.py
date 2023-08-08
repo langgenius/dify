@@ -18,7 +18,7 @@ class IndexBuilder:
                 tenant_id=dataset.tenant_id
             )
 
-            embeddings = CacheEmbedding(embedding_model.client)
+            embeddings = CacheEmbedding(embedding_model)
 
             return VectorIndex(
                 dataset=dataset,

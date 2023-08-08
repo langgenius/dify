@@ -9,7 +9,7 @@ from core.helper import encrypter
 from core.model_providers.models.entity.model_params import KwargRule, KwargRuleType, ModelKwargsRules, ModelType
 from core.model_providers.models.llm.replicate_model import ReplicateModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
-from core.third_party.langchain.llms.error import LLMNotExistsError
+from core.model_providers.error import LLMNotExistsError
 
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.replicate_embedding import ReplicateEmbedding

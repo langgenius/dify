@@ -1,6 +1,4 @@
 # -*- coding:utf-8 -*-
-import base64
-import json
 import logging
 
 from flask import current_app
@@ -11,9 +9,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.llm.provider.errors import ValidateFailedError
 from extensions.ext_database import db
-from libs import rsa
 from models.provider import Provider, ProviderType, ProviderName
 from services.provider_service import ProviderService
 
@@ -85,15 +81,15 @@ class ProviderTokenApi(Resource):
         args = parser.parse_args()
 
         if args['token']:
-            try:
-                ProviderService.validate_provider_configs(
-                    tenant=current_user.current_tenant,
-                    provider_name=ProviderName(provider),
-                    configs=args['token']
-                )
-                token_is_valid = True
-            except ValidateFailedError as ex:
-                raise ValueError(str(ex))
+            # try:
+            ProviderService.validate_provider_configs(
+                tenant=current_user.current_tenant,
+                provider_name=ProviderName(provider),
+                configs=args['token']
+            )
+            token_is_valid = True
+            # except ValidateFailedError as ex:
+            #     raise ValueError(str(ex))
 
             base64_encrypted_token = ProviderService.get_encrypted_token(
                 tenant=current_user.current_tenant,
