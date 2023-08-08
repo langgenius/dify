@@ -4,30 +4,30 @@ from typing import List, Optional, Any, Union
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult, SystemMessage, AIMessage, HumanMessage, BaseMessage, ChatGeneration
 
+from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, DifyStdOutCallbackHandler
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
 from core.model_providers.providers.base import BaseModelProvider
+from core.third_party.langchain.llms.fake import FakeLLM
 
 
 class BaseLLM(BaseProviderModel):
     model_mode: ModelMode = ModelMode.COMPLETION
     name: str
     model_kwargs: ModelKwargs
+    credentials: dict
     streaming: bool = False
     type: ModelType = ModelType.TEXT_GENERATION
     deduct_quota: bool = True
 
     def __init__(self, model_provider: BaseModelProvider,
-                 client: Any,
                  name: str,
-                 model_rules: ModelKwargsRules,
                  model_kwargs: ModelKwargs,
-                 streaming: bool = False):
-        super().__init__(model_provider, client)
-
+                 streaming: bool = False,
+                 callbacks: Callbacks = None):
         self.name = name
-        self.model_rules = model_rules
+        self.model_rules = model_provider.get_model_parameter_rules(name, self.type)
         self.model_kwargs = model_kwargs if model_kwargs else ModelKwargs(
             max_tokens=None,
             temperature=None,
@@ -35,7 +35,30 @@ class BaseLLM(BaseProviderModel):
             presence_penalty=None,
             frequency_penalty=None
         )
+        self.credentials = model_provider.get_model_credentials(
+            model_name=name,
+            model_type=self.type
+        )
         self.streaming = streaming
+
+        if streaming:
+            default_callback = DifyStreamingStdOutCallbackHandler()
+        else:
+            default_callback = DifyStdOutCallbackHandler()
+
+        if not callbacks:
+            callbacks = [default_callback]
+        else:
+            callbacks.append(default_callback)
+
+        self.callbacks = callbacks
+
+        client = self._init_client()
+        super().__init__(model_provider, client)
+
+    @abstractmethod
+    def _init_client(self) -> Any:
+        raise NotImplementedError
 
     def run(self, messages: List[PromptMessage],
             stop: Optional[List[str]] = None,
@@ -52,14 +75,32 @@ class BaseLLM(BaseProviderModel):
         if self.deduct_quota:
             self.model_provider.check_quota_over_limit()
 
-        result = self._run(messages, stop, callbacks, **kwargs)
+        if not callbacks:
+            callbacks = self.callbacks
+        else:
+            callbacks.extend(self.callbacks)
+
+        if 'fake_response' in kwargs and kwargs['fake_response']:
+            prompts = self._get_prompt_from_messages(messages)
+            fake_llm = FakeLLM(
+                response=kwargs['fake_response'],
+                num_token_func=self.get_num_tokens,
+                streaming=self.streaming,
+                callbacks=callbacks
+            )
+            result = fake_llm.generate([prompts])
+        else:
+            try:
+                result = self._run(messages, stop, callbacks, **kwargs)
+            except Exception as ex:
+                raise self.handle_exceptions(ex)
 
         if isinstance(result.generations[0][0], ChatGeneration):
             completion_content = result.generations[0][0].message.content
         else:
             completion_content=result.generations[0][0].text
 
-        if result.llm_output:
+        if result.llm_output and result.llm_output['token_usage']:
             prompt_tokens = result.llm_output['token_usage']['prompt_tokens']
             completion_tokens = result.llm_output['token_usage']['completion_tokens']
             total_tokens = result.llm_output['token_usage']['total_tokens']
@@ -120,6 +161,21 @@ class BaseLLM(BaseProviderModel):
 
         :return:
         """
+        raise NotImplementedError
+
+    def get_model_kwargs(self):
+        return self.model_kwargs
+
+    def set_model_kwargs(self, model_kwargs: ModelKwargs):
+        self.model_kwargs = model_kwargs
+        self._set_model_kwargs(model_kwargs)
+
+    @abstractmethod
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        raise NotImplementedError
+
+    @abstractmethod
+    def handle_exceptions(self, ex: Exception) -> Exception:
         raise NotImplementedError
 
     def _get_prompt_from_messages(self, messages: List[PromptMessage]) -> Union[str | List[BaseMessage]]:
