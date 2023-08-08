@@ -117,6 +117,7 @@ class AppListApi(Resource):
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         parser.add_argument('model_config', type=dict, location='json')
+        parser.add_argument('asr_model', type=str, choices=['funasr', 'whisper-1'], location='json')
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin or owner
@@ -163,6 +164,9 @@ class AppListApi(Resource):
 
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
+
+        if args['asr_model'] is not None:
+            app_model_config.speech_to_text = json.dumps({'enable':True, 'model':args['asr_model']})
 
         app.name = args['name']
         app.mode = args['mode']

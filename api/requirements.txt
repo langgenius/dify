@@ -41,3 +41,5 @@ google-api-python-client==2.90.0
 wikipedia==1.4.0
 readabilipy==0.2.0
 google-search-results==2.4.2
+funasr_onnx
+funasr

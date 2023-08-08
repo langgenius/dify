@@ -12,10 +12,12 @@ from controllers.web.error import AppUnavailableError, ProviderNotInitializeErro
 from controllers.web.wraps import WebApiResource
 from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
-from services.audio_service import AudioService
+from services.audio_service import AudioService, MODEL_WHISPER, MODEL_FUNASR
 from services.errors.audio import NoAudioUploadedServiceError, AudioTooLargeServiceError, \
     UnsupportedAudioTypeServiceError, ProviderNotSupportSpeechToTextServiceError
 from models.model import App, AppModelConfig
+import logging
+logger = logging.getLogger(__name__)
 
 
 class AudioApi(WebApiResource):
@@ -28,11 +30,16 @@ class AudioApi(WebApiResource):
         file = request.files['file']
 
         try:
-            response = AudioService.transcript(
-                tenant_id=app_model.tenant_id,
-                file=file,
-            )
+            if not app_model_config.speech_to_text_dict['model']: #  use whisper-1 as default
+                asr_model = MODEL_WHISPER
+            else:
+                asr_model = app_model_config.speech_to_text_dict['model']
+                if asr_model not in [MODEL_FUNASR, MODEL_WHISPER]:
+                    raise ModelCurrentlyNotSupportError(f"asr model:{asr_model} not support")
 
+            logger.debug(f"speech to text use model:{asr_model}")
+            audio_service = AudioService.from_model(tenant_id=app_model.tenant_id, model=asr_model)
+            response = audio_service(file=file)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
             logging.exception("App model config broken.")
