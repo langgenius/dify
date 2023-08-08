@@ -10,7 +10,7 @@ import ModelIcon from './model-icon'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
-import { AppType, ProviderType } from '@/types/app'
+import { ProviderType } from '@/types/app'
 import { MODEL_LIST, TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -49,7 +49,6 @@ const ConifgModel: FC<IConifgModelProps> = ({
   onShowUseGPT4Confirm,
 }) => {
   const { t } = useTranslation()
-  const isChatApp = mode === AppType.chat
   const availableModels = options.filter(item => item.type === mode)
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
@@ -213,21 +212,23 @@ const ConifgModel: FC<IConifgModelProps> = ({
           title={t('appDebug.modelConfig.title')}
         >
           <div className='py-3 pl-10 pr-6 text-sm'>
-            <div className="flex items-center justify-between my-5 h-9">
+            <div className='flex items-center justify-between my-5 h-9'>
               <div>{t('appDebug.modelConfig.model')}</div>
               {/* model selector */}
-              <div className="relative" style={{ zIndex: 30 }}>
-                <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
-                  <ModelIcon modelId={currModel?.id as string} />
-                  <div className="text-sm gray-900">{selectedModel?.name}</div>
+              <div className='relative min-w-[216px]' style={{ zIndex: 30 }}>
+                <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', isShowOption ? 'rounded-tl-lg rounded-tr-lg shadow' : 'rounded-lg', 'flex justify-between items-center h-9 px-3 space-x-2 bg-gray-50 ')}>
+                  <div className='flex items-center'>
+                    <ModelIcon modelId={currModel?.id as string} className='shrink-0 mr-2' />
+                    <div className='text-sm gray-900'>{selectedModel?.name}</div>
+                  </div>
                   {!selectModelDisabled && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
                 </div>
                 {isShowOption && (
-                  <div className={cn(isChatApp ? 'min-w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
+                  <div className='absolute right-0 w-full bg-gray-50 rounded-bl-lg rounded-br-lg shadow'>
                     {availableModels.map(item => (
-                      <div key={item.id} onClick={handleSelectModel(item.id, item.provider)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
-                        <ModelIcon className='shrink-0 mr-2' modelId={item?.id} />
-                        <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
+                      <div key={item.id} onClick={handleSelectModel(item.id, item.provider)} className='flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100'>
+                        <ModelIcon className='shrink-0 mr-2' modelId={item.id} />
+                        <div className='text-sm gray-900'>{item.name}</div>
                       </div>
                     ))}
                   </div>

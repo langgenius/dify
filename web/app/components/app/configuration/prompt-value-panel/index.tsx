@@ -195,7 +195,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     <Button
                       type="primary"
                       onClick={() => onSend && onSend()}
-                      className="w-[80px] !h-8">
+                      className="w-[80px] !h-8 !px-0">
                       <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
                       <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
                     </Button>
