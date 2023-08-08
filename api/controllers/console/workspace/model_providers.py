@@ -31,26 +31,25 @@ class ProviderListApi(Resource):
         plaintext, the rest is replaced by * and the last two bits are displayed in plaintext
         """
 
-        ProviderService.init_supported_provider(current_user.current_tenant)
-        providers = Provider.query.filter_by(tenant_id=tenant_id).all()
+        provider_service = ProviderService()
+        provider_info_list = provider_service.get_provider_list(tenant_id)
 
         provider_list = [
             {
-                'provider_name': p.provider_name,
-                'provider_type': p.provider_type,
-                'is_valid': p.is_valid,
-                'last_used': p.last_used,
-                'is_enabled': p.is_enabled,
+                'provider_name': p['provider_name'],
+                'provider_type': p['provider_type'],
+                'is_valid': p['is_valid'],
+                'last_used': p['last_used'],
+                'is_enabled': p['is_valid'],
                 **({
-                       'quota_type': p.quota_type,
-                       'quota_limit': p.quota_limit,
-                       'quota_used': p.quota_used
-                   } if p.provider_type == ProviderType.SYSTEM.value else {}),
-                'token': ProviderService.get_obfuscated_api_key(current_user.current_tenant,
-                                                                ProviderName(p.provider_name), only_custom=True)
-                if p.provider_type == ProviderType.CUSTOM.value else None
+                       'quota_type': p['quota_type'],
+                       'quota_limit': p['quota_limit'],
+                       'quota_used': p['quota_used']
+                   } if p['provider_type'] == ProviderType.SYSTEM.value else {}),
+                'token': p['config']
             }
-            for p in providers
+            for name, provider_info in provider_info_list.items()
+            for p in provider_info['providers']
         ]
 
         return provider_list

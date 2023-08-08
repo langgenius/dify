@@ -221,8 +221,11 @@ class BaseModelProvider(BaseModel, ABC):
         db.session.query(Provider).filter(
             Provider.tenant_id == self.provider.tenant_id,
             Provider.provider_name == self.provider.provider_name,
+            Provider.provider_type == self.provider.provider_type,
+            Provider.quota_type == self.provider.quota_type,
             Provider.quota_limit > Provider.quota_used
         ).update({'quota_used': Provider.quota_used + used_quota})
+        db.session.commit()
 
     def should_deduct_quota(self):
         return False
@@ -237,6 +240,7 @@ class BaseModelProvider(BaseModel, ABC):
             Provider.tenant_id == self.provider.tenant_id,
             Provider.provider_name == self.provider.provider_name
         ).update({'last_used': datetime.utcnow()})
+        db.session.commit()
 
     def _get_provider_model(self, model_name: str, model_type: ModelType) -> ProviderModel:
         """

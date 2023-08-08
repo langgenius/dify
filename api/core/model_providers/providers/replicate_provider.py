@@ -9,7 +9,6 @@ from core.helper import encrypter
 from core.model_providers.models.entity.model_params import KwargRule, KwargRuleType, ModelKwargsRules, ModelType
 from core.model_providers.models.llm.replicate_model import ReplicateModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
-from core.model_providers.error import LLMNotExistsError
 
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.replicate_embedding import ReplicateEmbedding
@@ -58,7 +57,7 @@ class ReplicateProvider(BaseModelProvider):
         try:
             version = model.versions.get(model_credentials['model_version'])
         except ReplicateError as e:
-            raise LLMNotExistsError(f"Model {model_name}:{model_credentials['model_version']} not exists, "
+            raise CredentialsValidateFailedError(f"Model {model_name}:{model_credentials['model_version']} not exists, "
                                     f"cause: {e.__class__.__name__}:{str(e)}")
         except Exception as e:
             logging.exception("Model validate failed.")
