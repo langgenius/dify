@@ -4,7 +4,8 @@ import json
 import logging
 
 from flask import current_app
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, reqparse, abort
 from werkzeug.exceptions import Forbidden
 

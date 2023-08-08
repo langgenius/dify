@@ -3,7 +3,8 @@ import json
 from datetime import datetime
 
 import flask
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, reqparse, fields, marshal_with, abort, inputs
 from werkzeug.exceptions import Unauthorized, Forbidden
 

@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 from flask import request
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, reqparse, fields, marshal, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
 import services
