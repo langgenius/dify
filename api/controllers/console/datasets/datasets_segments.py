@@ -285,18 +285,6 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         }, 200
 
 
-class DatasetDocumentSegmentTest(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        return {
-            'user_id': current_user.id,
-            'tenant_id': current_user.current_tenant_id,
-
-        }, 200
-
-
 api.add_resource(DatasetDocumentSegmentListApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments')
 api.add_resource(DatasetDocumentSegmentApi,
@@ -305,5 +293,3 @@ api.add_resource(DatasetDocumentSegmentAddApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment')
 api.add_resource(DatasetDocumentSegmentUpdateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>')
-api.add_resource(DatasetDocumentSegmentTest,
-                 '/datasets/test-segment')
