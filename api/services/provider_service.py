@@ -160,7 +160,8 @@ class ProviderService:
                                 "model_name": provider_model.model_name,
                                 "model_type": provider_model.model_type,
                                 "config": model_provider_class(provider=provider) \
-                                    .get_model_credentials(provider_model.model_name, provider_model.model_type,
+                                    .get_model_credentials(provider_model.model_name,
+                                                           ModelType.value_of(provider_model.model_type),
                                                            obfuscated=True),
                                 "is_valid": provider_model.is_valid
                             })

@@ -16,7 +16,7 @@ class BaseSpeech2Text(BaseProviderModel):
 
     def run(self, file):
         try:
-            self._run(file)
+            return self._run(file)
         except Exception as ex:
             raise self.handle_exceptions(ex)
 

@@ -13,8 +13,8 @@ MODEL_PROVIDER_CLASS = OpenAIProvider
 VALIDATE_CREDENTIAL_KEY = 'openai_api_key'
 
 
-def moderation_side_effect(input, model, api_key):
-    if api_key == 'valid_key':
+def moderation_side_effect(*args, **kwargs):
+    if kwargs['api_key'] == 'valid_key':
         mock_instance = MagicMock()
         mock_instance.request = MagicMock()
         return mock_instance, {}
@@ -30,14 +30,14 @@ def decrypt_side_effect(tenant_id, encrypted_key):
     return encrypted_key.replace('encrypted_', '')
 
 
-@patch('openai.Moderation._prepare_create', side_effect=moderation_side_effect)
+@patch('openai.ChatCompletion.create', side_effect=moderation_side_effect)
 def test_is_provider_credentials_valid_or_raise_valid(mock_create):
     # assert True if api_key is valid
     credentials = {VALIDATE_CREDENTIAL_KEY: 'valid_key'}
     assert MODEL_PROVIDER_CLASS.is_provider_credentials_valid_or_raise(credentials) is None
 
 
-@patch('openai.Moderation._prepare_create', side_effect=moderation_side_effect)
+@patch('openai.ChatCompletion.create', side_effect=moderation_side_effect)
 def test_is_provider_credentials_valid_or_raise_invalid(mock_create):
     # raise CredentialsValidateFailedError if api_key is not in credentials
     with pytest.raises(CredentialsValidateFailedError):

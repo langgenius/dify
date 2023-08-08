@@ -129,16 +129,26 @@ class OpenAIProvider(BaseModelProvider):
             raise CredentialsValidateFailedError('OpenAI API key is required')
 
         try:
-            instance, params = openai.Moderation._prepare_create(
-                input='test',
-                model='text-moderation-stable',
-                api_key=credentials['openai_api_key']
-            )
+            credentials_kwargs = {
+                "api_key": credentials['openai_api_key']
+            }
 
             if 'openai_api_base' in credentials:
-                instance.api_base_override = credentials['openai_api_base']
+                credentials_kwargs['api_base'] = credentials['api_base']
 
-            instance.request("post", openai.Moderation.get_url(), params)
+            if 'openai_organization' in credentials:
+                credentials_kwargs['organization'] = credentials['openai_organization']
+
+            rst = openai.ChatCompletion.create(
+                messages=[{"role": "user", "content": 'ping'}],
+                model='gpt-3.5-turbo',
+                timeout=10,
+                request_timeout=(5, 30),
+                max_tokens=20,
+                **credentials_kwargs
+            )
+
+            print(rst)
         except (AuthenticationError, OpenAIError) as ex:
             raise CredentialsValidateFailedError(str(ex))
         except Exception as ex:
