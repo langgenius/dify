@@ -29,7 +29,7 @@ const ModelCard: FC<ModelCardProps> = ({
           <div className='mb-1'>
             {modelItem.titleIcon[locale]}
           </div>
-          <div className='text-xs text-black opacity-60'>{modelItem.desc?.[locale]}</div>
+          <div className='h-9 text-xs text-black opacity-60'>{modelItem.desc?.[locale]}</div>
         </div>
         {modelItem.subTitleIcon}
       </div>

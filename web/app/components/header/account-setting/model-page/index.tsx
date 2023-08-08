@@ -41,6 +41,9 @@ const ModelPage = () => {
     setShowModal(true)
     setModelModalConfig(newModelModalConfig)
   }
+  const handleCancelModal = () => {
+    setShowModal(false)
+  }
 
   return (
     <div className='pt-1 -mt-2'>
@@ -77,9 +80,9 @@ const ModelPage = () => {
       <div className='mb-3 text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
       <div className='grid grid-cols-2 gap-4 mb-6'>
         {
-          MODEL_CARD_LIST.map(model => (
+          MODEL_CARD_LIST.map((model, index) => (
             <ModelCard
-              key={model.key}
+              key={index}
               modelItem={model.item}
               onOpenModal={() => handleOpenModal(model.modal)}
             />
@@ -87,9 +90,9 @@ const ModelPage = () => {
         }
       </div>
       {
-        MODEL_LIST.slice(0, showMoreModel ? MODEL_LIST.length : 3).map(model => (
+        MODEL_LIST.slice(0, showMoreModel ? MODEL_LIST.length : 3).map((model, index) => (
           <ModelItem
-            key={model.key}
+            key={index}
             modelItem={model.item}
             onOpenModal={() => handleOpenModal(model.modal)}
           />
@@ -106,7 +109,7 @@ const ModelPage = () => {
       <ModelModal
         isShow={showModal}
         modelModal={modelModalConfig}
-        onCancel={() => setShowModal(false)}
+        onCancel={handleCancelModal}
       />
     </div>
   )

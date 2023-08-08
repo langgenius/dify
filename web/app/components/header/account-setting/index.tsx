@@ -104,6 +104,7 @@ export default function AccountSetting({
   }
   useEffect(() => {
     const targetElement = scrollRef.current
+
     targetElement?.addEventListener('scroll', scrollHandle)
     return () => {
       targetElement?.removeEventListener('scroll', scrollHandle)
