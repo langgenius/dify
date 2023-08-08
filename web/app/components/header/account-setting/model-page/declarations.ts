@@ -2,14 +2,17 @@ import type { ReactElement } from 'react'
 import type { ValidateCallback } from '../key-validator/declarations'
 
 export type FormValue = Record<string, string | boolean>
-export type I18NText = {
-  'en': string
-  'zh-Hans': string
+
+export type TypeWithI18N<T = string> = {
+  'en': T
+  'zh-Hans': T
 }
+
 export type Option = {
   key: string
-  label: I18NText
+  label: TypeWithI18N
 }
+
 export type Field = {
   visible: (v?: FormValue) => boolean
   type: string
@@ -18,42 +21,11 @@ export type Field = {
   obfuscated?: boolean
   switch?: boolean
   switchKey?: string
-  label: I18NText
+  label: TypeWithI18N
   options?: Option[]
-  placeholder?: I18NText
-  help?: I18NText
+  placeholder?: TypeWithI18N
+  help?: TypeWithI18N
   validate?: ValidateCallback
-}
-
-export type Config = {
-  hit?: I18NText
-  title: I18NText
-  vender?: I18NText
-  link: {
-    href: string
-    label: I18NText
-  }
-  defaultValue?: FormValue
-  fields: Field[]
-}
-
-export type TModelItem = {
-  key: string
-  icon: {
-    'en': ReactElement
-    'zh-Hans': ReactElement
-  }
-  modalIcon: ReactElement
-  config: Config
-}
-export type ModelCard = {
-  key: string
-  bgColor: string
-  iconText: ReactElement
-  icon: ReactElement
-  modalIcon: ReactElement
-  config: Config
-  desc: I18NText
 }
 
 export enum ModelEnum {
@@ -67,10 +39,7 @@ export enum ModelEnum {
   'minimax' = 'minimax',
   'chatglm' = 'chatglm',
 }
-export type TypeWithI18N<T = string> = {
-  'en': T
-  'zh-Hans': T
-}
+
 export type ModelItem = {
   titleIcon: TypeWithI18N<ReactElement>
   subTitleIcon?: ReactElement
@@ -79,6 +48,7 @@ export type ModelItem = {
   hit?: TypeWithI18N
   vender?: TypeWithI18N
 }
+
 export type ModelModal = {
   title: TypeWithI18N
   icon: ReactElement
@@ -89,6 +59,7 @@ export type ModelModal = {
     label: TypeWithI18N
   }
 }
+
 export type ModelConfig = {
   key: ModelEnum
   item: ModelItem
