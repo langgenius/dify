@@ -22,7 +22,7 @@ class HostedAzureOpenAI(BaseModel):
 
 
 class HostedAnthropic(BaseModel):
-    api_base: str
+    api_base: str = None
     api_key: str
     quota_limit: int = 0
     """Quota limit for the anthropic hosted model. 0 means unlimited."""
