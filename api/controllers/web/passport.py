@@ -41,7 +41,7 @@ class PassportResource(Resource):
             "iss": site.app_id,
             'sub': 'Web API Passport',
             'app_id': site.app_id,
-            'app_code': site.code,
+            'app_code': app_code,
             'end_user_id': end_user.id,
         }
 
