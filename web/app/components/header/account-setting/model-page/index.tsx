@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Config } from './declarations'
+import type { ModelModal as TModelModal } from './declarations'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
@@ -8,104 +8,20 @@ import ModelModal from './model-modal'
 import config from './configs'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  Anthropic,
-  AnthropicText,
-  AzureOpenaiServiceText,
-  ChatglmText,
-  HuggingfaceText,
-  OpenaiBlack,
-  OpenaiText,
-  ReplicateText,
-} from '@/app/components/base/icons/src/public/llm'
-import {
-  MinimaxText,
-  TongyiText,
-  TongyiTextCn,
-} from '@/app/components/base/icons/src/image/llm'
 
 const MODEL_CARD_LIST = [
-  {
-    key: 'openai',
-    type: 'add',
-    bgColor: 'bg-gray-200',
-    iconText: <OpenaiText className='h-5' />,
-    icon: <OpenaiBlack className='w-6 h-6' />,
-    config: config.openai,
-    desc: {
-      'en': 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
-      'zh-Hans': 'OpenAI提供的模型，例如GPT-3.5-Turbo和GPT-4。',
-    },
-  },
-  {
-    key: 'anthropic',
-    type: 'add',
-    bgColor: 'bg-[#F0F0EB]',
-    iconText: <AnthropicText className='h-5' />,
-    icon: <Anthropic className='w-6 h-6' />,
-    config: config.anthropic,
-    desc: {
-      'en': 'Anthropic’s powerful models, such as Claude 2 and Claude Instant.',
-      'zh-Hans': 'Anthropic 的强大模型，例如 Claude 2 和 Claude Instant。',
-    },
-  },
+  config.openai,
+  config.anthropic,
 ]
 
 const MODEL_LIST = [
-  {
-    key: 'azure_openai',
-    type: 'add',
-    icon: {
-      'en': <AzureOpenaiServiceText className='h-6' />,
-      'zh-Hans': <AzureOpenaiServiceText className='h-6' />,
-    },
-    config: config.azure_openai,
-  },
-  {
-    key: 'replicate',
-    type: 'add',
-    icon: {
-      'en': <ReplicateText className='h-6' />,
-      'zh-Hans': <ReplicateText className='h-6' />,
-    },
-    config: config.replicate,
-  },
-  {
-    key: 'huggingface_hub',
-    type: 'add',
-    icon: {
-      'en': <HuggingfaceText className='h-6' />,
-      'zh-Hans': <HuggingfaceText className='h-6' />,
-    },
-    config: config.huggingface_hub,
-  },
-  {
-    key: 'tongyi',
-    type: 'setup',
-    icon: {
-      'en': <TongyiText className='w-[88px] h-6' />,
-      'zh-Hans': <TongyiTextCn className='w-[100px] h-6' />,
-    },
-    config: config.tongyi,
-  },
-  {
-    key: 'minimax',
-    type: 'setup',
-    icon: {
-      'en': <MinimaxText className='w-[84px] h-6' />,
-      'zh-Hans': <MinimaxText className='w-[84px] h-6' />,
-    },
-    config: config.minimax,
-  },
-  {
-    key: 'chatglm',
-    type: 'setup',
-    icon: {
-      'en': <ChatglmText className='h-6' />,
-      'zh-Hans': <ChatglmText className='h-6' />,
-    },
-    config: config.chatglm,
-  },
+  config.azure_openai,
+  config.replicate,
+  config.huggingface_hub,
+  config.tongyi,
+  config.spark,
+  config.minimax,
+  config.chatglm,
 ]
 
 const titleClassName = `
@@ -119,11 +35,11 @@ const ModelPage = () => {
   const { t } = useTranslation()
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
-  const [modalConfig, setModalConfig] = useState<Config | undefined>(undefined)
+  const [modelModalConfig, setModelModalConfig] = useState<TModelModal | undefined>(undefined)
 
-  const handleOpenModal = (config?: Config) => {
+  const handleOpenModal = (newModelModalConfig?: TModelModal) => {
     setShowModal(true)
-    setModalConfig(config)
+    setModelModalConfig(newModelModalConfig)
   }
 
   return (
@@ -164,8 +80,8 @@ const ModelPage = () => {
           MODEL_CARD_LIST.map(model => (
             <ModelCard
               key={model.key}
-              provider={model}
-              onOpenModal={() => handleOpenModal(model.config)}
+              modelItem={model.item}
+              onOpenModal={() => handleOpenModal(model.modal)}
             />
           ))
         }
@@ -174,8 +90,8 @@ const ModelPage = () => {
         MODEL_LIST.slice(0, showMoreModel ? MODEL_LIST.length : 3).map(model => (
           <ModelItem
             key={model.key}
-            provider={model}
-            onOpenModal={() => handleOpenModal(model.config)}
+            modelItem={model.item}
+            onOpenModal={() => handleOpenModal(model.modal)}
           />
         ))
       }
@@ -189,7 +105,7 @@ const ModelPage = () => {
       }
       <ModelModal
         isShow={showModal}
-        config={modalConfig}
+        modelModal={modelModalConfig}
         onCancel={() => setShowModal(false)}
       />
     </div>

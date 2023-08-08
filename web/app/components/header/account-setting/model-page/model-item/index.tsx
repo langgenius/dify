@@ -1,20 +1,22 @@
 import { useState } from 'react'
-import type { FC, ReactElement } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Indicator from '../../../indicator'
+import type { ModelItem as TModelItem } from '../declarations'
 import Operation from './Operation'
+import s from './index.module.css'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm/common'
 
 type ModelItemProps = {
-  provider: { key: string; type: string; icon: { 'en': ReactElement; 'zh-Hans': ReactElement } }
+  modelItem: TModelItem
   onOpenModal: () => void
 }
 
 const ModelItem: FC<ModelItemProps> = ({
-  provider,
+  modelItem,
   onOpenModal,
 }) => {
   const { locale } = useContext(I18n)
@@ -24,14 +26,28 @@ const ModelItem: FC<ModelItemProps> = ({
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
       <div className='flex justify-between items-center px-4 h-14'>
-        {provider.icon[locale]}
-        <Button
-          className='!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
-          onClick={onOpenModal}
-        >
-          {t(`common.operation.${provider.type}`)}
-        </Button>
+        {modelItem.titleIcon[locale]}
         <div className='flex items-center'>
+          <div className='flex items-center'>
+            📣
+            <div className={`${s.vender} ml-1 mr-2 text-xs font-medium text-transparent`}>{modelItem.vender?.[locale]}</div>
+            <Button
+              type='primary'
+              className='!px-3 !h-7 rounded-md !text-xs font-medium text-gray-700'
+              onClick={onOpenModal}
+            >
+              Get for free
+            </Button>
+          </div>
+          <Button
+            className='!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
+            onClick={onOpenModal}
+          >
+            {t('common.operation.add')}
+          </Button>
+        </div>
+        <div className='flex items-center'>
+          <div></div>
           <Indicator className='mr-3' />
           <Button
             className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'

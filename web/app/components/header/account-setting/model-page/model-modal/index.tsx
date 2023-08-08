@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { Config } from '../declarations'
+import type { ModelModal as TModelModal } from '../declarations'
 import Form from './Form'
 import I18n from '@/context/i18n'
 import Modal from '@/app/components/base/modal'
@@ -11,14 +11,14 @@ import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/gene
 
 type ModelModalProps = {
   isShow: boolean
-  config?: Config
   onCancel: () => void
+  modelModal?: TModelModal
 }
 
 const ModelModal: FC<ModelModalProps> = ({
   isShow,
   onCancel,
-  config,
+  modelModal,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -31,16 +31,17 @@ const ModelModal: FC<ModelModalProps> = ({
     >
       <div className='px-8 pt-8'>
         <div className='flex justify-between items-center mb-2'>
-          <div className='text-xl font-semibold text-gray-900'>{config?.title[locale]}</div>
+          <div className='text-xl font-semibold text-gray-900'>{modelModal?.title[locale]}</div>
+          {modelModal?.icon}
         </div>
-        <Form fields={config?.fields || []} initValue={config?.defaultValue} />
+        <Form fields={modelModal?.fields || []} initValue={modelModal?.defaultValue} />
         <div className='flex justify-between items-center py-6'>
           <a
-            href={config?.link.href}
+            href={modelModal?.link.href}
             target='_blank'
             className='inline-flex items-center text-xs text-primary-600'
           >
-            {config?.link.label[locale]}
+            {modelModal?.link.label[locale]}
             <LinkExternal02 className='ml-1 w-3 h-3' />
           </a>
           <div>

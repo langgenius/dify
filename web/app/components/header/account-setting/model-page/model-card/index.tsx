@@ -1,7 +1,7 @@
-import type { FC, ReactElement } from 'react'
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { I18NText } from '../declarations'
+import type { ModelItem } from '../declarations'
 import Indicator from '../../../indicator'
 import PrioritySelector from './PrioritySelector'
 import { IS_CE_EDITION } from '@/config'
@@ -11,12 +11,12 @@ import { InfoCircle, Plus } from '@/app/components/base/icons/src/vender/line/ge
 import Tooltip from '@/app/components/base/tooltip'
 
 type ModelCardProps = {
-  provider: { key: string; type: string; bgColor: string; icon: ReactElement; desc: I18NText; iconText?: ReactElement }
+  modelItem: ModelItem
   onOpenModal: () => void
 }
 
 const ModelCard: FC<ModelCardProps> = ({
-  provider,
+  modelItem,
   onOpenModal,
 }) => {
   const { locale } = useContext(I18n)
@@ -24,14 +24,14 @@ const ModelCard: FC<ModelCardProps> = ({
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
-      <div className={`flex px-4 pt-4 pb-3 rounded-t-lg ${provider.bgColor}`}>
+      <div className={`flex px-4 pt-4 pb-3 rounded-t-lg ${modelItem.bgColor}`}>
         <div className='mr-3'>
           <div className='mb-1'>
-            {provider.iconText}
+            {modelItem.titleIcon[locale]}
           </div>
-          <div className='text-xs text-black opacity-60'>{provider.desc[locale]}</div>
+          <div className='text-xs text-black opacity-60'>{modelItem.desc?.[locale]}</div>
         </div>
-        {provider.icon}
+        {modelItem.subTitleIcon}
       </div>
       {
         !IS_CE_EDITION && (
@@ -45,7 +45,7 @@ const ModelCard: FC<ModelCardProps> = ({
                 <div className='mr-1 text-sm font-medium'>200</div>
                 <div className='mr-1 text-sm'>{t('common.modelProvider.card.callTimes')}</div>
                 <Tooltip
-                  selector={`setting-model-card-${provider.key}`}
+                  selector='setting-model-card'
                   htmlContent={
                     <div className='w-[261px] text-gray-500'>{t('common.modelProvider.card.tip')}</div>
                   }

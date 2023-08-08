@@ -1,19 +1,21 @@
-import anthropicConfig from './anthropic.config'
-import openaiConfig from './openai.config'
-import huggingfaceConfig from './huggingface.config'
-import minimaxConfig from './minimax.config'
-import tongyiConfig from './tongyi.config'
-import chatglmConfig from './chatglm.config'
-import replicateConfig from './replicate.config'
-import azure_openaiConfig from './azure_openai.config'
+import openai from './openai'
+import anthropic from './anthropic'
+import azure_openai from './azure_openai'
+import replicate from './replicate'
+import huggingface_hub from './huggingface_hub'
+import tongyi from './tongyi'
+import spark from './spark'
+import minimax from './minimax'
+import chatglm from './chatglm'
 
 export default {
-  anthropic: anthropicConfig,
-  openai: openaiConfig,
-  huggingface_hub: huggingfaceConfig,
-  minimax: minimaxConfig,
-  tongyi: tongyiConfig,
-  chatglm: chatglmConfig,
-  replicate: replicateConfig,
-  azure_openai: azure_openaiConfig,
+  openai,
+  anthropic,
+  azure_openai,
+  replicate,
+  huggingface_hub,
+  tongyi,
+  spark,
+  minimax,
+  chatglm,
 }
