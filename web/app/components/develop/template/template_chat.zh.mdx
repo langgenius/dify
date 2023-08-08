@@ -312,7 +312,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="POST" label="/conversations/{converation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/{converation_id}/name' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{

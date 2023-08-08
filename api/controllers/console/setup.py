@@ -19,15 +19,16 @@ from .wraps import only_edition_self_hosted
 
 class SetupApi(Resource):
 
-    @only_edition_self_hosted
     def get(self):
-        setup_status = get_setup_status()
-        if setup_status:
-            return {
-                'step': 'finished',
-                'setup_at': setup_status.setup_at.isoformat()
-            }  
-        return {'step': 'not_start'}
+        if current_app.config['EDITION'] == 'SELF_HOSTED':
+            setup_status = get_setup_status()
+            if setup_status:
+                return {
+                    'step': 'finished',
+                    'setup_at': setup_status.setup_at.isoformat()
+                }
+            return {'step': 'not_start'}
+        return {'step': 'finished'}
 
     @only_edition_self_hosted
     def post(self):

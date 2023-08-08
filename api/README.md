@@ -8,7 +8,7 @@
    
    ```bash
    cd ../docker
-   docker-compose -f docker-compose.middleware.yaml up -d
+   docker-compose -f docker-compose.middleware.yaml -p dify up -d
    cd ../api
    ```
 2. Copy `.env.example` to `.env`
