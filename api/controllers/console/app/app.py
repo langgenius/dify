@@ -126,9 +126,9 @@ class AppListApi(Resource):
         if args['model_config'] is not None:
             # validate config
             model_configuration = AppModelConfigService.validate_configuration(
+                tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=args['model_config'],
-                mode=args['mode']
+                config=args['model_config']
             )
 
             app = App(

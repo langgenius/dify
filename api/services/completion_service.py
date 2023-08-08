@@ -127,9 +127,9 @@ class CompletionService:
 
                 # validate config
                 model_config = AppModelConfigService.validate_configuration(
+                    tenant_id=app_model.tenant_id,
                     account=user,
-                    config=args['model_config'],
-                    mode=app_model.mode
+                    config=args['model_config']
                 )
 
                 app_model_config = AppModelConfig(

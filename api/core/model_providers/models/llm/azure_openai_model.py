@@ -25,7 +25,7 @@ class AzureOpenAIModel(BaseLLM):
                  model_kwargs: ModelKwargs,
                  streaming: bool = False,
                  callbacks: Callbacks = None):
-        if self.name == 'text-davinci-003':
+        if name == 'text-davinci-003':
             self.model_mode = ModelMode.COMPLETION
         else:
             self.model_mode = ModelMode.CHAT

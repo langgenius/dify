@@ -4,7 +4,7 @@ from collections import defaultdict
 
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
-from core.model_providers.model_provider_factory import ModelProviderFactory, DEFAULT_MODELS
+from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargsRules
 from models.provider import Provider, ProviderModel, TenantPreferredModelProvider, ProviderType, ProviderQuotaType, \
     TenantDefaultModel
@@ -147,6 +147,7 @@ class ProviderService:
                     # if custom
                     key = ProviderType.CUSTOM.value
                     provider_parameter_dict[key]['last_used'] = provider.last_used
+                    provider_parameter_dict[key]['is_valid'] = provider.is_valid
 
                     if model_provider_rule['model_flexibility'] == 'fixed':
                         provider_parameter_dict[key]['config'] = model_provider_class(provider=provider) \

@@ -1,5 +1,6 @@
 import json
 import logging
+from json import JSONDecodeError
 from typing import Type
 
 import openai
@@ -15,7 +16,8 @@ from core.model_providers.models.llm.azure_openai_model import AzureOpenAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
 from core.third_party.langchain.llms.azure_chat_open_ai import EnhanceAzureChatOpenAI
-from models.provider import ProviderType
+from extensions.ext_database import db
+from models.provider import ProviderType, ProviderModel
 
 BASE_MODELS = [
     'gpt-4',
@@ -35,6 +37,12 @@ class AzureOpenAIProvider(BaseModelProvider):
         Returns the name of a provider.
         """
         return 'azure_openai'
+
+    def get_supported_model_list(self, model_type: ModelType) -> list[dict]:
+        # convert old provider config to provider models
+        self._convert_provider_config_to_model_config()
+
+        return super().get_supported_model_list(model_type)
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []
@@ -173,6 +181,9 @@ class AzureOpenAIProvider(BaseModelProvider):
         if self.provider.provider_type != ProviderType.CUSTOM.value:
             raise NotImplementedError
 
+        # convert old provider config to provider models
+        self._convert_provider_config_to_model_config()
+
         provider_model = self._get_provider_model(model_name, model_type)
 
         if not provider_model.encrypted_config:
@@ -210,3 +221,63 @@ class AzureOpenAIProvider(BaseModelProvider):
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
         return {}
+
+    def _convert_provider_config_to_model_config(self):
+        if self.provider.provider_type == ProviderType.CUSTOM.value \
+                and self.provider.is_valid \
+                and self.provider.encrypted_config:
+            try:
+                credentials = json.loads(self.provider.encrypted_config)
+            except JSONDecodeError:
+                credentials = {
+                    'openai_api_base': '',
+                    'openai_api_key': '',
+                    'base_model_name': ''
+                }
+
+            self._add_provider_model(
+                model_name='gpt-35-turbo',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='gpt-35-turbo-16k',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='gpt-4',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='text-davinci-003',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='text-embedding-ada-002',
+                model_type=ModelType.EMBEDDINGS,
+                provider_credentials=credentials
+            )
+
+            self.provider.encrypted_config = None
+            db.session.commit()
+
+    def _add_provider_model(self, model_name: str, model_type: ModelType, provider_credentials: dict):
+        credentials = provider_credentials.copy()
+        credentials['base_model_name'] = model_name
+        provider_model = ProviderModel(
+            tenant_id=self.provider.tenant_id,
+            provider_name=self.provider.provider_name,
+            model_name=model_name,
+            model_type=model_type.value,
+            encrypted_config=json.dumps(credentials),
+            is_valid=True
+        )
+        db.session.add(provider_model)
+        db.session.commit()

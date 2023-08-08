@@ -17,21 +17,6 @@ class ProviderType(Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class ProviderName(Enum):
-    OPENAI = 'openai'
-    AZURE_OPENAI = 'azure_openai'
-    ANTHROPIC = 'anthropic'
-    COHERE = 'cohere'
-    HUGGINGFACEHUB = 'huggingfacehub'
-
-    @staticmethod
-    def value_of(value):
-        for member in ProviderName:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
-
-
 class ProviderQuotaType(Enum):
     PAID = 'paid'
     TRIAL = 'trial'
