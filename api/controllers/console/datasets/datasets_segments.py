@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from datetime import datetime
 
-from flask_login import login_required, current_user
+from flask_login import current_user
 from flask_restful import Resource, reqparse, fields, marshal
 from werkzeug.exceptions import NotFound, Forbidden
 
@@ -10,6 +10,7 @@ from controllers.console import api
 from controllers.console.datasets.error import InvalidActionError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.login.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
@@ -284,6 +285,18 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         }, 200
 
 
+class DatasetDocumentSegmentTest(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return {
+            'user_id': current_user.id,
+            'tenant_id': current_user.current_tenant_id,
+
+        }, 200
+
+
 api.add_resource(DatasetDocumentSegmentListApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments')
 api.add_resource(DatasetDocumentSegmentApi,
@@ -292,3 +305,5 @@ api.add_resource(DatasetDocumentSegmentAddApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment')
 api.add_resource(DatasetDocumentSegmentUpdateApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>')
+api.add_resource(DatasetDocumentSegmentTest,
+                 '/datasets/test-segment')

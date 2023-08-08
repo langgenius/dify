@@ -711,11 +711,13 @@ class DocumentMetadataApi(DocumentResource):
         metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
 
         document.doc_metadata = {}
-
-        for key, value_type in metadata_schema.items():
-            value = doc_metadata.get(key)
-            if value is not None and isinstance(value, value_type):
-                document.doc_metadata[key] = value
+        if doc_type == 'others':
+            document.doc_metadata = doc_metadata
+        else:
+            for key, value_type in metadata_schema.items():
+                value = doc_metadata.get(key)
+                if value is not None and isinstance(value, value_type):
+                    document.doc_metadata[key] = value
 
         document.doc_type = doc_type
         document.updated_at = datetime.utcnow()

@@ -54,7 +54,8 @@ DEFAULTS = {
     'OPENAI_HOSTED_QUOTA_LIMIT': 200,
     'ANTHROPIC_HOSTED_QUOTA_LIMIT': 1000,
     'TENANT_DOCUMENT_COUNT': 100,
-    'CLEAN_DAY_SETTING': 30
+    'CLEAN_DAY_SETTING': 30,
+    'ADMIN_API_KEY': 'Jytest'
 }
 
 
@@ -217,6 +218,7 @@ class Config:
 
         self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
         self.CLEAN_DAY_SETTING = get_env('CLEAN_DAY_SETTING')
+        self.ADMIN_API_KEY = get_env('ADMIN_API_KEY')
 
 
 class CloudEditionConfig(Config):
