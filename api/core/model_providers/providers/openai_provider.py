@@ -16,7 +16,7 @@ from core.model_providers.models.llm.openai_model import OpenAIModel
 from core.model_providers.models.moderation.openai_moderation import OpenAIModeration
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
-from models.provider import ProviderType
+from models.provider import ProviderType, ProviderQuotaType
 
 
 class OpenAIProvider(BaseModelProvider):
@@ -30,7 +30,7 @@ class OpenAIProvider(BaseModelProvider):
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         if model_type == ModelType.TEXT_GENERATION:
-            return [
+            models = [
                 {
                     'id': 'gpt-3.5-turbo',
                     'name': 'gpt-3.5-turbo',
@@ -52,6 +52,12 @@ class OpenAIProvider(BaseModelProvider):
                     'name': 'text-davinci-003',
                 }
             ]
+
+            if self.provider.provider_type == ProviderType.SYSTEM.value \
+                    and self.provider.quota_type == ProviderQuotaType.TRIAL.value:
+                models = [item for item in models if item['id'] not in ['gpt-4', 'gpt-4-32k']]
+
+            return models
         elif model_type == ModelType.EMBEDDINGS:
             return [
                 {

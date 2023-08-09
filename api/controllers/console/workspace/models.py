@@ -4,7 +4,6 @@ from flask_restful import Resource, reqparse
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.model_providers.model_factory import ModelFactory
 from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType
 from models.provider import ProviderType

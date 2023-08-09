@@ -4,6 +4,7 @@ from typing import Type
 
 from pydantic import BaseModel
 
+from core.model_providers.error import QuotaExceededError, LLMBadRequestError
 from extensions.ext_database import db
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargsRules
 from core.model_providers.models.entity.provider import ProviderQuotaUnit
@@ -188,7 +189,7 @@ class BaseModelProvider(BaseModel, ABC):
         ).first()
 
         if not provider:
-            raise ModelProviderQuotaLimitError()
+            raise QuotaExceededError()
 
     def deduct_quota(self, used_tokens: int = 0) -> None:
         """
@@ -259,19 +260,11 @@ class BaseModelProvider(BaseModel, ABC):
         ).first()
 
         if not provider_model:
-            raise ProviderModelNotFoundError()
+            raise LLMBadRequestError(f"The model {model_name} does not exist. "
+                                     f"Please check the configuration.")
 
         return provider_model
 
 
 class CredentialsValidateFailedError(Exception):
     pass
-
-
-class ModelProviderQuotaLimitError(Exception):
-    pass
-
-
-class ProviderModelNotFoundError(Exception):
-    pass
-

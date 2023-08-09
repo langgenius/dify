@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
+from core.model_providers.error import QuotaExceededError
 from core.model_providers.models.entity.model_params import ModelType
-from core.model_providers.providers.base import ModelProviderQuotaLimitError
 from models.provider import Provider, ProviderType
 from tests.unit_tests.model_providers.fake_model_provider import FakeModelProvider
 
@@ -40,7 +40,7 @@ def test_check_quota_over_limit(mocker):
 
     provider = FakeModelProvider(provider=Provider(provider_type=ProviderType.SYSTEM.value))
 
-    with pytest.raises(ModelProviderQuotaLimitError):
+    with pytest.raises(QuotaExceededError):
         provider.check_quota_over_limit()
 
 

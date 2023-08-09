@@ -9,11 +9,12 @@ from langchain.schema import LLMResult
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.llms.chat_open_ai import EnhanceChatOpenAI
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
-    LLMRateLimitError, LLMAuthorizationError
+    LLMRateLimitError, LLMAuthorizationError, ModelCurrentlyNotSupportError
 from core.third_party.langchain.llms.open_ai import EnhanceOpenAI
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
+from models.provider import ProviderType, ProviderQuotaType
 
 COMPLETION_MODELS = [
     'text-davinci-003',  # 4,097 tokens
@@ -95,6 +96,11 @@ class OpenAIModel(BaseLLM):
         :param callbacks:
         :return:
         """
+        if self.name == 'gpt-4' \
+                and self.model_provider.provider.provider_type == ProviderType.SYSTEM.value \
+                and self.model_provider.provider.quota_type == ProviderQuotaType.TRIAL.value:
+            raise ModelCurrentlyNotSupportError("Dify Hosted OpenAI GPT-4 currently not support.")
+
         prompts = self._get_prompt_from_messages(messages)
         return self._client.generate([prompts], stop, callbacks)
 
