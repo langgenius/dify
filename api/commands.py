@@ -1,4 +1,5 @@
 import datetime
+import math
 import random
 import string
 import time
@@ -8,6 +9,7 @@ from flask import current_app
 from werkzeug.exceptions import NotFound
 
 from core.index.index import IndexBuilder
+from core.model_providers.providers.hosted import hosted_model_providers
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
@@ -18,7 +20,7 @@ from models.model import Account
 import secrets
 import base64
 
-from models.provider import Provider
+from models.provider import Provider, ProviderType, ProviderQuotaType
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -247,10 +249,50 @@ def clean_unused_dataset_indexes():
     click.echo(click.style('Cleaned unused dataset from db success latency: {}'.format(end_at - start_at), fg='green'))
 
 
+@click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
+def sync_anthropic_hosted_providers():
+    click.echo(click.style('Start sync anthropic hosted providers.', fg='green'))
+    count = 0
+
+    page = 1
+    while True:
+        try:
+            providers = db.session.query(Provider).filter(
+                Provider.provider_name == 'anthropic',
+                Provider.provider_type == ProviderType.SYSTEM.value,
+                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+            ).order_by(Provider.created_at.desc()).paginate(page=page, per_page=100)
+        except NotFound:
+            break
+
+        page += 1
+        for provider in providers:
+            try:
+                click.echo('Syncing tenant anthropic hosted provider: {}'.format(provider.tenant_id))
+                original_quota_limit = provider.quota_limit
+                new_quota_limit = hosted_model_providers.anthropic.quota_limit
+                division = math.ceil(new_quota_limit / 1000)
+
+                provider.quota_limit = new_quota_limit if original_quota_limit == 1000 \
+                    else original_quota_limit * division
+                provider.quota_used = division * provider.quota_used
+                db.session.commit()
+
+                count += 1
+            except Exception as e:
+                click.echo(click.style(
+                    'Sync tenant anthropic hosted provider error: {} {}'.format(e.__class__.__name__, str(e)),
+                    fg='red'))
+                continue
+
+    click.echo(click.style('Congratulations! Synced {} anthropic hosted providers.'.format(count), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
     app.cli.add_command(generate_invitation_codes)
     app.cli.add_command(reset_encrypt_key_pair)
     app.cli.add_command(recreate_all_dataset_indexes)
+    app.cli.add_command(sync_anthropic_hosted_providers)
     app.cli.add_command(clean_unused_dataset_indexes)
