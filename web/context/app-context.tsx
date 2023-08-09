@@ -1,20 +1,22 @@
 'use client'
 
-import { createRef, useEffect, useRef, useState } from 'react'
+import { createRef, useCallback, useEffect, useRef, useState } from 'react'
 import useSWR from 'swr'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
 import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
-import { fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
+import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
 import type { App } from '@/types/app'
-import type { LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 
 export type AppContextValue = {
   apps: App[]
-  mutateApps: () => void
+  mutateApps: VoidFunction
   userProfile: UserProfileResponse
-  mutateUserProfile: () => void
+  mutateUserProfile: VoidFunction
+  currentWorkspace: ICurrentWorkspace
+  mutateCurrentWorkspace: VoidFunction
   pageContainerRef: React.RefObject<HTMLDivElement>
   langeniusVersionInfo: LangGeniusVersionResponse
   useSelector: typeof useSelector
@@ -30,6 +32,17 @@ const initialLangeniusVersionInfo = {
   can_auto_update: false,
 }
 
+const initialWorkspaceInfo: ICurrentWorkspace = {
+  id: '',
+  name: '',
+  plan: '',
+  status: '',
+  created_at: 0,
+  role: 'normal',
+  providers: [],
+  in_trail: true,
+}
+
 const AppContext = createContext<AppContextValue>({
   apps: [],
   mutateApps: () => { },
@@ -40,7 +53,9 @@ const AppContext = createContext<AppContextValue>({
     avatar: '',
     is_password_set: false,
   },
+  currentWorkspace: initialWorkspaceInfo,
   mutateUserProfile: () => { },
+  mutateCurrentWorkspace: () => { },
   pageContainerRef: createRef(),
   langeniusVersionInfo: initialLangeniusVersionInfo,
   useSelector,
@@ -59,10 +74,13 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
 
   const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
+  const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>()
   const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
-  const updateUserProfileAndVersion = async () => {
+  const [currentWorkspace, setCurrentWorkspace] = useState<ICurrentWorkspace>(initialWorkspaceInfo)
+
+  const updateUserProfileAndVersion = useCallback(async () => {
     if (userProfileResponse && !userProfileResponse.bodyUsed) {
       const result = await userProfileResponse.json()
       setUserProfile(result)
@@ -71,16 +89,32 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       const versionData = await fetchLanggeniusVersion({ url: '/version', params: { current_version } })
       setLangeniusVersionInfo({ ...versionData, current_version, latest_version: versionData.version, current_env })
     }
-  }
+  }, [userProfileResponse])
+
   useEffect(() => {
     updateUserProfileAndVersion()
-  }, [userProfileResponse])
+  }, [updateUserProfileAndVersion, userProfileResponse])
+
+  useEffect(() => {
+    if (currentWorkspaceResponse)
+      setCurrentWorkspace(currentWorkspaceResponse)
+  }, [currentWorkspaceResponse])
 
   if (!appList || !userProfile)
     return <Loading type='app' />
 
   return (
-    <AppContext.Provider value={{ apps: appList.data, mutateApps, userProfile, mutateUserProfile, pageContainerRef, langeniusVersionInfo, useSelector }}>
+    <AppContext.Provider value={{
+      apps: appList.data,
+      mutateApps,
+      userProfile,
+      mutateUserProfile,
+      pageContainerRef,
+      langeniusVersionInfo,
+      useSelector,
+      currentWorkspace,
+      mutateCurrentWorkspace,
+    }}>
       <div ref={pageContainerRef} className='relative flex flex-col h-full overflow-auto bg-gray-100'>
         {children}
       </div>
