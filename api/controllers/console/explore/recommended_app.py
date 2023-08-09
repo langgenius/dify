@@ -45,6 +45,9 @@ class RecommendedAppListApi(Resource):
     def get(self):
         language_prefix = current_user.interface_language if current_user.interface_language else 'en-US'
 
+        if not current_user.current_tenant:
+            return {'recommended_apps': [], 'categories': []}
+
         recommended_apps = db.session.query(RecommendedApp).filter(
             RecommendedApp.is_listed == True,
             RecommendedApp.language == language_prefix

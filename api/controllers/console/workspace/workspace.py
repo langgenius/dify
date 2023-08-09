@@ -67,6 +67,8 @@ class TenantApi(Resource):
             logging.warning('Deprecated URL /info was used.')
 
         tenant = current_user.current_tenant
+        if tenant is None:
+            raise AccountNotLinkTenantError("Account not link tenant")
 
         return WorkspaceService.get_tenant_info(tenant), 200
 

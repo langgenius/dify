@@ -42,6 +42,9 @@ class InstalledAppsListApi(Resource):
     @account_initialization_required
     @marshal_with(installed_app_list_fields)
     def get(self):
+        if not current_user.current_tenant:
+            return {'installed_apps': []}
+
         current_tenant_id = current_user.current_tenant_id
         installed_apps = db.session.query(InstalledApp).filter(
             InstalledApp.tenant_id == current_tenant_id
