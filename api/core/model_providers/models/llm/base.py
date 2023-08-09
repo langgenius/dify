@@ -81,7 +81,7 @@ class BaseLLM(BaseProviderModel):
             callbacks.extend(self.callbacks)
 
         if 'fake_response' in kwargs and kwargs['fake_response']:
-            prompts = self._get_prompt_from_messages(messages)
+            prompts = self._get_prompt_from_messages(messages, ModelMode.CHAT)
             fake_llm = FakeLLM(
                 response=kwargs['fake_response'],
                 num_token_func=self.get_num_tokens,
@@ -91,14 +91,30 @@ class BaseLLM(BaseProviderModel):
             result = fake_llm.generate([prompts])
         else:
             try:
-                result = self._run(messages, stop, callbacks, **kwargs)
+                result = self._run(
+                    messages=messages,
+                    stop=stop,
+                    callbacks=callbacks if not (self.streaming and not self.support_streaming()) else None,
+                    **kwargs
+                )
             except Exception as ex:
                 raise self.handle_exceptions(ex)
 
         if isinstance(result.generations[0][0], ChatGeneration):
             completion_content = result.generations[0][0].message.content
         else:
-            completion_content=result.generations[0][0].text
+            completion_content = result.generations[0][0].text
+
+        if self.streaming and not self.support_streaming():
+            # use FakeLLM to simulate streaming when current model not support streaming but streaming is True
+            prompts = self._get_prompt_from_messages(messages, ModelMode.CHAT)
+            fake_llm = FakeLLM(
+                response=completion_content,
+                num_token_func=self.get_num_tokens,
+                streaming=self.streaming,
+                callbacks=callbacks
+            )
+            fake_llm.generate([prompts])
 
         if result.llm_output and result.llm_output['token_usage']:
             prompt_tokens = result.llm_output['token_usage']['prompt_tokens']
@@ -200,11 +216,15 @@ class BaseLLM(BaseProviderModel):
     def support_streaming(cls):
         return False
 
-    def _get_prompt_from_messages(self, messages: List[PromptMessage]) -> Union[str | List[BaseMessage]]:
+    def _get_prompt_from_messages(self, messages: List[PromptMessage],
+                                  model_mode: Optional[ModelMode] = None) -> Union[str | List[BaseMessage]]:
         if len(messages) == 0:
             raise ValueError("prompt must not be empty.")
 
-        if self.model_mode == ModelMode.COMPLETION:
+        if not model_mode:
+            model_mode = self.model_mode
+
+        if model_mode == ModelMode.COMPLETION:
             return messages[0].content
         else:
             chat_messages = []

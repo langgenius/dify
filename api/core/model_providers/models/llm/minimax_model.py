@@ -19,7 +19,7 @@ class MinimaxModel(BaseLLM):
         return Minimax(
             model=self.name,
             model_kwargs={
-                'stream': self.streaming
+                'stream': False
             },
             callbacks=self.callbacks,
             **self.credentials,
