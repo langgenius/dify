@@ -6,6 +6,7 @@ import { IS_CE_EDITION } from '@/config'
 const config: ModelConfig = {
   key: ModelEnum.anthropic,
   item: {
+    key: ModelEnum.anthropic,
     titleIcon: {
       'en': <AnthropicText className='h-5' />,
       'zh-Hans': <AnthropicText className='h-5' />,

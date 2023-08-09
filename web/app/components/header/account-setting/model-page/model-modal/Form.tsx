@@ -67,8 +67,9 @@ const Form: FC<FormProps> = ({
               ? (
                 <InputWithStatus
                   field={field}
+                  initValue={initValue}
                   formValue={value || {}}
-                  onChange={v => setValue(v)}
+                  onChange={setValue}
                 />
               )
               : (

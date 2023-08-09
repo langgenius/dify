@@ -5,6 +5,7 @@ import { IflytekSparkText, IflytekSparkTextCn } from '@/app/components/base/icon
 const config: ModelConfig = {
   key: ModelEnum.spark,
   item: {
+    key: ModelEnum.spark,
     titleIcon: {
       'en': <IflytekSparkText className='h-6' />,
       'zh-Hans': <IflytekSparkTextCn className='h-6' />,

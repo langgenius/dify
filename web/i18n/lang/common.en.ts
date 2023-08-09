@@ -227,6 +227,7 @@ const translation = {
       quota: 'QUOTA',
       onTrial: 'On Trial',
       paid: 'Paid',
+      quotaExhausted: 'Quota exhausted',
       callTimes: 'Call times',
       tokens: 'Tokens',
       buyQuota: 'Buy Quota',

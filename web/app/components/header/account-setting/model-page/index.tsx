@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelModal as TModelModal } from './declarations'
+import type {
+  CustomAddProvider,
+  CustomSetupProvider,
+  FormValue,
+  SystemProvider,
+  ModelModal as TModelModal,
+} from './declarations'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
 import ModelModal from './model-modal'
 import config from './configs'
+import { useProviderContext } from '@/context/provider-context'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
@@ -33,13 +40,16 @@ ml-0.5 w-[14px] h-[14px] text-gray-400
 
 const ModelPage = () => {
   const { t } = useTranslation()
+  const { providers } = useProviderContext()
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [modelModalConfig, setModelModalConfig] = useState<TModelModal | undefined>(undefined)
 
-  const handleOpenModal = (newModelModalConfig?: TModelModal) => {
-    setShowModal(true)
-    setModelModalConfig(newModelModalConfig)
+  const handleOpenModal = (newModelModalConfig: TModelModal | undefined, editValud?: FormValue) => {
+    if (newModelModalConfig) {
+      setShowModal(true)
+      setModelModalConfig({ ...newModelModalConfig, defaultValue: editValud })
+    }
   }
   const handleCancelModal = () => {
     setShowModal(false)
@@ -84,7 +94,8 @@ const ModelPage = () => {
             <ModelCard
               key={index}
               modelItem={model.item}
-              onOpenModal={() => handleOpenModal(model.modal)}
+              currentProvider={providers?.[model.key] as SystemProvider}
+              onOpenModal={editValud => handleOpenModal(model.modal, editValud)}
             />
           ))
         }
@@ -94,6 +105,7 @@ const ModelPage = () => {
           <ModelItem
             key={index}
             modelItem={model.item}
+            currentProvider={providers?.[model.key] as CustomAddProvider | CustomSetupProvider}
             onOpenModal={() => handleOpenModal(model.modal)}
           />
         ))

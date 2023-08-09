@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import { type FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue } from '../declarations'
 import { useValidate } from '../../key-validator/hooks'
@@ -30,6 +30,7 @@ const Input: FC<InputProps> = ({
         focus:bg-white focus:border-gray-300 focus:shadow-xs
         placeholder:text-sm placeholder:text-gray-400
       `}
+      autoFocus={true}
       value={value}
       onChange={e => onChange(e.target.value)}
       placeholder={placeholder}
@@ -39,11 +40,13 @@ const Input: FC<InputProps> = ({
 
 type InputWithStatusProps = {
   field: Field
+  initValue: FormValue
   formValue: FormValue
   onChange: (v: FormValue) => void
 }
 const InputWithStatus: FC<InputWithStatusProps> = ({
   field,
+  initValue,
   formValue,
   onChange,
 }) => {
@@ -78,9 +81,15 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
     }
   }
 
+  const handleFocus = () => {
+    if (field.onFocus)
+      field.onFocus(formValue, initValue, onChange)
+  }
+
   return (
     <div className='relative'>
       <input
+        tabIndex={-1}
         className={`
           block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
           appearance-none outline-none caret-primary-600
@@ -91,6 +100,8 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
         `}
         placeholder={field?.placeholder?.[locale] || ''}
         onChange={e => handleChange(e.target.value)}
+        onFocus={handleFocus}
+        value={formValue[field.key] as string}
       />
       <div className='absolute top-2.5 right-2.5'>{getValidatedIcon()}</div>
       {getValidatedTip()}

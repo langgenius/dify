@@ -5,9 +5,26 @@ import { Chatglm, ChatglmText } from '@/app/components/base/icons/src/public/llm
 const config: ModelConfig = {
   key: ModelEnum.chatglm,
   item: {
+    key: ModelEnum.chatglm,
     titleIcon: {
       'en': <ChatglmText className='h-6' />,
       'zh-Hans': <ChatglmText className='h-6' />,
+    },
+    disable: {
+      tip: {
+        'en': 'Only supports the ',
+        'zh-Hans': '仅支持',
+      },
+      link: {
+        href: {
+          'en': 'https://docs.dify.ai/getting-started/install-self-hosted',
+          'zh-Hans': 'https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted',
+        },
+        label: {
+          'en': 'community open-source version',
+          'zh-Hans': '社区开源版本',
+        },
+      },
     },
   },
   modal: {

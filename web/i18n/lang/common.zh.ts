@@ -227,6 +227,7 @@ const translation = {
       quota: '额度',
       onTrial: '试用中',
       paid: '已购买',
+      quotaExhausted: '配额已用完',
       callTimes: '调用次数',
       tokens: 'Tokens',
       buyQuota: '购买额度',

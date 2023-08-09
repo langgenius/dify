@@ -5,6 +5,7 @@ import { Tongyi, TongyiText, TongyiTextCn } from '@/app/components/base/icons/sr
 const config: ModelConfig = {
   key: ModelEnum.tongyi,
   item: {
+    key: ModelEnum.tongyi,
     titleIcon: {
       'en': <TongyiText className='w-[88px] h-6' />,
       'zh-Hans': <TongyiTextCn className='w-[100px] h-6' />,

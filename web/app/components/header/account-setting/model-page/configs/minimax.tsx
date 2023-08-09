@@ -5,6 +5,7 @@ import { Minimax, MinimaxText } from '@/app/components/base/icons/src/image/llm'
 const config: ModelConfig = {
   key: ModelEnum.minimax,
   item: {
+    key: ModelEnum.minimax,
     titleIcon: {
       'en': <MinimaxText className='w-[84px] h-6' />,
       'zh-Hans': <MinimaxText className='w-[84px] h-6' />,

@@ -6,6 +6,7 @@ import { AzureOpenaiService, AzureOpenaiServiceText } from '@/app/components/bas
 const config: ModelConfig = {
   key: ModelEnum.azure_openai,
   item: {
+    key: ModelEnum.azure_openai,
     titleIcon: {
       'en': <AzureOpenaiServiceText className='h-6' />,
       'zh-Hans': <AzureOpenaiServiceText className='h-6' />,

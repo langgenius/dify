@@ -1,11 +1,12 @@
 import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import type { FormValue, ModelConfig } from '../declarations'
 import { OpenaiBlack, OpenaiText, OpenaiTransparent } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
 const config: ModelConfig = {
-  key: ModelEnum.anthropic,
+  key: ModelEnum.openai,
   item: {
+    key: ModelEnum.openai,
     titleIcon: {
       'en': <OpenaiText className='h-5' />,
       'zh-Hans': <OpenaiText className='h-5' />,
@@ -34,7 +35,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'openai_api_key',
         required: true,
         obfuscated: true,
         label: {
@@ -44,6 +45,16 @@ const config: ModelConfig = {
         placeholder: {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
+        },
+        validate: {
+          before: () => true,
+          run: () => {
+            return Promise.resolve({ status: 'success' }) as any
+          },
+        },
+        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
+          if (newValue.openai_api_key === originValue?.openai_api_key)
+            dispatch({ ...newValue, openai_api_key: '' })
         },
       },
       ...(

@@ -5,6 +5,7 @@ import { Huggingface, HuggingfaceText } from '@/app/components/base/icons/src/pu
 const config: ModelConfig = {
   key: ModelEnum.huggingface_hub,
   item: {
+    key: ModelEnum.huggingface_hub,
     titleIcon: {
       'en': <HuggingfaceText className='h-6' />,
       'zh-Hans': <HuggingfaceText className='h-6' />,

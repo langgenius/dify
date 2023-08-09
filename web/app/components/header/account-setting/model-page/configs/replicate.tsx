@@ -5,6 +5,7 @@ import { Replicate, ReplicateText } from '@/app/components/base/icons/src/public
 const config: ModelConfig = {
   key: ModelEnum.replicate,
   item: {
+    key: ModelEnum.replicate,
     titleIcon: {
       'en': <ReplicateText className='h-6' />,
       'zh-Hans': <ReplicateText className='h-6' />,
