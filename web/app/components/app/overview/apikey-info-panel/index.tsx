@@ -3,22 +3,23 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import useSWR from 'swr'
 import Progress from './progress'
 import Button from '@/app/components/base/button'
 import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import AccountSetting from '@/app/components/header/account-setting'
-
+import { fetchTenantInfo } from '@/service/common'
+import { IS_CE_EDITION } from '@/config'
 type Props = {
-  isCloud: boolean
   used: number
   total: number
 }
 
 const APIKeyInfoPanel: FC<Props> = ({
-  isCloud,
   used,
   total,
 }) => {
+  const isCloud = !IS_CE_EDITION
   const { t } = useTranslation()
 
   const usedPercent = Math.round(used / total * 100)
@@ -26,6 +27,15 @@ const APIKeyInfoPanel: FC<Props> = ({
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
   const [isShow, setIsShow] = useState(true)
+
+  const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
+  if (!userInfo)
+    return null
+
+  const hasBindAPI = userInfo?.providers?.find(({ token_is_set }) => token_is_set)
+  if (hasBindAPI)
+    return null
+
   if (!(isShow))
     return null
 
