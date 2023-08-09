@@ -42,17 +42,17 @@ const translation = {
       temperature: '多样性',
       temperatureTip:
         '较高的 Temperature 设置将导致更多样和创造性的输出，而较低的 Temperature 将产生更保守的输出并且类似于训练数据。',
-      topP: '采样范围',
-      topPTip:
+      top_p: '采样范围',
+      top_pTip:
         'Top P值越低，输出与训练文本越相似，Top P值越高，输出越有创意和变化。它可用于使输出更适合特定用例。',
-      presencePenalty: '词汇控制',
-      presencePenaltyTip:
+      presence_penalty: '词汇控制',
+      presence_penaltyTip:
         'Presence penalty 是根据新词是否出现在目前的文本中来对其进行惩罚。正值将降低模型谈论新话题的可能性。',
-      frequencyPenalty: '重复控制',
-      frequencyPenaltyTip:
+      frequency_penalty: '重复控制',
+      frequency_penaltyTip:
         'Frequency penalty 是根据重复词在目前文本中的出现频率来对其进行惩罚。正值将不太可能重复常用单词和短语。',
-      maxToken: '最大 Token',
-      maxTokenTip:
+      max_tokens: '最大 Token',
+      max_tokensTip:
         '生成的最大令牌数取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 半个中文字符。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}}。',

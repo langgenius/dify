@@ -42,17 +42,17 @@ const translation = {
       temperature: 'Temperature',
       temperatureTip:
         'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-      topP: 'Top P',
-      topPTip:
+      top_p: 'Top P',
+      top_pTip:
         'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.',
-      presencePenalty: 'Presence penalty',
-      presencePenaltyTip:
+      presence_penalty: 'Presence penalty',
+      presence_penaltyTip:
         'How much to penalize new tokens based on whether they appear in the text so far. Increases the model\'s likelihood to talk about new topics.',
-      frequencyPenalty: 'Frequency penalty',
-      frequencyPenaltyTip:
+      frequency_penalty: 'Frequency penalty',
+      frequency_penaltyTip:
         'How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model\'s likelihood to repeat the same line verbatim.',
-      maxToken: 'Max token',
-      maxTokenTip:
+      max_tokens: 'Max token',
+      max_tokensTip:
         'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
       setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model {{maxToken}}.',
