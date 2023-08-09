@@ -55,8 +55,8 @@ class Provider(db.Model):
     last_used = db.Column(db.DateTime, nullable=True)
 
     quota_type = db.Column(db.String(40), nullable=True, server_default=db.text("''::character varying"))
-    quota_limit = db.Column(db.Integer, nullable=True)
-    quota_used = db.Column(db.Integer, default=0)
+    quota_limit = db.Column(db.BigInteger, nullable=True)
+    quota_used = db.Column(db.BigInteger, default=0)
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
