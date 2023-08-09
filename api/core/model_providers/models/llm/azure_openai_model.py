@@ -171,3 +171,7 @@ class AzureOpenAIModel(BaseLLM):
             return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
         else:
             return ex
+
+    @classmethod
+    def support_streaming(cls):
+        return True

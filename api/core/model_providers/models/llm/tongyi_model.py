@@ -70,3 +70,7 @@ class TongyiModel(BaseLLM):
             return LLMBadRequestError(f"Tongyi: {str(ex)}")
         else:
             return ex
+
+    @classmethod
+    def support_streaming(cls):
+        return True

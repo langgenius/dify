@@ -67,3 +67,7 @@ class SparkModel(BaseLLM):
             return LLMBadRequestError(f"Spark: {str(ex)}")
         else:
             return ex
+
+    @classmethod
+    def support_streaming(cls):
+        return True

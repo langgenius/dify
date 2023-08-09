@@ -13,6 +13,8 @@ from core.completion import Completion
 from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.model_providers.model_provider_factory import ModelProviderFactory
+from core.model_providers.models.entity.model_params import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message
@@ -151,6 +153,17 @@ class CompletionService:
 
         # clean input by app_model_config form rules
         inputs = cls.get_cleaned_inputs(inputs, app_model_config)
+
+        # get model provider
+        model_provider = ModelProviderFactory.get_preferred_model_provider(
+            tenant_id=app_model.tenant_id,
+            model_provider_name=app_model_config.model_dict.get("provider")
+        )
+
+        # init text generation model
+        model_class = model_provider.get_model_class(model_type=ModelType.TEXT_GENERATION)
+        if not model_class.support_streaming():
+            streaming = False
 
         generate_task_id = str(uuid.uuid4())
 

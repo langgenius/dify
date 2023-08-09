@@ -101,3 +101,7 @@ class AnthropicModel(BaseLLM):
         else:
             return ex
 
+    @classmethod
+    def support_streaming(cls):
+        return True
+

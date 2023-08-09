@@ -196,6 +196,10 @@ class BaseLLM(BaseProviderModel):
         else:
             self.client.callbacks.extend(callbacks)
 
+    @classmethod
+    def support_streaming(cls):
+        return False
+
     def _get_prompt_from_messages(self, messages: List[PromptMessage]) -> Union[str | List[BaseMessage]]:
         if len(messages) == 0:
             raise ValueError("prompt must not be empty.")

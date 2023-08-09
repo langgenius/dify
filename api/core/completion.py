@@ -107,8 +107,7 @@ class Completion:
                 inputs=inputs,
                 agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
-                memory=memory,
-                streaming=streaming
+                memory=memory
             )
         except ConversationTaskStoppedException:
             return
@@ -122,7 +121,7 @@ class Completion:
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
-                      memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory], streaming: bool):
+                      memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]):
         # When no extra pre prompt is specified,
         # the output of the agent can be used directly as the main output content without calling LLM again
         fake_response = None

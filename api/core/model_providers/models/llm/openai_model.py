@@ -191,6 +191,10 @@ class OpenAIModel(BaseLLM):
         else:
             return ex
 
+    @classmethod
+    def support_streaming(cls):
+        return True
+
     # def is_model_valid_or_raise(self):
     #     """
     #     check is a valid model.

@@ -75,3 +75,7 @@ class HuggingfaceHubModel(BaseLLM):
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"Huggingface Hub: {str(ex)}")
+
+    @classmethod
+    def support_streaming(cls):
+        return True

@@ -97,3 +97,7 @@ class ReplicateModel(BaseLLM):
             return LLMBadRequestError(f"Replicate: {str(ex)}")
         else:
             return ex
+
+    @classmethod
+    def support_streaming(cls):
+        return True
