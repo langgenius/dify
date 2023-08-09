@@ -1,7 +1,7 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Type
+from typing import Type, Optional
 
 import anthropic
 from langchain.chat_models import ChatAnthropic
@@ -152,6 +152,20 @@ class AnthropicProvider(BaseModelProvider):
             return True
 
         return False
+
+    def get_payment_info(self) -> Optional[dict]:
+        """
+        get product info if it payable.
+
+        :return:
+        """
+        if hosted_model_providers.anthropic.paid_enabled:
+            return {
+                'product_id': hosted_model_providers.anthropic.paid_stripe_price_id,
+                'increase_quota': hosted_model_providers.anthropic.paid_increase_quota,
+            }
+
+        return None
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

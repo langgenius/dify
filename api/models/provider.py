@@ -105,9 +105,6 @@ class ProviderModel(db.Model):
 
 
 class TenantDefaultModel(db.Model):
-    """
-    Provider model representing the API tenant_default_models and their configurations.
-    """
     __tablename__ = 'tenant_default_models'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tenant_default_model_pkey'),
@@ -124,9 +121,6 @@ class TenantDefaultModel(db.Model):
 
 
 class TenantPreferredModelProvider(db.Model):
-    """
-    Provider model representing the API tenant_preferred_model_providers and their configurations.
-    """
     __tablename__ = 'tenant_preferred_model_providers'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tenant_preferred_model_provider_pkey'),
@@ -137,5 +131,45 @@ class TenantPreferredModelProvider(db.Model):
     tenant_id = db.Column(UUID, nullable=False)
     provider_name = db.Column(db.String(40), nullable=False)
     preferred_provider_type = db.Column(db.String(40), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class ProviderOrderPaymentStatus(Enum):
+    WAIT_PAY = 'wait_pay'
+    PAID = 'paid'
+    PAY_FAILED = 'pay_failed'
+    REFUNDED = 'refunded'
+
+    @staticmethod
+    def value_of(value):
+        for member in ProviderOrderPaymentStatus:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
+
+
+
+class ProviderOrder(db.Model):
+    __tablename__ = 'provider_orders'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='provider_order_pkey'),
+        db.Index('provider_order_tenant_provider_idx', 'tenant_id', 'provider_name'),
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(UUID, nullable=False)
+    provider_name = db.Column(db.String(40), nullable=False)
+    account_id = db.Column(UUID, nullable=False)
+    payment_product_id = db.Column(db.String(191), nullable=False)
+    payment_id = db.Column(db.String(191))
+    transaction_id = db.Column(db.String(191))
+    quantity = db.Column(db.Integer, nullable=False, server_default=db.text('1'))
+    currency = db.Column(db.String(40))
+    total_amount = db.Column(db.Integer)
+    payment_status = db.Column(db.String(40), nullable=False, server_default=db.text("'wait_pay'::character varying"))
+    paid_at = db.Column(db.DateTime)
+    pay_failed_at = db.Column(db.DateTime)
+    refunded_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

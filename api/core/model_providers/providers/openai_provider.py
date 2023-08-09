@@ -1,7 +1,7 @@
 import json
 import logging
 from json import JSONDecodeError
-from typing import Type
+from typing import Type, Optional
 
 from openai.error import AuthenticationError, OpenAIError
 
@@ -216,6 +216,20 @@ class OpenAIProvider(BaseModelProvider):
             return True
 
         return False
+
+    def get_payment_info(self) -> Optional[dict]:
+        """
+        get payment info if it payable.
+
+        :return:
+        """
+        if hosted_model_providers.openai.paid_enabled:
+            return {
+                'product_id': hosted_model_providers.openai.paid_stripe_price_id,
+                'increase_quota': hosted_model_providers.openai.paid_increase_quota,
+            }
+
+        return None
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

@@ -6,6 +6,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.providers.base import CredentialsValidateFailedError
+from services.provider_checkout_service import ProviderCheckoutService
 from services.provider_service import ProviderService
 
 
@@ -241,6 +242,23 @@ class ModelProviderModelParameterRuleApi(Resource):
         return rules
 
 
+class ModelProviderPaymentCheckoutUrlApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider_name: str):
+        provider_service = ProviderCheckoutService()
+        provider_checkout = provider_service.create_checkout(
+            tenant_id=current_user.current_tenant_id,
+            provider_name=provider_name,
+            account=current_user
+        )
+
+        return {
+            'url': provider_checkout.get_checkout_url()
+        }
+
+
 api.add_resource(ModelProviderListApi, '/workspaces/current/model-providers')
 api.add_resource(ModelProviderValidateApi, '/workspaces/current/model-providers/<string:provider_name>/validate')
 api.add_resource(ModelProviderUpdateApi, '/workspaces/current/model-providers/<string:provider_name>')
@@ -252,3 +270,5 @@ api.add_resource(PreferredProviderTypeUpdateApi,
                  '/workspaces/current/model-providers/<string:provider_name>/preferred-provider-type')
 api.add_resource(ModelProviderModelParameterRuleApi,
                  '/workspaces/current/model-providers/<string:provider_name>/models/<string:model_name>/parameter-rules')
+api.add_resource(ModelProviderPaymentCheckoutUrlApi,
+                 '/workspaces/current/model-providers/<string:provider_name>/checkout-url')

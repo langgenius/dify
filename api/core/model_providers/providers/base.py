@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Type
+from typing import Type, Optional
 
 from pydantic import BaseModel
 
@@ -242,6 +242,14 @@ class BaseModelProvider(BaseModel, ABC):
             Provider.provider_name == self.provider.provider_name
         ).update({'last_used': datetime.utcnow()})
         db.session.commit()
+
+    def get_payment_info(self) -> Optional[dict]:
+        """
+        get product info if it payable.
+
+        :return:
+        """
+        return None
 
     def _get_provider_model(self, model_name: str, model_type: ModelType) -> ProviderModel:
         """

@@ -47,3 +47,4 @@ websocket-client~=1.6.1
 dashscope~=1.5.0
 huggingface_hub~=0.16.4
 transformers~=4.31.0
+stripe~=5.5.0
