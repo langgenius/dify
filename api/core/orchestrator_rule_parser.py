@@ -48,14 +48,6 @@ class OrchestratorRuleParser:
             agent_provider_name = model_dict.get('provider', 'openai')
             agent_model_name = model_dict.get('name', 'gpt-4')
 
-            # add agent callback to record agent thoughts
-            agent_callback = AgentLoopGatherCallbackHandler(
-                model_name=agent_model_name,
-                conversation_message_task=conversation_message_task
-            )
-
-            chain_callback.agent_callback = agent_callback
-
             agent_model_instance = ModelFactory.get_text_generation_model(
                 tenant_id=self.tenant_id,
                 model_provider_name=agent_provider_name,
@@ -64,9 +56,17 @@ class OrchestratorRuleParser:
                     temperature=0.2,
                     top_p=0.3,
                     max_tokens=1500
-                ),
-                callbacks=[agent_callback]
+                )
             )
+
+            # add agent callback to record agent thoughts
+            agent_callback = AgentLoopGatherCallbackHandler(
+                model_instant=agent_model_instance,
+                conversation_message_task=conversation_message_task
+            )
+
+            chain_callback.agent_callback = agent_callback
+            agent_model_instance.add_callbacks([agent_callback])
 
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 

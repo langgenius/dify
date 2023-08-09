@@ -85,7 +85,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
 
         # summarize messages if rest_tokens < 0
         try:
-            messages = self.summarize_messages_if_needed(self.llm, messages, functions=self.functions)
+            messages = self.summarize_messages_if_needed(messages, functions=self.functions)
         except ExceededLLMTokensLimitError as e:
             return AgentFinish(return_values={"output": str(e)}, log=str(e))
 

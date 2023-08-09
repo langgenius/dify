@@ -2,39 +2,11 @@ import re
 import uuid
 
 from core.agent.agent_executor import PlanningStrategy
-from core.constant import llm_constant
 from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType
 from models.account import Account
 from services.dataset_service import DatasetService
 
-
-MODELS_BY_APP_MODE = {
-    'chat': [
-        'claude-instant-1',
-        'claude-2',
-        'gpt-4',
-        'gpt-4-32k',
-        'gpt-3.5-turbo',
-        'gpt-3.5-turbo-16k',
-    ],
-    'completion': [
-        'claude-instant-1',
-        'claude-2',
-        'gpt-4',
-        'gpt-4-32k',
-        'gpt-3.5-turbo',
-        'gpt-3.5-turbo-16k',
-        'text-davinci-003',
-    ]
-}
-
-SUPPORT_AGENT_MODELS = [
-    "gpt-4",
-    "gpt-4-32k",
-    "gpt-3.5-turbo",
-    "gpt-3.5-turbo-16k",
-]
 
 SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
 

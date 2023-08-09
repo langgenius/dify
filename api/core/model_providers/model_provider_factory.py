@@ -146,16 +146,15 @@ class ModelProviderFactory:
                 quota_type_to_provider_dict[provider.quota_type] = provider
 
             model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
-
-            if ProviderQuotaType.PAID.value in model_provider_rules['system_config']['supported_quota_types'] \
-                    and ProviderQuotaType.PAID.value in quota_type_to_provider_dict.keys():
-                provider = quota_type_to_provider_dict[ProviderQuotaType.PAID.value]
-                if provider.quota_limit > provider.quota_used:
-                    return provider
-
-            if ProviderQuotaType.TRIAL.value in model_provider_rules['system_config']['supported_quota_types'] \
-                    and ProviderQuotaType.TRIAL.value in quota_type_to_provider_dict.keys():
-                return quota_type_to_provider_dict[ProviderQuotaType.TRIAL.value]
+            for quota_type_enum in ProviderQuotaType:
+                quota_type = quota_type_enum.value
+                if quota_type in model_provider_rules['system_config']['supported_quota_types'] \
+                        and quota_type in quota_type_to_provider_dict.keys():
+                    provider = quota_type_to_provider_dict[quota_type]
+                    if quota_type != ProviderQuotaType.TRIAL and provider.quota_limit > provider.quota_used:
+                        return provider
+                    elif quota_type == ProviderQuotaType.TRIAL:
+                        return provider
         elif preferred_provider_type == ProviderType.CUSTOM.value:
             return providers[0] if providers else None
 

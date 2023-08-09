@@ -79,33 +79,23 @@ class ProviderService:
             }
 
             provider_parameter_dict = {}
-            if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
-                    and ProviderQuotaType.TRIAL.value in model_provider_rule['system_config']['supported_quota_types']:
-                provider_parameter_dict[ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value] = {
-                    "provider_name": model_provider_name,
-                    "provider_type": ProviderType.SYSTEM.value,
-                    "config": None,
-                    "is_valid": False,  # need update
-                    "quota_type": ProviderQuotaType.TRIAL.value,
-                    "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
-                    "quota_limit": model_provider_rule['system_config']['quota_limit'],  # need update
-                    "quota_used": 0,  # need update
-                    "last_used": None  # need update
-                }
-
-            if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
-                    and ProviderQuotaType.PAID.value in model_provider_rule['system_config']['supported_quota_types']:
-                provider_parameter_dict[ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value] = {
-                    "provider_name": model_provider_name,
-                    "provider_type": ProviderType.SYSTEM.value,
-                    "config": None,
-                    "is_valid": False,  # need update
-                    "quota_type": ProviderQuotaType.PAID.value,
-                    "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
-                    "quota_limit": 0,  # need update
-                    "quota_used": 0,  # need update
-                    "last_used": None  # need update
-                }
+            if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types']:
+                for quota_type_enum in ProviderQuotaType:
+                    quota_type = quota_type_enum.value
+                    if quota_type in model_provider_rule['system_config']['supported_quota_types']:
+                        key = ProviderType.SYSTEM.value + ':' + quota_type
+                        provider_parameter_dict[key] = {
+                            "provider_name": model_provider_name,
+                            "provider_type": ProviderType.SYSTEM.value,
+                            "config": None,
+                            "is_valid": False,  # need update
+                            "quota_type": quota_type,
+                            "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
+                            "quota_limit": 0 if quota_type != ProviderQuotaType.TRIAL.value else
+                            model_provider_rule['system_config']['quota_limit'],  # need update
+                            "quota_used": 0,  # need update
+                            "last_used": None  # need update
+                        }
 
             if ProviderType.CUSTOM.value in model_provider_rule['support_provider_types']:
                 provider_parameter_dict[ProviderType.CUSTOM.value] = {
@@ -121,25 +111,15 @@ class ProviderService:
 
             current_providers = provider_name_to_provider_dict[model_provider_name]
             for provider in current_providers:
-                if provider.provider_type == ProviderType.SYSTEM.value \
-                        and provider.quota_type == ProviderQuotaType.TRIAL.value \
-                        and (
-                        ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value) in provider_parameter_dict:
-                    # if trial
-                    key = ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value
-                    provider_parameter_dict[key]['is_valid'] = provider.is_valid
-                    provider_parameter_dict[key]['quota_used'] = provider.quota_used
-                    provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
-                    provider_parameter_dict[key]['last_used'] = provider.last_used
-                elif provider.provider_type == ProviderType.SYSTEM.value \
-                        and provider.quota_type == ProviderQuotaType.PAID.value \
-                        and (ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value) in provider_parameter_dict:
-                    # if paid
-                    key = ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value
-                    provider_parameter_dict[key]['is_valid'] = provider.is_valid
-                    provider_parameter_dict[key]['quota_used'] = provider.quota_used
-                    provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
-                    provider_parameter_dict[key]['last_used'] = provider.last_used
+                if provider.provider_type == ProviderType.SYSTEM.value:
+                    quota_type = provider.quota_type
+                    key = f'{ProviderType.SYSTEM.value}:{quota_type}'
+
+                    if key in provider_parameter_dict:
+                        provider_parameter_dict[key]['is_valid'] = provider.is_valid
+                        provider_parameter_dict[key]['quota_used'] = provider.quota_used
+                        provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
+                        provider_parameter_dict[key]['last_used'] = provider.last_used
                 elif provider.provider_type == ProviderType.CUSTOM.value \
                         and ProviderType.CUSTOM.value in provider_parameter_dict:
                     # if custom
@@ -468,8 +448,12 @@ class ProviderService:
                     "model_provider": {
                         "provider_name": provider.provider_name,
                         "provider_type": provider.provider_type
-                    }
+                    },
+                    'features': []
                 }
+
+                if 'features' in model:
+                    valid_model_dict['features'] = model['features']
 
                 if provider.provider_type == ProviderType.SYSTEM.value:
                     valid_model_dict['model_provider']['quota_type'] = provider.quota_type

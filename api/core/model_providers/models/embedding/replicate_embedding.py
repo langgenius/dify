@@ -27,7 +27,7 @@ class ReplicateEmbedding(BaseEmbedding):
         return decimal.Decimal('0')
 
     def get_currency(self):
-        raise 'USD'
+        return 'USD'
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, (ModelError, ReplicateError)):

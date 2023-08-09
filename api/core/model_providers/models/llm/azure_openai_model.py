@@ -107,11 +107,11 @@ class AzureOpenAIModel(BaseLLM):
                 'prompt': decimal.Decimal('0.06'),
                 'completion': decimal.Decimal('0.12')
             },
-            'gpt-3.5-turbo': {
+            'gpt-35-turbo': {
                 'prompt': decimal.Decimal('0.0015'),
                 'completion': decimal.Decimal('0.002')
             },
-            'gpt-3.5-turbo-16k': {
+            'gpt-35-turbo-16k': {
                 'prompt': decimal.Decimal('0.003'),
                 'completion': decimal.Decimal('0.004')
             },
@@ -121,10 +121,11 @@ class AzureOpenAIModel(BaseLLM):
             },
         }
 
+        base_model_name = self.credentials.get("base_model_name")
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = model_unit_prices[self.name]['prompt']
+            unit_price = model_unit_prices[base_model_name]['prompt']
         else:
-            unit_price = model_unit_prices[self.name]['completion']
+            unit_price = model_unit_prices[base_model_name]['completion']
 
         tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
                                                                   rounding=decimal.ROUND_HALF_UP)
@@ -133,7 +134,7 @@ class AzureOpenAIModel(BaseLLM):
         return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
 
     def get_currency(self):
-        raise 'USD'
+        return 'USD'
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

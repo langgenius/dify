@@ -6,9 +6,9 @@ from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.callback_handler.entity.chain_result import ChainResult
-from core.constant import llm_constant
 from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.entity.message import to_prompt_messages
+from core.model_providers.models.entity.message import to_prompt_messages, MessageType
+from core.model_providers.models.llm.base import BaseLLM
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from events.message_event import message_was_created
@@ -20,7 +20,7 @@ from models.model import AppModelConfig, Conversation, Account, Message, EndUser
 
 class ConversationMessageTask:
     def __init__(self, task_id: str, app: App, app_model_config: AppModelConfig, user: Account,
-                 inputs: dict, query: str, streaming: bool,
+                 inputs: dict, query: str, streaming: bool, model_instance: BaseLLM,
                  conversation: Optional[Conversation] = None, is_override: bool = False):
         self.task_id = task_id
 
@@ -36,6 +36,8 @@ class ConversationMessageTask:
 
         self.conversation = conversation
         self.is_new_conversation = False
+
+        self.model_instance = model_instance
 
         self.message = None
 
@@ -132,7 +134,7 @@ class ConversationMessageTask:
             answer_unit_price=0,
             provider_response_latency=0,
             total_price=0,
-            currency=llm_constant.model_currency,
+            currency=self.model_instance.get_currency(),
             from_source=('console' if isinstance(self.user, Account) else 'api'),
             from_end_user_id=(self.user.id if isinstance(self.user, EndUser) else None),
             from_account_id=(self.user.id if isinstance(self.user, Account) else None),
@@ -146,12 +148,10 @@ class ConversationMessageTask:
         self._pub_handler.pub_text(text)
 
     def save_message(self, llm_message: LLMMessage, by_stopped: bool = False):
-        model_name = self.app_model_config.model_dict.get('name')
-
         message_tokens = llm_message.prompt_tokens
         answer_tokens = llm_message.completion_tokens
-        message_unit_price = llm_constant.model_prices[model_name]['prompt']
-        answer_unit_price = llm_constant.model_prices[model_name]['completion']
+        message_unit_price = self.model_instance.get_token_price(1, MessageType.HUMAN)
+        answer_unit_price = self.model_instance.get_token_price(1, MessageType.ASSISTANT)
 
         total_price = self.calc_total_price(message_tokens, message_unit_price, answer_tokens, answer_unit_price)
 
@@ -214,10 +214,10 @@ class ConversationMessageTask:
 
         return message_agent_thought
 
-    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_name: str,
+    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instant: BaseLLM,
                      agent_loop: AgentLoop):
-        agent_message_unit_price = llm_constant.model_prices[agent_model_name]['prompt']
-        agent_answer_unit_price = llm_constant.model_prices[agent_model_name]['completion']
+        agent_message_unit_price = agent_model_instant.get_token_price(1, MessageType.HUMAN)
+        agent_answer_unit_price = agent_model_instant.get_token_price(1, MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
@@ -238,7 +238,7 @@ class ConversationMessageTask:
         message_agent_thought.latency = agent_loop.latency
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
-        message_agent_thought.currency = llm_constant.model_currency
+        message_agent_thought.currency = agent_model_instant.get_currency()
         db.session.flush()
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):

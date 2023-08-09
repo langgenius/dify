@@ -19,7 +19,13 @@ class ProviderType(Enum):
 
 class ProviderQuotaType(Enum):
     PAID = 'paid'
+    """hosted paid quota"""
+
+    FREE = 'free'
+    """third-party free quota"""
+
     TRIAL = 'trial'
+    """hosted trial quota"""
 
     @staticmethod
     def value_of(value):

@@ -36,6 +36,9 @@ class AnthropicProvider(BaseModelProvider):
                 {
                     'id': 'claude-2',
                     'name': 'claude-2',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
             ]
         else:

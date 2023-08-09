@@ -10,7 +10,7 @@ from core.model_providers.models.embedding.minimax_embedding import MinimaxEmbed
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
 from core.model_providers.models.llm.minimax_model import MinimaxModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
-from models.provider import ProviderType
+from models.provider import ProviderType, ProviderQuotaType
 
 
 class MinimaxProvider(BaseModelProvider):
@@ -101,7 +101,7 @@ class MinimaxProvider(BaseModelProvider):
             llm = Minimax(
                 model='abab5.5-chat',
                 max_tokens=10,
-                temperature=0,
+                temperature=0.01,
                 **credential_kwargs
             )
 
@@ -115,7 +115,9 @@ class MinimaxProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
+        if self.provider.provider_type == ProviderType.CUSTOM.value \
+                or (self.provider.provider_type == ProviderType.SYSTEM.value
+                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
             try:
                 credentials = json.loads(self.provider.encrypted_config)
             except JSONDecodeError:

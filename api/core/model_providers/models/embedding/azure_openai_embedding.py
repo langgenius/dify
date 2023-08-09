@@ -38,7 +38,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
 
     def get_currency(self):
-        raise 'USD'
+        return 'USD'
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):

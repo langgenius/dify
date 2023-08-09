@@ -60,6 +60,7 @@ class AgentExecutor:
     def _init_agent(self) -> Union[BaseSingleActionAgent | BaseMultiActionAgent]:
         if self.configuration.strategy == PlanningStrategy.REACT:
             agent = AutoSummarizingStructuredChatAgent.from_llm_and_tools(
+                model_instance=self.configuration.model_instance,
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 output_parser=StructuredChatOutputParser(),
@@ -68,6 +69,7 @@ class AgentExecutor:
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
             agent = AutoSummarizingOpenAIFunctionCallAgent.from_llm_and_tools(
+                model_instance=self.configuration.model_instance,
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
@@ -76,6 +78,7 @@ class AgentExecutor:
             )
         elif self.configuration.strategy == PlanningStrategy.MULTI_FUNCTION_CALL:
             agent = AutoSummarizingOpenMultiAIFunctionCallAgent.from_llm_and_tools(
+                model_instance=self.configuration.model_instance,
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
@@ -85,6 +88,7 @@ class AgentExecutor:
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
             self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
+                model_instance=self.configuration.model_instance,
                 llm=self.configuration.dataset_model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,

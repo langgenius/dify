@@ -8,6 +8,7 @@ from langchain.schema import AgentAction, AgentFinish, SystemMessage
 from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
 
+from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
@@ -15,6 +16,12 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
+    model_instance: BaseLLM
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        arbitrary_types_allowed = True
 
     def should_use_agent(self, query: str):
         """

@@ -8,6 +8,7 @@ from openai.error import AuthenticationError, OpenAIError
 import openai
 
 from core.helper import encrypter
+from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.speech2text.openai_whisper import OpenAIWhisper
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.openai_embedding import OpenAIEmbedding
@@ -34,18 +35,30 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-3.5-turbo',
                     'name': 'gpt-3.5-turbo',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'gpt-3.5-turbo-16k',
                     'name': 'gpt-3.5-turbo-16k',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'gpt-4',
                     'name': 'gpt-4',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'gpt-4-32k',
                     'name': 'gpt-4-32k',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'text-davinci-003',

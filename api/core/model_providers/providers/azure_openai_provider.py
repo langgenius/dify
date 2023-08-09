@@ -12,6 +12,7 @@ from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.azure_openai_embedding import AzureOpenAIEmbedding, \
     AZURE_OPENAI_API_VERSION
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargsRules, KwargRule
+from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.llm.azure_openai_model import AzureOpenAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
@@ -42,7 +43,45 @@ class AzureOpenAIProvider(BaseModelProvider):
         # convert old provider config to provider models
         self._convert_provider_config_to_model_config()
 
-        return super().get_supported_model_list(model_type)
+        rules = self.get_rules()
+        if 'custom' not in rules['support_provider_types']:
+            return self._get_fixed_model_list(model_type)
+
+        if 'model_flexibility' not in rules:
+            return self._get_fixed_model_list(model_type)
+
+        if rules['model_flexibility'] == 'fixed':
+            return self._get_fixed_model_list(model_type)
+
+        # get configurable provider models
+        provider_models = db.session.query(ProviderModel).filter(
+            ProviderModel.tenant_id == self.provider.tenant_id,
+            ProviderModel.provider_name == self.provider.provider_name,
+            ProviderModel.model_type == model_type.value,
+            ProviderModel.is_valid == True
+        ).order_by(ProviderModel.created_at.asc()).all()
+
+        model_list = []
+        for provider_model in provider_models:
+            model_dict = {
+                'id': provider_model.model_name,
+                'name': provider_model.model_name
+            }
+
+            credentials = json.loads(provider_model.encrypted_config)
+            if credentials['base_model_name'] in [
+                'gpt-4',
+                'gpt-4-32k',
+                'gpt-35-turbo',
+                'gpt-35-turbo-16k',
+            ]:
+                model_dict['features'] = [
+                    ModelFeature.AGENT_THOUGHT.value
+                ]
+
+            model_list.append(model_dict)
+
+        return model_list
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []

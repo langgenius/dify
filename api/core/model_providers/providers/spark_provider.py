@@ -12,7 +12,7 @@ from core.model_providers.models.llm.spark_model import SparkModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.spark import ChatSpark
 from core.third_party.spark.spark_llm import SparkError
-from models.provider import ProviderType
+from models.provider import ProviderType, ProviderQuotaType
 
 
 class SparkProvider(BaseModelProvider):
@@ -88,7 +88,7 @@ class SparkProvider(BaseModelProvider):
 
             chat_llm = ChatSpark(
                 max_tokens=10,
-                temperature=0,
+                temperature=0.01,
                 **credential_kwargs
             )
 
@@ -112,7 +112,9 @@ class SparkProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
+        if self.provider.provider_type == ProviderType.CUSTOM.value \
+                or (self.provider.provider_type == ProviderType.SYSTEM.value
+                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
             try:
                 credentials = json.loads(self.provider.encrypted_config)
             except JSONDecodeError:

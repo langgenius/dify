@@ -7,7 +7,6 @@ from requests.exceptions import ChunkedEncodingError
 
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
-from core.constant import llm_constant
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.model_providers.error import LLMBadRequestError
@@ -44,6 +43,12 @@ class Completion:
 
             inputs = conversation.inputs
 
+        final_model_instance = ModelFactory.get_text_generation_model_from_model_config(
+            tenant_id=app.tenant_id,
+            model_config=app_model_config.model_dict,
+            streaming=streaming
+        )
+
         conversation_message_task = ConversationMessageTask(
             task_id=task_id,
             app=app,
@@ -53,13 +58,8 @@ class Completion:
             is_override=is_override,
             inputs=inputs,
             query=query,
-            streaming=streaming
-        )
-
-        final_model_instance = ModelFactory.get_text_generation_model_from_model_config(
-            tenant_id=app.tenant_id,
-            model_config=app_model_config.model_dict,
-            streaming=streaming
+            streaming=streaming,
+            model_instance=final_model_instance
         )
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
@@ -234,10 +234,8 @@ And answer according to the language of the user's question.
                 )
 
                 curr_message_tokens = memory.model_instance.get_num_tokens(to_prompt_messages([tmp_human_message]))
-                model_name = model['name']
                 max_tokens = model.get("completion_params").get('max_tokens')
-                rest_tokens = llm_constant.max_context_token_length[model_name] \
-                              - max_tokens - curr_message_tokens
+                rest_tokens = memory.model_instance.model_rules.max_tokens.max - max_tokens - curr_message_tokens
                 rest_tokens = max(rest_tokens, 0)
                 histories = cls.get_history_messages_from_memory(memory, rest_tokens)
                 human_message_prompt += "\n\n" if human_message_prompt else ""
@@ -370,7 +368,8 @@ And answer according to the language of the user's question.
             inputs=message.inputs,
             query=message.query,
             is_override=True if message.override_model_configs else False,
-            streaming=streaming
+            streaming=streaming,
+            model_instance=final_model_instance
         )
 
         cls.recale_llm_max_tokens(

@@ -176,7 +176,25 @@ class BaseLLM(BaseProviderModel):
 
     @abstractmethod
     def handle_exceptions(self, ex: Exception) -> Exception:
+        """
+        Handle llm run exceptions.
+
+        :param ex:
+        :return:
+        """
         raise NotImplementedError
+
+    def add_callbacks(self, callbacks: Callbacks):
+        """
+        Add callbacks to client.
+
+        :param callbacks:
+        :return:
+        """
+        if not self.client.callbacks:
+            self.client.callbacks = callbacks
+        else:
+            self.client.callbacks.extend(callbacks)
 
     def _get_prompt_from_messages(self, messages: List[PromptMessage]) -> Union[str | List[BaseMessage]]:
         if len(messages) == 0:

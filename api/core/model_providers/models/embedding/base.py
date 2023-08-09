@@ -37,7 +37,7 @@ class BaseEmbedding(BaseProviderModel):
         return 0
 
     def get_currency(self):
-        raise 'USD'
+        return 'USD'
 
     @abstractmethod
     def handle_exceptions(self, ex: Exception) -> Exception:
