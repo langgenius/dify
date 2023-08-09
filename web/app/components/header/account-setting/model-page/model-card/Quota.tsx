@@ -1,23 +1,27 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { SystemProvider } from '../declarations'
+import type { TModelProvider } from '../declarations'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type QuotaProps = {
-  currentProvider: SystemProvider
+  currentProvider: TModelProvider
 }
 const Quota: FC<QuotaProps> = ({
   currentProvider,
 }) => {
   const { t } = useTranslation()
-  const systemTrial = currentProvider.providers[0]
-  const systemPaid = currentProvider.providers[1]
+  const systemTrial = currentProvider.providers.find(p => p.provider_type === 'system' && p?.quota_type === 'trial')
+  const systemPaid = currentProvider.providers.find(p => p.provider_type === 'system' && p?.quota_type === 'paid')
+  const QUOTA_UNIT_MAP: Record<string, string> = {
+    times: t('common.modelProvider.card.callTimes'),
+    tokens: 'Tokens',
+  }
 
   const renderStatus = () => {
-    const totalQuota = (systemPaid.is_valid ? systemPaid.quota_limit : 0) + systemTrial.quota_limit
-    const totalUsed = (systemPaid.is_valid ? systemPaid.quota_used : 0) + systemTrial.quota_used
+    const totalQuota = (systemPaid?.is_valid ? systemPaid.quota_limit : 0) + systemTrial.quota_limit
+    const totalUsed = (systemPaid?.is_valid ? systemPaid.quota_used : 0) + systemTrial.quota_used
 
     if (totalQuota === totalUsed) {
       return (
@@ -26,7 +30,7 @@ const Quota: FC<QuotaProps> = ({
         </div>
       )
     }
-    if (systemPaid.is_valid) {
+    if (systemPaid?.is_valid) {
       return (
         <div className='px-1.5 bg-[#FFF6ED] rounded-md text-xs font-semibold text-[#EC4A0A]'>
           {t('common.modelProvider.card.paid')}
@@ -40,6 +44,21 @@ const Quota: FC<QuotaProps> = ({
     )
   }
 
+  const renderQuota = () => {
+    if (systemPaid?.is_valid)
+      return systemPaid.quota_limit - systemPaid.quota_used
+
+    if (systemTrial.is_valid)
+      return systemTrial.quota_limit - systemTrial.quota_used
+  }
+  const renderUnit = () => {
+    if (systemPaid?.is_valid)
+      return QUOTA_UNIT_MAP[systemPaid.quota_unit]
+
+    if (systemTrial.is_valid)
+      return QUOTA_UNIT_MAP[systemTrial.quota_unit]
+  }
+
   return (
     <div className='flex justify-between px-4 py-3 border-b-[0.5px] border-b-[rgba(0, 0, 0, 0.5)]'>
       <div>
@@ -50,8 +69,10 @@ const Quota: FC<QuotaProps> = ({
           {renderStatus()}
         </div>
         <div className='flex items-center text-gray-700'>
-          <div className='mr-1 text-sm font-medium'>200</div>
-          <div className='mr-1 text-sm'>{t('common.modelProvider.card.callTimes')}</div>
+          <div className='mr-1 text-sm font-medium'>{renderQuota()}</div>
+          <div className='mr-1 text-sm'>
+            {renderUnit()}
+          </div>
           <Tooltip
             selector='setting-model-card'
             htmlContent={
@@ -62,7 +83,11 @@ const Quota: FC<QuotaProps> = ({
           </Tooltip>
         </div>
       </div>
-      <Button className='mt-1.5 !px-3 !h-8 !text-[13px] font-medium rounded-lg' type='primary'>{t('common.modelProvider.card.buyQuota')}</Button>
+      {
+        systemPaid && (
+          <Button className='mt-1.5 !px-3 !h-8 !text-[13px] font-medium rounded-lg' type='primary'>{t('common.modelProvider.card.buyQuota')}</Button>
+        )
+      }
     </div>
   )
 }

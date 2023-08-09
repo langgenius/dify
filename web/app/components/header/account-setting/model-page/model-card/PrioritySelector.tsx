@@ -9,7 +9,7 @@ flex items-center px-3 h-9 text-sm text-gray-700 rounded-lg cursor-pointer
 `
 
 type PrioritySelectorProps = {
-  value: string
+  value?: string
   onOperate: (v: Record<string, string>) => void
 }
 const PrioritySelector: FC<PrioritySelectorProps> = ({

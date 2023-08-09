@@ -114,7 +114,7 @@ export type ModelProviderCommon = {
   model_flexibility: ModelFlexibilityEnum
 }
 export type SystemProvider = {
-  providers: [SystemTrialProvider, SystemPaidProvider, CustomFixedProvider]
+  providers: (SystemTrialProvider | SystemPaidProvider | CustomFixedProvider)[]
 } & ModelProviderCommon
 
 export type CustomAddProvider = {
@@ -131,4 +131,36 @@ export type ModelProvider = {
   [k in (ModelEnum.azure_openai | ModelEnum.replicate | ModelEnum.huggingface_hub)]: CustomAddProvider
 } & {
   [k in (ModelEnum.tongyi | ModelEnum.minimax | ModelEnum.chatglm | ModelEnum.spark)]: CustomSetupProvider
+}
+
+export type TProviderCommon = {
+  provider_name: ModelEnum
+  provider_type: PreferredProviderTypeEnum
+  is_valid: boolean
+  last_used: number
+}
+
+export type TProviderWithQuota = {
+  quota_type: string
+  quota_unit: string
+  quota_limit: number
+  quota_used: number
+} & TProviderCommon
+
+export type TProviderWithConfig = {
+  config: Record<string, string>
+} & TProviderCommon
+
+export type TProviderWithModels = {
+  models: ConfigurableModel[]
+} & TProviderCommon
+
+export type TModelProvider = {
+  preferred_provider_type: PreferredProviderTypeEnum
+  model_flexibility: ModelFlexibilityEnum
+  providers: any[]
+}
+
+export type TModelProviderMap = {
+  [k in ModelEnum]: TModelProvider
 }

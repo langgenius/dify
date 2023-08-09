@@ -1,10 +1,8 @@
 import { useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
-  CustomAddProvider,
-  CustomSetupProvider,
   FormValue,
-  SystemProvider,
   ModelModal as TModelModal,
 } from './declarations'
 import { ModelEnum } from './declarations'
@@ -13,10 +11,9 @@ import ModelCard from './model-card'
 import ModelItem from './model-item'
 import ModelModal from './model-modal'
 import config from './configs'
-import { useProviderContext } from '@/context/provider-context'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import { setModelProvider } from '@/service/common'
+import { fetchModelProviders, setModelProvider } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 
 const MODEL_CARD_LIST = [
@@ -43,7 +40,8 @@ ml-0.5 w-[14px] h-[14px] text-gray-400
 
 const ModelPage = () => {
   const { t } = useTranslation()
-  const { providers, mutateProviders } = useProviderContext()
+  const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  console.log(providers)
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
@@ -125,12 +123,13 @@ const ModelPage = () => {
       <div className='mb-3 text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
       <div className='grid grid-cols-2 gap-4 mb-6'>
         {
-          providers && MODEL_CARD_LIST.map((model, index) => (
+          MODEL_CARD_LIST.map((model, index) => (
             <ModelCard
               key={index}
               modelItem={model.item}
-              currentProvider={providers?.[model.key] as SystemProvider}
+              currentProvider={providers?.[model.key]}
               onOpenModal={editValud => handleOpenModal(model.modal, editValud)}
+              onUpdate={mutateProviders}
             />
           ))
         }
@@ -140,8 +139,9 @@ const ModelPage = () => {
           <ModelItem
             key={index}
             modelItem={model.item}
-            currentProvider={providers?.[model.key] as CustomAddProvider | CustomSetupProvider}
+            currentProvider={providers?.[model.key]}
             onOpenModal={() => handleOpenModal(model.modal)}
+            onUpdate={mutateProviders}
           />
         ))
       }
