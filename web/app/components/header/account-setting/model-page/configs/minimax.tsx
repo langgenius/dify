@@ -1,5 +1,6 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
+import { validateModelProviderFn } from '../utils'
 import { Minimax, MinimaxText } from '@/app/components/base/icons/src/image/llm'
 
 const config: ModelConfig = {
@@ -16,6 +17,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.minimax,
     title: {
       'en': 'MiniMax',
       'zh-Hans': 'MiniMax',
@@ -32,9 +34,8 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'minimax_api_key',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Key',
           'zh-Hans': 'API Key',
@@ -43,11 +44,22 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
+        validate: {
+          before: (v) => {
+            if (v?.minimax_api_key)
+              return true
+          },
+          run: (v) => {
+            return validateModelProviderFn(ModelEnum.minimax, {
+              config: v,
+            })
+          },
+        },
       },
       {
         visible: () => true,
         type: 'text',
-        key: 'groupId',
+        key: 'minimax_group_id',
         required: true,
         label: {
           'en': 'Group ID',

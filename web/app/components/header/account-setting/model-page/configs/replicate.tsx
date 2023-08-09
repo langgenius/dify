@@ -1,5 +1,6 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
+import { validateModelProviderModelFn } from '../utils'
 import { Replicate, ReplicateText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
@@ -16,6 +17,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.replicate,
     title: {
       'en': 'Replicate',
       'zh-Hans': 'Replicate',
@@ -28,11 +30,14 @@ const config: ModelConfig = {
         'zh-Hans': '从 Replicate 获取 API Key',
       },
     },
+    defaultValue: {
+      model_type: 'text-generation',
+    },
     fields: [
       {
         visible: () => true,
         type: 'radio',
-        key: 'modelType',
+        key: 'model_type',
         required: true,
         label: {
           'en': 'Model Type',
@@ -40,24 +45,17 @@ const config: ModelConfig = {
         },
         options: [
           {
-            key: '1',
+            key: 'text-generation',
             label: {
               'en': 'Text Generation',
               'zh-Hans': '文本生成',
             },
           },
           {
-            key: '2',
+            key: 'embeddings',
             label: {
               'en': 'Embeddings',
               'zh-Hans': 'Embeddings',
-            },
-          },
-          {
-            key: '3',
-            label: {
-              'en': 'Speech To Text',
-              'zh-Hans': '语音转文字',
             },
           },
         ],
@@ -65,7 +63,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'replicate_api_token',
         required: true,
         obfuscated: true,
         label: {
@@ -76,11 +74,19 @@ const config: ModelConfig = {
           'en': 'Enter your Replicate API key here',
           'zh-Hans': '在此输入您的 Replicate API Key',
         },
+        validate: {
+          before: () => {
+            return true
+          },
+          run: (v) => {
+            return validateModelProviderModelFn(ModelEnum.replicate, v)
+          },
+        },
       },
       {
         visible: () => true,
         type: 'text',
-        key: 'modelName',
+        key: 'model_name',
         required: true,
         label: {
           'en': 'Model Name',
@@ -94,7 +100,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'modelVersion',
+        key: 'model_version',
         label: {
           'en': 'Model Version',
           'zh-Hans': '模型版本',

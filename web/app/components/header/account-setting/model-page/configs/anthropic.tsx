@@ -1,5 +1,6 @@
 import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import type { FormValue, ModelConfig } from '../declarations'
+import { validateModelProviderFn } from '../utils'
 import { Anthropic, AnthropicText } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
@@ -19,6 +20,7 @@ const config: ModelConfig = {
     bgColor: 'bg-[#F0F0EB]',
   },
   modal: {
+    key: ModelEnum.anthropic,
     title: {
       'en': 'Anthropic',
       'zh-Hans': 'Anthropic',
@@ -35,7 +37,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'anthropic_api_key',
         required: true,
         label: {
           'en': 'API Key',
@@ -45,16 +47,29 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
+        validate: {
+          before: (v) => {
+            if (v?.anthropic_api_key)
+              return true
+          },
+          run: (v) => {
+            return validateModelProviderFn(ModelEnum.anthropic, {
+              config: v,
+            })
+          },
+        },
+        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
+          if (newValue.anthropic_api_key === originValue?.anthropic_api_key)
+            dispatch({ ...newValue, anthropic_api_key: '' })
+        },
       },
       ...(
         IS_CE_EDITION
           ? [{
             visible: () => true,
             type: 'text',
-            key: 'customApiDomain',
-            required: true,
-            switch: true,
-            switchKey: 'showCustomApiDomain',
+            key: 'anthropic_api_url',
+            required: false,
             label: {
               'en': 'Custom API Domain',
               'zh-Hans': '自定义 API 域名',

@@ -28,6 +28,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.chatglm,
     title: {
       'en': 'ChatGLM',
       'zh-Hans': 'ChatGLM',

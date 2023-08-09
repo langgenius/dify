@@ -7,6 +7,7 @@ import type {
   SystemProvider,
   ModelModal as TModelModal,
 } from './declarations'
+import { ModelEnum } from './declarations'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
@@ -15,6 +16,8 @@ import config from './configs'
 import { useProviderContext } from '@/context/provider-context'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { setModelProvider } from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -40,19 +43,51 @@ ml-0.5 w-[14px] h-[14px] text-gray-400
 
 const ModelPage = () => {
   const { t } = useTranslation()
-  const { providers } = useProviderContext()
+  const { providers, mutateProviders } = useProviderContext()
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
+  const { notify } = useToastContext()
   const [modelModalConfig, setModelModalConfig] = useState<TModelModal | undefined>(undefined)
 
-  const handleOpenModal = (newModelModalConfig: TModelModal | undefined, editValud?: FormValue) => {
+  const handleOpenModal = (newModelModalConfig: TModelModal | undefined, editValue?: FormValue) => {
     if (newModelModalConfig) {
       setShowModal(true)
-      setModelModalConfig({ ...newModelModalConfig, defaultValue: editValud })
+      const defaultValue = editValue ? { ...newModelModalConfig.defaultValue, ...editValue } : newModelModalConfig.defaultValue
+      setModelModalConfig({ ...newModelModalConfig, defaultValue })
     }
   }
   const handleCancelModal = () => {
     setShowModal(false)
+  }
+  const handleSave = async (v?: FormValue) => {
+    if (modelModalConfig && v && [ModelEnum.azure_openai, ModelEnum.replicate, ModelEnum.huggingface_hub].includes(modelModalConfig?.key)) {
+      const { model_name, model_type, ...config } = v
+      const res = await setModelProvider({
+        url: `/workspaces/current/model-providers/${modelModalConfig?.key}/models`,
+        body: {
+          model_name,
+          model_type,
+          config,
+        },
+      })
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutateProviders()
+        handleCancelModal()
+      }
+      return
+    }
+    const res = await setModelProvider({
+      url: `/workspaces/current/model-providers/${modelModalConfig?.key}`,
+      body: {
+        config: v,
+      },
+    })
+    if (res.result === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      mutateProviders()
+      handleCancelModal()
+    }
   }
 
   return (
@@ -90,7 +125,7 @@ const ModelPage = () => {
       <div className='mb-3 text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
       <div className='grid grid-cols-2 gap-4 mb-6'>
         {
-          MODEL_CARD_LIST.map((model, index) => (
+          providers && MODEL_CARD_LIST.map((model, index) => (
             <ModelCard
               key={index}
               modelItem={model.item}
@@ -122,6 +157,7 @@ const ModelPage = () => {
         isShow={showModal}
         modelModal={modelModalConfig}
         onCancel={handleCancelModal}
+        onSave={handleSave}
       />
     </div>
   )

@@ -1,10 +1,10 @@
-import { type FC } from 'react'
+import { useEffect } from 'react'
+import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue } from '../declarations'
 import { useValidate } from '../../key-validator/hooks'
 import {
   ValidatedErrorIcon,
-  ValidatedErrorMessage,
   ValidatedSuccessIcon,
   ValidatingTip,
 } from '../../key-validator/ValidateStatus'
@@ -23,6 +23,7 @@ const Input: FC<InputProps> = ({
 }) => {
   return (
     <input
+      tabIndex={-1}
       className={`
         block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
         appearance-none outline-none caret-primary-600
@@ -40,19 +41,25 @@ const Input: FC<InputProps> = ({
 
 type InputWithStatusProps = {
   field: Field
-  initValue: FormValue
+  initValue?: FormValue
   formValue: FormValue
   onChange: (v: FormValue) => void
+  onValidatedError: (v: string) => void
 }
 const InputWithStatus: FC<InputWithStatusProps> = ({
   field,
   initValue,
   formValue,
   onChange,
+  onValidatedError,
 }) => {
   const { locale } = useContext(I18n)
   const [validate, validating, validatedStatusState] = useValidate(formValue)
   const showValidatedIcon = validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed || validatedStatusState.status === ValidatedStatus.Success
+
+  useEffect(() => {
+    onValidatedError(validatedStatusState.message || '')
+  }, [validatedStatusState.message])
 
   const getValidatedIcon = () => {
     if (validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed)
@@ -60,13 +67,6 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
 
     if (validatedStatusState.status === ValidatedStatus.Success)
       return <ValidatedSuccessIcon />
-  }
-  const getValidatedTip = () => {
-    if (validating)
-      return <ValidatingTip />
-
-    if (validatedStatusState.status === ValidatedStatus.Error)
-      return <ValidatedErrorMessage errorMessage={validatedStatusState.message ?? ''} />
   }
 
   const handleChange = (v: string) => {
@@ -104,7 +104,7 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
         value={formValue[field.key] as string}
       />
       <div className='absolute top-2.5 right-2.5'>{getValidatedIcon()}</div>
-      {getValidatedTip()}
+      {validating && <ValidatingTip />}
     </div>
   )
 }

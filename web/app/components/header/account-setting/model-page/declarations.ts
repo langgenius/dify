@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
 import type { ValidateCallback } from '../key-validator/declarations'
 
-export type FormValue = Record<string, string | boolean>
+export type FormValue = Record<string, string>
 
 export type TypeWithI18N<T = string> = {
   'en': T
@@ -22,7 +22,7 @@ export type Field = {
   switch?: boolean
   switchKey?: string
   label: TypeWithI18N
-  options?: Option[]
+  options?: Option[] | ((v: FormValue) => Option[])
   placeholder?: TypeWithI18N
   help?: TypeWithI18N
   validate?: ValidateCallback
@@ -59,6 +59,7 @@ export type ModelItem = {
 }
 
 export type ModelModal = {
+  key: ModelEnum
   title: TypeWithI18N
   icon: ReactElement
   defaultValue?: FormValue

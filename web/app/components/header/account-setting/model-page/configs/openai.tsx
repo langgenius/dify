@@ -1,5 +1,6 @@
 import { ModelEnum } from '../declarations'
 import type { FormValue, ModelConfig } from '../declarations'
+import { validateModelProviderFn } from '../utils'
 import { OpenaiBlack, OpenaiText, OpenaiTransparent } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
@@ -19,6 +20,7 @@ const config: ModelConfig = {
     bgColor: 'bg-gray-200',
   },
   modal: {
+    key: ModelEnum.openai,
     title: {
       'en': 'OpenAI',
       'zh-Hans': 'OpenAI',
@@ -47,9 +49,14 @@ const config: ModelConfig = {
           'zh-Hans': '在此输入您的 API Key',
         },
         validate: {
-          before: () => true,
-          run: () => {
-            return Promise.resolve({ status: 'success' }) as any
+          before: (v) => {
+            if (v?.openai_api_key)
+              return true
+          },
+          run: (v) => {
+            return validateModelProviderFn(ModelEnum.openai, {
+              config: v,
+            })
           },
         },
         onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
@@ -57,15 +64,41 @@ const config: ModelConfig = {
             dispatch({ ...newValue, openai_api_key: '' })
         },
       },
+      {
+        visible: () => true,
+        type: 'text',
+        key: 'openai_organization',
+        required: false,
+        label: {
+          'en': 'Organization ID',
+          'zh-Hans': '组织 ID',
+        },
+        placeholder: {
+          'en': 'Enter your Organization ID',
+          'zh-Hans': '在此输入您的 组织 ID',
+        },
+        validate: {
+          before: () => {
+            return true
+          },
+          run: (v) => {
+            return validateModelProviderFn(ModelEnum.openai, {
+              config: v,
+            })
+          },
+        },
+        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
+          if (newValue.openai_organization === originValue?.openai_organization)
+            dispatch({ ...newValue, openai_organization: '' })
+        },
+      },
       ...(
         IS_CE_EDITION
           ? [{
             visible: () => true,
             type: 'text',
-            key: 'customApiDomain',
+            key: 'openai_api_base',
             required: false,
-            switch: true,
-            switchKey: 'showCustomApiDomain',
             label: {
               'en': 'Custom API Domain',
               'zh-Hans': '自定义 API 域名',

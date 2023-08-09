@@ -16,6 +16,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.huggingface_hub,
     title: {
       'en': 'Hugging Face Hub',
       'zh-Hans': 'Hugging Face Hub',
@@ -29,47 +30,14 @@ const config: ModelConfig = {
       },
     },
     defaultValue: {
-      modelType: '1',
-      endpointType: '1',
+      model_type: 'text-generation',
+      huggingfacehub_api_type: 'hosted_inference_api',
     },
     fields: [
       {
         visible: () => true,
         type: 'radio',
-        key: 'modelType',
-        required: true,
-        label: {
-          'en': 'Model Type',
-          'zh-Hans': '模型类型',
-        },
-        options: [
-          {
-            key: '1',
-            label: {
-              'en': 'Text Generation',
-              'zh-Hans': '文本生成',
-            },
-          },
-          {
-            key: '2',
-            label: {
-              'en': 'Embeddings',
-              'zh-Hans': 'Embeddings',
-            },
-          },
-          {
-            key: '3',
-            label: {
-              'en': 'Speech To Text',
-              'zh-Hans': '语音转文字',
-            },
-          },
-        ],
-      },
-      {
-        visible: () => true,
-        type: 'radio',
-        key: 'endpointType',
+        key: 'huggingfacehub_api_type',
         required: true,
         label: {
           'en': 'Endpoint Type',
@@ -77,14 +45,14 @@ const config: ModelConfig = {
         },
         options: [
           {
-            key: '1',
+            key: 'hosted_inference_api',
             label: {
               'en': 'Hosted Inference API',
               'zh-Hans': '托管推理 API',
             },
           },
           {
-            key: '2',
+            key: 'inference_endpoints',
             label: {
               'en': 'Inference Endpoints',
               'zh-Hans': '自部署推理端点',
@@ -95,7 +63,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiToken',
+        key: 'huggingfacehub_api_token',
         required: true,
         obfuscated: true,
         label: {
@@ -110,7 +78,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'modelName',
+        key: 'model_name',
         required: true,
         label: {
           'en': 'Model Name',
@@ -122,9 +90,9 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: (value?: FormValue) => value?.modelType === '1' && value.endpointType === '2',
+        visible: (value?: FormValue) => value?.huggingfacehub_api_type === 'inference_endpoints',
         type: 'text',
-        key: 'endpointUrl',
+        key: 'huggingfacehub_endpoint_url',
         label: {
           'en': 'Endpoint URL',
           'zh-Hans': '端点 URL',
@@ -133,32 +101,6 @@ const config: ModelConfig = {
           'en': 'Enter your Endpoint URL here',
           'zh-Hans': '在此输入您的端点 URL',
         },
-      },
-      {
-        visible: (value?: FormValue) => value?.modelType === '1',
-        type: 'radio',
-        key: 'taskType',
-        required: true,
-        label: {
-          'en': 'Task Type',
-          'zh-Hans': '任务类型',
-        },
-        options: [
-          {
-            key: '1',
-            label: {
-              'en': 'Text Generation',
-              'zh-Hans': '文本生成',
-            },
-          },
-          {
-            key: '2',
-            label: {
-              'en': 'Text to Text Generation',
-              'zh-Hans': '文本转文本生成',
-            },
-          },
-        ],
       },
     ],
   },

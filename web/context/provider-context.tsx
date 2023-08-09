@@ -12,9 +12,12 @@ const ProviderContext = createContext<{ currentProvider: {
   is_valid: boolean
   token_is_valid: boolean
 } | null | undefined
-providers: ModelProvider | undefined }>({
+providers: ModelProvider | undefined
+mutateProviders: any
+}>({
   currentProvider: null,
   providers: undefined,
+  mutateProviders: () => {},
 })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -26,12 +29,12 @@ export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
   const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
-  const { data: providers } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const currentProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && (provider_name === 'openai' || provider_name === 'azure_openai'))
   console.log(providers)
 
   return (
-    <ProviderContext.Provider value={{ currentProvider, providers }}>
+    <ProviderContext.Provider value={{ currentProvider, providers, mutateProviders }}>
       {children}
     </ProviderContext.Provider>
   )

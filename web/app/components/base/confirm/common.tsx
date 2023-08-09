@@ -13,6 +13,7 @@ type ConfirmCommonProps = {
   onCancel: () => void
   title: string
   desc?: string
+  onConfirm: () => void
 }
 
 const ConfirmCommon: FC<ConfirmCommonProps> = ({
@@ -21,6 +22,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
   onCancel,
   title,
   desc,
+  onConfirm,
 }) => {
   const { t } = useTranslation()
 
@@ -51,7 +53,13 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
           >
             {t('common.operation.cancel')}
           </Button>
-          <Button type='primary' className=''>{CONFIRM_MAP[type].confirmText}</Button>
+          <Button
+            type='primary'
+            className=''
+            onClick={onConfirm}
+          >
+            {CONFIRM_MAP[type].confirmText}
+          </Button>
         </div>
       </div>
     </Modal>

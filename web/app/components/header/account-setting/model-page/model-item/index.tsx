@@ -9,11 +9,19 @@ import s from './index.module.css'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm/common'
+import { deleteModelProviderModel } from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
+import { useProviderContext } from '@/context/provider-context'
 
 type ModelItemProps = {
   currentProvider: CustomAddProvider | CustomSetupProvider
   modelItem: TModelItem
   onOpenModal: () => void
+}
+
+type DeleteModel = {
+  model_name: string
+  model_type: string
 }
 
 const ModelItem: FC<ModelItemProps> = ({
@@ -23,9 +31,32 @@ const ModelItem: FC<ModelItemProps> = ({
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
+  const { mutateProviders } = useProviderContext()
+  const { notify } = useToastContext()
   const [confirmShow, setConfirmShow] = useState(false)
-  const configurable = currentProvider.model_flexibility === 'configurable'
-  const selfProvider = currentProvider.providers[0]
+  const [deleteModel, setDeleteModel] = useState<DeleteModel>()
+  const configurable = currentProvider?.model_flexibility === 'configurable'
+  const selfProvider = currentProvider?.providers[0]
+
+  const handleConfirm = (deleteModel: DeleteModel) => {
+    setDeleteModel(deleteModel)
+    setConfirmShow(true)
+  }
+
+  const handleDeleteModel = async () => {
+    const { model_name, model_type } = deleteModel || {}
+    const res = await deleteModelProviderModel({
+      url: `/workspaces/current/model-providers/${modelItem.key}/models`,
+      body: {
+        model_name,
+        model_type,
+      },
+    })
+    if (res.result === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      mutateProviders()
+    }
+  }
 
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
@@ -75,7 +106,7 @@ const ModelItem: FC<ModelItemProps> = ({
             )
           }
           {
-            !configurable && !(selfProvider as CustomFixedProvider).config && (
+            !configurable && !(selfProvider as CustomFixedProvider)?.config && (
               <Button
                 className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && '!text-gray-300'}`}
                 onClick={onOpenModal}
@@ -86,7 +117,7 @@ const ModelItem: FC<ModelItemProps> = ({
             )
           }
           {
-            !configurable && (selfProvider as CustomFixedProvider).config && (
+            !configurable && (selfProvider as CustomFixedProvider)?.config && (
               <div className='flex items-center'>
                 <Indicator className='mr-3' />
                 <Button
@@ -102,35 +133,40 @@ const ModelItem: FC<ModelItemProps> = ({
         </div>
       </div>
       {
-        configurable && !!(selfProvider as CustomConfigurableProvider).models?.length && (
+        configurable && !!(selfProvider as CustomConfigurableProvider)?.models?.length && (
           <div className='px-3 pb-3'>
-            <div className='flex mb-1 px-3 py-2 bg-white rounded-lg shadow-xs last:mb-0'>
-              <div className='grow'>
-                <div className='flex items-center mb-0.5 h-[18px] text-[13px] font-medium text-gray-700'>
-                  al6z-infra/llama136-v2-chat
-                  <div className='ml-2 px-1.5 rounded-md border border-[rgba(0,0,0,0.08)] text-xs text-gray-600'>Embeddings</div>
+            {
+              (selfProvider as CustomConfigurableProvider)?.models.map(selfModel => (
+                <div className='flex mb-1 px-3 py-2 bg-white rounded-lg shadow-xs last:mb-0'>
+                  <div className='grow'>
+                    <div className='flex items-center mb-0.5 h-[18px] text-[13px] font-medium text-gray-700'>
+                      {selfModel.model_name}
+                      <div className='ml-2 px-1.5 rounded-md border border-[rgba(0,0,0,0.08)] text-xs text-gray-600'>{selfModel.model_type}</div>
+                    </div>
+                    <div className='text-xs text-gray-500'>version: {selfModel.config.model_version}</div>
+                  </div>
+                  <div className='flex items-center'>
+                    <Indicator className='mr-3' />
+                    <Button
+                      className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
+                      onClick={onOpenModal}
+                    >
+                      {t('common.operation.edit')}
+                    </Button>
+                    <Operation onOperate={() => handleConfirm(selfModel)} />
+                  </div>
                 </div>
-                <div className='text-xs text-gray-500'>version: d7769041994d94e96ad9d568eac12laecf50684a060963625a41c4006126985</div>
-              </div>
-              <div className='flex items-center'>
-                <Indicator className='mr-3' />
-                <Button
-                  className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
-                  onClick={onOpenModal}
-                >
-                  {t('common.operation.edit')}
-                </Button>
-                <Operation onOperate={() => setConfirmShow(true)} />
-              </div>
-            </div>
+              ))
+            }
           </div>
         )
       }
       <Confirm
         isShow={confirmShow}
         onCancel={() => setConfirmShow(false)}
-        title='xxxx-xxx'
-        desc='xxxxx'
+        title={deleteModel?.model_name || ''}
+        desc='al6z-infra/llama136-v2-chat are being used as system reasoning models. Some functions will not be available after removal. Please confirm.'
+        onConfirm={handleDeleteModel}
       />
     </div>
   )

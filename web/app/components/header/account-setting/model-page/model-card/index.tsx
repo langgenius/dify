@@ -8,6 +8,9 @@ import PrioritySelector from './PrioritySelector'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { changeModelProviderPriority, deleteModelProvider } from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
+import { useProviderContext } from '@/context/provider-context'
 
 type ModelCardProps = {
   currentProvider: SystemProvider
@@ -22,7 +25,32 @@ const ModelCard: FC<ModelCardProps> = ({
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
+  const { notify } = useToastContext()
+  const { mutateProviders } = useProviderContext()
   const custom = currentProvider.providers[2]
+
+  const handleOperate = async ({ type, value }: Record<string, string>) => {
+    if (type === 'delete') {
+      const res = await deleteModelProvider({ url: `/workspaces/current/model-providers/${modelItem.key}` })
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutateProviders()
+      }
+    }
+
+    if (type === 'priority') {
+      const res = await changeModelProviderPriority({
+        url: `/workspaces/current/model-providers/${modelItem.key}/preferred-provider-type`,
+        body: {
+          preferred_provider_type: value,
+        },
+      })
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutateProviders()
+      }
+    }
+  }
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
@@ -50,7 +78,10 @@ const ModelCard: FC<ModelCardProps> = ({
               >
                 {t('common.operation.edit')}
               </div>
-              <PrioritySelector />
+              <PrioritySelector
+                onOperate={handleOperate}
+                value={currentProvider.preferred_provider_type}
+              />
             </div>
           )
           : (

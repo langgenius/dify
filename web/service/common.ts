@@ -125,3 +125,31 @@ export const activateMember: Fetcher<CommonResponse, { url: string; body: any }>
 export const fetchModelProviders: Fetcher<ModelProvider, string> = (url) => {
   return get(url) as Promise<ModelProvider>
 }
+
+export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
+}
+
+export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return del(url) as Promise<CommonResponse>
+}
+
+export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const validateModelProviderModel: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
+}
+
+export const setModelProviderModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const deleteModelProviderModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return del(url, { body }) as Promise<CommonResponse>
+}

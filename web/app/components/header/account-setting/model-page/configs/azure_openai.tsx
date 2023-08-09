@@ -1,6 +1,6 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { ValidatedStatus } from '../../key-validator/declarations'
+import { validateModelProviderModelFn } from '../utils'
 import { AzureOpenaiService, AzureOpenaiServiceText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
@@ -13,6 +13,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.azure_openai,
     title: {
       'en': 'Azure OpenAI',
       'zh-Hans': 'Azure OpenAI',
@@ -25,11 +26,28 @@ const config: ModelConfig = {
         'zh-Hans': '从 Azure 获取 API Key',
       },
     },
+    defaultValue: {
+      model_type: 'text-generation',
+    },
     fields: [
       {
         visible: () => true,
+        type: 'text',
+        key: 'model_name',
+        required: true,
+        label: {
+          'en': 'Deployment Name',
+          'zh-Hans': '部署名称',
+        },
+        placeholder: {
+          'en': 'Enter your Deployment Name here',
+          'zh-Hans': '在此输入您的部署名称',
+        },
+      },
+      {
+        visible: () => true,
         type: 'radio',
-        key: 'modelType',
+        key: 'model_type',
         required: true,
         label: {
           'en': 'Model Type',
@@ -37,24 +55,17 @@ const config: ModelConfig = {
         },
         options: [
           {
-            key: '1',
+            key: 'text-generation',
             label: {
               'en': 'Text Generation',
               'zh-Hans': '文本生成',
             },
           },
           {
-            key: '2',
+            key: 'embeddings',
             label: {
               'en': 'Embeddings',
               'zh-Hans': 'Embeddings',
-            },
-          },
-          {
-            key: '3',
-            label: {
-              'en': 'Speech To Text',
-              'zh-Hans': '语音转文字',
             },
           },
         ],
@@ -62,7 +73,7 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiToken',
+        key: 'openai_api_base',
         required: true,
         obfuscated: true,
         label: {
@@ -77,15 +88,15 @@ const config: ModelConfig = {
           before: () => {
             return true
           },
-          run: () => {
-            return Promise.resolve({ status: ValidatedStatus.Error, message: '' })
+          run: (v) => {
+            return validateModelProviderModelFn(ModelEnum.azure_openai, v)
           },
         },
       },
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'openai_api_key',
         required: true,
         obfuscated: true,
         label: {
@@ -99,16 +110,65 @@ const config: ModelConfig = {
       },
       {
         visible: () => true,
-        type: 'text',
-        key: 'modelName',
+        type: 'radio',
+        key: 'base_model_name',
         required: true,
         label: {
-          'en': 'Deployment Name',
-          'zh-Hans': '部署名称',
+          'en': 'Base Model',
+          'zh-Hans': '基础模型',
         },
-        placeholder: {
-          'en': 'Enter your Deployment Name here',
-          'zh-Hans': '在此输入您的部署名称',
+        options: (v) => {
+          if (v.model_type === 'text-generation') {
+            return [
+              {
+                key: 'gpt-35-turbo',
+                label: {
+                  'en': 'gpt-35-turbo',
+                  'zh-Hans': 'gpt-35-turbo',
+                },
+              },
+              {
+                key: 'gpt-35-turbo-16k',
+                label: {
+                  'en': 'gpt-35-turbo-16k',
+                  'zh-Hans': 'gpt-35-turbo-16k',
+                },
+              },
+              {
+                key: 'gpt-4',
+                label: {
+                  'en': 'gpt-4',
+                  'zh-Hans': 'gpt-4',
+                },
+              },
+              {
+                key: 'gpt-4-32k',
+                label: {
+                  'en': 'gpt-4-32k',
+                  'zh-Hans': 'gpt-4-32k',
+                },
+              },
+              {
+                key: 'text-davinci-003',
+                label: {
+                  'en': 'text-davinci-003',
+                  'zh-Hans': 'text-davinci-003',
+                },
+              },
+            ]
+          }
+          if (v.model_type === 'embeddings') {
+            return [
+              {
+                key: 'text-embedding-ada-002',
+                label: {
+                  'en': 'text-embedding-ada-002',
+                  'zh-Hans': 'text-embedding-ada-002',
+                },
+              },
+            ]
+          }
+          return []
         },
       },
     ],

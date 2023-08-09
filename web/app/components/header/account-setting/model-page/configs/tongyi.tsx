@@ -1,5 +1,6 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
+import { validateModelProviderFn } from '../utils'
 import { Tongyi, TongyiText, TongyiTextCn } from '@/app/components/base/icons/src/image/llm'
 
 const config: ModelConfig = {
@@ -12,6 +13,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
+    key: ModelEnum.tongyi,
     title: {
       'en': 'Tongyi',
       'zh-Hans': '通义千问',
@@ -28,9 +30,8 @@ const config: ModelConfig = {
       {
         visible: () => true,
         type: 'text',
-        key: 'apiKey',
+        key: 'dashscope_api_key',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Key',
           'zh-Hans': 'API Key',
@@ -38,6 +39,17 @@ const config: ModelConfig = {
         placeholder: {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
+        },
+        validate: {
+          before: (v) => {
+            if (v?.dashscope_api_key)
+              return true
+          },
+          run: (v) => {
+            return validateModelProviderFn(ModelEnum.tongyi, {
+              config: v,
+            })
+          },
         },
       },
     ],
