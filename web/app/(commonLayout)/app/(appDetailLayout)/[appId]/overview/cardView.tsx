@@ -67,16 +67,14 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   }
 
   return (
-    <div className='flex flex-row justify-between w-full mb-6'>
+    <div className='min-w-max grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
       <AppCard
-        className='mr-3 flex-1'
         appInfo={response}
         cardType='webapp'
         onChangeStatus={onChangeSiteStatus}
         onGenerateCode={onGenerateCode}
         onSaveSiteConfig={onSaveSiteConfig} />
       <AppCard
-        className='ml-3 flex-1'
         cardType='api'
         appInfo={response}
         onChangeStatus={onChangeApiStatus} />

@@ -64,7 +64,7 @@ const translation = {
     apiInfo: {
       title: 'Backend service API',
       explanation: 'Easily integrated into your application',
-      accessibleAddress: 'API Token',
+      accessibleAddress: 'Service API Endpoint',
       doc: 'API Reference',
     },
     status: {

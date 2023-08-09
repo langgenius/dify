@@ -2,22 +2,22 @@
 
 import { useContext, useContextSelector } from 'use-context-selector'
 import Link from 'next/link'
-import type { MouseEventHandler } from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import style from '../list.module.css'
 import AppModeLabel from './AppModeLabel'
-import AppSettings from './AppSettings'
 import s from './style.module.css'
+import SettingsModal from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteApp, updateAppIcon, updateAppName } from '@/service/apps'
+import { deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
+import { asyncRunSafe } from '@/utils'
 
 export type AppCardProps = {
   app: App
@@ -35,17 +35,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [updateLoading, setUpdateLoading] = useState(false)
-
-  const onClickSettings: MouseEventHandler = useCallback((e) => {
-    e.preventDefault()
-    setShowSettingsModal(true)
-  }, [])
-
-  const onClickDelete: MouseEventHandler = useCallback((e) => {
-    e.preventDefault()
-    setShowConfirmDelete(true)
-  }, [])
+  const [detailState, setDetailState] = useState<{
+    loading: boolean
+    detail?: App
+  }>({ loading: false })
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -66,34 +59,34 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     setShowConfirmDelete(false)
   }, [app.id])
 
-  const onUpdate = useCallback(
-    async (params: { name: App['name']; iconInfo: { icon: string;icon_background: string } }) => {
-      const reqList = []
-      if (params.name !== app.name) {
-        reqList.push(updateAppName({
-          url: `/apps/${app.id}/name`,
-          body: { name: params.name },
-        }))
-      }
-      if (params.iconInfo.icon !== app.icon || params.iconInfo.icon_background !== app.icon_background)
-        reqList.push(updateAppIcon({ url: `/apps/${app.id}/icon`, body: params.iconInfo }))
+  const getAppDetail = async () => {
+    setDetailState({ loading: true })
+    const [err, res] = await asyncRunSafe<App>(
+      fetchAppDetail({ url: '/apps', id: app.id }) as Promise<App>,
+    )
+    if (!err) {
+      setDetailState({ loading: false, detail: res })
+      setShowSettingsModal(true)
+    }
+    else { setDetailState({ loading: false }) }
+  }
 
-      if (!reqList.length) {
-        setShowSettingsModal(false)
-        notify({
-          type: 'info',
-          message: t('common.actionMsg.noModification'),
-        })
-        return
-      }
-      setUpdateLoading(true)
-      const updateRes = await Promise.allSettled(reqList)
-      if (!updateRes.find(v => v.status === 'rejected')) {
+  const onSaveSiteConfig = useCallback(
+    async (params: any) => {
+      const [err] = await asyncRunSafe<App>(
+        updateAppSiteConfig({
+          url: `/apps/${app.id}/site`,
+          body: params,
+        }) as Promise<App>,
+      )
+      if (!err) {
         notify({
           type: 'success',
           message: t('common.actionMsg.modifiedSuccessfully'),
         })
-        setShowSettingsModal(false)
+        if (onRefresh)
+          onRefresh()
+        mutateApps()
       }
       else {
         notify({
@@ -101,44 +94,45 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           message: t('common.actionMsg.modificationFailed'),
         })
       }
-      if (onRefresh)
-        onRefresh()
-      mutateApps()
-      setUpdateLoading(false)
     },
     [app.id],
   )
 
   const Operations = (props: any) => {
-    return <div className="w-full py-1">
-      <div className={s.actionItem} onClick={(e) => {
-        props?.onClose()
-        onClickSettings(e)
-      }}>
-        <span className={s.actionName}>
-          {t('common.operation.settings')}
-        </span>
-      </div>
-      <Divider className="my-1" />
-      <div
-        className={cn(s.actionItem, s.deleteActionItem, 'group')}
-        onClick={(e) => {
-          props?.onClose()
-          onClickDelete(e)
-        }}
-      >
-        <span
-          className={cn(s.actionName, 'group-hover:text-red-500')}
+    const onClickSettings = async (e: any) => {
+      props?.onClose()
+      e.preventDefault()
+      await getAppDetail()
+    }
+    const onClickDelete = async (e: any) => {
+      props?.onClose()
+      e.preventDefault()
+      setShowConfirmDelete(true)
+    }
+    return (
+      <div className="w-full py-1">
+        <button className={s.actionItem} onClick={onClickSettings} disabled={detailState.loading}>
+          <span className={s.actionName}>{t('common.operation.settings')}</span>
+        </button>
+        <Divider className="!my-1" />
+        <div
+          className={cn(s.actionItem, s.deleteActionItem, 'group')}
+          onClick={onClickDelete}
         >
-          {t('common.operation.delete')}
-        </span>
+          <span className={cn(s.actionName, 'group-hover:text-red-500')}>
+            {t('common.operation.delete')}
+          </span>
+        </div>
       </div>
-    </div>
+    )
   }
 
   return (
     <>
-      <Link href={`/app/${app.id}/overview`} className={style.listItem}>
+      <Link
+        href={`/app/${app.id}/overview`}
+        className={style.listItem}
+      >
         <div className={style.listItemTitle}>
           <AppIcon
             size="small"
@@ -149,10 +143,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>
           <CustomPopover
-            htmlContent={
-              <Operations />
-            }
+            htmlContent={<Operations />}
             position="br"
+            trigger="click"
             btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
             btnClassName={open =>
               cn(
@@ -180,14 +173,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             onCancel={() => setShowConfirmDelete(false)}
           />
         )}
-        {showSettingsModal && (
-          <AppSettings
+        {showSettingsModal && detailState.detail && (
+          <SettingsModal
+            appInfo={detailState.detail}
             isShow={showSettingsModal}
             onClose={() => setShowSettingsModal(false)}
-            appName={app.name}
-            appIcon={{ icon: app.icon, icon_background: app.icon_background }}
-            onUpdate={onUpdate}
-            loading={updateLoading}
+            onSave={onSaveSiteConfig}
           />
         )}
       </Link>

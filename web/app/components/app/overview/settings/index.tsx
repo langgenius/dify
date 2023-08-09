@@ -18,7 +18,7 @@ export type ISettingsModalProps = {
   isShow: boolean
   defaultValue?: string
   onClose: () => void
-  onSave: (params: ConfigParams) => Promise<any>
+  onSave?: (params: ConfigParams) => Promise<any>
 }
 
 export type ConfigParams = {
@@ -70,7 +70,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: emoji.icon,
       icon_background: emoji.icon_background,
     }
-    await onSave(params)
+    await onSave?.(params)
     setSaveLoading(false)
     onHide()
   }
@@ -99,7 +99,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           />
           <input className={`flex-grow rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
             value={inputInfo.title}
-            onChange={onChange('title')} />
+            onChange={onChange('title')}
+            placeholder={t('app.appNamePlaceholder') || ''}
+          />
         </div>
         <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.webDesc`)}</div>
         <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.webDescTip`)}</p>
