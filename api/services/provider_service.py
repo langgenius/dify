@@ -299,6 +299,10 @@ class ProviderService:
             )
             db.session.add(provider)
             db.session.commit()
+        elif not provider.is_valid:
+            provider.is_valid = True
+            provider.encrypted_config = None
+            db.session.commit()
 
         model_provider_class = ModelProviderFactory.get_model_provider_class(provider_name)
         encrypted_config = model_provider_class.encrypt_model_credentials(
