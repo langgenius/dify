@@ -3,12 +3,11 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import { useBoolean, useClickAway } from 'ahooks'
+import { useBoolean, useClickAway, useGetState } from 'ahooks'
 import { ChevronDownIcon, Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
-import allParamsMock from './mock-params'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
@@ -38,15 +37,15 @@ export type IConfigModelProps = {
 
 const options = MODEL_LIST
 
-const getMaxToken = (modelId: string) => {
-  if (['claude-instant-1', 'claude-2'].includes(modelId))
-    return 30 * 1000
+// const getMaxToken = (modelId: string) => {
+//   if (['claude-instant-1', 'claude-2'].includes(modelId))
+//     return 30 * 1000
 
-  if (['gpt-4', 'gpt-3.5-turbo-16k'].includes(modelId))
-    return 8000
+//   if (['gpt-4', 'gpt-3.5-turbo-16k'].includes(modelId))
+//     return 8000
 
-  return 4000
-}
+//   return 4000
+// }
 
 const ConfigModel: FC<IConfigModelProps> = ({
   mode,
@@ -67,8 +66,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const configContentRef = React.useRef(null)
   const currModel = options.find(item => item.id === modelId)
   // Cache loaded model param
-  // t('common.model.params.temperature')
-  const [allParams, setAllParams] = useState<Record<string, Record<string, any>>>(allParamsMock)
+  const [allParams, setAllParams, getAllParams] = useGetState<Record<string, Record<string, any>>>({})
   const currParams = allParams[provider]?.[modelId]
   const allSupportParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty', 'max_tokens']
   const currSupportParams = currParams ? allSupportParams.filter(key => currParams[key].enabled) : allSupportParams
@@ -99,26 +97,82 @@ const ConfigModel: FC<IConfigModelProps> = ({
     hideOption()
   }, triggerRef)
 
-  const handleSelectModel = (id: string, provider = ProviderType.openai) => {
-    return () => {
+  const ensureModelParamLoaded = (provider: ProviderType, modelId: string) => {
+    return new Promise<void>((resolve) => {
+      if (getAllParams()[provider]?.[modelId]) {
+        resolve()
+        return
+      }
+      const runId = setInterval(() => {
+        if (getAllParams()[provider]?.[modelId]) {
+          resolve()
+          clearInterval(runId)
+        }
+      }, 500)
+    })
+  }
+
+  const transformValue = (value: number, fromRange: [number, number], toRange: [number, number]): number => {
+    const [fromStart = 0, fromEnd] = fromRange
+    const [toStart = 0, toEnd] = toRange
+
+    if (fromStart === toStart && fromEnd === toEnd)
+      return value
+
+    const fromLength = fromEnd - fromStart
+    const toLength = toEnd - toStart
+
+    const adjustedValue = (value - fromStart) * (toLength / fromLength) + toStart
+
+    return parseFloat(adjustedValue.toFixed(2))
+  }
+
+  const handleSelectModel = (id: string, nextProvider = ProviderType.openai) => {
+    return async () => {
       if (id === 'gpt-4' && !canUseGPT4) {
         hideConfig()
         hideOption()
         onShowUseGPT4Confirm()
         return
       }
-      const nextSelectModelMaxToken = getMaxToken(id)
-      if (completionParams.max_tokens > nextSelectModelMaxToken) {
-        Toast.notify({
-          type: 'warning',
-          message: t('common.model.params.setToCurrentModelMaxTokenTip', { maxToken: formatNumber(nextSelectModelMaxToken) }),
+      const prevParamsRule = getAllParams()[provider]?.[modelId]
+
+      setModelId(id, nextProvider)
+
+      await ensureModelParamLoaded(nextProvider, id)
+
+      const nextParamsRule = getAllParams()[nextProvider]?.[id]
+      const nextSelectModelMaxToken = nextParamsRule.max_tokens.max
+      const newConCompletionParams = produce(completionParams, (draft: any) => {
+        if (completionParams.max_tokens > nextSelectModelMaxToken) {
+          Toast.notify({
+            type: 'warning',
+            message: t('common.model.params.setToCurrentModelMaxTokenTip', { maxToken: formatNumber(nextSelectModelMaxToken) }),
+          })
+          draft.max_tokens = parseFloat((nextSelectModelMaxToken * 0.8).toFixed(2))
+        }
+        allSupportParams.forEach((key) => {
+          if (key === 'max_tokens')
+            return
+
+          if (!nextParamsRule[key].enabled) {
+            delete draft[key]
+            return
+          }
+
+          if (draft[key] === undefined) {
+            draft[key] = nextParamsRule[key].default || 0
+            return
+          }
+
+          draft[key] = transformValue(
+            draft[key],
+            [prevParamsRule[key].min, prevParamsRule[key].max],
+            [nextParamsRule[key].min, nextParamsRule[key].max],
+          )
         })
-        onCompletionParamsChange({
-          ...completionParams,
-          max_tokens: nextSelectModelMaxToken,
-        })
-      }
-      setModelId(id, provider)
+      })
+      onCompletionParamsChange(newConCompletionParams)
     }
   }
 
