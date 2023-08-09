@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require_relative "lib/dify_client/version"
+require_relative "lib/version"
 
 Gem::Specification.new do |spec|
   spec.name          = "dify_client"
