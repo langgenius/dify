@@ -31,6 +31,7 @@ from config import Config, CloudEditionConfig
 from commands import register_commands
 from models.account import TenantAccountJoin, AccountStatus
 from models.model import Account, EndUser, App
+from services.account_service import TenantService
 
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
@@ -89,6 +90,15 @@ def initialize_extensions(app):
     ext_sentry.init_app(app)
 
 
+def _create_tenant_for_account(account):
+    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+
+    TenantService.create_tenant_member(tenant, account, role='owner')
+    account.current_tenant = tenant
+
+    return tenant
+
+
 # Flask-Login configuration
 @login_manager.user_loader
 def load_user(user_id):
@@ -119,7 +129,9 @@ def load_user(user_id):
 
                     if tenant_account_join:
                         account.current_tenant_id = tenant_account_join.tenant_id
-                        session['workspace_id'] = account.current_tenant_id
+                    else:
+                        _create_tenant_for_account(account)
+                    session['workspace_id'] = account.current_tenant_id
                 else:
                     account.current_tenant_id = workspace_id
             else:
@@ -127,7 +139,9 @@ def load_user(user_id):
                     TenantAccountJoin.account_id == account.id).first()
                 if tenant_account_join:
                     account.current_tenant_id = tenant_account_join.tenant_id
-                    session['workspace_id'] = account.current_tenant_id
+                else:
+                    _create_tenant_for_account(account)
+                session['workspace_id'] = account.current_tenant_id
 
             account.last_active_at = datetime.utcnow()
             db.session.commit()

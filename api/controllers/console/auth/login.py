@@ -35,7 +35,7 @@ class LoginApi(Resource):
         try:
             TenantService.switch_tenant(account)
         except Exception:
-            raise AccountNotLinkTenantError("Account not link tenant")
+            pass
 
         flask_login.login_user(account, remember=args['remember_me'])
         AccountService.update_last_login(account, request)
