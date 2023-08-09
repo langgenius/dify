@@ -85,7 +85,7 @@ class ProviderService:
                     "provider_name": model_provider_name,
                     "provider_type": ProviderType.SYSTEM.value,
                     "config": None,
-                    "is_valid": True,
+                    "is_valid": False,  # need update
                     "quota_type": ProviderQuotaType.TRIAL.value,
                     "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
                     "quota_limit": model_provider_rule['system_config']['quota_limit'],  # need update
@@ -99,7 +99,7 @@ class ProviderService:
                     "provider_name": model_provider_name,
                     "provider_type": ProviderType.SYSTEM.value,
                     "config": None,
-                    "is_valid": True,
+                    "is_valid": False,  # need update
                     "quota_type": ProviderQuotaType.PAID.value,
                     "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
                     "quota_limit": 0,  # need update
@@ -127,6 +127,7 @@ class ProviderService:
                         ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value) in provider_parameter_dict:
                     # if trial
                     key = ProviderType.SYSTEM.value + ':' + ProviderQuotaType.TRIAL.value
+                    provider_parameter_dict[key]['is_valid'] = provider.is_valid
                     provider_parameter_dict[key]['quota_used'] = provider.quota_used
                     provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
                     provider_parameter_dict[key]['last_used'] = provider.last_used
@@ -135,6 +136,7 @@ class ProviderService:
                         and (ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value) in provider_parameter_dict:
                     # if paid
                     key = ProviderType.SYSTEM.value + ':' + ProviderQuotaType.PAID.value
+                    provider_parameter_dict[key]['is_valid'] = provider.is_valid
                     provider_parameter_dict[key]['quota_used'] = provider.quota_used
                     provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
                     provider_parameter_dict[key]['last_used'] = provider.last_used

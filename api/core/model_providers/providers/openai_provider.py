@@ -134,12 +134,12 @@ class OpenAIProvider(BaseModelProvider):
             }
 
             if 'openai_api_base' in credentials:
-                credentials_kwargs['api_base'] = credentials['api_base']
+                credentials_kwargs['api_base'] = credentials['openai_api_base']
 
             if 'openai_organization' in credentials:
                 credentials_kwargs['organization'] = credentials['openai_organization']
 
-            rst = openai.ChatCompletion.create(
+            openai.ChatCompletion.create(
                 messages=[{"role": "user", "content": 'ping'}],
                 model='gpt-3.5-turbo',
                 timeout=10,
@@ -147,8 +147,6 @@ class OpenAIProvider(BaseModelProvider):
                 max_tokens=20,
                 **credentials_kwargs
             )
-
-            print(rst)
         except (AuthenticationError, OpenAIError) as ex:
             raise CredentialsValidateFailedError(str(ex))
         except Exception as ex:
