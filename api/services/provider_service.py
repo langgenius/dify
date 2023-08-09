@@ -121,10 +121,6 @@ class ProviderService:
 
             current_providers = provider_name_to_provider_dict[model_provider_name]
             for provider in current_providers:
-                if provider.quota_type == 'trail':
-                    provider.quota_type = ProviderQuotaType.TRIAL.value
-                    db.session.commit()
-
                 if provider.provider_type == ProviderType.SYSTEM.value \
                         and provider.quota_type == ProviderQuotaType.TRIAL.value \
                         and (
