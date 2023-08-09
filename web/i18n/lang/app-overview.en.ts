@@ -8,7 +8,7 @@ const translation = {
   apiKeyInfo: {
     cloud: {
       trial: {
-        title: 'You are using the OpenAI trial quota.',
+        title: 'You are using the {{providerName}} trial quota.',
         description: 'The trial quota is provided for your testing use. Before the trial quota calls are exhausted, please set up your own model provider or purchase additional quota.',
       },
       exhausted: {

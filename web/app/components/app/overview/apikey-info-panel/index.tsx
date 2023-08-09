@@ -10,20 +10,14 @@ import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/l
 import AccountSetting from '@/app/components/header/account-setting'
 import { fetchTenantInfo } from '@/service/common'
 import { IS_CE_EDITION } from '@/config'
-type Props = {
-  used: number
-  total: number
-}
+import { useProviderContext } from '@/context/provider-context'
 
-const APIKeyInfoPanel: FC<Props> = ({
-  used,
-  total,
-}) => {
+const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
+  const { providers }: any = useProviderContext()
+
   const { t } = useTranslation()
 
-  const usedPercent = Math.round(used / total * 100)
-  const exhausted = isCloud && usedPercent === 100
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
   const [isShow, setIsShow] = useState(true)
@@ -36,6 +30,32 @@ const APIKeyInfoPanel: FC<Props> = ({
   if (hasBindAPI)
     return null
 
+  // first show in trail and not used exhausted, else find the exhausted
+  const [used, total, providerName] = (() => {
+    if (!providers || !isCloud)
+      return [0, 0, '']
+    let used = 0
+    let total = 0
+    let trailProviderName = ''
+    let hasFoundNotExhausted = false
+    Object.keys(providers).forEach((providerName) => {
+      if (hasFoundNotExhausted)
+        return
+      providers[providerName].providers.forEach(({ quota_type, quota_limit, quota_used }: any) => {
+        if (quota_type === 'trial') {
+          if (quota_limit !== quota_used)
+            hasFoundNotExhausted = true
+
+          used = quota_used
+          total = quota_limit
+          trailProviderName = providerName
+        }
+      })
+    })
+    return [used, total, trailProviderName]
+  })()
+  const usedPercent = Math.round(used / total * 100)
+  const exhausted = isCloud && usedPercent === 100
   if (!(isShow))
     return null
 
@@ -45,7 +65,7 @@ const APIKeyInfoPanel: FC<Props> = ({
         {isCloud && <em-emoji id={exhausted ? '🤔' : '😀'} />}
         {isCloud
           ? (
-            <div>{t(`appOverview.apiKeyInfo.cloud.${exhausted ? 'exhausted' : 'trial'}.title`)}</div>
+            <div>{t(`appOverview.apiKeyInfo.cloud.${exhausted ? 'exhausted' : 'trial'}.title`, { providerName })}</div>
           )
           : (
             <div>

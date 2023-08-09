@@ -18,11 +18,7 @@ const Overview = async ({
   return (
     <div className="h-full px-16 py-6 overflow-scroll">
       {/* <WelcomeBanner /> */}
-      <ApikeyInfoPanel
-        isCloud={true}
-        used={100}
-        total={200}
-      />
+      <ApikeyInfoPanel />
       <div className='flex flex-row items-center justify-between mb-4 text-xl text-gray-900'>
         {t('overview.title')}
         <EditKeyPopover />
