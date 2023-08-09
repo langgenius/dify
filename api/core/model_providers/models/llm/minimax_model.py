@@ -56,7 +56,7 @@ class MinimaxModel(BaseLLM):
         return decimal.Decimal('0')
 
     def get_currency(self):
-        raise 'RMB'
+        return 'RMB'
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

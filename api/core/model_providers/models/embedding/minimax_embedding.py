@@ -26,7 +26,7 @@ class MinimaxEmbedding(BaseEmbedding):
         return decimal.Decimal('0')
 
     def get_currency(self):
-        raise 'RMB'
+        return 'RMB'
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, ValueError):
