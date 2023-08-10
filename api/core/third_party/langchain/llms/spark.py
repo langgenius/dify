@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any, Mapping
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun, AsyncCallbackManagerForLLMRun
 from langchain.chat_models.base import BaseChatModel
+from langchain.llms.utils import enforce_stop_tokens
 from langchain.schema import BaseMessage, ChatMessage, HumanMessage, AIMessage, SystemMessage, ChatResult, \
     ChatGeneration
 from langchain.utils import get_from_dict_or_env
@@ -154,6 +155,9 @@ class ChatSpark(BaseChatModel):
                 )
 
         thread.join()
+
+        if stop is not None:
+            completion = enforce_stop_tokens(completion, stop)
 
         message = AIMessage(content=completion)
         return ChatResult(generations=[ChatGeneration(message=message)])

@@ -2,6 +2,7 @@ from typing import Dict, Optional, List, Any
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms import Replicate
+from langchain.llms.utils import enforce_stop_tokens
 from langchain.utils import get_from_dict_or_env
 from pydantic import root_validator
 
@@ -51,4 +52,9 @@ class EnhanceReplicate(Replicate):
         inputs = {first_input_name: prompt, **self.input}
         iterator = client.run(self.model, input={**inputs, **kwargs})
 
-        return "".join([output for output in iterator])
+        text = "".join([output for output in iterator])
+
+        if stop is not None:
+            text = enforce_stop_tokens(text, stop)
+
+        return text

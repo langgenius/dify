@@ -42,6 +42,9 @@ class ModelProviderFactory:
         elif provider_name == 'tongyi':
             from core.model_providers.providers.tongyi_provider import TongyiProvider
             return TongyiProvider
+        elif provider_name == 'wenxin':
+            from core.model_providers.providers.wenxin_provider import WenxinProvider
+            return WenxinProvider
         elif provider_name == 'chatglm':
             from core.model_providers.providers.chatglm_provider import ChatGLMProvider
             return ChatGLMProvider
