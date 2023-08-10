@@ -228,7 +228,7 @@ class ModelFactory:
         if not model_provider:
             raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
 
-        model_list = model_provider.get_supported_model_list(ModelType.value_of(model_type.value))
+        model_list = model_provider.get_supported_model_list(model_type)
         model_ids = [model['id'] for model in model_list]
         if model_name not in model_ids:
             raise ValueError(f'Invalid model name: {model_name}')

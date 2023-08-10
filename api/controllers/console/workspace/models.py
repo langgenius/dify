@@ -76,7 +76,7 @@ class DefaultModelApi(Resource):
         provider_service = ProviderService()
         provider_service.update_default_model_of_model_type(
             tenant_id=current_user.current_tenant_id,
-            model_type=ModelType.value_of(args['model_type']),
+            model_type=args['model_type'],
             provider_name=args['provider_name'],
             model_name=args['model_name']
         )
