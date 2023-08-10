@@ -4,25 +4,14 @@ import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
 import cn from 'classnames'
-import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import type { BackendModel, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import {
-  Anthropic,
-  Chatglm,
-  Huggingface,
-  IflytekSpark,
-  OpenaiBlue,
-  OpenaiGreen,
-  OpenaiViolet,
-  Replicate,
-} from '@/app/components/base/icons/src/public/llm'
-import {
-  Minimax,
-  Tongyi,
-} from '@/app/components/base/icons/src/image/llm'
+
+import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+
 import { useProviderContext } from '@/context/provider-context'
 // const modelOptions = [
 //   { type: 'provider', name: 'OpenAI' },
@@ -42,29 +31,6 @@ import { useProviderContext } from '@/context/provider-context'
 //   { type: 'provider', name: 'MINIMAX' },
 //   { type: 'model', name: 'MINIMAX-GPT', value: 'MINIMAX-GPT', icon: Minimax },
 // ]
-const icons: any = {
-  [ProviderEnum.openai]: {
-    'gpt-3.5-turbo': OpenaiGreen,
-    'gpt-3.5-turbo-16k': OpenaiGreen,
-    'gpt-4': OpenaiViolet,
-  },
-  [ProviderEnum.azure_openai]: OpenaiBlue,
-  [ProviderEnum.anthropic]: Anthropic,
-  [ProviderEnum.replicate]: Replicate,
-  [ProviderEnum.huggingface_hub]: Huggingface,
-  [ProviderEnum.minimax]: Minimax,
-  [ProviderEnum.spark]: IflytekSpark,
-  [ProviderEnum.tongyi]: Tongyi,
-  [ProviderEnum.chatglm]: Chatglm,
-}
-
-const getIcon = (providerName: ProviderEnum, modelName: string) => {
-  if (providerName === ProviderEnum.openai)
-    return icons[providerName]?.[modelName] || OpenaiGreen
-  if (icons[providerName])
-    return icons[providerName]
-  return OpenaiGreen
-}
 
 type Props = {
   value: {
@@ -109,13 +75,11 @@ const ModelSelector: FC<Props> = ({
           providerName,
           name: model_name,
           value: model_name,
-          icon: getIcon(providerName as unknown as ProviderEnum, model_name),
         })
       })
     })
     return res
   })()
-  const SelectedIcon = value ? getIcon(value.providerName, value.modelName) : null
   const [search, setSearch] = useState('')
 
   return (
@@ -129,7 +93,11 @@ const ModelSelector: FC<Props> = ({
                   value
                     ? (
                       <>
-                        <SelectedIcon className='mr-1.5 w-5 h-5' />
+                        <ModelIcon
+                          className='mr-1.5 w-5 h-5'
+                          modelId={value.modelName}
+                          providerName={value.providerName}
+                        />
                         <div className='mr-1.5 grow text-left text-sm text-gray-900'>{value.modelName}</div>
                       </>
                     )
@@ -186,7 +154,6 @@ const ModelSelector: FC<Props> = ({
                 }
 
                 if (model.type === 'model') {
-                  const Icon: any = model.icon
                   return (
                     <Popover.Button
                       key={`${model.providerName}-${model.name}`}
@@ -201,7 +168,11 @@ const ModelSelector: FC<Props> = ({
                         onChange(selectedModel as BackendModel)
                       }}
                     >
-                      <Icon className='mr-2 w-4 h-4' />
+                      <ModelIcon
+                        className='mr-2'
+                        modelId={model.value}
+                        providerName={model.providerName}
+                      />
                       <div className='grow text-left text-sm text-gray-900'>{model.name}</div>
                       { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='w-4 h-4 text-primary-600' /> }
                     </Popover.Button>

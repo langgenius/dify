@@ -2,7 +2,6 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
-// import { mockTextGenerationModelList } from './provider-mock'
 import { fetchModelList, fetchTenantInfo } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'

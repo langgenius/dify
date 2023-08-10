@@ -239,13 +239,16 @@ const ConfigModel: FC<IConfigModelProps> = ({
         className={cn('flex items-center border h-8 px-2.5 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
-        <ModelIcon modelId={currModel?.model_name as string} />
+        <ModelIcon
+          modelId={currModel?.model_name as string}
+          providerName={currModel?.model_provider.provider_name as any}
+        />
         <div className='text-[13px] text-gray-900 font-medium'>{selectedModel.name}</div>
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
       </div>
       {isShowConfig && (
         <Panel
-          className='absolute z-20 top-8 right-0 !w-[496px] bg-white'
+          className='absolute z-20 top-8 right-0 !w-[496px] bg-white !overflow-visible'
           keepUnFold
           headerIcon={
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
