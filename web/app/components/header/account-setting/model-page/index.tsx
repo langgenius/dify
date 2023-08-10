@@ -55,7 +55,6 @@ type DeleteModel = {
 const ModelPage = () => {
   const { t } = useTranslation()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-  console.log(providers)
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()

@@ -7,6 +7,7 @@ import Selector from '../selector'
 import s from './index.module.css'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
+import { IS_CE_EDITION } from '@/config'
 
 type SettingProps = {
   currentProvider?: Provider
@@ -30,7 +31,7 @@ const Setting: FC<SettingProps> = ({
   return (
     <div className='flex items-center'>
       {
-        modelItem.vender && !systemFree.is_valid && (
+        modelItem.vender && !systemFree.is_valid && !IS_CE_EDITION && (
           <div className='flex items-center'>
             📣
             <div className={`${s.vender} ml-1 mr-2 text-xs font-medium text-transparent`}>{modelItem.vender?.[locale]}</div>
@@ -84,6 +85,7 @@ const Setting: FC<SettingProps> = ({
               hiddenOptions={!systemFree?.is_valid}
               value={currentProvider?.preferred_provider_type}
               onOperate={onOperate}
+              className={open => `${open && '!bg-gray-100 shadow-none'} flex justify-center items-center w-7 h-7 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer hover:bg-gray-100`}
             />
           </div>
         )

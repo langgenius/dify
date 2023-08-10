@@ -51,14 +51,15 @@ const ModelModal: FC<ModelModalProps> = ({
         const currentField = requiredFields[i]
         if (!validateValue?.[currentField.key]) {
           setErrorMessage(t('appDebug.errorMessage.valueOfVarRequired', { key: currentField.label[locale] }) || '')
-          return
+          return false
         }
       }
+      return true
     }
   }
   const handleSave = () => {
-    validateRequiredValue()
-    onSave(value)
+    if (validateRequiredValue())
+      onSave(value)
   }
 
   return (

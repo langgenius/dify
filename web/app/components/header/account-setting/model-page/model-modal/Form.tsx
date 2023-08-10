@@ -63,8 +63,10 @@ const Form: FC<FormProps> = ({
   }
 
   const handleFocus = (k: string) => {
-    if (value[k] === initValue[k])
+    if (value[k] === initValue[k]) {
       setValue({ ...value, [k]: '' })
+      onChange({ ...value, [k]: '' })
+    }
   }
 
   const renderField = (field: Field) => {
