@@ -2,6 +2,7 @@ from typing import Optional
 
 from langchain.callbacks.base import Callbacks
 
+from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_provider_factory import ModelProviderFactory, DEFAULT_MODELS
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.base import BaseEmbedding
@@ -67,6 +68,9 @@ class ModelFactory:
         # get model provider
         model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
 
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
+
         # init text generation model
         model_class = model_provider.get_model_class(model_type=ModelType.TEXT_GENERATION)
         model_instance = model_class(
@@ -104,6 +108,9 @@ class ModelFactory:
         # get model provider
         model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
 
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
+
         # init embedding model
         model_class = model_provider.get_model_class(model_type=ModelType.EMBEDDINGS)
         return model_class(
@@ -132,6 +139,9 @@ class ModelFactory:
         # get model provider
         model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
 
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
+
         # init speech to text model
         model_class = model_provider.get_model_class(model_type=ModelType.SPEECH_TO_TEXT)
         return model_class(
@@ -154,6 +164,9 @@ class ModelFactory:
         """
         # get model provider
         model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
+
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
 
         # init moderation model
         model_class = model_provider.get_model_class(model_type=ModelType.MODERATION)
@@ -211,6 +224,10 @@ class ModelFactory:
             raise ValueError(f'Invalid provider name: {provider_name}')
 
         model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, provider_name)
+
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
+
         model_list = model_provider.get_supported_model_list(ModelType.value_of(model_type.value))
         model_ids = [model['id'] for model in model_list]
         if model_name not in model_ids:

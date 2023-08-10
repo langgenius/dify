@@ -89,7 +89,7 @@ class ModelProviderFactory:
         """
         # get preferred provider
         preferred_provider = cls._get_preferred_provider(tenant_id, model_provider_name)
-        if not preferred_provider:
+        if not preferred_provider or not preferred_provider.is_valid:
             return None
 
         # init model provider
