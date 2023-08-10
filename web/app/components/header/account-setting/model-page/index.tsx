@@ -22,6 +22,7 @@ import {
 } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm/common'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -158,7 +159,11 @@ const ModelPage = () => {
             <HelpCircle className={tipClassName} />
           </div>
           <div>
-            <ModelSelector />
+            <ModelSelector
+              value={undefined}
+              modelType={ModelType.textGeneration}
+              onChange={() => {}}
+            />
           </div>
         </div>
         <div className='w-full'>
@@ -167,7 +172,11 @@ const ModelPage = () => {
             <HelpCircle className={tipClassName} />
           </div>
           <div>
-            <ModelSelector />
+            <ModelSelector
+              value={undefined}
+              modelType={ModelType.embeddings}
+              onChange={() => {}}
+            />
           </div>
         </div>
         <div className='w-full'>
@@ -176,7 +185,11 @@ const ModelPage = () => {
             <HelpCircle className={tipClassName} />
           </div>
           <div>
-            <ModelSelector />
+            <ModelSelector
+              value={undefined}
+              modelType={ModelType.speech2text}
+              onChange={() => {}}
+            />
           </div>
         </div>
       </div>

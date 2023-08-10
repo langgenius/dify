@@ -10,7 +10,7 @@ import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
-import type { ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
+import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
 
 export const login: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
@@ -124,6 +124,10 @@ export const activateMember: Fetcher<CommonResponse, { url: string; body: any }>
 
 export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
   return get(url) as Promise<ProviderMap>
+}
+
+export const fetchModelList: Fetcher<{ data: BackendModel[] }, string> = (url) => {
+  return get(url) as Promise<{ data: BackendModel[] }>
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {

@@ -52,6 +52,27 @@ export type ProviderConfigItem = {
   }
 }
 
+export enum ModelType {
+  textGeneration = 'text-generation',
+  embeddings = 'embeddings',
+  speech2text = 'speech2text',
+}
+
+export enum ModelFeature {
+  agentThought = 'agent_thought',
+}
+
+// backend defined model struct: /console/api/workspaces/current/models/model-type/:model_type
+export type BackendModel = {
+  model_name: string
+  model_type: ModelType
+  model_provider: {
+    provider_name: ProviderEnum
+    provider_type: PreferredProviderTypeEnum
+  }
+  features: ModelFeature[]
+}
+
 export type ProviderConfigModal = {
   key: ProviderEnum
   title: TypeWithI18N

@@ -1,11 +1,17 @@
+import type { FC } from 'react'
 import { Fragment, useState } from 'react'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import _ from 'lodash-es'
+import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { ProviderName } from '@/models/common'
 import {
   Anthropic,
+  Azureai,
   Chatglm,
   Huggingface,
   OpenaiGreen,
@@ -16,28 +22,101 @@ import {
   Minimax,
   Tongyi,
 } from '@/app/components/base/icons/src/image/llm'
+import { useProviderContext } from '@/context/provider-context'
 
-const models = [
-  { type: 'provider', name: 'OpenAI' },
-  { type: 'model', name: 'GPT-3.5-Turbo-16K', value: 'GPT-3.5-Turbo-16K', icon: OpenaiGreen },
-  { type: 'model', name: 'GPT-4', value: 'GPT-4', icon: OpenaiViolet },
-  { type: 'provider', name: 'Anthropic' },
-  { type: 'model', name: 'Claude-2', value: 'Claude-2', icon: Anthropic },
-  { type: 'model', name: 'Claude-Instant', value: 'Claude-Instant', icon: Anthropic },
-  { type: 'provider', name: 'Replicate' },
-  { type: 'model', name: 'xxx/xxx-chat', value: 'xxx/xxx-chat', icon: Replicate },
-  { type: 'provider', name: 'Hugging Face' },
-  { type: 'model', name: 'xxx-chat', value: 'xxx-chat', icon: Huggingface },
-  { type: 'provider', name: 'TONGYI QIANWEN' },
-  { type: 'model', name: 'TONGYI-GPT', value: 'TONGYI-GPT', icon: Tongyi },
-  { type: 'provider', name: 'ChatGLM' },
-  { type: 'model', name: 'ChatGLM-3', value: 'ChatGLM-3', icon: Chatglm },
-  { type: 'provider', name: 'MINIMAX' },
-  { type: 'model', name: 'MINIMAX-GPT', value: 'MINIMAX-GPT', icon: Minimax },
-]
+// const modelOptions = [
+//   { type: 'provider', name: 'OpenAI' },
+//   { type: 'model', name: 'GPT-3.5-Turbo-16K', value: 'GPT-3.5-Turbo-16K', icon: OpenaiGreen },
+//   { type: 'model', name: 'GPT-4', value: 'GPT-4', icon: OpenaiViolet },
+//   { type: 'provider', name: 'Anthropic' },
+//   { type: 'model', name: 'Claude-2', value: 'Claude-2', icon: Anthropic },
+//   { type: 'model', name: 'Claude-Instant', value: 'Claude-Instant', icon: Anthropic },
+//   { type: 'provider', name: 'Replicate' },
+//   { type: 'model', name: 'xxx/xxx-chat', value: 'xxx/xxx-chat', icon: Replicate },
+//   { type: 'provider', name: 'Hugging Face' },
+//   { type: 'model', name: 'xxx-chat', value: 'xxx-chat', icon: Huggingface },
+//   { type: 'provider', name: 'TONGYI QIANWEN' },
+//   { type: 'model', name: 'TONGYI-GPT', value: 'TONGYI-GPT', icon: Tongyi },
+//   { type: 'provider', name: 'ChatGLM' },
+//   { type: 'model', name: 'ChatGLM-3', value: 'ChatGLM-3', icon: Chatglm },
+//   { type: 'provider', name: 'MINIMAX' },
+//   { type: 'model', name: 'MINIMAX-GPT', value: 'MINIMAX-GPT', icon: Minimax },
+// ]
+const icons: any = {
+  [ProviderName.OPENAI]: {
+    'gpt-3.5-turbo': OpenaiGreen,
+    'gpt-3.5-turbo-16k': OpenaiGreen,
+    'gpt-4': OpenaiViolet,
+  },
+  [ProviderName.AZURE_OPENAI]: Azureai,
+  [ProviderName.ANTHROPIC]: Anthropic,
+  [ProviderName.Replicate]: Replicate,
+  [ProviderName.HuggingfaceHub]: Huggingface,
+  [ProviderName.Tongyi]: Tongyi,
+  [ProviderName.ChatGLM]: Chatglm,
+  [ProviderName.MiniMax]: Minimax,
+}
 
-const ModelSelector = () => {
+const getIcon = (providerName: ProviderName, modelName: string) => {
+  if (icons[providerName]?.[modelName])
+    return icons[providerName]?.[modelName]
+  if (icons[providerName])
+    console.log(icons[providerName], modelName)
+  return icons[providerName]
+  return OpenaiGreen
+}
+
+// value struct
+// data to render model struct
+type Props = {
+  value: {
+    providerName: string
+    modelName: string
+  } | undefined
+  modelType: ModelType
+  supportAgentThought?: boolean
+  onChange: (value: BackendModel) => void
+}
+
+const ModelSelector: FC<Props> = ({
+  modelType,
+  supportAgentThought,
+}) => {
   const { t } = useTranslation()
+  const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
+  const modelList = supportAgentThought
+    ? agentThoughtModelList
+    : ({
+      [ModelType.textGeneration]: textGenerationModelList,
+      [ModelType.embeddings]: embeddingsModelList,
+      [ModelType.speech2text]: speech2textModelList,
+    })[modelType]
+  // if (textGenerationModelList.length > 0)
+  //   debugger
+
+  // console.log(textGenerationModelList, modelList)
+  const modelOptions: any[] = (() => {
+    const providers = _.uniq(modelList.map(item => item.model_provider.provider_name))
+    const res: any[] = []
+    providers.forEach((providerName) => {
+      res.push({
+        type: 'provider',
+        name: providerName,
+      })
+      const models = modelList.filter(m => m.model_provider.provider_name === providerName)
+      models.forEach(({ model_name }) => {
+        res.push({
+          type: 'model',
+          providerName,
+          name: model_name,
+          value: model_name,
+          icon: getIcon(providerName as unknown as ProviderName, model_name),
+        })
+      })
+    })
+    // console.log(res)
+    return res
+  })()
   const [selected, setSelected] = useState<{ type: string; name: string; value?: string; icon?: any }>()
   const [search, setSearch] = useState('')
 
@@ -96,7 +175,7 @@ const ModelSelector = () => {
               </div>
             </div>
             {
-              models.map((model) => {
+              modelOptions.map((model: any) => {
                 if (model.type === 'provider') {
                   return (
                     <div
@@ -112,7 +191,7 @@ const ModelSelector = () => {
                   const Icon: any = model.icon
                   return (
                     <Popover.Button
-                      key={`${model.type}-${model.name}`}
+                      key={`${model.providerName}-${model.name}`}
                       className={`
                         flex items-center px-3 w-full h-8 rounded-lg cursor-pointer hover:bg-gray-50
                         ${selected === model.value && 'bg-gray-50'}
