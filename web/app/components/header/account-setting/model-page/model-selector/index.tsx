@@ -11,7 +11,8 @@ import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/gen
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
-
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
+import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
 // const modelOptions = [
 //   { type: 'provider', name: 'OpenAI' },
@@ -66,14 +67,13 @@ const ModelSelector: FC<Props> = ({
     providers.forEach((providerName) => {
       res.push({
         type: 'provider',
-        name: providerName,
+        value: providerName,
       })
       const models = modelList.filter(m => m.model_provider.provider_name === providerName)
       models.forEach(({ model_name }) => {
         res.push({
           type: 'model',
           providerName,
-          name: model_name,
           value: model_name,
         })
       })
@@ -146,9 +146,9 @@ const ModelSelector: FC<Props> = ({
                   return (
                     <div
                       className='px-3 pt-2 pb-1 text-xs font-medium text-gray-500'
-                      key={`${model.type}-${model.name}`}
+                      key={`${model.type}-${model.value}`}
                     >
-                      {model.name}
+                      <ProviderName provideName={model.value} />
                     </div>
                   )
                 }
@@ -156,7 +156,7 @@ const ModelSelector: FC<Props> = ({
                 if (model.type === 'model') {
                   return (
                     <Popover.Button
-                      key={`${model.providerName}-${model.name}`}
+                      key={`${model.providerName}-${model.value}`}
                       className={`
                         flex items-center px-3 w-full h-8 rounded-lg cursor-pointer hover:bg-gray-50
                         ${(value?.providerName === model.providerName && value?.modelName === model.value) && 'bg-gray-50'}
@@ -173,7 +173,7 @@ const ModelSelector: FC<Props> = ({
                         modelId={model.value}
                         providerName={model.providerName}
                       />
-                      <div className='grow text-left text-sm text-gray-900'>{model.name}</div>
+                      <div className='grow text-left text-sm text-gray-900'><ModelName modelId={model.value} /></div>
                       { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='w-4 h-4 text-primary-600' /> }
                     </Popover.Button>
                   )

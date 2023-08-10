@@ -703,6 +703,7 @@ const Main: FC<IMainProps> = () => {
                 <div className='flex items-center shrink-0 ml-2 space-x-2'>
                   <ConfigSummary
                     modelId={modelId}
+                    providerName={providerName}
                     plugins={plugins}
                     dataSets={dataSets}
                   />

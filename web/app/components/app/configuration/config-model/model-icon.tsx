@@ -40,7 +40,6 @@ const ModelIcon: FC<IModelIconProps> = ({ modelId, providerName, className }) =>
     Icon = modelId.includes('gpt-4') ? OpenaiViolet : OpenaiGreen
   if (icons[providerName])
     Icon = icons[providerName]
-  // console.log(Icon)
   return <Icon className={cn(className, 'w-4 h-4')} />
 }
 

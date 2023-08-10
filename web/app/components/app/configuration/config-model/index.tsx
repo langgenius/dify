@@ -232,7 +232,6 @@ const ConfigModel: FC<IConfigModelProps> = ({
     else
       setMaxTokenSettingTipVisible(false)
   }, [currParams, completionParams.max_tokens, setMaxTokenSettingTipVisible])
-
   return (
     <div className='relative' ref={configContentRef}>
       <div
@@ -240,8 +239,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
         onClick={() => !disabled && toogleShowConfig()}
       >
         <ModelIcon
-          modelId={currModel?.model_name as string}
-          providerName={currModel?.model_provider.provider_name as any}
+          modelId={modelId}
+          providerName={provider}
         />
         <div className='text-[13px] text-gray-900 font-medium'>{selectedModel.name}</div>
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}

@@ -310,6 +310,28 @@ const translation = {
     converting: '正在转换为文本...',
     notAllow: '麦克风未授权',
   },
+  providerName: {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    replicate: 'Replicate',
+    azure_openai: 'Azure OpenAI 服务',
+    huggingface_hub: 'Hugging Face',
+    tongyi: '通义千问',
+    spark: '讯飞星火',
+    minimax: 'MINIMAX',
+    chatglm: 'ChatGLM',
+  },
+  modelName: {
+    'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+    'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',
+    'gpt-4': 'GPT-4',
+    'gpt-4-32k': 'GPT-4-32K',
+    'text-davinci-003': 'Text-Davinci-003',
+    'text-embedding-ada-002': 'Text-Embedding-Ada-002',
+    'whisper-1': 'Whisper-1',
+    'claude-instant-1': 'Claude-Instant',
+    'claude-2': 'Claude-2',
+  },
 }
 
 export default translation

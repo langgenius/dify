@@ -310,6 +310,28 @@ const translation = {
     converting: 'Converting to text...',
     notAllow: 'microphone not authorized',
   },
+  providerName: {
+    openai: 'OpenAI',
+    anthropic: 'Anthropic',
+    replicate: 'Replicate',
+    azure_openai: 'Azure OpenAI Service',
+    huggingface_hub: 'Hugging Face',
+    tongyi: 'TONGYI QIANWEN',
+    spark: 'iFLYTEK SPARK',
+    minimax: 'MINIMAX',
+    chatglm: 'ChatGLM',
+  },
+  modelName: {
+    'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+    'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',
+    'gpt-4': 'GPT-4',
+    'gpt-4-32k': 'GPT-4-32K',
+    'text-davinci-003': 'Text-Davinci-003',
+    'text-embedding-ada-002': 'Text-Embedding-Ada-002',
+    'whisper-1': 'Whisper-1',
+    'claude-instant-1': 'Claude-Instant',
+    'claude-2': 'Claude-2',
+  },
 }
 
 export default translation
