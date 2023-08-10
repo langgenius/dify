@@ -148,8 +148,7 @@ class ModelProviderFactory:
             .filter(
                 Provider.tenant_id == tenant_id,
                 Provider.provider_name == model_provider_name,
-                Provider.provider_type == preferred_provider_type,
-                Provider.is_valid == True
+                Provider.provider_type == preferred_provider_type
             ).all()
 
         if preferred_provider_type == ProviderType.SYSTEM.value:
@@ -163,7 +162,8 @@ class ModelProviderFactory:
                 if quota_type in model_provider_rules['system_config']['supported_quota_types'] \
                         and quota_type in quota_type_to_provider_dict.keys():
                     provider = quota_type_to_provider_dict[quota_type]
-                    if quota_type != ProviderQuotaType.TRIAL and provider.quota_limit > provider.quota_used:
+                    if provider.is_valid and quota_type != ProviderQuotaType.TRIAL \
+                            and provider.quota_limit > provider.quota_used:
                         return provider
                     elif quota_type == ProviderQuotaType.TRIAL:
                         return provider
