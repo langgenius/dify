@@ -13,7 +13,7 @@ class ModelMode(enum.Enum):
 class ModelType(enum.Enum):
     TEXT_GENERATION = 'text-generation'
     EMBEDDINGS = 'embeddings'
-    SPEECH_TO_TEXT = 'speech-to-text'
+    SPEECH_TO_TEXT = 'speech2text'
     IMAGE = 'image'
     VIDEO = 'video'
     MODERATION = 'moderation'
