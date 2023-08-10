@@ -220,12 +220,16 @@ class ModelProviderModelParameterRuleApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, provider_name: str, model_name: str):
+    def get(self, provider_name: str):
+        parser = reqparse.RequestParser()
+        parser.add_argument('model_name', type=str, required=True, nullable=False, location='args')
+        args = parser.parse_args()
+
         provider_service = ProviderService()
         parameter_rules = provider_service.get_model_parameter_rules(
             tenant_id=current_user.current_tenant_id,
             model_provider_name=provider_name,
-            model_name=model_name,
+            model_name=args['model_name'],
             model_type='text-generation'
         )
 
@@ -269,6 +273,6 @@ api.add_resource(ModelProviderModelUpdateApi,
 api.add_resource(PreferredProviderTypeUpdateApi,
                  '/workspaces/current/model-providers/<string:provider_name>/preferred-provider-type')
 api.add_resource(ModelProviderModelParameterRuleApi,
-                 '/workspaces/current/model-providers/<string:provider_name>/models/<string:model_name>/parameter-rules')
+                 '/workspaces/current/model-providers/<string:provider_name>/models/parameter-rules')
 api.add_resource(ModelProviderPaymentCheckoutUrlApi,
                  '/workspaces/current/model-providers/<string:provider_name>/checkout-url')
