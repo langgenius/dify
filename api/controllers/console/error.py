@@ -24,3 +24,19 @@ class AlreadyActivateError(BaseHTTPException):
     error_code = 'already_activate'
     description = "Auth Token is invalid or account already activated, please check again."
     code = 403
+
+
+class ResourceNotFoundError(BaseHTTPException):
+    error_code = 'resource_not_found'
+    code = 404
+
+    def __init__(self, resource_name='resource'):
+        super().__init__(f"{resource_name} not found")
+
+
+class HTTPNoPermissionError(BaseHTTPException):
+    error_code = 'no_permission'
+    code = 403
+
+    def __init__(self, description=None):
+        super().__init__(description)

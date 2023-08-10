@@ -189,10 +189,10 @@ class TenantService:
         """Rename tenant"""
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant_id, account_id=account.id).first()
-        if ta is None or ta.role == TenantAccountJoinRole.NORMAL.value:
-            TenantNotFound("Tenant not found for the account.")
+        if ta is None:
+            raise TenantNotFound("Tenant not found for the account.")
         if ta.role == TenantAccountJoinRole.NORMAL.value:
-            raise NoPermissionError("You have no permission to rename the tenant.")
+            raise NoPermissionError("You have no permission to rename the workspace.")
 
         tenant = Tenant.query.filter_by(id=tenant_id).first()
         tenant.name = name

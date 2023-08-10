@@ -4,16 +4,18 @@ import logging
 from flask import request
 from flask_login import login_required, current_user
 from flask_restful import Resource, fields, marshal_with, reqparse, marshal
+from werkzeug.exceptions import InternalServerError
 
 from controllers.console import api
 from controllers.console.setup import setup_required
-from controllers.console.error import AccountNotLinkTenantError
+from controllers.console.error import AccountNotLinkTenantError, HTTPNoPermissionError, ResourceNotFoundError
 from controllers.console.wraps import account_initialization_required
 from libs.helper import TimestampField
 from extensions.ext_database import db
-from models.account import Tenant, TenantAccountJoin
+from models.account import Tenant
 from services.account_service import TenantService
 from services.workspace_service import WorkspaceService
+from services.errors.account import NoPermissionError, TenantNotFound
 
 provider_fields = {
     'provider_name': fields.String,
@@ -80,7 +82,15 @@ class TenantRenameApi(Resource):
         parser.add_argument('name', type=str, required=True, location='json')
         args = parser.parse_args()
 
-        TenantService.rename_tenant(current_user, tenant_id, args['name'])
+        try:
+            TenantService.rename_tenant(current_user, tenant_id, args['name'])
+        except TenantNotFound:
+            raise ResourceNotFoundError('workspace of current user')
+        except NoPermissionError as e:
+            raise HTTPNoPermissionError(str(e))
+        except Exception:
+            logging.exception("internal server error.")
+            raise InternalServerError()
 
         return {'result': 'success'}, 200
 
