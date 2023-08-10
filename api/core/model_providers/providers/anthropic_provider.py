@@ -10,6 +10,7 @@ from langchain.schema import HumanMessage
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule
+from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.llm.anthropic_model import AnthropicModel
 from core.model_providers.models.llm.base import ModelType
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
