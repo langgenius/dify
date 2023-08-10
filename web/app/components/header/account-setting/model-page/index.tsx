@@ -2,23 +2,27 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
+  BackendModel,
   FormValue,
   ProviderConfigModal,
+  ProviderEnum,
 } from './declarations'
-import { ProviderEnum } from './declarations'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
 import ModelModal from './model-modal'
 import config from './configs'
+import { ConfigurableProviders } from './utils'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import {
   changeModelProviderPriority,
   deleteModelProvider,
   deleteModelProviderModel,
+  fetchDefaultModal,
   fetchModelProviders,
   setModelProvider,
+  updateDefaultModel,
 } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm/common'
@@ -55,6 +59,9 @@ type DeleteModel = {
 const ModelPage = () => {
   const { t } = useTranslation()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
+  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
+  const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
@@ -84,7 +91,7 @@ const ModelPage = () => {
   const handleSave = async (v?: FormValue) => {
     if (v && modelModalConfig) {
       let body, url
-      if ([ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub].includes(modelModalConfig.key)) {
+      if (ConfigurableProviders.includes(modelModalConfig.key)) {
         const { model_name, model_type, ...config } = v
         body = {
           model_name,
@@ -160,6 +167,29 @@ const ModelPage = () => {
     }
   }
 
+  const mutateDefaultModel = (type: ModelType) => {
+    if (type === ModelType.textGeneration)
+      mutateTextGenerationDefaultModel()
+    if (type === ModelType.embeddings)
+      mutateEmbeddingsDefaultModel()
+    if (type === ModelType.speech2text)
+      mutateSpeech2textDefaultModel()
+  }
+  const handleChangeDefaultModel = async (type: ModelType, v: BackendModel) => {
+    const res = await updateDefaultModel({
+      url: '/workspaces/current/default-model',
+      body: {
+        model_type: type,
+        provider_name: v.model_provider.provider_name,
+        model_name: v.model_name,
+      },
+    })
+    if (res.result === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      mutateDefaultModel(type)
+    }
+  }
+
   return (
     <div className='relative pt-1 -mt-2'>
       <div className='grid grid-cols-3 gap-4 mb-5'>
@@ -170,9 +200,9 @@ const ModelPage = () => {
           </div>
           <div>
             <ModelSelector
-              value={undefined}
+              value={textGenerationDefaultModel && { providerName: textGenerationDefaultModel.model_provider.provider_name, modelName: textGenerationDefaultModel.model_name }}
               modelType={ModelType.textGeneration}
-              onChange={() => {}}
+              onChange={v => handleChangeDefaultModel(ModelType.textGeneration, v)}
             />
           </div>
         </div>
@@ -183,9 +213,9 @@ const ModelPage = () => {
           </div>
           <div>
             <ModelSelector
-              value={undefined}
+              value={embeddingsDefaultModel && { providerName: embeddingsDefaultModel.model_provider.provider_name, modelName: embeddingsDefaultModel.model_name }}
               modelType={ModelType.embeddings}
-              onChange={() => {}}
+              onChange={v => handleChangeDefaultModel(ModelType.embeddings, v)}
             />
           </div>
         </div>
@@ -196,9 +226,9 @@ const ModelPage = () => {
           </div>
           <div>
             <ModelSelector
-              value={undefined}
+              value={speech2textDefaultModel && { providerName: speech2textDefaultModel.model_provider.provider_name, modelName: speech2textDefaultModel.model_name }}
               modelType={ModelType.speech2text}
-              onChange={() => {}}
+              onChange={v => handleChangeDefaultModel(ModelType.speech2text, v)}
             />
           </div>
         </div>

@@ -96,7 +96,7 @@ const config: ProviderConfig = {
         },
         placeholder: {
           'en': 'Enter your API key here',
-          'zh-Hans': 'Enter your API key here',
+          'zh-Hans': '在此输入您的 API Key',
         },
       },
       {

@@ -2,21 +2,33 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '../../../indicator'
 import Selector from '../selector'
-import type { Model } from '../declarations'
+import type { Model, ProviderEnum } from '../declarations'
+import { ProviderEnum as ProviderEnumValue } from '../declarations'
 import Button from '@/app/components/base/button'
 
 type CardProps = {
+  providerType: ProviderEnum
   models: any[]
   onOpenModal: (v: any) => void
   onOperate: (v: Record<string, any>) => void
 }
 
 const Card: FC<CardProps> = ({
+  providerType,
   models,
   onOpenModal,
   onOperate,
 }) => {
   const { t } = useTranslation()
+
+  const renderDesc = (model: Model) => {
+    if (providerType === ProviderEnumValue.azure_openai)
+      return model.config.openai_api_base
+    if (providerType === ProviderEnumValue.replicate)
+      return `version: ${model.config.model_version}`
+    if (providerType === ProviderEnumValue.huggingface_hub)
+      return model.config.huggingfacehub_endpoint_url
+  }
 
   return (
     <div className='px-3 pb-3'>
@@ -29,11 +41,7 @@ const Card: FC<CardProps> = ({
                 <div className='ml-2 px-1.5 rounded-md border border-[rgba(0,0,0,0.08)] text-xs text-gray-600'>{model.model_type}</div>
               </div>
               <div className='text-xs text-gray-500'>
-                {
-                  model.config.model_version
-                    ? `version: ${model.config.model_version}`
-                    : model.config.openai_api_base
-                }
+                {renderDesc(model)}
               </div>
             </div>
             <div className='flex items-center'>

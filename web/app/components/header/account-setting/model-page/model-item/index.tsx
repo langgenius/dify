@@ -52,6 +52,7 @@ const ModelItem: FC<ModelItemProps> = ({
       {
         !!custom?.models?.length && (
           <Card
+            providerType={modelItem.key}
             models={custom?.models}
             onOpenModal={onOpenModal}
             onOperate={onOperate}

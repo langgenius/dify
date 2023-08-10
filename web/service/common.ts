@@ -161,3 +161,11 @@ export const deleteModelProviderModel: Fetcher<CommonResponse, { url: string }> 
 export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get(url) as Promise<{ url: string }>
 }
+
+export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
+  return get(url) as Promise<BackendModel>
+}
+
+export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
