@@ -34,12 +34,12 @@ const ModelCard: FC<ModelCardProps> = ({
   const { t } = useTranslation()
   const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithConfig
   const systemPaid = currentProvider?.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota).quota_type === 'paid')
-  const { data: payUrl } = useSWR(systemPaid ? `/workspaces/current/model-providers/${modelItem.key}/checkout-url` : null, getPayUrl)
+  const { data: payUrl } = useSWR((systemPaid && !IS_CE_EDITION) ? `/workspaces/current/model-providers/${modelItem.key}/checkout-url` : null, getPayUrl)
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
       <div className={`flex px-4 pt-4 pb-3 rounded-t-lg ${modelItem.bgColor}`}>
-        <div className='mr-3'>
+        <div className='grow mr-3'>
           <div className='mb-1'>
             {modelItem.titleIcon[locale]}
           </div>
@@ -65,6 +65,7 @@ const ModelCard: FC<ModelCardProps> = ({
               <Selector
                 onOperate={onOperate}
                 value={currentProvider?.preferred_provider_type}
+                hiddenOptions={IS_CE_EDITION}
               />
             </div>
           )

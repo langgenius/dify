@@ -40,10 +40,11 @@ const config: ProviderConfig = {
         'zh-Hans': '如何部署 ChatGLM',
       },
     },
+    validateKeys: ['api_base'],
     fields: [
       {
         type: 'text',
-        key: 'customApiDomain',
+        key: 'api_base',
         required: true,
         label: {
           'en': 'Custom API Domain',

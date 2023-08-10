@@ -47,7 +47,7 @@ const Setting: FC<SettingProps> = ({
         )
       }
       {
-        modelItem.disable && (
+        modelItem.disable && !IS_CE_EDITION && (
           <div className='flex items-center text-xs text-gray-500'>
             {modelItem.disable.tip[locale]}
             <a
@@ -95,7 +95,7 @@ const Setting: FC<SettingProps> = ({
           <Button
             className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && '!text-gray-300'}`}
             onClick={() => onOpenModal()}
-            disabled={!!modelItem.disable}
+            disabled={!!modelItem.disable && !IS_CE_EDITION}
           >
             {t('common.operation.setup')}
           </Button>
