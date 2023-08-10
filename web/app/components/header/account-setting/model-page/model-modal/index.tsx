@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { Portal } from '@headlessui/react'
 import type { FormValue, ProviderConfigModal } from '../declarations'
+import { ConfigurableProviders } from '../utils'
 import Form from './Form'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
@@ -17,6 +18,7 @@ type ModelModalProps = {
   onCancel: () => void
   modelModal?: ProviderConfigModal
   onSave: (v?: FormValue) => void
+  mode: string
 }
 
 const ModelModal: FC<ModelModalProps> = ({
@@ -24,6 +26,7 @@ const ModelModal: FC<ModelModalProps> = ({
   onCancel,
   modelModal,
   onSave,
+  mode,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -62,6 +65,16 @@ const ModelModal: FC<ModelModalProps> = ({
       onSave(value || modelModal?.defaultValue)
   }
 
+  const renderTitlePrefix = () => {
+    let prefix
+    if (mode === 'edit')
+      prefix = t('common.operation.edit')
+    else
+      prefix = ConfigurableProviders.includes(modelModal!.key) ? t('common.operation.create') : t('common.operation.setup')
+
+    return `${prefix} ${modelModal?.title[locale]}`
+  }
+
   if (!isShow)
     return null
 
@@ -71,7 +84,7 @@ const ModelModal: FC<ModelModalProps> = ({
         <div className='w-[640px] max-h-screen bg-white shadow-xl rounded-2xl overflow-y-auto'>
           <div className='px-8 pt-8'>
             <div className='flex justify-between items-center mb-2'>
-              <div className='text-xl font-semibold text-gray-900'>{modelModal?.title[locale]}</div>
+              <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
               {modelModal?.icon}
             </div>
             <Form

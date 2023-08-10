@@ -2,12 +2,12 @@ import { ValidatedStatus } from '../key-validator/declarations'
 import { ProviderEnum } from './declarations'
 import { validateModelProvider } from '@/service/common'
 
-const configurableProvider = [ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub]
+export const ConfigurableProviders = [ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub]
 
 export const validateModelProviderFn = async (providerName: ProviderEnum, v: any) => {
   let body, url
 
-  if (configurableProvider.includes(providerName)) {
+  if (ConfigurableProviders.includes(providerName)) {
     const { model_name, model_type, ...config } = v
     body = {
       model_name,

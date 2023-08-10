@@ -62,12 +62,20 @@ const ModelPage = () => {
   const [modelModalConfig, setModelModalConfig] = useState<ProviderConfigModal | undefined>(undefined)
   const [confirmShow, setConfirmShow] = useState(false)
   const [deleteModel, setDeleteModel] = useState<DeleteModel & { providerKey: ProviderEnum }>()
+  const [modalMode, setModalMode] = useState('add')
 
   const handleOpenModal = (newModelModalConfig: ProviderConfigModal | undefined, editValue?: FormValue) => {
     if (newModelModalConfig) {
       setShowModal(true)
       const defaultValue = editValue ? { ...newModelModalConfig.defaultValue, ...editValue } : newModelModalConfig.defaultValue
-      setModelModalConfig({ ...newModelModalConfig, defaultValue })
+      setModelModalConfig({
+        ...newModelModalConfig,
+        defaultValue,
+      })
+      if (editValue)
+        setModalMode('edit')
+      else
+        setModalMode('add')
     }
   }
   const handleCancelModal = () => {
@@ -235,6 +243,7 @@ const ModelPage = () => {
         modelModal={modelModalConfig}
         onCancel={handleCancelModal}
         onSave={handleSave}
+        mode={modalMode}
       />
       <Confirm
         isShow={confirmShow}

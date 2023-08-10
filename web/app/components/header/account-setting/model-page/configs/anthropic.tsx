@@ -20,8 +20,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.anthropic,
     title: {
-      'en': 'Setup Anthropic',
-      'zh-Hans': '设置 Anthropic',
+      'en': 'Anthropic',
+      'zh-Hans': 'Anthropic',
     },
     icon: <Anthropic className='h-6' />,
     link: {

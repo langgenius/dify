@@ -17,8 +17,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.replicate,
     title: {
-      'en': 'Create Replicate Model',
-      'zh-Hans': '创建 Replicate Model',
+      'en': 'Replicate Model',
+      'zh-Hans': 'Replicate Model',
     },
     icon: <Replicate className='h-6' />,
     link: {

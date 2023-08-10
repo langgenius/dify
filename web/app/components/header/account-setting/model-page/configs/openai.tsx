@@ -20,8 +20,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.openai,
     title: {
-      'en': 'Setup OpenAI',
-      'zh-Hans': '设置 OpenAI',
+      'en': 'OpenAI',
+      'zh-Hans': 'OpenAI',
     },
     icon: <OpenaiTransparent className='w-6 h-6' />,
     link: {

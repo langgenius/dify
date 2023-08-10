@@ -17,8 +17,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.minimax,
     title: {
-      'en': 'Setup MiniMax',
-      'zh-Hans': '设置 MiniMax',
+      'en': 'MiniMax',
+      'zh-Hans': 'MiniMax',
     },
     icon: <Minimax className='w-6 h-6' />,
     link: {
