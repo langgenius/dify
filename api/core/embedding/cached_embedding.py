@@ -44,8 +44,8 @@ class CacheEmbedding(Embeddings):
             except:
                 logging.exception('Failed to add embedding to db')
                 continue
-            finally:
-                i += 1
+
+            i += 1
 
         text_embeddings.extend(embedding_results)
         return text_embeddings
