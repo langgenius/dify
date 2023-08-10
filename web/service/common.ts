@@ -154,8 +154,8 @@ export const setModelProviderModel: Fetcher<CommonResponse, { url: string; body:
   return post(url, { body }) as Promise<CommonResponse>
 }
 
-export const deleteModelProviderModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
-  return del(url, { body }) as Promise<CommonResponse>
+export const deleteModelProviderModel: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return del(url) as Promise<CommonResponse>
 }
 
 export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {

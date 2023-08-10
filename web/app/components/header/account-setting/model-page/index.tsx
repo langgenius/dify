@@ -143,14 +143,11 @@ const ModelPage = () => {
   const handleDeleteModel = async () => {
     const { model_name, model_type, providerKey } = deleteModel || {}
     const res = await deleteModelProviderModel({
-      url: `/workspaces/current/model-providers/${providerKey}/models`,
-      body: {
-        model_name,
-        model_type,
-      },
+      url: `/workspaces/current/model-providers/${providerKey}/models?model_name=${model_name}&model_type=${model_type}`,
     })
     if (res.result === 'success') {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      setConfirmShow(false)
       mutateProviders()
     }
   }
