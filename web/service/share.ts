@@ -119,8 +119,10 @@ export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ text: string }>
 }
 
-export const fetchAccessToken = async (appCode: string) => {
+export const fetchAccessToken = async (appCode: string, externalUserID?: string, name?: string) => {
   const headers = new Headers()
   headers.append('X-App-Code', appCode)
-  return get('/passport', { headers }) as Promise<{ access_token: string }>
+
+  const url = externalUserID ? `/passport?external_user_id=${externalUserID}&name=${name}` : `/passport`
+  return get(url, { headers }) as Promise<{ access_token: string }>
 }
