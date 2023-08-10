@@ -4,15 +4,14 @@ import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useClickAway, useGetState } from 'ahooks'
-import { ChevronDownIcon, Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
+import { Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
 import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
-import { AppType, ProviderType } from '@/types/app'
-import { MODEL_LIST, TONE_LIST } from '@/config'
+import { TONE_LIST } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { formatNumber } from '@/utils/format'
@@ -22,12 +21,15 @@ import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { fetchModelParams } from '@/service/debug'
 import Loading from '@/app/components/base/loading'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { useProviderContext } from '@/context/provider-context'
 
 export type IConfigModelProps = {
   mode: string
   modelId: string
-  provider: ProviderType
-  setModelId: (id: string, provider: ProviderType) => void
+  provider: ProviderEnum
+  setModelId: (id: string, provider: ProviderEnum) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -35,20 +37,8 @@ export type IConfigModelProps = {
   onShowUseGPT4Confirm: () => void
 }
 
-const options = MODEL_LIST
-
-// const getMaxToken = (modelId: string) => {
-//   if (['claude-instant-1', 'claude-2'].includes(modelId))
-//     return 30 * 1000
-
-//   if (['gpt-4', 'gpt-3.5-turbo-16k'].includes(modelId))
-//     return 8000
-
-//   return 4000
-// }
-
 const ConfigModel: FC<IConfigModelProps> = ({
-  mode,
+  // mode,
   modelId,
   provider,
   setModelId,
@@ -59,17 +49,17 @@ const ConfigModel: FC<IConfigModelProps> = ({
   onShowUseGPT4Confirm,
 }) => {
   const { t } = useTranslation()
-  const isChatApp = mode === AppType.chat
-  const availableModels = options.filter(item => item.type === mode)
+  const { textGenerationModelList } = useProviderContext()
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
-  const currModel = options.find(item => item.id === modelId)
+  const currModel = textGenerationModelList.find(item => item.model_name === modelId)
   // Cache loaded model param
   const [allParams, setAllParams, getAllParams] = useGetState<Record<string, Record<string, any>>>({})
   const currParams = allParams[provider]?.[modelId]
   const allSupportParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty', 'max_tokens']
   const currSupportParams = currParams ? allSupportParams.filter(key => currParams[key].enabled) : allSupportParams
+
   useEffect(() => {
     (async () => {
       if (!allParams[provider]?.[modelId]) {
@@ -84,20 +74,14 @@ const ConfigModel: FC<IConfigModelProps> = ({
       }
     })()
   }, [provider, modelId])
+
   useClickAway(() => {
     hideConfig()
   }, configContentRef)
 
-  const selectModelDisabled = false // chat  gpt-3.5-turbo, gpt-4; text generation text-davinci-003, gpt-3.5-turbo
-
   const selectedModel = { name: modelId } // options.find(option => option.id === modelId)
-  const [isShowOption, { setFalse: hideOption, toggle: toogleOption }] = useBoolean(false)
-  const triggerRef = React.useRef(null)
-  useClickAway(() => {
-    hideOption()
-  }, triggerRef)
 
-  const ensureModelParamLoaded = (provider: ProviderType, modelId: string) => {
+  const ensureModelParamLoaded = (provider: ProviderEnum, modelId: string) => {
     return new Promise<void>((resolve) => {
       if (getAllParams()[provider]?.[modelId]) {
         resolve()
@@ -127,11 +111,10 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return parseFloat(adjustedValue.toFixed(2))
   }
 
-  const handleSelectModel = (id: string, nextProvider = ProviderType.openai) => {
+  const handleSelectModel = (id: string, nextProvider = ProviderEnum.openai) => {
     return async () => {
       if (id === 'gpt-4' && !canUseGPT4) {
         hideConfig()
-        hideOption()
         onShowUseGPT4Confirm()
         return
       }
@@ -238,7 +221,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
       return
 
     const max = currParams.max_tokens.max
-    if (currModel?.provider !== ProviderType.anthropic && completionParams.max_tokens > max * 2 / 3)
+    if (currModel?.model_provider.provider_name !== ProviderEnum.anthropic && completionParams.max_tokens > max * 2 / 3)
       setMaxTokenSettingTipVisible(true)
     else
       setMaxTokenSettingTipVisible(false)
@@ -250,7 +233,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         className={cn('flex items-center border h-8 px-2.5 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
-        <ModelIcon modelId={currModel?.id as string} />
+        <ModelIcon modelId={currModel?.model_name as string} />
         <div className='text-[13px] text-gray-900 font-medium'>{selectedModel.name}</div>
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
       </div>
@@ -274,29 +257,21 @@ const ConfigModel: FC<IConfigModelProps> = ({
           <div className='py-3 pl-10 pr-6 text-sm'>
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
-              {/* model selector */}
-              <div className="relative" style={{ zIndex: 30 }}>
-                <div ref={triggerRef} onClick={() => !selectModelDisabled && toogleOption()} className={cn(selectModelDisabled ? 'cursor-not-allowed' : 'cursor-pointer', 'flex items-center h-9 px-3 space-x-2 rounded-lg bg-gray-50 ')}>
-                  <ModelIcon modelId={currModel?.id as string} />
-                  <div className="text-sm gray-900">{selectedModel?.name}</div>
-                  {!selectModelDisabled && <ChevronDownIcon className={cn(isShowOption && 'rotate-180', 'w-[14px] h-[14px] text-gray-500')} />}
-                </div>
-                {isShowOption && (
-                  <div className={cn(isChatApp ? 'min-w-[159px]' : 'w-[179px]', 'absolute right-0 bg-gray-50 rounded-lg shadow')}>
-                    {availableModels.map(item => (
-                      <div key={item.id} onClick={handleSelectModel(item.id, item.provider)} className="flex items-center h-9 px-3 rounded-lg cursor-pointer hover:bg-gray-100">
-                        <ModelIcon className='shrink-0 mr-2' modelId={item?.id} />
-                        <div className="text-sm gray-900 whitespace-nowrap">{item.name}</div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              <ModelSelector
+                value={{
+                  modelName: modelId,
+                  providerName: provider,
+                }}
+                modelType={ModelType.textGeneration}
+                onChange={(model) => {
+                  handleSelectModel(model.model_name, model.model_provider.provider_name as ProviderEnum)()
+                }}
+              />
             </div>
             <div className="border-b border-gray-100"></div>
 
             {/* Tone type */}
-            {[ProviderType.openai, ProviderType.azure_openai].includes(provider) && (
+            {[ProviderEnum.openai, ProviderEnum.azure_openai].includes(provider) && (
               <div className="mt-5 mb-4">
                 <div className="mb-3 text-sm text-gray-900">{t('appDebug.modelConfig.setTone')}</div>
                 <Radio.Group className={cn('!rounded-lg', toneTabBgClassName)} value={toneId} onChange={handleToneChange}>

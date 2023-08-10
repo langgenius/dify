@@ -4,11 +4,10 @@ import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { ProviderName } from '@/models/common'
 import {
   Anthropic,
   Azureai,
@@ -44,23 +43,23 @@ import { useProviderContext } from '@/context/provider-context'
 //   { type: 'model', name: 'MINIMAX-GPT', value: 'MINIMAX-GPT', icon: Minimax },
 // ]
 const icons: any = {
-  [ProviderName.OPENAI]: {
+  [ProviderEnum.openai]: {
     'gpt-3.5-turbo': OpenaiGreen,
     'gpt-3.5-turbo-16k': OpenaiGreen,
     'gpt-4': OpenaiViolet,
   },
-  [ProviderName.AZURE_OPENAI]: Azureai,
-  [ProviderName.ANTHROPIC]: Anthropic,
-  [ProviderName.Replicate]: Replicate,
-  [ProviderName.HuggingfaceHub]: Huggingface,
-  [ProviderName.MiniMax]: Minimax,
-  [ProviderName.Spark]: IflytekSpark,
-  [ProviderName.Tongyi]: Tongyi,
-  [ProviderName.ChatGLM]: Chatglm,
+  [ProviderEnum.azure_openai]: Azureai,
+  [ProviderEnum.anthropic]: Anthropic,
+  [ProviderEnum.replicate]: Replicate,
+  [ProviderEnum.huggingface_hub]: Huggingface,
+  [ProviderEnum.minimax]: Minimax,
+  [ProviderEnum.spark]: IflytekSpark,
+  [ProviderEnum.tongyi]: Tongyi,
+  [ProviderEnum.chatglm]: Chatglm,
 }
 
-const getIcon = (providerName: ProviderName, modelName: string) => {
-  if (providerName === ProviderName.OPENAI)
+const getIcon = (providerName: ProviderEnum, modelName: string) => {
+  if (providerName === ProviderEnum.openai)
     return icons[providerName]?.[modelName] || OpenaiGreen
   if (icons[providerName])
     return icons[providerName]
@@ -71,7 +70,7 @@ const getIcon = (providerName: ProviderName, modelName: string) => {
 // data to render model struct
 type Props = {
   value: {
-    providerName: string
+    providerName: ProviderEnum
     modelName: string
   } | undefined
   modelType: ModelType
@@ -80,8 +79,10 @@ type Props = {
 }
 
 const ModelSelector: FC<Props> = ({
+  value,
   modelType,
   supportAgentThought,
+  onChange,
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
@@ -108,13 +109,13 @@ const ModelSelector: FC<Props> = ({
           providerName,
           name: model_name,
           value: model_name,
-          icon: getIcon(providerName as unknown as ProviderName, model_name),
+          icon: getIcon(providerName as unknown as ProviderEnum, model_name),
         })
       })
     })
     return res
   })()
-  const [selected, setSelected] = useState<{ type: string; name: string; value?: string; icon?: any }>()
+  const SelectedIcon = value ? getIcon(value.providerName, value.modelName) : null
   const [search, setSearch] = useState('')
 
   return (
@@ -125,11 +126,11 @@ const ModelSelector: FC<Props> = ({
             ({ open }) => (
               <>
                 {
-                  selected
+                  value
                     ? (
                       <>
-                        <selected.icon className='mr-1.5 w-5 h-5' />
-                        <div className='mr-1.5 grow text-left text-sm text-gray-900'>{selected?.name}</div>
+                        <SelectedIcon className='mr-1.5 w-5 h-5' />
+                        <div className='mr-1.5 grow text-left text-sm text-gray-900'>{value.modelName}</div>
                       </>
                     )
                     : (
@@ -191,13 +192,18 @@ const ModelSelector: FC<Props> = ({
                       key={`${model.providerName}-${model.name}`}
                       className={`
                         flex items-center px-3 w-full h-8 rounded-lg cursor-pointer hover:bg-gray-50
-                        ${selected === model.value && 'bg-gray-50'}
+                        ${(value?.providerName === model.providerName && value?.modelName === model.value) && 'bg-gray-50'}
                       `}
-                      onClick={() => setSelected(model)}
+                      onClick={() => {
+                        const selectedModel = modelList.find((item) => {
+                          return item.model_name === model.value && item.model_provider.provider_name === model.providerName
+                        })
+                        onChange(selectedModel as BackendModel)
+                      }}
                     >
                       <Icon className='mr-2 w-4 h-4' />
                       <div className='grow text-left text-sm text-gray-900'>{model.name}</div>
-                      { selected === model.value && <Check className='w-4 h-4 text-primary-600' /> }
+                      { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='w-4 h-4 text-primary-600' /> }
                     </Popover.Button>
                   )
                 }
