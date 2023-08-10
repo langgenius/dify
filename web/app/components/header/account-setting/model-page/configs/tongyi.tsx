@@ -13,8 +13,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.tongyi,
     title: {
-      'en': 'Tongyi',
-      'zh-Hans': '通义千问',
+      'en': 'Setup Tongyi',
+      'zh-Hans': '设置通义千问',
     },
     icon: <Tongyi className='w-6 h-6' />,
     link: {

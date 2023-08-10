@@ -17,8 +17,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.spark,
     title: {
-      'en': 'iFLYTEK SPARK',
-      'zh-Hans': '讯飞星火',
+      'en': 'Setup iFLYTEK SPARK',
+      'zh-Hans': '设置讯飞星火',
     },
     icon: <IflytekSpark className='w-6 h-6' />,
     link: {

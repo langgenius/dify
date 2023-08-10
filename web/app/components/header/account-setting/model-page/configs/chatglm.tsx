@@ -29,8 +29,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.chatglm,
     title: {
-      'en': 'ChatGLM',
-      'zh-Hans': 'ChatGLM',
+      'en': 'Setup ChatGLM',
+      'zh-Hans': '设置 ChatGLM',
     },
     icon: <Chatglm className='h-6' />,
     link: {

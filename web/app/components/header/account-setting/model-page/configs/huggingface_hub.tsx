@@ -17,8 +17,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.huggingface_hub,
     title: {
-      'en': 'Hugging Face Hub',
-      'zh-Hans': 'Hugging Face Hub',
+      'en': 'Create Hugging Face Model',
+      'zh-Hans': '创建 Hugging Face Model',
     },
     icon: <Huggingface className='h-6' />,
     link: {

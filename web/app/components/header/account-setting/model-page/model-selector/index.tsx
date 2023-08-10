@@ -61,8 +61,7 @@ const getIcon = (providerName: ProviderName, modelName: string) => {
   if (icons[providerName]?.[modelName])
     return icons[providerName]?.[modelName]
   if (icons[providerName])
-    console.log(icons[providerName], modelName)
-  return icons[providerName]
+    return icons[providerName]
   return OpenaiGreen
 }
 

@@ -13,8 +13,8 @@ const config: ProviderConfig = {
   modal: {
     key: ProviderEnum.azure_openai,
     title: {
-      'en': 'Azure OpenAI',
-      'zh-Hans': 'Azure OpenAI',
+      'en': 'Create Azure OpenAI Service Model',
+      'zh-Hans': '创建 Azure OpenAI Service Model',
     },
     icon: <AzureOpenaiService className='h-6' />,
     link: {
