@@ -10,7 +10,8 @@ from controllers.console.wraps import only_edition_cloud
 from extensions.ext_database import db
 from libs.helper import supported_language
 from models.model import RecommendedApp, App, InstalledApp
-
+import logging
+logger = logging.getLogger(__name__)
 
 def admin_required(view):
     @wraps(view)
@@ -55,21 +56,21 @@ class InsertExploreAppListApi(Resource):
 
         app = App.query.filter(App.id == args['app_id']).first()
         if not app:
-            raise NotFound('App not found')
-
+            raise NotFound(f"App {args['app_id']} not found")
         site = app.site
         if not site:
             desc = args['desc'] if args['desc'] else ''
             copy_right = args['copyright'] if args['copyright'] else ''
             privacy_policy = args['privacy_policy'] if args['privacy_policy'] else ''
         else:
-            desc = site.description if (site.description if not args['desc'] else args['desc']) else ''
-            copy_right = site.copyright if (site.copyright if not args['copyright'] else args['copyright']) else ''
-            privacy_policy = site.privacy_policy \
-                if (site.privacy_policy if not args['privacy_policy'] else args['privacy_policy']) else ''
+            desc = site.description if site.description else \
+                args['desc'] if args['desc'] else ''
+            copy_right = site.copyright if site.copyright else \
+                args['copyright'] if args['copyright'] else ''
+            privacy_policy = site.privacy_policy if site.privacy_policy else \
+                args['privacy_policy'] if args['privacy_policy']  else ''
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args['app_id']).first()
-
         if not recommended_app:
             recommended_app = RecommendedApp(
                 app_id=app.id,
