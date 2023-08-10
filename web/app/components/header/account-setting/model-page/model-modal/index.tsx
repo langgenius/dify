@@ -59,7 +59,7 @@ const ModelModal: FC<ModelModalProps> = ({
   }
   const handleSave = () => {
     if (validateRequiredValue())
-      onSave(value)
+      onSave(value || modelModal?.defaultValue)
   }
 
   return (

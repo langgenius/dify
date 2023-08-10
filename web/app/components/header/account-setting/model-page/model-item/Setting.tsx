@@ -31,7 +31,7 @@ const Setting: FC<SettingProps> = ({
   return (
     <div className='flex items-center'>
       {
-        modelItem.vender && !systemFree.is_valid && !IS_CE_EDITION && (
+        modelItem.vender && !systemFree?.is_valid && !IS_CE_EDITION && (
           <div className='flex items-center'>
             📣
             <div className={`${s.vender} ml-1 mr-2 text-xs font-medium text-transparent`}>{modelItem.vender?.[locale]}</div>
