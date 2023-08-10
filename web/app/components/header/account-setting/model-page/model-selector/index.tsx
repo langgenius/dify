@@ -14,6 +14,7 @@ import {
   Azureai,
   Chatglm,
   Huggingface,
+  IflytekSpark,
   OpenaiGreen,
   OpenaiViolet,
   Replicate,
@@ -52,14 +53,15 @@ const icons: any = {
   [ProviderName.ANTHROPIC]: Anthropic,
   [ProviderName.Replicate]: Replicate,
   [ProviderName.HuggingfaceHub]: Huggingface,
+  [ProviderName.MiniMax]: Minimax,
+  [ProviderName.Spark]: IflytekSpark,
   [ProviderName.Tongyi]: Tongyi,
   [ProviderName.ChatGLM]: Chatglm,
-  [ProviderName.MiniMax]: Minimax,
 }
 
 const getIcon = (providerName: ProviderName, modelName: string) => {
-  if (icons[providerName]?.[modelName])
-    return icons[providerName]?.[modelName]
+  if (providerName === ProviderName.OPENAI)
+    return icons[providerName]?.[modelName] || OpenaiGreen
   if (icons[providerName])
     return icons[providerName]
   return OpenaiGreen
@@ -110,7 +112,6 @@ const ModelSelector: FC<Props> = ({
         })
       })
     })
-    // console.log(res)
     return res
   })()
   const [selected, setSelected] = useState<{ type: string; name: string; value?: string; icon?: any }>()
