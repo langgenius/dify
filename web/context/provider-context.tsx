@@ -2,7 +2,7 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
-import { mockTextGenerationModelList } from './provider-mock'
+// import { mockTextGenerationModelList } from './provider-mock'
 import { fetchModelList, fetchTenantInfo } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
@@ -37,17 +37,17 @@ export const ProviderContextProvider = ({
   const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
   const currentProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && (provider_name === 'openai' || provider_name === 'azure_openai'))
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-type/'
-  const { data: textGenerationModelListRes } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
-  const { data: embeddingsModelListRes } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
-  const { data: speech2textModelListRes } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
+  const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
+  const { data: embeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
+  const { data: speech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
+  const agentThoughtModelList = speech2textModelList?.filter(item => item.features?.includes(ModelFeature.agentThought))
 
-  const agentThoughtModelList = speech2textModelListRes?.data?.filter(item => item.features?.includes(ModelFeature.agentThought))
   return (
     <ProviderContext.Provider value={{
       currentProvider,
-      textGenerationModelList: textGenerationModelListRes?.data || (mockTextGenerationModelList as BackendModel[]),
-      embeddingsModelList: embeddingsModelListRes?.data || [],
-      speech2textModelList: speech2textModelListRes?.data || [],
+      textGenerationModelList: textGenerationModelList || [],
+      embeddingsModelList: embeddingsModelList || [],
+      speech2textModelList: speech2textModelList || [],
       agentThoughtModelList: agentThoughtModelList || [],
     }}>
       {children}

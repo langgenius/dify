@@ -126,8 +126,8 @@ export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
   return get(url) as Promise<ProviderMap>
 }
 
-export const fetchModelList: Fetcher<{ data: BackendModel[] }, string> = (url) => {
-  return get(url) as Promise<{ data: BackendModel[] }>
+export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
+  return get(url) as Promise<BackendModel[]>
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {

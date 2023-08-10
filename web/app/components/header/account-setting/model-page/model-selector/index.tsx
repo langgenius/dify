@@ -90,10 +90,7 @@ const ModelSelector: FC<Props> = ({
       [ModelType.embeddings]: embeddingsModelList,
       [ModelType.speech2text]: speech2textModelList,
     })[modelType]
-  // if (textGenerationModelList.length > 0)
-  //   debugger
 
-  // console.log(textGenerationModelList, modelList)
   const modelOptions: any[] = (() => {
     const providers = _.uniq(modelList.map(item => item.model_provider.provider_name))
     const res: any[] = []
