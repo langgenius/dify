@@ -23,6 +23,7 @@ import {
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -58,6 +59,7 @@ const ModelPage = () => {
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
+  const { eventEmitter } = useEventEmitterContextContext()
   const [modelModalConfig, setModelModalConfig] = useState<ProviderConfigModal | undefined>(undefined)
   const [confirmShow, setConfirmShow] = useState(false)
   const [deleteModel, setDeleteModel] = useState<DeleteModel & { providerKey: ProviderEnum }>()
@@ -73,33 +75,37 @@ const ModelPage = () => {
     setShowModal(false)
   }
   const handleSave = async (v?: FormValue) => {
-    if (modelModalConfig && v && [ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub].includes(modelModalConfig?.key)) {
-      const { model_name, model_type, ...config } = v
-      const res = await setModelProvider({
-        url: `/workspaces/current/model-providers/${modelModalConfig?.key}/models`,
-        body: {
+    if (v && modelModalConfig) {
+      let body, url
+      if ([ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub].includes(modelModalConfig.key)) {
+        const { model_name, model_type, ...config } = v
+        body = {
           model_name,
           model_type,
           config,
-        },
-      })
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        mutateProviders()
-        handleCancelModal()
+        }
+        url = `/workspaces/current/model-providers/${modelModalConfig.key}/models`
       }
-      return
-    }
-    const res = await setModelProvider({
-      url: `/workspaces/current/model-providers/${modelModalConfig?.key}`,
-      body: {
-        config: v,
-      },
-    })
-    if (res.result === 'success') {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutateProviders()
-      handleCancelModal()
+      else {
+        body = {
+          config: v,
+        }
+        url = `/workspaces/current/model-providers/${modelModalConfig.key}`
+      }
+
+      try {
+        eventEmitter?.emit('provider-save')
+        const res = await setModelProvider({ url, body })
+        if (res.result === 'success') {
+          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+          mutateProviders()
+          handleCancelModal()
+        }
+        eventEmitter?.emit('')
+      }
+      catch (e) {
+        eventEmitter?.emit('')
+      }
     }
   }
 

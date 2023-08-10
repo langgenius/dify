@@ -10,6 +10,7 @@ import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type ModelModalProps = {
   isShow: boolean
@@ -26,12 +27,39 @@ const ModelModal: FC<ModelModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const [value, setValue] = useState<FormValue>()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [value, setValue] = useState<FormValue | undefined>()
+  const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
 
+  eventEmitter?.useSubscription((v) => {
+    if (v === 'provider-save')
+      setLoading(true)
+    else
+      setLoading(false)
+  })
   const handleValidatedError = useCallback((newErrorMessage: string) => {
     setErrorMessage(newErrorMessage)
   }, [])
+  const validateRequiredValue = () => {
+    const validateValue = value || modelModal?.defaultValue
+    if (modelModal) {
+      const { fields } = modelModal
+      const requiredFields = fields.filter(field => !(typeof field.hidden === 'function' ? field.hidden(validateValue) : field.hidden) && field.required)
+
+      for (let i = 0; i < requiredFields.length; i++) {
+        const currentField = requiredFields[i]
+        if (!validateValue?.[currentField.key]) {
+          setErrorMessage(t('appDebug.errorMessage.valueOfVarRequired', { key: currentField.label[locale] }) || '')
+          return
+        }
+      }
+    }
+  }
+  const handleSave = () => {
+    validateRequiredValue()
+    onSave(value)
+  }
 
   return (
     <Modal
@@ -65,7 +93,8 @@ const ModelModal: FC<ModelModalProps> = ({
             <Button
               className='!h-9 !text-sm font-medium'
               type='primary'
-              onClick={() => onSave(value)}
+              onClick={handleSave}
+              disabled={loading}
             >
               {t('common.operation.save')}
             </Button>

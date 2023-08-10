@@ -25,7 +25,14 @@ const ModelItem: FC<ModelItemProps> = ({
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
       <div className='flex justify-between items-center px-4 h-14'>
-        {modelItem.titleIcon[locale]}
+        <div className='flex items-center'>
+          {modelItem.titleIcon[locale]}
+          {
+            modelItem.hit && (
+              <div className='ml-2 text-xs text-gray-500'>{modelItem.hit[locale]}</div>
+            )
+          }
+        </div>
         <Setting
           currentProvider={currentProvider}
           modelItem={modelItem}

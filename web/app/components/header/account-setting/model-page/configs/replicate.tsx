@@ -11,7 +11,7 @@ const config: ProviderConfig = {
     },
     hit: {
       'en': '🐑 Llama 2 Supported',
-      'zh-Hans': '🐑 Llama 2 支持',
+      'zh-Hans': '🐑 Llama 2 已支持',
     },
   },
   modal: {

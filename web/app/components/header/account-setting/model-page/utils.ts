@@ -1,5 +1,8 @@
 import { ValidatedStatus } from '../key-validator/declarations'
-import { validateModelProvider, validateModelProviderModel } from '@/service/common'
+import {
+  validateModelProvider,
+  validateModelProviderModel,
+} from '@/service/common'
 
 export const validateModelProviderFn = async (providerName: string, body: any) => {
   try {
