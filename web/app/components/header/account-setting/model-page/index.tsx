@@ -13,8 +13,15 @@ import ModelModal from './model-modal'
 import config from './configs'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-import { fetchModelProviders, setModelProvider } from '@/service/common'
+import {
+  changeModelProviderPriority,
+  deleteModelProvider,
+  deleteModelProviderModel,
+  fetchModelProviders,
+  setModelProvider,
+} from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
+import Confirm from '@/app/components/base/confirm/common'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -38,6 +45,11 @@ const tipClassName = `
 ml-0.5 w-[14px] h-[14px] text-gray-400
 `
 
+type DeleteModel = {
+  model_name: string
+  model_type: string
+}
+
 const ModelPage = () => {
   const { t } = useTranslation()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
@@ -46,6 +58,8 @@ const ModelPage = () => {
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
   const [modelModalConfig, setModelModalConfig] = useState<ProviderConfigModal | undefined>(undefined)
+  const [confirmShow, setConfirmShow] = useState(false)
+  const [deleteModel, setDeleteModel] = useState<DeleteModel & { providerKey: ProviderEnum }>()
 
   const handleOpenModal = (newModelModalConfig: ProviderConfigModal | undefined, editValue?: FormValue) => {
     if (newModelModalConfig) {
@@ -85,6 +99,53 @@ const ModelPage = () => {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       mutateProviders()
       handleCancelModal()
+    }
+  }
+
+  const handleConfirm = (deleteModel: DeleteModel, providerKey: ProviderEnum) => {
+    setDeleteModel({ ...deleteModel, providerKey })
+    setConfirmShow(true)
+  }
+  const handleOperate = async ({ type, value }: Record<string, any>, provierKey: ProviderEnum) => {
+    if (type === 'delete') {
+      if (!value) {
+        const res = await deleteModelProvider({ url: `/workspaces/current/model-providers/${provierKey}` })
+        if (res.result === 'success') {
+          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+          mutateProviders()
+        }
+      }
+      else {
+        handleConfirm(value, provierKey)
+      }
+    }
+
+    if (type === 'priority') {
+      const res = await changeModelProviderPriority({
+        url: `/workspaces/current/model-providers/${provierKey}/preferred-provider-type`,
+        body: {
+          preferred_provider_type: value,
+        },
+      })
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        mutateProviders()
+      }
+    }
+  }
+
+  const handleDeleteModel = async () => {
+    const { model_name, model_type, providerKey } = deleteModel || {}
+    const res = await deleteModelProviderModel({
+      url: `/workspaces/current/model-providers/${providerKey}/models`,
+      body: {
+        model_name,
+        model_type,
+      },
+    })
+    if (res.result === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      mutateProviders()
     }
   }
 
@@ -129,7 +190,7 @@ const ModelPage = () => {
               modelItem={model.item}
               currentProvider={providers?.[model.item.key]}
               onOpenModal={editValue => handleOpenModal(model.modal, editValue)}
-              onUpdate={mutateProviders}
+              onOperate={v => handleOperate(v, model.item.key)}
             />
           ))
         }
@@ -141,6 +202,7 @@ const ModelPage = () => {
             modelItem={model.item}
             currentProvider={providers?.[model.item.key]}
             onOpenModal={editValue => handleOpenModal(model.modal, editValue)}
+            onOperate={v => handleOperate(v, model.item.key)}
             onUpdate={mutateProviders}
           />
         ))
@@ -158,6 +220,13 @@ const ModelPage = () => {
         modelModal={modelModalConfig}
         onCancel={handleCancelModal}
         onSave={handleSave}
+      />
+      <Confirm
+        isShow={confirmShow}
+        onCancel={() => setConfirmShow(false)}
+        title={deleteModel?.model_name || ''}
+        desc={t('common.modelProvider.item.deleteDesc', { modelName: deleteModel?.model_name }) || ''}
+        onConfirm={handleDeleteModel}
       />
     </div>
   )

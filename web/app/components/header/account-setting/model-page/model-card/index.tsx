@@ -3,54 +3,28 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig } from '../declarations'
 import Indicator from '../../../indicator'
+import Selector from '../selector'
 import Quota from './Quota'
-import PrioritySelector from './PrioritySelector'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
-import { changeModelProviderPriority, deleteModelProvider } from '@/service/common'
-import { useToastContext } from '@/app/components/base/toast'
 
 type ModelCardProps = {
   currentProvider?: Provider
   modelItem: ProviderConfigItem
   onOpenModal: (v?: FormValue) => void
-  onUpdate: () => void
+  onOperate: (v: Record<string, any>) => void
 }
 
 const ModelCard: FC<ModelCardProps> = ({
   currentProvider,
   modelItem,
   onOpenModal,
-  onUpdate,
+  onOperate,
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
-  const { notify } = useToastContext()
   const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithConfig
-
-  const handleOperate = async ({ type, value }: Record<string, string>) => {
-    if (type === 'delete') {
-      const res = await deleteModelProvider({ url: `/workspaces/current/model-providers/${modelItem.key}` })
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        onUpdate()
-      }
-    }
-
-    if (type === 'priority') {
-      const res = await changeModelProviderPriority({
-        url: `/workspaces/current/model-providers/${modelItem.key}/preferred-provider-type`,
-        body: {
-          preferred_provider_type: value,
-        },
-      })
-      if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-        onUpdate()
-      }
-    }
-  }
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
@@ -78,8 +52,8 @@ const ModelCard: FC<ModelCardProps> = ({
               >
                 {t('common.operation.edit')}
               </div>
-              <PrioritySelector
-                onOperate={handleOperate}
+              <Selector
+                onOperate={onOperate}
                 value={currentProvider?.preferred_provider_type}
               />
             </div>

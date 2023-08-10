@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig, ProviderWithQuota } from '../declarations'
 import Indicator from '../../../indicator'
-import Operation from './Operation'
+import Selector from '../selector'
 import s from './index.module.css'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
@@ -12,13 +12,14 @@ type SettingProps = {
   currentProvider?: Provider
   modelItem: ProviderConfigItem
   onOpenModal: (v?: FormValue) => void
-  onOperate: () => void
+  onOperate: (v: Record<string, any>) => void
 }
 
 const Setting: FC<SettingProps> = ({
   currentProvider,
   modelItem,
   onOpenModal,
+  onOperate,
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
@@ -79,7 +80,11 @@ const Setting: FC<SettingProps> = ({
             >
               {t('common.operation.edit')}
             </Button>
-            <Operation onOperate={() => {}} />
+            <Selector
+              hiddenOptions={!systemFree?.is_valid}
+              value={currentProvider?.preferred_provider_type}
+              onOperate={onOperate}
+            />
           </div>
         )
       }
