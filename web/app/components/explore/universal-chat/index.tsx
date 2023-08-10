@@ -39,16 +39,20 @@ import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 import { fetchDatasets } from '@/service/datasets'
 import ItemOperation from '@/app/components/explore/item-operation'
+import { useProviderContext } from '@/context/provider-context'
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 
 const APP_ID = 'universal-chat'
-const DEFAULT_MODEL_ID = 'gpt-3.5-turbo' // gpt-4, claude-2
 const DEFAULT_PLUGIN = {
   google_search: false,
   web_reader: true,
   wikipedia: true,
 }
-const CONFIG_KEY = 'universal-chat-config'
+// Old configuration structure is not compatible with the current configuration
+localStorage.removeItem('universal-chat-config')
+const CONFIG_KEY = 'universal-chat-config-2'
 type CONFIG = {
+  providerName: string
   modelId: string
   plugin: {
     google_search: boolean
@@ -61,13 +65,6 @@ const setPrevConfig = (config: CONFIG) => {
   prevConfig = config
   localStorage.setItem(CONFIG_KEY, JSON.stringify(prevConfig))
 }
-const getInitConfig = (type: 'model' | 'plugin') => {
-  if (type === 'model')
-    return prevConfig?.modelId || DEFAULT_MODEL_ID
-
-  if (type === 'plugin')
-    return prevConfig?.plugin || DEFAULT_PLUGIN
-}
 
 export type IMainProps = {}
 
@@ -75,6 +72,18 @@ const Main: FC<IMainProps> = () => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
+  const { agentThoughtModelList } = useProviderContext()
+  const getInitConfig = (type: 'model' | 'plugin') => {
+    if (type === 'model') {
+      return {
+        providerName: prevConfig?.providerName || agentThoughtModelList?.[0]?.model_provider.provider_name,
+        modelId: prevConfig?.modelId || agentThoughtModelList?.[0]?.model_name,
+      }
+    }
+
+    if (type === 'plugin')
+      return prevConfig?.plugin || DEFAULT_PLUGIN
+  }
 
   useEffect(() => {
     document.title = `${t('explore.sidebar.chat')} -  Dify`
@@ -443,6 +452,7 @@ const Main: FC<IMainProps> = () => {
     if (isNewConversation) {
       setPrevConfig({
         modelId,
+        providerName,
         plugin: plugins as any,
       })
     }
@@ -468,6 +478,7 @@ const Main: FC<IMainProps> = () => {
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
       model: modelId,
+      provider: providerName,
       tools: [...formattedPlugins, ...formattedDataSets],
     }
 
@@ -629,8 +640,9 @@ const Main: FC<IMainProps> = () => {
       />
     )
   }
-
-  const [modelId, setModeId] = useState<string>(getInitConfig('model') as string)
+  const initConfig = getInitConfig('model')
+  const [modelId, setModeId] = useState<string>((initConfig as any)?.modelId as string)
+  const [providerName, setProviderName] = useState<ProviderEnum>((initConfig as any)?.providerName as ProviderEnum)
   // const currModel = MODEL_LIST.find(item => item.id === modelId)
 
   const [plugins, setPlugins] = useState<Record<string, boolean>>(getInitConfig('plugin') as Record<string, boolean>)
@@ -642,7 +654,9 @@ const Main: FC<IMainProps> = () => {
   }
   const [dataSets, setDateSets] = useState<DataSet[]>([])
   const configSetDefaultValue = () => {
-    setModeId(getInitConfig('model') as string)
+    const initConfig = getInitConfig('model')
+    setModeId((initConfig as any)?.modelId as string)
+    setProviderName((initConfig as any)?.providerName as ProviderEnum)
     setPlugins(getInitConfig('plugin') as any)
     setDateSets([])
   }
@@ -712,7 +726,11 @@ const Main: FC<IMainProps> = () => {
                 isShowConfigElem={isNewConversation && chatList.length === 0}
                 configElem={<Init
                   modelId={modelId}
-                  onModelChange={setModeId}
+                  providerName={providerName}
+                  onModelChange={(modelId, providerName) => {
+                    setModeId(modelId)
+                    setProviderName(providerName)
+                  }}
                   plugins={plugins}
                   onPluginChange={handlePluginsChange}
                   dataSets={dataSets}

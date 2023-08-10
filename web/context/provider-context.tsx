@@ -40,7 +40,9 @@ export const ProviderContextProvider = ({
   const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
   const { data: embeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
   const { data: speech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
-  const agentThoughtModelList = speech2textModelList?.filter(item => item.features?.includes(ModelFeature.agentThought))
+  const agentThoughtModelList = textGenerationModelList?.filter((item) => {
+    return item.features?.includes(ModelFeature.agentThought)
+  })
 
   return (
     <ProviderContext.Provider value={{
