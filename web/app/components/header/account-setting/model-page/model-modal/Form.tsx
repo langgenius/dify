@@ -30,14 +30,16 @@ const Form: FC<FormProps> = ({
   const { locale } = useContext(I18n)
   const [value, setValue] = useState(initValue)
   const [validate, validating, validatedStatusState] = useValidate(value)
+  const [changeKey, setChangeKey] = useState('')
 
   useEffect(() => {
     onValidatedError(validatedStatusState.message || '')
   }, [validatedStatusState, onValidatedError])
 
-  const handleMultiFormChange = (v: FormValue) => {
+  const handleMultiFormChange = (v: FormValue, newChangeKey: string) => {
     setValue(v)
     onChange(v)
+    setChangeKey(newChangeKey)
 
     const validateKeys = (typeof modelModal?.validateKeys === 'function' ? modelModal?.validateKeys(v) : modelModal?.validateKeys) || []
     if (validateKeys.length) {
@@ -57,7 +59,7 @@ const Form: FC<FormProps> = ({
   }
 
   const handleFormChange = (k: string, v: string) => {
-    handleMultiFormChange({ ...value, [k]: v })
+    handleMultiFormChange({ ...value, [k]: v }, k)
   }
 
   const handleFocus = (k: string) => {
@@ -80,11 +82,11 @@ const Form: FC<FormProps> = ({
           <Input
             field={field}
             value={value}
-            onChange={handleMultiFormChange}
+            onChange={v => handleMultiFormChange(v, field.key)}
             onFocus={() => handleFocus(field.key)}
             validatedStatusState={validatedStatusState}
           />
-          {validating && <ValidatingTip />}
+          {validating && changeKey === field.key && <ValidatingTip />}
         </div>
       )
     }

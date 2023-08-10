@@ -1,10 +1,7 @@
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue } from '../declarations'
-import {
-  ValidatedErrorIcon,
-  ValidatedSuccessIcon,
-} from '../../key-validator/ValidateStatus'
+import { ValidatedSuccessIcon } from '../../key-validator/ValidateStatus'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import type { ValidatedStatusState } from '../../key-validator/declarations'
 import I18n from '@/context/i18n'
@@ -24,14 +21,11 @@ const Input: FC<InputProps> = ({
   validatedStatusState,
 }) => {
   const { locale } = useContext(I18n)
-  const showValidatedIcon = validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed || validatedStatusState.status === ValidatedStatus.Success
+  const showValidatedIcon = validatedStatusState.status === ValidatedStatus.Success && value[field.key]
 
   const getValidatedIcon = () => {
-    if (validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed)
-      return <ValidatedErrorIcon />
-
-    if (validatedStatusState.status === ValidatedStatus.Success)
-      return <ValidatedSuccessIcon />
+    if (showValidatedIcon)
+      return <div className='absolute top-2.5 right-2.5'><ValidatedSuccessIcon /></div>
   }
 
   const handleChange = (v: string) => {
@@ -56,7 +50,7 @@ const Input: FC<InputProps> = ({
         onFocus={onFocus}
         value={value[field.key] || ''}
       />
-      <div className='absolute top-2.5 right-2.5'>{getValidatedIcon()}</div>
+      {getValidatedIcon()}
     </div>
   )
 }

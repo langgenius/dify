@@ -32,12 +32,22 @@ const config: ProviderConfig = {
       model_type: 'text-generation',
       huggingfacehub_api_type: 'hosted_inference_api',
     },
-    validateKeys: [
-      'huggingfacehub_api_type',
-      'huggingfacehub_api_token',
-      'huggingfacehub_endpoint_url',
-      'model_name',
-    ],
+    validateKeys: (v?: FormValue) => {
+      if (v?.huggingfacehub_api_type === 'hosted_inference_api') {
+        return [
+          'huggingfacehub_api_token',
+          'model_name',
+        ]
+      }
+      if (v?.huggingfacehub_api_type === 'inference_endpoints') {
+        return [
+          'huggingfacehub_api_token',
+          'model_name',
+          'huggingfacehub_endpoint_url',
+        ]
+      }
+      return []
+    },
     fields: [
       {
         type: 'radio',
@@ -52,14 +62,14 @@ const config: ProviderConfig = {
             key: 'hosted_inference_api',
             label: {
               'en': 'Hosted Inference API',
-              'zh-Hans': '托管推理 API',
+              'zh-Hans': 'Hosted Inference API',
             },
           },
           {
             key: 'inference_endpoints',
             label: {
               'en': 'Inference Endpoints',
-              'zh-Hans': '自部署推理端点',
+              'zh-Hans': 'Inference Endpoints',
             },
           },
         ],
@@ -91,7 +101,7 @@ const config: ProviderConfig = {
         },
       },
       {
-        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'inference_endpoints',
+        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'hosted_inference_api',
         type: 'text',
         key: 'huggingfacehub_endpoint_url',
         label: {
