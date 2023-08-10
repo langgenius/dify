@@ -24,6 +24,7 @@ type Props = {
   onChange: (value: BackendModel) => void
   popClassName?: string
   readonly?: boolean
+  triggerIconSmall?: boolean
 }
 
 const ModelSelector: FC<Props> = ({
@@ -33,6 +34,7 @@ const ModelSelector: FC<Props> = ({
   onChange,
   popClassName,
   readonly,
+  triggerIconSmall,
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
@@ -86,7 +88,7 @@ const ModelSelector: FC<Props> = ({
   return (
     <div className=''>
       <Popover className='relative'>
-        <Popover.Button className='flex items-center px-2.5 w-full h-9 bg-gray-100 rounded-lg'>
+        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto' : 'bg-gray-100')}>
           {
             ({ open }) => (
               <>
@@ -95,7 +97,7 @@ const ModelSelector: FC<Props> = ({
                     ? (
                       <>
                         <ModelIcon
-                          className='mr-1.5 w-5 h-5'
+                          className={cn('mr-1.5', !triggerIconSmall && 'w-5 h-5')}
                           modelId={value.modelName}
                           providerName={value.providerName}
                         />

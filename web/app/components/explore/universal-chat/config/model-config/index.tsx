@@ -24,6 +24,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
       <div className='text-sm font-semibold text-gray-800'>{t('explore.universalChat.model')}</div>
       <ModelSelector
         popClassName="right-0"
+        triggerIconSmall
         modelType={ModelType.textGeneration}
         supportAgentThought
         value={{

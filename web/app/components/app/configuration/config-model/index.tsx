@@ -250,7 +250,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
       </div>
       {isShowConfig && (
         <Panel
-          className='absolute z-20 top-8 right-0 !w-[496px] bg-white !overflow-visible'
+          className='absolute z-20 top-8 right-0 !w-[496px] bg-white !overflow-visible shadow-md'
           keepUnFold
           headerIcon={
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -270,6 +270,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
                 popClassName='right-0'
+                triggerIconSmall
                 value={{
                   modelName: modelId,
                   providerName: provider,
@@ -346,7 +347,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
           </div>
           {
             maxTokenSettingTipVisible && (
-              <div className='flex py-2 pr-4 pl-5 bg-[#FFFAEB] border-t border-[#FEF0C7]'>
+              <div className='flex py-2 pr-4 pl-5 rounded-bl-xl rounded-br-xl bg-[#FFFAEB] border-t border-[#FEF0C7]'>
                 <AlertTriangle className='shrink-0 mr-2 mt-[3px] w-3 h-3 text-[#F79009]' />
                 <div className='mr-2 text-xs font-medium text-gray-700'>{t('common.model.params.maxTokenSettingTip')}</div>
               </div>
