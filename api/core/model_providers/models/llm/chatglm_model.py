@@ -1,5 +1,4 @@
 import decimal
-from functools import wraps
 from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
@@ -68,4 +67,4 @@ class ChatGLMModel(BaseLLM):
 
     @classmethod
     def support_streaming(cls):
-        return True
+        return False
