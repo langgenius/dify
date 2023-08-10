@@ -92,7 +92,7 @@ class HuggingfaceHubProvider(BaseModelProvider):
         else:
             try:
                 llm = HuggingFaceHub(
-                    repo_id="google/flan-t5-base",
+                    repo_id=model_name,
                     task='text2text-generation',
                     model_kwargs={"temperature": 0.5, "max_length": 20},
                     huggingfacehub_api_token=credentials['huggingfacehub_api_token']
