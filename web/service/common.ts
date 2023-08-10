@@ -150,10 +150,6 @@ export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string;
   return post(url, { body }) as Promise<CommonResponse>
 }
 
-export const validateModelProviderModel: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
-}
-
 export const setModelProviderModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
 }

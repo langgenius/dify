@@ -1,36 +1,29 @@
 import { ValidatedStatus } from '../key-validator/declarations'
-import {
-  validateModelProvider,
-  validateModelProviderModel,
-} from '@/service/common'
+import { ProviderEnum } from './declarations'
+import { validateModelProvider } from '@/service/common'
 
-export const validateModelProviderFn = async (providerName: string, body: any) => {
-  try {
-    const res = await validateModelProvider({
-      url: `/workspaces/current/model-providers/${providerName}/validate`,
-      body,
-    })
-    if (res.result === 'success')
-      return Promise.resolve({ status: ValidatedStatus.Success })
-    else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
-  }
-  catch (e: any) {
-    return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
-  }
-}
+const configurableProvider = [ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub]
 
-export const validateModelProviderModelFn = async (providerName: string, body: any) => {
+export const validateModelProviderFn = async (providerName: ProviderEnum, v: any) => {
+  let body, url
+
+  if (configurableProvider.includes(providerName)) {
+    const { model_name, model_type, ...config } = v
+    body = {
+      model_name,
+      model_type,
+      config,
+    }
+    url = `/workspaces/current/model-providers/${providerName}/models/validate`
+  }
+  else {
+    body = {
+      config: v,
+    }
+    url = `/workspaces/current/model-providers/${providerName}/validate`
+  }
   try {
-    const { model_name, model_type, ...config } = body
-    const res = await validateModelProviderModel({
-      url: `/workspaces/current/model-providers/${providerName}/models/validate`,
-      body: {
-        model_name,
-        model_type,
-        config,
-      },
-    })
+    const res = await validateModelProvider({ url, body })
     if (res.result === 'success')
       return Promise.resolve({ status: ValidatedStatus.Success })
     else

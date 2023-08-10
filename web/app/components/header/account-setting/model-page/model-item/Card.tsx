@@ -40,7 +40,7 @@ const Card: FC<CardProps> = ({
               <Indicator className='mr-3' />
               <Button
                 className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
-                onClick={() => onOpenModal({ ...model, ...model.config })}
+                onClick={() => onOpenModal({ model_name: model.model_name, model_type: model.model_type, ...model.config })}
               >
                 {t('common.operation.edit')}
               </Button>
