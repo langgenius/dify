@@ -103,6 +103,10 @@ class ReplicateProvider(BaseModelProvider):
         if 'model_version' not in credentials:
             raise CredentialsValidateFailedError('Replicate Model Version must be provided.')
 
+        if model_name.count("/") != 1:
+            raise CredentialsValidateFailedError('Replicate Model Name must be provided, '
+                                                 'format: {user_name}/{model_name}')
+
         version = credentials['model_version']
         try:
             model = replicate.Client(api_token=credentials.get("replicate_api_token")).models.get(model_name)
