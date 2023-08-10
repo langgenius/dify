@@ -1,5 +1,7 @@
 from typing import Type
 
+from sqlalchemy.exc import IntegrityError
+
 from core.model_providers.models.entity.model_params import ModelType
 from core.model_providers.providers.base import BaseModelProvider
 from core.model_providers.rules import provider_rules
@@ -171,14 +173,22 @@ class ModelProviderFactory:
             if providers:
                 return providers[0]
             else:
-                provider = Provider(
-                    tenant_id=tenant_id,
-                    provider_name=model_provider_name,
-                    provider_type=ProviderType.CUSTOM.value,
-                    is_valid=False
-                )
-                db.session.add(provider)
-                db.session.commit()
+                try:
+                    provider = Provider(
+                        tenant_id=tenant_id,
+                        provider_name=model_provider_name,
+                        provider_type=ProviderType.CUSTOM.value,
+                        is_valid=False
+                    )
+                    db.session.add(provider)
+                    db.session.commit()
+                except IntegrityError:
+                    provider = db.session.query(Provider) \
+                        .filter(
+                            Provider.tenant_id == tenant_id,
+                            Provider.provider_name == model_provider_name,
+                            Provider.provider_type == ProviderType.CUSTOM.value
+                        ).first()
 
                 return provider
 
