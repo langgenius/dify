@@ -231,6 +231,7 @@ class ProviderService:
         ).first()
 
         if provider:
+            self.switch_preferred_provider(tenant_id, provider_name, ProviderType.SYSTEM.value)
             db.session.delete(provider)
             db.session.commit()
 
