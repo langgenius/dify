@@ -69,6 +69,7 @@ class ProviderService:
             # get preferred provider type
             preferred_model_provider = provider_name_to_preferred_provider_type_dict.get(model_provider_name)
             preferred_provider_type = ModelProviderFactory.get_preferred_type_by_preferred_model_provider(
+                tenant_id,
                 model_provider_name,
                 preferred_model_provider
             )

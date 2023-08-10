@@ -98,6 +98,7 @@ class ModelProviderFactory:
 
     @classmethod
     def get_preferred_type_by_preferred_model_provider(cls,
+                                                       tenant_id: str,
                                                        model_provider_name: str,
                                                        preferred_model_provider: TenantPreferredModelProvider):
         """
@@ -114,7 +115,7 @@ class ModelProviderFactory:
             if ProviderType.CUSTOM.value in support_provider_types:
                 custom_provider = db.session.query(Provider) \
                     .filter(
-                        Provider.tenant_id == preferred_model_provider.tenant_id,
+                        Provider.tenant_id == tenant_id,
                         Provider.provider_name == model_provider_name,
                         Provider.provider_type == ProviderType.CUSTOM.value,
                         Provider.is_valid == True
@@ -198,4 +199,4 @@ class ModelProviderFactory:
             TenantPreferredModelProvider.provider_name == model_provider_name
         ).first()
 
-        return cls.get_preferred_type_by_preferred_model_provider(model_provider_name, preferred_model_provider)
+        return cls.get_preferred_type_by_preferred_model_provider(tenant_id, model_provider_name, preferred_model_provider)
