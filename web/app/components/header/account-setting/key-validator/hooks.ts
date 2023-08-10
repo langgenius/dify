@@ -26,7 +26,7 @@ export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCall
 
       setValidating(false)
     }
-  }, { wait: 500 })
+  }, { wait: 1000 })
 
   return [run, validating, validatedStatus]
 }

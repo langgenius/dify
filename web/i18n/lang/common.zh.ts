@@ -24,6 +24,7 @@ const translation = {
     sure: '我确定',
     download: '下载',
     setup: '设置',
+    getForFree: '免费获取',
   },
   placeholder: {
     input: '请输入',
@@ -237,6 +238,7 @@ const translation = {
     },
     item: {
       deleteDesc: '{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。',
+      freeQuota: '免费额度',
     },
     addApiKey: '添加您的 API 密钥',
     invalidApiKey: 'Invalid API key',

@@ -1,9 +1,17 @@
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
-import type { FormValue, Provider, ProviderConfigItem, ProviderWithModels } from '../declarations'
+import type {
+  FormValue,
+  Provider,
+  ProviderConfigItem,
+  ProviderWithModels,
+  ProviderWithQuota,
+} from '../declarations'
 import Setting from './Setting'
 import Card from './Card'
+import QuotaCard from './QuotaCard'
 import I18n from '@/context/i18n'
+import { IS_CE_EDITION } from '@/config'
 
 type ModelItemProps = {
   currentProvider?: Provider
@@ -21,6 +29,7 @@ const ModelItem: FC<ModelItemProps> = ({
 }) => {
   const { locale } = useContext(I18n)
   const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithModels
+  const systemFree = currentProvider?.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota).quota_type === 'free') as ProviderWithQuota
 
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
@@ -47,6 +56,11 @@ const ModelItem: FC<ModelItemProps> = ({
             onOpenModal={onOpenModal}
             onOperate={onOperate}
           />
+        )
+      }
+      {
+        systemFree?.is_valid && !IS_CE_EDITION && (
+          <QuotaCard remainTokens={systemFree.quota_limit - systemFree.quota_used}/>
         )
       }
     </div>

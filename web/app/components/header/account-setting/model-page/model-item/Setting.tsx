@@ -35,13 +35,13 @@ const Setting: FC<SettingProps> = ({
           <div className='flex items-center'>
             📣
             <div className={`${s.vender} ml-1 mr-2 text-xs font-medium text-transparent`}>{modelItem.vender?.[locale]}</div>
-            <Button
-              type='primary'
-              className='!px-3 !h-7 rounded-md !text-xs font-medium text-gray-700'
-              onClick={() => {}}
+            <a
+              href='https://langgenius.feishu.cn/share/base/form/shrcnnLSM9z89XTQDDUgVi64Ek1'
+              target='_blank'
+              className='flex items-center px-3 h-7 bg-primary-600 rounded-md text-xs font-medium text-white'
             >
-              Get for free
-            </Button>
+              {t('common.operation.getForFree')}
+            </a>
             <div className='mx-2 w-[1px] h-4 bg-black/5' />
           </div>
         )
@@ -82,7 +82,7 @@ const Setting: FC<SettingProps> = ({
               {t('common.operation.edit')}
             </Button>
             <Selector
-              hiddenOptions={!systemFree?.is_valid}
+              hiddenOptions={!systemFree?.is_valid || IS_CE_EDITION}
               value={currentProvider?.preferred_provider_type}
               onOperate={onOperate}
               className={open => `${open && '!bg-gray-100 shadow-none'} flex justify-center items-center w-7 h-7 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer hover:bg-gray-100`}
@@ -93,7 +93,7 @@ const Setting: FC<SettingProps> = ({
       {
         !configurable && !custom?.config && (
           <Button
-            className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && '!text-gray-300'}`}
+            className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && !IS_CE_EDITION && '!text-gray-300'}`}
             onClick={() => onOpenModal()}
             disabled={!!modelItem.disable && !IS_CE_EDITION}
           >

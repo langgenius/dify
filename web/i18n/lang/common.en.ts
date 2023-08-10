@@ -24,6 +24,7 @@ const translation = {
     sure: 'I\'m sure',
     download: 'Download',
     setup: 'Setup',
+    getForFree: 'Get for free',
   },
   placeholder: {
     input: 'Please enter',
@@ -237,6 +238,7 @@ const translation = {
     },
     item: {
       deleteDesc: '{{modelName}} are being used as system reasoning models. Some functions will not be available after removal. Please confirm.',
+      freeQuota: 'FREE QUOTA',
     },
     addApiKey: 'Add your API key',
     invalidApiKey: 'Invalid API key',
