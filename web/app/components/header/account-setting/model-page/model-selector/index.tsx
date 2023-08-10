@@ -14,24 +14,6 @@ import ModelIcon from '@/app/components/app/configuration/config-model/model-ico
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
-// const modelOptions = [
-//   { type: 'provider', name: 'OpenAI' },
-//   { type: 'model', name: 'GPT-3.5-Turbo-16K', value: 'GPT-3.5-Turbo-16K', icon: OpenaiGreen },
-//   { type: 'model', name: 'GPT-4', value: 'GPT-4', icon: OpenaiViolet },
-//   { type: 'provider', name: 'Anthropic' },
-//   { type: 'model', name: 'Claude-2', value: 'Claude-2', icon: Anthropic },
-//   { type: 'model', name: 'Claude-Instant', value: 'Claude-Instant', icon: Anthropic },
-//   { type: 'provider', name: 'Replicate' },
-//   { type: 'model', name: 'xxx/xxx-chat', value: 'xxx/xxx-chat', icon: Replicate },
-//   { type: 'provider', name: 'Hugging Face' },
-//   { type: 'model', name: 'xxx-chat', value: 'xxx-chat', icon: Huggingface },
-//   { type: 'provider', name: 'TONGYI QIANWEN' },
-//   { type: 'model', name: 'TONGYI-GPT', value: 'TONGYI-GPT', icon: Tongyi },
-//   { type: 'provider', name: 'ChatGLM' },
-//   { type: 'model', name: 'ChatGLM-3', value: 'ChatGLM-3', icon: Chatglm },
-//   { type: 'provider', name: 'MINIMAX' },
-//   { type: 'model', name: 'MINIMAX-GPT', value: 'MINIMAX-GPT', icon: Minimax },
-// ]
 
 type Props = {
   value: {
@@ -42,6 +24,7 @@ type Props = {
   supportAgentThought?: boolean
   onChange: (value: BackendModel) => void
   popClassName?: string
+  readonly?: boolean
 }
 
 const ModelSelector: FC<Props> = ({
@@ -50,6 +33,7 @@ const ModelSelector: FC<Props> = ({
   supportAgentThought,
   onChange,
   popClassName,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
@@ -98,93 +82,96 @@ const ModelSelector: FC<Props> = ({
                           modelId={value.modelName}
                           providerName={value.providerName}
                         />
-                        <div className='mr-1.5 grow text-left text-sm text-gray-900'>{value.modelName}</div>
+                        <div className='mr-1.5 grow text-left text-sm text-gray-900'><ModelName modelId={value.modelName} /></div>
                       </>
                     )
                     : (
                       <div className='grow text-left text-sm text-gray-800 opacity-60'>{t('common.modelProvider.selectModel')}</div>
                     )
                 }
-                <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />
+                {!readonly && <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />}
               </>
             )
           }
         </Popover.Button>
-        <Transition
-          as={Fragment}
-          leave='transition ease-in duration-100'
-          leaveFrom='opacity-100'
-          leaveTo='opacity-0'
-        >
-          <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
-            <div className='px-2 pt-2 pb-1'>
-              <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
-                <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
-                <div className='grow px-0.5'>
-                  <input
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className={`
+        {!readonly && (
+          <Transition
+            as={Fragment}
+            leave='transition ease-in duration-100'
+            leaveFrom='opacity-100'
+            leaveTo='opacity-0'
+          >
+            <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
+              <div className='px-2 pt-2 pb-1'>
+                <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
+                  <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
+                  <div className='grow px-0.5'>
+                    <input
+                      value={search}
+                      onChange={e => setSearch(e.target.value)}
+                      className={`
                       block w-full h-8 bg-transparent text-[13px] text-gray-700
                       outline-none appearance-none border-none
                     `}
-                    placeholder={t('common.modelProvider.searchModel') || ''}
-                  />
+                      placeholder={t('common.modelProvider.searchModel') || ''}
+                    />
+                  </div>
+                  {
+                    search && (
+                      <div className='ml-1 p-0.5 cursor-pointer' onClick={() => setSearch('')}>
+                        <XCircle className='w-3 h-3 text-gray-400' />
+                      </div>
+                    )
+                  }
                 </div>
-                {
-                  search && (
-                    <div className='ml-1 p-0.5 cursor-pointer' onClick={() => setSearch('')}>
-                      <XCircle className='w-3 h-3 text-gray-400' />
-                    </div>
-                  )
-                }
               </div>
-            </div>
-            {
-              modelOptions.map((model: any) => {
-                if (model.type === 'provider') {
-                  return (
-                    <div
-                      className='px-3 pt-2 pb-1 text-xs font-medium text-gray-500'
-                      key={`${model.type}-${model.value}`}
-                    >
-                      <ProviderName provideName={model.value} />
-                    </div>
-                  )
-                }
+              {
+                modelOptions.map((model: any) => {
+                  if (model.type === 'provider') {
+                    return (
+                      <div
+                        className='px-3 pt-2 pb-1 text-xs font-medium text-gray-500'
+                        key={`${model.type}-${model.value}`}
+                      >
+                        <ProviderName provideName={model.value} />
+                      </div>
+                    )
+                  }
 
-                if (model.type === 'model') {
-                  return (
-                    <Popover.Button
-                      key={`${model.providerName}-${model.value}`}
-                      className={`
-                        flex items-center px-3 w-full h-8 rounded-lg cursor-pointer hover:bg-gray-50
+                  if (model.type === 'model') {
+                    return (
+                      <Popover.Button
+                        key={`${model.providerName}-${model.value}`}
+                        className={`
+                        flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50
+                        ${!readonly ? 'cursor-pointer' : 'cursor-auto'}
                         ${(value?.providerName === model.providerName && value?.modelName === model.value) && 'bg-gray-50'}
                       `}
-                      onClick={() => {
-                        const selectedModel = modelList.find((item) => {
-                          return item.model_name === model.value && item.model_provider.provider_name === model.providerName
-                        })
-                        onChange(selectedModel as BackendModel)
-                      }}
-                    >
-                      <ModelIcon
-                        className='mr-2'
-                        modelId={model.value}
-                        providerName={model.providerName}
-                      />
-                      <div className='grow text-left text-sm text-gray-900'><ModelName modelId={model.value} /></div>
-                      { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='w-4 h-4 text-primary-600' /> }
-                    </Popover.Button>
-                  )
-                }
+                        onClick={() => {
+                          const selectedModel = modelList.find((item) => {
+                            return item.model_name === model.value && item.model_provider.provider_name === model.providerName
+                          })
+                          onChange(selectedModel as BackendModel)
+                        }}
+                      >
+                        <ModelIcon
+                          className='mr-2'
+                          modelId={model.value}
+                          providerName={model.providerName}
+                        />
+                        <div className='grow text-left text-sm text-gray-900'><ModelName modelId={model.value} /></div>
+                        { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='w-4 h-4 text-primary-600' /> }
+                      </Popover.Button>
+                    )
+                  }
 
-                return null
-              })
-            }
-            <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound')}</div>
-          </Popover.Panel>
-        </Transition>
+                  return null
+                })
+              }
+              {/* <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound')}</div> */}
+            </Popover.Panel>
+          </Transition>
+        )}
       </Popover>
     </div>
   )

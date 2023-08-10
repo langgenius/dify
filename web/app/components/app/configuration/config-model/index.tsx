@@ -8,6 +8,7 @@ import { Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outlin
 import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
+import ModelName from './model-name'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
@@ -242,7 +243,9 @@ const ConfigModel: FC<IConfigModelProps> = ({
           modelId={modelId}
           providerName={provider}
         />
-        <div className='text-[13px] text-gray-900 font-medium'>{selectedModel.name}</div>
+        <div className='text-[13px] text-gray-900 font-medium'>
+          <ModelName modelId={selectedModel.name} />
+        </div>
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
       </div>
       {isShowConfig && (
