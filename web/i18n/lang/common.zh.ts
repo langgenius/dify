@@ -221,7 +221,7 @@ const translation = {
     },
     quota: '额度',
     searchModel: '搜索模型',
-    noModelFound: '找不到{{model}}模型',
+    noModelFound: '找不到模型 {{model}}',
     models: '模型列表',
     showMoreModelProvider: '显示更多模型提供商',
     card: {

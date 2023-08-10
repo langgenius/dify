@@ -11,10 +11,9 @@ import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/gen
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
-import ModelName from '@/app/components/app/configuration/config-model/model-name'
+import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
-
 type Props = {
   value: {
     providerName: ProviderEnum
@@ -37,6 +36,7 @@ const ModelSelector: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
+  const [search, setSearch] = useState('')
   const modelList = supportAgentThought
     ? agentThoughtModelList
     : ({
@@ -44,16 +44,34 @@ const ModelSelector: FC<Props> = ({
       [ModelType.embeddings]: embeddingsModelList,
       [ModelType.speech2text]: speech2textModelList,
     })[modelType]
+  const allModelNames = (() => {
+    if (!search)
+      return {}
+
+    const res: Record<string, string> = {}
+    modelList.forEach(({ model_name }) => {
+      res[model_name] = supportI18nModelName.includes(model_name) ? t(`common.modelName.${model_name}`) : model_name
+    })
+    return res
+  })()
+  const filteredModelList = search
+    ? modelList.filter(({ model_name }) => {
+      if (allModelNames[model_name].includes(search))
+        return true
+
+      return false
+    })
+    : modelList
 
   const modelOptions: any[] = (() => {
-    const providers = _.uniq(modelList.map(item => item.model_provider.provider_name))
+    const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
     const res: any[] = []
     providers.forEach((providerName) => {
       res.push({
         type: 'provider',
         value: providerName,
       })
-      const models = modelList.filter(m => m.model_provider.provider_name === providerName)
+      const models = filteredModelList.filter(m => m.model_provider.provider_name === providerName)
       models.forEach(({ model_name }) => {
         res.push({
           type: 'model',
@@ -64,7 +82,6 @@ const ModelSelector: FC<Props> = ({
     })
     return res
   })()
-  const [search, setSearch] = useState('')
 
   return (
     <div className=''>
@@ -168,7 +185,9 @@ const ModelSelector: FC<Props> = ({
                   return null
                 })
               }
-              {/* <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound')}</div> */}
+              {(search && filteredModelList.length === 0) && (
+                <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound', { model: search })}</div>
+              )}
             </Popover.Panel>
           </Transition>
         )}

@@ -7,7 +7,7 @@ export type IModelNameProps = {
   modelId: string
 }
 
-const supportI18nModelName = [
+export const supportI18nModelName = [
   'gpt-3.5-turbo', 'gpt-3.5-turbo-16k',
   'gpt-4', 'gpt-4-32k',
   'text-davinci-003', 'text-embedding-ada-002', 'whisper-1',
