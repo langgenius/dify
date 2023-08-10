@@ -1,5 +1,4 @@
 import type { ReactElement } from 'react'
-import type { ValidateCallback } from '../key-validator/declarations'
 
 export type FormValue = Record<string, string>
 
@@ -14,19 +13,14 @@ export type Option = {
 }
 
 export type Field = {
-  visible: (v?: FormValue) => boolean
+  hidden?: (v?: FormValue) => boolean
   type: string
   key: string
   required?: boolean
-  obfuscated?: boolean
-  switch?: boolean
-  switchKey?: string
   label: TypeWithI18N
   options?: Option[] | ((v: FormValue) => Option[])
   placeholder?: TypeWithI18N
   help?: TypeWithI18N
-  validate?: ValidateCallback
-  onFocus?: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => void
 }
 
 export enum ModelEnum {
@@ -63,6 +57,7 @@ export type ModelModal = {
   title: TypeWithI18N
   icon: ReactElement
   defaultValue?: FormValue
+  validateKeys?: string[] | ((v?: FormValue) => string[])
   fields: Field[]
   link: {
     href: string
@@ -71,9 +66,8 @@ export type ModelModal = {
 }
 
 export type ModelConfig = {
-  key: ModelEnum
   item: ModelItem
-  modal?: ModelModal
+  modal: ModelModal
 }
 
 export enum PreferredProviderTypeEnum {

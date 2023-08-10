@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
-import type { Field, FormValue } from '../declarations'
-import { Input, InputWithStatus } from './Input'
+import type { Field, FormValue, ModelModal as TModelModal } from '../declarations'
+import { useValidate } from '../../key-validator/hooks'
+import { ValidatingTip } from '../../key-validator/ValidateStatus'
+import { validateModelProviderFn } from '../utils'
+import Input from './Input'
 import I18n from '@/context/i18n'
 
 type FormProps = {
+  modelModal?: TModelModal
   initValue?: FormValue
   fields: Field[]
   onChange: (v: FormValue) => void
@@ -17,6 +21,7 @@ py-2 text-sm text-gray-900
 `
 
 const Form: FC<FormProps> = ({
+  modelModal,
   initValue = {},
   fields,
   onChange,
@@ -24,45 +29,61 @@ const Form: FC<FormProps> = ({
 }) => {
   const { locale } = useContext(I18n)
   const [value, setValue] = useState(initValue)
+  const [validate, validating, validatedStatusState] = useValidate(value)
 
-  const handleFormChange = (k: string, v: string) => {
-    setValue({ ...value, [k]: v })
-    onChange({ ...value, [k]: v })
-  }
+  useEffect(() => {
+    onValidatedError(validatedStatusState.message || '')
+  }, [validatedStatusState, onValidatedError])
+
   const handleMultiFormChange = (v: FormValue) => {
     setValue(v)
     onChange(v)
+
+    const validateKeys = (typeof modelModal?.validateKeys === 'function' ? modelModal?.validateKeys(v) : modelModal?.validateKeys) || []
+    if (validateKeys.length) {
+      validate({
+        before: () => {
+          for (let i = 0; i < validateKeys.length; i++) {
+            if (!v[validateKeys[i]])
+              return false
+          }
+          return true
+        },
+        run: () => {
+          return validateModelProviderFn(modelModal!.key, {
+            config: v,
+          })
+        },
+      })
+    }
+  }
+
+  const handleFormChange = (k: string, v: string) => {
+    handleMultiFormChange({ ...value, [k]: v })
   }
 
   const renderField = (field: Field) => {
-    if (field.type === 'text' && field.visible(value)) {
+    const hidden = typeof field.hidden === 'function' ? field.hidden(value) : field.hidden
+
+    if (hidden)
+      return null
+
+    if (field.type === 'text') {
       return (
         <div key={field.key} className='py-3'>
           <div className={nameClassName}>{field.label[locale]}</div>
-          {
-            field.validate
-              ? (
-                <InputWithStatus
-                  field={field}
-                  initValue={initValue}
-                  formValue={value}
-                  onChange={handleMultiFormChange}
-                  onValidatedError={onValidatedError}
-                />
-              )
-              : (
-                <Input
-                  value={value?.[field.key] as string}
-                  onChange={v => handleFormChange(field.key, v)}
-                  placeholder={field?.placeholder?.[locale] || ''}
-                />
-              )
-          }
+          <Input
+            field={field}
+            value={value}
+            onChange={handleMultiFormChange}
+            validatedStatusState={validatedStatusState}
+          />
+          {validating && <ValidatingTip />}
         </div>
       )
     }
 
-    if (field.type === 'radio' && field.visible(value)) {
+    if (field.type === 'radio') {
       const options = typeof field.options === 'function' ? field.options(value) : field.options
       return (
         <div key={field.key} className='py-3'>

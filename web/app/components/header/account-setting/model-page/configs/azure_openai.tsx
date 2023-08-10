@@ -1,10 +1,8 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { validateModelProviderModelFn } from '../utils'
 import { AzureOpenaiService, AzureOpenaiServiceText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.azure_openai,
   item: {
     key: ModelEnum.azure_openai,
     titleIcon: {
@@ -29,9 +27,15 @@ const config: ModelConfig = {
     defaultValue: {
       model_type: 'text-generation',
     },
+    validateKeys: [
+      'model_name',
+      'model_type',
+      'openai_api_base',
+      'openai_api_key',
+      'base_model_name',
+    ],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'model_name',
         required: true,
@@ -45,7 +49,6 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: () => true,
         type: 'radio',
         key: 'model_type',
         required: true,
@@ -71,11 +74,9 @@ const config: ModelConfig = {
         ],
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'openai_api_base',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Endpoint URL',
           'zh-Hans': 'API 域名',
@@ -84,21 +85,11 @@ const config: ModelConfig = {
           'en': 'Enter your API Endpoint, eg: https://example.com/xxx',
           'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx',
         },
-        validate: {
-          before: () => {
-            return true
-          },
-          run: (v) => {
-            return validateModelProviderModelFn(ModelEnum.azure_openai, v)
-          },
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'openai_api_key',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Key',
           'zh-Hans': 'API Key',
@@ -109,7 +100,6 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: () => true,
         type: 'radio',
         key: 'base_model_name',
         required: true,

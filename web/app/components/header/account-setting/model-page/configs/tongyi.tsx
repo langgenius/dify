@@ -1,10 +1,8 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { validateModelProviderFn } from '../utils'
 import { Tongyi, TongyiText, TongyiTextCn } from '@/app/components/base/icons/src/image/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.tongyi,
   item: {
     key: ModelEnum.tongyi,
     titleIcon: {
@@ -26,9 +24,9 @@ const config: ModelConfig = {
         'zh-Hans': '从阿里云获取 API Key',
       },
     },
+    validateKeys: ['dashscope_api_key'],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'dashscope_api_key',
         required: true,
@@ -39,17 +37,6 @@ const config: ModelConfig = {
         placeholder: {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
-        },
-        validate: {
-          before: (v) => {
-            if (v?.dashscope_api_key)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.tongyi, {
-              config: v,
-            })
-          },
         },
       },
     ],

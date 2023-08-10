@@ -127,7 +127,7 @@ const ModelPage = () => {
             <ModelCard
               key={index}
               modelItem={model.item}
-              currentProvider={providers?.[model.key]}
+              currentProvider={providers?.[model.item.key]}
               onOpenModal={editValud => handleOpenModal(model.modal, editValud)}
               onUpdate={mutateProviders}
             />
@@ -139,7 +139,7 @@ const ModelPage = () => {
           <ModelItem
             key={index}
             modelItem={model.item}
-            currentProvider={providers?.[model.key]}
+            currentProvider={providers?.[model.item.key]}
             onOpenModal={() => handleOpenModal(model.modal)}
             onUpdate={mutateProviders}
           />

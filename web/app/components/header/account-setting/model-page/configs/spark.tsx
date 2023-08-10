@@ -1,10 +1,8 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { validateModelProviderFn } from '../utils'
 import { IflytekSpark, IflytekSparkText, IflytekSparkTextCn } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.spark,
   item: {
     key: ModelEnum.spark,
     titleIcon: {
@@ -30,9 +28,13 @@ const config: ModelConfig = {
         'zh-Hans': '从阿里云获取 API Key',
       },
     },
+    validateKeys: [
+      'app_id',
+      'api_key',
+      'api_secret',
+    ],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'app_id',
         required: true,
@@ -44,20 +46,8 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
-        validate: {
-          before: (v) => {
-            if (v?.app_id)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.spark, {
-              config: v,
-            })
-          },
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'api_key',
         required: true,
@@ -69,20 +59,8 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
-        validate: {
-          before: (v) => {
-            if (v?.api_key)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.spark, {
-              config: v,
-            })
-          },
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'api_secret',
         required: true,
@@ -93,17 +71,6 @@ const config: ModelConfig = {
         placeholder: {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
-        },
-        validate: {
-          before: (v) => {
-            if (v?.api_secret)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.spark, {
-              config: v,
-            })
-          },
         },
       },
     ],

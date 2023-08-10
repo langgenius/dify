@@ -1,65 +1,28 @@
-import { useEffect } from 'react'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue } from '../declarations'
-import { useValidate } from '../../key-validator/hooks'
 import {
   ValidatedErrorIcon,
   ValidatedSuccessIcon,
-  ValidatingTip,
 } from '../../key-validator/ValidateStatus'
 import { ValidatedStatus } from '../../key-validator/declarations'
+import type { ValidatedStatusState } from '../../key-validator/declarations'
 import I18n from '@/context/i18n'
 
 type InputProps = {
-  value: string
-  onChange: (v: string) => void
-  placeholder: string
+  field: Field
+  value: FormValue
+  onChange: (v: FormValue) => void
+  validatedStatusState: ValidatedStatusState
 }
 const Input: FC<InputProps> = ({
+  field,
   value,
   onChange,
-  placeholder,
-}) => {
-  return (
-    <input
-      tabIndex={-1}
-      className={`
-        block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
-        appearance-none outline-none caret-primary-600
-        hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50
-        focus:bg-white focus:border-gray-300 focus:shadow-xs
-        placeholder:text-sm placeholder:text-gray-400
-      `}
-      autoFocus={true}
-      value={value}
-      onChange={e => onChange(e.target.value)}
-      placeholder={placeholder}
-    />
-  )
-}
-
-type InputWithStatusProps = {
-  field: Field
-  initValue?: FormValue
-  formValue: FormValue
-  onChange: (v: FormValue) => void
-  onValidatedError: (v: string) => void
-}
-const InputWithStatus: FC<InputWithStatusProps> = ({
-  field,
-  initValue,
-  formValue,
-  onChange,
-  onValidatedError,
+  validatedStatusState,
 }) => {
   const { locale } = useContext(I18n)
-  const [validate, validating, validatedStatusState] = useValidate(formValue)
   const showValidatedIcon = validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed || validatedStatusState.status === ValidatedStatus.Success
-
-  useEffect(() => {
-    onValidatedError(validatedStatusState.message || '')
-  }, [validatedStatusState.message])
 
   const getValidatedIcon = () => {
     if (validatedStatusState.status === ValidatedStatus.Error || validatedStatusState.status === ValidatedStatus.Exceed)
@@ -70,20 +33,12 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
   }
 
   const handleChange = (v: string) => {
-    onChange({ ...formValue, [field.key]: v })
-
-    if (v) {
-      if (field.validate)
-        validate(field.validate)
-    }
-    else {
-      validate({ before: () => false })
-    }
+    const newFormValue = { ...value, [field.key]: v }
+    onChange(newFormValue)
   }
 
   const handleFocus = () => {
-    if (field.onFocus)
-      field.onFocus(formValue, initValue, onChange)
+
   }
 
   return (
@@ -101,12 +56,11 @@ const InputWithStatus: FC<InputWithStatusProps> = ({
         placeholder={field?.placeholder?.[locale] || ''}
         onChange={e => handleChange(e.target.value)}
         onFocus={handleFocus}
-        value={formValue[field.key] as string}
+        value={value[field.key] as string}
       />
       <div className='absolute top-2.5 right-2.5'>{getValidatedIcon()}</div>
-      {validating && <ValidatingTip />}
     </div>
   )
 }
 
-export { Input, InputWithStatus }
+export default Input

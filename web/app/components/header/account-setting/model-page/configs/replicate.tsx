@@ -1,10 +1,8 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { validateModelProviderModelFn } from '../utils'
 import { Replicate, ReplicateText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.replicate,
   item: {
     key: ModelEnum.replicate,
     titleIcon: {
@@ -33,9 +31,14 @@ const config: ModelConfig = {
     defaultValue: {
       model_type: 'text-generation',
     },
+    validateKeys: [
+      'model_type',
+      'replicate_api_token',
+      'model_name',
+      'model_version',
+    ],
     fields: [
       {
-        visible: () => true,
         type: 'radio',
         key: 'model_type',
         required: true,
@@ -61,11 +64,9 @@ const config: ModelConfig = {
         ],
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'replicate_api_token',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Key',
           'zh-Hans': 'API Key',
@@ -74,17 +75,8 @@ const config: ModelConfig = {
           'en': 'Enter your Replicate API key here',
           'zh-Hans': '在此输入您的 Replicate API Key',
         },
-        validate: {
-          before: () => {
-            return true
-          },
-          run: (v) => {
-            return validateModelProviderModelFn(ModelEnum.replicate, v)
-          },
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'model_name',
         required: true,
@@ -98,7 +90,6 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'model_version',
         label: {

@@ -1,11 +1,9 @@
 import { ModelEnum } from '../declarations'
-import type { FormValue, ModelConfig } from '../declarations'
-import { validateModelProviderFn } from '../utils'
+import type { ModelConfig } from '../declarations'
 import { OpenaiBlack, OpenaiText, OpenaiTransparent } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
 const config: ModelConfig = {
-  key: ModelEnum.openai,
   item: {
     key: ModelEnum.openai,
     titleIcon: {
@@ -33,13 +31,12 @@ const config: ModelConfig = {
         'zh-Hans': '从 OpenAI 获取 API Key',
       },
     },
+    validateKeys: ['openai_api_key'],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'openai_api_key',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Key',
           'zh-Hans': 'API Key',
@@ -48,24 +45,8 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
-        validate: {
-          before: (v) => {
-            if (v?.openai_api_key)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.openai, {
-              config: v,
-            })
-          },
-        },
-        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
-          if (newValue.openai_api_key === originValue?.openai_api_key)
-            dispatch({ ...newValue, openai_api_key: '' })
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'openai_organization',
         required: false,
@@ -77,25 +58,10 @@ const config: ModelConfig = {
           'en': 'Enter your Organization ID',
           'zh-Hans': '在此输入您的 组织 ID',
         },
-        validate: {
-          before: () => {
-            return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.openai, {
-              config: v,
-            })
-          },
-        },
-        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
-          if (newValue.openai_organization === originValue?.openai_organization)
-            dispatch({ ...newValue, openai_organization: '' })
-        },
       },
       ...(
         IS_CE_EDITION
           ? [{
-            visible: () => true,
             type: 'text',
             key: 'openai_api_base',
             required: false,

@@ -3,7 +3,6 @@ import type { ModelConfig } from '../declarations'
 import { Chatglm, ChatglmText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.chatglm,
   item: {
     key: ModelEnum.chatglm,
     titleIcon: {
@@ -43,7 +42,6 @@ const config: ModelConfig = {
     },
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'customApiDomain',
         required: true,

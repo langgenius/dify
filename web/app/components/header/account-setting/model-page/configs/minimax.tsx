@@ -1,10 +1,8 @@
 import { ModelEnum } from '../declarations'
 import type { ModelConfig } from '../declarations'
-import { validateModelProviderFn } from '../utils'
 import { Minimax, MinimaxText } from '@/app/components/base/icons/src/image/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.minimax,
   item: {
     key: ModelEnum.minimax,
     titleIcon: {
@@ -30,9 +28,12 @@ const config: ModelConfig = {
         'zh-Hans': '从 MiniMax 获取 API Key',
       },
     },
+    validateKeys: [
+      'minimax_api_key',
+      'minimax_group_id',
+    ],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'minimax_api_key',
         required: true,
@@ -44,20 +45,8 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
-        validate: {
-          before: (v) => {
-            if (v?.minimax_api_key)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.minimax, {
-              config: v,
-            })
-          },
-        },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'minimax_group_id',
         required: true,

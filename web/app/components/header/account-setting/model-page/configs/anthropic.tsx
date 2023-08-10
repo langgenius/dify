@@ -1,11 +1,9 @@
 import { ModelEnum } from '../declarations'
-import type { FormValue, ModelConfig } from '../declarations'
-import { validateModelProviderFn } from '../utils'
+import type { ModelConfig } from '../declarations'
 import { Anthropic, AnthropicText } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
 const config: ModelConfig = {
-  key: ModelEnum.anthropic,
   item: {
     key: ModelEnum.anthropic,
     titleIcon: {
@@ -33,9 +31,9 @@ const config: ModelConfig = {
         'zh-Hans': '从 Anthropic 获取 API Key',
       },
     },
+    validateKeys: ['anthropic_api_key'],
     fields: [
       {
-        visible: () => true,
         type: 'text',
         key: 'anthropic_api_key',
         required: true,
@@ -47,26 +45,10 @@ const config: ModelConfig = {
           'en': 'Enter your API key here',
           'zh-Hans': '在此输入您的 API Key',
         },
-        validate: {
-          before: (v) => {
-            if (v?.anthropic_api_key)
-              return true
-          },
-          run: (v) => {
-            return validateModelProviderFn(ModelEnum.anthropic, {
-              config: v,
-            })
-          },
-        },
-        onFocus: (newValue: FormValue, originValue?: FormValue, dispatch?: any) => {
-          if (newValue.anthropic_api_key === originValue?.anthropic_api_key)
-            dispatch({ ...newValue, anthropic_api_key: '' })
-        },
       },
       ...(
         IS_CE_EDITION
           ? [{
-            visible: () => true,
             type: 'text',
             key: 'anthropic_api_url',
             required: false,

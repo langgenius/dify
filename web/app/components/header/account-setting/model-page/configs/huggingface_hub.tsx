@@ -3,7 +3,6 @@ import type { FormValue, ModelConfig } from '../declarations'
 import { Huggingface, HuggingfaceText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ModelConfig = {
-  key: ModelEnum.huggingface_hub,
   item: {
     key: ModelEnum.huggingface_hub,
     titleIcon: {
@@ -33,9 +32,14 @@ const config: ModelConfig = {
       model_type: 'text-generation',
       huggingfacehub_api_type: 'hosted_inference_api',
     },
+    validateKeys: [
+      'huggingfacehub_api_type',
+      'huggingfacehub_api_token',
+      'huggingfacehub_endpoint_url',
+      'model_name',
+    ],
     fields: [
       {
-        visible: () => true,
         type: 'radio',
         key: 'huggingfacehub_api_type',
         required: true,
@@ -61,11 +65,9 @@ const config: ModelConfig = {
         ],
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'huggingfacehub_api_token',
         required: true,
-        obfuscated: true,
         label: {
           'en': 'API Token',
           'zh-Hans': 'API Token',
@@ -76,7 +78,6 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: () => true,
         type: 'text',
         key: 'model_name',
         required: true,
@@ -90,7 +91,7 @@ const config: ModelConfig = {
         },
       },
       {
-        visible: (value?: FormValue) => value?.huggingfacehub_api_type === 'inference_endpoints',
+        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'inference_endpoints',
         type: 'text',
         key: 'huggingfacehub_endpoint_url',
         label: {

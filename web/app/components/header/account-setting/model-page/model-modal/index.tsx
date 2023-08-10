@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -29,6 +29,10 @@ const ModelModal: FC<ModelModalProps> = ({
   const [value, setValue] = useState<FormValue>()
   const [errorMessage, setErrorMessage] = useState('')
 
+  const handleValidatedError = useCallback((newErrorMessage: string) => {
+    setErrorMessage(newErrorMessage)
+  }, [])
+
   return (
     <Modal
       isShow={isShow}
@@ -41,10 +45,11 @@ const ModelModal: FC<ModelModalProps> = ({
           {modelModal?.icon}
         </div>
         <Form
+          modelModal={modelModal}
           fields={modelModal?.fields || []}
           initValue={modelModal?.defaultValue}
-          onChange={v => setValue(v)}
-          onValidatedError={v => setErrorMessage(v)}
+          onChange={newValue => setValue(newValue)}
+          onValidatedError={handleValidatedError}
         />
         <div className='flex justify-between items-center py-6'>
           <a
