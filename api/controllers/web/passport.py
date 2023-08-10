@@ -14,6 +14,8 @@ class PassportResource(Resource):
         app_code = request.headers.get('X-App-Code')
         if app_code is None:
             raise Unauthorized('X-App-Code header is missing.')
+        external_user_id = request.args.get('external_user_id')
+        name = request.args.get('name')
 
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(
@@ -31,8 +33,10 @@ class PassportResource(Resource):
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type='browser',
-            is_anonymous=True,
+            is_anonymous=True if not external_user_id else False,
             session_id=generate_session_id(),
+            external_user_id=external_user_id,
+            name=name if external_user_id else None,
         )
         db.session.add(end_user)
         db.session.commit()
