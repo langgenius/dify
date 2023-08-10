@@ -3,8 +3,8 @@ import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
   IWorkspace, LangGeniusVersionResponse, Member,
-  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken, TenantInfoResponse,
-  UserProfileOriginResponse,
+  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
+  SetupStatusResponse, TenantInfoResponse, UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -17,6 +17,10 @@ export const login: Fetcher<CommonResponse, { url: string; body: Record<string, 
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post('/setup', { body }) as Promise<CommonResponse>
+}
+
+export const fetchSetupStatus = () => {
+  return get('/setup') as Promise<SetupStatusResponse>
 }
 
 export const fetchUserProfile: Fetcher<UserProfileOriginResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
