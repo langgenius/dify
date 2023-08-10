@@ -13,7 +13,7 @@ const config: ProviderConfig = {
     subTitleIcon: <OpenaiBlack className='w-6 h-6' />,
     desc: {
       'en': 'Models provided by OpenAI, such as GPT-3.5-Turbo and GPT-4.',
-      'zh-Hans': 'OpenAI提供的模型，例如GPT-3.5-Turbo和GPT-4。',
+      'zh-Hans': 'OpenAI 提供的模型，例如 GPT-3.5-Turbo 和 GPT-4。',
     },
     bgColor: 'bg-gray-200',
   },
@@ -56,7 +56,7 @@ const config: ProviderConfig = {
         },
         placeholder: {
           'en': 'Enter your Organization ID(Optional)',
-          'zh-Hans': '在此输入您的 组织 ID（选填）',
+          'zh-Hans': '在此输入您的组织 ID（选填）',
         },
       },
       ...(

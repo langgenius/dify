@@ -234,7 +234,7 @@ const translation = {
       buyQuota: 'Buy Quota',
       priorityUse: 'Priority use',
       removeKey: 'Remove API Key',
-      tip: 'Priority will be given to the paid quota. The 200 trial quota will be used after the paid quota is exhausted.',
+      tip: 'Priority will be given to the paid quota. The Trial quota will be used after the paid quota is exhausted.',
     },
     item: {
       deleteDesc: '{{modelName}} are being used as system reasoning models. Some functions will not be available after removal. Please confirm.',
