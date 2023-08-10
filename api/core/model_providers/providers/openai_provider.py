@@ -205,14 +205,22 @@ class OpenAIProvider(BaseModelProvider):
 
             return credentials
         else:
-            return {
-                'openai_api_base': hosted_model_providers.openai.api_base,
-                'openai_api_key': hosted_model_providers.openai.api_key,
-                'openai_organization': hosted_model_providers.openai.api_organization
-            }
+            if hosted_model_providers.openai:
+                return {
+                    'openai_api_base': hosted_model_providers.openai.api_base,
+                    'openai_api_key': hosted_model_providers.openai.api_key,
+                    'openai_organization': hosted_model_providers.openai.api_organization
+                }
+            else:
+                return {
+                    'openai_api_base': None,
+                    'openai_api_key': None,
+                    'openai_organization': None
+                }
 
     def should_deduct_quota(self):
-        if hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > 0:
+        if hosted_model_providers.openai \
+                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > 0:
             return True
 
         return False
@@ -223,7 +231,8 @@ class OpenAIProvider(BaseModelProvider):
 
         :return:
         """
-        if hosted_model_providers.openai.paid_enabled:
+        if hosted_model_providers.openai \
+                and hosted_model_providers.openai.paid_enabled:
             return {
                 'product_id': hosted_model_providers.openai.paid_stripe_price_id,
                 'increase_quota': hosted_model_providers.openai.paid_increase_quota,

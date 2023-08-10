@@ -251,6 +251,10 @@ def clean_unused_dataset_indexes():
 
 @click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
 def sync_anthropic_hosted_providers():
+    if not hosted_model_providers.anthropic:
+        click.echo(click.style('Anthropic hosted provider is not configured.', fg='red'))
+        return
+
     click.echo(click.style('Start sync anthropic hosted providers.', fg='green'))
     count = 0
 

@@ -143,13 +143,20 @@ class AnthropicProvider(BaseModelProvider):
 
             return credentials
         else:
-            return {
-                'anthropic_api_url': hosted_model_providers.anthropic.api_base,
-                'anthropic_api_key': hosted_model_providers.anthropic.api_key,
-            }
+            if hosted_model_providers.anthropic:
+                return {
+                    'anthropic_api_url': hosted_model_providers.anthropic.api_base,
+                    'anthropic_api_key': hosted_model_providers.anthropic.api_key,
+                }
+            else:
+                return {
+                    'anthropic_api_url': None,
+                    'anthropic_api_key': None
+                }
 
     def should_deduct_quota(self):
-        if hosted_model_providers.anthropic.quota_limit and hosted_model_providers.anthropic.quota_limit > 0:
+        if hosted_model_providers.anthropic and \
+                hosted_model_providers.anthropic.quota_limit and hosted_model_providers.anthropic.quota_limit > 0:
             return True
 
         return False
@@ -160,7 +167,8 @@ class AnthropicProvider(BaseModelProvider):
 
         :return:
         """
-        if hosted_model_providers.anthropic.paid_enabled:
+        if hosted_model_providers.anthropic \
+                and hosted_model_providers.anthropic.paid_enabled:
             return {
                 'product_id': hosted_model_providers.anthropic.paid_stripe_price_id,
                 'increase_quota': hosted_model_providers.anthropic.paid_increase_quota,

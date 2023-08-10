@@ -162,8 +162,8 @@ class ProviderService:
         # get model provider rules
         model_provider_rules = ModelProviderFactory.get_provider_rule(provider_name)
 
-        if model_provider_rules['model_flexibility'] != 'configurable':
-            raise ValueError('Only support configurable model provider')
+        if model_provider_rules['model_flexibility'] != 'fixed':
+            raise ValueError('Only support fixed model provider')
 
         # only support provider type CUSTOM
         if ProviderType.CUSTOM.value not in model_provider_rules['support_provider_types']:

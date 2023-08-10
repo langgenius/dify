@@ -217,35 +217,47 @@ class AzureOpenAIProvider(BaseModelProvider):
         :param obfuscated:
         :return:
         """
-        if self.provider.provider_type != ProviderType.CUSTOM.value:
-            raise NotImplementedError
+        if self.provider.provider_type == ProviderType.CUSTOM.value:
+            # convert old provider config to provider models
+            self._convert_provider_config_to_model_config()
 
-        # convert old provider config to provider models
-        self._convert_provider_config_to_model_config()
+            provider_model = self._get_provider_model(model_name, model_type)
 
-        provider_model = self._get_provider_model(model_name, model_type)
+            if not provider_model.encrypted_config:
+                return {
+                    'openai_api_base': '',
+                    'openai_api_key': '',
+                    'base_model_name': ''
+                }
 
-        if not provider_model.encrypted_config:
-            return {
-                'openai_api_base': '',
-                'openai_api_key': '',
-                'base_model_name': ''
-            }
+            credentials = json.loads(provider_model.encrypted_config)
+            if credentials['openai_api_key']:
+                credentials['openai_api_key'] = encrypter.decrypt_token(
+                    self.provider.tenant_id,
+                    credentials['openai_api_key']
+                )
 
-        credentials = json.loads(provider_model.encrypted_config)
-        if credentials['openai_api_key']:
-            credentials['openai_api_key'] = encrypter.decrypt_token(
-                self.provider.tenant_id,
-                credentials['openai_api_key']
-            )
+                if obfuscated:
+                    credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
 
-            if obfuscated:
-                credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
-
-        return credentials
+            return credentials
+        else:
+            if hosted_model_providers.azure_openai:
+                return {
+                    'openai_api_base': hosted_model_providers.azure_openai.api_base,
+                    'openai_api_key': hosted_model_providers.azure_openai.api_key,
+                    'base_model_name': model_name
+                }
+            else:
+                return {
+                    'openai_api_base': None,
+                    'openai_api_key': None,
+                    'base_model_name': None
+                }
 
     def should_deduct_quota(self):
-        if hosted_model_providers.azure_openai.quota_limit and hosted_model_providers.azure_openai.quota_limit > 0:
+        if hosted_model_providers.azure_openai \
+                and hosted_model_providers.azure_openai.quota_limit and hosted_model_providers.azure_openai.quota_limit > 0:
             return True
 
         return False
