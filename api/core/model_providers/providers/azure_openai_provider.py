@@ -18,7 +18,7 @@ from core.model_providers.providers.base import BaseModelProvider, CredentialsVa
 from core.model_providers.providers.hosted import hosted_model_providers
 from core.third_party.langchain.llms.azure_chat_open_ai import EnhanceAzureChatOpenAI
 from extensions.ext_database import db
-from models.provider import ProviderType, ProviderModel
+from models.provider import ProviderType, ProviderModel, ProviderQuotaType
 
 BASE_MODELS = [
     'gpt-4',
@@ -43,48 +43,90 @@ class AzureOpenAIProvider(BaseModelProvider):
         # convert old provider config to provider models
         self._convert_provider_config_to_model_config()
 
-        rules = self.get_rules()
-        if 'custom' not in rules['support_provider_types']:
-            return self._get_fixed_model_list(model_type)
+        if self.provider.provider_type == ProviderType.CUSTOM.value:
+            # get configurable provider models
+            provider_models = db.session.query(ProviderModel).filter(
+                ProviderModel.tenant_id == self.provider.tenant_id,
+                ProviderModel.provider_name == self.provider.provider_name,
+                ProviderModel.model_type == model_type.value,
+                ProviderModel.is_valid == True
+            ).order_by(ProviderModel.created_at.asc()).all()
 
-        if 'model_flexibility' not in rules:
-            return self._get_fixed_model_list(model_type)
+            model_list = []
+            for provider_model in provider_models:
+                model_dict = {
+                    'id': provider_model.model_name,
+                    'name': provider_model.model_name
+                }
 
-        if rules['model_flexibility'] == 'fixed':
-            return self._get_fixed_model_list(model_type)
+                credentials = json.loads(provider_model.encrypted_config)
+                if credentials['base_model_name'] in [
+                    'gpt-4',
+                    'gpt-4-32k',
+                    'gpt-35-turbo',
+                    'gpt-35-turbo-16k',
+                ]:
+                    model_dict['features'] = [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
 
-        # get configurable provider models
-        provider_models = db.session.query(ProviderModel).filter(
-            ProviderModel.tenant_id == self.provider.tenant_id,
-            ProviderModel.provider_name == self.provider.provider_name,
-            ProviderModel.model_type == model_type.value,
-            ProviderModel.is_valid == True
-        ).order_by(ProviderModel.created_at.asc()).all()
-
-        model_list = []
-        for provider_model in provider_models:
-            model_dict = {
-                'id': provider_model.model_name,
-                'name': provider_model.model_name
-            }
-
-            credentials = json.loads(provider_model.encrypted_config)
-            if credentials['base_model_name'] in [
-                'gpt-4',
-                'gpt-4-32k',
-                'gpt-35-turbo',
-                'gpt-35-turbo-16k',
-            ]:
-                model_dict['features'] = [
-                    ModelFeature.AGENT_THOUGHT.value
-                ]
-
-            model_list.append(model_dict)
+                model_list.append(model_dict)
+        else:
+            model_list = self._get_fixed_model_list(model_type)
 
         return model_list
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
-        return []
+        if model_type == ModelType.TEXT_GENERATION:
+            models = [
+                {
+                    'id': 'gpt-3.5-turbo',
+                    'name': 'gpt-3.5-turbo',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-3.5-turbo-16k',
+                    'name': 'gpt-3.5-turbo-16k',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-4',
+                    'name': 'gpt-4',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-4-32k',
+                    'name': 'gpt-4-32k',
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'text-davinci-003',
+                    'name': 'text-davinci-003',
+                }
+            ]
+
+            if self.provider.provider_type == ProviderType.SYSTEM.value \
+                    and self.provider.quota_type == ProviderQuotaType.TRIAL.value:
+                models = [item for item in models if item['id'] not in ['gpt-4', 'gpt-4-32k']]
+
+            return models
+        elif model_type == ModelType.EMBEDDINGS:
+            return [
+                {
+                    'id': 'text-embedding-ada-002',
+                    'name': 'text-embedding-ada-002'
+                }
+            ]
+        else:
+            return []
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
