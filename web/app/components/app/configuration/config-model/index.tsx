@@ -125,6 +125,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
       await ensureModelParamLoaded(nextProvider, id)
 
       const nextParamsRule = getAllParams()[nextProvider]?.[id]
+      // debugger
       const nextSelectModelMaxToken = nextParamsRule.max_tokens.max
       const newConCompletionParams = produce(completionParams, (draft: any) => {
         if (completionParams.max_tokens > nextSelectModelMaxToken) {
@@ -144,6 +145,11 @@ const ConfigModel: FC<IConfigModelProps> = ({
           }
 
           if (draft[key] === undefined) {
+            draft[key] = nextParamsRule[key].default || 0
+            return
+          }
+
+          if (!prevParamsRule[key].enabled) {
             draft[key] = nextParamsRule[key].default || 0
             return
           }

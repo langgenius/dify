@@ -10,10 +10,10 @@ import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/gen
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   Anthropic,
-  Azureai,
   Chatglm,
   Huggingface,
   IflytekSpark,
+  OpenaiBlue,
   OpenaiGreen,
   OpenaiViolet,
   Replicate,
@@ -48,7 +48,7 @@ const icons: any = {
     'gpt-3.5-turbo-16k': OpenaiGreen,
     'gpt-4': OpenaiViolet,
   },
-  [ProviderEnum.azure_openai]: Azureai,
+  [ProviderEnum.azure_openai]: OpenaiBlue,
   [ProviderEnum.anthropic]: Anthropic,
   [ProviderEnum.replicate]: Replicate,
   [ProviderEnum.huggingface_hub]: Huggingface,
