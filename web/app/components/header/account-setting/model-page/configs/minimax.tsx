@@ -1,10 +1,10 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { Minimax, MinimaxText } from '@/app/components/base/icons/src/image/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.minimax,
+    key: ProviderEnum.minimax,
     titleIcon: {
       'en': <MinimaxText className='w-[84px] h-6' />,
       'zh-Hans': <MinimaxText className='w-[84px] h-6' />,
@@ -15,7 +15,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
-    key: ModelEnum.minimax,
+    key: ProviderEnum.minimax,
     title: {
       'en': 'MiniMax',
       'zh-Hans': 'MiniMax',

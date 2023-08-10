@@ -6,12 +6,14 @@ import Button from '@/app/components/base/button'
 
 type CardProps = {
   models: any[]
-  onOpenModal: () => void
+  onOpenModal: (v: any) => void
+  onOperate: (v: Record<string, string>) => void
 }
 
 const Card: FC<CardProps> = ({
   models,
   onOpenModal,
+  onOperate,
 }) => {
   const { t } = useTranslation()
 
@@ -37,11 +39,11 @@ const Card: FC<CardProps> = ({
               <Indicator className='mr-3' />
               <Button
                 className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
-                onClick={onOpenModal}
+                onClick={() => onOpenModal({ ...model, ...model.config })}
               >
                 {t('common.operation.edit')}
               </Button>
-              <Operation onOperate={() => {}} />
+              <Operation onOperate={v => onOperate({ ...v, value: model })} />
             </div>
           </div>
         ))

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
-import type { Field, FormValue, ModelModal as TModelModal } from '../declarations'
+import type { Field, FormValue, ProviderConfigModal } from '../declarations'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { validateModelProviderFn } from '../utils'
@@ -9,7 +9,7 @@ import Input from './Input'
 import I18n from '@/context/i18n'
 
 type FormProps = {
-  modelModal?: TModelModal
+  modelModal?: ProviderConfigModal
   initValue?: FormValue
   fields: Field[]
   onChange: (v: FormValue) => void
@@ -62,6 +62,11 @@ const Form: FC<FormProps> = ({
     handleMultiFormChange({ ...value, [k]: v })
   }
 
+  const handleFocus = (k: string) => {
+    if (value[k] === initValue[k])
+      setValue({ ...value, [k]: '' })
+  }
+
   const renderField = (field: Field) => {
     const hidden = typeof field.hidden === 'function' ? field.hidden(value) : field.hidden
 
@@ -76,6 +81,7 @@ const Form: FC<FormProps> = ({
             field={field}
             value={value}
             onChange={handleMultiFormChange}
+            onFocus={() => handleFocus(field.key)}
             validatedStatusState={validatedStatusState}
           />
           {validating && <ValidatingTip />}

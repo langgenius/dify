@@ -1,11 +1,11 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { OpenaiBlack, OpenaiText, OpenaiTransparent } from '@/app/components/base/icons/src/public/llm'
 import { IS_CE_EDITION } from '@/config'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.openai,
+    key: ProviderEnum.openai,
     titleIcon: {
       'en': <OpenaiText className='h-5' />,
       'zh-Hans': <OpenaiText className='h-5' />,
@@ -18,7 +18,7 @@ const config: ModelConfig = {
     bgColor: 'bg-gray-200',
   },
   modal: {
-    key: ModelEnum.openai,
+    key: ProviderEnum.openai,
     title: {
       'en': 'OpenAI',
       'zh-Hans': 'OpenAI',
@@ -55,8 +55,8 @@ const config: ModelConfig = {
           'zh-Hans': '组织 ID',
         },
         placeholder: {
-          'en': 'Enter your Organization ID',
-          'zh-Hans': '在此输入您的 组织 ID',
+          'en': 'Enter your Organization ID(Optional)',
+          'zh-Hans': '在此输入您的 组织 ID（选填）',
         },
       },
       ...(
@@ -70,8 +70,8 @@ const config: ModelConfig = {
               'zh-Hans': '自定义 API 域名',
             },
             placeholder: {
-              'en': 'Enter your API domain, eg: https://example.com/xxx',
-              'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx',
+              'en': 'Enter your API domain, eg: https://example.com/xxx(Optional)',
+              'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx（选填）',
             },
             help: {
               'en': 'You can configure your server compatible with the OpenAI API specification, or proxy mirror address',

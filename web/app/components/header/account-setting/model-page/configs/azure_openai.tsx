@@ -1,17 +1,17 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { AzureOpenaiService, AzureOpenaiServiceText } from '@/app/components/base/icons/src/public/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.azure_openai,
+    key: ProviderEnum.azure_openai,
     titleIcon: {
       'en': <AzureOpenaiServiceText className='h-6' />,
       'zh-Hans': <AzureOpenaiServiceText className='h-6' />,
     },
   },
   modal: {
-    key: ModelEnum.azure_openai,
+    key: ProviderEnum.azure_openai,
     title: {
       'en': 'Azure OpenAI',
       'zh-Hans': 'Azure OpenAI',

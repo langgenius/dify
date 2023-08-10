@@ -1,10 +1,10 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { IflytekSpark, IflytekSparkText, IflytekSparkTextCn } from '@/app/components/base/icons/src/public/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.spark,
+    key: ProviderEnum.spark,
     titleIcon: {
       'en': <IflytekSparkText className='h-6' />,
       'zh-Hans': <IflytekSparkTextCn className='h-6' />,
@@ -15,7 +15,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
-    key: ModelEnum.spark,
+    key: ProviderEnum.spark,
     title: {
       'en': 'iFLYTEK SPARK',
       'zh-Hans': '讯飞星火',

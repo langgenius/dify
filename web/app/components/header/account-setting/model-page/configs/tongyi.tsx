@@ -1,17 +1,17 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { Tongyi, TongyiText, TongyiTextCn } from '@/app/components/base/icons/src/image/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.tongyi,
+    key: ProviderEnum.tongyi,
     titleIcon: {
       'en': <TongyiText className='w-[88px] h-6' />,
       'zh-Hans': <TongyiTextCn className='w-[100px] h-6' />,
     },
   },
   modal: {
-    key: ModelEnum.tongyi,
+    key: ProviderEnum.tongyi,
     title: {
       'en': 'Tongyi',
       'zh-Hans': '通义千问',

@@ -9,7 +9,7 @@ flex items-center px-3 h-9 text-sm text-gray-700 rounded-lg cursor-pointer
 `
 
 type OperationProps = {
-  onOperate: (action: string) => void
+  onOperate: (v: Record<string, string>) => void
 }
 
 const Operation: FC<OperationProps> = ({
@@ -40,7 +40,7 @@ const Operation: FC<OperationProps> = ({
         <Popover.Panel className='absolute top-8 right-0 w-[144px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg z-10'>
           <div className='p-1'>
             <Popover.Button as={Fragment}>
-              <div className={`group ${itemClassName} hover:bg-[#FEF3F2] hover:text-[#D92D20]`} onClick={() => onOperate('delete')}>
+              <div className={`group ${itemClassName} hover:bg-[#FEF3F2] hover:text-[#D92D20]`} onClick={() => onOperate({ type: 'delete' })}>
                 <Trash03 className='mr-2 w-4 h-4 text-gray-500 group-hover:text-[#D92D20]' />
                 {t('common.operation.remove')}
               </div>

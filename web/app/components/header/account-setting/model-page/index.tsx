@@ -3,9 +3,9 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   FormValue,
-  ModelModal as TModelModal,
+  ProviderConfigModal,
 } from './declarations'
-import { ModelEnum } from './declarations'
+import { ProviderEnum } from './declarations'
 import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
@@ -45,9 +45,9 @@ const ModelPage = () => {
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
-  const [modelModalConfig, setModelModalConfig] = useState<TModelModal | undefined>(undefined)
+  const [modelModalConfig, setModelModalConfig] = useState<ProviderConfigModal | undefined>(undefined)
 
-  const handleOpenModal = (newModelModalConfig: TModelModal | undefined, editValue?: FormValue) => {
+  const handleOpenModal = (newModelModalConfig: ProviderConfigModal | undefined, editValue?: FormValue) => {
     if (newModelModalConfig) {
       setShowModal(true)
       const defaultValue = editValue ? { ...newModelModalConfig.defaultValue, ...editValue } : newModelModalConfig.defaultValue
@@ -58,7 +58,7 @@ const ModelPage = () => {
     setShowModal(false)
   }
   const handleSave = async (v?: FormValue) => {
-    if (modelModalConfig && v && [ModelEnum.azure_openai, ModelEnum.replicate, ModelEnum.huggingface_hub].includes(modelModalConfig?.key)) {
+    if (modelModalConfig && v && [ProviderEnum.azure_openai, ProviderEnum.replicate, ProviderEnum.huggingface_hub].includes(modelModalConfig?.key)) {
       const { model_name, model_type, ...config } = v
       const res = await setModelProvider({
         url: `/workspaces/current/model-providers/${modelModalConfig?.key}/models`,
@@ -128,7 +128,7 @@ const ModelPage = () => {
               key={index}
               modelItem={model.item}
               currentProvider={providers?.[model.item.key]}
-              onOpenModal={editValud => handleOpenModal(model.modal, editValud)}
+              onOpenModal={editValue => handleOpenModal(model.modal, editValue)}
               onUpdate={mutateProviders}
             />
           ))
@@ -140,7 +140,7 @@ const ModelPage = () => {
             key={index}
             modelItem={model.item}
             currentProvider={providers?.[model.item.key]}
-            onOpenModal={() => handleOpenModal(model.modal)}
+            onOpenModal={editValue => handleOpenModal(model.modal, editValue)}
             onUpdate={mutateProviders}
           />
         ))

@@ -235,6 +235,9 @@ const translation = {
       removeKey: '删除 API 密钥',
       tip: '已付费额度将优先考虑。 200个试用额度将在付费额度用完后使用。',
     },
+    item: {
+      deleteDesc: '{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。',
+    },
     addApiKey: '添加您的 API 密钥',
     invalidApiKey: 'Invalid API key',
     encrypted: {

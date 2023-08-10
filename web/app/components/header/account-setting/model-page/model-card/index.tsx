@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { FormValue, ModelItem, TModelProvider } from '../declarations'
+import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig } from '../declarations'
 import Indicator from '../../../indicator'
 import Quota from './Quota'
 import PrioritySelector from './PrioritySelector'
@@ -12,8 +12,8 @@ import { changeModelProviderPriority, deleteModelProvider } from '@/service/comm
 import { useToastContext } from '@/app/components/base/toast'
 
 type ModelCardProps = {
-  currentProvider?: TModelProvider
-  modelItem: ModelItem
+  currentProvider?: Provider
+  modelItem: ProviderConfigItem
   onOpenModal: (v?: FormValue) => void
   onUpdate: () => void
 }
@@ -27,7 +27,7 @@ const ModelCard: FC<ModelCardProps> = ({
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom')
+  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithConfig
 
   const handleOperate = async ({ type, value }: Record<string, string>) => {
     if (type === 'delete') {

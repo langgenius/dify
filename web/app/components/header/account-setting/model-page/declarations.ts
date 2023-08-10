@@ -23,7 +23,7 @@ export type Field = {
   help?: TypeWithI18N
 }
 
-export enum ModelEnum {
+export enum ProviderEnum {
   'openai' = 'openai',
   'anthropic' = 'anthropic',
   'replicate' = 'replicate',
@@ -35,8 +35,8 @@ export enum ModelEnum {
   'chatglm' = 'chatglm',
 }
 
-export type ModelItem = {
-  key: ModelEnum
+export type ProviderConfigItem = {
+  key: ProviderEnum
   titleIcon: TypeWithI18N<ReactElement>
   subTitleIcon?: ReactElement
   desc?: TypeWithI18N
@@ -52,8 +52,8 @@ export type ModelItem = {
   }
 }
 
-export type ModelModal = {
-  key: ModelEnum
+export type ProviderConfigModal = {
+  key: ProviderEnum
   title: TypeWithI18N
   icon: ReactElement
   defaultValue?: FormValue
@@ -65,9 +65,9 @@ export type ModelModal = {
   }
 }
 
-export type ModelConfig = {
-  item: ModelItem
-  modal: ModelModal
+export type ProviderConfig = {
+  item: ProviderConfigItem
+  modal: ProviderConfigModal
 }
 
 export enum PreferredProviderTypeEnum {
@@ -78,83 +78,42 @@ export enum ModelFlexibilityEnum {
   'fixed' = 'fixed',
   'configurable' = 'configurable',
 }
-export type ConfigurableModel = {
+
+export type ProviderCommon = {
+  provider_name: ProviderEnum
+  provider_type: PreferredProviderTypeEnum
+  is_valid: boolean
+  last_used: number
+}
+
+export type ProviderWithQuota = {
+  quota_type: string
+  quota_unit: string
+  quota_limit: number
+  quota_used: number
+} & ProviderCommon
+
+export type ProviderWithConfig = {
+  config: Record<string, string>
+} & ProviderCommon
+
+export type Model = {
   model_name: string
   model_type: string
   config: Record<string, string>
-  is_valid: boolean
 }
-export type CommonProvider = {
-  provider_name: ModelEnum
-  provider_type: PreferredProviderTypeEnum
-  is_valid: boolean
-  last_used: number
-}
-export type SystemTrialProvider = {
-  quota_type: string
-  quota_unit: string
-  quota_limit: number
-  quota_used: number
-} & CommonProvider
-export type SystemPaidProvider = SystemTrialProvider
-export type CustomFixedProvider = {
-  config: Record<string, string>
-} & CommonProvider
-export type CustomConfigurableProvider = {
-  models: ConfigurableModel[]
-} & CommonProvider
-export type ModelProviderCommon = {
+
+export type ProviderWithModels = {
+  models: Model[]
+} & ProviderCommon
+
+export type ProviderInstance = ProviderWithQuota | ProviderWithConfig | ProviderWithModels
+
+export type Provider = {
   preferred_provider_type: PreferredProviderTypeEnum
   model_flexibility: ModelFlexibilityEnum
+  providers: ProviderInstance[]
 }
-export type SystemProvider = {
-  providers: (SystemTrialProvider | SystemPaidProvider | CustomFixedProvider)[]
-} & ModelProviderCommon
-
-export type CustomAddProvider = {
-  providers: [CustomConfigurableProvider]
-} & ModelProviderCommon
-
-export type CustomSetupProvider = {
-  providers: [CustomFixedProvider]
-} & ModelProviderCommon
-
-export type ModelProvider = {
-  [k in (ModelEnum.openai | ModelEnum.anthropic)]: SystemProvider
-} & {
-  [k in (ModelEnum.azure_openai | ModelEnum.replicate | ModelEnum.huggingface_hub)]: CustomAddProvider
-} & {
-  [k in (ModelEnum.tongyi | ModelEnum.minimax | ModelEnum.chatglm | ModelEnum.spark)]: CustomSetupProvider
-}
-
-export type TProviderCommon = {
-  provider_name: ModelEnum
-  provider_type: PreferredProviderTypeEnum
-  is_valid: boolean
-  last_used: number
-}
-
-export type TProviderWithQuota = {
-  quota_type: string
-  quota_unit: string
-  quota_limit: number
-  quota_used: number
-} & TProviderCommon
-
-export type TProviderWithConfig = {
-  config: Record<string, string>
-} & TProviderCommon
-
-export type TProviderWithModels = {
-  models: ConfigurableModel[]
-} & TProviderCommon
-
-export type TModelProvider = {
-  preferred_provider_type: PreferredProviderTypeEnum
-  model_flexibility: ModelFlexibilityEnum
-  providers: any[]
-}
-
-export type TModelProviderMap = {
-  [k in ModelEnum]: TModelProvider
+export type ProviderMap = {
+  [k in ProviderEnum]: Provider
 }

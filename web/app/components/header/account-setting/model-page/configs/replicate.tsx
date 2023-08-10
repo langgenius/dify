@@ -1,10 +1,10 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { Replicate, ReplicateText } from '@/app/components/base/icons/src/public/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.replicate,
+    key: ProviderEnum.replicate,
     titleIcon: {
       'en': <ReplicateText className='h-6' />,
       'zh-Hans': <ReplicateText className='h-6' />,
@@ -15,7 +15,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
-    key: ModelEnum.replicate,
+    key: ProviderEnum.replicate,
     title: {
       'en': 'Replicate',
       'zh-Hans': 'Replicate',

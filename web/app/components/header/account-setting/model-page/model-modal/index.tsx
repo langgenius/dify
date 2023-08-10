@@ -2,7 +2,7 @@ import { useCallback, useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { FormValue, ModelModal as TModelModal } from '../declarations'
+import type { FormValue, ProviderConfigModal } from '../declarations'
 import Form from './Form'
 import I18n from '@/context/i18n'
 import Modal from '@/app/components/base/modal'
@@ -14,7 +14,7 @@ import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alerts
 type ModelModalProps = {
   isShow: boolean
   onCancel: () => void
-  modelModal?: TModelModal
+  modelModal?: ProviderConfigModal
   onSave: (v?: FormValue) => void
 }
 

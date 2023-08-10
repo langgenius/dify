@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { ModelItem as TModelItem, TModelProvider } from '../declarations'
+import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig, ProviderWithQuota } from '../declarations'
 import Indicator from '../../../indicator'
 import Operation from './Operation'
 import s from './index.module.css'
@@ -9,9 +9,9 @@ import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 
 type SettingProps = {
-  currentProvider?: TModelProvider
-  modelItem: TModelItem
-  onOpenModal: () => void
+  currentProvider?: Provider
+  modelItem: ProviderConfigItem
+  onOpenModal: (v?: FormValue) => void
   onOperate: () => void
 }
 
@@ -23,8 +23,8 @@ const Setting: FC<SettingProps> = ({
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const configurable = currentProvider?.model_flexibility === 'configurable'
-  const systemFree = currentProvider?.providers.find(p => p.provider_type === 'system' && p.quota_type === 'free')
-  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom')
+  const systemFree = currentProvider?.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota).quota_type === 'free') as ProviderWithQuota
+  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithConfig
 
   return (
     <div className='flex items-center'>
@@ -63,7 +63,7 @@ const Setting: FC<SettingProps> = ({
         configurable && (
           <Button
             className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && '!text-gray-300'}`}
-            onClick={onOpenModal}
+            onClick={() => onOpenModal()}
           >
             {t('common.operation.add')}
           </Button>
@@ -75,7 +75,7 @@ const Setting: FC<SettingProps> = ({
             <Indicator className='mr-3' />
             <Button
               className='mr-1 !px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700'
-              onClick={onOpenModal}
+              onClick={() => onOpenModal(custom.config)}
             >
               {t('common.operation.edit')}
             </Button>
@@ -87,7 +87,7 @@ const Setting: FC<SettingProps> = ({
         !configurable && !custom?.config && (
           <Button
             className={`!px-3 !h-7 rounded-md bg-white !text-xs font-medium text-gray-700 ${!!modelItem.disable && '!text-gray-300'}`}
-            onClick={onOpenModal}
+            onClick={() => onOpenModal()}
             disabled={!!modelItem.disable}
           >
             {t('common.operation.setup')}

@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { ModelItem as TModelItem, TModelProvider } from '../declarations'
+import type { FormValue, Provider, ProviderConfigItem, ProviderWithModels } from '../declarations'
 import Setting from './Setting'
 import Card from './Card'
 import I18n from '@/context/i18n'
@@ -11,9 +11,9 @@ import { deleteModelProviderModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 
 type ModelItemProps = {
-  currentProvider?: TModelProvider
-  modelItem: TModelItem
-  onOpenModal: () => void
+  currentProvider?: Provider
+  modelItem: ProviderConfigItem
+  onOpenModal: (v?: FormValue) => void
   onUpdate: () => void
 }
 
@@ -33,8 +33,7 @@ const ModelItem: FC<ModelItemProps> = ({
   const { notify } = useToastContext()
   const [confirmShow, setConfirmShow] = useState(false)
   const [deleteModel, setDeleteModel] = useState<DeleteModel>()
-  const configurable = currentProvider?.model_flexibility === 'configurable'
-  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom')
+  const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithModels
 
   const handleConfirm = (deleteModel: DeleteModel) => {
     setDeleteModel(deleteModel)
@@ -56,6 +55,11 @@ const ModelItem: FC<ModelItemProps> = ({
     }
   }
 
+  const handleOperate = (operate: Record<string, any>) => {
+    if (operate.type === 'delete')
+      handleConfirm(operate.value)
+  }
+
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
       <div className='flex justify-between items-center px-4 h-14'>
@@ -69,14 +73,18 @@ const ModelItem: FC<ModelItemProps> = ({
       </div>
       {
         !!custom?.models?.length && (
-          <Card models={custom?.models} onOpenModal={() => {}} />
+          <Card
+            models={custom?.models}
+            onOpenModal={onOpenModal}
+            onOperate={handleOperate}
+          />
         )
       }
       <Confirm
         isShow={confirmShow}
         onCancel={() => setConfirmShow(false)}
         title={deleteModel?.model_name || ''}
-        desc='al6z-infra/llama136-v2-chat are being used as system reasoning models. Some functions will not be available after removal. Please confirm.'
+        desc={t('common.modelProvider.item.deleteDesc', { modelName: deleteModel?.model_name }) || ''}
         onConfirm={handleDeleteModel}
       />
     </div>

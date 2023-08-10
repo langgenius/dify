@@ -1,10 +1,10 @@
-import { ModelEnum } from '../declarations'
-import type { FormValue, ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { FormValue, ProviderConfig } from '../declarations'
 import { Huggingface, HuggingfaceText } from '@/app/components/base/icons/src/public/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.huggingface_hub,
+    key: ProviderEnum.huggingface_hub,
     titleIcon: {
       'en': <HuggingfaceText className='h-6' />,
       'zh-Hans': <HuggingfaceText className='h-6' />,
@@ -15,7 +15,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
-    key: ModelEnum.huggingface_hub,
+    key: ProviderEnum.huggingface_hub,
     title: {
       'en': 'Hugging Face Hub',
       'zh-Hans': 'Hugging Face Hub',

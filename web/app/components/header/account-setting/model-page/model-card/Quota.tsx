@@ -1,19 +1,19 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { TModelProvider } from '../declarations'
+import type { Provider, ProviderWithQuota } from '../declarations'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type QuotaProps = {
-  currentProvider: TModelProvider
+  currentProvider: Provider
 }
 const Quota: FC<QuotaProps> = ({
   currentProvider,
 }) => {
   const { t } = useTranslation()
-  const systemTrial = currentProvider.providers.find(p => p.provider_type === 'system' && p?.quota_type === 'trial')
-  const systemPaid = currentProvider.providers.find(p => p.provider_type === 'system' && p?.quota_type === 'paid')
+  const systemTrial = currentProvider.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota)?.quota_type === 'trial') as ProviderWithQuota
+  const systemPaid = currentProvider.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota)?.quota_type === 'paid') as ProviderWithQuota
   const QUOTA_UNIT_MAP: Record<string, string> = {
     times: t('common.modelProvider.card.callTimes'),
     tokens: 'Tokens',

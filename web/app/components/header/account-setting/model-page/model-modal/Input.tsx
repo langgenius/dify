@@ -13,12 +13,14 @@ type InputProps = {
   field: Field
   value: FormValue
   onChange: (v: FormValue) => void
+  onFocus: () => void
   validatedStatusState: ValidatedStatusState
 }
 const Input: FC<InputProps> = ({
   field,
   value,
   onChange,
+  onFocus,
   validatedStatusState,
 }) => {
   const { locale } = useContext(I18n)
@@ -37,10 +39,6 @@ const Input: FC<InputProps> = ({
     onChange(newFormValue)
   }
 
-  const handleFocus = () => {
-
-  }
-
   return (
     <div className='relative'>
       <input
@@ -55,8 +53,8 @@ const Input: FC<InputProps> = ({
         `}
         placeholder={field?.placeholder?.[locale] || ''}
         onChange={e => handleChange(e.target.value)}
-        onFocus={handleFocus}
-        value={value[field.key] as string}
+        onFocus={onFocus}
+        value={value[field.key] || ''}
       />
       <div className='absolute top-2.5 right-2.5'>{getValidatedIcon()}</div>
     </div>

@@ -1,10 +1,10 @@
-import { ModelEnum } from '../declarations'
-import type { ModelConfig } from '../declarations'
+import { ProviderEnum } from '../declarations'
+import type { ProviderConfig } from '../declarations'
 import { Chatglm, ChatglmText } from '@/app/components/base/icons/src/public/llm'
 
-const config: ModelConfig = {
+const config: ProviderConfig = {
   item: {
-    key: ModelEnum.chatglm,
+    key: ProviderEnum.chatglm,
     titleIcon: {
       'en': <ChatglmText className='h-6' />,
       'zh-Hans': <ChatglmText className='h-6' />,
@@ -27,7 +27,7 @@ const config: ModelConfig = {
     },
   },
   modal: {
-    key: ModelEnum.chatglm,
+    key: ProviderEnum.chatglm,
     title: {
       'en': 'ChatGLM',
       'zh-Hans': 'ChatGLM',
