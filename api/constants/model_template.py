@@ -77,6 +77,10 @@ model_templates = {
                     "presence_penalty": 0,
                     "frequency_penalty": 0
                 }
+            }),
+            'speech_to_text': json.dumps({
+                "enabled": False,
+                "model": "whisper-1"
             })
         }
     },

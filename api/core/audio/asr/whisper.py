@@ -3,9 +3,9 @@ import openai
 from core.llm.wrappers.openai_wrapper import handle_openai_exceptions
 from models.provider import ProviderName
 from core.llm.provider.base import BaseProvider
+from core.audio.asr.base import AutoSpeechTranscribe
 
-
-class Whisper:
+class Whisper(AutoSpeechTranscribe):
 
     def __init__(self, provider: BaseProvider):
         self.provider = provider
