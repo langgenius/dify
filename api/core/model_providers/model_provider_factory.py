@@ -107,17 +107,28 @@ class ModelProviderFactory:
         :param preferred_model_provider:
         :return:
         """
-        preferred_provider_type = None
         if not preferred_model_provider:
             model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
-            if ProviderType.SYSTEM.value in model_provider_rules['support_provider_types']:
-                preferred_provider_type = ProviderType.SYSTEM.value
-            elif ProviderType.CUSTOM.value in model_provider_rules['support_provider_types']:
-                preferred_provider_type = ProviderType.CUSTOM.value
-        else:
-            preferred_provider_type = preferred_model_provider.preferred_provider_type
+            support_provider_types = model_provider_rules['support_provider_types']
 
-        return preferred_provider_type
+            if ProviderType.CUSTOM.value in support_provider_types:
+                custom_provider = db.session.query(Provider) \
+                    .filter(
+                        Provider.tenant_id == preferred_model_provider.tenant_id,
+                        Provider.provider_name == model_provider_name,
+                        Provider.provider_type == ProviderType.CUSTOM.value,
+                        Provider.is_valid == True
+                    ).first()
+
+                if custom_provider:
+                    return ProviderType.CUSTOM.value
+
+            if ProviderType.SYSTEM.value in support_provider_types:
+                return ProviderType.SYSTEM.value
+            elif ProviderType.CUSTOM.value in support_provider_types:
+                return ProviderType.CUSTOM.value
+        else:
+            return preferred_model_provider.preferred_provider_type
 
     @classmethod
     def _get_preferred_provider(cls, tenant_id: str, model_provider_name: str):
@@ -156,7 +167,19 @@ class ModelProviderFactory:
                     elif quota_type == ProviderQuotaType.TRIAL:
                         return provider
         elif preferred_provider_type == ProviderType.CUSTOM.value:
-            return providers[0] if providers else None
+            if providers:
+                return providers[0]
+            else:
+                provider = Provider(
+                    tenant_id=tenant_id,
+                    provider_name=model_provider_name,
+                    provider_type=ProviderType.CUSTOM.value,
+                    is_valid=False
+                )
+                db.session.add(provider)
+                db.session.commit()
+
+                return provider
 
         return None
 
