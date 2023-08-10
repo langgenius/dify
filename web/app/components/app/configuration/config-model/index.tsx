@@ -264,6 +264,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
+                popClassName='right-0'
                 value={{
                   modelName: modelId,
                   providerName: provider,

@@ -3,6 +3,7 @@ import { Fragment, useState } from 'react'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
+import cn from 'classnames'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -23,7 +24,6 @@ import {
   Tongyi,
 } from '@/app/components/base/icons/src/image/llm'
 import { useProviderContext } from '@/context/provider-context'
-
 // const modelOptions = [
 //   { type: 'provider', name: 'OpenAI' },
 //   { type: 'model', name: 'GPT-3.5-Turbo-16K', value: 'GPT-3.5-Turbo-16K', icon: OpenaiGreen },
@@ -66,8 +66,6 @@ const getIcon = (providerName: ProviderEnum, modelName: string) => {
   return OpenaiGreen
 }
 
-// value struct
-// data to render model struct
 type Props = {
   value: {
     providerName: ProviderEnum
@@ -76,6 +74,7 @@ type Props = {
   modelType: ModelType
   supportAgentThought?: boolean
   onChange: (value: BackendModel) => void
+  popClassName?: string
 }
 
 const ModelSelector: FC<Props> = ({
@@ -83,6 +82,7 @@ const ModelSelector: FC<Props> = ({
   modelType,
   supportAgentThought,
   onChange,
+  popClassName,
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
@@ -148,7 +148,7 @@ const ModelSelector: FC<Props> = ({
           leaveFrom='opacity-100'
           leaveTo='opacity-0'
         >
-          <Popover.Panel className='absolute top-10 p-1 w-full max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10'>
+          <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
             <div className='px-2 pt-2 pb-1'>
               <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
                 <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
