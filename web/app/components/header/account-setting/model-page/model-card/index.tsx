@@ -1,13 +1,21 @@
 import type { FC } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig } from '../declarations'
+import type {
+  FormValue,
+  Provider,
+  ProviderConfigItem,
+  ProviderWithConfig,
+  ProviderWithQuota,
+} from '../declarations'
 import Indicator from '../../../indicator'
 import Selector from '../selector'
 import Quota from './Quota'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { getPayUrl } from '@/service/common'
 
 type ModelCardProps = {
   currentProvider?: Provider
@@ -25,6 +33,8 @@ const ModelCard: FC<ModelCardProps> = ({
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithConfig
+  const systemPaid = currentProvider?.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota).quota_type === 'paid')
+  const { data: payUrl } = useSWR(systemPaid ? `/workspaces/current/model-providers/${modelItem.key}/checkout-url` : null, getPayUrl)
 
   return (
     <div className='rounded-xl border-[0.5px] border-gray-200 shadow-xs'>
@@ -38,7 +48,7 @@ const ModelCard: FC<ModelCardProps> = ({
         {modelItem.subTitleIcon}
       </div>
       {
-        !IS_CE_EDITION && currentProvider && <Quota currentProvider={currentProvider} />
+        !IS_CE_EDITION && currentProvider && <Quota currentProvider={currentProvider} payUrl={payUrl?.url} />
       }
       {
         custom?.is_valid

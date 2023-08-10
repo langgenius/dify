@@ -1,15 +1,16 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Provider, ProviderWithQuota } from '../declarations'
-import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 type QuotaProps = {
   currentProvider: Provider
+  payUrl?: string
 }
 const Quota: FC<QuotaProps> = ({
   currentProvider,
+  payUrl,
 }) => {
   const { t } = useTranslation()
   const systemTrial = currentProvider.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota)?.quota_type === 'trial') as ProviderWithQuota
@@ -85,7 +86,14 @@ const Quota: FC<QuotaProps> = ({
       </div>
       {
         systemPaid && (
-          <Button className='mt-1.5 !px-3 !h-8 !text-[13px] font-medium rounded-lg' type='primary'>{t('common.modelProvider.card.buyQuota')}</Button>
+          <a
+            href={payUrl}
+            target='_blank'
+            className='flex items-center mt-1.5 px-3 h-8 bg-primary-600 text-[13px] font-medium text-white rounded-lg cursor-pointer'
+            type='primary'
+          >
+            {t('common.modelProvider.card.buyQuota')}
+          </a>
         )
       }
     </div>
