@@ -17,7 +17,8 @@ WORKDIR /app/api
 
 RUN apt-get update && \
     apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
-
+RUN pip config set global.index-url https://mirror.sjtu.edu.cn/pypi/web/simple
+RUN pip config set install.trusted-host mirror.sjtu.edu.cn
 COPY requirements.txt /app/api/requirements.txt
 
 RUN pip install -r requirements.txt
@@ -30,4 +31,4 @@ RUN chmod +x /entrypoint.sh
 ARG COMMIT_SHA
 ENV COMMIT_SHA ${COMMIT_SHA}
 
-ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]
+# ENTRYPOINT ["/bin/bash", "/entrypoint.sh"]

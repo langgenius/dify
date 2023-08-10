@@ -64,7 +64,10 @@ def create_app(test_config=None) -> Flask:
 
     app.secret_key = app.config['SECRET_KEY']
 
-    logging.basicConfig(level=app.config.get('LOG_LEVEL', 'INFO'))
+    logging.basicConfig(level=logging.DEBUG,
+                    # format='[%(levelname)s][%(asctime)s][%(pathname)s][%(filename)s:%(lineno)d] - %(message)s',
+                    format='[%(levelname)s][%(asctime)s][%(filename)s:%(lineno)d] - %(message)s',
+                    datefmt='%Y-%m-%d %H:%M:%S')
 
     initialize_extensions(app)
     register_blueprints(app)
@@ -233,4 +236,4 @@ def threads():
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5001)
+    app.run(host='0.0.0.0', port=5001, debug=True)
