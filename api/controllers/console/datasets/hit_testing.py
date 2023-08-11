@@ -102,6 +102,8 @@ class HitTestingApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except ValueError as e:
+            raise ValueError(str(e))
         except Exception as e:
             logging.exception("Hit testing failed.")
             raise InternalServerError(str(e))
