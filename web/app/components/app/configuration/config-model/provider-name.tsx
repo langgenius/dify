@@ -17,7 +17,7 @@ const ProviderName: FC<IProviderNameProps> = ({
 
   return (
     <span>
-      {ProviderConfig[provideName].selector.name[locale]}
+      {ProviderConfig[provideName].selector?.name[locale]}
     </span>
   )
 }
