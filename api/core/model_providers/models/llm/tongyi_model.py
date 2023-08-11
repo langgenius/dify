@@ -4,6 +4,7 @@ from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult
+from requests import HTTPError
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
@@ -66,7 +67,7 @@ class TongyiModel(BaseLLM):
                 setattr(self.client, k, v)
 
     def handle_exceptions(self, ex: Exception) -> Exception:
-        if isinstance(ex, ValueError):
+        if isinstance(ex, (ValueError, HTTPError)):
             return LLMBadRequestError(f"Tongyi: {str(ex)}")
         else:
             return ex
