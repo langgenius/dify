@@ -25,7 +25,7 @@ const config: ProviderConfig = {
     },
     icon: <Wxyy className='w-6 h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://console.bce.baidu.com/qianfan/ais/console/applicationConsole/application',
       label: {
         'en': 'Get your API key from Baidu',
         'zh-Hans': '从百度获取 API Key',

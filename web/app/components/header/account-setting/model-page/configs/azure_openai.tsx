@@ -25,7 +25,7 @@ const config: ProviderConfig = {
     },
     icon: <AzureOpenaiService className='h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://azure.microsoft.com/en-us/products/ai-services/openai-service',
       label: {
         'en': 'Get your API key from Azure',
         'zh-Hans': '从 Azure 获取 API Key',

@@ -32,7 +32,7 @@ const config: ProviderConfig = {
     },
     icon: <OpenaiTransparent className='w-6 h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://platform.openai.com/account/api-keys',
       label: {
         'en': 'Get your API key from OpenAI',
         'zh-Hans': '从 OpenAI 获取 API Key',

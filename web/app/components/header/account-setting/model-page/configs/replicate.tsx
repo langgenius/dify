@@ -29,7 +29,7 @@ const config: ProviderConfig = {
     },
     icon: <Replicate className='h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://replicate.com/account/api-tokens',
       label: {
         'en': 'Get your API key from Replicate',
         'zh-Hans': '从 Replicate 获取 API Key',

@@ -41,7 +41,7 @@ const config: ProviderConfig = {
     },
     icon: <Chatglm className='h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://github.com/THUDM/ChatGLM-6B#api%E9%83%A8%E7%BD%B2',
       label: {
         'en': 'How to deploy ChatGLM',
         'zh-Hans': '如何部署 ChatGLM',

@@ -29,7 +29,7 @@ const config: ProviderConfig = {
     },
     icon: <Huggingface className='h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://huggingface.co/settings/tokens',
       label: {
         'en': 'Get your API key from Hugging Face Hub',
         'zh-Hans': '从 Hugging Face Hub 获取 API Key',

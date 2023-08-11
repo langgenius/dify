@@ -25,7 +25,7 @@ const config: ProviderConfig = {
     },
     icon: <Tongyi className='w-6 h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://dashscope.console.aliyun.com/api-key_management',
       label: {
         'en': 'Get your API key from AliCloud',
         'zh-Hans': '从阿里云获取 API Key',

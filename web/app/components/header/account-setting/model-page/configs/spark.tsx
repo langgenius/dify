@@ -25,7 +25,7 @@ const config: ProviderConfig = {
     },
     icon: <IflytekSpark className='w-6 h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://www.xfyun.cn/solutions/xinghuoAPI',
       label: {
         'en': 'Get your API key from AliCloud',
         'zh-Hans': '从阿里云获取 API Key',

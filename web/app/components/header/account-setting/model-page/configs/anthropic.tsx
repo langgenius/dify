@@ -32,7 +32,7 @@ const config: ProviderConfig = {
     },
     icon: <Anthropic className='h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://console.anthropic.com/account/keys',
       label: {
         'en': 'Get your API key from Anthropic',
         'zh-Hans': '从 Anthropic 获取 API Key',

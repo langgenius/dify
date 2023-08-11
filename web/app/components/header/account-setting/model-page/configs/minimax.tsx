@@ -25,7 +25,7 @@ const config: ProviderConfig = {
     },
     icon: <Minimax className='w-6 h-6' />,
     link: {
-      href: 'https://docs.dify.ai',
+      href: 'https://api.minimax.chat/user-center/basic-information/interface-key',
       label: {
         'en': 'Get your API key from MiniMax',
         'zh-Hans': '从 MiniMax 获取 API Key',
