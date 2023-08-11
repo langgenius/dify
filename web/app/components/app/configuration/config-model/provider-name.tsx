@@ -1,34 +1,23 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { useContext } from 'use-context-selector'
+import I18n from '@/context/i18n'
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import ProviderConfig from '@/app/components/header/account-setting/model-page/configs'
 
 export type IProviderNameProps = {
   provideName: ProviderEnum
 }
 
-const supportI18nProviderName = [
-  ProviderEnum.openai,
-  ProviderEnum.anthropic,
-  ProviderEnum.replicate,
-  ProviderEnum.azure_openai,
-  ProviderEnum.huggingface_hub,
-  ProviderEnum.wenxin,
-  ProviderEnum.tongyi,
-  ProviderEnum.spark,
-  ProviderEnum.minimax,
-  ProviderEnum.chatglm,
-]
-
 const ProviderName: FC<IProviderNameProps> = ({
   provideName,
 }) => {
-  const { t } = useTranslation()
+  const { locale } = useContext(I18n)
 
   return (
     <span>
-      {supportI18nProviderName.includes(provideName) ? t(`common.providerName.${provideName}`) : provideName}
+      {ProviderConfig[provideName].selector.name[locale]}
     </span>
   )
 }

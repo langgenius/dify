@@ -3,6 +3,13 @@ import type { FormValue, ProviderConfig } from '../declarations'
 import { Huggingface, HuggingfaceText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'Hugging Face',
+      'zh-Hans': 'Hugging Face',
+    },
+    icon: <Huggingface className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.huggingface_hub,
     titleIcon: {

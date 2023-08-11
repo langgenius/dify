@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { IflytekSpark, IflytekSparkText, IflytekSparkTextCn } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'iFLYTEK SPARK',
+      'zh-Hans': '讯飞星火',
+    },
+    icon: <IflytekSpark className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.spark,
     titleIcon: {

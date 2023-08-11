@@ -4,6 +4,13 @@ import { Anthropic, AnthropicText } from '@/app/components/base/icons/src/public
 import { IS_CE_EDITION } from '@/config'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'Anthropic',
+      'zh-Hans': 'Anthropic',
+    },
+    icon: <Anthropic className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.anthropic,
     titleIcon: {

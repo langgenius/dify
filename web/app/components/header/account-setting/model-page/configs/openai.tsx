@@ -4,6 +4,13 @@ import { OpenaiBlack, OpenaiText, OpenaiTransparent } from '@/app/components/bas
 import { IS_CE_EDITION } from '@/config'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'OpenAI',
+      'zh-Hans': 'OpenAI',
+    },
+    icon: <OpenaiBlack className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.openai,
     titleIcon: {

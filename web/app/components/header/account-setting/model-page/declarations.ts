@@ -12,6 +12,11 @@ export type Option = {
   label: TypeWithI18N
 }
 
+export type ProviderSelector = {
+  name: TypeWithI18N
+  icon: ReactElement
+}
+
 export type Field = {
   hidden?: (v?: FormValue) => boolean
   type: string
@@ -87,6 +92,7 @@ export type ProviderConfigModal = {
 }
 
 export type ProviderConfig = {
+  selector: ProviderSelector
   item: ProviderConfigItem
   modal: ProviderConfigModal
 }

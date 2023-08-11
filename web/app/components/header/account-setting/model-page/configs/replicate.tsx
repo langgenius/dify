@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { Replicate, ReplicateText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'Replicate',
+      'zh-Hans': 'Replicate',
+    },
+    icon: <Replicate className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.replicate,
     titleIcon: {

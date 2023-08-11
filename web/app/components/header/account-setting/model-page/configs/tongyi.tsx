@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { Tongyi, TongyiText, TongyiTextCn } from '@/app/components/base/icons/src/image/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'TONGYI QIANWEN',
+      'zh-Hans': '通义千问',
+    },
+    icon: <Tongyi className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.tongyi,
     titleIcon: {

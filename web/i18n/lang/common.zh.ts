@@ -310,18 +310,6 @@ const translation = {
     converting: '正在转换为文本...',
     notAllow: '麦克风未授权',
   },
-  providerName: {
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
-    replicate: 'Replicate',
-    azure_openai: 'Azure OpenAI 服务',
-    huggingface_hub: 'Hugging Face',
-    wenxin: '文心一言',
-    tongyi: '通义千问',
-    spark: '讯飞星火',
-    minimax: 'MINIMAX',
-    chatglm: 'ChatGLM',
-  },
   modelName: {
     'gpt-3.5-turbo': 'GPT-3.5-Turbo',
     'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',

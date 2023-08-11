@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { Chatglm, ChatglmText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'ChatGLM',
+      'zh-Hans': 'ChatGLM',
+    },
+    icon: <Chatglm className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.chatglm,
     titleIcon: {

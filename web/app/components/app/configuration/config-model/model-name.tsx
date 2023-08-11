@@ -18,10 +18,11 @@ const ModelName: FC<IModelNameProps> = ({
   modelId,
 }) => {
   const { t } = useTranslation()
+  const name = supportI18nModelName.includes(modelId) ? t(`common.modelName.${modelId}`) : modelId
 
   return (
-    <span>
-      {supportI18nModelName.includes(modelId) ? t(`common.modelName.${modelId}`) : modelId}
+    <span title={name}>
+      {name}
     </span>
   )
 }

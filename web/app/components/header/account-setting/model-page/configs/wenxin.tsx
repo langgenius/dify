@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { Wxyy, WxyyText, WxyyTextCn } from '@/app/components/base/icons/src/image/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'WENXIN YIYAN',
+      'zh-Hans': '文心一言',
+    },
+    icon: <Wxyy className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.wenxin,
     titleIcon: {

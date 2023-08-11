@@ -3,6 +3,13 @@ import type { ProviderConfig } from '../declarations'
 import { Minimax, MinimaxText } from '@/app/components/base/icons/src/image/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'MINIMAX',
+      'zh-Hans': 'MINIMAX',
+    },
+    icon: <Minimax className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.minimax,
     titleIcon: {

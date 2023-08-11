@@ -310,18 +310,6 @@ const translation = {
     converting: 'Converting to text...',
     notAllow: 'microphone not authorized',
   },
-  providerName: {
-    openai: 'OpenAI',
-    anthropic: 'Anthropic',
-    replicate: 'Replicate',
-    azure_openai: 'Azure OpenAI Service',
-    huggingface_hub: 'Hugging Face',
-    wenxin: 'WENXINYIYAN',
-    tongyi: 'TONGYI QIANWEN',
-    spark: 'iFLYTEK SPARK',
-    minimax: 'MINIMAX',
-    chatglm: 'ChatGLM',
-  },
   modelName: {
     'gpt-3.5-turbo': 'GPT-3.5-Turbo',
     'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',

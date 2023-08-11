@@ -1,8 +1,15 @@
 import { ProviderEnum } from '../declarations'
 import type { ProviderConfig } from '../declarations'
-import { AzureOpenaiService, AzureOpenaiServiceText } from '@/app/components/base/icons/src/public/llm'
+import { AzureOpenaiService, AzureOpenaiServiceText, OpenaiBlue } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
+  selector: {
+    name: {
+      'en': 'Azure OpenAI Service',
+      'zh-Hans': 'Azure OpenAI Service',
+    },
+    icon: <OpenaiBlue className='w-full h-full' />,
+  },
   item: {
     key: ProviderEnum.azure_openai,
     titleIcon: {
