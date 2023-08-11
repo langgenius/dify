@@ -66,7 +66,7 @@ const ModelSelector: FC<Props> = ({
     })
     : modelList
 
-  const hasRemoved = value && !allModelNames[value.modelName]
+  const hasRemoved = value && !modelList.find(({ model_name }) => model_name === value.modelName)
 
   const modelOptions: any[] = (() => {
     const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
