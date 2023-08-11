@@ -154,7 +154,7 @@ class OpenAIProvider(BaseModelProvider):
             }
 
             if 'openai_api_base' in credentials:
-                credentials_kwargs['api_base'] = credentials['openai_api_base']
+                credentials_kwargs['api_base'] = credentials['openai_api_base'] + '/v1'
 
             if 'openai_organization' in credentials:
                 credentials_kwargs['organization'] = credentials['openai_organization']
@@ -200,6 +200,8 @@ class OpenAIProvider(BaseModelProvider):
 
             if 'openai_api_base' not in credentials:
                 credentials['openai_api_base'] = None
+            else:
+                credentials['openai_api_base'] = credentials['openai_api_base'] + '/v1'
 
             if 'openai_organization' not in credentials:
                 credentials['openai_organization'] = None
