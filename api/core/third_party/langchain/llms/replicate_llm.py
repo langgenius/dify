@@ -2,7 +2,6 @@ from typing import Dict, Optional, List, Any
 
 from langchain.callbacks.manager import CallbackManagerForLLMRun
 from langchain.llms import Replicate
-from langchain.llms.utils import enforce_stop_tokens
 from langchain.utils import get_from_dict_or_env
 from pydantic import root_validator
 
@@ -48,13 +47,29 @@ class EnhanceReplicate(Replicate):
             key=lambda item: item[1].get("x-order", 0),
         )
         first_input_name = input_properties[0][0]
-
         inputs = {first_input_name: prompt, **self.input}
-        iterator = client.run(self.model, input={**inputs, **kwargs})
 
-        text = "".join([output for output in iterator])
+        prediction = client.predictions.create(
+            version=version, input={**inputs, **kwargs}
+        )
+        current_completion: str = ""
+        stop_condition_reached = False
+        for output in prediction.output_iterator():
+            current_completion += output
 
-        if stop is not None:
-            text = enforce_stop_tokens(text, stop)
+            # test for stop conditions, if specified
+            if stop:
+                for s in stop:
+                    if s in current_completion:
+                        prediction.cancel()
+                        stop_index = current_completion.find(s)
+                        current_completion = current_completion[:stop_index]
+                        stop_condition_reached = True
+                        break
 
-        return text
+            if stop_condition_reached:
+                break
+
+            if self.streaming and run_manager:
+                run_manager.on_llm_new_token(output)
+        return current_completion

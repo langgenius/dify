@@ -50,9 +50,9 @@ class ReplicateProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
-        model = replicate.models.get(model_name)
-
         model_credentials = self.get_model_credentials(model_name, model_type)
+
+        model = replicate.Client(api_token=model_credentials.get("replicate_api_token")).models.get(model_name)
 
         try:
             version = model.versions.get(model_credentials['model_version'])
@@ -81,9 +81,9 @@ class ReplicateProvider(BaseModelProvider):
                     model_kwargs_rules.max_tokens = KwargRule(
                         alias=key,
                         type=KwargRuleType.INTEGER.value,
-                        min=int(value.get('minimum')) if value.get('minimum') is not None else None,
-                        max=int(value.get('maximum')) if value.get('maximum') is not None else None,
-                        default=int(value.get('default')) if value.get('default') is not None else None,
+                        min=int(value.get('minimum')) if value.get('minimum') is not None else 1,
+                        max=int(value.get('maximum')) if value.get('maximum') is not None else 8000,
+                        default=int(value.get('default')) if value.get('default') is not None else 500,
                     )
 
         return model_kwargs_rules

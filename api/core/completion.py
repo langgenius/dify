@@ -296,6 +296,12 @@ And answer according to the language of the user's question.
         model_limited_tokens = model_instance.model_rules.max_tokens.max
         max_tokens = model_instance.get_model_kwargs().max_tokens
 
+        if model_limited_tokens is None:
+            return -1
+
+        if max_tokens is None:
+            max_tokens = 0
+
         # get prompt without memory and context
         prompt_messages, _ = cls.get_main_llm_prompt(
             mode=mode,
@@ -320,6 +326,12 @@ And answer according to the language of the user's question.
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
         model_limited_tokens = model_instance.model_rules.max_tokens.max
         max_tokens = model_instance.get_model_kwargs().max_tokens
+
+        if model_limited_tokens is None:
+            return
+
+        if max_tokens is None:
+            max_tokens = 0
 
         prompt_tokens = model_instance.get_num_tokens(prompt_messages)
 

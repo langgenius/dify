@@ -277,6 +277,10 @@ class OrchestratorRuleParser:
     def _dynamic_calc_retrieve_k(cls, dataset: Dataset, rest_tokens: int) -> int:
         DEFAULT_K = 2
         CONTEXT_TOKENS_PERCENT = 0.3
+
+        if rest_tokens == -1:
+            return DEFAULT_K
+
         processing_rule = dataset.latest_process_rule
         if not processing_rule:
             return DEFAULT_K
