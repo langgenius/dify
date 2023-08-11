@@ -21,6 +21,7 @@ import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
 import { AppType } from '@/types/app'
 
@@ -201,6 +202,7 @@ function AppCard({
           </div>
         </div>
         <div className={'pt-2 flex flex-row items-center'}>
+          {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op: any) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
@@ -222,7 +224,7 @@ function AppCard({
                 >
                   <div className="flex flex-row items-center">
                     <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
-                    <span className="text-xs">{op.opName}</span>
+                    <span className="text-[13px]">{op.opName}</span>
                   </div>
                 </Tooltip>
               </Button>
