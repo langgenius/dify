@@ -5,8 +5,7 @@
     ],
     "system_config": {
         "supported_quota_types": [
-            "trial",
-            "paid"
+            "trial"
         ],
         "quota_unit": "times",
         "quota_limit": 1000
