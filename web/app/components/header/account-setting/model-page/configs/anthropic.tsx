@@ -57,8 +57,8 @@ const config: ProviderConfig = {
               'zh-Hans': '自定义 API 域名',
             },
             placeholder: {
-              'en': 'Enter your API domain, eg: https://example.com/xxx',
-              'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx',
+              'en': 'Enter your API domain, eg: https://example.com/xxx(Optional)',
+              'zh-Hans': '在此输入您的 API 域名，如：https://example.com/xxx（选填）',
             },
             help: {
               'en': 'Configurable custom Anthropic API server url.',

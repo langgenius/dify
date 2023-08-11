@@ -1,18 +1,20 @@
+import { useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Provider, ProviderWithQuota } from '../declarations'
 import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { getPayUrl } from '@/service/common'
+import Button from '@/app/components/base/button'
 
 type QuotaProps = {
   currentProvider: Provider
-  payUrl?: string
 }
 const Quota: FC<QuotaProps> = ({
   currentProvider,
-  payUrl,
 }) => {
   const { t } = useTranslation()
+  const [loading, setLoading] = useState(false)
   const systemTrial = currentProvider.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota)?.quota_type === 'trial') as ProviderWithQuota
   const systemPaid = currentProvider.providers.find(p => p.provider_type === 'system' && (p as ProviderWithQuota)?.quota_type === 'paid') as ProviderWithQuota
   const QUOTA_UNIT_MAP: Record<string, string> = {
@@ -59,6 +61,17 @@ const Quota: FC<QuotaProps> = ({
     if (systemTrial.is_valid)
       return QUOTA_UNIT_MAP[systemTrial.quota_unit]
   }
+  const handleGetPayUrl = async () => {
+    setLoading(true)
+    try {
+      const res = await getPayUrl(`/workspaces/current/model-providers/${systemPaid.provider_name}/checkout-url`)
+
+      window.location.href = res.url
+    }
+    finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className='flex justify-between px-4 py-3 border-b-[0.5px] border-b-[rgba(0, 0, 0, 0.5)]'>
@@ -86,14 +99,14 @@ const Quota: FC<QuotaProps> = ({
       </div>
       {
         systemPaid && (
-          <a
-            href={payUrl}
-            target='_blank'
-            className='flex items-center mt-1.5 px-3 h-8 bg-primary-600 text-[13px] font-medium text-white rounded-lg cursor-pointer'
+          <Button
             type='primary'
+            className='mt-1.5 !px-3 !h-8 !text-[13px] font-medium !rounded-lg'
+            onClick={handleGetPayUrl}
+            disabled={loading}
           >
             {t('common.modelProvider.card.buyQuota')}
-          </a>
+          </Button>
         )
       }
     </div>

@@ -28,6 +28,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useProviderContext } from '@/context/provider-context'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -59,6 +60,7 @@ type DeleteModel = {
 
 const ModelPage = () => {
   const { t } = useTranslation()
+  const { updateModelList } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
   const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
@@ -89,6 +91,11 @@ const ModelPage = () => {
   const handleCancelModal = () => {
     setShowModal(false)
   }
+  const handleUpdateProvidersAndModelList = () => {
+    updateModelList(ModelType.textGeneration)
+    updateModelList(ModelType.embeddings)
+    mutateProviders()
+  }
   const handleSave = async (v?: FormValue) => {
     if (v && modelModalConfig) {
       let body, url
@@ -113,7 +120,7 @@ const ModelPage = () => {
         const res = await setModelProvider({ url, body })
         if (res.result === 'success') {
           notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-          mutateProviders()
+          handleUpdateProvidersAndModelList()
           handleCancelModal()
         }
         eventEmitter?.emit('')
@@ -128,13 +135,14 @@ const ModelPage = () => {
     setDeleteModel({ ...deleteModel, providerKey })
     setConfirmShow(true)
   }
+
   const handleOperate = async ({ type, value }: Record<string, any>, provierKey: ProviderEnum) => {
     if (type === 'delete') {
       if (!value) {
         const res = await deleteModelProvider({ url: `/workspaces/current/model-providers/${provierKey}` })
         if (res.result === 'success') {
           notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-          mutateProviders()
+          handleUpdateProvidersAndModelList()
         }
       }
       else {
@@ -164,7 +172,7 @@ const ModelPage = () => {
     if (res.result === 'success') {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setConfirmShow(false)
-      mutateProviders()
+      handleUpdateProvidersAndModelList()
     }
   }
 
