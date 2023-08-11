@@ -78,4 +78,5 @@ class HuggingfaceHubModel(BaseLLM):
 
     @classmethod
     def support_streaming(cls):
-        return True
+        return False
+
