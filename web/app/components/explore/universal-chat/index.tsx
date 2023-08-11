@@ -450,6 +450,11 @@ const Main: FC<IMainProps> = () => {
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
   const handleSend = async (message: string) => {
     if (isNewConversation) {
+      const isModelSelected = modelId && !!agentThoughtModelList.find(item => item.model_name === modelId)
+      if (!isModelSelected) {
+        notify({ type: 'error', message: t('appDebug.errorMessage.notSelectModel') })
+        return
+      }
       setPrevConfig({
         modelId,
         providerName,
