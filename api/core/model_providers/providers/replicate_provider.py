@@ -58,7 +58,7 @@ class ReplicateProvider(BaseModelProvider):
             version = model.versions.get(model_credentials['model_version'])
         except ReplicateError as e:
             raise CredentialsValidateFailedError(f"Model {model_name}:{model_credentials['model_version']} not exists, "
-                                    f"cause: {e.__class__.__name__}:{str(e)}")
+                                                 f"cause: {e.__class__.__name__}:{str(e)}")
         except Exception as e:
             logging.exception("Model validate failed.")
             raise e
@@ -110,9 +110,18 @@ class ReplicateProvider(BaseModelProvider):
         version = credentials['model_version']
         try:
             model = replicate.Client(api_token=credentials.get("replicate_api_token")).models.get(model_name)
-            model.versions.get(version)
+            rst = model.versions.get(version)
+
+            if model_type == ModelType.EMBEDDINGS \
+                    and 'Embedding' not in rst.openapi_schema['components']['schemas']:
+                raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Embedding model.")
+            elif model_type == ModelType.TEXT_GENERATION \
+                    and ('type' not in rst.openapi_schema['components']['schemas']['Output']['items']
+                         or rst.openapi_schema['components']['schemas']['Output']['items']['type'] != 'string'):
+                raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Text Generation model.")
         except ReplicateError as e:
-            raise CredentialsValidateFailedError(f"Model {model_name}:{version} not exists, cause: {e.__class__.__name__}:{str(e)}")
+            raise CredentialsValidateFailedError(
+                f"Model {model_name}:{version} not exists, cause: {e.__class__.__name__}:{str(e)}")
         except Exception as e:
             logging.exception("Replicate config validation failed.")
             raise e
