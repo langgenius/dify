@@ -2,6 +2,7 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+from flask import current_app
 from langchain.llms import Minimax
 
 from core.helper import encrypter

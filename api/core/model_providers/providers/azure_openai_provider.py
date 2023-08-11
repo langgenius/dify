@@ -4,6 +4,7 @@ from json import JSONDecodeError
 from typing import Type
 
 import openai
+from flask import current_app
 from langchain.embeddings import OpenAIEmbeddings
 from langchain.schema import HumanMessage
 
@@ -296,6 +297,16 @@ class AzureOpenAIProvider(BaseModelProvider):
                     'openai_api_key': None,
                     'base_model_name': None
                 }
+
+    @classmethod
+    def is_provider_type_system_supported(cls) -> bool:
+        if current_app.config['EDITION'] != 'CLOUD':
+            return False
+
+        if hosted_model_providers.azure_openai:
+            return True
+
+        return False
 
     def should_deduct_quota(self):
         if hosted_model_providers.azure_openai \

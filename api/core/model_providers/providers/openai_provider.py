@@ -3,6 +3,7 @@ import logging
 from json import JSONDecodeError
 from typing import Type, Optional
 
+from flask import current_app
 from openai.error import AuthenticationError, OpenAIError
 
 import openai
@@ -217,6 +218,16 @@ class OpenAIProvider(BaseModelProvider):
                     'openai_api_key': None,
                     'openai_organization': None
                 }
+
+    @classmethod
+    def is_provider_type_system_supported(cls) -> bool:
+        if current_app.config['EDITION'] != 'CLOUD':
+            return False
+
+        if hosted_model_providers.openai:
+            return True
+
+        return False
 
     def should_deduct_quota(self):
         if hosted_model_providers.openai \

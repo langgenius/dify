@@ -4,6 +4,7 @@ from json import JSONDecodeError
 from typing import Type, Optional
 
 import anthropic
+from flask import current_app
 from langchain.chat_models import ChatAnthropic
 from langchain.schema import HumanMessage
 
@@ -153,6 +154,16 @@ class AnthropicProvider(BaseModelProvider):
                     'anthropic_api_url': None,
                     'anthropic_api_key': None
                 }
+
+    @classmethod
+    def is_provider_type_system_supported(cls) -> bool:
+        if current_app.config['EDITION'] != 'CLOUD':
+            return False
+
+        if hosted_model_providers.anthropic:
+            return True
+
+        return False
 
     def should_deduct_quota(self):
         if hosted_model_providers.anthropic and \

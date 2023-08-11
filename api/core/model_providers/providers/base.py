@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from datetime import datetime
 from typing import Type, Optional
 
+from flask import current_app
 from pydantic import BaseModel
 
 from core.model_providers.error import QuotaExceededError, LLMBadRequestError
@@ -166,6 +167,10 @@ class BaseModelProvider(BaseModel, ABC):
         :return:
         """
         raise NotImplementedError
+
+    @classmethod
+    def is_provider_type_system_supported(cls) -> bool:
+        return current_app.config['EDITION'] == 'CLOUD'
 
     def check_quota_over_limit(self):
         """

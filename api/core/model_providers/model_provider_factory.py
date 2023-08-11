@@ -129,7 +129,10 @@ class ModelProviderFactory:
                 if custom_provider:
                     return ProviderType.CUSTOM.value
 
-            if ProviderType.SYSTEM.value in support_provider_types:
+            model_provider = cls.get_model_provider_class(model_provider_name)
+
+            if ProviderType.SYSTEM.value in support_provider_types \
+                    and model_provider.is_provider_type_system_supported():
                 return ProviderType.SYSTEM.value
             elif ProviderType.CUSTOM.value in support_provider_types:
                 return ProviderType.CUSTOM.value
@@ -186,6 +189,7 @@ class ModelProviderFactory:
                     db.session.add(provider)
                     db.session.commit()
                 except IntegrityError:
+                    db.session.rollback()
                     provider = db.session.query(Provider) \
                         .filter(
                             Provider.tenant_id == tenant_id,
