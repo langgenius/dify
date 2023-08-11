@@ -2,7 +2,7 @@ from typing import Optional
 
 from langchain.callbacks.base import Callbacks
 
-from core.model_providers.error import ProviderTokenNotInitError
+from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_provider_factory import ModelProviderFactory, DEFAULT_MODELS
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.base import BaseEmbedding
@@ -73,13 +73,21 @@ class ModelFactory:
 
         # init text generation model
         model_class = model_provider.get_model_class(model_type=ModelType.TEXT_GENERATION)
-        model_instance = model_class(
-            model_provider=model_provider,
-            name=model_name,
-            model_kwargs=model_kwargs,
-            streaming=streaming,
-            callbacks=callbacks
-        )
+
+        try:
+            model_instance = model_class(
+                model_provider=model_provider,
+                name=model_name,
+                model_kwargs=model_kwargs,
+                streaming=streaming,
+                callbacks=callbacks
+            )
+        except LLMBadRequestError as e:
+            if is_default_model:
+                raise LLMBadRequestError(f"Default model {model_name} is not available. "
+                                         f"Please check your model provider credentials.")
+            else:
+                raise e
 
         if is_default_model:
             model_instance.deduct_quota = False
