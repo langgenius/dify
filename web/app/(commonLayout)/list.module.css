@@ -97,6 +97,14 @@
 .listItem:hover .actionIconWrapper {
   @apply !inline-flex;
 }
+.deleteDatasetIcon {
+  @apply hidden grow-0 shrink-0 basis-8 w-8 h-8 rounded-lg transition-colors duration-200 ease-in-out bg-white border border-gray-200 hover:bg-gray-100 bg-center bg-no-repeat;
+  background-size: 16px;
+  background-image: url('~@/assets/delete.svg');
+}
+.listItem:hover .deleteDatasetIcon {
+  @apply block;
+}
 
 .listItemDescription {
   @apply mb-3 px-[14px] h-9 text-xs leading-normal text-gray-500 line-clamp-2;
