@@ -1,0 +1,16 @@
+.bar {
+  background: linear-gradient(90deg, rgba(41, 112, 255, 0.9) 0%, rgba(21, 94, 239, 0.9) 100%);
+}
+
+.bar-error {
+  background: linear-gradient(90deg, rgba(240, 68, 56, 0.72) 0%, rgba(217, 45, 32, 0.9) 100%);
+}
+
+.bar-item {
+  width: 10%;
+  border-right: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.bar-item:last-of-type {
+  border-right: 0;
+}

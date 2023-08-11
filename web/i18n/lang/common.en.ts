@@ -23,6 +23,8 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    setup: 'Setup',
+    getForFree: 'Get for free',
   },
   placeholder: {
     input: 'Please enter',
@@ -41,20 +43,20 @@ const translation = {
       temperature: 'Temperature',
       temperatureTip:
         'Controls randomness: Lowering results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive.',
-      topP: 'Top P',
-      topPTip:
+      top_p: 'Top P',
+      top_pTip:
         'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.',
-      presencePenalty: 'Presence penalty',
-      presencePenaltyTip:
+      presence_penalty: 'Presence penalty',
+      presence_penaltyTip:
         'How much to penalize new tokens based on whether they appear in the text so far. Increases the model\'s likelihood to talk about new topics.',
-      frequencyPenalty: 'Frequency penalty',
-      frequencyPenaltyTip:
+      frequency_penalty: 'Frequency penalty',
+      frequency_penaltyTip:
         'How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model\'s likelihood to repeat the same line verbatim.',
-      maxToken: 'Max token',
-      maxTokenTip:
+      max_tokens: 'Max token',
+      max_tokensTip:
         'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
-      setToCurrentModelMaxTokenTip: 'Max token is updated to the maximum token of the current model {{maxToken}}.',
+      setToCurrentModelMaxTokenTip: 'Max token is updated to the 80% maximum token of the current model {{maxToken}}.',
     },
     tone: {
       Creative: 'Creative',
@@ -202,6 +204,52 @@ const translation = {
       back: ' technology.',
     },
   },
+  modelProvider: {
+    selectModel: 'Select your model',
+    setupModelFirst: 'Please set up your model first',
+    systemReasoningModel: {
+      key: 'System Reasoning Model',
+      tip: 'System Reasoning Model',
+    },
+    embeddingModel: {
+      key: 'Embedding Model',
+      tip: 'Embedding Model',
+    },
+    speechToTextModel: {
+      key: 'Speech-to-Text Model',
+      tip: 'Speech-to-Text Model',
+    },
+    quota: 'Quota',
+    searchModel: 'Search model',
+    noModelFound: 'No model found for {{model}}',
+    models: 'Models',
+    showMoreModelProvider: 'Show more model provider',
+    selector: {
+      tip: 'This model has been removed. Please add a model or select another model.',
+    },
+    card: {
+      quota: 'QUOTA',
+      onTrial: 'On Trial',
+      paid: 'Paid',
+      quotaExhausted: 'Quota exhausted',
+      callTimes: 'Call times',
+      tokens: 'Tokens',
+      buyQuota: 'Buy Quota',
+      priorityUse: 'Priority use',
+      removeKey: 'Remove API Key',
+      tip: 'Priority will be given to the paid quota. The Trial quota will be used after the paid quota is exhausted.',
+    },
+    item: {
+      deleteDesc: '{{modelName}} are being used as system reasoning models. Some functions will not be available after removal. Please confirm.',
+      freeQuota: 'FREE QUOTA',
+    },
+    addApiKey: 'Add your API key',
+    invalidApiKey: 'Invalid API key',
+    encrypted: {
+      front: 'Your API KEY will be encrypted and stored using',
+      back: ' technology.',
+    },
+  },
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
@@ -264,6 +312,17 @@ const translation = {
     speaking: 'Speak now...',
     converting: 'Converting to text...',
     notAllow: 'microphone not authorized',
+  },
+  modelName: {
+    'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+    'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',
+    'gpt-4': 'GPT-4',
+    'gpt-4-32k': 'GPT-4-32K',
+    'text-davinci-003': 'Text-Davinci-003',
+    'text-embedding-ada-002': 'Text-Embedding-Ada-002',
+    'whisper-1': 'Whisper-1',
+    'claude-instant-1': 'Claude-Instant',
+    'claude-2': 'Claude-2',
   },
 }
 

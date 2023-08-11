@@ -10,6 +10,7 @@ import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
+import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
 
 export const login: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
@@ -122,5 +123,49 @@ export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; work
 }
 
 export const activateMember: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const fetchModelProviders: Fetcher<ProviderMap, string> = (url) => {
+  return get(url) as Promise<ProviderMap>
+}
+
+export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
+  return get(url) as Promise<BackendModel[]>
+}
+
+export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
+}
+
+export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return del(url) as Promise<CommonResponse>
+}
+
+export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const setModelProviderModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse>
+}
+
+export const deleteModelProviderModel: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return del(url) as Promise<CommonResponse>
+}
+
+export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
+  return get(url) as Promise<{ url: string }>
+}
+
+export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
+  return get(url) as Promise<BackendModel>
+}
+
+export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
 }

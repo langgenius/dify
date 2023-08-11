@@ -90,6 +90,7 @@ const translation = {
     queryRequired: '主要文本必填',
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',
+    notSelectModel: '请选择模型',
   },
   chatSubTitle: '对话前提示词',
   completionSubTitle: '前缀提示词',

@@ -5,6 +5,27 @@ const translation = {
     getKeyTip: '从 OpenAI 获取你的 API Key',
     placeholder: '你的 OpenAI API Key（例如 sk-xxxx）',
   },
+  apiKeyInfo: {
+    cloud: {
+      trial: {
+        title: '您正在使用 {{providerName}} 试用配额。',
+        description: '试用配额仅供您测试使用。 在试用配额用完之前，请自行设置模型提供商或购买额外配额。',
+      },
+      exhausted: {
+        title: '您的试用额度已用完，请设置您的APIKey。',
+        description: '您的试用配额已用完。 请设置您自己的模型提供商或购买额外配额。',
+      },
+    },
+    selfHost: {
+      title: {
+        row1: '首先，',
+        row2: '设置您的模型提供商。',
+      },
+    },
+    callTimes: '调用次数',
+    setAPIBtn: '设置模型提供商',
+    tryCloud: '或者尝试使用 Dify 的云版本并使用试用配额',
+  },
   overview: {
     title: '概览',
     appInfo: {

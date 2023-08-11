@@ -284,6 +284,7 @@ const Configuration: FC = () => {
               {/* Model and Parameters */}
               <ConfigModel
                 mode={mode}
+                provider={modelConfig.provider as ProviderType}
                 completionParams={completionParams}
                 modelId={modelConfig.model_id}
                 setModelId={setModelId}
