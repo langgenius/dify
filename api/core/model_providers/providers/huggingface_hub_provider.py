@@ -47,11 +47,11 @@ class HuggingfaceHubProvider(BaseModelProvider):
         :return:
         """
         return ModelKwargsRules(
-            temperature=KwargRule(min=0, max=100, default=1),
-            top_p=KwargRule(min=0, max=1, default=0.7),
+            temperature=KwargRule(min=0, max=2, default=1),
+            top_p=KwargRule(min=0.01, max=0.99, default=0.7),
             presence_penalty=KwargRule(enabled=False),
             frequency_penalty=KwargRule(enabled=False),
-            max_tokens=KwargRule(alias='max_new_tokens', min=10, max=250, default=250),
+            max_tokens=KwargRule(alias='max_new_tokens', min=10, max=8000, default=250),
         )
 
     @classmethod
