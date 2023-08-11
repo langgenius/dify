@@ -96,4 +96,4 @@ class LLMCallbackHandler(BaseCallbackHandler):
                 )
                 self.conversation_message_task.save_message(llm_message=self.llm_message, by_stopped=True)
         else:
-            logging.error(error)
+            logging.exception(error)

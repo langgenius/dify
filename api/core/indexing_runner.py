@@ -549,7 +549,7 @@ class IndexingRunner:
                 qa_documents.append(qa_document)
             format_documents.extend(qa_documents)
         except Exception as e:
-            logging.error(str(e))
+            logging.exception(e)
 
         all_qa_documents.extend(format_documents)
 
