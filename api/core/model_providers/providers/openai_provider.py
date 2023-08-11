@@ -153,7 +153,7 @@ class OpenAIProvider(BaseModelProvider):
                 "api_key": credentials['openai_api_key']
             }
 
-            if 'openai_api_base' in credentials:
+            if 'openai_api_base' in credentials and credentials['openai_api_base']:
                 credentials_kwargs['api_base'] = credentials['openai_api_base'] + '/v1'
 
             if 'openai_organization' in credentials:
@@ -198,7 +198,7 @@ class OpenAIProvider(BaseModelProvider):
                 if obfuscated:
                     credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
 
-            if 'openai_api_base' not in credentials:
+            if 'openai_api_base' not in credentials or not credentials['openai_api_base']:
                 credentials['openai_api_base'] = None
             else:
                 credentials['openai_api_base'] = credentials['openai_api_base'] + '/v1'
