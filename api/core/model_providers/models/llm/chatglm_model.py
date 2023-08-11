@@ -18,7 +18,7 @@ class ChatGLMModel(BaseLLM):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
         return ChatGLM(
             callbacks=self.callbacks,
-            **self.credentials,
+            endpoint_url=self.credentials.get('api_base'),
             **provider_model_kwargs
         )
 
