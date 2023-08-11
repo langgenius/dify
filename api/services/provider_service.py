@@ -1,6 +1,7 @@
 import datetime
 import json
 from collections import defaultdict
+from typing import Optional
 
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
@@ -406,7 +407,7 @@ class ProviderService:
 
         db.session.commit()
 
-    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> TenantDefaultModel:
+    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[TenantDefaultModel]:
         """
         get default model of model type.
 

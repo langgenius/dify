@@ -29,6 +29,9 @@ class DefaultModelApi(Resource):
             model_type=args['model_type']
         )
 
+        if not default_model:
+            return None
+
         model_provider = ModelProviderFactory.get_preferred_model_provider(
             tenant_id,
             default_model.provider_name

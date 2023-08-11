@@ -61,6 +61,12 @@ class ModelFactory:
         is_default_model = False
         if model_provider_name is None and model_name is None:
             default_model = cls.get_default_model(tenant_id, ModelType.TEXT_GENERATION)
+
+            if not default_model:
+                raise LLMBadRequestError(f"Default model is not available. "
+                                         f"Please configure a Default System Reasoning Model "
+                                         f"in the Settings -> Model Provider.")
+
             model_provider_name = default_model.provider_name
             model_name = default_model.model_name
             is_default_model = True
@@ -94,7 +100,6 @@ class ModelFactory:
 
         return model_instance
 
-
     @classmethod
     def get_embedding_model(cls,
                             tenant_id: str,
@@ -110,6 +115,12 @@ class ModelFactory:
         """
         if model_provider_name is None and model_name is None:
             default_model = cls.get_default_model(tenant_id, ModelType.EMBEDDINGS)
+
+            if not default_model:
+                raise LLMBadRequestError(f"Default model is not available. "
+                                         f"Please configure a Default Embedding Model "
+                                         f"in the Settings -> Model Provider.")
+
             model_provider_name = default_model.provider_name
             model_name = default_model.model_name
 
@@ -141,6 +152,12 @@ class ModelFactory:
         """
         if model_provider_name is None and model_name is None:
             default_model = cls.get_default_model(tenant_id, ModelType.SPEECH_TO_TEXT)
+
+            if not default_model:
+                raise LLMBadRequestError(f"Default model is not available. "
+                                         f"Please configure a Default Speech-to-Text Model "
+                                         f"in the Settings -> Model Provider.")
+
             model_provider_name = default_model.provider_name
             model_name = default_model.model_name
 
@@ -200,15 +217,24 @@ class ModelFactory:
         ).first()
 
         if not default_model:
-            default_model_config = DEFAULT_MODELS[model_type.value]
-            default_model = TenantDefaultModel(
-                tenant_id=tenant_id,
-                model_type=model_type.value,
-                provider_name=default_model_config['provider_name'],
-                model_name=default_model_config['model_name']
-            )
-            db.session.add(default_model)
-            db.session.commit()
+            model_provider_rules = ModelProviderFactory.get_provider_rules()
+            for model_provider_name, model_provider_rule in model_provider_rules.items():
+                model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
+                if not model_provider:
+                    continue
+
+                model_list = model_provider.get_supported_model_list(model_type)
+                if model_list:
+                    model_info = model_list[0]
+                    default_model = TenantDefaultModel(
+                        tenant_id=tenant_id,
+                        model_type=model_type.value,
+                        provider_name=model_provider_name,
+                        model_name=model_info['id']
+                    )
+                    db.session.add(default_model)
+                    db.session.commit()
+                    break
 
         return default_model
 
