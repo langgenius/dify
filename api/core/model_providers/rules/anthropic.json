@@ -8,8 +8,8 @@
             "trial",
             "paid"
         ],
-        "quota_unit": "tokens",
-        "quota_limit": 1000000000
+        "quota_unit": "times",
+        "quota_limit": 1000
     },
     "model_flexibility": "fixed"
 }
