@@ -11,13 +11,13 @@ from libs.passport import PassportService
 class PassportResource(Resource):
     """Base resource for passport."""
     def get(self):
-        app_code = request.headers.get('X-App-Code')
-        if app_code is None:
+        app_id = request.headers.get('X-App-Code')
+        if app_id is None:
             raise Unauthorized('X-App-Code header is missing.')
 
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(
-            Site.code == app_code,
+            Site.code == app_id,
             Site.status == 'normal'
         ).first()
         if not site:
@@ -41,7 +41,6 @@ class PassportResource(Resource):
             "iss": site.app_id,
             'sub': 'Web API Passport',
             'app_id': site.app_id,
-            'app_code': app_code,
             'end_user_id': end_user.id,
         }
 
