@@ -171,14 +171,18 @@ class ModelProviderFactory:
                 if quota_type in model_provider_rules['system_config']['supported_quota_types'] \
                         and quota_type in quota_type_to_provider_dict.keys():
                     provider = quota_type_to_provider_dict[quota_type]
-                    if provider.is_valid and quota_type != ProviderQuotaType.TRIAL \
-                            and provider.quota_limit > provider.quota_used:
-                        return provider
-                    elif quota_type == ProviderQuotaType.TRIAL \
-                            and provider.quota_limit > provider.quota_used:
+                    if provider.is_valid and provider.quota_limit > provider.quota_used:
                         return provider
 
             no_system_provider = True
+
+        if no_system_provider:
+            providers = db.session.query(Provider) \
+                .filter(
+                Provider.tenant_id == tenant_id,
+                Provider.provider_name == model_provider_name,
+                Provider.provider_type == ProviderType.CUSTOM.value
+            ).all()
 
         if preferred_provider_type == ProviderType.CUSTOM.value or no_system_provider:
             if providers:
