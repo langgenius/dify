@@ -72,5 +72,5 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     def on_chain_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
-        logging.error(error)
+        logging.exception(error)
         self.clear_chain_results()
