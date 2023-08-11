@@ -74,7 +74,6 @@ def decrypt(encrypted_text, tenant_id):
         cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce=nonce)
         decrypted_text = cipher_aes.decrypt_and_verify(ciphertext, tag)
     else:
-        # 直接使用RSA解密
         decrypted_text = cipher_rsa.decrypt(encrypted_text)
 
     return decrypted_text.decode()
