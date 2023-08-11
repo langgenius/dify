@@ -1,7 +1,7 @@
 import json
 from typing import Type
 
-from langchain import HuggingFaceHub
+from huggingface_hub import HfApi
 from langchain.llms import HuggingFaceEndpoint
 
 from core.helper import encrypter
@@ -90,15 +90,25 @@ class HuggingfaceHubProvider(BaseModelProvider):
             except Exception as e:
                 raise CredentialsValidateFailedError(f"{e.__class__.__name__}:{str(e)}")
         else:
-            try:
-                llm = HuggingFaceHub(
-                    repo_id=model_name,
-                    task='text2text-generation',
-                    model_kwargs={"temperature": 0.5, "max_length": 20},
-                    huggingfacehub_api_token=credentials['huggingfacehub_api_token']
-                )
+            hfapi = HfApi(token=credentials['huggingfacehub_api_token'])
 
-                llm("ping")
+            try:
+                hfapi.whoami()
+            except Exception:
+                raise CredentialsValidateFailedError("Invalid API Token.")
+
+            try:
+                model_info = hfapi.model_info(repo_id=model_name)
+                if not model_info:
+                    raise ValueError(f'Model {model_name} not found.')
+
+                if 'inference' in model_info.cardData and not model_info.cardData['inference']:
+                    raise ValueError(f'Inference API has been turned off for this model {model_name}.')
+
+                VALID_TASKS = ("text2text-generation", "text-generation", "summarization")
+                if model_info.pipeline_tag not in VALID_TASKS:
+                    raise ValueError(f"Model {model_name} is not a valid task, "
+                                     f"must be one of {VALID_TASKS}.")
             except Exception as e:
                 raise CredentialsValidateFailedError(f"{e.__class__.__name__}:{str(e)}")
 
