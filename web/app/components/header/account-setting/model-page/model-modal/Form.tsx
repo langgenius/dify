@@ -18,6 +18,7 @@ type FormProps = {
   mode: string
   cleared: boolean
   onClearedChange: Dispatch<SetStateAction<boolean>>
+  onValidating: (validating: boolean) => void
 }
 
 const nameClassName = `
@@ -33,6 +34,7 @@ const Form: FC<FormProps> = ({
   mode,
   cleared,
   onClearedChange,
+  onValidating,
 }) => {
   const { locale } = useContext(I18n)
   const [value, setValue] = useState(initValue)
@@ -42,6 +44,9 @@ const Form: FC<FormProps> = ({
   useEffect(() => {
     onValidatedError(validatedStatusState.message || '')
   }, [validatedStatusState, onValidatedError])
+  useEffect(() => {
+    onValidating(validating)
+  }, [validating, onValidating])
 
   const updateValue = (v: FormValue) => {
     setValue(v)

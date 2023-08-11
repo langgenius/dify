@@ -9,7 +9,6 @@ export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCall
   const [validatedStatus, setValidatedStatus] = useState<ValidatedStatusState>({})
 
   const { run } = useDebounceFn(async (validateCallback: ValidateCallback) => {
-    console.log(validateCallback.before(value), value)
     if (!validateCallback.before(value)) {
       setValidating(false)
       setValidatedStatus({})

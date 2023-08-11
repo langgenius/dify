@@ -20,7 +20,7 @@ const ModelIcon: FC<IModelIconProps> = ({ modelId, providerName, className }) =>
   if (providerName === ProviderEnum.openai)
     Icon = modelId.includes('gpt-4') ? <OpenaiViolet className='w-full h-full' /> : <OpenaiGreen className='w-full h-full' />
   else
-    Icon = ProviderConfig[providerName].selector.icon
+    Icon = ProviderConfig[providerName]?.selector.icon
 
   return (
     <div className={cn(className, 'w-4 h-4')}>

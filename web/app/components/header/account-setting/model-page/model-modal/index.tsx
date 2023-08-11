@@ -36,6 +36,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const [errorMessage, setErrorMessage] = useState('')
   const [cleared, setCleared] = useState(false)
   const [prevIsShow, setPrevIsShow] = useState(isShow)
+  const [validating, setValidating] = useState(false)
 
   if (prevIsShow !== isShow) {
     setCleared(false)
@@ -50,6 +51,9 @@ const ModelModal: FC<ModelModalProps> = ({
   })
   const handleValidatedError = useCallback((newErrorMessage: string) => {
     setErrorMessage(newErrorMessage)
+  }, [])
+  const handleValidating = useCallback((newValidating: boolean) => {
+    setValidating(newValidating)
   }, [])
   const validateRequiredValue = () => {
     const validateValue = value || modelModal?.defaultValue
@@ -103,6 +107,7 @@ const ModelModal: FC<ModelModalProps> = ({
               mode={mode}
               cleared={cleared}
               onClearedChange={setCleared}
+              onValidating={handleValidating}
             />
             <div className='flex justify-between items-center py-6'>
               <a
@@ -119,7 +124,7 @@ const ModelModal: FC<ModelModalProps> = ({
                   className='!h-9 !text-sm font-medium'
                   type='primary'
                   onClick={handleSave}
-                  disabled={loading || (mode === 'edit' && !cleared)}
+                  disabled={loading || (mode === 'edit' && !cleared) || validating}
                 >
                   {t('common.operation.save')}
                 </Button>

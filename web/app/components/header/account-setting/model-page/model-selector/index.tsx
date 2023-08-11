@@ -9,7 +9,8 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-
+import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import Tooltip from '@/app/components/base/tooltip'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
@@ -65,6 +66,8 @@ const ModelSelector: FC<Props> = ({
     })
     : modelList
 
+  const hasRemoved = value && !allModelNames[value.modelName]
+
   const modelOptions: any[] = (() => {
     const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
     const res: any[] = []
@@ -88,7 +91,7 @@ const ModelSelector: FC<Props> = ({
   return (
     <div className=''>
       <Popover className='relative'>
-        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto' : 'bg-gray-100')}>
+        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
           {
             ({ open }) => (
               <>
@@ -107,6 +110,18 @@ const ModelSelector: FC<Props> = ({
                     : (
                       <div className='grow text-left text-sm text-gray-800 opacity-60'>{t('common.modelProvider.selectModel')}</div>
                     )
+                }
+                {
+                  hasRemoved && (
+                    <Tooltip
+                      selector='model-selector-remove-tip'
+                      htmlContent={
+                        <div className='w-[261px] text-gray-500'>{t('common.modelProvider.selector.tip')}</div>
+                      }
+                    >
+                      <AlertCircle className='mr-1 w-4 h-4 text-[#F04438]' />
+                    </Tooltip>
+                  )
                 }
                 {!readonly && <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />}
               </>

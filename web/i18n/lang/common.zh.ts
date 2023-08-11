@@ -224,6 +224,9 @@ const translation = {
     noModelFound: '找不到模型 {{model}}',
     models: '模型列表',
     showMoreModelProvider: '显示更多模型提供商',
+    selector: {
+      tip: '该模型已被删除。请添模型或选择其他模型。',
+    },
     card: {
       quota: '额度',
       onTrial: '试用中',

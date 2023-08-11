@@ -224,6 +224,9 @@ const translation = {
     noModelFound: 'No model found for {{model}}',
     models: 'Models',
     showMoreModelProvider: 'Show more model provider',
+    selector: {
+      tip: 'This model has been removed. Please add a model or select another model.',
+    },
     card: {
       quota: 'QUOTA',
       onTrial: 'On Trial',
