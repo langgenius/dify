@@ -34,6 +34,13 @@ const ModelModal: FC<ModelModalProps> = ({
   const [value, setValue] = useState<FormValue | undefined>()
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
+  const [cleared, setCleared] = useState(false)
+  const [prevIsShow, setPrevIsShow] = useState(isShow)
+
+  if (prevIsShow !== isShow) {
+    setCleared(false)
+    setPrevIsShow(isShow)
+  }
 
   eventEmitter?.useSubscription((v) => {
     if (v === 'provider-save')
@@ -93,6 +100,9 @@ const ModelModal: FC<ModelModalProps> = ({
               initValue={modelModal?.defaultValue}
               onChange={newValue => setValue(newValue)}
               onValidatedError={handleValidatedError}
+              mode={mode}
+              cleared={cleared}
+              onClearedChange={setCleared}
             />
             <div className='flex justify-between items-center py-6'>
               <a
@@ -109,7 +119,7 @@ const ModelModal: FC<ModelModalProps> = ({
                   className='!h-9 !text-sm font-medium'
                   type='primary'
                   onClick={handleSave}
-                  disabled={loading}
+                  disabled={loading || (mode === 'edit' && !cleared)}
                 >
                   {t('common.operation.save')}
                 </Button>

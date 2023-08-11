@@ -100,7 +100,7 @@ const config: ProviderConfig = {
         },
       },
       {
-        type: 'radio',
+        type: 'select',
         key: 'base_model_name',
         required: true,
         label: {

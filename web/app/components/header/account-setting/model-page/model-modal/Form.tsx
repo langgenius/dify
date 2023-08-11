@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import type { FC } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
 import { useContext } from 'use-context-selector'
 import type { Field, FormValue, ProviderConfigModal } from '../declarations'
 import { useValidate } from '../../key-validator/hooks'
@@ -7,6 +7,7 @@ import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { validateModelProviderFn } from '../utils'
 import Input from './Input'
 import I18n from '@/context/i18n'
+import { SimpleSelect } from '@/app/components/base/select'
 
 type FormProps = {
   modelModal?: ProviderConfigModal
@@ -14,6 +15,9 @@ type FormProps = {
   fields: Field[]
   onChange: (v: FormValue) => void
   onValidatedError: (v: string) => void
+  mode: string
+  cleared: boolean
+  onClearedChange: Dispatch<SetStateAction<boolean>>
 }
 
 const nameClassName = `
@@ -26,6 +30,9 @@ const Form: FC<FormProps> = ({
   fields,
   onChange,
   onValidatedError,
+  mode,
+  cleared,
+  onClearedChange,
 }) => {
   const { locale } = useContext(I18n)
   const [value, setValue] = useState(initValue)
@@ -36,9 +43,13 @@ const Form: FC<FormProps> = ({
     onValidatedError(validatedStatusState.message || '')
   }, [validatedStatusState, onValidatedError])
 
-  const handleMultiFormChange = (v: FormValue, newChangeKey: string) => {
+  const updateValue = (v: FormValue) => {
     setValue(v)
     onChange(v)
+  }
+
+  const handleMultiFormChange = (v: FormValue, newChangeKey: string) => {
+    updateValue(v)
     setChangeKey(newChangeKey)
 
     const validateKeys = (typeof modelModal?.validateKeys === 'function' ? modelModal?.validateKeys(v) : modelModal?.validateKeys) || []
@@ -58,15 +69,26 @@ const Form: FC<FormProps> = ({
     }
   }
 
-  const handleFormChange = (k: string, v: string) => {
-    handleMultiFormChange({ ...value, [k]: v }, k)
+  const handleClear = (saveValue?: FormValue) => {
+    const needClearFields = modelModal?.fields.filter(field => field.type !== 'radio')
+    const newValue: Record<string, string> = {}
+    needClearFields?.forEach((field) => {
+      newValue[field.key] = ''
+    })
+    updateValue({ ...value, ...newValue, ...saveValue })
+    onClearedChange(true)
   }
 
-  const handleFocus = (k: string) => {
-    if (value[k] === initValue[k]) {
-      setValue({ ...value, [k]: '' })
-      onChange({ ...value, [k]: '' })
-    }
+  const handleFormChange = (k: string, v: string) => {
+    if (mode === 'edit' && !cleared)
+      handleClear({ [k]: v })
+    else
+      handleMultiFormChange({ ...value, [k]: v }, k)
+  }
+
+  const handleFocus = () => {
+    if (mode === 'edit' && !cleared)
+      handleClear()
   }
 
   const renderField = (field: Field) => {
@@ -83,7 +105,7 @@ const Form: FC<FormProps> = ({
             field={field}
             value={value}
             onChange={v => handleMultiFormChange(v, field.key)}
-            onFocus={() => handleFocus(field.key)}
+            onFocus={handleFocus}
             validatedStatusState={validatedStatusState}
           />
           {validating && changeKey === field.key && <ValidatingTip />}
@@ -96,7 +118,7 @@ const Form: FC<FormProps> = ({
       return (
         <div key={field.key} className='py-3'>
           <div className={nameClassName}>{field.label[locale]}</div>
-          <div className='grid grid-cols-3 gap-3'>
+          <div className='grid grid-cols-2 gap-3'>
             {
               options?.map(option => (
                 <div
@@ -116,6 +138,23 @@ const Form: FC<FormProps> = ({
               ))
             }
           </div>
+          {validating && changeKey === field.key && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (field.type === 'select') {
+      const options = typeof field.options === 'function' ? field.options(value) : field.options
+
+      return (
+        <div key={field.key} className='py-3'>
+          <div className={nameClassName}>{field.label[locale]}</div>
+          <SimpleSelect
+            defaultValue={value[field.key]}
+            items={options!.map(option => ({ value: option.key, name: option.label[locale] }))}
+            onSelect={item => handleFormChange(field.key, item.value as string)}
+          />
+          {validating && changeKey === field.key && <ValidatingTip />}
         </div>
       )
     }
