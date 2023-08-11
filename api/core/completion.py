@@ -232,10 +232,14 @@ And answer according to the language of the user's question.
                     inputs=human_inputs
                 )
 
-                curr_message_tokens = memory.model_instance.get_num_tokens(to_prompt_messages([tmp_human_message]))
-                max_tokens = model.get("completion_params").get('max_tokens')
-                rest_tokens = memory.model_instance.model_rules.max_tokens.max - max_tokens - curr_message_tokens
-                rest_tokens = max(rest_tokens, 0)
+                if memory.model_instance.model_rules.max_tokens.max:
+                    curr_message_tokens = memory.model_instance.get_num_tokens(to_prompt_messages([tmp_human_message]))
+                    max_tokens = model.get("completion_params").get('max_tokens')
+                    rest_tokens = memory.model_instance.model_rules.max_tokens.max - max_tokens - curr_message_tokens
+                    rest_tokens = max(rest_tokens, 0)
+                else:
+                    rest_tokens = 2000
+
                 histories = cls.get_history_messages_from_memory(memory, rest_tokens)
                 human_message_prompt += "\n\n" if human_message_prompt else ""
                 human_message_prompt += "Here is the chat histories between human and assistant, " \
