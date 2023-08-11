@@ -14,6 +14,7 @@ const supportI18nProviderName = [
   ProviderEnum.replicate,
   ProviderEnum.azure_openai,
   ProviderEnum.huggingface_hub,
+  ProviderEnum.wenxin,
   ProviderEnum.tongyi,
   ProviderEnum.spark,
   ProviderEnum.minimax,

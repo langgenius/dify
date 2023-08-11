@@ -15,6 +15,7 @@ import {
 import {
   Minimax,
   Tongyi,
+  Wxyy,
 } from '@/app/components/base/icons/src/image/llm'
 import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 
@@ -32,6 +33,7 @@ const icons: any = {
   [ProviderEnum.spark]: IflytekSpark,
   [ProviderEnum.tongyi]: Tongyi,
   [ProviderEnum.chatglm]: Chatglm,
+  [ProviderEnum.wenxin]: Wxyy,
 }
 
 const ModelIcon: FC<IModelIconProps> = ({ modelId, providerName, className }) => {

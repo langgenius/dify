@@ -316,6 +316,7 @@ const translation = {
     replicate: 'Replicate',
     azure_openai: 'Azure OpenAI Service',
     huggingface_hub: 'Hugging Face',
+    wenxin: 'WENXINYIYAN',
     tongyi: 'TONGYI QIANWEN',
     spark: 'iFLYTEK SPARK',
     minimax: 'MINIMAX',
