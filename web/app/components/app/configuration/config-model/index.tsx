@@ -58,6 +58,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   // Cache loaded model param
   const [allParams, setAllParams, getAllParams] = useGetState<Record<string, Record<string, any>>>({})
   const currParams = allParams[provider]?.[modelId]
+  const hasEnableParams = currParams && Object.keys(currParams).some(key => currParams[key].enabled)
   const allSupportParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty', 'max_tokens']
   const currSupportParams = currParams ? allSupportParams.filter(key => currParams[key].enabled) : allSupportParams
 
@@ -136,13 +137,19 @@ const ConfigModel: FC<IConfigModelProps> = ({
       // debugger
       const nextSelectModelMaxToken = nextParamsRule.max_tokens.max
       const newConCompletionParams = produce(completionParams, (draft: any) => {
-        if (completionParams.max_tokens > nextSelectModelMaxToken) {
-          Toast.notify({
-            type: 'warning',
-            message: t('common.model.params.setToCurrentModelMaxTokenTip', { maxToken: formatNumber(nextSelectModelMaxToken) }),
-          })
-          draft.max_tokens = parseFloat((nextSelectModelMaxToken * 0.8).toFixed(2))
+        if (nextParamsRule.max_tokens.enabled) {
+          if (completionParams.max_tokens > nextSelectModelMaxToken) {
+            Toast.notify({
+              type: 'warning',
+              message: t('common.model.params.setToCurrentModelMaxTokenTip', { maxToken: formatNumber(nextSelectModelMaxToken) }),
+            })
+            draft.max_tokens = parseFloat((nextSelectModelMaxToken * 0.8).toFixed(2))
+          }
         }
+        else {
+          delete draft.max_tokens
+        }
+
         allSupportParams.forEach((key) => {
           if (key === 'max_tokens')
             return
@@ -240,7 +247,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
       return
 
     const max = currParams.max_tokens.max
-    if (currModel?.model_provider.provider_name !== ProviderEnum.anthropic && completionParams.max_tokens > max * 2 / 3)
+    const isSupportMaxToken = currParams.max_tokens.enabled
+    if (isSupportMaxToken && currModel?.model_provider.provider_name !== ProviderEnum.anthropic && completionParams.max_tokens > max * 2 / 3)
       setMaxTokenSettingTipVisible(true)
     else
       setMaxTokenSettingTipVisible(false)
@@ -293,7 +301,9 @@ const ConfigModel: FC<IConfigModelProps> = ({
                 }}
               />
             </div>
-            <div className="border-b border-gray-100"></div>
+            {hasEnableParams && (
+              <div className="border-b border-gray-100"></div>
+            )}
 
             {/* Tone type */}
             {[ProviderEnum.openai, ProviderEnum.azure_openai].includes(provider) && (
@@ -339,7 +349,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             )}
 
             {/* Params */}
-            <div className={cn('mt-4 space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
+            <div className={cn(hasEnableParams && 'mt-4', 'space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
               {allParams[provider]?.[modelId]
                 ? (
                   currSupportParams.map(key => (<ParamItem
