@@ -9,6 +9,7 @@ from extensions.ext_database import db
 from models.account import Account
 from models.model import App, UploadFile
 
+
 class Dataset(db.Model):
     __tablename__ = 'datasets'
     __table_args__ = (
@@ -268,7 +269,7 @@ class Document(db.Model):
     @property
     def average_segment_length(self):
         if self.word_count and self.word_count != 0 and self.segment_count and self.segment_count != 0:
-            return self.word_count//self.segment_count
+            return self.word_count // self.segment_count
         return 0
 
     @property
@@ -345,16 +346,6 @@ class DocumentSegment(db.Model):
     @property
     def document(self):
         return db.session.query(Document).filter(Document.id == self.document_id).first()
-
-    @property
-    def embedding(self):
-        embedding = db.session.query(Embedding).filter(Embedding.hash == self.index_node_hash).first() \
-            if self.index_node_hash else None
-
-        if embedding:
-            return embedding.embedding
-
-        return None
 
     @property
     def previous_segment(self):
@@ -436,10 +427,12 @@ class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('hash', name='embedding_hash_idx')
+        db.UniqueConstraint('model_name', 'hash', name='embedding_hash_idx')
     )
 
     id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    model_name = db.Column(db.String(40), nullable=False,
+                           server_default=db.text("'text-embedding-ada-002'::character varying"))
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

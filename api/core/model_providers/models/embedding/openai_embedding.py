@@ -2,6 +2,7 @@ import decimal
 import logging
 
 import openai
+import tiktoken
 from langchain.embeddings import OpenAIEmbeddings
 
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
@@ -23,6 +24,23 @@ class OpenAIEmbedding(BaseEmbedding):
         )
 
         super().__init__(model_provider, client, name)
+
+    def get_num_tokens(self, text: str) -> int:
+        """
+        get num tokens of text.
+
+        :param text:
+        :return:
+        """
+        if len(text) == 0:
+            return 0
+
+        enc = tiktoken.encoding_for_model(self.name)
+
+        tokenized_text = enc.encode(text)
+
+        # calculate the number of tokens in the encoded text
+        return len(tokenized_text)
 
     def get_token_price(self, tokens: int):
         tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),

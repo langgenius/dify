@@ -2,6 +2,7 @@ import decimal
 import logging
 
 import openai
+import tiktoken
 from langchain.embeddings import OpenAIEmbeddings
 
 from core.model_providers.error import LLMBadRequestError, LLMAuthorizationError, LLMRateLimitError, \
@@ -14,7 +15,7 @@ AZURE_OPENAI_API_VERSION = '2023-07-01-preview'
 
 class AzureOpenAIEmbedding(BaseEmbedding):
     def __init__(self, model_provider: BaseModelProvider, name: str):
-        credentials = model_provider.get_model_credentials(
+        self.credentials = model_provider.get_model_credentials(
             model_name=name,
             model_type=self.type
         )
@@ -25,10 +26,27 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             openai_api_version=AZURE_OPENAI_API_VERSION,
             chunk_size=16,
             max_retries=1,
-            **credentials
+            **self.credentials
         )
 
         super().__init__(model_provider, client, name)
+
+    def get_num_tokens(self, text: str) -> int:
+        """
+        get num tokens of text.
+
+        :param text:
+        :return:
+        """
+        if len(text) == 0:
+            return 0
+
+        enc = tiktoken.encoding_for_model(self.credentials.get('base_model_name'))
+
+        tokenized_text = enc.encode(text)
+
+        # calculate the number of tokens in the encoded text
+        return len(tokenized_text)
 
     def get_token_price(self, tokens: int):
         tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),

@@ -2,6 +2,7 @@ from abc import abstractmethod
 from typing import Any
 
 import tiktoken
+from langchain.schema.language_model import _get_token_ids_default_method
 
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelType
@@ -26,12 +27,7 @@ class BaseEmbedding(BaseProviderModel):
         if len(text) == 0:
             return 0
 
-        enc = tiktoken.encoding_for_model(self.name)
-
-        tokenized_text = enc.encode(text)
-
-        # calculate the number of tokens in the encoded text
-        return len(tokenized_text)
+        return len(_get_token_ids_default_method(text))
 
     def get_token_price(self, tokens: int):
         return 0
