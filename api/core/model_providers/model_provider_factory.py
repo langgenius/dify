@@ -159,6 +159,7 @@ class ModelProviderFactory:
                 Provider.provider_type == preferred_provider_type
             ).all()
 
+        no_system_provider = False
         if preferred_provider_type == ProviderType.SYSTEM.value:
             quota_type_to_provider_dict = {}
             for provider in providers:
@@ -173,9 +174,13 @@ class ModelProviderFactory:
                     if provider.is_valid and quota_type != ProviderQuotaType.TRIAL \
                             and provider.quota_limit > provider.quota_used:
                         return provider
-                    elif quota_type == ProviderQuotaType.TRIAL:
+                    elif quota_type == ProviderQuotaType.TRIAL \
+                            and provider.quota_limit > provider.quota_used:
                         return provider
-        elif preferred_provider_type == ProviderType.CUSTOM.value:
+
+            no_system_provider = True
+
+        if preferred_provider_type == ProviderType.CUSTOM.value or no_system_provider:
             if providers:
                 return providers[0]
             else:
