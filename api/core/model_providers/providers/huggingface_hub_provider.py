@@ -74,6 +74,13 @@ class HuggingfaceHubProvider(BaseModelProvider):
         if 'huggingfacehub_api_token' not in credentials:
             raise CredentialsValidateFailedError('Hugging Face Hub API Token must be provided.')
 
+        hfapi = HfApi(token=credentials['huggingfacehub_api_token'])
+
+        try:
+            hfapi.whoami()
+        except Exception:
+            raise CredentialsValidateFailedError("Invalid API Token.")
+
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             if 'huggingfacehub_endpoint_url' not in credentials:
                 raise CredentialsValidateFailedError('Hugging Face Hub Endpoint URL must be provided.')
@@ -90,13 +97,6 @@ class HuggingfaceHubProvider(BaseModelProvider):
             except Exception as e:
                 raise CredentialsValidateFailedError(f"{e.__class__.__name__}:{str(e)}")
         else:
-            hfapi = HfApi(token=credentials['huggingfacehub_api_token'])
-
-            try:
-                hfapi.whoami()
-            except Exception:
-                raise CredentialsValidateFailedError("Invalid API Token.")
-
             try:
                 model_info = hfapi.model_info(repo_id=model_name)
                 if not model_info:
@@ -125,6 +125,18 @@ class HuggingfaceHubProvider(BaseModelProvider):
         :return:
         """
         credentials['huggingfacehub_api_token'] = encrypter.encrypt_token(tenant_id, credentials['huggingfacehub_api_token'])
+
+        if credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
+            hfapi = HfApi(token=credentials['huggingfacehub_api_token'])
+            model_info = hfapi.model_info(repo_id=model_name)
+            if not model_info:
+                raise ValueError(f'Model {model_name} not found.')
+
+            if 'inference' in model_info.cardData and not model_info.cardData['inference']:
+                raise ValueError(f'Inference API has been turned off for this model {model_name}.')
+
+            credentials['task_type'] = model_info.pipeline_tag
+
         return credentials
 
     def get_model_credentials(self, model_name: str, model_type: ModelType, obfuscated: bool = False) -> dict:
@@ -144,6 +156,7 @@ class HuggingfaceHubProvider(BaseModelProvider):
         if not provider_model.encrypted_config:
             return {
                 'huggingfacehub_api_token': None,
+                'task_type': None
             }
 
         credentials = json.loads(provider_model.encrypted_config)

@@ -21,7 +21,7 @@ class HuggingfaceHubModel(BaseLLM):
         if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             client = HuggingFaceEndpoint(
                 endpoint_url=self.credentials['huggingfacehub_endpoint_url'],
-                task="text2text-generation",
+                task='text2text-generation',
                 model_kwargs=provider_model_kwargs,
                 huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
                 callbacks=self.callbacks,
@@ -29,7 +29,7 @@ class HuggingfaceHubModel(BaseLLM):
         else:
             client = HuggingFaceHub(
                 repo_id=self.name,
-                task='text2text-generation',
+                task=self.credentials['task_type'],
                 model_kwargs=provider_model_kwargs,
                 huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
                 callbacks=self.callbacks,
