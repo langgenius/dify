@@ -38,6 +38,7 @@ const MODEL_LIST = [
   config.azure_openai,
   config.replicate,
   config.huggingface_hub,
+  config.wenxin,
   config.tongyi,
   config.spark,
   config.minimax,

@@ -9,10 +9,6 @@ const config: ProviderConfig = {
       'en': <MinimaxText className='w-[84px] h-6' />,
       'zh-Hans': <MinimaxText className='w-[84px] h-6' />,
     },
-    vender: {
-      'en': 'Earn 1 million tokens for free',
-      'zh-Hans': '免费获取 100 万个 token',
-    },
   },
   modal: {
     key: ProviderEnum.minimax,

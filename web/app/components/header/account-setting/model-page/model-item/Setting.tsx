@@ -4,7 +4,6 @@ import { useContext } from 'use-context-selector'
 import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig, ProviderWithQuota } from '../declarations'
 import Indicator from '../../../indicator'
 import Selector from '../selector'
-import s from './index.module.css'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
@@ -30,22 +29,6 @@ const Setting: FC<SettingProps> = ({
 
   return (
     <div className='flex items-center'>
-      {
-        modelItem.vender && !systemFree?.is_valid && !IS_CE_EDITION && (
-          <div className='flex items-center'>
-            📣
-            <div className={`${s.vender} ml-1 mr-2 text-xs font-medium text-transparent`}>{modelItem.vender?.[locale]}</div>
-            <a
-              href='https://langgenius.feishu.cn/share/base/form/shrcnnLSM9z89XTQDDUgVi64Ek1'
-              target='_blank'
-              className='flex items-center px-3 h-7 bg-primary-600 rounded-md text-xs font-medium text-white'
-            >
-              {t('common.operation.getForFree')}
-            </a>
-            <div className='mx-2 w-[1px] h-4 bg-black/5' />
-          </div>
-        )
-      }
       {
         modelItem.disable && !IS_CE_EDITION && (
           <div className='flex items-center text-xs text-gray-500'>

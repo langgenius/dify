@@ -9,10 +9,6 @@ const config: ProviderConfig = {
       'en': <IflytekSparkText className='h-6' />,
       'zh-Hans': <IflytekSparkTextCn className='h-6' />,
     },
-    vender: {
-      'en': 'Earn 3 million tokens for free',
-      'zh-Hans': '免费获取 300 万个 token',
-    },
   },
   modal: {
     key: ProviderEnum.spark,

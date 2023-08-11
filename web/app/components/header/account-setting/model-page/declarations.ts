@@ -30,6 +30,7 @@ export enum ProviderEnum {
   'azure_openai' = 'azure_openai',
   'huggingface_hub' = 'huggingface_hub',
   'tongyi' = 'tongyi',
+  'wenxin' = 'wenxin',
   'spark' = 'spark',
   'minimax' = 'minimax',
   'chatglm' = 'chatglm',
@@ -42,7 +43,6 @@ export type ProviderConfigItem = {
   desc?: TypeWithI18N
   bgColor?: string
   hit?: TypeWithI18N
-  vender?: TypeWithI18N
   disable?: {
     tip: TypeWithI18N
     link: {
