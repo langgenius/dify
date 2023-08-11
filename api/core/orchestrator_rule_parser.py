@@ -71,10 +71,12 @@ class OrchestratorRuleParser:
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
-            if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL] \
-                    and (agent_model_instance.model_mode != ModelMode.CHAT
-                         or agent_model_instance.name not in ['openai', 'azure_openai']):
-                planning_strategy = PlanningStrategy.REACT
+            if agent_model_instance.model_mode != ModelMode.CHAT \
+                         or agent_model_instance.name not in ['openai', 'azure_openai']:
+                if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
+                    planning_strategy = PlanningStrategy.REACT
+                elif planning_strategy == PlanningStrategy.ROUTER:
+                    planning_strategy = PlanningStrategy.REACT_ROUTER
 
             summary_model_instance = ModelFactory.get_text_generation_model(
                 tenant_id=self.tenant_id,
@@ -94,20 +96,11 @@ class OrchestratorRuleParser:
             if len(tools) == 0:
                 return None
 
-            dataset_model_instance = ModelFactory.get_text_generation_model(
-                tenant_id=self.tenant_id,
-                model_kwargs=ModelKwargs(
-                    temperature=0,
-                    max_tokens=500
-                )
-            )
-
             agent_configuration = AgentConfiguration(
                 strategy=planning_strategy,
                 model_instance=agent_model_instance,
                 tools=tools,
                 summary_model_instance=summary_model_instance,
-                dataset_model_instance=dataset_model_instance,
                 memory=memory,
                 callbacks=[chain_callback, agent_callback],
                 max_iterations=10,

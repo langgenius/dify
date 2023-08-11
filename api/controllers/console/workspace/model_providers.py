@@ -3,8 +3,10 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
+from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import CredentialsValidateFailedError
 from services.provider_checkout_service import ProviderCheckoutService
 from services.provider_service import ProviderService
@@ -226,12 +228,17 @@ class ModelProviderModelParameterRuleApi(Resource):
         args = parser.parse_args()
 
         provider_service = ProviderService()
-        parameter_rules = provider_service.get_model_parameter_rules(
-            tenant_id=current_user.current_tenant_id,
-            model_provider_name=provider_name,
-            model_name=args['model_name'],
-            model_type='text-generation'
-        )
+
+        try:
+            parameter_rules = provider_service.get_model_parameter_rules(
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=provider_name,
+                model_name=args['model_name'],
+                model_type='text-generation'
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"Current Text Generation Model is invalid. Please switch to the available model.")
 
         rules = {
             k: {

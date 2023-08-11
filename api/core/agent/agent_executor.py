@@ -12,6 +12,7 @@ from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.openai_multi_function_call import AutoSummarizingOpenMultiAIFunctionCallAgent
 from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
+from core.agent.agent.structed_multi_dataset_router_agent import StructuredMultiDatasetRouterAgent
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
@@ -21,6 +22,7 @@ from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 class PlanningStrategy(str, enum.Enum):
     ROUTER = 'router'
+    REACT_ROUTER = 'react_router'
     REACT = 'react'
     FUNCTION_CALL = 'function_call'
     MULTI_FUNCTION_CALL = 'multi_function_call'
@@ -31,7 +33,6 @@ class AgentConfiguration(BaseModel):
     model_instance: BaseLLM
     tools: list[BaseTool]
     summary_model_instance: BaseLLM
-    dataset_model_instance: BaseLLM
     memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
@@ -89,9 +90,18 @@ class AgentExecutor:
             self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
                 model_instance=self.configuration.model_instance,
-                llm=self.configuration.dataset_model_instance.client,
+                llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,
+                verbose=True
+            )
+        elif self.configuration.strategy == PlanningStrategy.REACT_ROUTER:
+            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
+            agent = StructuredMultiDatasetRouterAgent.from_llm_and_tools(
+                model_instance=self.configuration.model_instance,
+                llm=self.configuration.model_instance.client,
+                tools=self.configuration.tools,
+                output_parser=StructuredChatOutputParser(),
                 verbose=True
             )
         else:
