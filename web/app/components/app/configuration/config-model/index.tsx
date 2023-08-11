@@ -145,6 +145,9 @@ const ConfigModel: FC<IConfigModelProps> = ({
             })
             draft.max_tokens = parseFloat((nextSelectModelMaxToken * 0.8).toFixed(2))
           }
+          // prev don't have max token
+          if (!completionParams.max_tokens)
+            draft.max_tokens = nextParamsRule.max_tokens.default
         }
         else {
           delete draft.max_tokens
