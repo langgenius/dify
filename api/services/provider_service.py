@@ -231,7 +231,11 @@ class ProviderService:
         ).first()
 
         if provider:
-            self.switch_preferred_provider(tenant_id, provider_name, ProviderType.SYSTEM.value)
+            try:
+                self.switch_preferred_provider(tenant_id, provider_name, ProviderType.SYSTEM.value)
+            except ValueError:
+                pass
+
             db.session.delete(provider)
             db.session.commit()
 
