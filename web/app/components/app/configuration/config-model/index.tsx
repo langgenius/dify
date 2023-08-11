@@ -101,15 +101,22 @@ const ConfigModel: FC<IConfigModelProps> = ({
     const [fromStart = 0, fromEnd] = fromRange
     const [toStart = 0, toEnd] = toRange
 
+    // The following three if is to avoid precision loss
     if (fromStart === toStart && fromEnd === toEnd)
       return value
+
+    if (value <= fromStart)
+      return toStart
+
+    if (value >= fromEnd)
+      return toEnd
 
     const fromLength = fromEnd - fromStart
     const toLength = toEnd - toStart
 
-    const adjustedValue = (value - fromStart) * (toLength / fromLength) + toStart
-
-    return parseFloat(adjustedValue.toFixed(2))
+    let adjustedValue = (value - fromStart) * (toLength / fromLength) + toStart
+    adjustedValue = parseFloat(adjustedValue.toFixed(2))
+    return adjustedValue
   }
 
   const handleSelectModel = (id: string, nextProvider = ProviderEnum.openai) => {
@@ -205,9 +212,14 @@ const ConfigModel: FC<IConfigModelProps> = ({
   }, [completionParams])
 
   const handleParamChange = (key: string, value: number) => {
+    const currParamsRule = getAllParams()[provider]?.[modelId]
+    let notOutRangeValue = parseFloat(value.toFixed(2))
+    notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
+    notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
+
     onCompletionParamsChange({
       ...completionParams,
-      [key]: value,
+      [key]: notOutRangeValue,
     })
   }
   const ableStyle = 'bg-indigo-25 border-[#2A87F5] cursor-pointer'
