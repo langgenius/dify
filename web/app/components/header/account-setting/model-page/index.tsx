@@ -14,7 +14,7 @@ import ModelModal from './model-modal'
 import config from './configs'
 import { ConfigurableProviders } from './utils'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+// import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import {
   changeModelProviderPriority,
   deleteModelProvider,
@@ -39,10 +39,10 @@ const MODEL_LIST = [
   config.azure_openai,
   config.replicate,
   config.huggingface_hub,
-  config.wenxin,
-  config.tongyi,
-  config.spark,
   config.minimax,
+  config.spark,
+  config.tongyi,
+  config.wenxin,
   config.chatglm,
 ]
 
@@ -205,7 +205,7 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.systemReasoningModel.key')}
-            <HelpCircle className={tipClassName} />
+            {/* <HelpCircle className={tipClassName} /> */}
           </div>
           <div>
             <ModelSelector
@@ -218,7 +218,7 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.embeddingModel.key')}
-            <HelpCircle className={tipClassName} />
+            {/* <HelpCircle className={tipClassName} /> */}
           </div>
           <div>
             <ModelSelector
@@ -231,7 +231,7 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.speechToTextModel.key')}
-            <HelpCircle className={tipClassName} />
+            {/* <HelpCircle className={tipClassName} /> */}
           </div>
           <div>
             <ModelSelector
