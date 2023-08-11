@@ -1,6 +1,7 @@
 """Wrapper around Wenxin APIs."""
 from __future__ import annotations
 
+import json
 import logging
 from typing import (
     Any,
@@ -219,7 +220,14 @@ class Wenxin(LLM):
         request["messages"] = [{"role": "user", "content": prompt}]
         request.update(kwargs)
 
-        for token in self._client.post(request):
-            yield GenerationChunk(text=token.completion)
-            if run_manager:
-                run_manager.on_llm_new_token(token.completion)
+        for token in self._client.post(request).iter_lines():
+            if token:
+                token = token.decode("utf-8")
+                completion = json.loads(token[5:])
+
+                yield GenerationChunk(text=completion['result'])
+                if run_manager:
+                    run_manager.on_llm_new_token(completion['result'])
+
+                if completion['is_end']:
+                    break
