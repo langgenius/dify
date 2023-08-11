@@ -388,6 +388,10 @@ class ProviderService:
         if preferred_provider_type not in model_provider_rules['support_provider_types']:
             raise ValueError(f'Not support provider type: {preferred_provider_type}')
 
+        model_provider = ModelProviderFactory.get_model_provider_class(provider_name)
+        if not model_provider.is_provider_type_system_supported():
+            return
+
         # get preferred provider
         preferred_model_provider = db.session.query(TenantPreferredModelProvider) \
             .filter(
