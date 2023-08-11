@@ -2,16 +2,17 @@
 import json
 from datetime import datetime
 
-import flask
 from flask_login import login_required, current_user
 from flask_restful import Resource, reqparse, fields, marshal_with, abort, inputs
-from werkzeug.exceptions import Unauthorized, Forbidden
+from werkzeug.exceptions import Forbidden
 
 from constants.model_template import model_templates, demo_model_templates
 from controllers.console import api
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.model_params import ModelType
 from events.app_event import app_was_created, app_was_deleted
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -126,9 +127,9 @@ class AppListApi(Resource):
         if args['model_config'] is not None:
             # validate config
             model_configuration = AppModelConfigService.validate_configuration(
+                tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=args['model_config'],
-                mode=args['mode']
+                config=args['model_config']
             )
 
             app = App(
@@ -163,6 +164,21 @@ class AppListApi(Resource):
 
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
+
+            default_model = ModelFactory.get_default_model(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.TEXT_GENERATION
+            )
+
+            if default_model:
+                model_dict = app_model_config.model_dict
+                model_dict['provider'] = default_model.provider_name
+                model_dict['name'] = default_model.model_name
+                app_model_config.model = json.dumps(model_dict)
+            else:
+                raise ProviderNotInitializeError(
+                    f"No Text Generation Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
 
         app.name = args['name']
         app.mode = args['mode']

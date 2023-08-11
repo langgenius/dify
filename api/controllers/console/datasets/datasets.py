@@ -5,10 +5,13 @@ from flask_restful import Resource, reqparse, fields, marshal, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
 import services
 from controllers.console import api
+from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
+from core.model_providers.error import LLMBadRequestError
+from core.model_providers.model_factory import ModelFactory
 from libs.helper import TimestampField
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Document
@@ -96,6 +99,15 @@ class DatasetListApi(Resource):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
+
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
 
         try:
             dataset = DatasetService.create_empty_dataset(
@@ -235,12 +247,26 @@ class DatasetIndexingEstimateApi(Resource):
                 raise NotFound("File not found.")
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.file_indexing_estimate(file_details, args['process_rule'], args['doc_form'])
+
+            try:
+                response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
+                                                                  args['process_rule'], args['doc_form'])
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
         elif args['info_list']['data_source_type'] == 'notion_import':
 
             indexing_runner = IndexingRunner()
-            response = indexing_runner.notion_indexing_estimate(args['info_list']['notion_info_list'],
-                                                                args['process_rule'], args['doc_form'])
+
+            try:
+                response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
+                                                                    args['info_list']['notion_info_list'],
+                                                                    args['process_rule'], args['doc_form'])
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
         else:
             raise ValueError('Data source type not support')
         return response, 200

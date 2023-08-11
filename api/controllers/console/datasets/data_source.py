@@ -255,7 +255,7 @@ class DataSourceNotionApi(Resource):
         # validate args
         DocumentService.estimate_args_validate(args)
         indexing_runner = IndexingRunner()
-        response = indexing_runner.notion_indexing_estimate(args['notion_info_list'], args['process_rule'])
+        response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id, args['notion_info_list'], args['process_rule'])
         return response, 200
 
 

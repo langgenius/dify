@@ -16,8 +16,9 @@ from flask import Flask, request, Response, session
 import flask_login
 from flask_cors import CORS
 
+from core.model_providers.providers import hosted
 from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage, ext_mail
+    ext_database, ext_storage, ext_mail, ext_stripe
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
@@ -71,7 +72,7 @@ def create_app(test_config=None) -> Flask:
     register_blueprints(app)
     register_commands(app)
 
-    core.init_app(app)
+    hosted.init_app(app)
 
     return app
 
@@ -88,6 +89,7 @@ def initialize_extensions(app):
     ext_login.init_app(app)
     ext_mail.init_app(app)
     ext_sentry.init_app(app)
+    ext_stripe.init_app(app)
 
 
 def _create_tenant_for_account(account):
@@ -243,6 +245,19 @@ def threads():
     return {
         'thread_num': num_threads,
         'threads': thread_list
+    }
+
+
+@app.route('/db-pool-stat')
+def pool_stat():
+    engine = db.engine
+    return {
+        'pool_size': engine.pool.size(),
+        'checked_in_connections': engine.pool.checkedin(),
+        'checked_out_connections': engine.pool.checkedout(),
+        'overflow_connections': engine.pool.overflow(),
+        'connection_timeout': engine.pool.timeout(),
+        'recycle_time': db.engine.pool._recycle
     }
 
 
