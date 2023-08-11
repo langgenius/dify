@@ -59,11 +59,11 @@ class SparkProvider(BaseModelProvider):
         :return:
         """
         return ModelKwargsRules(
-            temperature=KwargRule(min=0, max=1, default=0.5),
-            top_p=KwargRule(enabled=False),
-            presence_penalty=KwargRule(enabled=False),
-            frequency_penalty=KwargRule(enabled=False),
-            max_tokens=KwargRule(min=10, max=4096, default=2048),
+            temperature=KwargRule[float](min=0, max=1, default=0.5),
+            top_p=KwargRule[float](enabled=False),
+            presence_penalty=KwargRule[float](enabled=False),
+            frequency_penalty=KwargRule[float](enabled=False),
+            max_tokens=KwargRule[int](min=10, max=4096, default=2048),
         )
 
     @classmethod

@@ -1,5 +1,5 @@
 import enum
-from typing import Optional
+from typing import Optional, TypeVar, Generic
 
 from langchain.load.serializable import Serializable
 from pydantic import BaseModel
@@ -40,17 +40,20 @@ class KwargRuleType(enum.Enum):
     FLOAT = 'float'
 
 
-class KwargRule(Serializable, BaseModel):
+T = TypeVar('T')
+
+
+class KwargRule(Generic[T], BaseModel):
     enabled: bool = True
-    min: Optional[float] = None
-    max: Optional[float] = None
-    default: Optional[float] = None
+    min: Optional[T] = None
+    max: Optional[T] = None
+    default: Optional[T] = None
     alias: Optional[str] = None
 
 
-class ModelKwargsRules(Serializable, BaseModel):
-    max_tokens: KwargRule = KwargRule(enabled=False)
-    temperature: KwargRule = KwargRule(enabled=False)
-    top_p: KwargRule = KwargRule(enabled=False)
-    presence_penalty: KwargRule = KwargRule(enabled=False)
-    frequency_penalty: KwargRule = KwargRule(enabled=False)
+class ModelKwargsRules(BaseModel):
+    max_tokens: KwargRule = KwargRule[int](enabled=False)
+    temperature: KwargRule = KwargRule[float](enabled=False)
+    top_p: KwargRule = KwargRule[float](enabled=False)
+    presence_penalty: KwargRule = KwargRule[float](enabled=False)
+    frequency_penalty: KwargRule = KwargRule[float](enabled=False)

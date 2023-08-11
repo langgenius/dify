@@ -2,7 +2,6 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
-from flask import current_app
 from langchain.llms import Minimax
 
 from core.helper import encrypter
@@ -75,11 +74,11 @@ class MinimaxProvider(BaseModelProvider):
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule(min=0.01, max=1, default=0.9),
-            top_p=KwargRule(min=0, max=1, default=0.95),
-            presence_penalty=KwargRule(enabled=False),
-            frequency_penalty=KwargRule(enabled=False),
-            max_tokens=KwargRule(min=10, max=model_max_tokens.get(model_name, 6144), default=1024),
+            temperature=KwargRule[float](min=0.01, max=1, default=0.9),
+            top_p=KwargRule[float](min=0, max=1, default=0.95),
+            presence_penalty=KwargRule[float](enabled=False),
+            frequency_penalty=KwargRule[float](enabled=False),
+            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name, 6144), default=1024),
         )
 
     @classmethod

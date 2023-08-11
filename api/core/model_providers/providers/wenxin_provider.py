@@ -63,19 +63,19 @@ class WenxinProvider(BaseModelProvider):
         """
         if model_name in ['ernie-bot', 'ernie-bot-turbo']:
             return ModelKwargsRules(
-                temperature=KwargRule(min=0.01, max=1, default=0.95),
-                top_p=KwargRule(min=0.01, max=1, default=0.8),
-                presence_penalty=KwargRule(enabled=False),
-                frequency_penalty=KwargRule(enabled=False),
-                max_tokens=KwargRule(enabled=False),
+                temperature=KwargRule[float](min=0.01, max=1, default=0.95),
+                top_p=KwargRule[float](min=0.01, max=1, default=0.8),
+                presence_penalty=KwargRule[float](enabled=False),
+                frequency_penalty=KwargRule[float](enabled=False),
+                max_tokens=KwargRule[int](enabled=False),
             )
         else:
             return ModelKwargsRules(
-                temperature=KwargRule(enabled=False),
-                top_p=KwargRule(enabled=False),
-                presence_penalty=KwargRule(enabled=False),
-                frequency_penalty=KwargRule(enabled=False),
-                max_tokens=KwargRule(enabled=False),
+                temperature=KwargRule[float](enabled=False),
+                top_p=KwargRule[float](enabled=False),
+                presence_penalty=KwargRule[float](enabled=False),
+                frequency_penalty=KwargRule[float](enabled=False),
+                max_tokens=KwargRule[int](enabled=False),
             )
 
     @classmethod

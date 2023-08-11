@@ -164,11 +164,11 @@ class AzureOpenAIProvider(BaseModelProvider):
         model_credentials = self.get_model_credentials(model_name, model_type)
 
         return ModelKwargsRules(
-            temperature=KwargRule(min=0, max=2, default=1),
-            top_p=KwargRule(min=0, max=1, default=1),
-            presence_penalty=KwargRule(min=-2, max=2, default=0),
-            frequency_penalty=KwargRule(min=-2, max=2, default=0),
-            max_tokens=KwargRule(min=10, max=base_model_max_tokens.get(
+            temperature=KwargRule[float](min=0, max=2, default=1),
+            top_p=KwargRule[float](min=0, max=1, default=1),
+            presence_penalty=KwargRule[float](min=-2, max=2, default=0),
+            frequency_penalty=KwargRule[float](min=-2, max=2, default=0),
+            max_tokens=KwargRule[int](min=10, max=base_model_max_tokens.get(
                 model_credentials['base_model_name'],
                 4097
             ), default=16),

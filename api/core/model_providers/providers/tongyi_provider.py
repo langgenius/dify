@@ -63,11 +63,11 @@ class TongyiProvider(BaseModelProvider):
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule(enabled=False),
-            top_p=KwargRule(min=0, max=1, default=0.8),
-            presence_penalty=KwargRule(enabled=False),
-            frequency_penalty=KwargRule(enabled=False),
-            max_tokens=KwargRule(min=10, max=model_max_tokens.get(model_name), default=1024),
+            temperature=KwargRule[float](enabled=False),
+            top_p=KwargRule[float](min=0, max=1, default=0.8),
+            presence_penalty=KwargRule[float](enabled=False),
+            frequency_penalty=KwargRule[float](enabled=False),
+            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name), default=1024),
         )
 
     @classmethod

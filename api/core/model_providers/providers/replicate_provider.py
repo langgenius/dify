@@ -67,7 +67,7 @@ class ReplicateProvider(BaseModelProvider):
         for key, value in version.openapi_schema['components']['schemas']['Input']['properties'].items():
             if key not in ['debug', 'prompt'] and value['type'] in ['number', 'integer']:
                 if key == ['temperature', 'top_p']:
-                    kwarg_rule = KwargRule(
+                    kwarg_rule = KwargRule[float](
                         type=KwargRuleType.FLOAT.value if value['type'] == 'number' else KwargRuleType.INTEGER.value,
                         min=float(value.get('minimum')) if value.get('minimum') is not None else None,
                         max=float(value.get('maximum')) if value.get('maximum') is not None else None,
@@ -78,7 +78,7 @@ class ReplicateProvider(BaseModelProvider):
                     else:
                         model_kwargs_rules.top_p = kwarg_rule
                 elif key in ['max_length', 'max_new_tokens']:
-                    model_kwargs_rules.max_tokens = KwargRule(
+                    model_kwargs_rules.max_tokens = KwargRule[int](
                         alias=key,
                         type=KwargRuleType.INTEGER.value,
                         min=int(value.get('minimum')) if value.get('minimum') is not None else 1,

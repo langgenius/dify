@@ -64,11 +64,11 @@ class ChatGLMProvider(BaseModelProvider):
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule(min=0, max=2, default=1),
-            top_p=KwargRule(min=0, max=1, default=0.7),
-            presence_penalty=KwargRule(enabled=False),
-            frequency_penalty=KwargRule(enabled=False),
-            max_tokens=KwargRule(alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048),
+            temperature=KwargRule[float](min=0, max=2, default=1),
+            top_p=KwargRule[float](min=0, max=1, default=0.7),
+            presence_penalty=KwargRule[float](enabled=False),
+            frequency_penalty=KwargRule[float](enabled=False),
+            max_tokens=KwargRule[int](alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048),
         )
 
     @classmethod
