@@ -27,7 +27,7 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -101,8 +101,7 @@ export const OperationAction: FC<{
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
-  showNewSegmentModal?: () => void
-}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '', showNewSegmentModal }) => {
+}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
   const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -191,22 +190,12 @@ export const OperationAction: FC<{
                 <SettingsIcon />
                 <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
               </div>
-              {
-                !isListScene && (
-                  <div className={s.actionItem} onClick={showNewSegmentModal}>
-                    <FilePlus02 className='w-4 h-4 text-gray-500' />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.add')}</span>
-                  </div>
-                )
-              }
-              {
-                data_source_type === 'notion_import' && (
-                  <div className={s.actionItem} onClick={() => onOperate('sync')}>
-                    <SyncIcon />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
-                  </div>
-                )
-              }
+              {data_source_type === 'notion_import' && (
+                <div className={s.actionItem} onClick={() => onOperate('sync')}>
+                  <SyncIcon />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                </div>
+              )}
               <Divider className='my-1' />
             </>
           )}
@@ -228,7 +217,11 @@ export const OperationAction: FC<{
       }
       trigger='click'
       position='br'
-      btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
+      btnElement={
+        <div className={cn(s.commonIcon)}>
+          <DotsHorizontal className='w-4 h-4 text-gray-700' />
+        </div>
+      }
       btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
       className={`!w-[200px] h-fit !z-20 ${className}`}
     />

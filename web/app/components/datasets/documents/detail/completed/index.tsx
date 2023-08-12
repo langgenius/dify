@@ -8,6 +8,7 @@ import { debounce, isNil, omitBy } from 'lodash-es'
 import cn from 'classnames'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
+import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import InfiniteVirtualList from './InfiniteVirtualList'
 import { formatNumber } from '@/utils/format'
@@ -186,13 +187,18 @@ export const splitArray = (arr: any[], size = 3) => {
 type ICompletedProps = {
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
+  importStatus: ProcessStatus | string | undefined
   // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
  * Support search and filter
  */
-const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModalChange }) => {
+const Completed: FC<ICompletedProps> = ({
+  showNewSegmentModal,
+  onNewSegmentModalChange,
+  importStatus,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
@@ -240,11 +246,6 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     setTotal(undefined)
     getSegments(false)
   }
-
-  useEffect(() => {
-    if (lastSegmentsRes !== undefined)
-      getSegments(false)
-  }, [selectedStatus, searchValue])
 
   const onClickCard = (detail: SegmentDetailModel) => {
     setCurrSegment({ segInfo: detail, showModal: true })
@@ -318,6 +319,16 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     }
     setAllSegments([...allSegments])
   }
+
+  useEffect(() => {
+    if (lastSegmentsRes !== undefined)
+      getSegments(false)
+  }, [selectedStatus, searchValue])
+
+  useEffect(() => {
+    if (importStatus === ProcessStatus.COMPLETED)
+      resetList()
+  }, [importStatus])
 
   return (
     <>

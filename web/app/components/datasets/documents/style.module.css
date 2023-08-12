@@ -56,10 +56,6 @@
   background-position: center center;
   background-size: contain;
 }
-.actionIcon {
-  @apply bg-gray-500;
-  mask-image: url(./assets/action.svg);
-}
 .pdfIcon {
   background-image: url(./assets/pdf.svg);
 }

@@ -1,4 +1,5 @@
 export { default as Check } from './Check'
+export { default as DotsHorizontal } from './DotsHorizontal'
 export { default as Edit03 } from './Edit03'
 export { default as Hash02 } from './Hash02'
 export { default as LinkExternal02 } from './LinkExternal02'
