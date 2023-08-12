@@ -33,6 +33,20 @@
    ```bash
    flask db upgrade
    ```
+
+   ⚠️ If you encounter problems with jieba, for example
+
+   ```
+   > flask db upgrade
+   Error: While importing 'app', an ImportError was raised:
+   ```
+
+   Please run the following command instead.
+
+   ```
+   pip install -r requirements.txt --upgrade --force-reinstall
+   ```
+   
 6. Start backend:
    ```bash
    flask run --host 0.0.0.0 --port=5001 --debug
