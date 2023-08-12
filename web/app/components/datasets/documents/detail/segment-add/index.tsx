@@ -77,7 +77,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         </div>
       }
       btnClassName={open => cn('mr-2 !py-[6px] !text-[13px] !leading-[18px] hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)]', open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
-      className='!w-[200px] h-fit !z-20  !translate-x-0 !left-0'
+      className='!w-[132px] h-fit !z-20  !translate-x-0 !left-0'
     />
   )
 }
