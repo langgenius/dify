@@ -188,6 +188,9 @@ class OrchestratorRuleParser:
             Dataset.id == tool_config.get("id")
         ).first()
 
+        if not dataset:
+            return None
+
         if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
             return None
 
