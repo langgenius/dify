@@ -34,20 +34,15 @@ export type IConfigModelProps = {
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
-  canUseGPT4: boolean
-  onShowUseGPT4Confirm: () => void
 }
 
 const ConfigModel: FC<IConfigModelProps> = ({
-  // mode,
   modelId,
   provider,
   setModelId,
   completionParams,
   onCompletionParamsChange,
   disabled,
-  canUseGPT4,
-  onShowUseGPT4Confirm,
 }) => {
   const { t } = useTranslation()
   const { textGenerationModelList } = useProviderContext()
@@ -122,11 +117,6 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
   const handleSelectModel = (id: string, nextProvider = ProviderEnum.openai) => {
     return async () => {
-      if (id === 'gpt-4' && !canUseGPT4) {
-        hideConfig()
-        onShowUseGPT4Confirm()
-        return
-      }
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
       setModelId(id, nextProvider)
