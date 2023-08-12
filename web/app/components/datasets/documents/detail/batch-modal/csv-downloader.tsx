@@ -9,6 +9,8 @@ import { Download02 as DownloadIcon } from '@/app/components/base/icons/src/vend
 
 const CSV_TEMPLATE = [
   ['content/question', 'answer(Only need with QA model)'],
+  ['content/question1', 'answer1'],
+  ['content/question2', 'answer2'],
 ]
 
 const CSVDownload: FC = () => {
