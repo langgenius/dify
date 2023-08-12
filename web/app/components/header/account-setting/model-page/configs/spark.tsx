@@ -27,8 +27,8 @@ const config: ProviderConfig = {
     link: {
       href: 'https://www.xfyun.cn/solutions/xinghuoAPI',
       label: {
-        'en': 'Get your API key from AliCloud',
-        'zh-Hans': '从阿里云获取 API Key',
+        'en': 'Get your API key from iFLYTEK SPARK',
+        'zh-Hans': '从讯飞星火获取 API Key',
       },
     },
     validateKeys: [
