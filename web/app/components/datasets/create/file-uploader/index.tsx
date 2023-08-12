@@ -5,19 +5,19 @@ import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import useSWR from 'swr'
 import s from './index.module.css'
-import type { File as FileEntity } from '@/models/datasets'
+import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 
 import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
 
 type IFileUploaderProps = {
-  fileList: any[]
+  fileList: FileItem[]
   titleClassName?: string
-  prepareFileList: (files: any[]) => void
-  onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
+  prepareFileList: (files: FileItem[]) => void
+  onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: any) => void
-  onPreview: (file: FileEntity) => void
+  onPreview: (file: File) => void
 }
 
 const ACCEPTS = [
@@ -53,7 +53,7 @@ const FileUploader = ({
     batch_count_limit: 5,
   }, [fileUploadConfigResponse])
 
-  const fileListRef = useRef<any>([])
+  const fileListRef = useRef<FileItem[]>([])
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -85,7 +85,7 @@ const FileUploader = ({
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t])
 
-  const fileUpload = async (fileItem: any) => {
+  const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
     const onProgress = (e: ProgressEvent) => {
@@ -95,19 +95,19 @@ const FileUploader = ({
       }
     }
 
+    const fileListCopy = fileListRef.current
     return upload({
       xhr: new XMLHttpRequest(),
       data: formData,
       onprogress: onProgress,
     })
-      .then((res: FileEntity) => {
-        const fileListCopy = fileListRef.current
-
+      .then((res: File) => {
         const completeFile = {
           fileID: fileItem.fileID,
           file: res,
+          progress: -1,
         }
-        const index = fileListCopy.findIndex((item: any) => item.fileID === fileItem.fileID)
+        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
         fileListCopy[index] = completeFile
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
@@ -118,14 +118,14 @@ const FileUploader = ({
         return Promise.resolve({ ...fileItem })
       })
       .finally()
-  }
+  }, [fileListRef, notify, onFileUpdate, t])
 
-  const uploadBatchFiles = (bFiles: any) => {
-    bFiles.forEach((bf: any) => (bf.progress = 0))
+  const uploadBatchFiles = useCallback((bFiles: FileItem[]) => {
+    bFiles.forEach(bf => (bf.progress = 0))
     return Promise.all(bFiles.map(fileUpload))
-  }
+  }, [fileUpload])
 
-  const uploadMultipleFiles = useCallback(async (files: any) => {
+  const uploadMultipleFiles = useCallback(async (files: FileItem[]) => {
     const batchCountLimit = fileUploadConfig.batch_count_limit
     const length = files.length
     let start = 0
@@ -140,24 +140,22 @@ const FileUploader = ({
       await uploadBatchFiles(bFiles)
       start = end
     }
-  }, [fileUploadConfig])
+  }, [fileUploadConfig, uploadBatchFiles])
 
-  const initialUpload = (files: any) => {
+  const initialUpload = useCallback((files: File[]) => {
     if (!files.length)
       return false
-    const preparedFiles = files.map((file: any, index: number) => {
-      const fileItem = {
-        fileID: `file${index}-${Date.now()}`,
-        file,
-        progress: -1,
-      }
-      return fileItem
-    })
+    const preparedFiles = files.map((file, index) => ({
+      fileID: `file${index}-${Date.now()}`,
+      file,
+      progress: -1,
+    }))
     const newFiles = [...fileListRef.current, ...preparedFiles]
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }
+  }, [prepareFileList, uploadMultipleFiles])
+
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -173,18 +171,17 @@ const FileUploader = ({
     e.target === dragRef.current && setDragging(false)
   }
 
-  const handleDrop = (e: DragEvent) => {
+  const handleDrop = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
     if (!e.dataTransfer)
       return
 
-    const files = [...e.dataTransfer.files]
-    const validFiles = files.filter(file => isValid(file))
-    // fileUpload(files[0])
+    const files = [...e.dataTransfer.files] as File[]
+    const validFiles = files.filter(isValid)
     initialUpload(validFiles)
-  }
+  }, [initialUpload, isValid])
 
   const selectHandle = () => {
     if (fileUploader.current)
@@ -195,13 +192,13 @@ const FileUploader = ({
     if (fileUploader.current)
       fileUploader.current.value = ''
 
-    fileListRef.current = fileListRef.current.filter((item: any) => item.fileID !== fileID)
+    fileListRef.current = fileListRef.current.filter(item => item.fileID !== fileID)
     onFileListUpdate?.([...fileListRef.current])
   }
-  const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])].filter(file => isValid(file))
-    initialUpload(files)
-  }
+  const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])] as File[]
+    initialUpload(files.filter(isValid))
+  }, [isValid, initialUpload])
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -214,7 +211,7 @@ const FileUploader = ({
       dropRef.current?.removeEventListener('dragleave', handleDragLeave)
       dropRef.current?.removeEventListener('drop', handleDrop)
     }
-  }, [])
+  }, [handleDrop])
 
   return (
     <div className={s.fileUploader}>
