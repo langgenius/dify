@@ -161,3 +161,8 @@ export type PluginProvider = {
     api_key: string
   } | null
 }
+
+export type FileUploadConfigResponse = {
+  file_size_limit: number
+  batch_count_limit: number
+}

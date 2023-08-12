@@ -2,6 +2,7 @@ import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
+  FileUploadConfigResponse,
   IWorkspace, LangGeniusVersionResponse, Member,
   OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
   SetupStatusResponse, TenantInfoResponse, UserProfileOriginResponse,
@@ -172,4 +173,8 @@ export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: an
 
 export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
   return post(url) as Promise<{ type: string; redirect_url?: string; result?: string }>
+}
+
+export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
+  return get(url) as Promise<FileUploadConfigResponse>
 }

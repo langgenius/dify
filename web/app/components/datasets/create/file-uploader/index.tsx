@@ -1,13 +1,15 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
+import useSWR from 'swr'
 import s from './index.module.css'
 import type { File as FileEntity } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 
 import { upload } from '@/service/base'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type IFileUploaderProps = {
   fileList: any[]
@@ -30,9 +32,6 @@ const ACCEPTS = [
   '.csv',
 ]
 
-const MAX_SIZE = 15 * 1024 * 1024
-const BATCH_COUNT = 5
-
 const FileUploader = ({
   fileList,
   titleClassName,
@@ -47,6 +46,12 @@ const FileUploader = ({
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
+
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
+    file_size_limit: 15,
+    batch_count_limit: 5,
+  }, [fileUploadConfigResponse])
 
   const fileListRef = useRef<any>([])
 
@@ -66,19 +71,19 @@ const FileUploader = ({
     return `${(size / 1024 / 1024).toFixed(2)}MB`
   }
 
-  const isValid = (file: File) => {
+  const isValid = useCallback((file: File) => {
     const { size } = file
     const ext = `.${getFileType(file)}`
     const isValidType = ACCEPTS.includes(ext)
     if (!isValidType)
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
 
-    const isValidSize = size <= MAX_SIZE
+    const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size') })
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }
+  }, [fileUploadConfig, notify, t])
 
   const fileUpload = async (fileItem: any) => {
     const formData = new FormData()
@@ -114,25 +119,29 @@ const FileUploader = ({
       })
       .finally()
   }
+
   const uploadBatchFiles = (bFiles: any) => {
     bFiles.forEach((bf: any) => (bf.progress = 0))
-    return Promise.all(bFiles.map((bFile: any) => fileUpload(bFile)))
+    return Promise.all(bFiles.map(fileUpload))
   }
-  const uploadMultipleFiles = async (files: any) => {
+
+  const uploadMultipleFiles = useCallback(async (files: any) => {
+    const batchCountLimit = fileUploadConfig.batch_count_limit
     const length = files.length
     let start = 0
     let end = 0
 
     while (start < length) {
-      if (start + BATCH_COUNT > length)
+      if (start + batchCountLimit > length)
         end = length
       else
-        end = start + BATCH_COUNT
+        end = start + batchCountLimit
       const bFiles = files.slice(start, end)
       await uploadBatchFiles(bFiles)
       start = end
     }
-  }
+  }, [fileUploadConfig])
+
   const initialUpload = (files: any) => {
     if (!files.length)
       return false
@@ -225,7 +234,7 @@ const FileUploader = ({
           <span>{t('datasetCreation.stepOne.uploader.button')}</span>
           <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
         </div>
-        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip')}</div>
+        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', { size: fileUploadConfig.file_size_limit })}</div>
         {dragging && <div ref={dragRef} className={s.draggingCover}/>}
       </div>
       <div className={s.fileList}>
