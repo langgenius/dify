@@ -292,10 +292,6 @@ const Configuration: FC = () => {
                   setCompletionParams(newParams)
                 }}
                 disabled={!hasSetAPIKEY}
-                canUseGPT4={hasSetCustomAPIKEY}
-                onShowUseGPT4Confirm={() => {
-                  setShowUseGPT4Confirm(true)
-                }}
               />
               <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
