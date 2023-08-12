@@ -94,7 +94,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           <BackCircleBtn onClick={backToPrev} />
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' />
+          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' tip={documentDetail?.error} />
           <OperationAction
             scene='detail'
             detail={{

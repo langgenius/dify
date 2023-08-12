@@ -159,7 +159,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
           <div className={cn(s.commonIcon, s.bezierCurveIcon)} /><span className={s.hashText}>{t('datasetDocuments.segment.vectorHash')}{segInfo?.index_node_hash}</span>
         </div>
         <div className='flex items-center'>
-          <StatusItem status={segInfo?.enabled ? 'enabled' : 'disabled'} reverse textCls='text-gray-500 text-xs' />
+          <StatusItem status={segInfo?.enabled ? 'enabled' : 'disabled'} reverse textCls='text-gray-500 text-xs' tip={segInfo?.error} />
           <Divider type='vertical' className='!h-2' />
           <Switch
             size='md'

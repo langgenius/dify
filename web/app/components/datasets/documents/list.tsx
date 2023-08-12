@@ -70,10 +70,11 @@ export const useIndexStatus = () => {
 // status item for list
 export const StatusItem: FC<{
   status: DocumentDisplayStatus
+  tip?: string | null
   reverse?: boolean
   scene?: 'list' | 'detail'
   textCls?: string
-}> = ({ status, reverse = false, scene = 'list', textCls = '' }) => {
+}> = ({ status, reverse = false, tip, scene = 'list', textCls = '' }) => {
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   return <div className={
@@ -81,7 +82,19 @@ export const StatusItem: FC<{
       reverse ? 'flex-row-reverse' : '',
       scene === 'detail' ? s.statusItemDetail : '')
   }>
-    <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
+    <Tooltip
+      selector='status-tip'
+      disabled={!tip}
+      htmlContent={
+        <div className='w-[280px]'>
+          <span className='break-words' >{tip}</span>
+        </div>
+      }
+    >
+      <span>
+        <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
+      </span>
+    </Tooltip>
     <span className={cn('text-gray-700 text-sm', textCls)}>{DOC_INDEX_STATUS_MAP[localStatus]?.text}</span>
   </div>
 }
