@@ -283,7 +283,11 @@ class AzureOpenAIProvider(BaseModelProvider):
                 if obfuscated:
                     credentials['openai_api_key'] = encrypter.obfuscated_token(credentials['openai_api_key'])
 
-            return credentials
+            return {
+                'openai_api_base': credentials['openai_api_base'],
+                'openai_api_key': credentials['openai_api_key'],
+                'base_model_name': credentials['base_model_name']
+            }
         else:
             if hosted_model_providers.azure_openai:
                 return {

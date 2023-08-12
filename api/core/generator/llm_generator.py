@@ -2,6 +2,7 @@ import logging
 
 from langchain.schema import OutputParserException
 
+from core.model_providers.error import LLMError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelKwargs
@@ -120,8 +121,10 @@ class LLMGenerator:
         try:
             output = model_instance.run(prompts)
             questions = output_parser.parse(output.content)
-        except Exception:
-            logging.exception("Error generating suggested questions after answer")
+        except LLMError:
+            questions = []
+        except Exception as e:
+            logging.exception(e)
             questions = []
 
         return questions
@@ -157,10 +160,12 @@ class LLMGenerator:
         try:
             output = model_instance.run(prompts)
             rule_config = output_parser.parse(output.content)
+        except LLMError as e:
+            raise e
         except OutputParserException:
             raise ValueError('Please give a valid input for intended audience or hoping to solve problems.')
-        except Exception:
-            logging.exception("Error generating prompt")
+        except Exception as e:
+            logging.exception(e)
             rule_config = {
                 "prompt": "",
                 "variables": [],
