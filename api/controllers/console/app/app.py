@@ -294,6 +294,10 @@ class AppApi(Resource):
     def delete(self, app_id):
         """Delete app"""
         app_id = str(app_id)
+
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         app = _get_app(app_id, current_user.current_tenant_id)
 
         db.session.delete(app)
