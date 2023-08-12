@@ -416,15 +416,23 @@ class CompletionService:
 
                             event = result.get('event')
                             if event == "end":
+                                streaming_data = {'event': 'end', 'finished': True}
+                                yield "data: " + json.dumps(streaming_data) + "\n\n"
                                 logging.debug("{} finished".format(generate_channel))
                                 break
 
                             if event == 'message':
-                                yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
+                                streaming_data = cls.get_message_response_data(result.get('data'))
+                                streaming_data['finished'] = False
+                                yield "data: " + json.dumps(streaming_data) + "\n\n"
                             elif event == 'chain':
-                                yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
+                                streaming_data = cls.get_chain_response_data(result.get('data'))
+                                streaming_data['finished'] = False
+                                yield "data: " + json.dumps(streaming_data) + "\n\n"
                             elif event == 'agent_thought':
-                                yield "data: " + json.dumps(cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
+                                streaming_data = cls.get_agent_thought_response_data(result.get('data'))
+                                streaming_data['finished'] = False
+                                yield "data: " + json.dumps(streaming_data) + "\n\n"
                             elif event == 'ping':
                                 yield "event: ping\n\n"
                             else:
