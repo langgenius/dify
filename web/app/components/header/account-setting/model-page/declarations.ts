@@ -74,6 +74,10 @@ export type BackendModel = {
   model_provider: {
     provider_name: ProviderEnum
     provider_type: PreferredProviderTypeEnum
+    quota_type: 'trial' | 'paid'
+    quota_unit: 'times' | 'tokens'
+    quota_used: number
+    quota_limit: number
   }
   features: ModelFeature[]
 }
