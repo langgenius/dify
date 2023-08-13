@@ -168,10 +168,34 @@ class ModelProviderFactory:
             model_provider_rules = ModelProviderFactory.get_provider_rule(model_provider_name)
             for quota_type_enum in ProviderQuotaType:
                 quota_type = quota_type_enum.value
-                if quota_type in model_provider_rules['system_config']['supported_quota_types'] \
-                        and quota_type in quota_type_to_provider_dict.keys():
-                    provider = quota_type_to_provider_dict[quota_type]
-                    if provider.is_valid and provider.quota_limit > provider.quota_used:
+                if quota_type in model_provider_rules['system_config']['supported_quota_types']:
+                    if quota_type in quota_type_to_provider_dict.keys():
+                        provider = quota_type_to_provider_dict[quota_type]
+                        if provider.is_valid and provider.quota_limit > provider.quota_used:
+                            return provider
+                    elif quota_type == ProviderQuotaType.TRIAL.value:
+                        try:
+                            provider = Provider(
+                                tenant_id=tenant_id,
+                                provider_name=model_provider_name,
+                                provider_type=ProviderType.SYSTEM.value,
+                                is_valid=True,
+                                quota_type=ProviderQuotaType.TRIAL.value,
+                                quota_limit=model_provider_rules['system_config']['quota_limit'],
+                                quota_used=0
+                            )
+                            db.session.add(provider)
+                            db.session.commit()
+                        except IntegrityError:
+                            db.session.rollback()
+                            provider = db.session.query(Provider) \
+                                .filter(
+                                Provider.tenant_id == tenant_id,
+                                Provider.provider_name == model_provider_name,
+                                Provider.provider_type == ProviderType.SYSTEM.value,
+                                Provider.quota_type == ProviderQuotaType.TRIAL.value
+                            ).first()
+
                         return provider
 
             no_system_provider = True
