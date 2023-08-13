@@ -57,7 +57,6 @@ workspace_fields = {
 class TenantListApi(Resource):
     @setup_required
     @login_required
-    @account_initialization_required
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
 
