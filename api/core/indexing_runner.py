@@ -638,7 +638,9 @@ class IndexingRunner:
         keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
 
         embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id
+            tenant_id=dataset.tenant_id,
+            model_provider_name=dataset.embedding_model_provider,
+            model_name=dataset.embedding_model
         )
 
         # chunk nodes by chunk size

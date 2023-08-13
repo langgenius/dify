@@ -233,7 +233,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         parser.add_argument('keywords', type=list, required=False, nullable=True, location='json')
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.create_segment(args, document)
+        segment = SegmentService.create_segment(args, document, dataset)
         return {
             'data': marshal(segment, segment_fields),
             'doc_form': document.doc_form
@@ -277,7 +277,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         parser.add_argument('keywords', type=list, required=False, nullable=True, location='json')
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(args, segment, document)
+        segment = SegmentService.update_segment(args, segment, document, dataset)
         return {
             'data': marshal(segment, segment_fields),
             'doc_form': document.doc_form
