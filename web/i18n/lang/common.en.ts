@@ -209,15 +209,15 @@ const translation = {
     setupModelFirst: 'Please set up your model first',
     systemReasoningModel: {
       key: 'System Reasoning Model',
-      tip: 'System Reasoning Model',
+      tip: 'Set the default inference model to be used for creating applications, as well as features such as dialogue name generation and next question suggestion will also use the default inference model.',
     },
     embeddingModel: {
       key: 'Embedding Model',
-      tip: 'Embedding Model',
+      tip: 'Set the default model for document embedding processing of the dataset, both retrieval and import of the dataset use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported dataset and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
     },
     speechToTextModel: {
       key: 'Speech-to-Text Model',
-      tip: 'Speech-to-Text Model',
+      tip: 'Set the default model for speech-to-text input in conversation.',
     },
     quota: 'Quota',
     searchModel: 'Search model',

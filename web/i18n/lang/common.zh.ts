@@ -209,15 +209,15 @@ const translation = {
     setupModelFirst: '请先设置您的模型',
     systemReasoningModel: {
       key: '系统推理模型',
-      tip: '系统推理模型',
+      tip: '设置创建应用使用的默认推理模型，以及对话名称生成、下一步问题建议等功能也会使用该默认推理模型。',
     },
     embeddingModel: {
       key: 'Embedding 模型',
-      tip: 'Embedding 模型',
+      tip: '设置数据集文档嵌入处理的默认模型，检索和导入数据集均使用该Embedding模型进行向量化处理，切换后将导致已导入的数据集与问题之间的向量维度不一致，从而导致检索失败。为避免检索失败，请勿随意切换该模型。',
     },
     speechToTextModel: {
       key: '语音转文本模型',
-      tip: '语音转文本模型',
+      tip: '设置对话中语音转文字输入的默认使用模型。',
     },
     quota: '额度',
     searchModel: '搜索模型',

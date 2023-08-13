@@ -14,7 +14,7 @@ import ModelModal from './model-modal'
 import config from './configs'
 import { ConfigurableProviders } from './utils'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
-// import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import {
   changeModelProviderPriority,
   deleteModelProvider,
@@ -29,6 +29,7 @@ import Confirm from '@/app/components/base/confirm/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import Tooltip from '@/app/components/base/tooltip'
 
 const MODEL_CARD_LIST = [
   config.openai,
@@ -205,7 +206,14 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.systemReasoningModel.key')}
-            {/* <HelpCircle className={tipClassName} /> */}
+            <Tooltip
+              selector='model-page-system-reasoning-model-tip'
+              htmlContent={
+                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
+              }
+            >
+              <HelpCircle className={tipClassName} />
+            </Tooltip>
           </div>
           <div>
             <ModelSelector
@@ -218,7 +226,14 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.embeddingModel.key')}
-            {/* <HelpCircle className={tipClassName} /> */}
+            <Tooltip
+              selector='model-page-system-embedding-model-tip'
+              htmlContent={
+                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
+              }
+            >
+              <HelpCircle className={tipClassName} />
+            </Tooltip>
           </div>
           <div>
             <ModelSelector
@@ -231,7 +246,14 @@ const ModelPage = () => {
         <div className='w-full'>
           <div className={titleClassName}>
             {t('common.modelProvider.speechToTextModel.key')}
-            {/* <HelpCircle className={tipClassName} /> */}
+            <Tooltip
+              selector='model-page-system-speechToText-model-tip'
+              htmlContent={
+                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
+              }
+            >
+              <HelpCircle className={tipClassName} />
+            </Tooltip>
           </div>
           <div>
             <ModelSelector
