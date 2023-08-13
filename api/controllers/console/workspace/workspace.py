@@ -57,6 +57,7 @@ workspace_fields = {
 class TenantListApi(Resource):
     @setup_required
     @login_required
+    @account_initialization_required
     def get(self):
         tenants = TenantService.get_join_tenants(current_user)
 
@@ -69,7 +70,6 @@ class TenantListApi(Resource):
 class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
-    @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('page', type=inputs.int_range(1, 99999), required=False, default=1, location='args')
