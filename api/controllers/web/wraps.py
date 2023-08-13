@@ -35,11 +35,12 @@ def decode_jwt_token():
     if auth_scheme != 'bearer':
         raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
     decoded = PassportService().verify(tk)
+    app_code = decoded.get('app_code')
     app_model = db.session.query(App).filter(App.id == decoded['app_id']).first()
-    site = db.session.query(Site).filter(Site.code == decoded['app_code']).first()
+    site = db.session.query(Site).filter(Site.code == app_code).first()
     if not app_model:
         raise NotFound()
-    if not site:
+    if not app_code and not site:
         raise Unauthorized('Site URL is no longer valid.')
     if app_model.enable_site is False:
         raise Unauthorized('Site is disabled.')
