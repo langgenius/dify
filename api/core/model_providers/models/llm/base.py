@@ -218,15 +218,18 @@ class BaseLLM(BaseProviderModel):
 
     def _get_prompt_from_messages(self, messages: List[PromptMessage],
                                   model_mode: Optional[ModelMode] = None) -> Union[str | List[BaseMessage]]:
-        if len(messages) == 0:
-            raise ValueError("prompt must not be empty.")
-
         if not model_mode:
             model_mode = self.model_mode
 
         if model_mode == ModelMode.COMPLETION:
+            if len(messages) == 0:
+                return ''
+
             return messages[0].content
         else:
+            if len(messages) == 0:
+                return []
+
             chat_messages = []
             for message in messages:
                 if message.type == MessageType.HUMAN:
