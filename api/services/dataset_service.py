@@ -663,7 +663,8 @@ class DocumentService:
             data_source_type=document_data["data_source"]["type"],
             indexing_technique=document_data["indexing_technique"],
             created_by=account.id,
-            embedding_model=embedding_model.name
+            embedding_model=embedding_model.name,
+            embedding_model_provider=embedding_model.
         )
 
         db.session.add(dataset)
