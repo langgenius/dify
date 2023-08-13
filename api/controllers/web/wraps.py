@@ -3,7 +3,7 @@ from functools import wraps
 
 from flask import request
 from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized
+from werkzeug.exceptions import NotFound, Unauthorized, Site
 
 from extensions.ext_database import db
 from models.model import App, EndUser
@@ -36,8 +36,11 @@ def decode_jwt_token():
         raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
     decoded = PassportService().verify(tk)
     app_model = db.session.query(App).filter(App.id == decoded['app_id']).first()
+    site = db.session.query(Site).filter(Site.code == decoded['app_code']).first()
     if not app_model:
         raise NotFound()
+    if not site:
+        raise Unauthorized('Site URL is no longer valid.')
     if app_model.enable_site is False:
         raise Unauthorized('Site is disabled.')
     end_user = db.session.query(EndUser).filter(EndUser.id == decoded['end_user_id']).first()
