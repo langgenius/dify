@@ -36,6 +36,8 @@ class Dataset(db.Model):
     updated_by = db.Column(UUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False,
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    embedding_model = db.Column(db.String(
+        255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying"))
 
     @property
     def dataset_keyword_table(self):

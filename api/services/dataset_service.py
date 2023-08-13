@@ -520,7 +520,6 @@ class DocumentService:
             db.session.commit()
 
             # trigger async task
-            #document_index_created.send(dataset.id, document_ids=document_ids)
             document_indexing_task.delay(dataset.id, document_ids)
 
         return documents, batch
@@ -654,13 +653,17 @@ class DocumentService:
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
             if documents_count > tenant_document_count:
                 raise ValueError(f"over document limit {tenant_document_count}.")
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=tenant_id
+        )
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
             name='',
             data_source_type=document_data["data_source"]["type"],
             indexing_technique=document_data["indexing_technique"],
-            created_by=account.id
+            created_by=account.id,
+            embedding_model=embedding_model.name
         )
 
         db.session.add(dataset)
