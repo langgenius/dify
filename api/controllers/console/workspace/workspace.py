@@ -70,7 +70,6 @@ class TenantListApi(Resource):
 class WorkspaceListApi(Resource):
     @setup_required
     @admin_required
-    @login_required
     @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser()
