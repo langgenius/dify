@@ -3,10 +3,10 @@ from functools import wraps
 
 from flask import request
 from flask_restful import Resource
-from werkzeug.exceptions import NotFound, Unauthorized, Site
+from werkzeug.exceptions import NotFound, Unauthorized
 
 from extensions.ext_database import db
-from models.model import App, EndUser
+from models.model import App, EndUser, Site
 from libs.passport import PassportService
 
 def validate_jwt_token(view=None):
