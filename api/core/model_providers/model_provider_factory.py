@@ -181,7 +181,7 @@ class ModelProviderFactory:
                                 provider_type=ProviderType.SYSTEM.value,
                                 is_valid=True,
                                 quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=model_provider_rules['system_config']['trial_quota_limit'],
+                                quota_limit=model_provider_rules['system_config']['quota_limit'],
                                 quota_used=0
                             )
                             db.session.add(provider)

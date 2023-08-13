@@ -23,6 +23,14 @@ class ProviderService:
         # get rules for all providers
         model_provider_rules = ModelProviderFactory.get_provider_rules()
         model_provider_names = [model_provider_name for model_provider_name, _ in model_provider_rules.items()]
+
+        for model_provider_name, model_provider_rule in model_provider_rules.items():
+            if ProviderType.SYSTEM.value in model_provider_rule['support_provider_types'] \
+                    and 'system_config' in model_provider_rule and model_provider_rule['system_config'] \
+                    and 'supported_quota_types' in model_provider_rule['system_config'] \
+                    and 'trial' in model_provider_rule['system_config']['supported_quota_types']:
+                ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
+
         configurable_model_provider_names = [
             model_provider_name
             for model_provider_name, model_provider_rules in model_provider_rules.items()
