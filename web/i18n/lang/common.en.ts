@@ -25,6 +25,7 @@ const translation = {
     download: 'Download',
     setup: 'Setup',
     getForFree: 'Get for free',
+    reload: 'Reload',
   },
   placeholder: {
     input: 'Please enter',

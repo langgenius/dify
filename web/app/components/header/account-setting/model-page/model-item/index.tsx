@@ -26,6 +26,7 @@ const ModelItem: FC<ModelItemProps> = ({
   modelItem,
   onOpenModal,
   onOperate,
+  onUpdate,
 }) => {
   const { locale } = useContext(I18n)
   const custom = currentProvider?.providers.find(p => p.provider_type === 'custom') as ProviderWithModels
@@ -47,6 +48,7 @@ const ModelItem: FC<ModelItemProps> = ({
           modelItem={modelItem}
           onOpenModal={onOpenModal}
           onOperate={onOperate}
+          onUpdate={onUpdate}
         />
       </div>
       {
