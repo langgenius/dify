@@ -23,6 +23,7 @@ const translation = {
       },
     },
     callTimes: '调用次数',
+    usedToken: '使用 Tokens',
     setAPIBtn: '设置模型提供商',
     tryCloud: '或者尝试使用 Dify 的云版本并使用试用配额',
   },

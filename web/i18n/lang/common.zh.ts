@@ -25,6 +25,7 @@ const translation = {
     download: '下载',
     setup: '设置',
     getForFree: '免费获取',
+    reload: '刷新',
   },
   placeholder: {
     input: '请输入',

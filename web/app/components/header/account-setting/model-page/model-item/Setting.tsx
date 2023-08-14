@@ -2,8 +2,10 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type { FormValue, Provider, ProviderConfigItem, ProviderWithConfig, ProviderWithQuota } from '../declarations'
+import { ProviderEnum } from '../declarations'
 import Indicator from '../../../indicator'
 import Selector from '../selector'
+import FreeQuota from './FreeQuota'
 import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
@@ -13,6 +15,7 @@ type SettingProps = {
   modelItem: ProviderConfigItem
   onOpenModal: (v?: FormValue) => void
   onOperate: (v: Record<string, any>) => void
+  onUpdate: () => void
 }
 
 const Setting: FC<SettingProps> = ({
@@ -20,6 +23,7 @@ const Setting: FC<SettingProps> = ({
   modelItem,
   onOpenModal,
   onOperate,
+  onUpdate,
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
@@ -29,6 +33,15 @@ const Setting: FC<SettingProps> = ({
 
   return (
     <div className='flex items-center'>
+      {
+        (modelItem.key === ProviderEnum.minimax || modelItem.key === ProviderEnum.spark) && systemFree && !systemFree?.is_valid && !IS_CE_EDITION && (
+          <FreeQuota
+            modelItem={modelItem}
+            freeProvider={systemFree}
+            onUpdate={onUpdate}
+          />
+        )
+      }
       {
         modelItem.disable && !IS_CE_EDITION && (
           <div className='flex items-center text-xs text-gray-500'>

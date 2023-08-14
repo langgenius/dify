@@ -4,12 +4,13 @@ import { useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { debounce } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'next/navigation'
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
 import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useSelector } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { NEED_REFRESH_APP_LIST_KEY, SPARK_FREE_QUOTA_PENDING } from '@/config'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -23,6 +24,7 @@ const Apps = () => {
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
   const anchorRef = useRef<HTMLAnchorElement>(null)
+  const searchParams = useSearchParams()
 
   useEffect(() => {
     document.title = `${t('app.title')} -  Dify`
@@ -30,6 +32,13 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
+    if (
+      localStorage.getItem(SPARK_FREE_QUOTA_PENDING) !== '1'
+      && searchParams.get('type') === 'provider_apply_callback'
+      && searchParams.get('provider') === 'spark'
+      && searchParams.get('result') === 'success'
+    )
+      localStorage.setItem(SPARK_FREE_QUOTA_PENDING, '1')
   }, [])
 
   useEffect(() => {
