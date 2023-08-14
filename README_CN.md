@@ -25,7 +25,13 @@
 > * **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
 > * **Azure OpenAI Service**
 > * **Anthropic**：Claude2、Claude-instant
-> * **Hugging Face Hub**（即将推出）
+> * **Replicate**
+> * **Hugging Face Hub**
+> * **MiniMax**
+> * **讯飞星火大模型**
+> * **文心一言**
+> * **通义千问**
+> * **ChatGLM**
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
 * 1000 次 Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
@@ -53,7 +59,7 @@
 
 在安装 Dify 之前，请确保您的机器满足以下最低系统要求：
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### 快速启动

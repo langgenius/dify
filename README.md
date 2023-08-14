@@ -19,10 +19,16 @@ Visual data analysis, log review, and annotation for applications
 ## Highlighted Features
 **1. LLMs support:** Choose capabilities based on different models when building your Dify AI apps. Dify is compatible with Langchain, meaning it will support various LLMs. Currently supported:
 
->* OpenAI: GPT-4, GPT-3.5-turbo, GPT-3.5-turbo-16k, text-davinci-003
->* Azure OpenAI Service
->* Anthropic: Claude2, Claude-instant
->* Hugging Face Hub (coming soon)
+> * **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
+> * **Azure OpenAI Service**
+> * **Anthropic**：Claude2、Claude-instant
+> * **Replicate**
+> * **Hugging Face Hub**
+> * **MiniMax**
+> * **Spark**
+> * **Wenxin**
+> * **Tongyi**
+> * **ChatGLM**
 
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
 * 1000 free Claude model queries to build Claude-powered apps
@@ -55,7 +61,7 @@ Visit [Dify.ai](https://dify.ai)
 
 Before installing Dify, make sure your machine meets the following minimum system requirements:
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### Quick Start
