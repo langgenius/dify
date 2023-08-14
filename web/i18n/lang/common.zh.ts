@@ -250,6 +250,9 @@ const translation = {
       front: '您的密钥将使用',
       back: '技术进行加密和存储。',
     },
+    freeQuota: {
+      howToEarn: '如何获取',
+    },
   },
   dataSource: {
     add: '添加数据源',
