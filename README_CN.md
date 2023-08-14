@@ -28,9 +28,9 @@
 > * **Replicate**
 > * **Hugging Face Hub**
 > * **MiniMax**
-> * **Spark**
-> * **Weixin**
-> * **Tongyi**
+> * **讯飞星火大模型**
+> * **文心一言**
+> * **通义千问**
 > * **ChatGLM**
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
