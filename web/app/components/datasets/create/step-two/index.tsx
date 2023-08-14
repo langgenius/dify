@@ -230,6 +230,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
         doc_form: docForm,
+        dataset_id: datasetId,
       }
     }
     if (dataSourceType === DataSourceType.NOTION) {
@@ -241,6 +242,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
         doc_form: docForm,
+        dataset_id: datasetId,
       }
     }
     return params
