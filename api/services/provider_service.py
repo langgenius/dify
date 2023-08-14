@@ -1,7 +1,11 @@
 import datetime
 import json
+import logging
+import os
 from collections import defaultdict
 from typing import Optional
+
+import requests
 
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
@@ -509,3 +513,33 @@ class ProviderService:
         # get model parameter rules
         return model_provider.get_model_parameter_rules(model_name, ModelType.value_of(model_type))
 
+    def free_quota_submit(self, tenant_id: str, provider_name: str):
+        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
+        api_url = os.environ.get("FREE_QUOTA_APPLY_URL")
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {api_key}"
+        }
+        response = requests.post(api_url, headers=headers, json={'workspace_id': tenant_id, 'provider_name': provider_name})
+        if not response.ok:
+            logging.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
+            raise ValueError(f"Error: {response.status_code} ")
+
+        if response.json()["code"] != 'success':
+            raise ValueError(
+                f"error: {response.json()['message']}"
+            )
+
+        rst = response.json()
+
+        if rst['type'] == 'redirect':
+            return {
+                'type': rst['type'],
+                'redirect_url': rst['redirect_url']
+            }
+        else:
+            return {
+                'type': rst['type'],
+                'result': 'success'
+            }

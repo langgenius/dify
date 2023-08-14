@@ -50,6 +50,7 @@ class ChatSpark(BaseChatModel):
     app_id: Optional[str] = None
     api_key: Optional[str] = None
     api_secret: Optional[str] = None
+    api_domain: Optional[str] = None
 
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
@@ -68,6 +69,7 @@ class ChatSpark(BaseChatModel):
             app_id=values["app_id"],
             api_key=values["api_key"],
             api_secret=values["api_secret"],
+            api_domain=values.get('api_domain')
         )
         return values
 

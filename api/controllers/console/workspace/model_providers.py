@@ -270,6 +270,20 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
         }
 
 
+class ModelProviderFreeQuotaSubmitApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, provider_name: str):
+        provider_service = ProviderService()
+        result = provider_service.free_quota_submit(
+            tenant_id=current_user.current_tenant_id,
+            provider_name=provider_name
+        )
+
+        return result
+
+
 api.add_resource(ModelProviderListApi, '/workspaces/current/model-providers')
 api.add_resource(ModelProviderValidateApi, '/workspaces/current/model-providers/<string:provider_name>/validate')
 api.add_resource(ModelProviderUpdateApi, '/workspaces/current/model-providers/<string:provider_name>')
@@ -283,3 +297,5 @@ api.add_resource(ModelProviderModelParameterRuleApi,
                  '/workspaces/current/model-providers/<string:provider_name>/models/parameter-rules')
 api.add_resource(ModelProviderPaymentCheckoutUrlApi,
                  '/workspaces/current/model-providers/<string:provider_name>/checkout-url')
+api.add_resource(ModelProviderFreeQuotaSubmitApi,
+                 '/workspaces/current/model-providers/<string:provider_name>/free-quota-submit')
