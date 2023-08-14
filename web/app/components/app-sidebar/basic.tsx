@@ -4,7 +4,6 @@ import {
 } from '@heroicons/react/24/outline'
 import Tooltip from '../base/tooltip'
 import AppIcon from '../base/app-icon'
-
 const chars = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ-_'
 
 export function randomString(length: number) {
@@ -21,6 +20,7 @@ export type IAppBasicProps = {
   type: string | React.ReactNode
   hoverTip?: string
   textStyle?: { main?: string; extra?: string }
+  isExtraInLine?: boolean
 }
 
 const ApiSvg = <svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -61,7 +61,7 @@ const ICON_MAP = {
   notion: <AppIcon innerIcon={NotionSvg} className='!border-[0.5px] !border-indigo-100 !bg-white' />,
 }
 
-export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app' }: IAppBasicProps) {
+export default function AppBasic({ icon, icon_background, name, type, hoverTip, textStyle, iconType = 'app', isExtraInLine }: IAppBasicProps) {
   return (
     <div className="flex items-start">
       {icon && icon_background && iconType === 'app' && (

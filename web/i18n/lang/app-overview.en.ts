@@ -5,6 +5,28 @@ const translation = {
     getKeyTip: 'Get your API Key from OpenAI dashboard',
     placeholder: 'Your OpenAI API Key(eg.sk-xxxx)',
   },
+  apiKeyInfo: {
+    cloud: {
+      trial: {
+        title: 'You are using the {{providerName}} trial quota.',
+        description: 'The trial quota is provided for your testing use. Before the trial quota calls are exhausted, please set up your own model provider or purchase additional quota.',
+      },
+      exhausted: {
+        title: 'Your trial quota have been used up, please set up your APIKey.',
+        description: 'Your trial quota has been exhausted. Please set up your own model provider or purchase additional quota.',
+      },
+    },
+    selfHost: {
+      title: {
+        row1: 'To get started,',
+        row2: 'setup your  model provider first.',
+      },
+    },
+    callTimes: 'Call times',
+    usedToken: 'Used token',
+    setAPIBtn: 'Go to setup model provider',
+    tryCloud: 'Or try the cloud version of Dify with free quote',
+  },
   overview: {
     title: 'Overview',
     appInfo: {
@@ -15,6 +37,7 @@ const translation = {
         entry: 'Share',
         explanation: 'Share the following URL to invite more people to access the application.',
         shareUrl: 'Share URL',
+        linkCopied: 'Copied',
         copyLink: 'Copy Link',
         regenerate: 'Regenerate',
       },
@@ -81,6 +104,7 @@ const translation = {
   analysis: {
     title: 'Analysis',
     ms: 'ms',
+    tokenPS: 'Token/s',
     totalMessages: {
       title: 'Total Messages',
       explanation: 'Daily AI interactions count; prompt engineering/debugging excluded.',
@@ -105,6 +129,10 @@ const translation = {
     avgResponseTime: {
       title: 'Avg. Response Time',
       explanation: 'Time (ms) for AI to process/respond; for text-based apps.',
+    },
+    tps: {
+      title: 'Token Output Speed',
+      explanation: 'Measure the performance of the LLM. Count the Tokens output speed of LLM from the beginning of the request to the completion of the output.',
     },
   },
 }

@@ -3,7 +3,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 # 对话型应用 API
 
-可用于大部分场景的对话型应用，采用一问一答模式与用户持续对话。要开始一个对话请调用 chat-messages 接口，通过继续传入返回的 conversation_id 可持续保持该会话。
+可用于大部分场景的对话型应用，采用一问一答模式与用户持续对话。要开始一个对话请调用 chat-messages 接口，通过继续传入返回的 conversation_id 可持续保持该会话。**[开始前请阅读 !! 什么是 Bearer Token ？](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
 
 <Heading
   url='/chat-messages'
@@ -38,7 +38,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - streaming 流式返回。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现流式返回。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
-      （选填）会话标识符，首次对话可为空，如果要继续对话请传入上下文返回的 conversation_id
+      （选填）<strong>‼️ 会话标识符，首次对话为空 ‼️</strong>，如果要继续对话请传入上下文返回的 conversation_id
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
@@ -165,7 +165,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-    滚动加载形式返回历史聊天记录，第一页返回最新 `limit` 条，即：倒序返回。
+    滚动加载形式返回历史聊天记录，第一页返回最新 `limit` 条，加载更多时，返回 `first_id` 之前的 `limit` 条。
 
     ### Query
 
@@ -312,7 +312,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="POST" label="/conversations/{converation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/{converation_id}/name' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{

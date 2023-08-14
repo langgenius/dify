@@ -64,9 +64,9 @@ class ConversationDetailApi(AppApiResource):
 
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
-            return {"result": "success"}
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
+        return {"result": "success"}, 204
 
 class ConversationRenameApi(AppApiResource):
 

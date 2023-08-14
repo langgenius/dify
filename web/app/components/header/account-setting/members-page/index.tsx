@@ -49,7 +49,7 @@ const MembersPage = () => {
           <div className='
             shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
             text-[13px] font-medium text-primary-600 bg-white
-            shadow-[0_1px_2px_rgba(16,24,40,0.05)] rounded-lg cursor-pointer
+            shadow-xs rounded-lg cursor-pointer
           ' onClick={() => setInviteModalVisible(true)}>
             <UserPlusIcon className='w-4 h-4 mr-2 ' />
             {t('common.members.invite')}

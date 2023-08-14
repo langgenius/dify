@@ -95,13 +95,13 @@ const Apps: FC = () => {
         onChange={setCurrCategory}
       />
       <div
-        className='flex mt-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
+        className='flex mt-6 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'
         style={{
           maxHeight: 'calc(100vh - 243px)',
         }}
       >
         <nav
-          className={`${s.appList} grid content-start grid-cols-1 gap-4 px-12 pb-10grow shrink-0`}>
+          className={`${s.appList} grid content-start gap-4 px-12 shrink-0`}>
           {currList.map(app => (
             <AppCard
               key={app.app_id}

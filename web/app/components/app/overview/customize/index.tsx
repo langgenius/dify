@@ -94,7 +94,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       <p className='mt-2 text-base font-medium text-gray-800'>{t(`${prefixCustomize}.way2.name`)}</p>
       <Button
         className='w-36 mt-2'
-        onClick={() => window.open(`https://docs.dify.ai/${locale.toLowerCase()}/application/developing-with-apis`, '_blank')}
+        onClick={() => window.open(`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/application/developing-with-apis`, '_blank')}
       >
         <span className='text-sm text-gray-800'>{t(`${prefixCustomize}.way2.operation`)}</span>
         <ArrowTopRightOnSquareIcon className='w-4 h-4 ml-1 text-gray-800 shrink-0' />
