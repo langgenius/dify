@@ -406,7 +406,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 try:
                     response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, [file],
-                                                                      data_process_rule_dict)
+                                                                      data_process_rule_dict, None, dataset_id)
                 except LLMBadRequestError:
                     raise ProviderNotInitializeError(
                         f"No Embedding Model available. Please configure a valid provider "
@@ -473,18 +473,19 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             indexing_runner = IndexingRunner()
             try:
                 response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
-                                                                  data_process_rule_dict)
+                                                                  data_process_rule_dict,  None, dataset_id)
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
-        elif dataset.data_source_type:
+        elif dataset.data_source_type == 'notion_import':
 
             indexing_runner = IndexingRunner()
             try:
                 response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
                                                                     info_list,
-                                                                    data_process_rule_dict)
+                                                                    data_process_rule_dict,
+                                                                    None, dataset_id)
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
