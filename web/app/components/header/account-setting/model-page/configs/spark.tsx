@@ -52,19 +52,6 @@ const config: ProviderConfig = {
       },
       {
         type: 'text',
-        key: 'api_key',
-        required: true,
-        label: {
-          'en': 'API Key',
-          'zh-Hans': 'API Key',
-        },
-        placeholder: {
-          'en': 'Enter your API key here',
-          'zh-Hans': '在此输入您的 API Key',
-        },
-      },
-      {
-        type: 'text',
         key: 'api_secret',
         required: true,
         label: {
@@ -74,6 +61,19 @@ const config: ProviderConfig = {
         placeholder: {
           'en': 'Enter your API Secret here',
           'zh-Hans': '在此输入您的 API Secret',
+        },
+      },
+      {
+        type: 'text',
+        key: 'api_key',
+        required: true,
+        label: {
+          'en': 'API Key',
+          'zh-Hans': 'API Key',
+        },
+        placeholder: {
+          'en': 'Enter your API key here',
+          'zh-Hans': '在此输入您的 API Key',
         },
       },
     ],
