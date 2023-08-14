@@ -21,7 +21,7 @@ const ExploreNav = ({
   return (
     <Link href="/explore/apps" className={classNames(
       className, 'group',
-      actived && 'bg-white shadow-[0_2px_5px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]',
+      actived && 'bg-white shadow-md',
       actived ? 'text-primary-600' : 'text-gray-500 hover:bg-gray-200',
     )}>
       {

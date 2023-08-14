@@ -5,6 +5,27 @@ const translation = {
     getKeyTip: 'Get your API Key from OpenAI dashboard',
     placeholder: 'Your OpenAI API Key(eg.sk-xxxx)',
   },
+  apiKeyInfo: {
+    cloud: {
+      trial: {
+        title: 'You are using the {{providerName}} trial quota.',
+        description: 'The trial quota is provided for your testing use. Before the trial quota calls are exhausted, please set up your own model provider or purchase additional quota.',
+      },
+      exhausted: {
+        title: 'Your trial quota have been used up, please set up your APIKey.',
+        description: 'Your trial quota has been exhausted. Please set up your own model provider or purchase additional quota.',
+      },
+    },
+    selfHost: {
+      title: {
+        row1: 'To get started,',
+        row2: 'setup your  model provider first.',
+      },
+    },
+    callTimes: 'Call times',
+    setAPIBtn: 'Go to setup model provider',
+    tryCloud: 'Or try the cloud version of Dify with free quote',
+  },
   overview: {
     title: 'Overview',
     appInfo: {

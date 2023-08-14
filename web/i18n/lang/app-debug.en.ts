@@ -93,6 +93,7 @@ const translation = {
       'Please wait for the response to the previous message to complete.',
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
+    notSelectModel: 'Please choose a model',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',

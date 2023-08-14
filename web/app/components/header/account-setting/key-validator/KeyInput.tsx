@@ -54,7 +54,7 @@ const KeyInput = ({
       <div className="mb-2 text-[13px] font-medium text-gray-800">{name}</div>
       <div className='
         flex items-center px-3 bg-white rounded-lg
-        shadow-[0_1px_2px_rgba(16,24,40,0.05)]
+        shadow-xs
       '>
         <input
           className='

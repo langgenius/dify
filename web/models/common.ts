@@ -65,6 +65,12 @@ export enum ProviderName {
   OPENAI = 'openai',
   AZURE_OPENAI = 'azure_openai',
   ANTHROPIC = 'anthropic',
+  Replicate = 'replicate',
+  HuggingfaceHub = 'huggingface_hub',
+  MiniMax = 'minimax',
+  Spark = 'spark',
+  Tongyi = 'tongyi',
+  ChatGLM = 'chatglm',
 }
 export type ProviderAzureToken = {
   openai_api_base?: string

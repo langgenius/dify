@@ -21,7 +21,7 @@ const PluginNav = ({
   return (
     <Link href="/plugins-coming-soon" className={classNames(
       className, 'group',
-      isPluginsComingSoon && 'bg-white shadow-[0_2px_5px_-1px_rgba(0,0,0,0.05),0_2px_4px_-2px_rgba(0,0,0,0.05)]',
+      isPluginsComingSoon && 'bg-white shadow-md',
       isPluginsComingSoon ? 'text-primary-600' : 'text-gray-500 hover:bg-gray-200',
     )}>
       {
