@@ -49,7 +49,7 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const { currentWorkspace } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
@@ -68,11 +68,11 @@ function AppCard({
     if (appInfo.mode === AppType.chat)
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
 
-    if (['owner', 'admin'].includes(currentWorkspace.role))
+    if (isCurrentWorkspaceManager)
       operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
 
     return operationsMap
-  }, [currentWorkspace, appInfo, t])
+  }, [isCurrentWorkspaceManager, appInfo, t])
 
   const isApp = cardType === 'app' || cardType === 'webapp'
   const basicName = isApp ? appInfo?.site?.title : t('appOverview.overview.apiInfo.title')
@@ -209,7 +209,7 @@ function AppCard({
               onClose={() => setShowShareModal(false)}
               linkUrl={appUrl}
               onGenerateCode={onGenerateCode}
-              regeneratable={['owner', 'admin'].includes(currentWorkspace.role)}
+              regeneratable={isCurrentWorkspaceManager}
             />
             <SettingsModal
               appInfo={appInfo}

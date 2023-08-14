@@ -16,7 +16,7 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
 }
 
 const Datasets = () => {
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false })
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
@@ -45,7 +45,7 @@ const Datasets = () => {
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onDelete={mutate} />),
       ))}
-      { ['owner', 'admin'].includes(currentWorkspace.role) && <NewDatasetCard ref={anchorRef} /> }
+      { isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} /> }
     </nav>
   )
 }

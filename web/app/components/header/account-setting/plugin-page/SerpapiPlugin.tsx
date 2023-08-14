@@ -17,7 +17,7 @@ const SerpapiPlugin = ({
   onUpdate,
 }: SerpapiPluginProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { notify } = useToastContext()
 
   const forms: Form[] = [{
@@ -72,7 +72,7 @@ const SerpapiPlugin = ({
         link: 'https://serpapi.com/manage-api-key',
       }}
       onSave={handleSave}
-      disabled={!['owner', 'admin'].includes(currentWorkspace?.role)}
+      disabled={!isCurrentWorkspaceManager}
     />
   )
 }

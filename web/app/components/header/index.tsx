@@ -19,7 +19,7 @@ const navClassName = `
 `
 
 const Header = () => {
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   return (
     <>
       <div className='flex items-center'>
@@ -33,7 +33,7 @@ const Header = () => {
         <ExploreNav className={navClassName} />
         <AppNav />
         <PluginNav className={navClassName} />
-        {['owner', 'admin'].includes(currentWorkspace.role) && <DatasetNav />}
+        {isCurrentWorkspaceManager && <DatasetNav />}
       </div>
       <div className='flex items-center flex-shrink-0'>
         <EnvNav />

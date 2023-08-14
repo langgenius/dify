@@ -32,7 +32,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     params: { appId }, // get appId in path
   } = props
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const detailParams = { url: '/apps', id: appId }
   const { data: response } = useSWR(detailParams, fetchAppDetail)
 
@@ -42,10 +42,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
       { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
     ]
-    if (['owner', 'admin'].includes(currentWorkspace.role))
+    if (isCurrentWorkspaceManager)
       navs.push({ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon })
     return navs
-  }, [appId, currentWorkspace, t])
+  }, [appId, isCurrentWorkspaceManager, t])
 
   const appModeName = response?.mode?.toUpperCase() === 'COMPLETION' ? t('common.appModes.completionApp') : t('common.appModes.chatApp')
   useEffect(() => {

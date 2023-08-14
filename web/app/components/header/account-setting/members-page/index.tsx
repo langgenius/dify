@@ -27,7 +27,7 @@ const MembersPage = () => {
     normal: t('common.members.normal'),
   }
   const { locale } = useContext(I18n)
-  const { userProfile, currentWorkspace } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationLink, setInvitationLink] = useState('')
@@ -47,8 +47,8 @@ const MembersPage = () => {
           <div className={
             `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
             text-[13px] font-medium text-primary-600 bg-white
-            shadow-xs rounded-lg ${['owner', 'admin'].includes(currentWorkspace.role) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-          } onClick={() => ['owner', 'admin'].includes(currentWorkspace.role) && setInviteModalVisible(true)}>
+            shadow-xs rounded-lg ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+          } onClick={() => isCurrentWorkspaceManager && setInviteModalVisible(true)}>
             <UserPlusIcon className='w-4 h-4 mr-2 ' />
             {t('common.members.invite')}
           </div>

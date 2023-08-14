@@ -17,7 +17,7 @@ const DataSourceNotion = ({
   workspaces,
 }: DataSourceNotionProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const connected = !!workspaces.length
 
@@ -44,18 +44,18 @@ const DataSourceNotion = ({
                 className={
                   `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
                   rounded-md text-xs font-medium text-gray-700
-                  ${['owner', 'admin'].includes(currentWorkspace.role) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                  ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
                 }
-                href={(['owner', 'admin'].includes(currentWorkspace.role)) ? `${apiPrefix}/oauth/data-source/notion` : '/'}>
+                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/'}>
                 {t('common.dataSource.connect')}
               </Link>
             )
             : (
               <Link
-                href={(!['owner', 'admin'].includes(currentWorkspace.role)) ? `${apiPrefix}/oauth/data-source/notion` : '/' }
+                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/' }
                 className={
                   `flex items-center px-3 h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
-                  ${['owner', 'admin'].includes(currentWorkspace.role) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                  ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
                 }>
                 <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
                 {t('common.dataSource.notion.addWorkspace')}

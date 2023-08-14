@@ -32,7 +32,7 @@ const SecretKeyModal = ({
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -120,7 +120,7 @@ const SecretKeyModal = ({
                         setCopyValue(api.token)
                       }}></div>
                     </Tooltip>
-                    { ['owner', 'admin'].includes(currentWorkspace.role)
+                    { isCurrentWorkspaceManager
                       && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
                         setDelKeyId(api.id)
                         setShowConfirmDelete(true)

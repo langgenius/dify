@@ -25,7 +25,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
@@ -56,7 +56,7 @@ const AppCard = ({
           <div className={style.listItemHeading}>
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>
-          { ['owner', 'admin'].includes(currentWorkspace.role)
+          { isCurrentWorkspaceManager
           && <span className={style.deleteAppIcon} onClick={onDeleteClick} />}
         </div>
         <div className={style.listItemDescription}>{app.model_config?.pre_prompt}</div>

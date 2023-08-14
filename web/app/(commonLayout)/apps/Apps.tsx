@@ -19,7 +19,7 @@ const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
 
 const Apps = () => {
   const { t } = useTranslation()
-  const { currentWorkspace } = useAppContext()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
@@ -56,7 +56,7 @@ const Apps = () => {
       {data?.map(({ data: apps }) => apps.map(app => (
         <AppCard key={app.id} app={app} onDelete={mutate} />
       )))}
-      { ['owner', 'admin'].includes(currentWorkspace.role)
+      { isCurrentWorkspaceManager
       && <NewAppCard ref={anchorRef} onSuccess={mutate} />}
     </nav>
   )
