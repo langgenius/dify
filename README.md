@@ -26,7 +26,7 @@ Visual data analysis, log review, and annotation for applications
 > * **Hugging Face Hub**
 > * **MiniMax**
 > * **Spark**
-> * **Weixin**
+> * **Wenxin**
 > * **Tongyi**
 > * **ChatGLM**
 
