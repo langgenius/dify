@@ -250,6 +250,9 @@ const translation = {
       front: 'Your API KEY will be encrypted and stored using',
       back: ' technology.',
     },
+    freeQuota: {
+      howToEarn: 'How to earn',
+    },
   },
   dataSource: {
     add: 'Add a data source',
