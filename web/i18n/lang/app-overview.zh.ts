@@ -8,7 +8,7 @@ const translation = {
   apiKeyInfo: {
     cloud: {
       trial: {
-        title: '您正在使用 {{providerName}} 试用配额。',
+        title: '您正在使用 {{providerName}} 的试用配额。',
         description: '试用配额仅供您测试使用。 在试用配额用完之前，请自行设置模型提供商或购买额外配额。',
       },
       exhausted: {
