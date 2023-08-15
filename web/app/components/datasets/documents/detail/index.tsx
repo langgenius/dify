@@ -21,7 +21,7 @@ import { fetchDocumentDetail } from '@/service/datasets'
 
 export const BackCircleBtn: FC<{ onClick: () => void }> = ({ onClick }) => {
   return (
-    <div onClick={onClick} className={'rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]'}>
+    <div onClick={onClick} className={'rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-lg'}>
       <ArrowLeftIcon className='text-primary-600 fill-current stroke-current h-4 w-4' />
     </div>
   )

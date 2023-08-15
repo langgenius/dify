@@ -4,14 +4,13 @@ from typing import List
 
 import numpy as np
 from flask import current_app
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from sklearn.manifold import TSNE
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.vector_index.vector_index import VectorIndex
-from core.llm.llm_builder import LLMBuilder
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
@@ -29,15 +28,11 @@ class HitTestingService:
                 "records": []
             }
 
-        model_credentials = LLMBuilder.get_model_credentials(
-            tenant_id=dataset.tenant_id,
-            model_provider=LLMBuilder.get_default_provider(dataset.tenant_id, 'text-embedding-ada-002'),
-            model_name='text-embedding-ada-002'
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=dataset.tenant_id
         )
 
-        embeddings = CacheEmbedding(OpenAIEmbeddings(
-            **model_credentials
-        ))
+        embeddings = CacheEmbedding(embedding_model)
 
         vector_index = VectorIndex(
             dataset=dataset,

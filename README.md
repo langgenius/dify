@@ -6,7 +6,7 @@
   <a href="./README_ES.md">Español</a>
 </p>
 
-[Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
+#### [Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted) •  [FAQ](https://docs.dify.ai/getting-started/faq) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
 
 **Dify** is an easy-to-use LLMOps platform designed to empower more people to create sustainable, AI-native applications. With visual orchestration for various application types, Dify offers out-of-the-box, ready-to-use applications that can also serve as Backend-as-a-Service APIs. Unify your development process with one API for plugins and datasets integration, and streamline your operations using a single interface for prompt engineering, visual analytics, and continuous improvement.
 
@@ -15,17 +15,43 @@ Applications created with Dify include:
 Out-of-the-box web sites supporting form mode and chat conversation mode
 A single API encompassing plugin capabilities, context enhancement, and more, saving you backend coding effort
 Visual data analysis, log review, and annotation for applications
-Dify is compatible with Langchain, meaning we'll gradually support multiple LLMs, currently supported:
 
-* **OpenAI** ：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003
+## Highlighted Features
+**1. LLMs support:** Choose capabilities based on different models when building your Dify AI apps. Dify is compatible with Langchain, meaning it will support various LLMs. Currently supported:
 
-* **Azure OpenAI**
+- [x] **OpenAI**: GPT4, GPT3.5-turbo, GPT3.5-turbo-16k, text-davinci-003 
+- [x] **Azure OpenAI Service**
+- [x] **Anthropic**: Claude2, Claude-instant
+- [x] **Replicate**
+- [x] **Hugging Face Hub**
+- [x] **MiniMax**
+- [x] **Spark**
+- [x] **Wenxin**
+- [x] **Tongyi**
+- [x] **ChatGLM**
 
-* **Antropic**：Claude2、Claude-instant
-> We've got 1000 free trial credits available for all cloud service users to try out the Claude model.Visit [Dify.ai](https://dify.ai) and
-try it now.
+We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
+* 1000 free Claude model queries to build Claude-powered apps
+* 200 free OpenAI queries to build OpenAI-based apps
+* 3 million Xunfei Spark Tokens are provided for creating AI applications based on Spark.
+* 1 million MiniMax Tokens are provided for creating AI applications based on the MiniMax.
+  
+**2. Visual orchestration:** Build an AI app in minutes by writing and debugging prompts visually.
 
-* **hugging face Hub**：Coming soon.
+**3. Text embedding:** Fully automated text preprocessing embeds your data as context without complex concepts. Supports PDF, TXT, and syncing data from Notion, webpages, APIs.
+
+**4. API-based:**  Backend-as-a-service. Access web apps directly or integrate via APIs without complex backend setup.
+
+**5. Plugins:** Dify "Smart Chat" now supports first-party plugins like web browsing, Google search, Wikipedia to enable online lookup, analyzing web content, and explaining the AI's reasoning process conversationally.
+
+**6. Team workspaces:** Team members can join workspaces to collaboratively edit, manage, and use team AI apps.
+
+**7. Data labeling and improvement:**  Visually inspect AI app logs and improve data via labeling. Observe the AI's reasoning process to continuously enhance performance. (Coming soon)
+
+## Use cases
+* [Create an AI ChatBot with Business Data in Minutes.](https://docs.dify.ai/use-cases/create-an-ai-chatbot-with-business-data-in-minutes)
+* [How to Build an Notion AI Assistant Based on Your Own Notes?](https://docs.dify.ai/use-cases/build-an-notion-ai-assistant)
+* [Create a Midjoureny Prompt Bot Without Code in Just a Few Minutes.](https://docs.dify.ai/use-cases/create-a-midjoureny-prompt-bot-with-dify)
 
 ## Use Cloud Services
 
@@ -37,7 +63,7 @@ Visit [Dify.ai](https://dify.ai)
 
 Before installing Dify, make sure your machine meets the following minimum system requirements:
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### Quick Start

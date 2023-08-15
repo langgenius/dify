@@ -3,7 +3,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 # Chat App API
 
-For versatile conversational apps using a Q&A format, call the chat-messages API to initiate dialogue. Maintain ongoing conversations by passing the returned conversation_id. Response parameters and templates depend on LangGenius Prompt Eng. settings.
+For versatile conversational apps using a Q&A format, call the chat-messages API to initiate dialogue. Maintain ongoing conversations by passing the returned conversation_id. Response parameters and templates depend on LangGenius Prompt Eng. settings. **[Before you start, READ This !! What is a Bearer Token](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
 
 <Heading
   url='/chat-messages'
@@ -38,7 +38,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
         - streaming returns. Implementation of streaming return based on SSE （**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）.
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
-       (Optional) Conversation ID: leave empty for first-time conversation; pass conversation_id from context to continue dialogue.
+       (Optional) Conversation ID: <strong>‼️ leave empty for first-time conversation ‼️</strong>; pass conversation_id from context to continue dialogue.
       </Property>
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the app.
@@ -165,7 +165,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 />
 <Row>
   <Col>
-    The first page returns the latest `limit` bar, which is in reverse order.
+    The first page returns the latest `limit` bar, which is in reverse order. Load previous pages by passing the `first_id` of the last message on the current page to the `first_id` parameter of the next request.
 
     ### Query
 
@@ -312,7 +312,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="POST" label="/conversations/{converation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/{converation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --data-raw '{

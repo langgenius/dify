@@ -1,0 +1,13 @@
+{
+    "support_provider_types": [
+        "system",
+        "custom"
+    ],
+    "system_config": {
+        "supported_quota_types": [
+            "free"
+        ],
+        "quota_unit": "tokens"
+    },
+    "model_flexibility": "fixed"
+}

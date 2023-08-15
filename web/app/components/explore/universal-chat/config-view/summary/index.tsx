@@ -7,9 +7,11 @@ import s from './style.module.css'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
-
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
 export type ISummaryProps = {
   modelId: string
+  providerName: ProviderEnum
   plugins: Record<string, boolean>
   dataSets: any[]
 }
@@ -40,6 +42,7 @@ const getPlugIcon = (pluginId: string) => {
 
 const Summary: FC<ISummaryProps> = ({
   modelId,
+  providerName,
   plugins,
   dataSets,
 }) => {
@@ -54,8 +57,8 @@ const Summary: FC<ISummaryProps> = ({
   return (
     <div ref={configContentRef} className='relative'>
       <div onClick={toggleShowConfig} className={cn(getColorInfo(modelId), 'flex items-center px-1 h-8 rounded-lg border cursor-pointer')}>
-        <ModelIcon modelId={modelId} className='!w-6 !h-6' />
-        <div className='ml-2 text-[13px] font-medium text-gray-900'>{modelId}</div>
+        <ModelIcon providerName={providerName} modelId={modelId} className='!w-6 !h-6' />
+        <div className='ml-2 text-[13px] font-medium text-gray-900'><ModelName modelId={modelId} /></div>
         {
           pluginIds.length > 0 && (
             <div className='ml-1.5 flex items-center'>
@@ -75,7 +78,10 @@ const Summary: FC<ISummaryProps> = ({
       </div>
       {isShowConfig && (
         <ConfigDetail
-          modelId={modelId} plugins={plugins} dataSets={dataSets}
+          modelId={modelId}
+          providerName={providerName}
+          plugins={plugins}
+          dataSets={dataSets}
         />
       )}
     </div>

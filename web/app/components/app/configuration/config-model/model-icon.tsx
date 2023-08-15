@@ -1,25 +1,31 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { ProviderType } from '@/types/app'
-import { MODEL_LIST } from '@/config'
-import { Anthropic, Gpt3, Gpt4 } from '@/app/components/base/icons/src/public/llm'
+import cn from 'classnames'
+import {
+  OpenaiGreen,
+  OpenaiViolet,
+} from '@/app/components/base/icons/src/public/llm'
+import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import ProviderConfig from '@/app/components/header/account-setting/model-page/configs'
 
-export type IModelIconProps = { modelId: string; className?: string }
+export type IModelIconProps = {
+  modelId: string
+  providerName: ProviderEnum
+  className?: string
+}
 
-const ModelIcon: FC<IModelIconProps> = ({ modelId, className }) => {
-  const resClassName = `w-4 h-4 ${className}`
-  const model = MODEL_LIST.find(item => item.id === modelId)
-  if (model?.id === 'gpt-4')
-    return <Gpt4 className={resClassName} />
+const ModelIcon: FC<IModelIconProps> = ({ modelId, providerName, className }) => {
+  let Icon = <OpenaiGreen className='w-full h-full' />
+  if (providerName === ProviderEnum.openai)
+    Icon = modelId.includes('gpt-4') ? <OpenaiViolet className='w-full h-full' /> : <OpenaiGreen className='w-full h-full' />
+  else
+    Icon = ProviderConfig[providerName]?.selector.icon
 
-  if (model?.provider === ProviderType.anthropic) {
-    return (
-      <Anthropic className={resClassName} />
-    )
-  }
   return (
-    <Gpt3 className={resClassName} />
+    <div className={cn(className, 'w-4 h-4')}>
+      {Icon}
+    </div>
   )
 }
 

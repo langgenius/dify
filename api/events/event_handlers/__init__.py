@@ -1,7 +1,5 @@
 from .create_installed_app_when_app_created import handle
 from .delete_installed_app_when_app_deleted import handle
-from .create_provider_when_tenant_created import handle
-from .create_provider_when_tenant_updated import handle
 from .clean_when_document_deleted import handle
 from .clean_when_dataset_deleted import handle
 from .update_app_dataset_join_when_app_model_config_updated import handle

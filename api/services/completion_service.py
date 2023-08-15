@@ -11,7 +11,7 @@ from sqlalchemy import and_
 
 from core.completion import Completion
 from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
-from core.llm.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -127,9 +127,9 @@ class CompletionService:
 
                 # validate config
                 model_config = AppModelConfigService.validate_configuration(
+                    tenant_id=app_model.tenant_id,
                     account=user,
-                    config=args['model_config'],
-                    mode=app_model.mode
+                    config=args['model_config']
                 )
 
                 app_model_config = AppModelConfig(

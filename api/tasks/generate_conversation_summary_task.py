@@ -6,6 +6,7 @@ from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.generator.llm_generator import LLMGenerator
+from core.model_providers.error import LLMError
 from extensions.ext_database import db
 from models.model import Conversation, Message
 
@@ -42,5 +43,7 @@ def generate_conversation_summary_task(conversation_id: str):
 
         end_at = time.perf_counter()
         logging.info(click.style('Conversation summary generated: {} latency: {}'.format(conversation_id, end_at - start_at), fg='green'))
-    except Exception:
-        logging.exception("generate conversation summary failed")
+    except LLMError:
+        pass
+    except Exception as e:
+        logging.exception(e)

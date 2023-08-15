@@ -30,7 +30,7 @@ tenant_fields = {
     'created_at': TimestampField,
     'role': fields.String,
     'providers': fields.List(fields.Nested(provider_fields)),
-    'in_trail': fields.Boolean,
+    'in_trial': fields.Boolean,
     'trial_end_reason': fields.String,
 }
 

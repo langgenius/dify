@@ -9,8 +9,7 @@ from typing import Optional, List
 from flask import current_app
 from sqlalchemy import func
 
-from core.llm.token_calculator import TokenCalculator
-from events.event_handlers.document_index_event import document_index_created
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 
@@ -875,8 +874,13 @@ class SegmentService:
         content = args['content']
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
+
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=document.tenant_id
+        )
+
         # calc embedding use tokens
-        tokens = TokenCalculator.get_num_tokens('text-embedding-ada-002', content)
+        tokens = embedding_model.get_num_tokens(content)
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document_id == document.id
         ).scalar()
@@ -921,8 +925,13 @@ class SegmentService:
             update_segment_keyword_index_task.delay(segment.id)
         else:
             segment_hash = helper.generate_text_hash(content)
+
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=document.tenant_id
+            )
+
             # calc embedding use tokens
-            tokens = TokenCalculator.get_num_tokens('text-embedding-ada-002', content)
+            tokens = embedding_model.get_num_tokens(content)
             segment.content = content
             segment.index_node_hash = segment_hash
             segment.word_count = len(content)
