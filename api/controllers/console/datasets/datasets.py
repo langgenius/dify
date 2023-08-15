@@ -33,6 +33,8 @@ dataset_detail_fields = {
     'created_at': TimestampField,
     'updated_by': fields.String,
     'updated_at': TimestampField,
+    'embedding_model': fields.String,
+    'embedding_model_provider': fields.String
 }
 
 dataset_query_detail_fields = {
