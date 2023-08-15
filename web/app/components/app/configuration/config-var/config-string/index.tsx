@@ -7,7 +7,7 @@ export type IConfigStringProps = {
   onChange: (value: number | undefined) => void
 }
 
-const MAX_LENGTH = 1024
+const MAX_LENGTH = 256
 
 const ConfigString: FC<IConfigStringProps> = ({
   value,
