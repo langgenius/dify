@@ -22,16 +22,16 @@
 ## 核心能力
 1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
 
-> * **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
-> * **Azure OpenAI Service**
-> * **Anthropic**：Claude2、Claude-instant
-> * **Replicate**
-> * **Hugging Face Hub**
-> * **MiniMax**
-> * **讯飞星火大模型**
-> * **文心一言**
-> * **通义千问**
-> * **ChatGLM**
+- [x] **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
+- [x] **Azure OpenAI Service**
+- [x] **Anthropic**：Claude2、Claude-instant
+- [x] **Replicate**
+- [x] **Hugging Face Hub**
+- [x] **MiniMax**
+- [x] **讯飞星火大模型**
+- [x] **文心一言**
+- [x] **通义千问**
+- [x] **ChatGLM**
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
 * 1000 次 Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
