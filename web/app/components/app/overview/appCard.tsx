@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
   DocumentTextIcon,
@@ -22,6 +22,7 @@ import Switch from '@/app/components/base/switch'
 import type { AppDetailResponse } from '@/models/app'
 import './style.css'
 import { AppType } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 
 export type IAppCardProps = {
   className?: string
@@ -48,22 +49,30 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showShareModal, setShowShareModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const { t } = useTranslation()
 
-  const OPERATIONS_MAP = {
-    webapp: [
-      { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
-      { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
-      appInfo.mode === AppType.chat ? { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon } : false,
-      { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
-    ].filter(item => !!item),
-    api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
-    app: [],
-  }
+  const OPERATIONS_MAP = useMemo(() => {
+    const operationsMap = {
+      webapp: [
+        { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
+        { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
+      ] as { opName: string; opIcon: any }[],
+      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
+      app: [],
+    }
+    if (appInfo.mode === AppType.chat)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
+
+    if (isCurrentWorkspaceManager)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
+
+    return operationsMap
+  }, [isCurrentWorkspaceManager, appInfo, t])
 
   const isApp = cardType === 'app' || cardType === 'webapp'
   const basicName = isApp ? appInfo?.site?.title : t('appOverview.overview.apiInfo.title')
@@ -129,7 +138,7 @@ function AppCard({
             <Tag className="mr-2" color={runningStatus ? 'green' : 'yellow'}>
               {runningStatus ? t('appOverview.overview.status.running') : t('appOverview.overview.status.disable')}
             </Tag>
-            <Switch defaultValue={runningStatus} onChange={onChangeStatus} />
+            <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={currentWorkspace?.role === 'normal'} />
           </div>
         </div>
         <div className="flex flex-col justify-center py-2">
@@ -200,6 +209,7 @@ function AppCard({
               onClose={() => setShowShareModal(false)}
               linkUrl={appUrl}
               onGenerateCode={onGenerateCode}
+              regeneratable={isCurrentWorkspaceManager}
             />
             <SettingsModal
               appInfo={appInfo}

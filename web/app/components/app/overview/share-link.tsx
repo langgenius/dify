@@ -17,6 +17,7 @@ type IShareLinkProps = {
   onClose: () => void
   onGenerateCode: () => Promise<void>
   linkUrl: string
+  regeneratable?: boolean
 }
 
 const prefixShare = 'appOverview.overview.appInfo.share'
@@ -26,6 +27,7 @@ const ShareLinkModal: FC<IShareLinkProps> = ({
   isShow,
   onClose,
   onGenerateCode,
+  regeneratable,
 }) => {
   const [genLoading, setGenLoading] = useState(false)
   const [isCopied, setIsCopied] = useState(false)
@@ -51,7 +53,7 @@ const ShareLinkModal: FC<IShareLinkProps> = ({
         <LinkIcon className='w-4 h-4 mr-2' />
         { t(`${prefixShare}.${isCopied ? 'linkCopied' : 'copyLink'}`) }
       </Button>
-      <Button className='w-32 !px-0' onClick={async () => {
+      {regeneratable && <Button className='w-32 !px-0' onClick={async () => {
         setGenLoading(true)
         await onGenerateCode()
         setGenLoading(false)
@@ -59,7 +61,7 @@ const ShareLinkModal: FC<IShareLinkProps> = ({
       }}>
         <ArrowPathIcon className={`w-4 h-4 mr-2 ${genLoading ? 'generateLogo' : ''}`} />
         {t(`${prefixShare}.regenerate`)}
-      </Button>
+      </Button>}
     </div>
   </Modal>
 }

@@ -12,7 +12,7 @@ import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
 import { deleteApp } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 
 export type AppCardProps = {
   app: App
@@ -25,6 +25,7 @@ const AppCard = ({
 }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const mutateApps = useContextSelector(AppsContext, state => state.mutateApps)
 
@@ -55,7 +56,8 @@ const AppCard = ({
           <div className={style.listItemHeading}>
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>
-          <span className={style.deleteAppIcon} onClick={onDeleteClick} />
+          { isCurrentWorkspaceManager
+          && <span className={style.deleteAppIcon} onClick={onDeleteClick} />}
         </div>
         <div className={style.listItemDescription}>{app.model_config?.pre_prompt}</div>
         <div className={style.listItemFooter}>

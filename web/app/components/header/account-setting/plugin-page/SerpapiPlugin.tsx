@@ -6,6 +6,7 @@ import type { Form, ValidateValue } from '../key-validator/declarations'
 import { updatePluginKey, validatePluginKey } from './utils'
 import { useToastContext } from '@/app/components/base/toast'
 import type { PluginProvider } from '@/models/common'
+import { useAppContext } from '@/context/app-context'
 
 type SerpapiPluginProps = {
   plugin: PluginProvider
@@ -16,6 +17,7 @@ const SerpapiPlugin = ({
   onUpdate,
 }: SerpapiPluginProps) => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { notify } = useToastContext()
 
   const forms: Form[] = [{
@@ -70,6 +72,7 @@ const SerpapiPlugin = ({
         link: 'https://serpapi.com/manage-api-key',
       }}
       onSave={handleSave}
+      disabled={!isCurrentWorkspaceManager}
     />
   )
 }

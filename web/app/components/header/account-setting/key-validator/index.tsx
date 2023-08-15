@@ -13,6 +13,7 @@ export type KeyValidatorProps = {
   forms: Form[]
   keyFrom: KeyFrom
   onSave: (v: ValidateValue) => Promise<boolean | undefined>
+  disabled?: boolean
 }
 
 const KeyValidator = ({
@@ -22,6 +23,7 @@ const KeyValidator = ({
   forms,
   keyFrom,
   onSave,
+  disabled,
 }: KeyValidatorProps) => {
   const triggerKey = `plugins/${type}`
   const { eventEmitter } = useEventEmitterContextContext()
@@ -85,10 +87,11 @@ const KeyValidator = ({
           onSave={handleSave}
           onAdd={handleAdd}
           onEdit={handleEdit}
+          disabled={disabled}
         />
       </div>
       {
-        isOpen && (
+        isOpen && !disabled && (
           <div className='px-4 py-3'>
             {
               forms.map(form => (

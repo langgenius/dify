@@ -5,6 +5,7 @@ import type { Status } from './declarations'
 type OperateProps = {
   isOpen: boolean
   status: Status
+  disabled?: boolean
   onCancel: () => void
   onSave: () => void
   onAdd: () => void
@@ -14,6 +15,7 @@ type OperateProps = {
 const Operate = ({
   isOpen,
   status,
+  disabled,
   onCancel,
   onSave,
   onAdd,
@@ -44,10 +46,10 @@ const Operate = ({
 
   if (status === 'add') {
     return (
-      <div className='
-        px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
-        text-xs font-medium text-gray-700 flex items-center
-      ' onClick={onAdd}>
+      <div className={
+        `px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
+        text-xs font-medium text-gray-700 flex items-center ${disabled && 'opacity-50 cursor-default'}}`
+      } onClick={() => !disabled && onAdd()}>
         {t('common.provider.addKey')}
       </div>
     )
@@ -69,10 +71,10 @@ const Operate = ({
             <Indicator color='green' className='mr-4' />
           )
         }
-        <div className='
-          px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
-          text-xs font-medium text-gray-700 flex items-center
-        ' onClick={onEdit}>
+        <div className={
+          `px-3 h-[28px] bg-white border border-gray-200 rounded-md cursor-pointer
+          text-xs font-medium text-gray-700 flex items-center ${disabled && 'opacity-50 cursor-default'}}`
+        } onClick={() => !disabled && onEdit()}>
           {t('common.provider.editKey')}
         </div>
       </div>
