@@ -397,29 +397,6 @@ class AppApiStatus(Resource):
         return app
 
 
-class AppRateLimit(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_detail_fields)
-    def post(self, app_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument('api_rpm', type=inputs.natural, required=False, location='json')
-        parser.add_argument('api_rph', type=inputs.natural, required=False, location='json')
-        args = parser.parse_args()
-
-        app_id = str(app_id)
-        app = _get_app(app_id, current_user.current_tenant_id)
-
-        if args.get('api_rpm'):
-            app.api_rpm = args.get('api_rpm')
-        if args.get('api_rph'):
-            app.api_rph = args.get('api_rph')
-        app.updated_at = datetime.utcnow()
-        db.session.commit()
-        return app
-
-
 class AppCopy(Resource):
     @staticmethod
     def create_app_copy(app):
@@ -482,16 +459,6 @@ class AppCopy(Resource):
         return copy_app, 201
 
 
-class AppExport(Resource):
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, app_id):
-        # todo
-        pass
-
-
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppTemplateApi, '/app-templates')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
@@ -500,4 +467,3 @@ api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
 api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
-api.add_resource(AppRateLimit, '/apps/<uuid:app_id>/rate-limit')
