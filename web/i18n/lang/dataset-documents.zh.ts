@@ -17,8 +17,11 @@ const translation = {
     action: {
       uploadFile: '上传新文件',
       settings: '分段设置',
+      addButton: '添加分段',
       add: '添加新分段',
+      batchAdd: '批量添加',
       archive: '归档',
+      unarchive: '撤销归档',
       delete: '删除',
       enableWarning: '归档的文件无法启用',
       sync: '同步',
@@ -52,6 +55,22 @@ const translation = {
     delete: {
       title: '确定删除吗？',
       content: '如果您需要稍后恢复处理，您将从您离开的地方继续',
+    },
+    batchModal: {
+      title: '批量添加分段',
+      csvUploadTitle: '将您的 CSV 文件拖放到此处，或',
+      browse: '选择文件',
+      tip: 'CSV 文件必须符合以下结构：',
+      question: '问题',
+      answer: '回答',
+      template: '下载模板',
+      cancel: '取消',
+      run: '导入',
+      runError: '批量导入失败',
+      processing: '批量处理中',
+      completed: '导入完成',
+      error: '导入出错',
+      ok: '确定',
     },
   },
   metadata: {
@@ -318,6 +337,7 @@ const translation = {
     contentEmpty: '内容不能为空',
     newTextSegment: '新文本分段',
     newQaSegment: '新问答分段',
+    delete: '删除这个分段？',
   },
 }
 

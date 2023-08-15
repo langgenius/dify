@@ -169,3 +169,7 @@ export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
 }
+
+export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {
+  return post(url) as Promise<{ type: string; redirect_url?: string; result?: string }>
+}

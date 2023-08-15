@@ -1,5 +1,4 @@
 import React from 'react'
-import { EditKeyPopover } from './welcome-banner'
 import ChartView from './chartView'
 import CardView from './cardView'
 import { getLocaleOnServer } from '@/i18n/server'
@@ -21,7 +20,6 @@ const Overview = async ({
       <ApikeyInfoPanel />
       <div className='flex flex-row items-center justify-between mb-4 text-xl text-gray-900'>
         {t('overview.title')}
-        <EditKeyPopover />
       </div>
       <CardView appId={appId} />
       <ChartView appId={appId} />

@@ -75,6 +75,7 @@ const translation = {
     economicalTip: '使用离线的向量引擎、关键词索引等方式，降低了准确度但无需花费 Token',
     QATitle: '采用 Q&A 分段模式',
     QATip: '开启后将会消耗额外的 token',
+    QALanguage: '分段使用',
     emstimateCost: '执行嵌入预估消耗',
     emstimateSegment: '预估分段数',
     segmentCount: '段',

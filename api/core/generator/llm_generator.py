@@ -175,8 +175,8 @@ class LLMGenerator:
         return rule_config
 
     @classmethod
-    def generate_qa_document(cls, tenant_id: str, query):
-        prompt = GENERATOR_QA_PROMPT
+    def generate_qa_document(cls, tenant_id: str, query, document_language: str):
+        prompt = GENERATOR_QA_PROMPT.format(language=document_language)
 
         model_instance = ModelFactory.get_text_generation_model(
             tenant_id=tenant_id,

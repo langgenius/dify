@@ -274,6 +274,7 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument('duplicate', type=bool, nullable=False, location='json')
         parser.add_argument('original_document_id', type=str, required=False, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args['indexing_technique']:
@@ -328,6 +329,7 @@ class DatasetInitApi(Resource):
         parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
         args = parser.parse_args()
 
         try:
@@ -576,7 +578,8 @@ class DocumentIndexingStatusApi(DocumentResource):
 
         document.completed_segments = completed_segments
         document.total_segments = total_segments
-
+        if document.is_paused:
+            document.indexing_status = 'paused'
         return marshal(document, self.document_status_fields)
 
 
@@ -832,6 +835,22 @@ class DocumentStatusApi(DocumentResource):
                 redis_client.setex(indexing_cache_key, 600, 1)
 
                 remove_document_from_index_task.delay(document_id)
+
+            return {'result': 'success'}, 200
+        elif action == "un_archive":
+            if not document.archived:
+                raise InvalidActionError('Document is not archived.')
+
+            document.archived = False
+            document.archived_at = None
+            document.archived_by = None
+            document.updated_at = datetime.utcnow()
+            db.session.commit()
+
+            # Set cache to prevent indexing the same document multiple times
+            redis_client.setex(indexing_cache_key, 600, 1)
+
+            add_document_to_index_task.delay(document_id)
 
             return {'result': 'success'}, 200
         else:

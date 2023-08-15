@@ -9,6 +9,7 @@ type IPopover = {
   position?: 'bottom' | 'br'
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
+  manualClose?: boolean
 }
 
 const timeoutDuration = 100
@@ -20,6 +21,7 @@ export default function CustomPopover({
   btnElement,
   className,
   btnClassName,
+  manualClose,
 }: IPopover) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const timeOutRef = useRef<NodeJS.Timeout | null>(null)
@@ -65,28 +67,36 @@ export default function CustomPopover({
                 leaveTo="opacity-0 translate-y-1"
               >
                 <Popover.Panel
-                  className={`${s.popupPanel} ${position === 'br' ? 'right-0' : 'transform -translate-x-1/2 left-1/2'} ${className}`}
+                  className={`${s.popupPanel} ${position === 'br' ? 'right-0' : 'translate-x-1/2 left-1/2'} ${className}`}
                   {...(trigger !== 'hover'
                     ? {}
                     : {
                       onMouseLeave: () => onMouseLeave(open),
                       onMouseEnter: () => onMouseEnter(open),
                     })
-                  }>
-                  <div
-                    className={s.panelContainer}
-                    {...(trigger !== 'hover'
-                      ? {}
-                      : {
-                        onMouseLeave: () => onMouseLeave(open),
-                        onMouseEnter: () => onMouseEnter(open),
-                      })
-                    }
-                  >
-                    {cloneElement(htmlContent as React.ReactElement, {
-                      onClose: () => onMouseLeave(open),
-                    })}
-                  </div>
+                  }
+                >
+                  {({ close }) => (
+                    <div
+                      className={s.panelContainer}
+                      {...(trigger !== 'hover'
+                        ? {}
+                        : {
+                          onMouseLeave: () => onMouseLeave(open),
+                          onMouseEnter: () => onMouseEnter(open),
+                        })
+                      }
+                    >
+                      {cloneElement(htmlContent as React.ReactElement, {
+                        onClose: () => onMouseLeave(open),
+                        ...(manualClose
+                          ? {
+                            onClick: close,
+                          }
+                          : {}),
+                      })}
+                    </div>
+                  )}
                 </Popover.Panel>
               </Transition>
             </div>

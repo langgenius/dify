@@ -17,8 +17,11 @@ const translation = {
     action: {
       uploadFile: 'Upload new file',
       settings: 'Segment settings',
-      add: 'Add new segment',
+      addButton: 'Add segment',
+      add: 'Add a segment',
+      batchAdd: 'Batch add',
       archive: 'Archive',
+      unarchive: 'Unarchive',
       delete: 'Delete',
       enableWarning: 'Archived file cannot be enabled',
       sync: 'Sync',
@@ -52,6 +55,22 @@ const translation = {
     delete: {
       title: 'Are you sure Delete?',
       content: 'If you need to resume processing later, you will continue from where you left off',
+    },
+    batchModal: {
+      title: 'Batch add segments',
+      csvUploadTitle: 'Drag and drop your CSV file here, or ',
+      browse: 'browse',
+      tip: 'The CSV file must conform to the following structure:',
+      question: 'Question',
+      answer: 'Answer',
+      template: 'Download the template here',
+      cancel: 'Cancel',
+      run: 'Run Batch',
+      runError: 'Run batch failed',
+      processing: 'In batch processing',
+      completed: 'Import completed',
+      error: 'Import Error',
+      ok: 'OK',
     },
   },
   metadata: {
@@ -319,6 +338,7 @@ const translation = {
     contentEmpty: 'Content can not be empty',
     newTextSegment: 'New Text Segment',
     newQaSegment: 'New Q&A Segment',
+    delete: 'Delete this segment ?',
   },
 }
 

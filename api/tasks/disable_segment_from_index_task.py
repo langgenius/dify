@@ -12,14 +12,14 @@ from models.dataset import DocumentSegment
 
 
 @shared_task(queue='dataset')
-def remove_segment_from_index_task(segment_id: str):
+def disable_segment_from_index_task(segment_id: str):
     """
-    Async Remove segment from index
+    Async disable segment from index
     :param segment_id:
 
-    Usage: remove_segment_from_index.delay(segment_id)
+    Usage: disable_segment_from_index_task.delay(segment_id)
     """
-    logging.info(click.style('Start remove segment from index: {}'.format(segment_id), fg='green'))
+    logging.info(click.style('Start disable segment from index: {}'.format(segment_id), fg='green'))
     start_at = time.perf_counter()
 
     segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_id).first()

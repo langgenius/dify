@@ -213,6 +213,7 @@ class Document(db.Model):
     doc_metadata = db.Column(db.JSON, nullable=True)
     doc_form = db.Column(db.String(
         255), nullable=False, server_default=db.text("'text_model'::character varying"))
+    doc_language = db.Column(db.String(255), nullable=True)
 
     DATA_SOURCES = ['upload_file', 'notion_import']
 

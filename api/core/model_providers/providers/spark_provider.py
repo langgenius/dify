@@ -3,7 +3,6 @@ import logging
 from json import JSONDecodeError
 from typing import Type
 
-from flask import current_app
 from langchain.schema import HumanMessage
 
 from core.helper import encrypter

@@ -32,7 +32,7 @@ Visita [Dify.ai](https://dify.ai)
 
 Antes de instalar Dify, asegúrate de que tu máquina cumple con los siguientes requisitos mínimos del sistema:
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### Inicio rápido

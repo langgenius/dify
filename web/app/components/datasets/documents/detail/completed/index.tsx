@@ -8,6 +8,7 @@ import { debounce, isNil, omitBy } from 'lodash-es'
 import cn from 'classnames'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
+import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import InfiniteVirtualList from './InfiniteVirtualList'
 import { formatNumber } from '@/utils/format'
@@ -18,7 +19,7 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
+import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
 import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
@@ -186,13 +187,18 @@ export const splitArray = (arr: any[], size = 3) => {
 type ICompletedProps = {
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
+  importStatus: ProcessStatus | string | undefined
   // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
  * Support search and filter
  */
-const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModalChange }) => {
+const Completed: FC<ICompletedProps> = ({
+  showNewSegmentModal,
+  onNewSegmentModalChange,
+  importStatus,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
@@ -241,11 +247,6 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     getSegments(false)
   }
 
-  useEffect(() => {
-    if (lastSegmentsRes !== undefined)
-      getSegments(false)
-  }, [selectedStatus, searchValue])
-
   const onClickCard = (detail: SegmentDetailModel) => {
     setCurrSegment({ segInfo: detail, showModal: true })
   }
@@ -266,6 +267,17 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         }
       }
       setAllSegments([...allSegments])
+    }
+    else {
+      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+    }
+  }
+
+  const onDelete = async (segId: string) => {
+    const [e] = await asyncRunSafe<CommonResponse>(deleteSegment({ datasetId, documentId, segmentId: segId }) as Promise<CommonResponse>)
+    if (!e) {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      resetList()
     }
     else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
@@ -308,6 +320,16 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     setAllSegments([...allSegments])
   }
 
+  useEffect(() => {
+    if (lastSegmentsRes !== undefined)
+      getSegments(false)
+  }, [selectedStatus, searchValue])
+
+  useEffect(() => {
+    if (importStatus === ProcessStatus.COMPLETED)
+      resetList()
+  }, [importStatus])
+
   return (
     <>
       <div className={s.docSearchWrapper}>
@@ -330,6 +352,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         items={allSegments}
         loadNextPage={getSegments}
         onChangeSwitch={onChangeSwitch}
+        onDelete={onDelete}
         onClick={onClickCard}
       />
       <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>

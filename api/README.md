@@ -33,9 +33,30 @@
    ```bash
    flask db upgrade
    ```
+
+   ⚠️ If you encounter problems with jieba, for example
+
+   ```
+   > flask db upgrade
+   Error: While importing 'app', an ImportError was raised:
+   ```
+
+   Please run the following command instead.
+
+   ```
+   pip install -r requirements.txt --upgrade --force-reinstall
+   ```
+   
 6. Start backend:
    ```bash
    flask run --host 0.0.0.0 --port=5001 --debug
    ```
 7. Setup your application by visiting http://localhost:5001/console/api/setup or other apis...
 8. If you need to debug local async processing, you can run `celery -A app.celery worker -Q dataset,generation,mail`, celery can do dataset importing and other async tasks.
+
+8. Start frontend:
+
+   ```
+   docker run -it -d --platform linux/amd64 -p 3000:3000 -e EDITION=SELF_HOSTED -e CONSOLE_URL=http://127.0.0.1:5000 --name web-self-hosted langgenius/dify-web:latest
+   ```
+   This will start a dify frontend, now you are all set, happy coding!

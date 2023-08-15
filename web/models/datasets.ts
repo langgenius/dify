@@ -179,6 +179,7 @@ export type CreateDocumentReq = {
   original_document_id?: string
   indexing_technique?: string
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
   data_source: DataSource
   process_rule: ProcessRule
 }
