@@ -53,6 +53,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 
   useEffect(() => {
     setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy })
+    setLanguage(default_language)
     setEmoji({ icon, icon_background })
   }, [appInfo])
 

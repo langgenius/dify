@@ -1,6 +1,6 @@
 import type { Fetcher } from 'swr'
 import { del, get, post } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppIconResponse, UpdateAppModelConfigResponse, UpdateAppNameResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
 
@@ -22,16 +22,6 @@ export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string;
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
   return del(`apps/${appID}`) as Promise<CommonResponse>
-}
-
-// path: /apps/{appId}/icon
-export const updateAppIcon: Fetcher<UpdateAppIconResponse, { url: string; body: { icon: string; icon_background: string } }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<UpdateAppIconResponse>
-}
-
-// path: /apps/{appId}/name
-export const updateAppName: Fetcher<UpdateAppNameResponse, { url: string; body: { name: string } }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<UpdateAppNameResponse>
 }
 
 export const updateAppSiteStatus: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
