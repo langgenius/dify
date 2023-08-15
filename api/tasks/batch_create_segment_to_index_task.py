@@ -11,14 +11,14 @@ from werkzeug.exceptions import NotFound
 
 from core.index.index import IndexBuilder
 from core.indexing_runner import IndexingRunner
-from core.llm.token_calculator import TokenCalculator
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
 from models.dataset import DocumentSegment, Dataset, Document
 
 
-@shared_task
+@shared_task(queue='dataset')
 def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: str, document_id: str,
                                        tenant_id: str, user_id: str):
     """
@@ -54,8 +54,12 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
             answer = segment['answer']
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id
+            )
+
             # calc embedding use tokens
-            tokens = TokenCalculator.get_num_tokens('text-embedding-ada-002', content)
+            tokens = embedding_model.get_num_tokens(content)
             max_position = db.session.query(func.max(DocumentSegment.position)).filter(
                 DocumentSegment.document_id == dataset_document.id
             ).scalar()
