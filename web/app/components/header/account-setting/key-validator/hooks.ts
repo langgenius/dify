@@ -14,7 +14,6 @@ export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCall
       setValidatedStatus({})
       return
     }
-
     setValidating(true)
 
     if (validateCallback.run) {
@@ -26,7 +25,7 @@ export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCall
 
       setValidating(false)
     }
-  }, { wait: 500 })
+  }, { wait: 1000 })
 
   return [run, validating, validatedStatus]
 }

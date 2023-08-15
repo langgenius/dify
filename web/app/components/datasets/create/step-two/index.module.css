@@ -13,29 +13,6 @@
   z-index: 10;
 }
 
-.fixed {
-  padding-top: 12px;
-  font-size: 12px;
-  line-height: 18px;
-  background: rgba(255, 255, 255, 0.9);
-  border-bottom: 0.5px solid #EAECF0;
-  backdrop-filter: blur(4px);
-  animation: fix 0.5s;
-}
-
-@keyframes fix {
-  from {
-    padding-top: 42px;
-    font-size: 18px;
-    line-height: 28px;
-  }
-  to {
-    padding-top: 12px;
-    font-size: 12px;
-    line-height: 18px;
-  }
-}
-
 .form {
   @apply px-16 pb-8;
 }
@@ -415,4 +392,29 @@
   line-height: 28px;
   color: #101828;
   z-index: 10;
+}
+
+/* 
+ * `fixed` must under `previewHeader` because of style override would not work
+ */
+.fixed {
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 0.5px solid #EAECF0;
+  backdrop-filter: blur(4px);
+  animation: fix 0.5s;
+}
+@keyframes fix {
+  from {
+    padding-top: 42px;
+    font-size: 18px;
+    line-height: 28px;
+  }
+  to {
+    padding-top: 12px;
+    font-size: 12px;
+    line-height: 18px;
+  }
 }

@@ -49,3 +49,11 @@ export const generateRule = (body: Record<string, any>) => {
     body,
   })
 }
+
+export const fetchModelParams = (providerName: string, modelId: string) => {
+  return get(`workspaces/current/model-providers/${providerName}/models/parameter-rules`, {
+    params: {
+      model_name: modelId,
+    },
+  })
+}

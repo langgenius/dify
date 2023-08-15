@@ -2,16 +2,17 @@
 import json
 from datetime import datetime
 
-import flask
 from flask_login import login_required, current_user
 from flask_restful import Resource, reqparse, fields, marshal_with, abort, inputs
-from werkzeug.exceptions import Unauthorized, Forbidden
+from werkzeug.exceptions import Forbidden
 
 from constants.model_template import model_templates, demo_model_templates
 from controllers.console import api
-from controllers.console.app.error import AppNotFoundError
+from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.model_params import ModelType
 from events.app_event import app_was_created, app_was_deleted
 from libs.helper import TimestampField
 from extensions.ext_database import db
@@ -126,9 +127,9 @@ class AppListApi(Resource):
         if args['model_config'] is not None:
             # validate config
             model_configuration = AppModelConfigService.validate_configuration(
+                tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=args['model_config'],
-                mode=args['mode']
+                config=args['model_config']
             )
 
             app = App(
@@ -163,6 +164,21 @@ class AppListApi(Resource):
 
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
+
+            default_model = ModelFactory.get_default_model(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.TEXT_GENERATION
+            )
+
+            if default_model:
+                model_dict = app_model_config.model_dict
+                model_dict['provider'] = default_model.provider_name
+                model_dict['name'] = default_model.model_name
+                app_model_config.model = json.dumps(model_dict)
+            else:
+                raise ProviderNotInitializeError(
+                    f"No Text Generation Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
 
         app.name = args['name']
         app.mode = args['mode']
@@ -278,6 +294,10 @@ class AppApi(Resource):
     def delete(self, app_id):
         """Delete app"""
         app_id = str(app_id)
+
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+        
         app = _get_app(app_id, current_user.current_tenant_id)
 
         db.session.delete(app)
@@ -297,18 +317,12 @@ class AppNameApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     def post(self, app_id):
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
-            raise Forbidden()
+        app_id = str(app_id)
+        app = _get_app(app_id, current_user.current_tenant_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, location='json')
         args = parser.parse_args()
-
-        app = db.get_or_404(App, str(app_id))
-        if app.tenant_id != flask.session.get('tenant_id'):
-            raise Unauthorized()
 
         app.name = args.get('name')
         app.updated_at = datetime.utcnow()
@@ -322,19 +336,13 @@ class AppIconApi(Resource):
     @account_initialization_required
     @marshal_with(app_detail_fields)
     def post(self, app_id):
-
-        # The role of the current user in the ta table must be admin or owner
-        if current_user.current_tenant.current_role not in ['admin', 'owner']:
-            raise Forbidden()
+        app_id = str(app_id)
+        app = _get_app(app_id, current_user.current_tenant_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument('icon', type=str, location='json')
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
-
-        app = db.get_or_404(App, str(app_id))
-        if app.tenant_id != flask.session.get('tenant_id'):
-            raise Unauthorized()
 
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
@@ -489,6 +497,7 @@ api.add_resource(AppTemplateApi, '/app-templates')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
 api.add_resource(AppCopy, '/apps/<uuid:app_id>/copy')
 api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
+api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
 api.add_resource(AppRateLimit, '/apps/<uuid:app_id>/rate-limit')

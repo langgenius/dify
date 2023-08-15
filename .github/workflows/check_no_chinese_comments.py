@@ -19,7 +19,8 @@ def check_file_for_chinese_comments(file_path):
 
 def main():
     has_chinese = False
-    excluded_files = ["model_template.py", 'stopwords.py', 'commands.py', 'indexing_runner.py', 'web_reader_tool.py']
+    excluded_files = ["model_template.py", 'stopwords.py', 'commands.py',
+                      'indexing_runner.py', 'web_reader_tool.py', 'spark_provider.py']
 
     for root, _, files in os.walk("."):
         for file in files:

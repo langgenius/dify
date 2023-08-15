@@ -24,62 +24,12 @@
 			},
 			{
 				"type": "element",
-				"name": "g",
+				"name": "path",
 				"attributes": {
-					"clip-path": "url(#clip0_7672_55906)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "path",
-						"attributes": {
-							"d": "M15.3843 6.43457H12.9687L17.3739 17.565H19.7896L15.3843 6.43457ZM8.40522 6.43457L4 17.565H6.4633L7.36417 15.2276H11.9729L12.8737 17.565H15.337L10.9318 6.43457H8.40522ZM8.16104 13.1605L9.66852 9.24883L11.176 13.1605H8.16104Z",
-							"fill": "#191918"
-						},
-						"children": []
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "rect",
-				"attributes": {
-					"x": "0.5",
-					"y": "0.5",
-					"width": "23",
-					"height": "23",
-					"rx": "5.5",
-					"stroke": "black",
-					"stroke-opacity": "0.05"
+					"d": "M15.3843 6.43481H12.9687L17.3739 17.5652H19.7896L15.3843 6.43481ZM8.40522 6.43481L4 17.5652H6.4633L7.36417 15.2279H11.9729L12.8737 17.5652H15.337L10.9318 6.43481H8.40522ZM8.16104 13.1607L9.66852 9.24907L11.176 13.1607H8.16104Z",
+					"fill": "#191918"
 				},
 				"children": []
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_7672_55906"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "16",
-									"height": "11.1304",
-									"fill": "white",
-									"transform": "translate(4 6.43457)"
-								},
-								"children": []
-							}
-						]
-					}
-				]
 			}
 		]
 	},

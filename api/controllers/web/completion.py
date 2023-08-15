@@ -14,7 +14,7 @@ from controllers.web.error import AppUnavailableError, ConversationCompletedErro
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.web.wraps import WebApiResource
 from core.conversation_message_task import PubHandler
-from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService

@@ -12,9 +12,8 @@ from controllers.console import api
 from controllers.console.app.error import ConversationCompletedError, AppUnavailableError, ProviderNotInitializeError, \
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
 from controllers.console.universal_chat.wraps import UniversalChatResource
-from core.constant import llm_constant
 from core.conversation_message_task import PubHandler
-from core.llm.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
+from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
     LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, LLMAuthorizationError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
@@ -27,6 +26,7 @@ class UniversalChatApi(UniversalChatResource):
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, required=True, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
+        parser.add_argument('provider', type=str, required=True, location='json')
         parser.add_argument('model', type=str, required=True, location='json')
         parser.add_argument('tools', type=list, required=True, location='json')
         args = parser.parse_args()
@@ -36,11 +36,7 @@ class UniversalChatApi(UniversalChatResource):
         # update app model config
         args['model_config'] = app_model_config.to_dict()
         args['model_config']['model']['name'] = args['model']
-
-        if not llm_constant.models[args['model']]:
-            raise ValueError("Model not exists.")
-
-        args['model_config']['model']['provider'] = llm_constant.models[args['model']]
+        args['model_config']['model']['provider'] = args['provider']
         args['model_config']['agent_mode']['tools'] = args['tools']
 
         if not args['model_config']['agent_mode']['tools']:

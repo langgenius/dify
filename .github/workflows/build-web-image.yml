@@ -42,12 +42,14 @@ jobs:
       uses: docker/build-push-action@v4
       with:
         context: "{{defaultContext}}:web"
-        platforms: linux/amd64,linux/arm64
+        platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
         build-args: |
           COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Deploy to server
       if: github.ref == 'refs/heads/deploy/dev'

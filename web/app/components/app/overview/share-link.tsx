@@ -6,9 +6,9 @@ import {
   LinkIcon,
 } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import copy from 'copy-to-clipboard'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
 
 import './style.css'
 
@@ -18,43 +18,47 @@ type IShareLinkProps = {
   onGenerateCode: () => Promise<void>
   linkUrl: string
 }
+
+const prefixShare = 'appOverview.overview.appInfo.share'
+
 const ShareLinkModal: FC<IShareLinkProps> = ({
   linkUrl,
   isShow,
   onClose,
   onGenerateCode,
 }) => {
-  const [_, copy] = useCopyToClipboard()
   const [genLoading, setGenLoading] = useState(false)
+  const [isCopied, setIsCopied] = useState(false)
   const { t } = useTranslation()
   return <Modal
-    title={t('appOverview.overview.appInfo.share.explanation')}
+    title={t(`${prefixShare}.explanation`)}
     isShow={isShow}
     onClose={onClose}
   >
     {/* share url */}
-    <p className='mt-5 text-xs font-medium text-gray-500'>{t('appOverview.overview.appInfo.share.shareUrl')}</p>
+    <p className='mt-5 text-xs font-medium text-gray-500'>{t(`${prefixShare}.shareUrl`)}</p>
     {/* input share url */}
     <input disabled type='text' value={linkUrl} className='mt-1 w-full bg-gray-50 p-2 text-primary-600 text-xs font-normal outline-gray-50 hover:outline-gray-50 cursor-pointer' />
     {/* button copy link/ button regenerate */}
     <div className='mt-4 flex gap-3'>
       <Button
         type="primary"
-        className='w-32'
+        className='w-32 !px-0'
         onClick={() => {
-          copy(linkUrl)
+          copy(linkUrl) && setIsCopied(true)
         }}
       >
         <LinkIcon className='w-4 h-4 mr-2' />
-        {t('appOverview.overview.appInfo.share.copyLink')}
+        { t(`${prefixShare}.${isCopied ? 'linkCopied' : 'copyLink'}`) }
       </Button>
-      <Button className='w-32' onClick={async () => {
+      <Button className='w-32 !px-0' onClick={async () => {
         setGenLoading(true)
         await onGenerateCode()
         setGenLoading(false)
+        setIsCopied(false)
       }}>
         <ArrowPathIcon className={`w-4 h-4 mr-2 ${genLoading ? 'generateLogo' : ''}`} />
-        {t('appOverview.overview.appInfo.share.regenerate')}
+        {t(`${prefixShare}.regenerate`)}
       </Button>
     </div>
   </Modal>

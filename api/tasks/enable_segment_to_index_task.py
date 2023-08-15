@@ -13,7 +13,7 @@ from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
 
 
-@shared_task
+@shared_task(queue='dataset')
 def enable_segment_to_index_task(segment_id: str):
     """
     Async enable segment to index

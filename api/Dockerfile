@@ -1,4 +1,4 @@
-FROM langgenius/base:1.0.0-bullseye-slim as langgenius-api
+FROM python:3.10-slim
 
 LABEL maintainer="takatost@gmail.com"
 
@@ -14,6 +14,9 @@ ENV APP_WEB_URL http://127.0.0.1:3000
 EXPOSE 5001
 
 WORKDIR /app/api
+
+RUN apt-get update && \
+    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
 
 COPY requirements.txt /app/api/requirements.txt
 

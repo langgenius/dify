@@ -13,7 +13,7 @@ export type ValidatedStatusState = {
 
 export type Status = 'add' | 'fail' | 'success'
 
-export type ValidateValue = Record<string, string | undefined>
+export type ValidateValue = Record<string, string | undefined | boolean>
 
 export type ValidateCallback = {
   before: (v?: ValidateValue) => boolean | undefined
