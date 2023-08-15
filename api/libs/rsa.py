@@ -1,14 +1,12 @@
 # -*- coding:utf-8 -*-
 import hashlib
 
-from Crypto.Cipher import PKCS1_OAEP
+from Crypto.Cipher import PKCS1_OAEP, AES
 from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
 
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
-
-
-# TODO: PKCS1_OAEP is no longer recommended for new systems and protocols. It is recommended to migrate to PKCS1_PSS.
 
 
 def generate_key_pair(tenant_id):
@@ -25,14 +23,26 @@ def generate_key_pair(tenant_id):
     return pem_public.decode()
 
 
+prefix_hybrid = b"HYBRID:"
+
+
 def encrypt(text, public_key):
     if isinstance(public_key, str):
         public_key = public_key.encode()
 
+    aes_key = get_random_bytes(16)
+    cipher_aes = AES.new(aes_key, AES.MODE_EAX)
+
+    ciphertext, tag = cipher_aes.encrypt_and_digest(text.encode())
+
     rsa_key = RSA.import_key(public_key)
-    cipher = PKCS1_OAEP.new(rsa_key)
-    encrypted_text = cipher.encrypt(text.encode())
-    return encrypted_text
+    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+
+    enc_aes_key = cipher_rsa.encrypt(aes_key)
+
+    encrypted_data = enc_aes_key + cipher_aes.nonce + tag + ciphertext
+
+    return prefix_hybrid + encrypted_data
 
 
 def decrypt(encrypted_text, tenant_id):
@@ -49,8 +59,23 @@ def decrypt(encrypted_text, tenant_id):
         redis_client.setex(cache_key, 120, private_key)
 
     rsa_key = RSA.import_key(private_key)
-    cipher = PKCS1_OAEP.new(rsa_key)
-    decrypted_text = cipher.decrypt(encrypted_text)
+    cipher_rsa = PKCS1_OAEP.new(rsa_key)
+
+    if encrypted_text.startswith(prefix_hybrid):
+        encrypted_text = encrypted_text[len(prefix_hybrid):]
+
+        enc_aes_key = encrypted_text[:rsa_key.size_in_bytes()]
+        nonce = encrypted_text[rsa_key.size_in_bytes():rsa_key.size_in_bytes() + 16]
+        tag = encrypted_text[rsa_key.size_in_bytes() + 16:rsa_key.size_in_bytes() + 32]
+        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32:]
+
+        aes_key = cipher_rsa.decrypt(enc_aes_key)
+
+        cipher_aes = AES.new(aes_key, AES.MODE_EAX, nonce=nonce)
+        decrypted_text = cipher_aes.decrypt_and_verify(ciphertext, tag)
+    else:
+        decrypted_text = cipher_rsa.decrypt(encrypted_text)
+
     return decrypted_text.decode()
 
 

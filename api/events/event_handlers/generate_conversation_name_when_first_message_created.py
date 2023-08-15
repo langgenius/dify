@@ -23,7 +23,6 @@ def handle(sender, **kwargs):
                 conversation.name = name
             except:
                 conversation.name = 'New Chat'
-                logging.exception('generate_conversation_name failed')
 
             db.session.add(conversation)
             db.session.commit()

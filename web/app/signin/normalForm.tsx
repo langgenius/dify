@@ -5,12 +5,14 @@ import { useRouter } from 'next/navigation'
 import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { useContext } from 'use-context-selector'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
 // import Tooltip from '@/app/components/base/tooltip/index'
 import { IS_CE_EDITION, apiPrefix } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
+import I18n from '@/context/i18n'
 
 const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
@@ -60,6 +62,7 @@ function reducer(state: IState, action: { type: string; payload: any }) {
 const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formValid: false,
@@ -269,13 +272,13 @@ const NormalForm = () => {
             <Link
               className='text-primary-600'
               target={'_blank'}
-              href='https://docs.dify.ai/user-agreement/terms-of-service'
+              href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/terms-of-service' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/fu-wu-xie-yi'}
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
               className='text-primary-600'
               target={'_blank'}
-              href='https://docs.dify.ai/user-agreement/privacy-policy'
+              href={locale === 'en' ? 'https://docs.dify.ai/user-agreement/privacy-policy' : 'https://docs.dify.ai/v/zh-hans/yong-hu-xie-yi/yin-si-xie-yi'}
             >{t('login.pp')}</Link>
           </div>
 

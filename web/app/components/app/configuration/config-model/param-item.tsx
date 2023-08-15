@@ -5,21 +5,21 @@ import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 
 export type IParamIteProps = {
-  id: number
+  id: string
   name: string
   tip: string
   value: number
   step?: number
   min?: number
   max: number
-  onChange: (id: number, value: number) => void
+  onChange: (key: string, value: number) => void
 }
 
 const ParamIte: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max, value, onChange }) => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center">
-        <span className="mr-[6px]">{name}</span>
+        <span className="mr-[6px] text-gray-500 text-[13px] font-medium">{name}</span>
         {/* Give tooltip different tip to avoiding hide bug */}
         <Tooltip htmlContent={<div className="w-[200px]">{tip}</div>} position='top' selector={`param-name-tooltip-${id}`}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -33,7 +33,7 @@ const ParamIte: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max,
         </div>
         <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
           const value = parseFloat(e.target.value)
-          if (value < 0 || value > max)
+          if (value < min || value > max)
             return
 
           onChange(id, value)

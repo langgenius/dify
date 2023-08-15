@@ -7,6 +7,7 @@ import s from '../../style.module.css'
 
 export type IRadioProps = {
   className?: string
+  labelClassName?: string
   children?: string | ReactElement
   checked?: boolean
   value?: string | number
@@ -16,6 +17,7 @@ export type IRadioProps = {
 
 export default function Radio({
   className = '',
+  labelClassName,
   children = '',
   checked,
   value,
@@ -45,13 +47,13 @@ export default function Radio({
       isChecked ? 'bg-white shadow' : '',
       divClassName,
       className)}
-      onClick={() => handleChange(value)}
+    onClick={() => handleChange(value)}
     >
       {children && (
         <label className={
-          cn('text-sm cursor-pointer')
+          cn(labelClassName, 'text-sm cursor-pointer')
         }
-          id={labelId}
+        id={labelId}
         >
           {children}
         </label>

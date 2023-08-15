@@ -1,17 +1,18 @@
 'use client'
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import copy from 'copy-to-clipboard'
+import NoData from './no-data'
 import type { SavedMessage } from '@/models/debug'
 import { Markdown } from '@/app/components/base/markdown'
 import { SimpleBtn, copyIcon } from '@/app/components/app/text-generate/item'
-import copy from 'copy-to-clipboard'
 import Toast from '@/app/components/base/toast'
-import NoData from './no-data'
 
-export interface ISavedItemsProps {
+export type ISavedItemsProps = {
   className?: string
-  list: SavedMessage[],
+  list: SavedMessage[]
   onRemove: (id: string) => void
   onStartCreateContent: () => void
 }
@@ -26,52 +27,54 @@ const SavedItems: FC<ISavedItemsProps> = ({
   className,
   list,
   onRemove,
-  onStartCreateContent
+  onStartCreateContent,
 }) => {
   const { t } = useTranslation()
 
   return (
     <div className={cn(className, 'space-y-3')}>
-      {list.length === 0 ? (
-        <div className='px-6'>
-          <NoData onStartCreateContent={onStartCreateContent} />
-        </div>
-      ) : (<>
-        {list.map(({ id, answer }) => (
-          <div
-            key={id}
-            className='p-4 rounded-xl  bg-gray-50'
-            style={{
-              boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)'
-            }}
-          >
-            <Markdown content={answer} />
-            <div className='flex items-center justify-between mt-3'>
-              <div className='flex items-center space-x-2'>
-                <SimpleBtn
-                  className='space-x-1'
-                  onClick={() => {
-                    copy(answer)
-                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                  }}>
-                  {copyIcon}
-                  <div>{t('common.operation.copy')}</div>
-                </SimpleBtn>
-
-                <SimpleBtn
-                  className='space-x-1'
-                  onClick={() => {
-                    onRemove(id)
-                  }}>
-                  {removeIcon}
-                  <div>{t('common.operation.remove')}</div>
-                </SimpleBtn>
-              </div>
-              <div className='text-xs text-gray-500'>{answer?.length} {t('common.unit.char')}</div>
-            </div>
+      {list.length === 0
+        ? (
+          <div className='px-6'>
+            <NoData onStartCreateContent={onStartCreateContent} />
           </div>
-        ))}
-      </>)}
+        )
+        : (<>
+          {list.map(({ id, answer }) => (
+            <div
+              key={id}
+              className='p-4 rounded-xl  bg-gray-50'
+              style={{
+                boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
+              }}
+            >
+              <Markdown content={answer} />
+              <div className='flex items-center justify-between mt-3'>
+                <div className='flex items-center space-x-2'>
+                  <SimpleBtn
+                    className='space-x-1'
+                    onClick={() => {
+                      copy(answer)
+                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                    }}>
+                    {copyIcon}
+                    <div>{t('common.operation.copy')}</div>
+                  </SimpleBtn>
+
+                  <SimpleBtn
+                    className='space-x-1'
+                    onClick={() => {
+                      onRemove(id)
+                    }}>
+                    {removeIcon}
+                    <div>{t('common.operation.remove')}</div>
+                  </SimpleBtn>
+                </div>
+                <div className='text-xs text-gray-500'>{answer?.length} {t('common.unit.char')}</div>
+              </div>
+            </div>
+          ))}
+        </>)}
 
     </div>
   )

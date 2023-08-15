@@ -66,7 +66,7 @@ export default function Operate({
                 className="
                   absolute right-0 top-9 w-60 max-w-80
                   divide-y divide-gray-100 origin-top-right rounded-lg bg-white
-                  shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
+                  shadow-lg
                 "
               >
                 <div className="px-1 py-1">

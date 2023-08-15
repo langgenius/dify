@@ -93,6 +93,7 @@ const translation = {
       'Please wait for the response to the previous message to complete.',
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
+    notSelectModel: 'Please choose a model',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',
@@ -120,6 +121,7 @@ const translation = {
     tooLong: 'Variable key: {{key}} too length. Can not be longer then 16 characters',
     notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
     notStartWithNumber: 'Variable key: {{key}} can not start with a number',
+    keyAlreadyExists: 'Variable key: :{{key}} already exists',
   },
   variableConig: {
     modalTitle: 'Field settings',

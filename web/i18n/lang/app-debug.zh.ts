@@ -90,6 +90,7 @@ const translation = {
     queryRequired: '主要文本必填',
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',
+    notSelectModel: '请选择模型',
   },
   chatSubTitle: '对话前提示词',
   completionSubTitle: '前缀提示词',
@@ -116,6 +117,7 @@ const translation = {
     tooLong: '变量: {{key}} 长度太长。不能超过 16 个字符',
     notValid: '变量: {{key}} 非法。只能包含英文字符，数字和下划线',
     notStartWithNumber: '变量: {{key}} 不能以数字开头',
+    keyAlreadyExists: '变量:{{key}} 已存在',
   },
   variableConig: {
     modalTitle: '变量设置',

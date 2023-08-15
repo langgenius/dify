@@ -14,7 +14,7 @@ import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
 import { deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
-import AppsContext from '@/context/app-context'
+import AppsContext, { useAppContext } from '@/context/app-context'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { asyncRunSafe } from '@/utils'
@@ -27,6 +27,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const mutateApps = useContextSelector(
     AppsContext,
@@ -114,6 +115,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button className={s.actionItem} onClick={onClickSettings} disabled={detailState.loading}>
           <span className={s.actionName}>{t('common.operation.settings')}</span>
         </button>
+
         <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, 'group')}
@@ -142,7 +144,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <div className={style.listItemHeading}>
             <div className={style.listItemHeadingContent}>{app.name}</div>
           </div>
-          <CustomPopover
+          {isCurrentWorkspaceManager && <CustomPopover
             htmlContent={<Operations />}
             position="br"
             trigger="click"
@@ -154,7 +156,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               )
             }
             className={'!w-[128px] h-fit !z-20'}
-          />
+          />}
         </div>
         <div className={style.listItemDescription}>
           {app.model_config?.pre_prompt}

@@ -1,30 +1,32 @@
 'use client'
-import React, { FC, useState, useEffect } from 'react'
+import type { FC } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import ModalFoot from '../modal-foot'
-import ConfigSelect, { Options } from '../config-select'
+import type { Options } from '../config-select'
+import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
+import SelectTypeItem from '../select-type-item'
+import s from './style.module.css'
 import Toast from '@/app/components/base/toast'
 import type { PromptVariable } from '@/models/debug'
-import SelectTypeItem from '../select-type-item'
 import { getNewVar } from '@/utils/var'
 
-import s from './style.module.css'
+import Modal from '@/app/components/base/modal'
 
-export interface IConfigModalProps {
+export type IConfigModalProps = {
   payload: PromptVariable
   type?: string
   isShow: boolean
   onClose: () => void
-  onConfirm: (newValue: { type: string, value: any }) => void
+  onConfirm: (newValue: { type: string; value: any }) => void
 }
 
 const ConfigModal: FC<IConfigModalProps> = ({
   payload,
   isShow,
   onClose,
-  onConfirm
+  onConfirm,
 }) => {
   const { t } = useTranslation()
   const { type, name, key, options, max_length } = payload || getNewVar('')
@@ -42,7 +44,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const isStringInput = tempType === 'string'
   const title = isStringInput ? t('appDebug.variableConig.maxLength') : t('appDebug.variableConig.options')
 
-  // string type 
+  // string type
   const [tempMaxLength, setTempMaxValue] = useState(max_length)
   useEffect(() => {
     setTempMaxValue(max_length)
@@ -57,14 +59,15 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const handleConfirm = () => {
     if (isStringInput) {
       onConfirm({ type: tempType, value: tempMaxLength })
-    } else {
+    }
+    else {
       if (tempOptions.length === 0) {
         Toast.notify({ type: 'error', message: 'At least one option requied' })
         return
       }
       const obj: Record<string, boolean> = {}
       let hasRepeatedItem = false
-      tempOptions.forEach(o => {
+      tempOptions.forEach((o) => {
         if (obj[o]) {
           hasRepeatedItem = true
           return
@@ -97,11 +100,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
         <div className='mt-6'>
           <div className={s.title}>{title}</div>
-          {isStringInput ? (
-            <ConfigString value={tempMaxLength} onChange={setTempMaxValue} />
-          ) : (
-            <ConfigSelect options={tempOptions} onChange={setTempOptions} />
-          )}
+          {isStringInput
+            ? (
+              <ConfigString value={tempMaxLength} onChange={setTempMaxValue} />
+            )
+            : (
+              <ConfigSelect options={tempOptions} onChange={setTempOptions} />
+            )}
         </div>
 
       </div>

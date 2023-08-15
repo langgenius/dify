@@ -1,5 +1,5 @@
 import datetime
-import logging
+import math
 import random
 import string
 import time
@@ -9,18 +9,18 @@ from flask import current_app
 from werkzeug.exceptions import NotFound
 
 from core.index.index import IndexBuilder
+from core.model_providers.providers.hosted import hosted_model_providers
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
 from libs.rsa import generate_key_pair
 from models.account import InvitationCode, Tenant
-from models.dataset import Dataset, DatasetQuery, Document, DocumentSegment
+from models.dataset import Dataset, DatasetQuery, Document
 from models.model import Account
 import secrets
 import base64
 
-from models.provider import Provider, ProviderName
-from services.provider_service import ProviderService
+from models.provider import Provider, ProviderType, ProviderQuotaType
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -251,26 +251,37 @@ def clean_unused_dataset_indexes():
 
 @click.command('sync-anthropic-hosted-providers', help='Sync anthropic hosted providers.')
 def sync_anthropic_hosted_providers():
+    if not hosted_model_providers.anthropic:
+        click.echo(click.style('Anthropic hosted provider is not configured.', fg='red'))
+        return
+
     click.echo(click.style('Start sync anthropic hosted providers.', fg='green'))
     count = 0
 
     page = 1
     while True:
         try:
-            tenants = db.session.query(Tenant).order_by(Tenant.created_at.desc()).paginate(page=page, per_page=50)
+            providers = db.session.query(Provider).filter(
+                Provider.provider_name == 'anthropic',
+                Provider.provider_type == ProviderType.SYSTEM.value,
+                Provider.quota_type == ProviderQuotaType.TRIAL.value,
+            ).order_by(Provider.created_at.desc()).paginate(page=page, per_page=100)
         except NotFound:
             break
 
         page += 1
-        for tenant in tenants:
+        for provider in providers:
             try:
-                click.echo('Syncing tenant anthropic hosted provider: {}'.format(tenant.id))
-                ProviderService.create_system_provider(
-                    tenant,
-                    ProviderName.ANTHROPIC.value,
-                    current_app.config['ANTHROPIC_HOSTED_QUOTA_LIMIT'],
-                    True
-                )
+                click.echo('Syncing tenant anthropic hosted provider: {}'.format(provider.tenant_id))
+                original_quota_limit = provider.quota_limit
+                new_quota_limit = hosted_model_providers.anthropic.quota_limit
+                division = math.ceil(new_quota_limit / 1000)
+
+                provider.quota_limit = new_quota_limit if original_quota_limit == 1000 \
+                    else original_quota_limit * division
+                provider.quota_used = division * provider.quota_used
+                db.session.commit()
+
                 count += 1
             except Exception as e:
                 click.echo(click.style(

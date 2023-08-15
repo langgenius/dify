@@ -7,7 +7,7 @@ import NewDatasetCard from './NewDatasetCard'
 import DatasetCard from './DatasetCard'
 import type { DataSetListResponse } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
-import { useSelector } from '@/context/app-context'
+import { useAppContext, useSelector } from '@/context/app-context'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -16,6 +16,7 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
 }
 
 const Datasets = () => {
+  const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false })
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
@@ -44,7 +45,7 @@ const Datasets = () => {
       {data?.map(({ data: datasets }) => datasets.map(dataset => (
         <DatasetCard key={dataset.id} dataset={dataset} onDelete={mutate} />),
       ))}
-      <NewDatasetCard ref={anchorRef} />
+      { isCurrentWorkspaceManager && <NewDatasetCard ref={anchorRef} /> }
     </nav>
   )
 }

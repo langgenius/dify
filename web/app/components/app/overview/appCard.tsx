@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
   DocumentTextIcon,
@@ -24,6 +24,7 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
 import { AppType } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 
 export type IAppCardProps = {
   className?: string
@@ -50,41 +51,30 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
   const [genLoading, setGenLoading] = useState(false)
   const { t } = useTranslation()
 
-  const OPERATIONS_MAP = {
-    webapp: [
-      {
-        opName: t('appOverview.overview.appInfo.preview'),
-        opIcon: RocketLaunchIcon,
-      },
-      appInfo.mode === AppType.chat
-        ? {
-          opName: t('appOverview.overview.appInfo.embedded.entry'),
-          opIcon: EmbedIcon,
-        }
-        : false,
-      {
-        opName: t('appOverview.overview.appInfo.customize.entry'),
-        opIcon: PaintBrushIcon,
-      },
-      {
-        opName: t('appOverview.overview.appInfo.settings.entry'),
-        opIcon: Cog8ToothIcon,
-      },
-    ].filter(item => !!item),
-    api: [
-      {
-        opName: t('appOverview.overview.apiInfo.doc'),
-        opIcon: DocumentTextIcon,
-      },
-    ],
-    app: [],
-  }
+  const OPERATIONS_MAP = useMemo(() => {
+    const operationsMap = {
+      webapp: [
+        { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
+        { opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: PaintBrushIcon },
+      ] as { opName: string; opIcon: any }[],
+      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
+      app: [],
+    }
+    if (appInfo.mode === AppType.chat)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
+
+    if (isCurrentWorkspaceManager)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
+
+    return operationsMap
+  }, [isCurrentWorkspaceManager, appInfo, t])
 
   const isApp = cardType === 'webapp'
   const basicName = isApp
@@ -135,7 +125,7 @@ function AppCard({
 
   return (
     <div
-      className={`min-w-max shadow-sm border-[0.5px] rounded-lg border-gray-200 ${
+      className={`min-w-max shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
         className ?? ''
       }`}
     >
@@ -158,7 +148,7 @@ function AppCard({
                 ? t('appOverview.overview.status.running')
                 : t('appOverview.overview.status.disable')}
             </Tag>
-            <Switch defaultValue={runningStatus} onChange={onChangeStatus} />
+            <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={currentWorkspace?.role === 'normal'} />
           </div>
         </div>
         <div className="flex flex-col justify-center py-2">
@@ -181,7 +171,7 @@ function AppCard({
                 className={'hover:bg-gray-200'}
               />
               {/* button copy link/ button regenerate */}
-              {isApp && (
+              {isApp && isCurrentWorkspaceManager && (
                 <Tooltip
                   content={t('appOverview.overview.appInfo.regenerate') || ''}
                   selector={`code-generate-${randomString(8)}`}

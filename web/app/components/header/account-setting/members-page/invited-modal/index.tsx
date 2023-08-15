@@ -24,7 +24,7 @@ const InvitedModal = ({
           <div className='
             w-12 h-12 flex items-center justify-center rounded-xl
             bg-white border-[0.5px] border-gray-100
-            shadow-[0px_20px_24px_-4px_rgba(16,24,40,0.08),0px_8px_8px_-4px_rgba(16,24,40,0.03)]
+            shadow-xl
           '>
             <CheckCircleIcon className='w-[22px] h-[22px] text-[#039855]' />
           </div>
