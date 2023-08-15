@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
@@ -50,6 +50,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   // Emoji Picker
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon, icon_background })
+
+  useEffect(() => {
+    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy })
+    setEmoji({ icon, icon_background })
+  }, [appInfo])
 
   const onHide = () => {
     onClose()
@@ -159,7 +164,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             setShowEmojiPicker(false)
           }}
           onClose={() => {
-            setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
+            setEmoji({ icon: appInfo.site.icon, icon_background: appInfo.site.icon_background })
             setShowEmojiPicker(false)
           }}
         />}
