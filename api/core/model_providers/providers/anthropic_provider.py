@@ -183,6 +183,7 @@ class AnthropicProvider(BaseModelProvider):
             return {
                 'product_id': hosted_model_providers.anthropic.paid_stripe_price_id,
                 'increase_quota': hosted_model_providers.anthropic.paid_increase_quota,
+                'min_quality': hosted_model_providers.anthropic.paid_min_quality,
             }
 
         return None
