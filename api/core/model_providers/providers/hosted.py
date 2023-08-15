@@ -32,7 +32,7 @@ class HostedAnthropic(BaseModel):
     paid_enabled: bool = False
     paid_stripe_price_id: str = None
     paid_increase_quota: int = 1000000
-    paid_min_quality: int = 20
+    paid_min_quantity: int = 20
 
 
 class HostedModelProviders(BaseModel):
@@ -74,5 +74,5 @@ def init_app(app: Flask):
             paid_enabled=app.config.get("HOSTED_ANTHROPIC_PAID_ENABLED"),
             paid_stripe_price_id=app.config.get("HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID"),
             paid_increase_quota=app.config.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA"),
-            paid_min_quality=app.config.get("HOSTED_ANTHROPIC_PAID_MIN_QUALITY"),
+            paid_min_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MIN_QUANTITY"),
         )
