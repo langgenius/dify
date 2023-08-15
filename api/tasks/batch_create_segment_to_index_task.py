@@ -55,7 +55,9 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
             )
 
             # calc embedding use tokens
