@@ -480,7 +480,11 @@ const Main: FC<IMainProps> = ({
     notify({ type: 'success', message: t('common.api.success') })
   }
 
-  const handleReload = () => {}
+  const handleReload = () => {
+    setCurrConversationId('-1', appId, false)
+    setShouldReload(false)
+    createNewChat()
+  }
 
   const difyIcon = (
     <div className={s.difyHeader}></div>
