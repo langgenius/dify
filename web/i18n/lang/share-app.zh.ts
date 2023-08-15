@@ -23,6 +23,8 @@ const translation = {
       title: '删除对话',
       content: '您确定要删除此对话吗？',
     },
+    tryToSolve: '尝试解决',
+    temporarySystemIssue: '抱歉，临时系统问题。',
   },
   generation: {
     tabs: {

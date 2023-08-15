@@ -28,12 +28,13 @@ export type IOnDataMoreInfo = {
   taskId?: string
   messageId: string
   errorMessage?: string
+  errorCode?: string
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
 export type IOnThought = (though: ThoughtItem) => void
 export type IOnCompleted = (hasError?: boolean) => void
-export type IOnError = (msg: string) => void
+export type IOnError = (msg: string, code?: string) => void
 
 type IOtherOptions = {
   isPublicAPI?: boolean
@@ -102,6 +103,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
                 conversationId: undefined,
                 messageId: '',
                 errorMessage: bufferObj.message,
+                errorCode: bufferObj.code,
               })
               hasError = true
               onCompleted && onCompleted(true)
@@ -345,7 +347,7 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
         if (moreInfo.errorMessage) {
           // debugger
-          onError?.(moreInfo.errorMessage)
+          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
           if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.')
             Toast.notify({ type: 'error', message: moreInfo.errorMessage })
           return
