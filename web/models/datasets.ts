@@ -22,6 +22,8 @@ export type DataSet = {
   app_count: number
   document_count: number
   word_count: number
+  embedding_model: string
+  embedding_model_provider: string
 }
 
 export type File = {
