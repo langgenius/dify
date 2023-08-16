@@ -23,14 +23,31 @@ def decrypt_side_effect(tenant_id, encrypted_key):
     return encrypted_key.replace('encrypted_', '')
 
 
+def version_effect(id: str):
+    mock_version = MagicMock()
+    mock_version.openapi_schema = {
+        'components': {
+            'schemas': {
+                'Output': {
+                    'items': {
+                        'type': 'string'
+                    }
+                }
+            }
+        }
+    }
+
+    return mock_version
+
+@patch('replicate.version.VersionCollection.get', side_effect=version_effect)
 def test_is_credentials_valid_or_raise_valid(mocker):
     mock_query = MagicMock()
     mock_query.return_value = None
+
     mocker.patch('replicate.model.ModelCollection.get', return_value=mock_query)
-    mocker.patch('replicate.model.Model.versions', return_value=mock_query)
 
     MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
-        model_name='test_model_name',
+        model_name='username/test_model_name',
         model_type=ModelType.TEXT_GENERATION,
         credentials=VALIDATE_CREDENTIAL.copy()
     )
