@@ -482,6 +482,7 @@ const Main: FC<IMainProps> = ({
 
   const handleReload = () => {
     setCurrConversationId('-1', appId, false)
+    setChatNotStarted()
     setShouldReload(false)
     createNewChat()
   }
