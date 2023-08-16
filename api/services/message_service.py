@@ -194,7 +194,10 @@ class MessageService:
             raise ConversationCompletedError()
 
         if not conversation.override_model_configs:
-            app_model_config = db.session.query(AppModelConfig).get(conversation.app_model_config_id)
+            app_model_config = db.session.query(AppModelConfig).filter(
+                AppModelConfig.id == conversation.app_model_config_id,
+                AppModelConfig.app_id == app_model.id
+            ).first()
 
             if not app_model_config:
                 raise AppModelConfigBrokenError()
