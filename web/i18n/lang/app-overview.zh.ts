@@ -33,14 +33,7 @@ const translation = {
       explanation: '开箱即用的 AI WebApp',
       accessibleAddress: '公开访问 URL',
       preview: '预览',
-      share: {
-        entry: '分享',
-        explanation: '将以下网址分享出去，让更多人访问该应用',
-        shareUrl: '分享 URL',
-        copyLink: '复制链接',
-        regenerate: '重新生成',
-        linkCopied: '已复制',
-      },
+      regenerate: '重新生成',
       preUseReminder: '使用前请先打开开关',
       settings: {
         entry: '设置',
@@ -70,7 +63,7 @@ const translation = {
       },
       customize: {
         way: '方法',
-        entry: '想要进一步自定义 WebApp？',
+        entry: '定制化',
         title: '定制化 AI WebApp',
         explanation: '你可以定制化 Web App 前端以符合你的情景与风格需求',
         way1: {

@@ -75,8 +75,6 @@ export type AppTemplatesResponse = {
 
 export type CreateAppResponse = App
 
-export type UpdateAppNameResponse = App
-
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
 export type AppDailyConversationsResponse = {
