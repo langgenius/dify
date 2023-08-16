@@ -311,7 +311,7 @@ def create_qdrant_indexes():
                 click.echo('Create dataset qdrant index: {}'.format(dataset.id))
                 index = IndexBuilder.get_index(dataset, 'high_quality')
                 if index and index._is_origin():
-                    index.recreate_dataset(dataset)
+                    index.create_qdrant_dataset(dataset)
                     create_count += 1
                 else:
                     click.echo('passed.')
