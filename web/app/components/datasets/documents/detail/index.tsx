@@ -127,12 +127,14 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
           <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' />
-          <SegmentAdd
-            importStatus={importStatus}
-            clearProcessStatus={resetProcessStatus}
-            showNewSegmentModal={showNewSegmentModal}
-            showBatchModal={showBatchModal}
-          />
+          {documentDetail && !documentDetail.archived && (
+            <SegmentAdd
+              importStatus={importStatus}
+              clearProcessStatus={resetProcessStatus}
+              showNewSegmentModal={showNewSegmentModal}
+              showBatchModal={showBatchModal}
+            />
+          )}
           <OperationAction
             scene='detail'
             detail={{
@@ -161,6 +163,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                   showNewSegmentModal={newSegmentModalVisible}
                   onNewSegmentModalChange={setNewSegmentModalVisible}
                   importStatus={importStatus}
+                  archived={documentDetail?.archived}
                 />
               }
             </div>

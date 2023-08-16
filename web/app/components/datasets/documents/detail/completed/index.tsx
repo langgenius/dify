@@ -48,12 +48,14 @@ type ISegmentDetailProps = {
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
   onUpdate: (segmentId: string, q: string, a: string) => void
   onCancel: () => void
+  archived?: boolean
 }
 /**
  * Show all the contents of the segment
  */
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
+  archived,
   onChangeSwitch,
   onUpdate,
   onCancel,
@@ -114,31 +116,30 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   return (
     <div className={'flex flex-col relative'}>
       <div className='absolute right-0 top-0 flex items-center h-7'>
-        {
-          isEditing
-            ? (
-              <>
-                <Button
-                  className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
-                  onClick={handleCancel}>
-                  {t('common.operation.cancel')}
-                </Button>
-                <Button
-                  type='primary'
-                  className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
-                  onClick={handleSave}>
-                  {t('common.operation.save')}
-                </Button>
-              </>
-            )
-            : (
-              <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
-                <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
-                <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
-              </div>
-            )
-        }
-        <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+        {isEditing && (
+          <>
+            <Button
+              className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
+              onClick={handleCancel}>
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              type='primary'
+              className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+              onClick={handleSave}>
+              {t('common.operation.save')}
+            </Button>
+          </>
+        )}
+        {!isEditing && !archived && (
+          <>
+            <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+              <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
+              <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+            </div>
+            <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+          </>
+        )}
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -168,6 +169,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
             onChange={async (val) => {
               await onChangeSwitch?.(segInfo?.id || '', val)
             }}
+            disabled={archived}
           />
         </div>
       </div>
@@ -188,6 +190,7 @@ type ICompletedProps = {
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
   importStatus: ProcessStatus | string | undefined
+  archived?: boolean
   // data: Array<{}> // all/part segments
 }
 /**
@@ -198,6 +201,7 @@ const Completed: FC<ICompletedProps> = ({
   showNewSegmentModal,
   onNewSegmentModalChange,
   importStatus,
+  archived,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -354,6 +358,7 @@ const Completed: FC<ICompletedProps> = ({
         onChangeSwitch={onChangeSwitch}
         onDelete={onDelete}
         onClick={onClickCard}
+        archived={archived}
       />
       <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
@@ -361,6 +366,7 @@ const Completed: FC<ICompletedProps> = ({
           onChangeSwitch={onChangeSwitch}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseModal}
+          archived={archived}
         />
       </Modal>
       <NewSegmentModal

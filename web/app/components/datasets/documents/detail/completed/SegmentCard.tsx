@@ -42,6 +42,7 @@ type ISegmentCardProps = {
   onDelete?: (segId: string) => Promise<void>
   scene?: UsageScene
   className?: string
+  archived?: boolean
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
@@ -53,6 +54,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   loading = true,
   scene = 'doc',
   className = '',
+  archived,
 }) => {
   const { t } = useTranslation()
   const {
@@ -123,6 +125,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                       >
                         <Switch
                           size='md'
+                          disabled={archived}
                           defaultValue={enabled}
                           onChange={async (val) => {
                             await onChangeSwitch?.(id, val)
@@ -170,12 +173,14 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   <div className={cn(s.commonIcon, s.bezierCurveIcon)} />
                   <div className={s.segDataText}>{index_node_hash}</div>
                 </div>
-                <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-100 hover:text-red-600 cursor-pointer group/delete' onClick={(e) => {
-                  e.stopPropagation()
-                  setShowModal(true)
-                }}>
-                  <Trash03 className='w-[14px] h-[14px] text-gray-500 group-hover/delete:text-red-600' />
-                </div>
+                {!archived && (
+                  <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-100 hover:text-red-600 cursor-pointer group/delete' onClick={(e) => {
+                    e.stopPropagation()
+                    setShowModal(true)
+                  }}>
+                    <Trash03 className='w-[14px] h-[14px] text-gray-500 group-hover/delete:text-red-600' />
+                  </div>
+                )}
               </div>
             </>
             : <>

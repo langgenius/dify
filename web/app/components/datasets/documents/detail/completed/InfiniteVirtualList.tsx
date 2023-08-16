@@ -14,6 +14,8 @@ type IInfiniteVirtualListProps = {
   onClick: (detail: SegmentDetailModel) => void
   onChangeSwitch: (segId: string, enabled: boolean) => Promise<void>
   onDelete: (segId: string) => Promise<void>
+  archived?: boolean
+
 }
 
 const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
@@ -24,6 +26,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
   onClick: onClickCard,
   onChangeSwitch,
   onDelete,
+  archived,
 }) => {
   // If there are more items to be loaded then add an extra row to hold a loading indicator.
   const itemCount = hasNextPage ? items.length + 1 : items.length
@@ -56,6 +59,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
           onChangeSwitch={onChangeSwitch}
           onDelete={onDelete}
           loading={false}
+          archived={archived}
         />
       ))
     }
