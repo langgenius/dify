@@ -292,6 +292,37 @@ def sync_anthropic_hosted_providers():
     click.echo(click.style('Congratulations! Synced {} anthropic hosted providers.'.format(count), fg='green'))
 
 
+@click.command('create-qdrant-indexes', help='Create qdrant indexes.')
+def create_qdrant_indexes():
+    click.echo(click.style('Start create qdrant indexes.', fg='green'))
+    create_count = 0
+
+    page = 1
+    while True:
+        try:
+            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality') \
+                .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
+        except NotFound:
+            break
+
+        page += 1
+        for dataset in datasets:
+            try:
+                click.echo('Create dataset qdrant index: {}'.format(dataset.id))
+                index = IndexBuilder.get_index(dataset, 'high_quality')
+                if index and index._is_origin():
+                    index.recreate_dataset(dataset)
+                    create_count += 1
+                else:
+                    click.echo('passed.')
+            except Exception as e:
+                click.echo(
+                    click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                continue
+
+    click.echo(click.style('Congratulations! Create {} dataset indexes.'.format(create_count), fg='green'))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -300,3 +331,4 @@ def register_commands(app):
     app.cli.add_command(recreate_all_dataset_indexes)
     app.cli.add_command(sync_anthropic_hosted_providers)
     app.cli.add_command(clean_unused_dataset_indexes)
+    app.cli.add_command(create_qdrant_indexes)
