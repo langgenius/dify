@@ -1,5 +1,4 @@
 import decimal
-from functools import wraps
 from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
@@ -19,6 +18,7 @@ class SparkModel(BaseLLM):
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
         return ChatSpark(
+            model_name=self.name,
             streaming=self.streaming,
             callbacks=self.callbacks,
             **self.credentials,

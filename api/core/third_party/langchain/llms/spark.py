@@ -25,12 +25,16 @@ class ChatSpark(BaseChatModel):
         .. code-block:: python
 
         client = SparkLLMClient(
+            model_name="<model_name>",
             app_id="<app_id>",
             api_key="<api_key>",
             api_secret="<api_secret>"
         )
     """
     client: Any = None  #: :meta private:
+
+    model_name: str = "spark"
+    """The Spark model name."""
 
     max_tokens: int = 256
     """Denotes the number of tokens to predict per generation."""
@@ -66,6 +70,7 @@ class ChatSpark(BaseChatModel):
         )
 
         values["client"] = SparkLLMClient(
+            model_name=values["model_name"],
             app_id=values["app_id"],
             api_key=values["api_key"],
             api_secret=values["api_secret"],
