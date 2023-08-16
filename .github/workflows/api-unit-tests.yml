@@ -6,7 +6,7 @@ on:
       - main
   push:
     branches:
-      - feat/optimize-model-when-app-create
+      - deploy/dev
 
 jobs:
   test:
