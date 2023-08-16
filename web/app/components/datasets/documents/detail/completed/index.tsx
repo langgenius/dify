@@ -26,6 +26,7 @@ import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/gene
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import Button from '@/app/components/base/button'
 import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
+import TagInput from '@/app/components/base/tag-input'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -45,7 +46,7 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
-  onUpdate: (segmentId: string, q: string, a: string) => void
+  onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
   onCancel: () => void
 }
 /**
@@ -61,14 +62,16 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   const [isEditing, setIsEditing] = useState(false)
   const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
+  const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
 
   const handleCancel = () => {
     setIsEditing(false)
     setQuestion(segInfo?.content || '')
     setAnswer(segInfo?.answer || '')
+    setKeywords(segInfo?.keywords || [])
   }
   const handleSave = () => {
-    onUpdate(segInfo?.id || '', question, answer)
+    onUpdate(segInfo?.id || '', question, answer, keywords)
   }
 
   const renderContent = () => {
@@ -148,9 +151,15 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
       <div className={s.keywordWrapper}>
         {!segInfo?.keywords?.length
           ? '-'
-          : segInfo?.keywords?.map((word: any) => {
-            return <div className={s.keyword}>{word}</div>
-          })}
+          : (
+            <TagInput
+              items={keywords}
+              onChange={newKeywords => setKeywords(newKeywords)}
+              disableAdd={!isEditing}
+              disableRemove={!isEditing || (keywords.length === 1)}
+            />
+          )
+        }
       </div>
       <div className={cn(s.footer, s.numberInfo)}>
         <div className='flex items-center'>
@@ -272,7 +281,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     }
   }
 
-  const handleUpdateSegment = async (segmentId: string, question: string, answer: string) => {
+  const handleUpdateSegment = async (segmentId: string, question: string, answer: string, keywords: string[]) => {
     const params: SegmentUpdator = { content: '' }
     if (docForm === 'qa_model') {
       if (!question.trim())
@@ -290,6 +299,9 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
       params.content = question
     }
 
+    if (keywords.length)
+      params.keywords = keywords
+
     const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
     notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     onCloseModal()
@@ -298,6 +310,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         if (seg.id === segmentId) {
           seg.answer = res.data.answer
           seg.content = res.data.content
+          seg.keywords = res.data.keywords
           seg.word_count = res.data.word_count
           seg.hit_count = res.data.hit_count
           seg.index_node_hash = res.data.index_node_hash
