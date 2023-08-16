@@ -50,9 +50,13 @@ class AutoSummarizingOpenMultiAIFunctionCallAgent(OpenAIMultiFunctionsAgent, Ope
         prompt = self.prompt.format_prompt(input=query, agent_scratchpad=[])
         messages = prompt.to_messages()
 
-        predicted_message = self.llm.predict_messages(
-            messages, functions=self.functions, callbacks=None
-        )
+        try:
+            predicted_message = self.llm.predict_messages(
+                messages, functions=self.functions, callbacks=None
+            )
+        except Exception as e:
+            new_exception = self.model_instance.handle_exceptions(e)
+            raise new_exception
 
         function_call = predicted_message.additional_kwargs.get("function_call", {})
 

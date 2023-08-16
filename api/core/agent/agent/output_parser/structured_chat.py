@@ -10,7 +10,7 @@ from langchain.schema import AgentAction, AgentFinish, OutputParserException
 class StructuredChatOutputParser(LCStructuredChatOutputParser):
     def parse(self, text: str) -> Union[AgentAction, AgentFinish]:
         try:
-            action_match = re.search(r"```(.*?)\n(.*?)```?", text, re.DOTALL)
+            action_match = re.search(r"```(.*?)\n?(.*?)```", text, re.DOTALL)
             if action_match is not None:
                 response = json.loads(action_match.group(2).strip(), strict=False)
                 if isinstance(response, list):

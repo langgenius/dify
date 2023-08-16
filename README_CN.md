@@ -22,14 +22,22 @@
 ## 核心能力
 1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
 
-> * **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
-> * **Azure OpenAI Service**
-> * **Anthropic**：Claude2、Claude-instant
-> * **Hugging Face Hub**（即将推出）
+- [x] **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
+- [x] **Azure OpenAI Service**
+- [x] **Anthropic**：Claude2、Claude-instant
+- [x] **Replicate**
+- [x] **Hugging Face Hub**
+- [x] **MiniMax**
+- [x] **讯飞星火大模型**
+- [x] **文心一言**
+- [x] **通义千问**
+- [x] **ChatGLM**
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
 * 1000 次 Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
 * 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
+* 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
+* 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用
 2. **可视化编排 Prompt：** 通过界面化编写 prompt 并调试，只需几分钟即可发布一个 AI 应用。
 3. **文本 Embedding 处理（数据集）**：全自动完成文本预处理，使用你的数据作为上下文，无需理解晦涩的概念和技术处理。支持 PDF、txt 等文件格式，支持从 Notion、网页、API 同步数据。
 4. **基于 API 开发：** 后端即服务。您可以直接访问网页应用，也可以接入 API 集成到您的应用中，无需关注复杂的后端架构和部署过程。
@@ -53,7 +61,7 @@
 
 在安装 Dify 之前，请确保您的机器满足以下最低系统要求：
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### 快速启动

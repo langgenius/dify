@@ -72,5 +72,5 @@ class MainChainGatherCallbackHandler(BaseCallbackHandler):
     def on_chain_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
-        logging.exception(error)
+        logging.debug("Dataset tool on_chain_error: %s", error)
         self.clear_chain_results()

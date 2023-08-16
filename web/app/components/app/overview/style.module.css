@@ -16,3 +16,16 @@
   @apply w-4 h-4 bg-center bg-no-repeat;
   background-image: url(./assets/code-browser.svg);
 }
+
+.refreshIcon {
+  background-image: url(./assets/refresh.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.refreshIcon:hover {
+  background-image: url(./assets/refresh-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+

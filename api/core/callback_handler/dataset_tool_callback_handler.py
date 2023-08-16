@@ -68,4 +68,4 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         """Do nothing."""
-        logging.exception(error)
+        logging.debug("Dataset tool on_llm_error: %s", error)

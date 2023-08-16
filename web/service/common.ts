@@ -3,6 +3,7 @@ import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
   FileUploadConfigResponse,
+  ICurrentWorkspace,
   IWorkspace, LangGeniusVersionResponse, Member,
   OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
   SetupStatusResponse, TenantInfoResponse, UserProfileOriginResponse,
@@ -86,6 +87,10 @@ export const deleteMemberOrCancelInvitation: Fetcher<CommonResponse, { url: stri
 
 export const fetchFilePreview: Fetcher<{ content: string }, { fileID: string }> = ({ fileID }) => {
   return get(`/files/${fileID}/preview`) as Promise<{ content: string }>
+}
+
+export const fetchCurrentWorkspace: Fetcher<ICurrentWorkspace, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get(url, { params }) as Promise<ICurrentWorkspace>
 }
 
 export const fetchWorkspaces: Fetcher<{ workspaces: IWorkspace[] }, { url: string; params: Record<string, any> }> = ({ url, params }) => {

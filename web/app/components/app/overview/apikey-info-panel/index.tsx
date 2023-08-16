@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useContext } from 'use-context-selector'
 import Progress from './progress'
 import Button from '@/app/components/base/button'
 import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -10,9 +11,13 @@ import AccountSetting from '@/app/components/header/account-setting'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { formatNumber } from '@/utils/format'
+import I18n from '@/context/i18n'
+import ProviderConfig from '@/app/components/header/account-setting/model-page/configs'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
+  const { locale } = useContext(I18n)
+
   const { textGenerationModelList } = useProviderContext()
 
   const { t } = useTranslation()
@@ -36,7 +41,8 @@ const APIKeyInfoPanel: FC = () => {
   // first show in trail and not used exhausted, else find the exhausted
   const [used, total, unit, providerName] = (() => {
     if (!textGenerationModelList || !isCloud)
-      return [0, 0, '']
+      return [0, 0, '', '']
+
     let used = 0
     let total = 0
     let unit = 'times'
@@ -69,7 +75,7 @@ const APIKeyInfoPanel: FC = () => {
         {isCloud && <em-emoji id={exhausted ? '🤔' : '😀'} />}
         {isCloud
           ? (
-            <div>{t(`appOverview.apiKeyInfo.cloud.${exhausted ? 'exhausted' : 'trial'}.title`, { providerName })}</div>
+            <div>{t(`appOverview.apiKeyInfo.cloud.${exhausted ? 'exhausted' : 'trial'}.title`, { providerName: (ProviderConfig as any)[providerName as string]?.selector?.name[locale] || providerName })}</div>
           )
           : (
             <div>
