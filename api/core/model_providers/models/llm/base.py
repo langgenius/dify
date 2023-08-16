@@ -173,7 +173,7 @@ class BaseLLM(BaseProviderModel):
             }
         }
         """
-        base_model_name = self.credentials.get("base_model_name")
+        base_model_name = self.name
         return {
             base_model_name:{
                 'prompt': decimal.Decimal('0'),
@@ -181,7 +181,7 @@ class BaseLLM(BaseProviderModel):
                 'unit': decimal.Decimal('0'),
             }
         }
-    
+
     def calc_tokens_price(self, tokens:int, message_type: MessageType):
         """
         calc tokens total price.
@@ -190,7 +190,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return:
         """
-        base_model_name = self.credentials.get("base_model_name")
+        base_model_name = self.name
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
             unit_price = self.model_unit_prices_config[base_model_name]['prompt']
         else:
@@ -202,10 +202,11 @@ class BaseLLM(BaseProviderModel):
     def get_tokens_unit_price(self, message_type: MessageType):
         """
         get token price.
+
         :param message_type:
         :return:
         """
-        base_model_name = self.credentials.get("base_model_name")
+        base_model_name = self.name
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
             unit_price = self.model_unit_prices_config[base_model_name]['prompt']
         else:
