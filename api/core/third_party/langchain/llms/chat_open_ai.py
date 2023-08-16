@@ -2,11 +2,11 @@ import os
 
 from typing import Dict, Any, Optional, Union, Tuple
 
-from langchain.chat_models import ChatOpenAI
+from langchain.chat_models import ChatLiteLLM
 from pydantic import root_validator
 
 
-class EnhanceChatOpenAI(ChatOpenAI):
+class EnhanceChatOpenAI(ChatLiteLLM):
     request_timeout: Optional[Union[float, Tuple[float, float]]] = (5.0, 300.0)
     """Timeout for requests to OpenAI completion API. Default is 600 seconds."""
     max_retries: int = 1
