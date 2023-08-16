@@ -42,7 +42,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       isCurrentWorkspaceManager ? { name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon } : false,
       { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
       { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
-    ]
+    ].filter(nav => !!nav)
     return navs
   }, [appId, isCurrentWorkspaceManager, t])
 
