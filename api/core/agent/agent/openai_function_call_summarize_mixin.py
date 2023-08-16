@@ -66,12 +66,12 @@ class OpenAIFunctionCallSummarizeMixin(BaseModel, CalcTokenMixin):
 
         return new_messages
 
-    def get_num_tokens_from_messages(self, llm: BaseLanguageModel, messages: List[BaseMessage], **kwargs) -> int:
+    def get_num_tokens_from_messages(self, model_instance: BaseLLM, messages: List[BaseMessage], **kwargs) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
-        llm = cast(ChatOpenAI, llm)
+        llm = cast(ChatOpenAI, model_instance.client)
         model, encoding = llm._get_encoding_model()
         if model.startswith("gpt-3.5-turbo"):
             # every message follows <im_start>{role/name}\n{content}<im_end>\n

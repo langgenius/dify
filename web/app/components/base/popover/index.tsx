@@ -46,47 +46,49 @@ export default function CustomPopover({
                 : {
                   onMouseLeave: () => onMouseLeave(open),
                   onMouseEnter: () => onMouseEnter(open),
-                })
-              }
+                })}
             >
               <Popover.Button
                 ref={buttonRef}
-                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${!btnClassName ? '' : typeof btnClassName === 'string' ? btnClassName : btnClassName?.(open)}`}
+                className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${
+                  !btnClassName
+                    ? ''
+                    : typeof btnClassName === 'string'
+                      ? btnClassName
+                      : btnClassName?.(open)
+                }`}
               >
                 {btnElement}
               </Popover.Button>
-              <Transition
-                as={Fragment}
-                enter="transition ease-out duration-200"
-                enterFrom="opacity-0 translate-y-1"
-                enterTo="opacity-100 translate-y-0"
-                leave="transition ease-in duration-150"
-                leaveFrom="opacity-100 translate-y-0"
-                leaveTo="opacity-0 translate-y-1"
-              >
+              <Transition as={Fragment}>
                 <Popover.Panel
-                  className={`${s.popupPanel} ${position === 'br' ? 'right-0' : 'transform -translate-x-1/2 left-1/2'} ${className}`}
+                  className={`${s.popupPanel} ${
+                    position === 'br'
+                      ? 'right-0'
+                      : 'transform -translate-x-1/2 left-1/2'
+                  } ${className}`}
                   {...(trigger !== 'hover'
                     ? {}
                     : {
                       onMouseLeave: () => onMouseLeave(open),
                       onMouseEnter: () => onMouseEnter(open),
-                    })
-                  }>
-                  <div
-                    className={s.panelContainer}
-                    {...(trigger !== 'hover'
-                      ? {}
-                      : {
-                        onMouseLeave: () => onMouseLeave(open),
-                        onMouseEnter: () => onMouseEnter(open),
-                      })
-                    }
-                  >
-                    {cloneElement(htmlContent as React.ReactElement, {
-                      onClose: () => onMouseLeave(open),
                     })}
-                  </div>
+                >
+                  {({ close }) => (
+                    <div
+                      className={s.panelContainer}
+                      {...(trigger !== 'hover'
+                        ? {}
+                        : {
+                          onMouseLeave: () => onMouseLeave(open),
+                          onMouseEnter: () => onMouseEnter(open),
+                        })}
+                    >
+                      {cloneElement(htmlContent as React.ReactElement, {
+                        onClose: () => close(),
+                      })}
+                    </div>
+                  )}
                 </Popover.Panel>
               </Transition>
             </div>

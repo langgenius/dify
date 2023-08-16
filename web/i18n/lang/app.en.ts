@@ -15,6 +15,7 @@ const translation = {
   communityIntro:
     'Discuss with team members, contributors and developers on different channels.',
   roadmap: 'See our roadmap',
+  appNamePlaceholder: 'Please enter the name of the app',
   newApp: {
     startToCreate: 'Let\'s start with your new app',
     captionName: 'Give your app a name',
@@ -35,6 +36,9 @@ const translation = {
     appTypeRequired: 'Please select an app type',
     appCreated: 'App created',
     appCreateFailed: 'Failed to create app',
+  },
+  editApp: {
+    startToEdit: 'Edit App',
   },
   emoji: {
     ok: 'OK',
