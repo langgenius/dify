@@ -48,12 +48,25 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         # calculate the number of tokens in the encoded text
         return len(tokenized_text)
 
-    def get_token_price(self, tokens: int):
-        tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                  rounding=decimal.ROUND_HALF_UP)
+    @property
+    def model_unit_prices_config(self):
+        """
+        get model unit prices config.
 
-        total_price = tokens_per_1k * decimal.Decimal('0.0001')
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+        :return: object format {
+            "model_name": {
+                'completion': decimal.Decimal('0'),
+                'unit': decimal.Decimal('0'),
+            }
+        }
+        """
+        config = {
+            'text-embedding-ada-002':{
+                'completion': decimal.Decimal('0.0001'),
+                'unit': decimal.Decimal('0.001'),
+            }
+        }
+        return config
 
     def get_currency(self):
         return 'USD'
