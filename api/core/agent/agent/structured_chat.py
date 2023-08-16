@@ -89,8 +89,8 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             Action specifying what tool to use.
         """
         full_inputs = self.get_full_inputs(intermediate_steps, **kwargs)
-
         prompts, _ = self.llm_chain.prep_prompts(input_list=[self.llm_chain.prep_inputs(full_inputs)])
+
         messages = []
         if prompts:
             messages = prompts[0].to_messages()
@@ -99,7 +99,11 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         if rest_tokens < 0:
             full_inputs = self.summarize_messages(intermediate_steps, **kwargs)
 
-        full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
+        try:
+            full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
+        except Exception as e:
+            new_exception = self.model_instance.handle_exceptions(e)
+            raise new_exception
 
         try:
             return self.output_parser.parse(full_output)

@@ -59,7 +59,11 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             _, observation = intermediate_steps[-1]
             return AgentFinish(return_values={"output": observation}, log=observation)
 
-        return super().plan(intermediate_steps, callbacks, **kwargs)
+        try:
+            return super().plan(intermediate_steps, callbacks, **kwargs)
+        except Exception as e:
+            new_exception = self.model_instance.handle_exceptions(e)
+            raise new_exception
 
     async def aplan(
             self,

@@ -85,7 +85,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
-        logging.exception(error)
+        logging.debug("Agent on_llm_error: %s", error)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
@@ -164,7 +164,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         """Do nothing."""
-        logging.exception(error)
+        logging.debug("Agent on_tool_error: %s", error)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
