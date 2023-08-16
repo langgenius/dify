@@ -8,7 +8,9 @@ import click
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
+from core.embedding.cached_embedding import CacheEmbedding
 from core.index.index import IndexBuilder
+from core.model_providers.model_factory import ModelFactory
 from core.model_providers.providers.hosted import hosted_model_providers
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
@@ -309,8 +311,24 @@ def create_qdrant_indexes():
         for dataset in datasets:
             try:
                 click.echo('Create dataset qdrant index: {}'.format(dataset.id))
-                index = IndexBuilder.get_index(dataset, 'high_quality')
-                if index and index._is_origin():
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id
+                )
+
+                embeddings = CacheEmbedding(embedding_model)
+
+                from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
+
+                index = QdrantVectorIndex(
+                    dataset=dataset,
+                    config=QdrantConfig(
+                        endpoint=current_app.config.get('QDRANT_URL'),
+                        api_key=current_app.config.get('QDRANT_API_KEY'),
+                        root_path=current_app.root_path
+                    ),
+                    embeddings=embeddings
+                )
+                if index:
                     index.create_qdrant_dataset(dataset)
                     create_count += 1
                 else:

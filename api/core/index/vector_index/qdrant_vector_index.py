@@ -44,7 +44,7 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def get_index_name(self, dataset: Dataset) -> str:
         if self.dataset.index_struct_dict:
-            return self.dataset.index_struct_dict['vector_store']['collection_name']
+            return self.dataset.index_struct_dict['vector_store']['class_prefix']
 
         dataset_id = dataset.id
         return "Index_" + dataset_id.replace("-", "_")
@@ -108,7 +108,7 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:
-            class_prefix: str = self.dataset.index_struct_dict['vector_store']['collection_name']
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
             if class_prefix.startswith('Vector_'):
                 # original class_prefix
                 return True
