@@ -24,7 +24,7 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { DataSourceNotionPage } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
@@ -59,10 +59,6 @@ enum SegmentType {
 enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
-}
-enum DocForm {
-  TEXT = 'text_model',
-  QA = 'qa_model',
 }
 
 const StepTwo = ({

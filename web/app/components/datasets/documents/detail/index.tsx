@@ -21,6 +21,7 @@ import Loading from '@/app/components/base/loading'
 import type { MetadataType } from '@/service/datasets'
 import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
+import type { DocForm } from '@/models/datasets'
 
 export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
@@ -178,6 +179,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           isShow={batchModalVisible}
           onCancel={hideBatchModal}
           onConfirm={runBatch}
+          docForm={documentDetail?.doc_form as DocForm}
         />
       </div>
     </DocumentContext.Provider>

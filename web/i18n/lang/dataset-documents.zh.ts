@@ -63,6 +63,8 @@ const translation = {
       tip: 'CSV 文件必须符合以下结构：',
       question: '问题',
       answer: '回答',
+      contentTitle: '分段内容',
+      content: '内容',
       template: '下载模板',
       cancel: '取消',
       run: '导入',

@@ -387,3 +387,8 @@ export type SegmentUpdator = {
   content: string
   answer?: string
 }
+
+export enum DocForm {
+  TEXT = 'text_model',
+  QA = 'qa_model',
+}

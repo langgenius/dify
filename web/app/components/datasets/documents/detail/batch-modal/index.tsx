@@ -7,15 +7,18 @@ import CSVDownloader from './csv-downloader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import type { DocForm } from '@/models/datasets'
 
 export type IBatchModalProps = {
   isShow: boolean
+  docForm: DocForm
   onCancel: () => void
   onConfirm: (file: File) => void
 }
 
 const BatchModal: FC<IBatchModalProps> = ({
   isShow,
+  docForm,
   onCancel,
   onConfirm,
 }) => {
@@ -45,7 +48,9 @@ const BatchModal: FC<IBatchModalProps> = ({
         file={currentCSV}
         updateFile={handleFile}
       />
-      <CSVDownloader />
+      <CSVDownloader
+        docForm={docForm}
+      />
       <div className='mt-[28px] pt-6 flex justify-end'>
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onCancel}>
           {t('datasetDocuments.list.batchModal.cancel')}
