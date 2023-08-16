@@ -39,11 +39,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const navigation = useMemo(() => {
     const navs = [
       { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: ChartBarSquareIcon, selectedIcon: ChartBarSquareSolidIcon },
+      isCurrentWorkspaceManager ? { name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon } : false,
       { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
       { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
-    ]
-    if (isCurrentWorkspaceManager)
-      navs.push({ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon })
+    ].filter(nav => !!nav)
     return navs
   }, [appId, isCurrentWorkspaceManager, t])
 
