@@ -50,9 +50,6 @@ class SparkModel(BaseLLM):
         contents = [message.content for message in messages]
         return max(self._client.get_num_tokens("".join(contents)), 0)
 
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        return decimal.Decimal('0')
-
     def get_currency(self):
         return 'RMB'
 

@@ -51,9 +51,6 @@ class MinimaxModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens(prompts), 0)
 
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        return decimal.Decimal('0')
-
     def get_currency(self):
         return 'RMB'
 

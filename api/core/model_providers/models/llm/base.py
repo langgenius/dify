@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from typing import List, Optional, Any, Union
+import decimal
 
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult, SystemMessage, AIMessage, HumanMessage, BaseMessage, ChatGeneration
@@ -158,17 +159,58 @@ class BaseLLM(BaseProviderModel):
         :return:
         """
         raise NotImplementedError
-
-    @abstractmethod
-    def get_token_price(self, tokens: int, message_type: MessageType):
+    
+    @property
+    def model_unit_prices_config(self):
         """
-        get token price.
+        get model unit prices config.
+
+        :return: object format {
+            "model_name": {
+                'prompt': decimal.Decimal('0'),
+                'completion': decimal.Decimal('0'),
+                'unit': decimal.Decimal('0'),
+            }
+        }
+        """
+        base_model_name = self.credentials.get("base_model_name")
+        return {
+            base_model_name:{
+                'prompt': decimal.Decimal('0'),
+                'completion': decimal.Decimal('0'),
+                'unit': decimal.Decimal('0'),
+            }
+        }
+    
+    def calc_tokens_price(self, tokens:int, message_type: MessageType):
+        """
+        calc tokens total price.
 
         :param tokens:
         :param message_type:
         :return:
         """
-        raise NotImplementedError
+        base_model_name = self.credentials.get("base_model_name")
+        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
+            unit_price = self.model_unit_prices_config[base_model_name]['prompt']
+        else:
+            unit_price = self.model_unit_prices_config[base_model_name]['completion']
+        unit = self.model_unit_prices_config[base_model_name]['unit']
+        total_price = tokens * unit_price * unit
+        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+
+    def get_tokens_unit_price(self, message_type: MessageType):
+        """
+        get token price.
+        :param message_type:
+        :return:
+        """
+        base_model_name = self.credentials.get("base_model_name")
+        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
+            unit_price = self.model_unit_prices_config[base_model_name]['prompt']
+        else:
+            unit_price = self.model_unit_prices_config[base_model_name]['completion']
+        return unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
 
     @abstractmethod
     def get_currency(self):
