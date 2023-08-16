@@ -5,6 +5,7 @@ on:
     branches:
       - 'main'
       - 'deploy/dev'
+      - 'feat/vector-db-manage'
   release:
     types: [published]
 
