@@ -21,10 +21,6 @@ from tasks.document_indexing_sync_task import document_indexing_sync_task
 
 cache = TTLCache(maxsize=None, ttl=30)
 
-FILE_SIZE_LIMIT = 15 * 1024 * 1024  # 15MB
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm']
-PREVIEW_WORDS_LIMIT = 3000
-
 
 class DataSourceApi(Resource):
     integrate_icon_fields = {
