@@ -1,7 +1,10 @@
 import json
+import re
 from typing import Any
 
 from langchain.schema import BaseOutputParser
+
+from core.model_providers.error import LLMError
 from core.prompt.prompts import SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT
 
 
@@ -12,5 +15,10 @@ class SuggestedQuestionsAfterAnswerOutputParser(BaseOutputParser):
 
     def parse(self, text: str) -> Any:
         json_string = text.strip()
-        json_obj = json.loads(json_string)
+        action_match = re.search(r".*(\[\".+\"\]).*", json_string, re.DOTALL)
+        if action_match is not None:
+            json_obj = json.loads(action_match.group(1).strip(), strict=False)
+        else:
+            raise LLMError("Could not parse LLM output: {text}")
+
         return json_obj
