@@ -22,9 +22,6 @@ class MinimaxEmbedding(BaseEmbedding):
 
         super().__init__(model_provider, client, name)
 
-    def get_token_price(self, tokens: int):
-        return decimal.Decimal('0')
-
     def get_currency(self):
         return 'RMB'
 
