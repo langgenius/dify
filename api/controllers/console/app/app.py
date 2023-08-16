@@ -124,12 +124,29 @@ class AppListApi(Resource):
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
 
+        default_model = ModelFactory.get_default_model(
+            tenant_id=current_user.current_tenant_id,
+            model_type=ModelType.TEXT_GENERATION
+        )
+
+        if default_model:
+            default_model_provider = default_model.provider_name
+            default_model_name = default_model.model_name
+        else:
+            raise ProviderNotInitializeError(
+                f"No Text Generation Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+
         if args['model_config'] is not None:
             # validate config
+            model_config_dict = args['model_config']
+            model_config_dict["model"]["provider"] = default_model_provider
+            model_config_dict["model"]["name"] = default_model_name
+
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=args['model_config']
+                config=model_config_dict
             )
 
             app = App(
@@ -141,21 +158,8 @@ class AppListApi(Resource):
                 status='normal'
             )
 
-            app_model_config = AppModelConfig(
-                provider="",
-                model_id="",
-                configs={},
-                opening_statement=model_configuration['opening_statement'],
-                suggested_questions=json.dumps(model_configuration['suggested_questions']),
-                suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
-                speech_to_text=json.dumps(model_configuration['speech_to_text']),
-                more_like_this=json.dumps(model_configuration['more_like_this']),
-                sensitive_word_avoidance=json.dumps(model_configuration['sensitive_word_avoidance']),
-                model=json.dumps(model_configuration['model']),
-                user_input_form=json.dumps(model_configuration['user_input_form']),
-                pre_prompt=model_configuration['pre_prompt'],
-                agent_mode=json.dumps(model_configuration['agent_mode']),
-            )
+            app_model_config = AppModelConfig()
+            app_model_config = app_model_config.from_model_config_dict(model_configuration)
         else:
             if 'mode' not in args or args['mode'] is None:
                 abort(400, message="mode is required")
@@ -165,20 +169,10 @@ class AppListApi(Resource):
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
 
-            default_model = ModelFactory.get_default_model(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.TEXT_GENERATION
-            )
-
-            if default_model:
-                model_dict = app_model_config.model_dict
-                model_dict['provider'] = default_model.provider_name
-                model_dict['name'] = default_model.model_name
-                app_model_config.model = json.dumps(model_dict)
-            else:
-                raise ProviderNotInitializeError(
-                    f"No Text Generation Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+            model_dict = app_model_config.model_dict
+            model_dict['provider'] = default_model_provider
+            model_dict['name'] = default_model_name
+            app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']
         app.mode = args['mode']
@@ -416,22 +410,9 @@ class AppCopy(Resource):
 
     @staticmethod
     def create_app_model_config_copy(app_config, copy_app_id):
-        copy_app_model_config = AppModelConfig(
-            app_id=copy_app_id,
-            provider=app_config.provider,
-            model_id=app_config.model_id,
-            configs=app_config.configs,
-            opening_statement=app_config.opening_statement,
-            suggested_questions=app_config.suggested_questions,
-            suggested_questions_after_answer=app_config.suggested_questions_after_answer,
-            speech_to_text=app_config.speech_to_text,
-            more_like_this=app_config.more_like_this,
-            sensitive_word_avoidance=app_config.sensitive_word_avoidance,
-            model=app_config.model,
-            user_input_form=app_config.user_input_form,
-            pre_prompt=app_config.pre_prompt,
-            agent_mode=app_config.agent_mode
-        )
+        copy_app_model_config = app_config.copy()
+        copy_app_model_config.app_id = copy_app_id
+
         return copy_app_model_config
 
     @setup_required
