@@ -46,7 +46,8 @@ class OpenAIModel(BaseLLM):
             self.model_mode = ModelMode.COMPLETION
         else:
             self.model_mode = ModelMode.CHAT
-
+        
+        # TODO load price config from configs(db)
         super().__init__(model_provider, name, model_kwargs, streaming, callbacks)
 
     def _init_client(self) -> Any:
@@ -119,37 +120,40 @@ class OpenAIModel(BaseLLM):
 
     @property
     def model_unit_prices_config(self):
-        config = {
-            'gpt-4': {
-                'prompt': decimal.Decimal('0.03'),
-                'completion': decimal.Decimal('0.06'),
-                'unit': decimal.Decimal('0.001')
-            },
-            'gpt-4-32k': {
-                'prompt': decimal.Decimal('0.06'),
-                'completion': decimal.Decimal('0.12'),
-                'unit': decimal.Decimal('0.001')
-            },
-            'gpt-3.5-turbo': {
-                'prompt': decimal.Decimal('0.0015'),
-                'completion': decimal.Decimal('0.002'),
-                'unit': decimal.Decimal('0.001')
-            },
-            'gpt-3.5-turbo-16k': {
-                'prompt': decimal.Decimal('0.003'),
-                'completion': decimal.Decimal('0.004'),
-                'unit': decimal.Decimal('0.001')
-            },
-            'text-davinci-003': {
-                'prompt': decimal.Decimal('0.02'),
-                'completion': decimal.Decimal('0.02'),
-                'unit': decimal.Decimal('0.001')
-            },
-        }
-        return config
-
-    def get_currency(self):
-        return 'USD'
+        price_config = {
+                'gpt-4': {
+                    'prompt': decimal.Decimal('0.03'),
+                    'completion': decimal.Decimal('0.06'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'USD'
+                },
+                'gpt-4-32k': {
+                    'prompt': decimal.Decimal('0.06'),
+                    'completion': decimal.Decimal('0.12'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'USD'
+                },
+                'gpt-3.5-turbo': {
+                    'prompt': decimal.Decimal('0.0015'),
+                    'completion': decimal.Decimal('0.002'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'USD'
+                },
+                'gpt-3.5-turbo-16k': {
+                    'prompt': decimal.Decimal('0.003'),
+                    'completion': decimal.Decimal('0.004'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'USD'
+                },
+                'text-davinci-003': {
+                    'prompt': decimal.Decimal('0.02'),
+                    'completion': decimal.Decimal('0.02'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'USD'
+                },
+            }
+        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
+        return self.price_config
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

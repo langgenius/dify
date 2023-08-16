@@ -35,6 +35,7 @@ class BaseEmbedding(BaseProviderModel):
             base_model_name:{
                 'completion': decimal.Decimal('0'),
                 'unit': decimal.Decimal('0'),
+                'currency': 'USD'
             }
         }
 
@@ -76,7 +77,13 @@ class BaseEmbedding(BaseProviderModel):
         return len(_get_token_ids_default_method(text))
 
     def get_currency(self):
-        return 'USD'
+        """
+        get token currency.
+
+        :return: get from price config, default 'USD'
+        """
+        currency = self.model_unit_prices_config[self.name]['currency']
+        return currency
 
     @abstractmethod
     def handle_exceptions(self, ex: Exception) -> Exception:

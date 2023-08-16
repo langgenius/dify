@@ -16,6 +16,7 @@ class WenxinModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+        # TODO load price_config from configs(db)
         return Wenxin(
             streaming=self.streaming,
             callbacks=self.callbacks,
@@ -50,27 +51,28 @@ class WenxinModel(BaseLLM):
 
     @property
     def model_unit_prices_config(self):
-        config = {
-                    'ernie-bot': {
-                        'prompt': decimal.Decimal('0.012'),
-                        'completion': decimal.Decimal('0.012'),
-                        'unit': decimal.Decimal('0.001')
-                    },
-                    'ernie-bot-turbo': {
-                        'prompt': decimal.Decimal('0.008'),
-                        'completion': decimal.Decimal('0.008'),
-                        'unit': decimal.Decimal('0.001')
-                    },
-                    'bloomz-7b': {
-                        'prompt': decimal.Decimal('0.006'),
-                        'completion': decimal.Decimal('0.006'),
-                        'unit': decimal.Decimal('0.001')
-                    }
+        price_config = {
+                'ernie-bot': {
+                    'prompt': decimal.Decimal('0.012'),
+                    'completion': decimal.Decimal('0.012'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'RMB'
+                },
+                'ernie-bot-turbo': {
+                    'prompt': decimal.Decimal('0.008'),
+                    'completion': decimal.Decimal('0.008'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'RMB'
+                },
+                'bloomz-7b': {
+                    'prompt': decimal.Decimal('0.006'),
+                    'completion': decimal.Decimal('0.006'),
+                    'unit': decimal.Decimal('0.001'),
+                    'currency': 'RMB'
                 }
-        return config
-
-    def get_currency(self):
-        return 'RMB'
+            }
+        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
+        return self.price_config
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

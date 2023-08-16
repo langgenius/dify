@@ -170,17 +170,20 @@ class BaseLLM(BaseProviderModel):
                 'prompt': decimal.Decimal('0'),
                 'completion': decimal.Decimal('0'),
                 'unit': decimal.Decimal('0'),
+                'currency': 'USD'
             }
         }
         """
-        base_model_name = self.name
-        return {
-            base_model_name:{
+        price_config = {
+            self.name:{
                 'prompt': decimal.Decimal('0'),
                 'completion': decimal.Decimal('0'),
                 'unit': decimal.Decimal('0'),
+                'currency': 'USD'
             }
         }
+        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
+        return self.price_config
 
     def calc_tokens_price(self, tokens:int, message_type: MessageType):
         """
@@ -204,7 +207,7 @@ class BaseLLM(BaseProviderModel):
         get token price.
 
         :param message_type:
-        :return:
+        :return: decimal.Decimal('0.0001')
         """
         base_model_name = self.name
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
@@ -213,14 +216,14 @@ class BaseLLM(BaseProviderModel):
             unit_price = self.model_unit_prices_config[base_model_name]['completion']
         return unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
 
-    @abstractmethod
     def get_currency(self):
         """
         get token currency.
 
-        :return:
+        :return: get from price config, default 'USD'
         """
-        raise NotImplementedError
+        currency = self.model_unit_prices_config[self.name]['currency']
+        return currency
 
     def get_model_kwargs(self):
         return self.model_kwargs

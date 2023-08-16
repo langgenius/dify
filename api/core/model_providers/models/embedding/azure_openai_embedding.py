@@ -28,6 +28,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             max_retries=1,
             **self.credentials
         )
+        # TODO load price_config from configs(db)
 
         super().__init__(model_provider, client, name)
 
@@ -60,16 +61,15 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             }
         }
         """
-        config = {
+        price_config = {
             'text-embedding-ada-002':{
                 'completion': decimal.Decimal('0.0001'),
                 'unit': decimal.Decimal('0.001'),
+                'currency': 'USD'
             }
         }
-        return config
-
-    def get_currency(self):
-        return 'USD'
+        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
+        return self.price_config
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):
