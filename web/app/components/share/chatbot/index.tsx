@@ -454,7 +454,7 @@ const Main: FC<IMainProps> = ({
         }
       },
       onError(errorMessage, errorCode) {
-        if (errorCode === 'provider_not_initialize')
+        if (['provider_not_initialize', 'completion_request_error'].includes(errorCode as string))
           setShouldReload(true)
         setResponsingFalse()
         // role back placeholder answer
