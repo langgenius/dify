@@ -78,6 +78,7 @@ const Apps = () => {
           <Confirm
             isShow
             onCancel={handleCancelShowPayStatusModal}
+            onConfirm={handleCancelShowPayStatusModal}
             type={
               payStatus === 'succeeded'
                 ? 'success'
