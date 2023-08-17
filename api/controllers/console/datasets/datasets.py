@@ -79,7 +79,8 @@ class DatasetListApi(Resource):
                                                           current_user.current_tenant_id, current_user)
 
         # check embedding setting
-        valid_model_list = ProviderService.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS)
+        provider_service = ProviderService()
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
         if len(valid_model_list) == 0:
             raise ProviderNotInitializeError(
                 f"No Embedding Model available. Please configure a valid provider "
