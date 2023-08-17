@@ -352,7 +352,10 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             df = pd.read_csv(file)
             result = []
             for index, row in df.iterrows():
-                data = {'content': row[0], 'answer': row[1]}
+                if document.doc_form == 'qa_model':
+                    data = {'content': row[0], 'answer': row[1]}
+                else:
+                    data = {'content': row[0]}
                 result.append(data)
             if len(result) == 0:
                 raise ValueError("The CSV file is empty.")

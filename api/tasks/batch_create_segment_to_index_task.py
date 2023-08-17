@@ -51,7 +51,6 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
         document_segments = []
         for segment in content:
             content = segment['content']
-            answer = segment['answer']
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             embedding_model = ModelFactory.get_embedding_model(
@@ -81,7 +80,7 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
                 completed_at=datetime.datetime.utcnow()
             )
             if dataset_document.doc_form == 'qa_model':
-                segment_document.answer = answer
+                segment_document.answer = segment['answer']
             db.session.add(segment_document)
             document_segments.append(segment_document)
         # add index to db

@@ -12,11 +12,13 @@ from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.model_params import ModelType
 from libs.helper import TimestampField
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Document
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
+from services.provider_service import ProviderService
 
 dataset_detail_fields = {
     'id': fields.String,
@@ -76,6 +78,18 @@ class DatasetListApi(Resource):
             datasets, total = DatasetService.get_datasets(page, limit, provider,
                                                           current_user.current_tenant_id, current_user)
 
+        # check embedding setting
+        valid_model_list = ProviderService.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS)
+        if len(valid_model_list) == 0:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        model_names = [item['model_name'] for item in valid_model_list]
+        for dataset in datasets:
+            if dataset.embedding_model in model_names:
+                dataset['embedding_available'] = True
+            else:
+                dataset['embedding_available'] = False
         response = {
             'data': marshal(datasets, dataset_detail_fields),
             'has_more': len(datasets) == limit,
@@ -101,7 +115,6 @@ class DatasetListApi(Resource):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
-
         try:
             ModelFactory.get_embedding_model(
                 tenant_id=current_user.current_tenant_id

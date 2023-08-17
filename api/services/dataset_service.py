@@ -9,6 +9,7 @@ from typing import Optional, List
 from flask import current_app
 from sqlalchemy import func
 
+from core.index.index import IndexBuilder
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from flask_login import current_user
@@ -25,6 +26,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.vector_service import VectorService
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.document_indexing_task import document_indexing_task
@@ -89,12 +91,16 @@ class DatasetService:
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
                 f'Dataset with name {name} already exists.')
-
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=current_user.current_tenant_id
+        )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
+        dataset.embedding_model_provider = embedding_model.model_provider.provider_name
+        dataset.embedding_model = embedding_model.name
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -895,6 +901,9 @@ class SegmentService:
             content=content,
             word_count=len(content),
             tokens=tokens,
+            status='completed',
+            indexing_at=datetime.datetime.utcnow(),
+            completed_at=datetime.datetime.utcnow(),
             created_by=current_user.id
         )
         if document.doc_form == 'qa_model':
@@ -902,10 +911,19 @@ class SegmentService:
 
         db.session.add(segment_document)
         db.session.commit()
-        indexing_cache_key = 'segment_{}_indexing'.format(segment_document.id)
-        redis_client.setex(indexing_cache_key, 600, 1)
-        create_segment_to_index_task.delay(segment_document.id, args['keywords'])
-        return segment_document
+
+        # save vector index
+        try:
+            VectorService.create_segment_vector(args['keywords'], segment_document, dataset)
+        except Exception as e:
+            logging.exception("create segment index failed")
+            segment_document.enabled = False
+            segment_document.disabled_at = datetime.datetime.utcnow()
+            segment_document.status = 'error'
+            segment_document.error = str(e)
+            db.session.commit()
+        segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
+        return segment
 
     @classmethod
     def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):
@@ -913,42 +931,56 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
-        content = args['content']
-        if segment.content == content:
-            if document.doc_form == 'qa_model':
-                segment.answer = args['answer']
-            if args['keywords']:
-                segment.keywords = args['keywords']
-            db.session.add(segment)
-            db.session.commit()
-            # update segment index task
-            redis_client.setex(indexing_cache_key, 600, 1)
-            update_segment_keyword_index_task.delay(segment.id)
-        else:
-            segment_hash = helper.generate_text_hash(content)
+        try:
+            content = args['content']
+            if segment.content == content:
+                if document.doc_form == 'qa_model':
+                    segment.answer = args['answer']
+                if args['keywords']:
+                    segment.keywords = args['keywords']
+                db.session.add(segment)
+                db.session.commit()
+                # update segment index task
+                if args['keywords']:
+                    kw_index = IndexBuilder.get_index(dataset, 'economy')
+                    # delete from keyword index
+                    kw_index.delete_by_ids([segment.index_node_id])
+                    # save keyword index
+                    kw_index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
+            else:
+                segment_hash = helper.generate_text_hash(content)
 
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
 
-            # calc embedding use tokens
-            tokens = embedding_model.get_num_tokens(content)
-            segment.content = content
-            segment.index_node_hash = segment_hash
-            segment.word_count = len(content)
-            segment.tokens = tokens
-            segment.status = 'updating'
-            segment.updated_by = current_user.id
-            segment.updated_at = datetime.datetime.utcnow()
-            if document.doc_form == 'qa_model':
-                segment.answer = args['answer']
-            db.session.add(segment)
+                # calc embedding use tokens
+                tokens = embedding_model.get_num_tokens(content)
+                segment.content = content
+                segment.index_node_hash = segment_hash
+                segment.word_count = len(content)
+                segment.tokens = tokens
+                segment.status = 'completed'
+                segment.indexing_at = datetime.datetime.utcnow()
+                segment.completed_at = datetime.datetime.utcnow()
+                segment.updated_by = current_user.id
+                segment.updated_at = datetime.datetime.utcnow()
+                if document.doc_form == 'qa_model':
+                    segment.answer = args['answer']
+                db.session.add(segment)
+                db.session.commit()
+                # update segment vector index
+                VectorService.create_segment_vector(args['keywords'], segment, dataset)
+        except Exception as e:
+            logging.exception("update segment index failed")
+            segment.enabled = False
+            segment.disabled_at = datetime.datetime.utcnow()
+            segment.status = 'error'
+            segment.error = str(e)
             db.session.commit()
-            # update segment index task
-            redis_client.setex(indexing_cache_key, 600, 1)
-            update_segment_index_task.delay(segment.id, args['keywords'])
+        segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment.id).first()
         return segment
 
     @classmethod
