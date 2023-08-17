@@ -258,6 +258,8 @@ def sync_anthropic_hosted_providers():
     click.echo(click.style('Start sync anthropic hosted providers.', fg='green'))
     count = 0
 
+    new_quota_limit = hosted_model_providers.anthropic.quota_limit
+
     page = 1
     while True:
         try:
@@ -265,6 +267,7 @@ def sync_anthropic_hosted_providers():
                 Provider.provider_name == 'anthropic',
                 Provider.provider_type == ProviderType.SYSTEM.value,
                 Provider.quota_type == ProviderQuotaType.TRIAL.value,
+                Provider.quota_limit != new_quota_limit
             ).order_by(Provider.created_at.desc()).paginate(page=page, per_page=100)
         except NotFound:
             break
@@ -272,9 +275,9 @@ def sync_anthropic_hosted_providers():
         page += 1
         for provider in providers:
             try:
-                click.echo('Syncing tenant anthropic hosted provider: {}'.format(provider.tenant_id))
+                click.echo('Syncing tenant anthropic hosted provider: {}, origin: limit {}, used {}'
+                           .format(provider.tenant_id, provider.quota_limit, provider.quota_used))
                 original_quota_limit = provider.quota_limit
-                new_quota_limit = hosted_model_providers.anthropic.quota_limit
                 division = math.ceil(new_quota_limit / 1000)
 
                 provider.quota_limit = new_quota_limit if original_quota_limit == 1000 \
