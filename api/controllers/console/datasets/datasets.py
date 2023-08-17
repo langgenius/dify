@@ -36,7 +36,8 @@ dataset_detail_fields = {
     'updated_by': fields.String,
     'updated_at': TimestampField,
     'embedding_model': fields.String,
-    'embedding_model_provider': fields.String
+    'embedding_model_provider': fields.String,
+    'embedding_available': fields.Boolean
 }
 
 dataset_query_detail_fields = {
@@ -86,13 +87,14 @@ class DatasetListApi(Resource):
                 f"No Embedding Model available. Please configure a valid provider "
                 f"in the Settings -> Model Provider.")
         model_names = [item['model_name'] for item in valid_model_list]
-        for dataset in datasets:
-            if dataset.embedding_model in model_names:
-                dataset['embedding_available'] = True
+        data = marshal(datasets, dataset_detail_fields)
+        for item in data:
+            if item.embedding_model in model_names:
+                item['embedding_available'] = True
             else:
-                dataset['embedding_available'] = False
+                item['embedding_available'] = False
         response = {
-            'data': marshal(datasets, dataset_detail_fields),
+            'data': data,
             'has_more': len(datasets) == limit,
             'limit': limit,
             'total': total,
