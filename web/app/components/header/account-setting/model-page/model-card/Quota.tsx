@@ -6,6 +6,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { getPayUrl } from '@/service/common'
 import Button from '@/app/components/base/button'
+import { formatNumber } from '@/utils/format'
 
 type QuotaProps = {
   currentProvider: Provider
@@ -49,10 +50,10 @@ const Quota: FC<QuotaProps> = ({
 
   const renderQuota = () => {
     if (systemPaid?.is_valid)
-      return systemPaid.quota_limit - systemPaid.quota_used
+      return formatNumber(systemPaid.quota_limit - systemPaid.quota_used)
 
     if (systemTrial.is_valid)
-      return systemTrial.quota_limit - systemTrial.quota_used
+      return formatNumber(systemTrial.quota_limit - systemTrial.quota_used)
   }
   const renderUnit = () => {
     if (systemPaid?.is_valid)

@@ -5,6 +5,7 @@ import s from './common.module.css'
 import Modal from '@/app/components/base/modal'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'
 
 type ConfirmCommonProps = {
@@ -13,7 +14,10 @@ type ConfirmCommonProps = {
   onCancel: () => void
   title: string
   desc?: string
-  onConfirm: () => void
+  onConfirm?: () => void
+  showOperate?: boolean
+  showOperateCancel?: boolean
+  confirmText?: string
 }
 
 const ConfirmCommon: FC<ConfirmCommonProps> = ({
@@ -23,6 +27,9 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
   title,
   desc,
   onConfirm,
+  showOperate = true,
+  showOperateCancel = true,
+  confirmText,
 }) => {
   const { t } = useTranslation()
 
@@ -31,11 +38,15 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
       icon: <AlertCircle className='w-6 h-6 text-[#D92D20]' />,
       confirmText: t('common.operation.remove'),
     },
+    success: {
+      icon: <CheckCircle className='w-6 h-6 text-[#039855]' />,
+      confirmText: t('common.operation.ok'),
+    },
   }
 
   return (
     <Modal isShow={isShow} onClose={() => {}} className='!w-[480px] !max-w-[480px] !p-0 !rounded-2xl'>
-      <div className={cn(s.wrapper, 'relative p-8')}>
+      <div className={cn(s[`wrapper-${type}`], 'relative p-8')}>
         <div className='flex items-center justify-center absolute top-4 right-4 w-8 h-8 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -46,21 +57,29 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
         {
           desc && <div className='mt-1 text-sm text-gray-500'>{desc}</div>
         }
-        <div className='flex items-center justify-end mt-10'>
-          <Button
-            className='mr-2 min-w-24 text-sm font-medium !text-gray-700'
-            onClick={onCancel}
-          >
-            {t('common.operation.cancel')}
-          </Button>
-          <Button
-            type='primary'
-            className=''
-            onClick={onConfirm}
-          >
-            {CONFIRM_MAP[type].confirmText}
-          </Button>
-        </div>
+        {
+          showOperate && (
+            <div className='flex items-center justify-end mt-10'>
+              {
+                showOperateCancel && (
+                  <Button
+                    className='mr-2 min-w-24 text-sm font-medium !text-gray-700'
+                    onClick={onCancel}
+                  >
+                    {t('common.operation.cancel')}
+                  </Button>
+                )
+              }
+              <Button
+                type='primary'
+                className=''
+                onClick={onConfirm}
+              >
+                {confirmText || CONFIRM_MAP[type].confirmText}
+              </Button>
+            </div>
+          )
+        }
       </div>
     </Modal>
   )
