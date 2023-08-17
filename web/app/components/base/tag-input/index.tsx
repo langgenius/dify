@@ -73,7 +73,7 @@ const TagInput: FC<TagInputProps> = ({
       {
         !disableAdd && (
           <AutosizeInput
-            inputClassName='outline-none appearance-none placeholder:text-gray-300 caret-primary-600'
+            inputClassName='outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400'
             className={`
               mt-1 py-1 rounded-lg border border-transparent text-sm max-w-[300px] overflow-hidden
               ${focused && 'px-2 border !border-dashed !border-gray-200'}
