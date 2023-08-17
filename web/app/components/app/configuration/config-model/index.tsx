@@ -257,7 +257,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
           providerName={provider}
         />
         <div className='text-[13px] text-gray-900 font-medium'>
-          <ModelName modelId={selectedModel.name} />
+          <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
       </div>
