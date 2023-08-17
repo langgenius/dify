@@ -74,8 +74,10 @@ class ProviderCheckoutService:
                     line_item
                 ],
                 mode='payment',
-                success_url=current_app.config.get("CONSOLE_WEB_URL") + '?provider_payment=succeeded',
-                cancel_url=current_app.config.get("CONSOLE_WEB_URL") + '?provider_payment=cancelled',
+                success_url=current_app.config.get("CONSOLE_WEB_URL")
+                            + f'?provider_name={provider_name}&payment_result=succeeded',
+                cancel_url=current_app.config.get("CONSOLE_WEB_URL")
+                           + f'?provider_name={provider_name}&payment_result=cancelled',
                 automatic_tax={'enabled': True},
             )
         except Exception as e:
@@ -96,7 +98,8 @@ class ProviderCheckoutService:
             raise ValueError(f'provider order not found, payment id: {event["data"]["object"]["id"]}')
 
         if provider_order.payment_status != ProviderOrderPaymentStatus.WAIT_PAY.value:
-            raise ValueError(f'provider order payment status is not wait pay, payment id: {event["data"]["object"]["id"]}')
+            raise ValueError(
+                f'provider order payment status is not wait pay, payment id: {event["data"]["object"]["id"]}')
 
         provider_order.transaction_id = event['data']['object']['payment_intent']
         provider_order.currency = event['data']['object']['currency']
