@@ -21,6 +21,7 @@ class SparkLLMClient:
         domain = 'spark-api.xf-yun.com' if not api_domain else api_domain
         api_version = 'v2.1' if model_name == 'spark-v2' else 'v1.1'
 
+        self.chat_domain = 'generalv2' if model_name == 'spark-v2' else 'general'
         self.api_base = f"wss://{domain}/{api_version}/chat"
         self.app_id = app_id
         self.ws_url = self.create_url(
@@ -123,7 +124,7 @@ class SparkLLMClient:
             },
             "parameter": {
                 "chat": {
-                    "domain": "general"
+                    "domain": self.chat_domain
                 }
             },
             "payload": {
