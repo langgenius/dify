@@ -89,7 +89,7 @@ class DatasetListApi(Resource):
         model_names = [item['model_name'] for item in valid_model_list]
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item.embedding_model in model_names:
+            if item['embedding_model'] in model_names:
                 item['embedding_available'] = True
             else:
                 item['embedding_available'] = False
