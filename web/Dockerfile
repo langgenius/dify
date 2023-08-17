@@ -34,6 +34,7 @@ ENV PORT 3000
 
 
 WORKDIR /app/web
+COPY --from=builder /app/web/public ./public
 COPY --from=builder /app/web/.next/standalone ./
 COPY --from=builder /app/web/.next/static ./.next/static
 
