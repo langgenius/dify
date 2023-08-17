@@ -24,6 +24,7 @@ export type DataSet = {
   word_count: number
   embedding_model: string
   embedding_model_provider: string
+  embedding_available: boolean
 }
 
 export type CustomFile = File & {

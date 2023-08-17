@@ -120,15 +120,24 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             {datasets.map(item => (
               <div
                 key={item.id}
-                className={cn(s.item, selected.some(i => i.id === item.id) && s.selected, 'flex justify-between items-center h-10 px-2 rounded-lg bg-white border border-gray-200  cursor-pointer')}
-                onClick={() => toggleSelect(item)}
+                className={cn(s.item, selected.some(i => i.id === item.id) && s.selected, 'flex justify-between items-center h-10 px-2 rounded-lg bg-white border border-gray-200  cursor-pointer', !item.embedding_available && s.disabled)}
+                onClick={() => {
+                  if (!item.embedding_available)
+                    return
+                  toggleSelect(item)
+                }}
               >
-                <div className='flex items-center space-x-2'>
-                  <TypeIcon type="upload_file" size='md' />
-                  <div className='max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap'>{item.name}</div>
+                <div className='mr-1 flex items-center'>
+                  <div className={cn('mr-2', !item.embedding_available && 'opacity-50')}>
+                    <TypeIcon type="upload_file" size='md' />
+                  </div>
+                  <div className={cn('max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-50 !max-w-[120px]')}>{item.name}</div>
+                  {!item.embedding_available && (
+                    <span className='ml-1 shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                  )}
                 </div>
 
-                <div className='flex text-xs text-gray-500 overflow-hidden whitespace-nowrap'>
+                <div className={cn('shrink-0 flex text-xs text-gray-500 overflow-hidden whitespace-nowrap', !item.embedding_available && 'opacity-50')}>
                   <span className='max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.word_count)}</span>
                   {t('appDebug.feature.dataSet.words')}
                   <span className='px-0.5'>·</span>

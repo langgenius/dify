@@ -16,6 +16,7 @@ const translation = {
   intro4: '或可以',
   intro5: '创建',
   intro6: '为独立的 ChatGPT 插件发布使用',
+  unavailable: '不可用',
 }
 
 export default translation

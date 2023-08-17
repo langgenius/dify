@@ -16,6 +16,7 @@ const translation = {
   intro4: 'or it ',
   intro5: 'can be created',
   intro6: ' as a standalone ChatGPT index plug-in to publish',
+  unavailable: 'Unavailable',
 }
 
 export default translation
