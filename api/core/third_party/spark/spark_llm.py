@@ -80,7 +80,10 @@ class SparkLLMClient:
         ws.run_forever(sslopt={"cert_reqs": ssl.CERT_NONE})
 
     def on_error(self, ws, error):
-        self.queue.put({'error': error})
+        self.queue.put({
+            'status_code': error.status_code,
+            'error': error.resp_body.decode('utf-8')
+        })
         ws.close()
 
     def on_close(self, ws, close_status_code, close_reason):
@@ -143,7 +146,14 @@ class SparkLLMClient:
         while True:
             content = self.queue.get()
             if 'error' in content:
-                raise SparkError(content['error'])
+                if content['status_code'] == 401:
+                    raise SparkError('[Spark] The credentials you provided are incorrect. '
+                                     'Please double-check and fill them in again.')
+                elif content['status_code'] == 403:
+                    raise SparkError("[Spark] Sorry, the credentials you provided are access denied. "
+                                     "Please try again after obtaining the necessary permissions.")
+                else:
+                    raise SparkError(f"[Spark] code: {content['status_code']}, error: {content['error']}")
 
             if 'data' not in content:
                 break
