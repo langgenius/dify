@@ -40,6 +40,11 @@
             "completion": "0.02",
             "unit": "0.001",
             "currency": "USD"
+        },
+        "text-embedding-ada-002":{
+            "completion": "0.0001",
+            "unit": "0.001",
+            "currency": "USD"
         }
     }
 }

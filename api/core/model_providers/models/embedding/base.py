@@ -8,7 +8,8 @@ from langchain.schema.language_model import _get_token_ids_default_method
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelType
 from core.model_providers.providers.base import BaseModelProvider
-
+import logging
+logger = logging.getLogger(__name__)
 
 class BaseEmbedding(BaseProviderModel):
     name: str
@@ -19,50 +20,55 @@ class BaseEmbedding(BaseProviderModel):
         self.name = name
 
     @property
-    def model_unit_prices_config(self):
-        """
-        get model unit prices config.
-
-        :return: object format {
-            "model_name": {
-                'completion': decimal.Decimal('0'),
-                'unit': decimal.Decimal('0'),
+    def price_config(self) -> dict:
+        def get_or_default():
+            base_model_name = self.credentials.get("base_model_name")
+            default_price_config = {
+                    'prompt': decimal.Decimal('0'),
+                    'completion': decimal.Decimal('0'),
+                    'unit': decimal.Decimal('0'),
+                    'currency': 'USD'
+                }
+            rules = self.model_provider.get_rules()
+            price_config = rules['price_config'][base_model_name] if 'price_config' in rules else default_price_config
+            price_config = {
+                'prompt': decimal.Decimal(price_config['prompt']),
+                'completion': decimal.Decimal(price_config['completion']),
+                'unit': decimal.Decimal(price_config['unit']),
+                'currency': price_config['currency']
             }
-        }
-        """
-        base_model_name = self.name
-        return {
-            base_model_name:{
-                'completion': decimal.Decimal('0'),
-                'unit': decimal.Decimal('0'),
-                'currency': 'USD'
-            }
-        }
+            return price_config
+        
+        self._price_config = self._price_config if hasattr(self, '_price_config') else get_or_default()
 
-    def calc_tokens_price(self, tokens:int):
+        logger.debug(f"model: {self.name} price_config: {self._price_config}")
+        return self._price_config
+
+    def calc_tokens_price(self, tokens:int) -> decimal.Decimal:
         """
         calc tokens total price.
 
         :param tokens:
         :return: decimal.Decimal('0.0000001')
         """
-        base_model_name = self.name
-        unit_price = self.model_unit_prices_config[base_model_name]['completion']
-        unit = self.model_unit_prices_config[base_model_name]['unit']
+        unit_price = self._price_config['completion']
+        unit = self._price_config['unit']
         total_price = tokens * unit_price * unit
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+        total_price = total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+        logging.debug(f"tokens={tokens}, unit_price={unit_price}, unit={unit}, total_price:{total_price}")
+        return total_price
 
-    def get_tokens_unit_price(self):
+    def get_tokens_unit_price(self) -> decimal.Decimal:
         """
         get token price.
 
         :return: decimal.Decimal('0.0001')
         
         """
-        base_model_name = self.name
-        unit_price = self.model_unit_prices_config[base_model_name]['completion']
-        return unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
-
+        unit_price = self._price_config['completion']
+        unit_price = unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
+        logger.debug(f'unit_price:{unit_price}')
+        return unit_price
 
     def get_num_tokens(self, text: str) -> int:
         """
@@ -82,7 +88,7 @@ class BaseEmbedding(BaseProviderModel):
 
         :return: get from price config, default 'USD'
         """
-        currency = self.model_unit_prices_config[self.name]['currency']
+        currency = self._price_config['currency']
         return currency
 
     @abstractmethod

@@ -28,7 +28,6 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             max_retries=1,
             **self.credentials
         )
-        # TODO load price_config from configs(db)
 
         super().__init__(model_provider, client, name)
 
@@ -48,28 +47,6 @@ class AzureOpenAIEmbedding(BaseEmbedding):
 
         # calculate the number of tokens in the encoded text
         return len(tokenized_text)
-
-    @property
-    def model_unit_prices_config(self):
-        """
-        get model unit prices config.
-
-        :return: object format {
-            "model_name": {
-                'completion': decimal.Decimal('0'),
-                'unit': decimal.Decimal('0'),
-            }
-        }
-        """
-        price_config = {
-            'text-embedding-ada-002':{
-                'completion': decimal.Decimal('0.0001'),
-                'unit': decimal.Decimal('0.001'),
-                'currency': 'USD'
-            }
-        }
-        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
-        return self.price_config
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):
