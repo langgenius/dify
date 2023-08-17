@@ -471,6 +471,7 @@ class ProviderService:
             for model in model_list:
                 valid_model_dict = {
                     "model_name": model['id'],
+                    "model_display_name": model['name'],
                     "model_type": model_type,
                     "model_provider": {
                         "provider_name": provider.provider_name,
