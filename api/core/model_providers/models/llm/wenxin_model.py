@@ -49,31 +49,6 @@ class WenxinModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens(prompts), 0)
 
-    @property
-    def model_unit_prices_config(self):
-        price_config = {
-                'ernie-bot': {
-                    'prompt': decimal.Decimal('0.012'),
-                    'completion': decimal.Decimal('0.012'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'RMB'
-                },
-                'ernie-bot-turbo': {
-                    'prompt': decimal.Decimal('0.008'),
-                    'completion': decimal.Decimal('0.008'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'RMB'
-                },
-                'bloomz-7b': {
-                    'prompt': decimal.Decimal('0.006'),
-                    'completion': decimal.Decimal('0.006'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'RMB'
-                }
-            }
-        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
-        return self.price_config
-
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
         for k, v in provider_model_kwargs.items():

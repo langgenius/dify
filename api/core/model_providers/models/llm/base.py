@@ -11,6 +11,8 @@ from core.model_providers.models.entity.message import PromptMessage, MessageTyp
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.llms.fake import FakeLLM
+import logging
+logger = logging.getLogger(__name__)
 
 
 class BaseLLM(BaseProviderModel):
@@ -60,6 +62,31 @@ class BaseLLM(BaseProviderModel):
     @abstractmethod
     def _init_client(self) -> Any:
         raise NotImplementedError
+
+    @property
+    def price_config(self) -> dict:
+        def get_or_default():
+            base_model_name = self.credentials.get("base_model_name")
+            default_price_config = {
+                    'prompt': decimal.Decimal('0'),
+                    'completion': decimal.Decimal('0'),
+                    'unit': decimal.Decimal('0'),
+                    'currency': 'USD'
+                }
+            rules = self.model_provider.get_rules()
+            price_config = rules['price_config'][base_model_name] if 'price_config' in rules else default_price_config
+            price_config = {
+                'prompt': decimal.Decimal(price_config['prompt']),
+                'completion': decimal.Decimal(price_config['completion']),
+                'unit': decimal.Decimal(price_config['unit']),
+                'currency': price_config['currency']
+            }
+            return price_config
+        
+        self._price_config = self._price_config if hasattr(self, '_price_config') else get_or_default()
+
+        logger.debug(f"model: {self.name} price_config: {self._price_config}")
+        return self._price_config
 
     def run(self, messages: List[PromptMessage],
             stop: Optional[List[str]] = None,
@@ -159,31 +186,6 @@ class BaseLLM(BaseProviderModel):
         :return:
         """
         raise NotImplementedError
-    
-    @property
-    def model_unit_prices_config(self):
-        """
-        get model unit prices config.
-
-        :return: object format {
-            "model_name": {
-                'prompt': decimal.Decimal('0'),
-                'completion': decimal.Decimal('0'),
-                'unit': decimal.Decimal('0'),
-                'currency': 'USD'
-            }
-        }
-        """
-        price_config = {
-            self.name:{
-                'prompt': decimal.Decimal('0'),
-                'completion': decimal.Decimal('0'),
-                'unit': decimal.Decimal('0'),
-                'currency': 'USD'
-            }
-        }
-        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
-        return self.price_config
 
     def calc_tokens_price(self, tokens:int, message_type: MessageType):
         """
@@ -193,14 +195,16 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return:
         """
-        base_model_name = self.name
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = self.model_unit_prices_config[base_model_name]['prompt']
+            unit_price = self.price_config['prompt']
         else:
-            unit_price = self.model_unit_prices_config[base_model_name]['completion']
-        unit = self.model_unit_prices_config[base_model_name]['unit']
+            unit_price = self.price_config['completion']
+        unit = self.price_config['unit']
+
         total_price = tokens * unit_price * unit
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+        total_price = total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
+        logging.debug(f"tokens={tokens}, unit_price={unit_price}, unit={unit}, total_price:{total_price}")
+        return total_price
 
     def get_tokens_unit_price(self, message_type: MessageType):
         """
@@ -209,12 +213,13 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return: decimal.Decimal('0.0001')
         """
-        base_model_name = self.name
         if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = self.model_unit_prices_config[base_model_name]['prompt']
+            unit_price = self.price_config['prompt']
         else:
-            unit_price = self.model_unit_prices_config[base_model_name]['completion']
-        return unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
+            unit_price = self.price_config['completion']
+        unit_price = unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
+        logging.debug(f"unit_price={unit_price}")
+        return unit_price
 
     def get_currency(self):
         """
@@ -222,7 +227,7 @@ class BaseLLM(BaseProviderModel):
 
         :return: get from price config, default 'USD'
         """
-        currency = self.model_unit_prices_config[self.name]['currency']
+        currency = self.price_config['currency']
         return currency
 
     def get_model_kwargs(self):

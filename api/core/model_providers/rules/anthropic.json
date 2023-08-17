@@ -10,5 +10,19 @@
         "quota_unit": "times",
         "quota_limit": 1000
     },
-    "model_flexibility": "fixed"
+    "model_flexibility": "fixed",
+    "price_config": {
+        "claude-instant-1": {
+            "prompt": "1.63",
+            "completion": "5.51",
+            "unit": "0.000001",
+            "currency": "USD"
+        },
+        "claude-2": {
+            "prompt": "11.02",
+            "completion": "32.68",
+            "unit": "0.000001",
+            "currency": "USD"
+        }
+    }
 }

@@ -118,43 +118,6 @@ class OpenAIModel(BaseLLM):
         else:
             return max(self._client.get_num_tokens_from_messages(prompts) - len(prompts), 0)
 
-    @property
-    def model_unit_prices_config(self):
-        price_config = {
-                'gpt-4': {
-                    'prompt': decimal.Decimal('0.03'),
-                    'completion': decimal.Decimal('0.06'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'USD'
-                },
-                'gpt-4-32k': {
-                    'prompt': decimal.Decimal('0.06'),
-                    'completion': decimal.Decimal('0.12'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'USD'
-                },
-                'gpt-3.5-turbo': {
-                    'prompt': decimal.Decimal('0.0015'),
-                    'completion': decimal.Decimal('0.002'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'USD'
-                },
-                'gpt-3.5-turbo-16k': {
-                    'prompt': decimal.Decimal('0.003'),
-                    'completion': decimal.Decimal('0.004'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'USD'
-                },
-                'text-davinci-003': {
-                    'prompt': decimal.Decimal('0.02'),
-                    'completion': decimal.Decimal('0.02'),
-                    'unit': decimal.Decimal('0.001'),
-                    'currency': 'USD'
-                },
-            }
-        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
-        return self.price_config
-
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
         if self.name in COMPLETION_MODELS:

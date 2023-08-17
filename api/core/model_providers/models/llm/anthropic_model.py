@@ -20,7 +20,6 @@ class AnthropicModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        # TODO load price_config from configs(db)
         return ChatAnthropic(
             model=self.name,
             streaming=self.streaming,
@@ -54,25 +53,6 @@ class AnthropicModel(BaseLLM):
         """
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens_from_messages(prompts) - len(prompts), 0)
-
-    @property
-    def model_unit_prices_config(self):
-        price_config = {
-            'claude-instant-1': {
-                'prompt': decimal.Decimal('1.63'),
-                'completion': decimal.Decimal('5.51'),
-                'unit': decimal.Decimal('0.000001'),
-                'currency': 'USD'
-            },
-            'claude-2': {
-                'prompt': decimal.Decimal('11.02'),
-                'completion': decimal.Decimal('32.68'),
-                'unit': decimal.Decimal('0.000001'),
-                'currency': 'USD'
-            },
-        }
-        self.price_config = self.price_config if hasattr(self, 'price_config') else price_config
-        return self.price_config
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
