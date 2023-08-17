@@ -1,7 +1,7 @@
 import { Dialog, Transition } from '@headlessui/react'
 import { Fragment } from 'react'
-import ConfirmUI from '../confirm-ui'
 import { useTranslation } from 'react-i18next'
+import ConfirmUI from '../confirm-ui'
 
 // https://headlessui.com/react/dialog
 

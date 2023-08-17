@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from './index.module.css'
-import type { File } from '@/models/datasets'
+import type { CustomFile as File } from '@/models/datasets'
 import { fetchFilePreview } from '@/service/common'
 
 type IProps = {
@@ -37,7 +37,7 @@ const FilePreview = ({
   }
 
   useEffect(() => {
-    if (file) {
+    if (file?.id) {
       setLoading(true)
       getPreviewContent(file.id)
     }

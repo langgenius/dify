@@ -14,6 +14,7 @@ from core.callback_handler.main_chain_gather_callback_handler import MainChainGa
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
 from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
 from core.conversation_message_task import ConversationMessageTask
+from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.model_params import ModelKwargs, ModelMode
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
@@ -72,19 +73,22 @@ class OrchestratorRuleParser:
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
-                         or agent_model_instance.name not in ['openai', 'azure_openai']:
+                         or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
                 if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
                     planning_strategy = PlanningStrategy.REACT_ROUTER
 
-            summary_model_instance = ModelFactory.get_text_generation_model(
-                tenant_id=self.tenant_id,
-                model_kwargs=ModelKwargs(
-                    temperature=0,
-                    max_tokens=500
+            try:
+                summary_model_instance = ModelFactory.get_text_generation_model(
+                    tenant_id=self.tenant_id,
+                    model_kwargs=ModelKwargs(
+                        temperature=0,
+                        max_tokens=500
+                    )
                 )
-            )
+            except ProviderTokenNotInitError as e:
+                summary_model_instance = None
 
             tools = self.to_tools(
                 tool_configs=tool_configs,

@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import json
+import logging
 from datetime import datetime
 
 from flask_login import login_required, current_user
@@ -11,7 +12,9 @@ from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_factory import ModelFactory
+from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType
 from events.app_event import app_was_created, app_was_deleted
 from libs.helper import TimestampField
@@ -124,12 +127,39 @@ class AppListApi(Resource):
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
 
+        try:
+            default_model = ModelFactory.get_text_generation_model(
+                tenant_id=current_user.current_tenant_id
+            )
+        except (ProviderTokenNotInitError, LLMBadRequestError):
+            default_model = None
+        except Exception as e:
+            logging.exception(e)
+            default_model = None
+
         if args['model_config'] is not None:
             # validate config
+            model_config_dict = args['model_config']
+
+            # get model provider
+            model_provider = ModelProviderFactory.get_preferred_model_provider(
+                current_user.current_tenant_id,
+                model_config_dict["model"]["provider"]
+            )
+
+            if not model_provider:
+                if not default_model:
+                    raise ProviderNotInitializeError(
+                        f"No Default System Reasoning Model available. Please configure "
+                        f"in the Settings -> Model Provider.")
+                else:
+                    model_config_dict["model"]["provider"] = default_model.model_provider.provider_name
+                    model_config_dict["model"]["name"] = default_model.name
+
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=args['model_config']
+                config=model_config_dict
             )
 
             app = App(
@@ -141,21 +171,8 @@ class AppListApi(Resource):
                 status='normal'
             )
 
-            app_model_config = AppModelConfig(
-                provider="",
-                model_id="",
-                configs={},
-                opening_statement=model_configuration['opening_statement'],
-                suggested_questions=json.dumps(model_configuration['suggested_questions']),
-                suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
-                speech_to_text=json.dumps(model_configuration['speech_to_text']),
-                more_like_this=json.dumps(model_configuration['more_like_this']),
-                sensitive_word_avoidance=json.dumps(model_configuration['sensitive_word_avoidance']),
-                model=json.dumps(model_configuration['model']),
-                user_input_form=json.dumps(model_configuration['user_input_form']),
-                pre_prompt=model_configuration['pre_prompt'],
-                agent_mode=json.dumps(model_configuration['agent_mode']),
-            )
+            app_model_config = AppModelConfig()
+            app_model_config = app_model_config.from_model_config_dict(model_configuration)
         else:
             if 'mode' not in args or args['mode'] is None:
                 abort(400, message="mode is required")
@@ -165,20 +182,22 @@ class AppListApi(Resource):
             app = App(**model_config_template['app'])
             app_model_config = AppModelConfig(**model_config_template['model_config'])
 
-            default_model = ModelFactory.get_default_model(
-                tenant_id=current_user.current_tenant_id,
-                model_type=ModelType.TEXT_GENERATION
+            # get model provider
+            model_provider = ModelProviderFactory.get_preferred_model_provider(
+                current_user.current_tenant_id,
+                app_model_config.model_dict["provider"]
             )
 
-            if default_model:
-                model_dict = app_model_config.model_dict
-                model_dict['provider'] = default_model.provider_name
-                model_dict['name'] = default_model.model_name
-                app_model_config.model = json.dumps(model_dict)
-            else:
-                raise ProviderNotInitializeError(
-                    f"No Text Generation Model available. Please configure a valid provider "
-                    f"in the Settings -> Model Provider.")
+            if not model_provider:
+                if not default_model:
+                    raise ProviderNotInitializeError(
+                        f"No Default System Reasoning Model available. Please configure "
+                        f"in the Settings -> Model Provider.")
+                else:
+                    model_dict = app_model_config.model_dict
+                    model_dict['provider'] = default_model.model_provider.provider_name
+                    model_dict['name'] = default_model.name
+                    app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']
         app.mode = args['mode']
@@ -397,29 +416,6 @@ class AppApiStatus(Resource):
         return app
 
 
-class AppRateLimit(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_detail_fields)
-    def post(self, app_id):
-        parser = reqparse.RequestParser()
-        parser.add_argument('api_rpm', type=inputs.natural, required=False, location='json')
-        parser.add_argument('api_rph', type=inputs.natural, required=False, location='json')
-        args = parser.parse_args()
-
-        app_id = str(app_id)
-        app = _get_app(app_id, current_user.current_tenant_id)
-
-        if args.get('api_rpm'):
-            app.api_rpm = args.get('api_rpm')
-        if args.get('api_rph'):
-            app.api_rph = args.get('api_rph')
-        app.updated_at = datetime.utcnow()
-        db.session.commit()
-        return app
-
-
 class AppCopy(Resource):
     @staticmethod
     def create_app_copy(app):
@@ -439,22 +435,9 @@ class AppCopy(Resource):
 
     @staticmethod
     def create_app_model_config_copy(app_config, copy_app_id):
-        copy_app_model_config = AppModelConfig(
-            app_id=copy_app_id,
-            provider=app_config.provider,
-            model_id=app_config.model_id,
-            configs=app_config.configs,
-            opening_statement=app_config.opening_statement,
-            suggested_questions=app_config.suggested_questions,
-            suggested_questions_after_answer=app_config.suggested_questions_after_answer,
-            speech_to_text=app_config.speech_to_text,
-            more_like_this=app_config.more_like_this,
-            sensitive_word_avoidance=app_config.sensitive_word_avoidance,
-            model=app_config.model,
-            user_input_form=app_config.user_input_form,
-            pre_prompt=app_config.pre_prompt,
-            agent_mode=app_config.agent_mode
-        )
+        copy_app_model_config = app_config.copy()
+        copy_app_model_config.app_id = copy_app_id
+
         return copy_app_model_config
 
     @setup_required
@@ -482,16 +465,6 @@ class AppCopy(Resource):
         return copy_app, 201
 
 
-class AppExport(Resource):
-
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, app_id):
-        # todo
-        pass
-
-
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppTemplateApi, '/app-templates')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')
@@ -500,4 +473,3 @@ api.add_resource(AppNameApi, '/apps/<uuid:app_id>/name')
 api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
-api.add_resource(AppRateLimit, '/apps/<uuid:app_id>/rate-limit')

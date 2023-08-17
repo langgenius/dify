@@ -118,6 +118,13 @@ export type IWorkspace = {
   current: boolean
 }
 
+export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
+  role: 'normal' | 'admin' | 'owner'
+  providers: Provider[]
+  in_trail: boolean
+  trial_end_reason?: string
+}
+
 export type DataSourceNotionPage = {
   page_icon: null | {
     type: string | null
@@ -160,4 +167,9 @@ export type PluginProvider = {
   credentials: {
     api_key: string
   } | null
+}
+
+export type FileUploadConfigResponse = {
+  file_size_limit: number
+  batch_count_limit: number
 }

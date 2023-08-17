@@ -60,17 +60,7 @@ class ConversationMessageTask:
     def init(self):
         override_model_configs = None
         if self.is_override:
-            override_model_configs = {
-                "model": self.app_model_config.model_dict,
-                "pre_prompt": self.app_model_config.pre_prompt,
-                "agent_mode": self.app_model_config.agent_mode_dict,
-                "opening_statement": self.app_model_config.opening_statement,
-                "suggested_questions": self.app_model_config.suggested_questions_list,
-                "suggested_questions_after_answer": self.app_model_config.suggested_questions_after_answer_dict,
-                "more_like_this": self.app_model_config.more_like_this_dict,
-                "sensitive_word_avoidance": self.app_model_config.sensitive_word_avoidance_dict,
-                "user_input_form": self.app_model_config.user_input_form_list,
-            }
+            override_model_configs = self.app_model_config.to_dict()
 
         introduction = ''
         system_instruction = ''

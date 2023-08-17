@@ -23,6 +23,8 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    delete: 'Delete',
+    settings: 'Settings',
     setup: 'Setup',
     getForFree: 'Get for free',
     reload: 'Reload',
@@ -35,6 +37,7 @@ const translation = {
     char: 'chars',
   },
   actionMsg: {
+    noModification: 'No modifications at the moment.',
     modifiedSuccessfully: 'Modified successfully',
     modificationFailed: 'Modification failed',
     copySuccessfully: 'Copied successfully',

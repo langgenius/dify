@@ -117,7 +117,7 @@ const translation = {
     tooLong: '变量: {{key}} 长度太长。不能超过 16 个字符',
     notValid: '变量: {{key}} 非法。只能包含英文字符，数字和下划线',
     notStartWithNumber: '变量: {{key}} 不能以数字开头',
-    keyAlreadyExists:'变量:{{key}} 已存在',
+    keyAlreadyExists: '变量:{{key}} 已存在',
   },
   variableConig: {
     modalTitle: '变量设置',

@@ -2,8 +2,8 @@
 
 import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
-import { type AppMode } from '@/types/app'
 import style from '../list.module.css'
+import { type AppMode } from '@/types/app'
 
 export type AppModeLabelProps = {
   mode: AppMode

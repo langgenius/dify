@@ -30,8 +30,9 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 @patch('huggingface_hub.hf_api.ModelInfo')
 def test_hosted_inference_api_is_credentials_valid_or_raise_valid(mock_model_info, mocker):
-    mock_model_info.return_value = MagicMock(pipeline_tag='text2text-generation')
-    mocker.patch('langchain.llms.huggingface_hub.HuggingFaceHub._call', return_value="abc")
+    mock_model_info.return_value = MagicMock(pipeline_tag='text2text-generation', cardData={'inference': True})
+    mocker.patch('huggingface_hub.hf_api.HfApi.whoami', return_value="abc")
+    mocker.patch('huggingface_hub.hf_api.HfApi.model_info', return_value=mock_model_info.return_value)
 
     MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
         model_name='test_model_name',

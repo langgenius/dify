@@ -108,7 +108,7 @@ class AppModelConfig(db.Model):
     def suggested_questions_after_answer_dict(self) -> dict:
         return json.loads(self.suggested_questions_after_answer) if self.suggested_questions_after_answer \
             else {"enabled": False}
-    
+
     @property
     def speech_to_text_dict(self) -> dict:
         return json.loads(self.speech_to_text) if self.speech_to_text \
@@ -147,6 +147,46 @@ class AppModelConfig(db.Model):
             "pre_prompt": self.pre_prompt,
             "agent_mode": self.agent_mode_dict
         }
+
+    def from_model_config_dict(self, model_config: dict):
+        self.provider = ""
+        self.model_id = ""
+        self.configs = {}
+        self.opening_statement = model_config['opening_statement']
+        self.suggested_questions = json.dumps(model_config['suggested_questions'])
+        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
+        self.speech_to_text = json.dumps(model_config['speech_to_text']) \
+            if model_config.get('speech_to_text') else None
+        self.more_like_this = json.dumps(model_config['more_like_this'])
+        self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance'])
+        self.model = json.dumps(model_config['model'])
+        self.user_input_form = json.dumps(model_config['user_input_form'])
+        self.pre_prompt = model_config['pre_prompt']
+        self.agent_mode = json.dumps(model_config['agent_mode'])
+
+        return self
+
+    def copy(self):
+        new_app_model_config = AppModelConfig(
+            id=self.id,
+            app_id=self.app_id,
+            provider="",
+            model_id="",
+            configs={},
+            opening_statement=self.opening_statement,
+            suggested_questions=self.suggested_questions,
+            suggested_questions_after_answer=self.suggested_questions_after_answer,
+            speech_to_text=self.speech_to_text,
+            more_like_this=self.more_like_this,
+            sensitive_word_avoidance=self.sensitive_word_avoidance,
+            model=self.model,
+            user_input_form=self.user_input_form,
+            pre_prompt=self.pre_prompt,
+            agent_mode=self.agent_mode
+        )
+
+        return new_app_model_config
+
 
 class RecommendedApp(db.Model):
     __tablename__ = 'recommended_apps'
@@ -234,7 +274,8 @@ class Conversation(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
-    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
+    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select',
+                                          passive_deletes="all")
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
 
@@ -429,7 +470,7 @@ class Message(db.Model):
 
     @property
     def agent_thoughts(self):
-        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id)\
+        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id) \
             .order_by(MessageAgentThought.position.asc()).all()
 
 
@@ -557,7 +598,8 @@ class Site(db.Model):
 
     @property
     def app_base_url(self):
-        return (current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
+        return (
+            current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
 
 
 class ApiToken(db.Model):

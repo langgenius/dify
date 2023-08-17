@@ -11,7 +11,7 @@ import { groupBy } from 'lodash-es'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, CustomFile, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -43,7 +43,7 @@ type StepTwoProps = {
   datasetId?: string
   indexingType?: string
   dataSourceType: DataSourceType
-  files: File[]
+  files: CustomFile[]
   notionPages?: Page[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void

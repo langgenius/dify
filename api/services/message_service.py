@@ -1,3 +1,4 @@
+import json
 from typing import Optional, Union, List
 
 from core.completion import Completion
@@ -5,8 +6,10 @@ from core.generator.llm_generator import LLMGenerator
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, EndUser, Message, MessageFeedback
+from models.model import App, EndUser, Message, MessageFeedback, AppModelConfig
 from services.conversation_service import ConversationService
+from services.errors.app_model_config import AppModelConfigBrokenError
+from services.errors.conversation import ConversationNotExistsError, ConversationCompletedError
 from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError, LastMessageNotExistsError, \
     SuggestedQuestionsAfterAnswerDisabledError
 
@@ -172,12 +175,6 @@ class MessageService:
         if not user:
             raise ValueError('user cannot be None')
 
-        app_model_config = app_model.app_model_config
-        suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
-
-        if check_enabled and suggested_questions_after_answer.get("enabled", False) is False:
-            raise SuggestedQuestionsAfterAnswerDisabledError()
-
         message = cls.get_message(
             app_model=app_model,
             user=user,
@@ -190,10 +187,38 @@ class MessageService:
             user=user
         )
 
+        if not conversation:
+            raise ConversationNotExistsError()
+
+        if conversation.status != 'normal':
+            raise ConversationCompletedError()
+
+        if not conversation.override_model_configs:
+            app_model_config = db.session.query(AppModelConfig).filter(
+                AppModelConfig.id == conversation.app_model_config_id,
+                AppModelConfig.app_id == app_model.id
+            ).first()
+
+            if not app_model_config:
+                raise AppModelConfigBrokenError()
+        else:
+            conversation_override_model_configs = json.loads(conversation.override_model_configs)
+            app_model_config = AppModelConfig(
+                id=conversation.app_model_config_id,
+                app_id=app_model.id,
+            )
+
+            app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
+
+        suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
+
+        if check_enabled and suggested_questions_after_answer.get("enabled", False) is False:
+            raise SuggestedQuestionsAfterAnswerDisabledError()
+
         # get memory of conversation (read-only)
         memory = Completion.get_memory_from_conversation(
             tenant_id=app_model.tenant_id,
-            app_model_config=app_model.app_model_config,
+            app_model_config=app_model_config,
             conversation=conversation,
             max_token_limit=3000,
             message_limit=3,
@@ -209,4 +234,3 @@ class MessageService:
         )
 
         return questions
-

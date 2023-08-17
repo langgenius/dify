@@ -26,7 +26,7 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 
 def test_is_provider_credentials_valid_or_raise_valid(mocker):
-    mocker.patch('langchain.llms.tongyi.Tongyi._generate', return_value=LLMResult(generations=[[Generation(text="abc")]]))
+    mocker.patch('core.third_party.langchain.llms.tongyi_llm.EnhanceTongyi._generate', return_value=LLMResult(generations=[[Generation(text="abc")]]))
 
     MODEL_PROVIDER_CLASS.is_provider_credentials_valid_or_raise(VALIDATE_CREDENTIAL)
 

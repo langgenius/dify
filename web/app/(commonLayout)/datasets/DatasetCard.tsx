@@ -51,7 +51,7 @@ const DatasetCard = ({
           <div className={style.listItemHeading}>
             <div className={style.listItemHeadingContent}>{dataset.name}</div>
           </div>
-          <span className={style.deleteAppIcon} onClick={onDeleteClick} />
+          <span className={style.deleteDatasetIcon} onClick={onDeleteClick} />
         </div>
         <div className={style.listItemDescription}>{dataset.description}</div>
         <div className={classNames(style.listItemFooter, style.datasetCardFooter)}>

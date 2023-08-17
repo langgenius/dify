@@ -18,6 +18,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import I18n from '@/context/i18n'
+import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {
   isShow: boolean
@@ -31,6 +32,7 @@ const SecretKeyModal = ({
   onClose,
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -118,11 +120,13 @@ const SecretKeyModal = ({
                         setCopyValue(api.token)
                       }}></div>
                     </Tooltip>
-                    <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
-                      setDelKeyId(api.id)
-                      setShowConfirmDelete(true)
-                    }}>
-                    </div>
+                    { isCurrentWorkspaceManager
+                      && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
+                        setDelKeyId(api.id)
+                        setShowConfirmDelete(true)
+                      }}>
+                      </div>
+                    }
                   </div>
                 </div>
               ))}
@@ -131,9 +135,7 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button type='default' className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={() =>
-          onCreate()
-        }>
+        <Button type='default' className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || currentWorkspace.role === 'normal'}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
           <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>
