@@ -102,7 +102,10 @@ class SparkLLMClient:
         data = json.loads(message)
         code = data['header']['code']
         if code != 0:
-            self.queue.put({'error': f"Code: {code}, Error: {data['header']['message']}"})
+            self.queue.put({
+                'status_code': 400,
+                'error': f"Code: {code}, Error: {data['header']['message']}"
+            })
             ws.close()
         else:
             choices = data["payload"]["choices"]
