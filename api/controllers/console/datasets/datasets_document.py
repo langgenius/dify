@@ -285,7 +285,9 @@ class DatasetDocumentListApi(Resource):
 
         try:
             ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
