@@ -36,6 +36,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
     setQuestion('')
     setAnswer('')
     onCancel()
+    setKeywords([])
   }
 
   const handleSave = async () => {
