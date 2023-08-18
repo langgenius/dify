@@ -44,10 +44,15 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def get_index_name(self, dataset: Dataset) -> str:
         if self.dataset.index_struct_dict:
-            return self.dataset.index_struct_dict['vector_store']['class_prefix']
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+            if not class_prefix.endswith('_Node'):
+                # original class_prefix
+                class_prefix += '_Node'
+
+            return class_prefix
 
         dataset_id = dataset.id
-        return "Index_" + dataset_id.replace("-", "_")
+        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
 
     def to_index_struct(self) -> dict:
         return {
