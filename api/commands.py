@@ -6,11 +6,13 @@ import time
 
 import click
 from flask import current_app
+from langchain.embeddings import OpenAIEmbeddings
 from werkzeug.exceptions import NotFound
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.index import IndexBuilder
 from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.embedding.openai_embedding import OpenAIEmbedding
 from core.model_providers.models.entity.model_params import ModelType
 from core.model_providers.providers.hosted import hosted_model_providers
 from core.model_providers.providers.openai_provider import OpenAIProvider
@@ -323,8 +325,7 @@ def create_qdrant_indexes():
                         model_name=dataset.embedding_model
                     )
                 except Exception:
-                    model_provider = OpenAIProvider()
-                    embedding_model = model_provider.get_model_class(model_type=ModelType.EMBEDDINGS)
+                    embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
                 embeddings = CacheEmbedding(embedding_model)
 
                 from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
