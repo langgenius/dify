@@ -11,7 +11,9 @@ from werkzeug.exceptions import NotFound
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.index import IndexBuilder
 from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.model_params import ModelType
 from core.model_providers.providers.hosted import hosted_model_providers
+from core.model_providers.providers.openai_provider import OpenAIProvider
 from libs.password import password_pattern, valid_password, hash_password
 from libs.helper import email as email_validate
 from extensions.ext_database import db
@@ -314,12 +316,15 @@ def create_qdrant_indexes():
         for dataset in datasets:
             try:
                 click.echo('Create dataset qdrant index: {}'.format(dataset.id))
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
-
+                try:
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=dataset.embedding_model_provider,
+                        model_name=dataset.embedding_model
+                    )
+                except Exception:
+                    model_provider = OpenAIProvider()
+                    embedding_model = model_provider.get_model_class(model_type=ModelType.EMBEDDINGS)
                 embeddings = CacheEmbedding(embedding_model)
 
                 from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
