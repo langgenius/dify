@@ -7,6 +7,7 @@ import TypeIcon from '../type-icon'
 import RemoveIcon from '../../base/icons/remove-icon'
 import s from './style.module.css'
 import { formatNumber } from '@/utils/format'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type ICardItemProps = {
   className?: string
@@ -36,10 +37,22 @@ const CardItem: FC<ICardItemProps> = ({
           'flex items-center justify-between rounded-xl  px-3 py-2.5 bg-white border border-gray-200  cursor-pointer')
       }>
       <div className='shrink-0 flex items-center space-x-2'>
-        <TypeIcon type="upload_file" />
+        <div className={cn(!config.embedding_available && 'opacity-50')}>
+          <TypeIcon type="upload_file" />
+        </div>
         <div>
-          <div className='w-[160px] text-[13px] leading-[18px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap'>{config.name}</div>
-          <div className='flex text-xs text-gray-500'>
+          <div className='flex items-center w-[160px] mr-1'>
+            <div className={cn('text-[13px] leading-[18px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !config.embedding_available && 'opacity-50')}>{config.name}</div>
+            {!config.embedding_available && (
+              <Tooltip
+                selector={`unavailable-tag-${config.id}`}
+                htmlContent={t('dataset.unavailableTip')}
+              >
+                <span className='shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+              </Tooltip>
+            )}
+          </div>
+          <div className={cn('flex text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>
             {formatNumber(config.word_count)} {t('appDebug.feature.dataSet.words')} · {formatNumber(config.document_count)} {t('appDebug.feature.dataSet.textBlocks')}
           </div>
         </div>

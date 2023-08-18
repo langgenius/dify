@@ -33,7 +33,7 @@ Visual data analysis, log review, and annotation for applications
 - [x] **ChatGLM**
 
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
-* 1000 free Claude model queries to build Claude-powered apps
+* 600,000 free Claude model tokens to build Claude-powered apps
 * 200 free OpenAI queries to build OpenAI-based apps
 
   

@@ -9,6 +9,7 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
@@ -70,10 +71,17 @@ class DatasetRetrieverTool(BaseTool):
             documents = kw_table_index.search(query, search_kwargs={'k': self.k})
             return str("\n".join([document.page_content for document in documents]))
         else:
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id
-            )
 
+            try:
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                return ''
+            except ProviderTokenNotInitError:
+                return ''
             embeddings = CacheEmbedding(embedding_model)
 
             vector_index = VectorIndex(

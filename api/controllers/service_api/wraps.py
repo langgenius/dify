@@ -17,7 +17,7 @@ def validate_app_token(view=None):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token('app')
 
-            app_model = db.session.query(App).get(api_token.app_id)
+            app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
             if not app_model:
                 raise NotFound()
 
@@ -44,7 +44,7 @@ def validate_dataset_token(view=None):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token('dataset')
 
-            dataset = db.session.query(Dataset).get(api_token.dataset_id)
+            dataset = db.session.query(Dataset).filter(Dataset.id == api_token.dataset_id).first()
             if not dataset:
                 raise NotFound()
 
@@ -64,14 +64,14 @@ def validate_and_get_api_token(scope=None):
     Validate and get API token.
     """
     auth_header = request.headers.get('Authorization')
-    if auth_header is None:
-        raise Unauthorized()
+    if auth_header is None or ' ' not in auth_header:
+        raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
 
     auth_scheme, auth_token = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
 
     if auth_scheme != 'bearer':
-        raise Unauthorized()
+        raise Unauthorized("Authorization scheme must be 'Bearer'")
 
     api_token = db.session.query(ApiToken).filter(
         ApiToken.token == auth_token,
@@ -79,7 +79,7 @@ def validate_and_get_api_token(scope=None):
     ).first()
 
     if not api_token:
-        raise Unauthorized()
+        raise Unauthorized("Access token is invalid")
 
     api_token.last_used_at = datetime.utcnow()
     db.session.commit()
