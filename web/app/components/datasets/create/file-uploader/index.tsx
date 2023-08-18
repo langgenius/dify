@@ -29,7 +29,7 @@ const ACCEPTS = [
   '.txt',
   // '.xls',
   '.xlsx',
-  '.csv',
+  // '.csv',
 ]
 
 const FileUploader = ({
