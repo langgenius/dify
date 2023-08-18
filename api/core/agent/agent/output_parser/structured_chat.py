@@ -26,4 +26,4 @@ class StructuredChatOutputParser(LCStructuredChatOutputParser):
             else:
                 return AgentFinish({"output": text}, text)
         except Exception as e:
-            raise OutputParserException(f"Could not parse LLM output: {text}") from e
+            raise OutputParserException(f"Could not parse LLM output: {text}")
