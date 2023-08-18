@@ -32,7 +32,7 @@ class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
     model_instance: BaseLLM
     tools: list[BaseTool]
-    summary_model_instance: BaseLLM
+    summary_model_instance: BaseLLM = None
     memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6

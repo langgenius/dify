@@ -65,7 +65,7 @@ class WebReaderTool(BaseTool):
     summary_chunk_overlap: int = 0
     summary_separators: list[str] = ["\n\n", "。", ".", " ", ""]
     continue_reading: bool = True
-    llm: BaseLanguageModel
+    llm: BaseLanguageModel = None
 
     def _run(self, url: str, summary: bool = False, cursor: int = 0) -> str:
         try:
@@ -78,7 +78,7 @@ class WebReaderTool(BaseTool):
         except Exception as e:
             return f'Read this website failed, caused by: {str(e)}.'
 
-        if summary:
+        if summary and self.llm:
             character_splitter = RecursiveCharacterTextSplitter.from_tiktoken_encoder(
                 chunk_size=self.summary_chunk_tokens,
                 chunk_overlap=self.summary_chunk_overlap,
