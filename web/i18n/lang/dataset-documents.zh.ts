@@ -307,6 +307,8 @@ const translation = {
   segment: {
     paragraphs: '段落',
     keywords: '关键词',
+    addKeyWord: '添加关键词',
+    keywordError: '关键词最大长度为 20',
     characters: '字符',
     hitCount: '命中次数',
     vectorHash: '向量哈希：',

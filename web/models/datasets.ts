@@ -388,4 +388,5 @@ export type RelatedAppResponse = {
 export type SegmentUpdator = {
   content: string
   answer?: string
+  keywords?: string[]
 }

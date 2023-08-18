@@ -308,6 +308,8 @@ const translation = {
   segment: {
     paragraphs: 'Paragraphs',
     keywords: 'Key Words',
+    addKeyWord: 'Add key word',
+    keywordError: 'The maximum length of keyword is 20',
     characters: 'characters',
     hitCount: 'hit count',
     vectorHash: 'Vector hash: ',
