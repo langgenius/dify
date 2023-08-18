@@ -35,20 +35,8 @@ class ModelConfigResource(Resource):
 
         new_app_model_config = AppModelConfig(
             app_id=app_model.id,
-            provider="",
-            model_id="",
-            configs={},
-            opening_statement=model_configuration['opening_statement'],
-            suggested_questions=json.dumps(model_configuration['suggested_questions']),
-            suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
-            speech_to_text=json.dumps(model_configuration['speech_to_text']),
-            more_like_this=json.dumps(model_configuration['more_like_this']),
-            sensitive_word_avoidance=json.dumps(model_configuration['sensitive_word_avoidance']),
-            model=json.dumps(model_configuration['model']),
-            user_input_form=json.dumps(model_configuration['user_input_form']),
-            pre_prompt=model_configuration['pre_prompt'],
-            agent_mode=json.dumps(model_configuration['agent_mode']),
         )
+        new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
         db.session.add(new_app_model_config)
         db.session.flush()

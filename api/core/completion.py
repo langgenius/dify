@@ -126,7 +126,7 @@ class Completion:
         # the output of the agent can be used directly as the main output content without calling LLM again
         fake_response = None
         if not app_model_config.pre_prompt and agent_execute_result and agent_execute_result.output \
-                and agent_execute_result.strategy != PlanningStrategy.ROUTER:
+                and agent_execute_result.strategy not in [PlanningStrategy.ROUTER, PlanningStrategy.REACT_ROUTER]:
             fake_response = agent_execute_result.output
 
         # get llm prompt

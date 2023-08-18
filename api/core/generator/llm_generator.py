@@ -2,7 +2,7 @@ import logging
 
 from langchain.schema import OutputParserException
 
-from core.model_providers.error import LLMError
+from core.model_providers.error import LLMError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelKwargs
@@ -51,6 +51,7 @@ class LLMGenerator:
         prompt_with_empty_context = prompt.format(context='')
         prompt_tokens = model_instance.get_num_tokens([PromptMessage(content=prompt_with_empty_context)])
         max_context_token_length = model_instance.model_rules.max_tokens.max
+        max_context_token_length = max_context_token_length if max_context_token_length else 1500
         rest_tokens = max_context_token_length - prompt_tokens - max_tokens - 1
 
         context = ''
@@ -108,13 +109,16 @@ class LLMGenerator:
 
         _input = prompt.format_prompt(histories=histories)
 
-        model_instance = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id,
-            model_kwargs=ModelKwargs(
-                max_tokens=256,
-                temperature=0
+        try:
+            model_instance = ModelFactory.get_text_generation_model(
+                tenant_id=tenant_id,
+                model_kwargs=ModelKwargs(
+                    max_tokens=256,
+                    temperature=0
+                )
             )
-        )
+        except ProviderTokenNotInitError:
+            return []
 
         prompts = [PromptMessage(content=_input.to_string())]
 

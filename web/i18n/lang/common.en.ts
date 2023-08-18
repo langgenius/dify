@@ -28,6 +28,7 @@ const translation = {
     setup: 'Setup',
     getForFree: 'Get for free',
     reload: 'Reload',
+    ok: 'OK',
   },
   placeholder: {
     input: 'Please enter',
@@ -41,6 +42,8 @@ const translation = {
     modifiedSuccessfully: 'Modified successfully',
     modificationFailed: 'Modification failed',
     copySuccessfully: 'Copied successfully',
+    paySucceeded: 'Payment succeeded',
+    payCancelled: 'Payment cancelled',
   },
   model: {
     params: {

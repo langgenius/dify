@@ -24,6 +24,8 @@ Visual data analysis, log review, and annotation for applications
 - [x] **Anthropic**: Claude2, Claude-instant
 - [x] **Replicate**
 - [x] **Hugging Face Hub**
+- [x] **ChatGLM**
+- [x] **Llama2**
 - [x] **MiniMax**
 - [x] **Spark**
 - [x] **Wenxin**
@@ -33,8 +35,7 @@ Visual data analysis, log review, and annotation for applications
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
 * 1000 free Claude model queries to build Claude-powered apps
 * 200 free OpenAI queries to build OpenAI-based apps
-* 3 million Xunfei Spark Tokens are provided for creating AI applications based on Spark.
-* 1 million MiniMax Tokens are provided for creating AI applications based on the MiniMax.
+
   
 **2. Visual orchestration:** Build an AI app in minutes by writing and debugging prompts visually.
 
@@ -94,8 +95,6 @@ Features under development:
 We will support more datasets, including text, webpages, and even Notion content. Users can build AI applications based on their own data sources.
 - **Plugins**, introducing ChatGPT Plugin-standard plugins for applications, or using Dify-produced plugins
 We will release plugins complying with ChatGPT standard, or Dify's own plugins to enable more capabilities in applications. 
-- **Open-source models**, e.g. adopting Llama as a model provider or for further fine-tuning
-We will work with excellent open-source models like Llama, by providing them as model options in our platform, or using them for further fine-tuning.
 
 
 ## Q&A

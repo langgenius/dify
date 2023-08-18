@@ -94,7 +94,12 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             return AgentFinish(return_values={"output": rst}, log=rst)
 
         full_inputs = self.get_full_inputs(intermediate_steps, **kwargs)
-        full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
+
+        try:
+            full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
+        except Exception as e:
+            new_exception = self.model_instance.handle_exceptions(e)
+            raise new_exception
 
         try:
             return self.output_parser.parse(full_output)

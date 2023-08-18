@@ -125,6 +125,8 @@ class BaseLLM(BaseProviderModel):
             completion_tokens = self.get_num_tokens([PromptMessage(content=completion_content, type=MessageType.ASSISTANT)])
             total_tokens = prompt_tokens + completion_tokens
 
+        self.model_provider.update_last_used()
+
         if self.deduct_quota:
             self.model_provider.deduct_quota(total_tokens)
 

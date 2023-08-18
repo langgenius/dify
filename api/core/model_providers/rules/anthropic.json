@@ -5,10 +5,11 @@
     ],
     "system_config": {
         "supported_quota_types": [
+            "paid",
             "trial"
         ],
-        "quota_unit": "times",
-        "quota_limit": 1000
+        "quota_unit": "tokens",
+        "quota_limit": 600000
     },
     "model_flexibility": "fixed"
 }

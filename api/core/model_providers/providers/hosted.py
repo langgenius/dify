@@ -31,7 +31,9 @@ class HostedAnthropic(BaseModel):
     """Quota limit for the anthropic hosted model. 0 means unlimited."""
     paid_enabled: bool = False
     paid_stripe_price_id: str = None
-    paid_increase_quota: int = 1
+    paid_increase_quota: int = 1000000
+    paid_min_quantity: int = 20
+    paid_max_quantity: int = 100
 
 
 class HostedModelProviders(BaseModel):
@@ -73,4 +75,6 @@ def init_app(app: Flask):
             paid_enabled=app.config.get("HOSTED_ANTHROPIC_PAID_ENABLED"),
             paid_stripe_price_id=app.config.get("HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID"),
             paid_increase_quota=app.config.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA"),
+            paid_min_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MIN_QUANTITY"),
+            paid_max_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MAX_QUANTITY"),
         )

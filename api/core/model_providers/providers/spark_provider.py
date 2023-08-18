@@ -29,7 +29,11 @@ class SparkProvider(BaseModelProvider):
             return [
                 {
                     'id': 'spark',
-                    'name': '星火认知大模型',
+                    'name': 'Spark V1.5',
+                },
+                {
+                    'id': 'spark-v2',
+                    'name': 'Spark V2.0',
                 }
             ]
         else:

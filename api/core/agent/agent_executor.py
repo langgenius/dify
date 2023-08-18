@@ -32,7 +32,7 @@ class AgentConfiguration(BaseModel):
     strategy: PlanningStrategy
     model_instance: BaseLLM
     tools: list[BaseTool]
-    summary_model_instance: BaseLLM
+    summary_model_instance: BaseLLM = None
     memory: Optional[BaseChatMemory] = None
     callbacks: Callbacks = None
     max_iterations: int = 6
@@ -65,7 +65,8 @@ class AgentExecutor:
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 output_parser=StructuredChatOutputParser(),
-                summary_llm=self.configuration.summary_model_instance.client,
+                summary_llm=self.configuration.summary_model_instance.client
+                if self.configuration.summary_model_instance else None,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
@@ -74,7 +75,8 @@ class AgentExecutor:
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
-                summary_llm=self.configuration.summary_model_instance.client,
+                summary_llm=self.configuration.summary_model_instance.client
+                if self.configuration.summary_model_instance else None,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.MULTI_FUNCTION_CALL:
@@ -83,7 +85,8 @@ class AgentExecutor:
                 llm=self.configuration.model_instance.client,
                 tools=self.configuration.tools,
                 extra_prompt_messages=self.configuration.memory.buffer if self.configuration.memory else None,  # used for read chat histories memory
-                summary_llm=self.configuration.summary_model_instance.client,
+                summary_llm=self.configuration.summary_model_instance.client
+                if self.configuration.summary_model_instance else None,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:

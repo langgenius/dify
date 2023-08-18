@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import json
 import logging
+from json import JSONDecodeError
 from typing import (
     Any,
     Dict,
@@ -223,11 +224,24 @@ class Wenxin(LLM):
         for token in self._client.post(request).iter_lines():
             if token:
                 token = token.decode("utf-8")
-                completion = json.loads(token[5:])
 
-                yield GenerationChunk(text=completion['result'])
-                if run_manager:
-                    run_manager.on_llm_new_token(completion['result'])
+                if token.startswith('data:'):
+                    completion = json.loads(token[5:])
 
-                if completion['is_end']:
-                    break
+                    yield GenerationChunk(text=completion['result'])
+                    if run_manager:
+                        run_manager.on_llm_new_token(completion['result'])
+
+                    if completion['is_end']:
+                        break
+                else:
+                    try:
+                        json_response = json.loads(token)
+                    except JSONDecodeError:
+                        raise ValueError(f"Wenxin Response Error {token}")
+
+                    raise ValueError(
+                        f"Wenxin API {json_response['error_code']}"
+                        f" error: {json_response['error_msg']}, "
+                        f"please confirm if the model you have chosen is already paid for."
+                    )
