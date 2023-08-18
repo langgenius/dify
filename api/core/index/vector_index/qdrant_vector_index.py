@@ -57,7 +57,7 @@ class QdrantVectorIndex(BaseVectorIndex):
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"collection_name": self.get_index_name(self.dataset)}
+            "vector_store": {"class_prefix": self.get_index_name(self.dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
