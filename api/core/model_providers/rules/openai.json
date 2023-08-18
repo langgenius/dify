@@ -1,0 +1,14 @@
+{
+    "support_provider_types": [
+        "system",
+        "custom"
+    ],
+    "system_config": {
+        "supported_quota_types": [
+            "trial"
+        ],
+        "quota_unit": "times",
+        "quota_limit": 200
+    },
+    "model_flexibility": "fixed"
+}

@@ -5,20 +5,35 @@ const translation = {
     getKeyTip: 'Get your API Key from OpenAI dashboard',
     placeholder: 'Your OpenAI API Key(eg.sk-xxxx)',
   },
+  apiKeyInfo: {
+    cloud: {
+      trial: {
+        title: 'You are using the {{providerName}} trial quota.',
+        description: 'The trial quota is provided for your testing use. Before the trial quota calls are exhausted, please set up your own model provider or purchase additional quota.',
+      },
+      exhausted: {
+        title: 'Your trial quota have been used up, please set up your APIKey.',
+        description: 'Your trial quota has been exhausted. Please set up your own model provider or purchase additional quota.',
+      },
+    },
+    selfHost: {
+      title: {
+        row1: 'To get started,',
+        row2: 'setup your  model provider first.',
+      },
+    },
+    callTimes: 'Call times',
+    usedToken: 'Used token',
+    setAPIBtn: 'Go to setup model provider',
+    tryCloud: 'Or try the cloud version of Dify with free quote',
+  },
   overview: {
     title: 'Overview',
     appInfo: {
       explanation: 'Ready-to-use AI WebApp',
       accessibleAddress: 'Public URL',
       preview: 'Preview',
-      share: {
-        entry: 'Share',
-        explanation: 'Share the following URL to invite more people to access the application.',
-        shareUrl: 'Share URL',
-        linkCopied: 'Copied',
-        copyLink: 'Copy Link',
-        regenerate: 'Regenerate',
-      },
+      regenerate: 'Regenerate',
       preUseReminder: 'Please enable WebApp before continuing.',
       settings: {
         entry: 'Settings',
@@ -48,7 +63,7 @@ const translation = {
       },
       customize: {
         way: 'way',
-        entry: 'Want to customize your WebApp?',
+        entry: 'Customize',
         title: 'Customize AI WebApp',
         explanation: 'You can customize the frontend of the Web App to fit your scenario and style needs.',
         way1: {
@@ -71,7 +86,7 @@ const translation = {
     apiInfo: {
       title: 'Backend service API',
       explanation: 'Easily integrated into your application',
-      accessibleAddress: 'API Token',
+      accessibleAddress: 'Service API Endpoint',
       doc: 'API Reference',
     },
     status: {

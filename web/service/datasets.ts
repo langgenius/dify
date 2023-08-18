@@ -118,6 +118,10 @@ export const archiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ dataset
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/archive`) as Promise<CommonResponse>
 }
 
+export const unArchiveDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
+  return patch(`/datasets/${datasetId}/documents/${documentId}/status/un_archive`) as Promise<CommonResponse>
+}
+
 export const enableDocument: Fetcher<CommonResponse, CommonDocReq> = ({ datasetId, documentId }) => {
   return patch(`/datasets/${datasetId}/documents/${documentId}/status/enable`) as Promise<CommonResponse>
 }
@@ -136,10 +140,6 @@ export const preImportNotionPages: Fetcher<{ notion_info: DataSourceNotionWorksp
 
 export const modifyDocMetadata: Fetcher<CommonResponse, CommonDocReq & { body: { doc_type: string; doc_metadata: Record<string, any> } }> = ({ datasetId, documentId, body }) => {
   return put(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body }) as Promise<CommonResponse>
-}
-
-export const getDatasetIndexingStatus: Fetcher<{ data: IndexingStatusResponse[] }, string> = (datasetId) => {
-  return get(`/datasets/${datasetId}/indexing-status`) as Promise<{ data: IndexingStatusResponse[] }>
 }
 
 // apis for segments in a document
@@ -162,6 +162,18 @@ export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string
 
 export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, body }) => {
   return post(`/datasets/${datasetId}/documents/${documentId}/segment`, { body }) as Promise<{ data: SegmentDetailModel; doc_form: string }>
+}
+
+export const deleteSegment: Fetcher<CommonResponse, { datasetId: string; documentId: string; segmentId: string }> = ({ datasetId, documentId, segmentId }) => {
+  return del(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`) as Promise<CommonResponse>
+}
+
+export const segmentBatchImport: Fetcher<{ job_id: string; job_status: string }, { url: string; body: FormData }> = ({ url, body }) => {
+  return post(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ job_id: string; job_status: string }>
+}
+
+export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_status: string }, { jobID: string }> = ({ jobID }) => {
+  return get(`/datasets/batch_import_status/${jobID}`) as Promise<{ job_id: string; job_status: string }>
 }
 
 // hit testing

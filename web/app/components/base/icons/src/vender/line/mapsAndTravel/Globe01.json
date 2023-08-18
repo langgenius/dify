@@ -1,0 +1,66 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "16",
+			"height": "16",
+			"viewBox": "0 0 16 16",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "globe-01",
+					"clip-path": "url(#clip0_8902_1914)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M1.33325 7.99998H14.6666M1.33325 7.99998C1.33325 11.6819 4.31802 14.6666 7.99992 14.6666M1.33325 7.99998C1.33325 4.31808 4.31802 1.33331 7.99992 1.33331M14.6666 7.99998C14.6666 11.6819 11.6818 14.6666 7.99992 14.6666M14.6666 7.99998C14.6666 4.31808 11.6818 1.33331 7.99992 1.33331M7.99992 1.33331C9.66744 3.15888 10.6151 5.528 10.6666 7.99998C10.6151 10.472 9.66744 12.8411 7.99992 14.6666M7.99992 1.33331C6.3324 3.15888 5.38475 5.528 5.33325 7.99998C5.38475 10.472 6.3324 12.8411 7.99992 14.6666",
+							"stroke": "currentColor",
+							"stroke-width": "1.25",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_8902_1914"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "16",
+									"height": "16",
+									"fill": "white"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Globe01"
+}

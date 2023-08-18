@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import s from './style.module.css'
-import { randomString } from '@/app/components/app-sidebar/basic'
+import { randomString } from '@/utils'
 import Tooltip from '@/app/components/base/tooltip'
 
 type IInputCopyProps = {

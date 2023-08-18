@@ -7,3 +7,7 @@
   background: #F5F8FF;
   border-color: #528BFF;
 }
+
+.item.disabled {
+  @apply bg-white border-gray-200 cursor-default;
+}

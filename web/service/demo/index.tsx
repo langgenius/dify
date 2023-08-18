@@ -2,12 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import useSWR, { useSWRConfig } from 'swr'
-import { createApp, fetchAppDetail, fetchAppList, getAppDailyConversations, getAppDailyEndUsers, updateAppApiStatus, updateAppModelConfig, updateAppName, updateAppRateLimit, updateAppSiteAccessToken, updateAppSiteConfig, updateAppSiteStatus } from '../apps'
+import { createApp, fetchAppDetail, fetchAppList, getAppDailyConversations, getAppDailyEndUsers, updateAppApiStatus, updateAppModelConfig, updateAppRateLimit, updateAppSiteAccessToken, updateAppSiteConfig, updateAppSiteStatus } from '../apps'
 import Loading from '@/app/components/base/loading'
 const Service: FC = () => {
   const { data: appList, error: appListError } = useSWR({ url: '/apps', params: { page: 1 } }, fetchAppList)
   const { data: firstApp, error: appDetailError } = useSWR({ url: '/apps', id: '1' }, fetchAppDetail)
-  const { data: appName, error: appNameError } = useSWR({ url: '/apps', id: '1', body: { name: 'new name' } }, updateAppName)
   const { data: updateAppSiteStatusRes, error: err1 } = useSWR({ url: '/apps', id: '1', body: { enable_site: false } }, updateAppSiteStatus)
   const { data: updateAppApiStatusRes, error: err2 } = useSWR({ url: '/apps', id: '1', body: { enable_api: true } }, updateAppApiStatus)
   const { data: updateAppRateLimitRes, error: err3 } = useSWR({ url: '/apps', id: '1', body: { api_rpm: 10, api_rph: 20 } }, updateAppRateLimit)
@@ -28,10 +27,10 @@ const Service: FC = () => {
     mutate({ url: '/apps', params: { page: 1 } })
   }
 
-  if (appListError || appDetailError || appNameError || err1 || err2 || err3 || err4 || err5 || err6 || err7 || err8)
-    return <div>{JSON.stringify(appNameError)}</div>
+  if (appListError || appDetailError || err1 || err2 || err3 || err4 || err5 || err6 || err7 || err8)
+    return <div>{JSON.stringify(appListError)}</div>
 
-  if (!appList || !firstApp || !appName || !updateAppSiteStatusRes || !updateAppApiStatusRes || !updateAppRateLimitRes || !updateAppSiteCodeRes || !updateAppSiteConfigRes || !getAppDailyConversationsRes || !getAppDailyEndUsersRes || !updateAppModelConfigRes)
+  if (!appList || !firstApp || !updateAppSiteStatusRes || !updateAppApiStatusRes || !updateAppRateLimitRes || !updateAppSiteCodeRes || !updateAppSiteConfigRes || !getAppDailyConversationsRes || !getAppDailyEndUsersRes || !updateAppModelConfigRes)
     return <Loading />
 
   return (
@@ -53,11 +52,6 @@ const Service: FC = () => {
 
         <div>
           <button onClick={handleCreateApp}>Click me to Create App</button>
-        </div>
-
-        <div>
-          <div>3.updateAppName</div>
-          <div>{JSON.stringify(appName)}</div>
         </div>
 
         <div>

@@ -11,7 +11,7 @@ from sqlalchemy import and_
 
 from core.completion import Completion
 from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
-from core.llm.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -63,25 +63,22 @@ class CompletionService:
                 raise ConversationCompletedError()
 
             if not conversation.override_model_configs:
-                app_model_config = db.session.query(AppModelConfig).get(conversation.app_model_config_id)
+                app_model_config = db.session.query(AppModelConfig).filter(
+                    AppModelConfig.id == conversation.app_model_config_id,
+                    AppModelConfig.app_id == app_model.id
+                ).first()
 
                 if not app_model_config:
                     raise AppModelConfigBrokenError()
             else:
                 conversation_override_model_configs = json.loads(conversation.override_model_configs)
+
                 app_model_config = AppModelConfig(
                     id=conversation.app_model_config_id,
                     app_id=app_model.id,
-                    provider="",
-                    model_id="",
-                    configs="",
-                    opening_statement=conversation_override_model_configs['opening_statement'],
-                    suggested_questions=json.dumps(conversation_override_model_configs['suggested_questions']),
-                    model=json.dumps(conversation_override_model_configs['model']),
-                    user_input_form=json.dumps(conversation_override_model_configs['user_input_form']),
-                    pre_prompt=conversation_override_model_configs['pre_prompt'],
-                    agent_mode=json.dumps(conversation_override_model_configs['agent_mode']),
                 )
+
+                app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
 
             if is_model_config_override:
                 # build new app model config
@@ -99,19 +96,8 @@ class CompletionService:
                 app_model_config_model = app_model_config.model_dict
                 app_model_config_model['completion_params'] = completion_params
 
-                app_model_config = AppModelConfig(
-                    id=app_model_config.id,
-                    app_id=app_model.id,
-                    provider="",
-                    model_id="",
-                    configs="",
-                    opening_statement=app_model_config.opening_statement,
-                    suggested_questions=app_model_config.suggested_questions,
-                    model=json.dumps(app_model_config_model),
-                    user_input_form=app_model_config.user_input_form,
-                    pre_prompt=app_model_config.pre_prompt,
-                    agent_mode=app_model_config.agent_mode,
-                )
+                app_model_config = app_model_config.copy()
+                app_model_config.model = json.dumps(app_model_config_model)
         else:
             if app_model.app_model_config_id is None:
                 raise AppModelConfigBrokenError()
@@ -127,27 +113,17 @@ class CompletionService:
 
                 # validate config
                 model_config = AppModelConfigService.validate_configuration(
+                    tenant_id=app_model.tenant_id,
                     account=user,
-                    config=args['model_config'],
-                    mode=app_model.mode
+                    config=args['model_config']
                 )
 
                 app_model_config = AppModelConfig(
                     id=app_model_config.id,
                     app_id=app_model.id,
-                    provider="",
-                    model_id="",
-                    configs="",
-                    opening_statement=model_config['opening_statement'],
-                    suggested_questions=json.dumps(model_config['suggested_questions']),
-                    suggested_questions_after_answer=json.dumps(model_config['suggested_questions_after_answer']),
-                    more_like_this=json.dumps(model_config['more_like_this']),
-                    sensitive_word_avoidance=json.dumps(model_config['sensitive_word_avoidance']),
-                    model=json.dumps(model_config['model']),
-                    user_input_form=json.dumps(model_config['user_input_form']),
-                    pre_prompt=model_config['pre_prompt'],
-                    agent_mode=json.dumps(model_config['agent_mode']),
                 )
+
+                app_model_config = app_model_config.from_model_config_dict(model_config)
 
         # clean input by app_model_config form rules
         inputs = cls.get_cleaned_inputs(inputs, app_model_config)

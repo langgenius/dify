@@ -8,7 +8,7 @@ import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
-import type { DataSet, createDocumentResponse } from '@/models/datasets'
+import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource, fetchTenantInfo } from '@/service/common'
 import { fetchDataDetail } from '@/service/datasets'
 import type { DataSourceNotionPage } from '@/models/common'
@@ -30,7 +30,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
-  const [fileList, setFiles] = useState<any[]>([])
+  const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
 
@@ -39,12 +39,12 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
-  const updateFileList = (preparedFiles: any) => {
+  const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
 
-  const updateFile = (fileItem: any, progress: number, list: any[]) => {
-    const targetIndex = list.findIndex((file: any) => file.fileID === fileItem.fileID)
+  const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
+    const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
     list[targetIndex] = {
       ...list[targetIndex],
       progress,

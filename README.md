@@ -19,15 +19,24 @@ Visual data analysis, log review, and annotation for applications
 ## Highlighted Features
 **1. LLMs support:** Choose capabilities based on different models when building your Dify AI apps. Dify is compatible with Langchain, meaning it will support various LLMs. Currently supported:
 
->* OpenAI: GPT-4, GPT-3.5-turbo, GPT-3.5-turbo-16k, text-davinci-003
->* Azure OpenAI Service
->* Anthropic: Claude2, Claude-instant
->* Hugging Face Hub (coming soon)
+- [x] **OpenAI**: GPT4, GPT3.5-turbo, GPT3.5-turbo-16k, text-davinci-003 
+- [x] **Azure OpenAI Service**
+- [x] **Anthropic**: Claude2, Claude-instant
+- [x] **Replicate**
+- [x] **Hugging Face Hub**
+- [x] **ChatGLM**
+- [x] **Llama2**
+- [x] **MiniMax**
+- [x] **Spark**
+- [x] **Wenxin**
+- [x] **Tongyi**
+- [x] **ChatGLM**
 
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
 * 1000 free Claude model queries to build Claude-powered apps
 * 200 free OpenAI queries to build OpenAI-based apps
 
+  
 **2. Visual orchestration:** Build an AI app in minutes by writing and debugging prompts visually.
 
 **3. Text embedding:** Fully automated text preprocessing embeds your data as context without complex concepts. Supports PDF, TXT, and syncing data from Notion, webpages, APIs.
@@ -55,7 +64,7 @@ Visit [Dify.ai](https://dify.ai)
 
 Before installing Dify, make sure your machine meets the following minimum system requirements:
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### Quick Start
@@ -86,8 +95,6 @@ Features under development:
 We will support more datasets, including text, webpages, and even Notion content. Users can build AI applications based on their own data sources.
 - **Plugins**, introducing ChatGPT Plugin-standard plugins for applications, or using Dify-produced plugins
 We will release plugins complying with ChatGPT standard, or Dify's own plugins to enable more capabilities in applications. 
-- **Open-source models**, e.g. adopting Llama as a model provider or for further fine-tuning
-We will work with excellent open-source models like Llama, by providing them as model options in our platform, or using them for further fine-tuning.
 
 
 ## Q&A

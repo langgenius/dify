@@ -41,8 +41,8 @@ const ConfirmUI: FC<IConfirmUIProps> = ({
       </div>
 
       <div className='flex gap-3 mt-4 ml-12'>
-        <div onClick={onConfirm} className='w-20 leading-9 text-center text-white border rounded-lg cursor-pointer h-9 border-color-primary-700 bg-primary-700'>{confirmText || t('common.operation.confirm')}</div>
-        <div onClick={onCancel} className='w-20 leading-9 text-center text-gray-500 border rounded-lg cursor-pointer h-9 border-color-gray-200'>{cancelText || t('common.operation.cancel')}</div>
+        <div onClick={onConfirm} className='w-20 leading-[34px] text-center text-white border rounded-lg cursor-pointer h-9 border-color-primary-700 bg-primary-700'>{confirmText || t('common.operation.confirm')}</div>
+        <div onClick={onCancel} className='w-20 leading-[34px] text-center text-gray-500 border rounded-lg cursor-pointer h-9 border-color-gray-200'>{cancelText || t('common.operation.cancel')}</div>
       </div>
     </div>
 

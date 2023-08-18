@@ -6,6 +6,7 @@ from celery import shared_task
 from werkzeug.exceptions import NotFound
 
 from core.generator.llm_generator import LLMGenerator
+from core.model_providers.error import LLMError, ProviderTokenNotInitError
 from extensions.ext_database import db
 from models.model import Conversation, Message
 
@@ -39,8 +40,16 @@ def generate_conversation_summary_task(conversation_id: str):
             conversation.summary = LLMGenerator.generate_conversation_summary(app_model.tenant_id, history_messages)
             db.session.add(conversation)
             db.session.commit()
+    except (LLMError, ProviderTokenNotInitError):
+        conversation.summary = '[No Summary]'
+        db.session.commit()
+        pass
+    except Exception as e:
+        conversation.summary = '[No Summary]'
+        db.session.commit()
+        logging.exception(e)
 
-        end_at = time.perf_counter()
-        logging.info(click.style('Conversation summary generated: {} latency: {}'.format(conversation_id, end_at - start_at), fg='green'))
-    except Exception:
-        logging.exception("generate conversation summary failed")
+    end_at = time.perf_counter()
+    logging.info(
+        click.style('Conversation summary generated: {} latency: {}'.format(conversation_id, end_at - start_at),
+                    fg='green'))

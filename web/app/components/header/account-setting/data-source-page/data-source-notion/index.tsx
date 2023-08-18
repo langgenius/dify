@@ -8,6 +8,7 @@ import s from './style.module.css'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { apiPrefix } from '@/config'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
+import { useAppContext } from '@/context/app-context'
 
 type DataSourceNotionProps = {
   workspaces: TDataSourceNotion[]
@@ -16,6 +17,8 @@ const DataSourceNotion = ({
   workspaces,
 }: DataSourceNotionProps) => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
+
   const connected = !!workspaces.length
 
   return (
@@ -35,18 +38,25 @@ const DataSourceNotion = ({
           }
         </div>
         {
-          !connected
+          connected
             ? (
               <Link
-                className='flex items-center ml-3 px-3 h-7 bg-white border border-gray-200 rounded-md text-xs font-medium text-gray-700 cursor-pointer'
-                href={`${apiPrefix}/oauth/data-source/notion`}>
+                className={
+                  `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
+                  rounded-md text-xs font-medium text-gray-700
+                  ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                }
+                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/'}>
                 {t('common.dataSource.connect')}
               </Link>
             )
             : (
               <Link
-                href={`${apiPrefix}/oauth/data-source/notion`}
-                className='flex items-center px-3 h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md cursor-pointer'>
+                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/' }
+                className={
+                  `flex items-center px-3 h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
+                  ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                }>
                 <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
                 {t('common.dataSource.notion.addWorkspace')}
               </Link>

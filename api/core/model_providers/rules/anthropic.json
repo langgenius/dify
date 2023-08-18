@@ -1,0 +1,15 @@
+{
+    "support_provider_types": [
+        "system",
+        "custom"
+    ],
+    "system_config": {
+        "supported_quota_types": [
+            "paid",
+            "trial"
+        ],
+        "quota_unit": "tokens",
+        "quota_limit": 600000
+    },
+    "model_flexibility": "fixed"
+}

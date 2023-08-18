@@ -2,14 +2,16 @@
 'use client'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import PreviewItem, { PreviewType } from './preview-item'
+import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CreateDocumentReq, File, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, CustomFile, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -22,11 +24,13 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { DataSourceNotionPage } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
+import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
+import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
+import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 
 type Page = DataSourceNotionPage & { workspace_id: string }
@@ -39,7 +43,7 @@ type StepTwoProps = {
   datasetId?: string
   indexingType?: string
   dataSourceType: DataSourceType
-  files: File[]
+  files: CustomFile[]
   notionPages?: Page[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
@@ -55,10 +59,6 @@ enum SegmentType {
 enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
-}
-enum DocForm {
-  TEXT = 'text_model',
-  QA = 'qa_model',
 }
 
 const StepTwo = ({
@@ -78,6 +78,8 @@ const StepTwo = ({
   onCancel,
 }: StepTwoProps) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+
   const { mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
@@ -98,6 +100,8 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     datasetId && documentDetail ? documentDetail.doc_form : DocForm.TEXT,
   )
+  const [docLanguage, setDocLanguage] = useState<string>(locale === 'en' ? 'English' : 'Chinese')
+  const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
   const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
@@ -230,6 +234,8 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
         doc_form: docForm,
+        doc_language: docLanguage,
+        dataset_id: datasetId,
       }
     }
     if (dataSourceType === DataSourceType.NOTION) {
@@ -241,6 +247,8 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
         doc_form: docForm,
+        doc_language: docLanguage,
+        dataset_id: datasetId,
       }
     }
     return params
@@ -252,6 +260,7 @@ const StepTwo = ({
       params = {
         original_document_id: documentDetail?.id,
         doc_form: docForm,
+        doc_language: docLanguage,
         process_rule: getProcessRule(),
       } as CreateDocumentReq
     }
@@ -266,6 +275,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique(),
         process_rule: getProcessRule(),
         doc_form: docForm,
+        doc_language: docLanguage,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -346,6 +356,10 @@ const StepTwo = ({
       setDocForm(DocForm.QA)
     else
       setDocForm(DocForm.TEXT)
+  }
+
+  const handleSelect = (language: string) => {
+    setDocLanguage(language)
   }
 
   const changeToEconomicalType = () => {
@@ -574,21 +588,32 @@ const StepTwo = ({
               </div>
             )}
             {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
-              <div className='flex justify-between items-center mt-3 px-5 py-4 rounded-xl bg-gray-50 border border-gray-100'>
-                <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
-                  <MessageChatSquare className='w-4 h-4' />
+              <div className='mt-3 rounded-xl bg-gray-50 border border-gray-100'>
+                <div className='flex justify-between items-center px-5 py-4'>
+                  <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
+                    <MessageChatSquare className='w-4 h-4' />
+                  </div>
+                  <div className='grow mx-3'>
+                    <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
+                    <div className='inline-flex items-center text-[13px] leading-[18px] text-gray-500'>
+                      <span className='pr-1'>{t('datasetCreation.stepTwo.QALanguage')}</span>
+                      <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} />
+                    </div>
+                  </div>
+                  <div className='shrink-0'>
+                    <Switch
+                      defaultValue={docForm === DocForm.QA}
+                      onChange={handleSwitch}
+                      size='md'
+                    />
+                  </div>
                 </div>
-                <div className='grow mx-3'>
-                  <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
-                  <div className='text-[13px] leading-[18px] text-gray-500'>{t('datasetCreation.stepTwo.QATip')}</div>
-                </div>
-                <div className='shrink-0'>
-                  <Switch
-                    defaultValue={docForm === DocForm.QA}
-                    onChange={handleSwitch}
-                    size='md'
-                  />
-                </div>
+                {docForm === DocForm.QA && !QATipHide && (
+                  <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
+                    {t('datasetCreation.stepTwo.QATip')}
+                    <XClose className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
+                  </div>
+                )}
               </div>
             )}
             <div className={s.source}>

@@ -1,32 +1,35 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
   DocumentTextIcon,
+  PaintBrushIcon,
   RocketLaunchIcon,
-  ShareIcon,
 } from '@heroicons/react/24/outline'
-import { SparklesIcon } from '@heroicons/react/24/solid'
 import { usePathname, useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import SettingsModal from './settings'
-import ShareLink from './share-link'
 import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
+import style from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
-import AppBasic, { randomString } from '@/app/components/app-sidebar/basic'
+import AppBasic from '@/app/components/app-sidebar/basic'
+import { asyncRunSafe, randomString } from '@/utils'
 import Button from '@/app/components/base/button'
 import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
+import Divider from '@/app/components/base/divider'
+import CopyFeedback from '@/app/components/base/copy-feedback'
+import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
-import './style.css'
 import { AppType } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 
 export type IAppCardProps = {
   className?: string
   appInfo: AppDetailResponse
-  cardType?: 'app' | 'api' | 'webapp'
+  cardType?: 'api' | 'webapp'
   customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<any>
   onSaveSiteConfig?: (params: any) => Promise<any>
@@ -34,12 +37,12 @@ export type IAppCardProps = {
 }
 
 const EmbedIcon: FC<{ className?: string }> = ({ className = '' }) => {
-  return <div className={`codeBrowserIcon ${className}`}></div>
+  return <div className={`${style.codeBrowserIcon} ${className}`}></div>
 }
 
 function AppCard({
   appInfo,
-  cardType = 'app',
+  cardType = 'webapp',
   customBgColor,
   onChangeStatus,
   onSaveSiteConfig,
@@ -48,25 +51,35 @@ function AppCard({
 }: IAppCardProps) {
   const router = useRouter()
   const pathname = usePathname()
+  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
-  const [showShareModal, setShowShareModal] = useState(false)
   const [showEmbedded, setShowEmbedded] = useState(false)
   const [showCustomizeModal, setShowCustomizeModal] = useState(false)
+  const [genLoading, setGenLoading] = useState(false)
   const { t } = useTranslation()
 
-  const OPERATIONS_MAP = {
-    webapp: [
-      { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
-      { opName: t('appOverview.overview.appInfo.share.entry'), opIcon: ShareIcon },
-      appInfo.mode === AppType.chat ? { opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon } : false,
-      { opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon },
-    ].filter(item => !!item),
-    api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
-    app: [],
-  }
+  const OPERATIONS_MAP = useMemo(() => {
+    const operationsMap = {
+      webapp: [
+        { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
+        { opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: PaintBrushIcon },
+      ] as { opName: string; opIcon: any }[],
+      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
+      app: [],
+    }
+    if (appInfo.mode === AppType.chat)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: EmbedIcon })
 
-  const isApp = cardType === 'app' || cardType === 'webapp'
-  const basicName = isApp ? appInfo?.site?.title : t('appOverview.overview.apiInfo.title')
+    if (isCurrentWorkspaceManager)
+      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: Cog8ToothIcon })
+
+    return operationsMap
+  }, [isCurrentWorkspaceManager, appInfo, t])
+
+  const isApp = cardType === 'webapp'
+  const basicName = isApp
+    ? appInfo?.site?.title
+    : t('appOverview.overview.apiInfo.title')
   const runningStatus = isApp ? appInfo.enable_site : appInfo.enable_api
   const { app_base_url, access_token } = appInfo.site ?? {}
   const appUrl = `${app_base_url}/${appInfo.mode}/${access_token}`
@@ -82,9 +95,9 @@ function AppCard({
         return () => {
           window.open(appUrl, '_blank')
         }
-      case t('appOverview.overview.appInfo.share.entry'):
+      case t('appOverview.overview.appInfo.customize.entry'):
         return () => {
-          setShowShareModal(true)
+          setShowCustomizeModal(true)
         }
       case t('appOverview.overview.appInfo.settings.entry'):
         return () => {
@@ -104,15 +117,19 @@ function AppCard({
     }
   }
 
-  const onClickCustomize = () => {
-    setShowCustomizeModal(true)
+  const onGenCode = async () => {
+    setGenLoading(true)
+    await asyncRunSafe(onGenerateCode?.() as any)
+    setGenLoading(false)
   }
 
   return (
     <div
-      className={`flex flex-col w-full shadow-sm border-[0.5px] rounded-lg border-gray-200 ${className ?? ''}`}
+      className={`min-w-max shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
+        className ?? ''
+      }`}
     >
-      <div className={`px-6 py-4 ${customBgColor ?? bgColor} rounded-lg`}>
+      <div className={`px-6 py-5 ${customBgColor ?? bgColor} rounded-lg`}>
         <div className="mb-2.5 flex flex-row items-start justify-between">
           <AppBasic
             iconType={cardType}
@@ -127,47 +144,77 @@ function AppCard({
           />
           <div className="flex flex-row items-center h-9">
             <Tag className="mr-2" color={runningStatus ? 'green' : 'yellow'}>
-              {runningStatus ? t('appOverview.overview.status.running') : t('appOverview.overview.status.disable')}
+              {runningStatus
+                ? t('appOverview.overview.status.running')
+                : t('appOverview.overview.status.disable')}
             </Tag>
-            <Switch defaultValue={runningStatus} onChange={onChangeStatus} />
+            <Switch defaultValue={runningStatus} onChange={onChangeStatus} disabled={currentWorkspace?.role === 'normal'} />
           </div>
         </div>
         <div className="flex flex-col justify-center py-2">
           <div className="py-1">
             <div className="pb-1 text-xs text-gray-500">
-              {isApp ? t('appOverview.overview.appInfo.accessibleAddress') : t('appOverview.overview.apiInfo.accessibleAddress')}
+              {isApp
+                ? t('appOverview.overview.appInfo.accessibleAddress')
+                : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
-            <div className="text-sm text-gray-800">
-              {isApp ? appUrl : apiUrl}
+            <div className="w-full h-9 pl-2 pr-0.5 py-0.5 bg-black bg-opacity-[0.02] rounded-lg border border-black border-opacity-5 justify-start items-center inline-flex">
+              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1">
+                <div className="text-gray-700 text-xs font-medium">
+                  {isApp ? appUrl : apiUrl}
+                </div>
+              </div>
+              <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
+              <CopyFeedback
+                content={isApp ? appUrl : apiUrl}
+                selectorId={randomString(8)}
+                className={'hover:bg-gray-200'}
+              />
+              {/* button copy link/ button regenerate */}
+              {isApp && isCurrentWorkspaceManager && (
+                <Tooltip
+                  content={t('appOverview.overview.appInfo.regenerate') || ''}
+                  selector={`code-generate-${randomString(8)}`}
+                >
+                  <div
+                    className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
+                    onClick={onGenCode}
+                  >
+                    <div
+                      className={`w-full h-full ${style.refreshIcon} ${
+                        genLoading ? style.generateLogo : ''
+                      }`}
+                    ></div>
+                  </div>
+                </Tooltip>
+              )}
             </div>
           </div>
         </div>
-        <div
-          className={`pt-2 flex flex-row items-center ${!isApp ? 'mb-[calc(2rem_+_1px)]' : ''
-          }`}
-        >
-          {OPERATIONS_MAP[cardType].map((op) => {
+        <div className={'pt-2 flex flex-row items-center'}>
+          {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
+          {OPERATIONS_MAP[cardType].map((op: any) => {
+            const disabled
+              = op.opName === t('appOverview.overview.appInfo.settings.entry')
+                ? false
+                : !runningStatus
             return (
               <Button
-                className="mr-2 text-gray-800"
+                className="mr-2 border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]"
                 key={op.opName}
                 onClick={genClickFuncByName(op.opName)}
-                disabled={
-                  [t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry'), t('appOverview.overview.appInfo.embedded.entry')].includes(op.opName) && !runningStatus
-                }
+                disabled={disabled}
               >
                 <Tooltip
-                  content={t('appOverview.overview.appInfo.preUseReminder') ?? ''}
-                  selector={`op-btn-${randomString(16)}`}
-                  className={
-                    ([t('appOverview.overview.appInfo.preview'), t('appOverview.overview.appInfo.share.entry'), t('appOverview.overview.appInfo.embedded.entry')].includes(op.opName) && !runningStatus)
-                      ? 'mt-[-8px]'
-                      : '!hidden'
+                  content={
+                    t('appOverview.overview.appInfo.preUseReminder') ?? ''
                   }
+                  selector={`op-btn-${randomString(16)}`}
+                  className={disabled ? 'mt-[-8px]' : '!hidden'}
                 >
                   <div className="flex flex-row items-center">
                     <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
-                    <span className="text-xs">{op.opName}</span>
+                    <span className="text-[13px]">{op.opName}</span>
                   </div>
                 </Tooltip>
               </Button>
@@ -177,30 +224,7 @@ function AppCard({
       </div>
       {isApp
         ? (
-          <div
-            className={
-              'flex items-center px-6 py-2 box-border text-xs text-gray-500 bg-opacity-50 bg-white border-t-[0.5px] border-primary-50'
-            }
-          >
-            <div
-              className="flex items-center hover:text-primary-600 hover:cursor-pointer"
-              onClick={onClickCustomize}
-            >
-              <SparklesIcon className="w-4 h-4 mr-1" />
-              {t('appOverview.overview.appInfo.customize.entry')}
-            </div>
-          </div>
-        )
-        : null}
-      {isApp
-        ? (
-          <div>
-            <ShareLink
-              isShow={showShareModal}
-              onClose={() => setShowShareModal(false)}
-              linkUrl={appUrl}
-              onGenerateCode={onGenerateCode}
-            />
+          <>
             <SettingsModal
               appInfo={appInfo}
               isShow={showSettingsModal}
@@ -220,7 +244,7 @@ function AppCard({
               appId={appInfo.id}
               mode={appInfo.mode}
             />
-          </div>
+          </>
         )
         : null}
     </div>

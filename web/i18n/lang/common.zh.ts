@@ -23,6 +23,12 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    delete: '删除',
+    settings: '设置',
+    setup: '设置',
+    getForFree: '免费获取',
+    reload: '刷新',
+    ok: '好的',
   },
   placeholder: {
     input: '请输入',
@@ -32,29 +38,32 @@ const translation = {
     char: '个字符',
   },
   actionMsg: {
+    noModification: '暂无修改',
     modifiedSuccessfully: '修改成功',
     modificationFailed: '修改失败',
     copySuccessfully: '复制成功',
+    paySucceeded: '已支付成功',
+    payCancelled: '已取消支付',
   },
   model: {
     params: {
       temperature: '多样性',
       temperatureTip:
         '较高的 Temperature 设置将导致更多样和创造性的输出，而较低的 Temperature 将产生更保守的输出并且类似于训练数据。',
-      topP: '采样范围',
-      topPTip:
+      top_p: '采样范围',
+      top_pTip:
         'Top P值越低，输出与训练文本越相似，Top P值越高，输出越有创意和变化。它可用于使输出更适合特定用例。',
-      presencePenalty: '词汇控制',
-      presencePenaltyTip:
+      presence_penalty: '词汇控制',
+      presence_penaltyTip:
         'Presence penalty 是根据新词是否出现在目前的文本中来对其进行惩罚。正值将降低模型谈论新话题的可能性。',
-      frequencyPenalty: '重复控制',
-      frequencyPenaltyTip:
+      frequency_penalty: '重复控制',
+      frequency_penaltyTip:
         'Frequency penalty 是根据重复词在目前文本中的出现频率来对其进行惩罚。正值将不太可能重复常用单词和短语。',
-      maxToken: '最大 Token',
-      maxTokenTip:
+      max_tokens: '最大 Token',
+      max_tokensTip:
         '生成的最大令牌数取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 半个中文字符。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
-      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}}。',
+      setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}} 的 80%。',
     },
     tone: {
       Creative: '创意',
@@ -202,6 +211,55 @@ const translation = {
       back: ' 技术进行加密和存储。',
     },
   },
+  modelProvider: {
+    selectModel: '选择您的模型',
+    setupModelFirst: '请先设置您的模型',
+    systemReasoningModel: {
+      key: '系统推理模型',
+      tip: '设置创建应用使用的默认推理模型，以及对话名称生成、下一步问题建议等功能也会使用该默认推理模型。',
+    },
+    embeddingModel: {
+      key: 'Embedding 模型',
+      tip: '设置数据集文档嵌入处理的默认模型，检索和导入数据集均使用该Embedding模型进行向量化处理，切换后将导致已导入的数据集与问题之间的向量维度不一致，从而导致检索失败。为避免检索失败，请勿随意切换该模型。',
+    },
+    speechToTextModel: {
+      key: '语音转文本模型',
+      tip: '设置对话中语音转文字输入的默认使用模型。',
+    },
+    quota: '额度',
+    searchModel: '搜索模型',
+    noModelFound: '找不到模型 {{model}}',
+    models: '模型列表',
+    showMoreModelProvider: '显示更多模型提供商',
+    selector: {
+      tip: '该模型已被删除。请添模型或选择其他模型。',
+    },
+    card: {
+      quota: '额度',
+      onTrial: '试用中',
+      paid: '已购买',
+      quotaExhausted: '配额已用完',
+      callTimes: '调用次数',
+      tokens: 'Tokens',
+      buyQuota: '购买额度',
+      priorityUse: '优先使用',
+      removeKey: '删除 API 密钥',
+      tip: '已付费额度将优先考虑。 试用额度将在付费额度用完后使用。',
+    },
+    item: {
+      deleteDesc: '{{modelName}} 被用作系统推理模型。删除后部分功能将无法使用。请确认。',
+      freeQuota: '免费额度',
+    },
+    addApiKey: '添加您的 API 密钥',
+    invalidApiKey: 'Invalid API key',
+    encrypted: {
+      front: '您的密钥将使用',
+      back: '技术进行加密和存储。',
+    },
+    freeQuota: {
+      howToEarn: '如何获取',
+    },
+  },
   dataSource: {
     add: '添加数据源',
     connect: '绑定',
@@ -264,6 +322,17 @@ const translation = {
     speaking: '现在讲...',
     converting: '正在转换为文本...',
     notAllow: '麦克风未授权',
+  },
+  modelName: {
+    'gpt-3.5-turbo': 'GPT-3.5-Turbo',
+    'gpt-3.5-turbo-16k': 'GPT-3.5-Turbo-16K',
+    'gpt-4': 'GPT-4',
+    'gpt-4-32k': 'GPT-4-32K',
+    'text-davinci-003': 'Text-Davinci-003',
+    'text-embedding-ada-002': 'Text-Embedding-Ada-002',
+    'whisper-1': 'Whisper-1',
+    'claude-instant-1': 'Claude-Instant',
+    'claude-2': 'Claude-2',
   },
 }
 

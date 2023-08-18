@@ -58,34 +58,34 @@
 }
 .actionIcon {
   @apply bg-gray-500;
-  mask-image: url(./assets/action.svg);
+  mask-image: url(~@/assets/action.svg);
 }
 .pdfIcon {
-  background-image: url(./assets/pdf.svg);
+  background-image: url(~@/assets/pdf.svg);
 }
 .jsonIcon {
-  background-image: url(./assets/json.svg);
+  background-image: url(~@/assets/json.svg);
 }
 .htmlIcon {
-  background-image: url(./assets/html.svg);
+  background-image: url(~@/assets/html.svg);
 }
 .txtIcon {
-  background-image: url(./assets/txt.svg);
+  background-image: url(~@/assets/txt.svg);
 }
 .markdownIcon {
-  background-image: url(./assets/md.svg);
+  background-image: url(~@/assets/md.svg);
 }
 .mdIcon {
-  background-image: url(./assets/md.svg);
+  background-image: url(~@/assets/md.svg);
 }
 .xlsIcon {
-  background-image: url(./assets/xlsx.svg);
+  background-image: url(~@/assets/xlsx.svg);
 }
 .xlsxIcon {
-  background-image: url(./assets/xlsx.svg);
+  background-image: url(~@/assets/xlsx.svg);
 }
 .csvIcon {
-  background-image: url(./assets/csv.svg);
+  background-image: url(~@/assets/csv.svg);
 }
 .statusItemDetail {
   @apply h-8 font-medium border border-gray-200 inline-flex items-center rounded-lg pl-3 pr-4 mr-2;

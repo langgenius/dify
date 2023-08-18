@@ -17,7 +17,7 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.conversation_message_task import PubHandler
-from core.llm.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
+from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from flask_restful import Resource, reqparse
@@ -41,7 +41,10 @@ class CompletionMessageApi(Resource):
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, location='json')
         parser.add_argument('model_config', type=dict, required=True, location='json')
+        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         args = parser.parse_args()
+
+        streaming = args['response_mode'] != 'blocking'
 
         account = flask_login.current_user
 
@@ -51,7 +54,7 @@ class CompletionMessageApi(Resource):
                 user=account,
                 args=args,
                 from_source='console',
-                streaming=True,
+                streaming=streaming,
                 is_model_config_override=True
             )
 
@@ -111,7 +114,10 @@ class ChatMessageApi(Resource):
         parser.add_argument('query', type=str, required=True, location='json')
         parser.add_argument('model_config', type=dict, required=True, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
+        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         args = parser.parse_args()
+
+        streaming = args['response_mode'] != 'blocking'
 
         account = flask_login.current_user
 
@@ -121,7 +127,7 @@ class ChatMessageApi(Resource):
                 user=account,
                 args=args,
                 from_source='console',
-                streaming=True,
+                streaming=streaming,
                 is_model_config_override=True
             )
 

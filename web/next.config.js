@@ -38,6 +38,7 @@ const nextConfig = {
       },
     ]
   },
+  output: 'standalone',
 }
 
 module.exports = withMDX(nextConfig)
