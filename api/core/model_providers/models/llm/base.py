@@ -64,9 +64,17 @@ class BaseLLM(BaseProviderModel):
         raise NotImplementedError
 
     @property
+    def base_model_name(self) -> str:
+        """
+        get llm base model name
+
+        :return: str
+        """
+        return self.name
+
+    @property
     def price_config(self) -> dict:
         def get_or_default():
-            base_model_name = self.credentials.get("base_model_name")
             default_price_config = {
                     'prompt': decimal.Decimal('0'),
                     'completion': decimal.Decimal('0'),
@@ -74,7 +82,7 @@ class BaseLLM(BaseProviderModel):
                     'currency': 'USD'
                 }
             rules = self.model_provider.get_rules()
-            price_config = rules['price_config'][base_model_name] if 'price_config' in rules else default_price_config
+            price_config = rules['price_config'][self.base_model_name] if 'price_config' in rules else default_price_config
             price_config = {
                 'prompt': decimal.Decimal(price_config['prompt']),
                 'completion': decimal.Decimal(price_config['completion']),

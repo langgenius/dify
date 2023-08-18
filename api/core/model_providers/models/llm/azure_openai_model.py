@@ -82,6 +82,15 @@ class AzureOpenAIModel(BaseLLM):
         """
         prompts = self._get_prompt_from_messages(messages)
         return self._client.generate([prompts], stop, callbacks)
+    
+    @property
+    def base_model_name(self) -> str:
+        """
+        get base model name (not deployment)
+        
+        :return: str
+        """
+        return self.credentials.get("base_model_name")
 
     def get_num_tokens(self, messages: List[PromptMessage]) -> int:
         """

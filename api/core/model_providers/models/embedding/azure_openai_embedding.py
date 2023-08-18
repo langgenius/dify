@@ -30,6 +30,15 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         )
 
         super().__init__(model_provider, client, name)
+    
+    @property
+    def base_model_name(self) -> str:
+        """
+        get base model name (not deployment)
+        
+        :return: str
+        """
+        return self.credentials.get("base_model_name")
 
     def get_num_tokens(self, text: str) -> int:
         """
