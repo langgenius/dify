@@ -36,6 +36,10 @@ class Dataset(db.Model):
     updated_by = db.Column(UUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False,
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    embedding_model = db.Column(db.String(
+        255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying"))
+    embedding_model_provider = db.Column(db.String(
+        255), nullable=False, server_default=db.text("'openai'::character varying"))
 
     @property
     def dataset_keyword_table(self):
@@ -209,6 +213,7 @@ class Document(db.Model):
     doc_metadata = db.Column(db.JSON, nullable=True)
     doc_form = db.Column(db.String(
         255), nullable=False, server_default=db.text("'text_model'::character varying"))
+    doc_language = db.Column(db.String(255), nullable=True)
 
     DATA_SOURCES = ['upload_file', 'notion_import']
 

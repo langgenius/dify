@@ -67,14 +67,6 @@ class IndexingRunner:
                     dataset_document=dataset_document,
                     processing_rule=processing_rule
                 )
-                # new_documents = []
-                # for document in documents:
-                #     response = LLMGenerator.generate_qa_document(dataset.tenant_id, document.page_content)
-                #     document_qa_list = self.format_split_text(response)
-                #     for result in document_qa_list:
-                #         document = Document(page_content=result['question'], metadata={'source': result['answer']})
-                #         new_documents.append(document)
-                # build index
                 self._build_index(
                     dataset=dataset,
                     dataset_document=dataset_document,
@@ -225,14 +217,25 @@ class IndexingRunner:
             db.session.commit()
 
     def file_indexing_estimate(self, tenant_id: str, file_details: List[UploadFile], tmp_processing_rule: dict,
-                               doc_form: str = None) -> dict:
+                               doc_form: str = None, doc_language: str = 'English', dataset_id: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=tenant_id
-        )
-
+        if dataset_id:
+            dataset = Dataset.query.filter_by(
+                id=dataset_id
+            ).first()
+            if not dataset:
+                raise ValueError('Dataset not found.')
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        else:
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
         tokens = 0
         preview_texts = []
         total_segments = 0
@@ -263,14 +266,13 @@ class IndexingRunner:
 
                 tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
 
-        text_generation_model = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id
-        )
-
         if doc_form and doc_form == 'qa_model':
+            text_generation_model = ModelFactory.get_text_generation_model(
+                tenant_id=tenant_id
+            )
             if len(preview_texts) > 0:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0])
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,
@@ -289,13 +291,26 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def notion_indexing_estimate(self, tenant_id: str, notion_info_list: list, tmp_processing_rule: dict, doc_form: str = None) -> dict:
+    def notion_indexing_estimate(self, tenant_id: str, notion_info_list: list, tmp_processing_rule: dict,
+                                 doc_form: str = None, doc_language: str = 'English', dataset_id: str = None) -> dict:
         """
         Estimate the indexing for the document.
         """
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=tenant_id
-        )
+        if dataset_id:
+            dataset = Dataset.query.filter_by(
+                id=dataset_id
+            ).first()
+            if not dataset:
+                raise ValueError('Dataset not found.')
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        else:
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
 
         # load data from notion
         tokens = 0
@@ -344,14 +359,13 @@ class IndexingRunner:
 
                     tokens += embedding_model.get_num_tokens(document.page_content)
 
-        text_generation_model = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id
-        )
-
         if doc_form and doc_form == 'qa_model':
+            text_generation_model = ModelFactory.get_text_generation_model(
+                tenant_id=tenant_id
+            )
             if len(preview_texts) > 0:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0])
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,
@@ -458,7 +472,8 @@ class IndexingRunner:
             splitter=splitter,
             processing_rule=processing_rule,
             tenant_id=dataset.tenant_id,
-            document_form=dataset_document.doc_form
+            document_form=dataset_document.doc_form,
+            document_language=dataset_document.doc_language
         )
 
         # save node to document segment
@@ -494,7 +509,8 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(self, text_docs: List[Document], splitter: TextSplitter,
-                            processing_rule: DatasetProcessRule, tenant_id: str, document_form: str) -> List[Document]:
+                            processing_rule: DatasetProcessRule, tenant_id: str,
+                            document_form: str, document_language: str) -> List[Document]:
         """
         Split the text documents into nodes.
         """
@@ -523,8 +539,9 @@ class IndexingRunner:
                 sub_documents = all_documents[i:i + 10]
                 for doc in sub_documents:
                     document_format_thread = threading.Thread(target=self.format_qa_document, kwargs={
-                        'flask_app': current_app._get_current_object(), 'tenant_id': tenant_id, 'document_node': doc,
-                        'all_qa_documents': all_qa_documents})
+                        'flask_app': current_app._get_current_object(),
+                        'tenant_id': tenant_id, 'document_node': doc, 'all_qa_documents': all_qa_documents,
+                        'document_language': document_language})
                     threads.append(document_format_thread)
                     document_format_thread.start()
                 for thread in threads:
@@ -532,14 +549,14 @@ class IndexingRunner:
             return all_qa_documents
         return all_documents
 
-    def format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents):
+    def format_qa_document(self, flask_app: Flask, tenant_id: str, document_node, all_qa_documents, document_language):
         format_documents = []
         if document_node.page_content is None or not document_node.page_content.strip():
             return
         with flask_app.app_context():
             try:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content)
+                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content, document_language)
                 document_qa_list = self.format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
@@ -641,7 +658,9 @@ class IndexingRunner:
         keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
 
         embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id
+            tenant_id=dataset.tenant_id,
+            model_provider_name=dataset.embedding_model_provider,
+            model_name=dataset.embedding_model
         )
 
         # chunk nodes by chunk size
@@ -721,6 +740,32 @@ class IndexingRunner:
         """
         DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
+
+    def batch_add_segments(self, segments: List[DocumentSegment], dataset: Dataset):
+        """
+        Batch add segments index processing
+        """
+        documents = []
+        for segment in segments:
+            document = Document(
+                page_content=segment.content,
+                metadata={
+                    "doc_id": segment.index_node_id,
+                    "doc_hash": segment.index_node_hash,
+                    "document_id": segment.document_id,
+                    "dataset_id": segment.dataset_id,
+                }
+            )
+            documents.append(document)
+        # save vector index
+        index = IndexBuilder.get_index(dataset, 'high_quality')
+        if index:
+            index.add_texts(documents, duplicate_check=True)
+
+        # save keyword index
+        index = IndexBuilder.get_index(dataset, 'economy')
+        if index:
+            index.add_texts(documents)
 
 
 class DocumentIsPausedException(Exception):

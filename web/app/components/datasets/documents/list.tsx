@@ -22,12 +22,12 @@ import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
 import { asyncRunSafe } from '@/utils'
 import { formatNumber } from '@/utils/format'
-import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument } from '@/service/datasets'
+import { archiveDocument, deleteDocument, disableDocument, enableDocument, syncDocument, unArchiveDocument } from '@/service/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -86,7 +86,7 @@ export const StatusItem: FC<{
   </div>
 }
 
-type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync'
+type OperationName = 'delete' | 'archive' | 'enable' | 'disable' | 'sync' | 'un_archive'
 
 // operation action for list and detail
 export const OperationAction: FC<{
@@ -101,8 +101,7 @@ export const OperationAction: FC<{
   onUpdate: (operationName?: string) => void
   scene?: 'list' | 'detail'
   className?: string
-  showNewSegmentModal?: () => void
-}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '', showNewSegmentModal }) => {
+}> = ({ datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
   const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
   const { notify } = useContext(ToastContext)
@@ -116,6 +115,9 @@ export const OperationAction: FC<{
     switch (operationName) {
       case 'archive':
         opApi = archiveDocument
+        break
+      case 'un_archive':
+        opApi = unArchiveDocument
         break
       case 'enable':
         opApi = enableDocument
@@ -218,10 +220,72 @@ export const OperationAction: FC<{
       <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />
     </>}
     <Popover
-      htmlContent={<Operations />}
+      htmlContent={
+        <div className='w-full py-1'>
+          {!isListScene && <>
+            <div className='flex justify-between items-center mx-4 pt-2'>
+              <span className={cn(s.actionName, 'font-medium')}>
+                {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
+              </span>
+              <Tooltip
+                selector={`detail-switch-${id}`}
+                content={t('datasetDocuments.list.action.enableWarning') as string}
+                className='!font-semibold'
+                disabled={!archived}
+              >
+                <div>
+                  <Switch
+                    defaultValue={archived ? false : enabled}
+                    onChange={v => !archived && onOperate(v ? 'enable' : 'disable')}
+                    disabled={archived}
+                    size='md'
+                  />
+                </div>
+              </Tooltip>
+            </div>
+            <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
+              {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}
+            </div>
+            <Divider />
+          </>}
+          {!archived && (
+            <>
+              <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
+                <SettingsIcon />
+                <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
+              </div>
+              {data_source_type === 'notion_import' && (
+                <div className={s.actionItem} onClick={() => onOperate('sync')}>
+                  <SyncIcon />
+                  <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                </div>
+              )}
+              <Divider className='my-1' />
+            </>
+          )}
+          {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
+            <ArchiveIcon />
+            <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
+          </div>}
+          {archived && (
+            <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
+              <ArchiveIcon />
+              <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
+            </div>
+          )}
+          <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
+            <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
+            <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('datasetDocuments.list.action.delete')}</span>
+          </div>
+        </div>
+      }
       trigger='click'
       position='br'
-      btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
+      btnElement={
+        <div className={cn(s.commonIcon)}>
+          <DotsHorizontal className='w-4 h-4 text-gray-700' />
+        </div>
+      }
       btnClassName={open => cn(isListScene ? s.actionIconWrapperList : s.actionIconWrapperDetail, open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
       className={`!w-[200px] h-fit !z-20 ${className}`}
     />

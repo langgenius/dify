@@ -22,6 +22,9 @@ export type DataSet = {
   app_count: number
   document_count: number
   word_count: number
+  embedding_model: string
+  embedding_model_provider: string
+  embedding_available: boolean
 }
 
 export type CustomFile = File & {
@@ -184,6 +187,7 @@ export type CreateDocumentReq = {
   original_document_id?: string
   indexing_technique?: string
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
   data_source: DataSource
   process_rule: ProcessRule
 }
@@ -389,4 +393,9 @@ export type SegmentUpdator = {
   content: string
   answer?: string
   keywords?: string[]
+}
+
+export enum DocForm {
+  TEXT = 'text_model',
+  QA = 'qa_model',
 }

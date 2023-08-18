@@ -8,6 +8,7 @@ import { debounce, isNil, omitBy } from 'lodash-es'
 import cn from 'classnames'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
+import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import InfiniteVirtualList from './InfiniteVirtualList'
 import { formatNumber } from '@/utils/format'
@@ -18,7 +19,7 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
+import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
 import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
@@ -48,12 +49,14 @@ type ISegmentDetailProps = {
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
   onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
   onCancel: () => void
+  archived?: boolean
 }
 /**
  * Show all the contents of the segment
  */
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
+  archived,
   onChangeSwitch,
   onUpdate,
   onCancel,
@@ -116,31 +119,30 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   return (
     <div className={'flex flex-col relative'}>
       <div className='absolute right-0 top-0 flex items-center h-7'>
-        {
-          isEditing
-            ? (
-              <>
-                <Button
-                  className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
-                  onClick={handleCancel}>
-                  {t('common.operation.cancel')}
-                </Button>
-                <Button
-                  type='primary'
-                  className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
-                  onClick={handleSave}>
-                  {t('common.operation.save')}
-                </Button>
-              </>
-            )
-            : (
-              <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
-                <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
-                <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
-              </div>
-            )
-        }
-        <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+        {isEditing && (
+          <>
+            <Button
+              className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
+              onClick={handleCancel}>
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              type='primary'
+              className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+              onClick={handleSave}>
+              {t('common.operation.save')}
+            </Button>
+          </>
+        )}
+        {!isEditing && !archived && (
+          <>
+            <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+              <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
+              <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+            </div>
+            <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+          </>
+        )}
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -176,6 +178,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
             onChange={async (val) => {
               await onChangeSwitch?.(segInfo?.id || '', val)
             }}
+            disabled={archived}
           />
         </div>
       </div>
@@ -195,13 +198,20 @@ export const splitArray = (arr: any[], size = 3) => {
 type ICompletedProps = {
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
+  importStatus: ProcessStatus | string | undefined
+  archived?: boolean
   // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
  * Support search and filter
  */
-const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModalChange }) => {
+const Completed: FC<ICompletedProps> = ({
+  showNewSegmentModal,
+  onNewSegmentModalChange,
+  importStatus,
+  archived,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
@@ -250,11 +260,6 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     getSegments(false)
   }
 
-  useEffect(() => {
-    if (lastSegmentsRes !== undefined)
-      getSegments(false)
-  }, [selectedStatus, searchValue])
-
   const onClickCard = (detail: SegmentDetailModel) => {
     setCurrSegment({ segInfo: detail, showModal: true })
   }
@@ -275,6 +280,17 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         }
       }
       setAllSegments([...allSegments])
+    }
+    else {
+      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+    }
+  }
+
+  const onDelete = async (segId: string) => {
+    const [e] = await asyncRunSafe<CommonResponse>(deleteSegment({ datasetId, documentId, segmentId: segId }) as Promise<CommonResponse>)
+    if (!e) {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      resetList()
     }
     else {
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
@@ -321,6 +337,16 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     setAllSegments([...allSegments])
   }
 
+  useEffect(() => {
+    if (lastSegmentsRes !== undefined)
+      getSegments(false)
+  }, [selectedStatus, searchValue])
+
+  useEffect(() => {
+    if (importStatus === ProcessStatus.COMPLETED)
+      resetList()
+  }, [importStatus])
+
   return (
     <>
       <div className={s.docSearchWrapper}>
@@ -343,7 +369,9 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         items={allSegments}
         loadNextPage={getSegments}
         onChangeSwitch={onChangeSwitch}
+        onDelete={onDelete}
         onClick={onClickCard}
+        archived={archived}
       />
       <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
@@ -351,6 +379,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
           onChangeSwitch={onChangeSwitch}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseModal}
+          archived={archived}
         />
       </Modal>
       <NewSegmentModal
