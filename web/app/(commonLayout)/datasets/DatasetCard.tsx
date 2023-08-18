@@ -12,6 +12,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { deleteDataset } from '@/service/datasets'
 import AppIcon from '@/app/components/base/app-icon'
 import type { DataSet } from '@/models/datasets'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -54,7 +55,12 @@ const DatasetCard = ({
             </div>
           </div>
           {!dataset.embedding_available && (
-            <span className='px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+            <Tooltip
+              selector={`dataset-tag-${dataset.id}`}
+              htmlContent={t('dataset.unavailableTip')}
+            >
+              <span className='px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+            </Tooltip>
           )}
           <span className={style.deleteDatasetIcon} onClick={onDeleteClick} />
         </div>

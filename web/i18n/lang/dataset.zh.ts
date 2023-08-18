@@ -17,6 +17,7 @@ const translation = {
   intro5: '创建',
   intro6: '为独立的 ChatGPT 插件发布使用',
   unavailable: '不可用',
+  unavailableTip: '由于 embedding 模型不可用，需要配置默认 embedding 模型',
 }
 
 export default translation
