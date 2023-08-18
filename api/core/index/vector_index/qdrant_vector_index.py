@@ -67,7 +67,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             self._embeddings,
             collection_name=self.get_index_name(self.dataset),
             ids=uuids,
-            content_payload_key='text',
+            content_payload_key='page_content',
             **self._client_config.to_qdrant_params()
         )
 
@@ -86,7 +86,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             client=client,
             collection_name=self.get_index_name(self.dataset),
             embeddings=self._embeddings,
-            content_payload_key='text'
+            content_payload_key='page_content'
         )
 
     def _get_vector_store_class(self) -> type:
