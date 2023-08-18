@@ -48,9 +48,7 @@ DEFAULTS = {
     'WEAVIATE_GRPC_ENABLED': 'True',
     'WEAVIATE_BATCH_SIZE': 100,
     'CELERY_BACKEND': 'database',
-    'PDF_PREVIEW': 'True',
     'LOG_LEVEL': 'INFO',
-    'DISABLE_PROVIDER_CONFIG_VALIDATION': 'False',
     'HOSTED_OPENAI_QUOTA_LIMIT': 200,
     'HOSTED_OPENAI_ENABLED': 'False',
     'HOSTED_OPENAI_PAID_ENABLED': 'False',
@@ -108,7 +106,6 @@ class Config:
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
         self.TESTING = False
         self.LOG_LEVEL = get_env('LOG_LEVEL')
-        self.PDF_PREVIEW = get_bool_env('PDF_PREVIEW')
 
         # Your App secret key will be used for securely signing the session cookie
         # Make sure you are changing this key for your deployment with a strong key.
@@ -235,10 +232,6 @@ class Config:
 
         self.STRIPE_API_KEY = get_env('STRIPE_API_KEY')
         self.STRIPE_WEBHOOK_SECRET = get_env('STRIPE_WEBHOOK_SECRET')
-
-        # By default it is False
-        # You could disable it for compatibility with certain OpenAPI providers
-        self.DISABLE_PROVIDER_CONFIG_VALIDATION = get_bool_env('DISABLE_PROVIDER_CONFIG_VALIDATION')
 
         # notion import setting
         self.NOTION_CLIENT_ID = get_env('NOTION_CLIENT_ID')
