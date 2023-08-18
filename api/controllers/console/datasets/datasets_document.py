@@ -418,6 +418,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     raise ProviderNotInitializeError(
                         f"No Embedding Model available. Please configure a valid provider "
                         f"in the Settings -> Model Provider.")
+                except ProviderTokenNotInitError as ex:
+                    raise ProviderNotInitializeError(ex.description)
 
         return response
 
@@ -485,6 +487,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
         elif dataset.data_source_type == 'notion_import':
 
             indexing_runner = IndexingRunner()
@@ -497,6 +501,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
         else:
             raise ValueError('Data source type not support')
         return response

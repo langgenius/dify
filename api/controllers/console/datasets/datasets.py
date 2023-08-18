@@ -10,7 +10,7 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
-from core.model_providers.error import LLMBadRequestError
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.model_params import ModelType
 from libs.helper import TimestampField
@@ -82,10 +82,10 @@ class DatasetListApi(Resource):
         # check embedding setting
         provider_service = ProviderService()
         valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
-        if len(valid_model_list) == 0:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
+        # if len(valid_model_list) == 0:
+        #     raise ProviderNotInitializeError(
+        #         f"No Embedding Model available. Please configure a valid provider "
+        #         f"in the Settings -> Model Provider.")
         model_names = [item['model_name'] for item in valid_model_list]
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
@@ -276,6 +276,8 @@ class DatasetIndexingEstimateApi(Resource):
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
         elif args['info_list']['data_source_type'] == 'notion_import':
 
             indexing_runner = IndexingRunner()
@@ -289,6 +291,8 @@ class DatasetIndexingEstimateApi(Resource):
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
                     f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
         else:
             raise ValueError('Data source type not support')
         return response, 200

@@ -266,11 +266,10 @@ class IndexingRunner:
 
                 tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
 
-        text_generation_model = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id
-        )
-
         if doc_form and doc_form == 'qa_model':
+            text_generation_model = ModelFactory.get_text_generation_model(
+                tenant_id=tenant_id
+            )
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
@@ -360,11 +359,10 @@ class IndexingRunner:
 
                     tokens += embedding_model.get_num_tokens(document.page_content)
 
-        text_generation_model = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id
-        )
-
         if doc_form and doc_form == 'qa_model':
+            text_generation_model = ModelFactory.get_text_generation_model(
+                tenant_id=tenant_id
+            )
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
