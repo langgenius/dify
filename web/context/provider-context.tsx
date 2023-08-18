@@ -11,6 +11,8 @@ const ProviderContext = createContext<{
   speech2textModelList: BackendModel[]
   agentThoughtModelList: BackendModel[]
   updateModelList: (type: ModelType) => void
+  embeddingsDefaultModel?: BackendModel
+  mutateEmbeddingsDefaultModel: () => void
   speech2textDefaultModel?: BackendModel
   mutateSpeech2textDefaultModel: () => void
 }>({
@@ -21,6 +23,8 @@ const ProviderContext = createContext<{
       updateModelList: () => {},
       speech2textDefaultModel: undefined,
       mutateSpeech2textDefaultModel: () => {},
+      embeddingsDefaultModel: undefined,
+      mutateEmbeddingsDefaultModel: () => {},
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -31,6 +35,7 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
+  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
   const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-type/'
   const { data: textGenerationModelList, mutate: mutateTextGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
@@ -54,6 +59,8 @@ export const ProviderContextProvider = ({
       speech2textModelList: speech2textModelList || [],
       agentThoughtModelList: agentThoughtModelList || [],
       updateModelList,
+      embeddingsDefaultModel,
+      mutateEmbeddingsDefaultModel,
       speech2textDefaultModel,
       mutateSpeech2textDefaultModel,
     }}>
