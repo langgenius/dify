@@ -133,12 +133,14 @@ class ProviderService:
                         provider_parameter_dict[key]['is_valid'] = provider.is_valid
                         provider_parameter_dict[key]['quota_used'] = provider.quota_used
                         provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
-                        provider_parameter_dict[key]['last_used'] = provider.last_used
+                        provider_parameter_dict[key]['last_used'] = int(provider.last_used.timestamp()) \
+                            if provider.last_used else None
                 elif provider.provider_type == ProviderType.CUSTOM.value \
                         and ProviderType.CUSTOM.value in provider_parameter_dict:
                     # if custom
                     key = ProviderType.CUSTOM.value
-                    provider_parameter_dict[key]['last_used'] = provider.last_used
+                    provider_parameter_dict[key]['last_used'] = int(provider.last_used.timestamp()) \
+                            if provider.last_used else None
                     provider_parameter_dict[key]['is_valid'] = provider.is_valid
 
                     if model_provider_rule['model_flexibility'] == 'fixed':
@@ -471,6 +473,7 @@ class ProviderService:
             for model in model_list:
                 valid_model_dict = {
                     "model_name": model['id'],
+                    "model_display_name": model['name'],
                     "model_type": model_type,
                     "model_provider": {
                         "provider_name": provider.provider_name,

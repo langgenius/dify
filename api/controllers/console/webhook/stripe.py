@@ -38,12 +38,20 @@ class StripeWebhookApi(Resource):
             logging.debug(event['data']['object']['payment_status'])
             logging.debug(event['data']['object']['metadata'])
 
+            session = stripe.checkout.Session.retrieve(
+                event['data']['object']['id'],
+                expand=['line_items'],
+            )
+
+            logging.debug(session.line_items['data'][0]['quantity'])
+
             # Fulfill the purchase...
             provider_checkout_service = ProviderCheckoutService()
 
             try:
-                provider_checkout_service.fulfill_provider_order(event)
+                provider_checkout_service.fulfill_provider_order(event, session.line_items)
             except Exception as e:
+
                 logging.debug(str(e))
                 return 'success', 200
 

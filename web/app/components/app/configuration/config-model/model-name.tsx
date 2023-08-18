@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 export type IModelNameProps = {
   modelId: string
+  modelDisplayName?: string
 }
 
 export const supportI18nModelName = [
@@ -16,9 +17,14 @@ export const supportI18nModelName = [
 
 const ModelName: FC<IModelNameProps> = ({
   modelId,
+  modelDisplayName,
 }) => {
   const { t } = useTranslation()
-  const name = supportI18nModelName.includes(modelId) ? t(`common.modelName.${modelId}`) : modelId
+  let name = modelId
+  if (supportI18nModelName.includes(modelId))
+    name = t(`common.modelName.${modelId}`)
+  else if (modelDisplayName)
+    name = modelDisplayName
 
   return (
     <span title={name}>

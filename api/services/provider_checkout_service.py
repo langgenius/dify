@@ -39,6 +39,8 @@ class ProviderCheckoutService:
             raise ValueError(f'provider name {provider_name} not support payment')
 
         payment_product_id = payment_info['product_id']
+        payment_min_quantity = payment_info['min_quantity']
+        payment_max_quantity = payment_info['max_quantity']
 
         # create provider order
         provider_order = ProviderOrder(
@@ -53,18 +55,29 @@ class ProviderCheckoutService:
         db.session.add(provider_order)
         db.session.flush()
 
+        line_item = {
+            'price': f'{payment_product_id}',
+            'quantity': payment_min_quantity
+        }
+
+        if payment_min_quantity > 1 and payment_max_quantity != payment_min_quantity:
+            line_item['adjustable_quantity'] = {
+                'enabled': True,
+                'minimum': payment_min_quantity,
+                'maximum': payment_max_quantity
+            }
+
         try:
             # create stripe checkout session
             checkout_session = stripe.checkout.Session.create(
                 line_items=[
-                    {
-                        'price': f'{payment_product_id}',
-                        'quantity': 1,
-                    },
+                    line_item
                 ],
                 mode='payment',
-                success_url=current_app.config.get("CONSOLE_WEB_URL") + '?provider_payment=succeeded',
-                cancel_url=current_app.config.get("CONSOLE_WEB_URL") + '?provider_payment=cancelled',
+                success_url=current_app.config.get("CONSOLE_WEB_URL")
+                            + f'?provider_name={provider_name}&payment_result=succeeded',
+                cancel_url=current_app.config.get("CONSOLE_WEB_URL")
+                           + f'?provider_name={provider_name}&payment_result=cancelled',
                 automatic_tax={'enabled': True},
             )
         except Exception as e:
@@ -76,7 +89,7 @@ class ProviderCheckoutService:
 
         return ProviderCheckout(checkout_session)
 
-    def fulfill_provider_order(self, event):
+    def fulfill_provider_order(self, event, line_items):
         provider_order = db.session.query(ProviderOrder) \
             .filter(ProviderOrder.payment_id == event['data']['object']['id']) \
             .first()
@@ -85,7 +98,8 @@ class ProviderCheckoutService:
             raise ValueError(f'provider order not found, payment id: {event["data"]["object"]["id"]}')
 
         if provider_order.payment_status != ProviderOrderPaymentStatus.WAIT_PAY.value:
-            raise ValueError(f'provider order payment status is not wait pay, payment id: {event["data"]["object"]["id"]}')
+            raise ValueError(
+                f'provider order payment status is not wait pay, payment id: {event["data"]["object"]["id"]}')
 
         provider_order.transaction_id = event['data']['object']['payment_intent']
         provider_order.currency = event['data']['object']['currency']
@@ -110,10 +124,12 @@ class ProviderCheckoutService:
         model_provider = model_provider_class(provider=provider)
         payment_info = model_provider.get_payment_info()
 
+        quantity = line_items['data'][0]['quantity']
+
         if not payment_info:
             increase_quota = 0
         else:
-            increase_quota = int(payment_info['increase_quota'])
+            increase_quota = int(payment_info['increase_quota']) * quantity
 
         if increase_quota > 0:
             provider.quota_limit += increase_quota

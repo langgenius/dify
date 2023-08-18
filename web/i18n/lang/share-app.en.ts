@@ -27,6 +27,8 @@ const translation = {
       title: 'Delete conversation',
       content: 'Are you sure you want to delete this conversation?',
     },
+    tryToSolve: 'Try to solve',
+    temporarySystemIssue: 'Sorry, temporary system issue.',
   },
   generation: {
     tabs: {

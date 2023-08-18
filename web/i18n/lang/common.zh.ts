@@ -28,6 +28,7 @@ const translation = {
     setup: '设置',
     getForFree: '免费获取',
     reload: '刷新',
+    ok: '好的',
   },
   placeholder: {
     input: '请输入',
@@ -41,6 +42,8 @@ const translation = {
     modifiedSuccessfully: '修改成功',
     modificationFailed: '修改失败',
     copySuccessfully: '复制成功',
+    paySucceeded: '已支付成功',
+    payCancelled: '已取消支付',
   },
   model: {
     params: {
