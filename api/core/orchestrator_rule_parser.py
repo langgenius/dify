@@ -17,12 +17,12 @@ from core.conversation_message_task import ConversationMessageTask
 from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.model_params import ModelKwargs, ModelMode
+from core.tool.current_datetime_tool import DatetimeTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
-from libs import helper
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
@@ -213,18 +213,19 @@ class OrchestratorRuleParser:
 
         :return:
         """
-        summary_model_instance = ModelFactory.get_text_generation_model(
-            tenant_id=self.tenant_id,
-            model_kwargs=ModelKwargs(
-                temperature=0,
-                max_tokens=500
+        try:
+            summary_model_instance = ModelFactory.get_text_generation_model(
+                tenant_id=self.tenant_id,
+                model_kwargs=ModelKwargs(
+                    temperature=0,
+                    max_tokens=500
+                )
             )
-        )
-
-        summary_llm = summary_model_instance.client
+        except ProviderTokenNotInitError as e:
+            summary_model_instance = None
 
         tool = WebReaderTool(
-            llm=summary_llm,
+            llm=summary_model_instance.client if summary_model_instance else None,
             max_chunk_length=4000,
             continue_reading=True,
             callbacks=[DifyStdOutCallbackHandler()]
@@ -252,11 +253,7 @@ class OrchestratorRuleParser:
         return tool
 
     def to_current_datetime_tool(self) -> Optional[BaseTool]:
-        tool = Tool(
-            name="current_datetime",
-            description="A tool when you want to get the current date, time, week, month or year, "
-                        "and the time zone is UTC. Result is \"<date> <time> <timezone> <week>\".",
-            func=helper.get_current_datetime,
+        tool = DatetimeTool(
             callbacks=[DifyStdOutCallbackHandler()]
         )
 
