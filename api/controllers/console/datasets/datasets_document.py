@@ -283,6 +283,7 @@ class DatasetDocumentListApi(Resource):
         # validate args
         DocumentService.document_create_args_validate(args)
 
+        # check embedding model setting
         try:
             ModelFactory.get_embedding_model(
                 tenant_id=current_user.current_tenant_id,
@@ -293,6 +294,8 @@ class DatasetDocumentListApi(Resource):
             raise ProviderNotInitializeError(
                 f"No Embedding Model available. Please configure a valid provider "
                 f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)

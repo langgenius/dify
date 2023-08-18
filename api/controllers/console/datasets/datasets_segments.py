@@ -9,9 +9,12 @@ from werkzeug.exceptions import NotFound, Forbidden
 
 import services
 from controllers.console import api
+from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment
@@ -156,6 +159,20 @@ class DatasetDocumentSegmentApi(Resource):
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
 
+        # check embedding model setting
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id),
             DocumentSegment.tenant_id == current_user.current_tenant_id
@@ -226,6 +243,19 @@ class DatasetDocumentSegmentAddApi(Resource):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
+        # check embedding model setting
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -259,6 +289,19 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
+        # check embedding model setting
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
@@ -335,6 +378,18 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        except LLMBadRequestError:
+            raise ProviderNotInitializeError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
         # get file from request
         file = request.files['file']
         # check file
