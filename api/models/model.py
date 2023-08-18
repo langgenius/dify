@@ -158,7 +158,8 @@ class AppModelConfig(db.Model):
         self.speech_to_text = json.dumps(model_config['speech_to_text']) \
             if model_config.get('speech_to_text') else None
         self.more_like_this = json.dumps(model_config['more_like_this'])
-        self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance'])
+        self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
+            if model_config.get('sensitive_word_avoidance') else None
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
         self.pre_prompt = model_config['pre_prompt']
