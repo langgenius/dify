@@ -587,7 +587,7 @@ const StepTwo = ({
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
-            {!IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
+            {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
               <div className='mt-3 rounded-xl bg-gray-50 border border-gray-100'>
                 <div className='flex justify-between items-center px-5 py-4'>
                   <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
