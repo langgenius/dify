@@ -119,9 +119,11 @@ class ConversationMessageTask:
             message="",
             message_tokens=0,
             message_unit_price=0,
+            message_price_unit=0,
             answer="",
             answer_tokens=0,
             answer_unit_price=0,
+            answer_price_unit=0,
             provider_response_latency=0,
             total_price=0,
             currency=self.model_instance.get_currency(),
@@ -142,7 +144,9 @@ class ConversationMessageTask:
         answer_tokens = llm_message.completion_tokens
 
         message_unit_price = self.model_instance.get_tokens_unit_price(MessageType.HUMAN)
+        message_price_unit = self.model_instance.get_price_unit(MessageType.HUMAN)
         answer_unit_price = self.model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
+        answer_price_unit = self.model_instance.get_price_unit(MessageType.ASSISTANT)
 
         message_total_price = self.model_instance.calc_tokens_price(message_tokens, MessageType.HUMAN)
         answer_total_price = self.model_instance.calc_tokens_price(answer_tokens, MessageType.ASSISTANT)
@@ -151,9 +155,11 @@ class ConversationMessageTask:
         self.message.message = llm_message.prompt
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
+        self.message.message_price_unit = message_price_unit
         self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
+        self.message.answer_price_unit = answer_price_unit
         self.message.provider_response_latency = llm_message.latency
         self.message.total_price = total_price
 
@@ -195,7 +201,9 @@ class ConversationMessageTask:
             tool=agent_loop.tool_name,
             tool_input=agent_loop.tool_input,
             message=agent_loop.prompt,
+            message_price_unit=0,
             answer=agent_loop.completion,
+            answer_price_unit=0,
             created_by_role=('account' if isinstance(self.user, Account) else 'end_user'),
             created_by=self.user.id
         )
@@ -210,7 +218,9 @@ class ConversationMessageTask:
     def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instant: BaseLLM,
                      agent_loop: AgentLoop):
         agent_message_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.HUMAN)
+        agent_message_price_unit = agent_model_instant.get_price_unit(MessageType.HUMAN)
         agent_answer_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.ASSISTANT)
+        agent_answer_price_unit = agent_model_instant.get_price_unit(MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
@@ -223,8 +233,10 @@ class ConversationMessageTask:
         message_agent_thought.tool_process_data = ''  # currently not support
         message_agent_thought.message_token = loop_message_tokens
         message_agent_thought.message_unit_price = agent_message_unit_price
+        message_agent_thought.message_price_unit = agent_message_price_unit
         message_agent_thought.answer_token = loop_answer_tokens
         message_agent_thought.answer_unit_price = agent_answer_unit_price
+        message_agent_thought.answer_price_unit = agent_answer_price_unit
         message_agent_thought.latency = agent_loop.latency
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
