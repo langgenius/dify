@@ -26,7 +26,8 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             openai_api_version=AZURE_OPENAI_API_VERSION,
             chunk_size=16,
             max_retries=1,
-            **self.credentials
+            openai_api_key=self.credentials.get('openai_api_key'),
+            openai_api_base=self.credentials.get('openai_api_base')
         )
 
         super().__init__(model_provider, client, name)
