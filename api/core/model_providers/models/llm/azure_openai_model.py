@@ -166,7 +166,7 @@ class AzureOpenAIModel(BaseLLM):
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError('Azure ' + str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
-            raise LLMAuthorizationError('Azure ' + str(ex))
+            return LLMAuthorizationError('Azure ' + str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
             return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
         else:
