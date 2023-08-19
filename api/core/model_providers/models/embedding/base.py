@@ -50,7 +50,7 @@ class BaseEmbedding(BaseProviderModel):
         logger.debug(f"model: {self.name} price_config: {self._price_config}")
         return self._price_config
 
-    def calc_tokens_price(self, tokens:int) -> decimal.Decimal:
+    def calc_tokens_price(self, tokens: int) -> decimal.Decimal:
         """
         calc tokens total price.
 
