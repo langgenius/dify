@@ -371,7 +371,7 @@ class DocumentService:
         # update document to be recover
         document.is_paused = False
         document.paused_by = current_user.id
-        document.paused_at = time.time()
+        document.paused_at = datetime.datetime.utcnow()
 
         db.session.add(document)
         db.session.commit()
