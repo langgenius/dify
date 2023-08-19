@@ -57,6 +57,9 @@ class ModelProviderFactory:
         elif provider_name == 'huggingface_hub':
             from core.model_providers.providers.huggingface_hub_provider import HuggingfaceHubProvider
             return HuggingfaceHubProvider
+        elif provider_name == 'xinference':
+            from core.model_providers.providers.xinference_provider import XinferenceProvider
+            return XinferenceProvider
         else:
             raise NotImplementedError
 
