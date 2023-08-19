@@ -18,8 +18,8 @@
             "currency": "USD"
         },
         "gpt-35-turbo": {
-            "prompt": "0.0015",
-            "completion": "0.002",
+            "prompt": "0.002",
+            "completion": "0.0015",
             "unit": "0.001",
             "currency": "USD"
         },

@@ -32,7 +32,6 @@ class BaseEmbedding(BaseProviderModel):
     def price_config(self) -> dict:
         def get_or_default():
             default_price_config = {
-                    'prompt': decimal.Decimal('0'),
                     'completion': decimal.Decimal('0'),
                     'unit': decimal.Decimal('0'),
                     'currency': 'USD'
@@ -40,7 +39,6 @@ class BaseEmbedding(BaseProviderModel):
             rules = self.model_provider.get_rules()
             price_config = rules['price_config'][self.base_model_name] if 'price_config' in rules else default_price_config
             price_config = {
-                'prompt': decimal.Decimal(price_config['prompt']),
                 'completion': decimal.Decimal(price_config['completion']),
                 'unit': decimal.Decimal(price_config['unit']),
                 'currency': price_config['currency']
@@ -59,8 +57,8 @@ class BaseEmbedding(BaseProviderModel):
         :param tokens:
         :return: decimal.Decimal('0.0000001')
         """
-        unit_price = self._price_config['completion']
-        unit = self._price_config['unit']
+        unit_price = self.price_config['completion']
+        unit = self.price_config['unit']
         total_price = tokens * unit_price * unit
         total_price = total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
         logging.debug(f"tokens={tokens}, unit_price={unit_price}, unit={unit}, total_price:{total_price}")
@@ -73,7 +71,7 @@ class BaseEmbedding(BaseProviderModel):
         :return: decimal.Decimal('0.0001')
         
         """
-        unit_price = self._price_config['completion']
+        unit_price = self.price_config['completion']
         unit_price = unit_price.quantize(decimal.Decimal('0.0001'), rounding=decimal.ROUND_HALF_UP)
         logger.debug(f'unit_price:{unit_price}')
         return unit_price
@@ -96,7 +94,7 @@ class BaseEmbedding(BaseProviderModel):
 
         :return: get from price config, default 'USD'
         """
-        currency = self._price_config['currency']
+        currency = self.price_config['currency']
         return currency
 
     @abstractmethod
