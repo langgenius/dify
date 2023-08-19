@@ -370,8 +370,8 @@ class DocumentService:
             raise DocumentIndexingError()
         # update document to be recover
         document.is_paused = False
-        document.paused_by = current_user.id
-        document.paused_at = time.time()
+        document.paused_by = None
+        document.paused_at = None
 
         db.session.add(document)
         db.session.commit()
