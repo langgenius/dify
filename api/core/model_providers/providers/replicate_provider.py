@@ -116,7 +116,8 @@ class ReplicateProvider(BaseModelProvider):
                     and 'Embedding' not in rst.openapi_schema['components']['schemas']:
                 raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Embedding model.")
             elif model_type == ModelType.TEXT_GENERATION \
-                    and ('type' not in rst.openapi_schema['components']['schemas']['Output']['items']
+                    and ('items' not in rst.openapi_schema['components']['schemas']['Output']
+                         or 'type' not in rst.openapi_schema['components']['schemas']['Output']['items']
                          or rst.openapi_schema['components']['schemas']['Output']['items']['type'] != 'string'):
                 raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Text Generation model.")
         except ReplicateError as e:
