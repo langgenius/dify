@@ -140,10 +140,13 @@ class ConversationMessageTask:
     def save_message(self, llm_message: LLMMessage, by_stopped: bool = False):
         message_tokens = llm_message.prompt_tokens
         answer_tokens = llm_message.completion_tokens
-        message_unit_price = self.model_instance.get_token_price(1, MessageType.HUMAN)
-        answer_unit_price = self.model_instance.get_token_price(1, MessageType.ASSISTANT)
 
-        total_price = self.calc_total_price(message_tokens, message_unit_price, answer_tokens, answer_unit_price)
+        message_unit_price = self.model_instance.get_tokens_unit_price(MessageType.HUMAN)
+        answer_unit_price = self.model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
+
+        message_total_price = self.model_instance.calc_tokens_price(message_tokens, MessageType.HUMAN)
+        answer_total_price = self.model_instance.calc_tokens_price(answer_tokens, MessageType.ASSISTANT)
+        total_price = message_total_price + answer_total_price
 
         self.message.message = llm_message.prompt
         self.message.message_tokens = message_tokens
@@ -206,18 +209,15 @@ class ConversationMessageTask:
 
     def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instant: BaseLLM,
                      agent_loop: AgentLoop):
-        agent_message_unit_price = agent_model_instant.get_token_price(1, MessageType.HUMAN)
-        agent_answer_unit_price = agent_model_instant.get_token_price(1, MessageType.ASSISTANT)
+        agent_message_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.HUMAN)
+        agent_answer_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
 
-        loop_total_price = self.calc_total_price(
-            loop_message_tokens,
-            agent_message_unit_price,
-            loop_answer_tokens,
-            agent_answer_unit_price
-        )
+        loop_message_total_price = agent_model_instant.calc_tokens_price(loop_message_tokens, MessageType.HUMAN)
+        loop_answer_total_price = agent_model_instant.calc_tokens_price(loop_answer_tokens, MessageType.ASSISTANT)
+        loop_total_price = loop_message_total_price + loop_answer_total_price
 
         message_agent_thought.observation = agent_loop.tool_output
         message_agent_thought.tool_process_data = ''  # currently not support
@@ -242,15 +242,6 @@ class ConversationMessageTask:
         )
 
         db.session.add(dataset_query)
-
-    def calc_total_price(self, message_tokens, message_unit_price, answer_tokens, answer_unit_price):
-        message_tokens_per_1k = (decimal.Decimal(message_tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                                  rounding=decimal.ROUND_HALF_UP)
-        answer_tokens_per_1k = (decimal.Decimal(answer_tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                                rounding=decimal.ROUND_HALF_UP)
-
-        total_price = message_tokens_per_1k * message_unit_price + answer_tokens_per_1k * answer_unit_price
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
 
     def end(self):
         self._pub_handler.pub_end()

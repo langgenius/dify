@@ -31,6 +31,15 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         )
 
         super().__init__(model_provider, client, name)
+    
+    @property
+    def base_model_name(self) -> str:
+        """
+        get base model name (not deployment)
+        
+        :return: str
+        """
+        return self.credentials.get("base_model_name")
 
     def get_num_tokens(self, text: str) -> int:
         """
@@ -48,16 +57,6 @@ class AzureOpenAIEmbedding(BaseEmbedding):
 
         # calculate the number of tokens in the encoded text
         return len(tokenized_text)
-
-    def get_token_price(self, tokens: int):
-        tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                  rounding=decimal.ROUND_HALF_UP)
-
-        total_price = tokens_per_1k * decimal.Decimal('0.0001')
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
-
-    def get_currency(self):
-        return 'USD'
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):

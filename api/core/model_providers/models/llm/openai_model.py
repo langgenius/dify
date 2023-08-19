@@ -46,7 +46,8 @@ class OpenAIModel(BaseLLM):
             self.model_mode = ModelMode.COMPLETION
         else:
             self.model_mode = ModelMode.CHAT
-
+        
+        # TODO load price config from configs(db)
         super().__init__(model_provider, name, model_kwargs, streaming, callbacks)
 
     def _init_client(self) -> Any:
@@ -116,44 +117,6 @@ class OpenAIModel(BaseLLM):
             return self._client.get_num_tokens(prompts)
         else:
             return max(self._client.get_num_tokens_from_messages(prompts) - len(prompts), 0)
-
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        model_unit_prices = {
-            'gpt-4': {
-                'prompt': decimal.Decimal('0.03'),
-                'completion': decimal.Decimal('0.06'),
-            },
-            'gpt-4-32k': {
-                'prompt': decimal.Decimal('0.06'),
-                'completion': decimal.Decimal('0.12')
-            },
-            'gpt-3.5-turbo': {
-                'prompt': decimal.Decimal('0.0015'),
-                'completion': decimal.Decimal('0.002')
-            },
-            'gpt-3.5-turbo-16k': {
-                'prompt': decimal.Decimal('0.003'),
-                'completion': decimal.Decimal('0.004')
-            },
-            'text-davinci-003': {
-                'prompt': decimal.Decimal('0.02'),
-                'completion': decimal.Decimal('0.02')
-            },
-        }
-
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = model_unit_prices[self.name]['prompt']
-        else:
-            unit_price = model_unit_prices[self.name]['completion']
-
-        tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                  rounding=decimal.ROUND_HALF_UP)
-
-        total_price = tokens_per_1k * unit_price
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
-
-    def get_currency(self):
-        return 'USD'
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

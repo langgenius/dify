@@ -278,7 +278,7 @@ class IndexingRunner:
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
                     "total_price": '{:f}'.format(
-                        text_generation_model.get_token_price(total_segments * 2000, MessageType.HUMAN)),
+                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
                     "currency": embedding_model.get_currency(),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -286,7 +286,7 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.get_token_price(tokens)),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
             "currency": embedding_model.get_currency(),
             "preview": preview_texts
         }
@@ -371,7 +371,7 @@ class IndexingRunner:
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
                     "total_price": '{:f}'.format(
-                        text_generation_model.get_token_price(total_segments * 2000, MessageType.HUMAN)),
+                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
                     "currency": embedding_model.get_currency(),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
