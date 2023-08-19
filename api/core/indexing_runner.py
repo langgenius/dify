@@ -379,7 +379,7 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.get_token_price(tokens)),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
             "currency": embedding_model.get_currency(),
             "preview": preview_texts
         }
