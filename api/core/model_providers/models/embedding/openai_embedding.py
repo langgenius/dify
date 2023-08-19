@@ -65,7 +65,7 @@ class OpenAIEmbedding(BaseEmbedding):
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError(str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
-            raise LLMAuthorizationError(str(ex))
+            return LLMAuthorizationError(str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
             return LLMBadRequestError(ex.__class__.__name__ + ":" + str(ex))
         else:
