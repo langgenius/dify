@@ -60,6 +60,9 @@ class ModelProviderFactory:
         elif provider_name == 'xinference':
             from core.model_providers.providers.xinference_provider import XinferenceProvider
             return XinferenceProvider
+        elif provider_name == 'openllm':
+            from core.model_providers.providers.openllm_provider import OpenLLMProvider
+            return OpenLLMProvider
         else:
             raise NotImplementedError
 
