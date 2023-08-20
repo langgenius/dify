@@ -4,6 +4,7 @@ from typing import Type
 from langchain.llms import Xinference
 
 from core.helper import encrypter
+from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
 from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType
 from core.model_providers.models.llm.xinference_model import XinferenceModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
@@ -32,6 +33,8 @@ class XinferenceProvider(BaseModelProvider):
         """
         if model_type == ModelType.TEXT_GENERATION:
             model_class = XinferenceModel
+        elif model_type == ModelType.EMBEDDINGS:
+            model_class = XinferenceEmbedding
         else:
             raise NotImplementedError
 
