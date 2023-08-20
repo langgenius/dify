@@ -1,0 +1,69 @@
+from typing import List, Optional, Any
+
+from langchain.callbacks.manager import Callbacks
+from langchain.llms import Xinference
+from langchain.schema import LLMResult
+
+from core.model_providers.error import LLMBadRequestError
+from core.model_providers.models.llm.base import BaseLLM
+from core.model_providers.models.entity.message import PromptMessage
+from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
+
+
+class XinferenceModel(BaseLLM):
+    model_mode: ModelMode = ModelMode.COMPLETION
+
+    def _init_client(self) -> Any:
+        self.provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+
+        client = Xinference(
+            **self.credentials,
+        )
+
+        client.callbacks = self.callbacks
+
+        return client
+
+    def _run(self, messages: List[PromptMessage],
+             stop: Optional[List[str]] = None,
+             callbacks: Callbacks = None,
+             **kwargs) -> LLMResult:
+        """
+        run predict by prompt messages and stop words.
+
+        :param messages:
+        :param stop:
+        :param callbacks:
+        :return:
+        """
+        prompts = self._get_prompt_from_messages(messages)
+        return self._client.generate(
+            [prompts],
+            stop,
+            callbacks,
+            generate_config={
+                "stop": stop,
+                "stream": self.streaming,
+                **self.provider_model_kwargs,
+            }
+        )
+
+    def get_num_tokens(self, messages: List[PromptMessage]) -> int:
+        """
+        get num tokens of prompt messages.
+
+        :param messages:
+        :return:
+        """
+        prompts = self._get_prompt_from_messages(messages)
+        return max(self._client.get_num_tokens(prompts), 0)
+
+    def _set_model_kwargs(self, model_kwargs: ModelKwargs):
+        pass
+
+    def handle_exceptions(self, ex: Exception) -> Exception:
+        return LLMBadRequestError(f"Xinference: {str(ex)}")
+
+    @classmethod
+    def support_streaming(cls):
+        return True

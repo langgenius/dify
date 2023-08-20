@@ -52,7 +52,9 @@ def test_get_num_tokens(mock_decrypt):
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
-def test_run(mock_decrypt):
+def test_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
     model = get_mock_model('qwen-v1')
     rst = model.run(
         [PromptMessage(content='Human: Are you Human? you MUST only answer `y` or `n`? \nAssistant: ')],
