@@ -50,4 +50,3 @@ transformers~=4.31.0
 stripe~=5.5.0
 pandas==1.5.3
 xinference==0.2.0
-openllm~=0.2.26

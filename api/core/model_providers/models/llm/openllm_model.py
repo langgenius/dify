@@ -1,13 +1,13 @@
 from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
-from langchain.llms import OpenLLM
 from langchain.schema import LLMResult
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
+from core.third_party.langchain.llms.openllm import OpenLLM
 
 
 class OpenLLMModel(BaseLLM):
@@ -19,7 +19,7 @@ class OpenLLMModel(BaseLLM):
         client = OpenLLM(
             server_url=self.credentials.get('server_url'),
             callbacks=self.callbacks,
-            **self.provider_model_kwargs
+            llm_kwargs=self.provider_model_kwargs
         )
 
         return client
