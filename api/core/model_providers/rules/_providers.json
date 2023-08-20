@@ -9,5 +9,6 @@
   "chatglm",
   "replicate",
   "huggingface_hub",
-  "xinference"
+  "xinference",
+  "openllm"
 ]
