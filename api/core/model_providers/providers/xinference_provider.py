@@ -50,7 +50,7 @@ class XinferenceProvider(BaseModelProvider):
             top_p=KwargRule[float](min=0, max=1, default=0.7),
             presence_penalty=KwargRule[float](min=-2, max=2, default=0),
             frequency_penalty=KwargRule[float](min=-2, max=2, default=0),
-            max_tokens=KwargRule[int](alias='max_token', min=10, max=4000, default=256),
+            max_tokens=KwargRule[int](min=10, max=4000, default=256),
         )
 
     @classmethod
