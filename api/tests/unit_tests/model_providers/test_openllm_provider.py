@@ -23,8 +23,7 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 
 def test_is_credentials_valid_or_raise_valid(mocker):
-    mocker.patch('langchain.llms.openllm.OpenLLM._identifying_params', return_value=None)
-    mocker.patch('langchain.llms.openllm.OpenLLM._call',
+    mocker.patch('core.third_party.langchain.llms.openllm.OpenLLM._call',
                  return_value="abc")
 
     MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
@@ -35,8 +34,6 @@ def test_is_credentials_valid_or_raise_valid(mocker):
 
 
 def test_is_credentials_valid_or_raise_invalid(mocker):
-    mocker.patch('langchain.llms.openllm.OpenLLM._identifying_params', return_value=None)
-
     # raise CredentialsValidateFailedError if credential is not in credentials
     with pytest.raises(CredentialsValidateFailedError):
         MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
