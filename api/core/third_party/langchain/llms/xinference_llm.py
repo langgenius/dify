@@ -28,7 +28,26 @@ class XinferenceLLM(Xinference):
         """
         model = self.client.get_model(self.model_uid)
 
-        if isinstance(model, RESTfulGenerateModelHandle):
+        if isinstance(model, RESTfulChatModelHandle):
+            generate_config: "LlamaCppGenerateConfig" = kwargs.get("generate_config", {})
+
+            if stop:
+                generate_config["stop"] = stop
+
+            if generate_config and generate_config.get("stream"):
+                combined_text_output = ""
+                for token in self._stream_generate(
+                        model=model,
+                        prompt=prompt,
+                        run_manager=run_manager,
+                        generate_config=generate_config,
+                ):
+                    combined_text_output += token
+                return combined_text_output
+            else:
+                completion = model.chat(prompt=prompt, generate_config=generate_config)
+                return completion["choices"][0]["text"]
+        elif isinstance(model, RESTfulGenerateModelHandle):
             generate_config: "LlamaCppGenerateConfig" = kwargs.get("generate_config", {})
 
             if stop:
@@ -47,25 +66,6 @@ class XinferenceLLM(Xinference):
 
             else:
                 completion = model.generate(prompt=prompt, generate_config=generate_config)
-                return completion["choices"][0]["text"]
-        elif isinstance(model, RESTfulChatModelHandle):
-            generate_config: "LlamaCppGenerateConfig" = kwargs.get("generate_config", {})
-
-            if stop:
-                generate_config["stop"] = stop
-
-            if generate_config and generate_config.get("stream"):
-                combined_text_output = ""
-                for token in self._stream_generate(
-                        model=model,
-                        prompt=prompt,
-                        run_manager=run_manager,
-                        generate_config=generate_config,
-                ):
-                    combined_text_output += token
-                return combined_text_output
-            else:
-                completion = model.chat(prompt=prompt, generate_config=generate_config)
                 return completion["choices"][0]["text"]
         elif isinstance(model, RESTfulChatglmCppChatModelHandle):
             generate_config: "ChatglmCppGenerateConfig" = kwargs.get("generate_config", {})

@@ -52,8 +52,15 @@ def test_is_credentials_valid_or_raise_invalid():
 
 
 @patch('core.helper.encrypter.encrypt_token', side_effect=encrypt_side_effect)
-def test_encrypt_model_credentials(mock_encrypt):
+def test_encrypt_model_credentials(mock_encrypt, mocker):
     api_key = 'http://127.0.0.1:9997/'
+
+    mocker.patch('core.model_providers.providers.xinference_provider.XinferenceProvider._get_extra_credentials',
+                 return_value={
+                     'model_handle_type': 'generate',
+                     'model_format': 'ggmlv3'
+                 })
+
     result = MODEL_PROVIDER_CLASS.encrypt_model_credentials(
         tenant_id='tenant_id',
         model_name='test_model_name',
@@ -77,12 +84,6 @@ def test_get_model_credentials_custom(mock_decrypt, mocker):
 
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
     encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
-
-    mocker.patch('core.model_providers.providers.xinference_provider.XinferenceProvider._get_extra_credentials',
-                 return_value={
-                     'model_handle_type': 'generate',
-                     'model_format': 'ggmlv3'
-                 })
 
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(
@@ -111,12 +112,6 @@ def test_get_model_credentials_obfuscated(mock_decrypt, mocker):
 
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
     encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
-
-    mocker.patch('core.model_providers.providers.xinference_provider.XinferenceProvider._get_extra_credentials',
-                 return_value={
-                     'model_handle_type': 'generate',
-                     'model_format': 'ggmlv3'
-                 })
 
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(

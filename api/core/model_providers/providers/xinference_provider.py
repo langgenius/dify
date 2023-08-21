@@ -118,7 +118,11 @@ class XinferenceProvider(BaseModelProvider):
         :param credentials:
         :return:
         """
+        extra_credentials = cls._get_extra_credentials(credentials)
+        credentials.update(extra_credentials)
+
         credentials['server_url'] = encrypter.encrypt_token(tenant_id, credentials['server_url'])
+
         return credentials
 
     def get_model_credentials(self, model_name: str, model_type: ModelType, obfuscated: bool = False) -> dict:
@@ -151,11 +155,9 @@ class XinferenceProvider(BaseModelProvider):
             if obfuscated:
                 credentials['server_url'] = encrypter.obfuscated_token(credentials['server_url'])
 
-        extra_credentials = self._get_extra_credentials(credentials)
-
-        credentials.update(extra_credentials)
         return credentials
 
+    @classmethod
     def _get_extra_credentials(self, credentials: dict) -> dict:
         url = f"{credentials['server_url']}/v1/models/{credentials['model_uid']}"
         response = requests.get(url)
