@@ -26,10 +26,20 @@ class AzureOpenAIEmbedding(BaseEmbedding):
             openai_api_version=AZURE_OPENAI_API_VERSION,
             chunk_size=16,
             max_retries=1,
-            **self.credentials
+            openai_api_key=self.credentials.get('openai_api_key'),
+            openai_api_base=self.credentials.get('openai_api_base')
         )
 
         super().__init__(model_provider, client, name)
+    
+    @property
+    def base_model_name(self) -> str:
+        """
+        get base model name (not deployment)
+        
+        :return: str
+        """
+        return self.credentials.get("base_model_name")
 
     def get_num_tokens(self, text: str) -> int:
         """
@@ -48,16 +58,6 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         # calculate the number of tokens in the encoded text
         return len(tokenized_text)
 
-    def get_token_price(self, tokens: int):
-        tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                  rounding=decimal.ROUND_HALF_UP)
-
-        total_price = tokens_per_1k * decimal.Decimal('0.0001')
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
-
-    def get_currency(self):
-        return 'USD'
-
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):
             logging.warning("Invalid request to Azure OpenAI API.")
@@ -71,7 +71,7 @@ class AzureOpenAIEmbedding(BaseEmbedding):
         elif isinstance(ex, openai.error.RateLimitError):
             return LLMRateLimitError('Azure ' + str(ex))
         elif isinstance(ex, openai.error.AuthenticationError):
-            raise LLMAuthorizationError('Azure ' + str(ex))
+            return LLMAuthorizationError('Azure ' + str(ex))
         elif isinstance(ex, openai.error.OpenAIError):
             return LLMBadRequestError('Azure ' + ex.__class__.__name__ + ":" + str(ex))
         else:
