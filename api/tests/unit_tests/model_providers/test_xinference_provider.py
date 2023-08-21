@@ -4,7 +4,6 @@ import json
 
 from core.model_providers.models.entity.model_params import ModelType
 from core.model_providers.providers.base import CredentialsValidateFailedError
-from core.model_providers.providers.replicate_provider import ReplicateProvider
 from core.model_providers.providers.xinference_provider import XinferenceProvider
 from models.provider import ProviderType, Provider, ProviderModel
 
@@ -25,7 +24,7 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 
 def test_is_credentials_valid_or_raise_valid(mocker):
-    mocker.patch('langchain.llms.xinference.Xinference._call',
+    mocker.patch('core.third_party.langchain.llms.xinference_llm.XinferenceLLM._call',
                  return_value="abc")
 
     MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
@@ -79,6 +78,12 @@ def test_get_model_credentials_custom(mock_decrypt, mocker):
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
     encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
 
+    mocker.patch('core.model_providers.providers.xinference_provider.XinferenceProvider._get_extra_credentials',
+                 return_value={
+                     'model_handle_type': 'generate',
+                     'model_format': 'ggmlv3'
+                 })
+
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(
         encrypted_config=json.dumps(encrypted_credential)
@@ -106,6 +111,12 @@ def test_get_model_credentials_obfuscated(mock_decrypt, mocker):
 
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
     encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
+
+    mocker.patch('core.model_providers.providers.xinference_provider.XinferenceProvider._get_extra_credentials',
+                 return_value={
+                     'model_handle_type': 'generate',
+                     'model_format': 'ggmlv3'
+                 })
 
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(
