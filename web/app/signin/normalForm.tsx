@@ -237,6 +237,10 @@ const NormalForm = () => {
                       id="password"
                       value={password}
                       onChange={e => setPassword(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter')
+                          handleEmailPasswordLogin()
+                      }}
                       type={showPassword ? 'text' : 'password'}
                       autoComplete="current-password"
                       placeholder={t('login.passwordPlaceholder') || ''}
@@ -256,6 +260,7 @@ const NormalForm = () => {
 
                 <div className='mb-2'>
                   <Button
+                    tabIndex={0}
                     type='primary'
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
