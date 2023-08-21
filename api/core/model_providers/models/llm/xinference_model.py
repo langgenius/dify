@@ -1,13 +1,13 @@
 from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
-from langchain.llms import Xinference
 from langchain.schema import LLMResult
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
+from core.third_party.langchain.llms.xinference_llm import XinferenceLLM
 
 
 class XinferenceModel(BaseLLM):
@@ -16,8 +16,9 @@ class XinferenceModel(BaseLLM):
     def _init_client(self) -> Any:
         self.provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
 
-        client = Xinference(
-            **self.credentials,
+        client = XinferenceLLM(
+            server_url=self.credentials['server_url'],
+            model_uid=self.credentials['model_uid'],
         )
 
         client.callbacks = self.callbacks
