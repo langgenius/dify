@@ -56,31 +56,34 @@ def login_required(func):
     @wraps(func)
     def decorated_view(*args, **kwargs):
         auth_header = request.headers.get('Authorization')
-        if auth_header:
-            if ' ' not in auth_header:
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-            auth_scheme, auth_token = auth_header.split(None, 1)
-            auth_scheme = auth_scheme.lower()
-            if auth_scheme != 'bearer':
-                raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
-            admin_api_key = os.getenv('ADMIN_API_KEY')
-            if admin_api_key:
-                if os.getenv('ADMIN_API_KEY') == auth_token:
-                    workspace_id = request.headers.get('X-WORKSPACE-ID')
-                    if workspace_id:
-                        tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
-                            .filter(Tenant.id == workspace_id) \
-                            .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                            .filter(TenantAccountJoin.role == 'owner') \
-                            .one_or_none()
-                        if tenant_account_join:
-                            tenant, ta = tenant_account_join
-                            account = Account.query.filter_by(id=ta.account_id).first()
-                            # Login admin
-                            if account:
-                                account.current_tenant = tenant
-                                current_app.login_manager._update_request_context_with_user(account)
-                                user_logged_in.send(current_app._get_current_object(), user=_get_user())
+        admin_api_key_enable = os.getenv('ADMIN_API_KEY_ENABLE', default='False')
+        if admin_api_key_enable:
+            if auth_header:
+                if ' ' not in auth_header:
+                    raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+                auth_scheme, auth_token = auth_header.split(None, 1)
+                auth_scheme = auth_scheme.lower()
+                if auth_scheme != 'bearer':
+                    raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+                admin_api_key = os.getenv('ADMIN_API_KEY')
+
+                if admin_api_key:
+                    if os.getenv('ADMIN_API_KEY') == auth_token:
+                        workspace_id = request.headers.get('X-WORKSPACE-ID')
+                        if workspace_id:
+                            tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
+                                .filter(Tenant.id == workspace_id) \
+                                .filter(TenantAccountJoin.tenant_id == Tenant.id) \
+                                .filter(TenantAccountJoin.role == 'owner') \
+                                .one_or_none()
+                            if tenant_account_join:
+                                tenant, ta = tenant_account_join
+                                account = Account.query.filter_by(id=ta.account_id).first()
+                                # Login admin
+                                if account:
+                                    account.current_tenant = tenant
+                                    current_app.login_manager._update_request_context_with_user(account)
+                                    user_logged_in.send(current_app._get_current_object(), user=_get_user())
         if request.method in EXEMPT_METHODS or current_app.config.get("LOGIN_DISABLED"):
             pass
         elif not current_user.is_authenticated:
