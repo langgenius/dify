@@ -325,7 +325,8 @@ def create_qdrant_indexes():
                         model_name=dataset.embedding_model
                     )
                 except Exception:
-                    embedding_model = OpenAIEmbeddings(model="text-embedding-ada-002")
+                    model_provider = OpenAIProvider()
+                    embedding_model = OpenAIEmbedding(name="text-embedding-ada-002", model_provider=model_provider)
                 embeddings = CacheEmbedding(embedding_model)
 
                 from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig

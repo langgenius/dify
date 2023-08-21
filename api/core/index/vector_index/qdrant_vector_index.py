@@ -77,7 +77,9 @@ class QdrantVectorIndex(BaseVectorIndex):
         """Only for created index."""
         if self._vector_store:
             return self._vector_store
-        
+        attributes = ['doc_id', 'dataset_id', 'document_id']
+        if self._is_origin():
+            attributes = ['doc_id']
         client = qdrant_client.QdrantClient(
             **self._client_config.to_qdrant_params()
         )

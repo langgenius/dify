@@ -279,7 +279,7 @@ class Qdrant(VectorStore):
             consistency=consistency,
             **kwargs,
         )
-        return results
+        return list(map(itemgetter(0), results))
 
     @sync_call_fallback
     async def asimilarity_search(
