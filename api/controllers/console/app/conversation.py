@@ -1,7 +1,8 @@
 from datetime import datetime
 
 import pytz
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, reqparse, fields, marshal_with
 from flask_restful.inputs import int_range
 from sqlalchemy import or_, func

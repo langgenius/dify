@@ -284,8 +284,9 @@ class DocumentService:
             "github_link": str,
             "open_source_license": str,
             "commit_date": str,
-            "commit_author": str
-        }
+            "commit_author": str,
+        },
+        "others": dict
     }
 
     @staticmethod

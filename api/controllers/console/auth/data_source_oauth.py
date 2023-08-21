@@ -5,9 +5,12 @@ from typing import Optional
 import flask_login
 import requests
 from flask import request, redirect, current_app, session
-from flask_login import current_user, login_required
+from flask_login import current_user
+
 from flask_restful import Resource
 from werkzeug.exceptions import Forbidden
+
+from core.login.login import login_required
 from libs.oauth_data_source import NotionOAuth
 from controllers.console import api
 from ..setup import setup_required
