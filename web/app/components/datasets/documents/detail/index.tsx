@@ -127,7 +127,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           </div>
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' />
+          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
           {documentDetail && !documentDetail.archived && (
             <SegmentAdd
               importStatus={importStatus}

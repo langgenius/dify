@@ -27,7 +27,8 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
+import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import { DotsHorizontal, HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -73,7 +74,8 @@ export const StatusItem: FC<{
   reverse?: boolean
   scene?: 'list' | 'detail'
   textCls?: string
-}> = ({ status, reverse = false, scene = 'list', textCls = '' }) => {
+  errorMessage?: string
+}> = ({ status, reverse = false, scene = 'list', textCls = '', errorMessage }) => {
   const DOC_INDEX_STATUS_MAP = useIndexStatus()
   const localStatus = status.toLowerCase() as keyof typeof DOC_INDEX_STATUS_MAP
   return <div className={
@@ -83,6 +85,16 @@ export const StatusItem: FC<{
   }>
     <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
     <span className={cn('text-gray-700 text-sm', textCls)}>{DOC_INDEX_STATUS_MAP[localStatus]?.text}</span>
+    {
+      errorMessage && (
+        <Tooltip
+          selector='dataset-document-detail-item-status'
+          content={errorMessage}
+        >
+          <HelpCircle className='ml-1 w-[14px] h-[14px] text-gray-700' />
+        </Tooltip>
+      )
+    }
   </div>
 }
 
