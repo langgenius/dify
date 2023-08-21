@@ -6,12 +6,13 @@ import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import Config from '@/app/components/explore/universal-chat/config'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import type { DataSet } from '@/models/datasets'
 
 type Props = {
   modelId: string
   providerName: ProviderEnum
   plugins: Record<string, boolean>
-  dataSets: any[]
+  dataSets: DataSet[]
 }
 const ConfigViewPanel: FC<Props> = ({
   modelId,

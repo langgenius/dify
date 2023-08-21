@@ -10,12 +10,13 @@ import ConfigDetail from '@/app/components/explore/universal-chat/config-view/de
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import { useProviderContext } from '@/context/provider-context'
+import type { DataSet } from '@/models/datasets'
 
 export type ISummaryProps = {
   modelId: string
   providerName: ProviderEnum
   plugins: Record<string, boolean>
-  dataSets: any[]
+  dataSets: DataSet[]
 }
 
 const getColorInfo = (modelId: string) => {

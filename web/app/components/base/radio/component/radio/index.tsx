@@ -26,7 +26,7 @@ export default function Radio({
 }: IRadioProps): JSX.Element {
   const groupContext = useContext(RadioGroupContext)
   const labelId = useId()
-  const handleChange = (e: any) => {
+  const handleChange = (e: IRadioProps['value']) => {
     if (disabled)
       return
 

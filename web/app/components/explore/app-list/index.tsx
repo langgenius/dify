@@ -13,8 +13,10 @@ import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList, installApp } from '@/service/explore'
 import { createApp } from '@/service/apps'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { type AppMode } from '@/types/app'
 
 const Apps: FC = () => {
   const { t } = useTranslation()
@@ -50,7 +52,7 @@ const Apps: FC = () => {
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate = async ({ name, icon, icon_background }: any) => {
+  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
 
     try {
@@ -58,7 +60,7 @@ const Apps: FC = () => {
         name,
         icon,
         icon_background,
-        mode: currApp?.app.mode as any,
+        mode: currApp?.app.mode as AppMode,
         config: model_config,
       })
       setIsShowCreateModal(false)

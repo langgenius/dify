@@ -1,9 +1,10 @@
 'use client'
 import { useBoolean } from 'ahooks'
-import React, { FC, useEffect, useState, useRef } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
+import type { FC } from 'react'
 import { createRoot } from 'react-dom/client'
 
-export interface IPortalToFollowElementProps {
+type IPortalToFollowElementProps = {
   portalElem: React.ReactNode
   children: React.ReactNode
   controlShow?: number
@@ -14,44 +15,42 @@ const PortalToFollowElement: FC<IPortalToFollowElementProps> = ({
   portalElem,
   children,
   controlShow,
-  controlHide
+  controlHide,
 }) => {
   const [isShowContent, { setTrue: showContent, setFalse: hideContent, toggle: toggleContent }] = useBoolean(false)
   const [wrapElem, setWrapElem] = useState<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    if (controlShow) {
+    if (controlShow)
       showContent()
-    }
   }, [controlShow])
 
   useEffect(() => {
-    if (controlHide) {
+    if (controlHide)
       hideContent()
-    }
   }, [controlHide])
 
   // todo use click outside hidden
-  const triggerElemRef = useRef<HTMLElement>(null)
+  const triggerElemRef = useRef<HTMLDivElement>(null)
 
   const calLoc = () => {
     const triggerElem = triggerElemRef.current
     if (!triggerElem) {
       return {
-        display: 'none'
+        display: 'none',
       }
     }
     const {
       left: triggerLeft,
       top: triggerTop,
-      height
-    } = triggerElem.getBoundingClientRect();
+      height,
+    } = triggerElem.getBoundingClientRect()
 
     return {
       position: 'fixed',
       left: triggerLeft,
       top: triggerTop + height,
-      zIndex: 999
+      zIndex: 999,
     }
   }
 
@@ -63,19 +62,20 @@ const PortalToFollowElement: FC<IPortalToFollowElementProps> = ({
       root.render(
         <div style={style as React.CSSProperties}>
           {portalElem}
-        </div>
+        </div>,
       )
       document.body.appendChild(holder)
       setWrapElem(holder)
       console.log(holder)
-    } else {
+    }
+    else {
       wrapElem?.remove?.()
       setWrapElem(null)
     }
   }, [isShowContent])
 
   return (
-    <div ref={triggerElemRef as any} onClick={toggleContent}>
+    <div ref={triggerElemRef as React.RefObject<HTMLDivElement>} onClick={toggleContent}>
       {children}
     </div>
   )

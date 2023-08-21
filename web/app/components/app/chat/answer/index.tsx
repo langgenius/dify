@@ -225,7 +225,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                           setLoading(true)
                           const res = await onSubmitAnnotation?.(id, inputValue)
                           if (res)
-                            setAnnotation({ ...annotation, content: inputValue } as any)
+                            setAnnotation({ ...annotation, content: inputValue } as Annotation)
                           setLoading(false)
                           setShowEdit(false)
                         }}>{t('common.operation.confirm')}</Button>
