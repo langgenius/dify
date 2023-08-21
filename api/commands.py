@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 import random
 import string
@@ -325,7 +326,15 @@ def create_qdrant_indexes():
                         model_name=dataset.embedding_model
                     )
                 except Exception:
-                    model_provider = OpenAIProvider()
+                    provider = Provider(
+                        id='provider_id',
+                        tenant_id='tenant_id',
+                        provider_name='openai',
+                        provider_type=ProviderType.CUSTOM.value,
+                        encrypted_config=json.dumps({'openai_api_key': 'TEST'}),
+                        is_valid=True,
+                    )
+                    model_provider = OpenAIProvider(provider=provider)
                     embedding_model = OpenAIEmbedding(name="text-embedding-ada-002", model_provider=model_provider)
                 embeddings = CacheEmbedding(embedding_model)
 
