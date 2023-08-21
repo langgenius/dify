@@ -22,6 +22,9 @@ export type DataSet = {
   app_count: number
   document_count: number
   word_count: number
+  embedding_model: string
+  embedding_model_provider: string
+  embedding_available: boolean
 }
 
 export type CustomFile = File & {
@@ -184,6 +187,7 @@ export type CreateDocumentReq = {
   original_document_id?: string
   indexing_technique?: string
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
   data_source: DataSource
   process_rule: ProcessRule
 }
@@ -238,7 +242,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   archived_reason: 'rule_modified' | 're_upload'
   archived_by: string
   archived_at: number
-  doc_type?: DocType | null
+  doc_type?: DocType | null | 'others'
   doc_metadata?: DocMetadata | null
   segment_count: number
   [key: string]: any
@@ -388,4 +392,10 @@ export type RelatedAppResponse = {
 export type SegmentUpdator = {
   content: string
   answer?: string
+  keywords?: string[]
+}
+
+export enum DocForm {
+  TEXT = 'text_model',
+  QA = 'qa_model',
 }

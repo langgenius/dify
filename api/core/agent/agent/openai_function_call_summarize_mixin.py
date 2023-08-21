@@ -14,7 +14,7 @@ from core.model_providers.models.llm.base import BaseLLM
 class OpenAIFunctionCallSummarizeMixin(BaseModel, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
-    summary_llm: BaseLanguageModel
+    summary_llm: BaseLanguageModel = None
     model_instance: BaseLLM
 
     class Config:

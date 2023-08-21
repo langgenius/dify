@@ -52,17 +52,6 @@ def update_segment_keyword_index_task(segment_id: str):
         # delete from keyword index
         kw_index.delete_by_ids([segment.index_node_id])
 
-        # add new index
-        document = Document(
-            page_content=segment.content,
-            metadata={
-                "doc_id": segment.index_node_id,
-                "doc_hash": segment.index_node_hash,
-                "document_id": segment.document_id,
-                "dataset_id": segment.dataset_id,
-            }
-        )
-
         # save keyword index
         index = IndexBuilder.get_index(dataset, 'economy')
         if index:

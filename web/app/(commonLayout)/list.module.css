@@ -192,3 +192,11 @@
   @apply inline-flex items-center mb-2 text-sm font-medium;
 }
 /* #endregion new app dialog */
+
+.unavailable {
+  @apply opacity-50;
+}
+
+.listItem:hover .unavailable {
+  @apply opacity-100;
+}

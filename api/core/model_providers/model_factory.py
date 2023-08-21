@@ -46,7 +46,8 @@ class ModelFactory:
                                   model_name: Optional[str] = None,
                                   model_kwargs: Optional[ModelKwargs] = None,
                                   streaming: bool = False,
-                                  callbacks: Callbacks = None) -> Optional[BaseLLM]:
+                                  callbacks: Callbacks = None,
+                                  deduct_quota: bool = True) -> Optional[BaseLLM]:
         """
         get text generation model.
 
@@ -56,6 +57,7 @@ class ModelFactory:
         :param model_kwargs:
         :param streaming:
         :param callbacks:
+        :param deduct_quota:
         :return:
         """
         is_default_model = False
@@ -95,7 +97,7 @@ class ModelFactory:
             else:
                 raise e
 
-        if is_default_model:
+        if is_default_model or not deduct_quota:
             model_instance.deduct_quota = False
 
         return model_instance

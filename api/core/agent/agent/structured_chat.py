@@ -52,7 +52,7 @@ Action:
 class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
-    summary_llm: BaseLanguageModel
+    summary_llm: BaseLanguageModel = None
     model_instance: BaseLLM
 
     class Config:

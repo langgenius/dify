@@ -10,10 +10,10 @@ from models.dataset import Dataset, DocumentSegment
 
 class DatesetDocumentStore:
     def __init__(
-        self,
-        dataset: Dataset,
-        user_id: str,
-        document_id: Optional[str] = None,
+            self,
+            dataset: Dataset,
+            user_id: str,
+            document_id: Optional[str] = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
@@ -59,7 +59,7 @@ class DatesetDocumentStore:
         return output
 
     def add_documents(
-        self, docs: Sequence[Document], allow_update: bool = True
+            self, docs: Sequence[Document], allow_update: bool = True
     ) -> None:
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document_id == self._document_id
@@ -69,7 +69,9 @@ class DatesetDocumentStore:
             max_position = 0
 
         embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=self._dataset.tenant_id
+            tenant_id=self._dataset.tenant_id,
+            model_provider_name=self._dataset.embedding_model_provider,
+            model_name=self._dataset.embedding_model
         )
 
         for doc in docs:
@@ -123,7 +125,7 @@ class DatesetDocumentStore:
         return result is not None
 
     def get_document(
-        self, doc_id: str, raise_error: bool = True
+            self, doc_id: str, raise_error: bool = True
     ) -> Optional[Document]:
         document_segment = self.get_document_segment(doc_id)
 

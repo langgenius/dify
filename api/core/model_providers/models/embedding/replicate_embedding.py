@@ -22,13 +22,6 @@ class ReplicateEmbedding(BaseEmbedding):
 
         super().__init__(model_provider, client, name)
 
-    def get_token_price(self, tokens: int):
-        # replicate only pay for prediction seconds
-        return decimal.Decimal('0')
-
-    def get_currency(self):
-        return 'USD'
-
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, (ModelError, ReplicateError)):
             return LLMBadRequestError(f"Replicate: {str(ex)}")

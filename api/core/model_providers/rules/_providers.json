@@ -8,5 +8,7 @@
   "wenxin",
   "chatglm",
   "replicate",
-  "huggingface_hub"
+  "huggingface_hub",
+  "xinference",
+  "openllm"
 ]

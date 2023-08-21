@@ -16,6 +16,7 @@ class WenxinModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
+        # TODO load price_config from configs(db)
         return Wenxin(
             streaming=self.streaming,
             callbacks=self.callbacks,
@@ -47,36 +48,6 @@ class WenxinModel(BaseLLM):
         """
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens(prompts), 0)
-
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        model_unit_prices = {
-            'ernie-bot': {
-                'prompt': decimal.Decimal('0.012'),
-                'completion': decimal.Decimal('0.012'),
-            },
-            'ernie-bot-turbo': {
-                'prompt': decimal.Decimal('0.008'),
-                'completion': decimal.Decimal('0.008')
-            },
-            'bloomz-7b': {
-                'prompt': decimal.Decimal('0.006'),
-                'completion': decimal.Decimal('0.006')
-            }
-        }
-
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = model_unit_prices[self.name]['prompt']
-        else:
-            unit_price = model_unit_prices[self.name]['completion']
-
-        tokens_per_1k = (decimal.Decimal(tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                  rounding=decimal.ROUND_HALF_UP)
-
-        total_price = tokens_per_1k * unit_price
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
-
-    def get_currency(self):
-        return 'RMB'
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

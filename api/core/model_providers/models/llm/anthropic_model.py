@@ -54,32 +54,6 @@ class AnthropicModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens_from_messages(prompts) - len(prompts), 0)
 
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        model_unit_prices = {
-            'claude-instant-1': {
-                'prompt': decimal.Decimal('1.63'),
-                'completion': decimal.Decimal('5.51'),
-            },
-            'claude-2': {
-                'prompt': decimal.Decimal('11.02'),
-                'completion': decimal.Decimal('32.68'),
-            },
-        }
-
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
-            unit_price = model_unit_prices[self.name]['prompt']
-        else:
-            unit_price = model_unit_prices[self.name]['completion']
-
-        tokens_per_1m = (decimal.Decimal(tokens) / 1000000).quantize(decimal.Decimal('0.000001'),
-                                                                     rounding=decimal.ROUND_HALF_UP)
-
-        total_price = tokens_per_1m * unit_price
-        return total_price.quantize(decimal.Decimal('0.00000001'), rounding=decimal.ROUND_HALF_UP)
-
-    def get_currency(self):
-        return 'USD'
-
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
         for k, v in provider_model_kwargs.items():

@@ -15,7 +15,9 @@ class IndexBuilder:
                 return None
 
             embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
             )
 
             embeddings = CacheEmbedding(embedding_model)
