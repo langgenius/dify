@@ -61,11 +61,15 @@ type DeleteModel = {
 
 const ModelPage = () => {
   const { t } = useTranslation()
-  const { updateModelList } = useProviderContext()
+  const {
+    updateModelList,
+    embeddingsDefaultModel,
+    mutateEmbeddingsDefaultModel,
+    speech2textDefaultModel,
+    mutateSpeech2textDefaultModel,
+  } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
-  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
-  const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()

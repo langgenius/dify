@@ -38,7 +38,7 @@ const Config: FC = () => {
     setSpeechToTextConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
-  const { currentProvider } = useProviderContext()
+  const { speech2textDefaultModel } = useProviderContext()
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
@@ -90,7 +90,7 @@ const Config: FC = () => {
     },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && currentProvider?.provider_name === 'openai'))
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel))
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -120,7 +120,7 @@ const Config: FC = () => {
             isChatApp={isChatApp}
             config={featureConfig}
             onChange={handleFeatureChange}
-            showSpeechToTextItem={currentProvider?.provider_name === 'openai'}
+            showSpeechToTextItem={!!speech2textDefaultModel}
           />
         )}
         {showAutomatic && (
@@ -160,7 +160,7 @@ const Config: FC = () => {
                 }
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
-              isShowSpeechText={featureConfig.speechToText && currentProvider?.provider_name === 'openai'}
+              isShowSpeechText={featureConfig.speechToText && !!speech2textDefaultModel}
             />
           )
         }
