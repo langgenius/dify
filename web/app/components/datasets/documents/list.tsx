@@ -27,7 +27,6 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import ProgressBar from '@/app/components/base/progress-bar'
 import { DataSourceType, type DocumentDisplayStatus, type SimpleDocumentDetail } from '@/models/datasets'
 import type { CommonResponse } from '@/models/common'
-import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import { DotsHorizontal, HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
 export const SettingsIcon: FC<{ className?: string }> = ({ className }) => {
@@ -89,7 +88,9 @@ export const StatusItem: FC<{
       errorMessage && (
         <Tooltip
           selector='dataset-document-detail-item-status'
-          content={errorMessage}
+          htmlContent={
+            <div className='max-w-[260px]'>{errorMessage}</div>
+          }
         >
           <HelpCircle className='ml-1 w-[14px] h-[14px] text-gray-700' />
         </Tooltip>
@@ -151,73 +152,6 @@ export const OperationAction: FC<{
       notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
     onUpdate(operationName)
   }
-
-  const Operations = (props: any) => <div className='w-full py-1'>
-    {!isListScene && <>
-      <div className='flex justify-between items-center mx-4 pt-2'>
-        <span className={cn(s.actionName, 'font-medium')}>
-          {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
-        </span>
-        <Tooltip
-          selector={`detail-switch-${id}`}
-          content={t('datasetDocuments.list.action.enableWarning') as string}
-          className='!font-semibold'
-          disabled={!archived}
-        >
-          <div>
-            <Switch
-              defaultValue={archived ? false : enabled}
-              onChange={v => !archived && onOperate(v ? 'enable' : 'disable')}
-              disabled={archived}
-              size='md'
-            />
-          </div>
-        </Tooltip>
-      </div>
-      <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
-        {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}
-      </div>
-      <Divider />
-    </>}
-    {!archived && (
-      <>
-        <div className={s.actionItem} onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}>
-          <SettingsIcon />
-          <span className={s.actionName}>{t('datasetDocuments.list.action.settings')}</span>
-        </div>
-        {
-          !isListScene && (
-            <div className={s.actionItem} onClick={showNewSegmentModal}>
-              <FilePlus02 className='w-4 h-4 text-gray-500' />
-              <span className={s.actionName}>{t('datasetDocuments.list.action.add')}</span>
-            </div>
-          )
-        }
-        {
-          data_source_type === 'notion_import' && (
-            <div className={s.actionItem} onClick={() => onOperate('sync')}>
-              <SyncIcon />
-              <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
-            </div>
-          )
-        }
-        <Divider className='my-1' />
-      </>
-    )}
-    {!archived && <div className={s.actionItem} onClick={() => onOperate('archive')}>
-      <ArchiveIcon />
-      <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
-    </div>}
-    <div
-      className={cn(s.actionItem, s.deleteActionItem, 'group')}
-      onClick={() => {
-        setShowModal(true)
-        props?.onClose()
-      }}>
-      <TrashIcon className={'w-4 h-4 stroke-current text-gray-500 stroke-2 group-hover:text-red-500'} />
-      <span className={cn(s.actionName, 'group-hover:text-red-500')}>{t('datasetDocuments.list.action.delete')}</span>
-    </div>
-  </div>
 
   return <div className='flex items-center' onClick={e => e.stopPropagation()}>
     {isListScene && <>
