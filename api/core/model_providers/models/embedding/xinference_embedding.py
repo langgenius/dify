@@ -1,4 +1,4 @@
-from langchain.embeddings import XinferenceEmbeddings
+from core.third_party.langchain.embeddings.xinference_embedding import XinferenceEmbedding as XinferenceEmbeddings
 from replicate.exceptions import ModelError, ReplicateError
 
 from core.model_providers.error import LLMBadRequestError
@@ -14,7 +14,8 @@ class XinferenceEmbedding(BaseEmbedding):
         )
 
         client = XinferenceEmbeddings(
-            **credentials,
+            server_url=credentials['server_url'],
+            model_uid=credentials['model_uid'],
         )
 
         super().__init__(model_provider, client, name)
