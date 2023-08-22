@@ -1,4 +1,4 @@
-from langchain.embeddings import XinferenceEmbeddings
+from core.third_party.langchain.embeddings.xinference_embedding import XinferenceEmbedding as XinferenceEmbeddings
 from replicate.exceptions import ModelError, ReplicateError
 
 from core.model_providers.error import LLMBadRequestError
