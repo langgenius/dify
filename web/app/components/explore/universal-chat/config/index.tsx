@@ -5,6 +5,7 @@ import ModelConfig from './model-config'
 import DataConfig from './data-config'
 import PluginConfig from './plugins-config'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import type { DataSet } from '@/models/datasets'
 
 export type IConfigProps = {
   className?: string
@@ -14,8 +15,8 @@ export type IConfigProps = {
   onModelChange?: (modelId: string, providerName: ProviderEnum) => void
   plugins: Record<string, boolean>
   onPluginChange?: (key: string, value: boolean) => void
-  dataSets: any[]
-  onDataSetsChange?: (contexts: any[]) => void
+  dataSets: DataSet[]
+  onDataSetsChange?: (contexts: DataSet[]) => void
 }
 
 const Config: FC<IConfigProps> = ({

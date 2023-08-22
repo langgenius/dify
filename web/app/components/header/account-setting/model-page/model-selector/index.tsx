@@ -15,6 +15,7 @@ import ModelIcon from '@/app/components/app/configuration/config-model/model-ico
 import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
+
 type Props = {
   value: {
     providerName: ProviderEnum
@@ -26,6 +27,16 @@ type Props = {
   popClassName?: string
   readonly?: boolean
   triggerIconSmall?: boolean
+}
+
+type ModelOption = {
+  type: 'model'
+  value: string
+  providerName: ProviderEnum
+  modelDisplayName: string
+} | {
+  type: 'provider'
+  value: ProviderEnum
 }
 
 const ModelSelector: FC<Props> = ({
@@ -69,9 +80,9 @@ const ModelSelector: FC<Props> = ({
 
   const hasRemoved = value && !modelList.find(({ model_name }) => model_name === value.modelName)
 
-  const modelOptions: any[] = (() => {
+  const modelOptions: ModelOption[] = (() => {
     const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
-    const res: any[] = []
+    const res: ModelOption[] = []
     providers.forEach((providerName) => {
       res.push({
         type: 'provider',
@@ -162,7 +173,7 @@ const ModelSelector: FC<Props> = ({
                 </div>
               </div>
               {
-                modelOptions.map((model: any) => {
+                modelOptions.map((model) => {
                   if (model.type === 'provider') {
                     return (
                       <div

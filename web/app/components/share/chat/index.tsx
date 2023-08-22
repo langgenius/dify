@@ -30,7 +30,7 @@ import {
 } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
+import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'

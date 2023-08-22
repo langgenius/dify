@@ -81,7 +81,7 @@ const Chat: FC<IChatProps> = ({
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
-  const handleContentChange = (e: any) => {
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const value = e.target.value
     setQuery(value)
   }
@@ -111,7 +111,7 @@ const Chat: FC<IChatProps> = ({
       setQuery('')
   }
 
-  const handleKeyUp = (e: any) => {
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.code === 'Enter') {
       e.preventDefault()
       // prevent send message when using input method enter
@@ -120,7 +120,7 @@ const Chat: FC<IChatProps> = ({
     }
   }
 
-  const handleKeyDown = (e: any) => {
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
     if (e.code === 'Enter' && !e.shiftKey) {
       setQuery(query.replace(/\n$/, ''))

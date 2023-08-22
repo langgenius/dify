@@ -22,7 +22,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ActivateForm = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const { locale, setLocaleOnClient } = useContext(I18n)
   const searchParams = useSearchParams()
   const workspaceID = searchParams.get('workspace_id')
   const email = searchParams.get('email')
@@ -45,6 +45,7 @@ const ActivateForm = () => {
   const [timezone, setTimezone] = useState('Asia/Shanghai')
   const [language, setLanguage] = useState('en-US')
   const [showSuccess, setShowSuccess] = useState(false)
+  const defaultLanguage = (navigator.language?.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en
 
   const showErrorMessage = (message: string) => {
     Toast.notify({
@@ -83,6 +84,7 @@ const ActivateForm = () => {
           timezone,
         },
       })
+      setLocaleOnClient(language.startsWith('en') ? 'en' : 'zh-Hans')
       setShowSuccess(true)
     }
     catch {
@@ -93,7 +95,7 @@ const ActivateForm = () => {
   return (
     <div className={
       cn(
-        'flex flex-col items-center w-full grow items-center justify-center',
+        'flex flex-col items-center w-full grow justify-center',
         'px-6',
         'md:px-[108px]',
       )
@@ -167,7 +169,7 @@ const ActivateForm = () => {
                 </label>
                 <div className="relative mt-1 rounded-md shadow-sm">
                   <SimpleSelect
-                    defaultValue={languageMaps.en}
+                    defaultValue={defaultLanguage}
                     items={languages}
                     onSelect={(item) => {
                       setLanguage(item.value as string)
