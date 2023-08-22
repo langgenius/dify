@@ -691,6 +691,7 @@ class IndexingRunner:
                 DocumentSegment.status == "indexing"
             ).update({
                 DocumentSegment.status: "completed",
+                DocumentSegment.enabled: True,
                 DocumentSegment.completed_at: datetime.datetime.utcnow()
             })
 
