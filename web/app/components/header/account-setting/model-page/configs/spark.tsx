@@ -42,12 +42,12 @@ const config: ProviderConfig = {
         key: 'app_id',
         required: true,
         label: {
-          'en': 'APP ID',
-          'zh-Hans': 'APP ID',
+          'en': 'APPID',
+          'zh-Hans': 'APPID',
         },
         placeholder: {
-          'en': 'Enter your APP ID here',
-          'zh-Hans': '在此输入您的 APP ID',
+          'en': 'Enter your APPID here',
+          'zh-Hans': '在此输入您的 APPID',
         },
       },
       {
@@ -55,12 +55,12 @@ const config: ProviderConfig = {
         key: 'api_secret',
         required: true,
         label: {
-          'en': 'API Secret',
-          'zh-Hans': 'API Secret',
+          'en': 'APISecret',
+          'zh-Hans': 'APISecret',
         },
         placeholder: {
-          'en': 'Enter your API Secret here',
-          'zh-Hans': '在此输入您的 API Secret',
+          'en': 'Enter your APISecret here',
+          'zh-Hans': '在此输入您的 APISecret',
         },
       },
       {
@@ -68,12 +68,12 @@ const config: ProviderConfig = {
         key: 'api_key',
         required: true,
         label: {
-          'en': 'API Key',
-          'zh-Hans': 'API Key',
+          'en': 'APIKey',
+          'zh-Hans': 'APIKey',
         },
         placeholder: {
-          'en': 'Enter your API key here',
-          'zh-Hans': '在此输入您的 API Key',
+          'en': 'Enter your APIKey here',
+          'zh-Hans': '在此输入您的 APIKey',
         },
       },
     ],
