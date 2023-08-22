@@ -25,7 +25,7 @@ const Category: FC<ICategoryProps> = ({
   const itemClassName = (isSelected: boolean) => cn(isSelected ? 'bg-white text-primary-600 border-gray-200 font-semibold' : 'border-transparent font-medium', 'flex items-center h-7 px-3 border cursor-pointer rounded-lg')
   const itemStyle = (isSelected: boolean) => isSelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}
   return (
-    <div className={cn(className, 'flex space-x-1 text-[13px]')}>
+    <div className={cn(className, 'flex space-x-1 text-[13px] flex-wrap')}>
       <div
         className={itemClassName(value === '')}
         style={itemStyle(value === '')}
