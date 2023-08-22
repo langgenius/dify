@@ -13,6 +13,7 @@ import SettingsModal from './settings'
 import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
 import style from './style.module.css'
+import type { ConfigParams } from './settings'
 import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
@@ -31,9 +32,9 @@ export type IAppCardProps = {
   appInfo: AppDetailResponse
   cardType?: 'api' | 'webapp'
   customBgColor?: string
-  onChangeStatus: (val: boolean) => Promise<any>
-  onSaveSiteConfig?: (params: any) => Promise<any>
-  onGenerateCode?: () => Promise<any>
+  onChangeStatus: (val: boolean) => Promise<void>
+  onSaveSiteConfig?: (params: ConfigParams) => Promise<void>
+  onGenerateCode?: () => Promise<void>
 }
 
 const EmbedIcon: FC<{ className?: string }> = ({ className = '' }) => {
@@ -193,7 +194,7 @@ function AppCard({
         </div>
         <div className={'pt-2 flex flex-row items-center'}>
           {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
-          {OPERATIONS_MAP[cardType].map((op: any) => {
+          {OPERATIONS_MAP[cardType].map((op) => {
             const disabled
               = op.opName === t('appOverview.overview.appInfo.settings.entry')
                 ? false

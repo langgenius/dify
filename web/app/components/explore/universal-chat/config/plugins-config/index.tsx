@@ -19,7 +19,8 @@ const plugins = [
   { key: 'google_search', icon: <Google /> },
   { key: 'web_reader', icon: <WebReader /> },
   { key: 'wikipedia', icon: <Wikipedia /> },
-]
+] as const
+
 const Plugins: FC<IPluginsProps> = ({
   readonly,
   config,
