@@ -68,11 +68,11 @@ const Apps = () => {
 
   return (
     <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
+      { isCurrentWorkspaceManager
+      && <NewAppCard ref={anchorRef} onSuccess={mutate} />}
       {data?.map(({ data: apps }) => apps.map(app => (
         <AppCard key={app.id} app={app} onRefresh={mutate} />
       )))}
-      { isCurrentWorkspaceManager
-      && <NewAppCard ref={anchorRef} onSuccess={mutate} />}
       {
         showPayStatusModal && (
           <Confirm
