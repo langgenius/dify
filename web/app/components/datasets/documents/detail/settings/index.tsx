@@ -6,7 +6,6 @@ import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { FullDocumentDetail } from '@/models/datasets'
-import { fetchTenantInfo } from '@/service/common'
 import type { MetadataType } from '@/service/datasets'
 import { fetchDocumentDetail } from '@/service/datasets'
 
@@ -14,6 +13,7 @@ import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import AccountSetting from '@/app/components/header/account-setting'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import { useProviderContext } from '@/context/provider-context'
 
 type DocumentSettingsProps = {
   datasetId: string
@@ -23,24 +23,14 @@ type DocumentSettingsProps = {
 const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const [hasSetAPIKEY, setHasSetAPIKEY] = useState(true)
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [hasError, setHasError] = useState(false)
   const { indexingTechnique, dataset } = useContext(DatasetDetailContext)
+  const { embeddingsDefaultModel } = useProviderContext()
 
   const saveHandler = () => router.push(`/datasets/${datasetId}/documents/${documentId}`)
 
   const cancelHandler = () => router.back()
-
-  const checkAPIKey = async () => {
-    const data = await fetchTenantInfo({ url: '/info' })
-    const hasSetKey = data.providers.some(({ is_valid }) => is_valid)
-    setHasSetAPIKEY(hasSetKey)
-  }
-
-  useEffect(() => {
-    checkAPIKey()
-  }, [])
 
   const [documentDetail, setDocumentDetail] = useState<FullDocumentDetail | null>(null)
   const currentPage = useMemo(() => {
@@ -77,7 +67,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         {!documentDetail && <Loading type='app' />}
         {dataset && documentDetail && (
           <StepTwo
-            hasSetAPIKEY={hasSetAPIKEY}
+            hasSetAPIKEY={!!embeddingsDefaultModel}
             onSetting={showSetAPIKey}
             datasetId={datasetId}
             dataSourceType={documentDetail.data_source_type}
@@ -92,7 +82,6 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
         )}
       </div>
       {isShowSetAPIKey && <AccountSetting activeTab="provider" onCancel={async () => {
-        await checkAPIKey()
         hideSetAPIkey()
       }} />}
     </div>
