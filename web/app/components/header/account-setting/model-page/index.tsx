@@ -83,6 +83,8 @@ const ModelPage = () => {
       config.tongyi,
       config.wenxin,
       config.chatglm,
+      config.xinference,
+      config.openllm,
     ]
   }
   else {
@@ -95,6 +97,8 @@ const ModelPage = () => {
       config.tongyi,
       config.wenxin,
       config.chatglm,
+      config.xinference,
+      config.openllm,
     ]
   }
 
