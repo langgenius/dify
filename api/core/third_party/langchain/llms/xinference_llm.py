@@ -46,7 +46,7 @@ class XinferenceLLM(Xinference):
                 return combined_text_output
             else:
                 completion = model.chat(prompt=prompt, generate_config=generate_config)
-                return completion["choices"][0]["text"]
+                return completion["choices"][0]["message"]["content"]
         elif isinstance(model, RESTfulGenerateModelHandle):
             generate_config: "LlamaCppGenerateConfig" = kwargs.get("generate_config", {})
 
@@ -82,7 +82,7 @@ class XinferenceLLM(Xinference):
                 completion = combined_text_output
             else:
                 completion = model.chat(prompt=prompt, generate_config=generate_config)
-                completion = completion["choices"][0]["text"]
+                completion = completion["choices"][0]["message"]["content"]
 
             if stop is not None:
                 completion = enforce_stop_tokens(completion, stop)
