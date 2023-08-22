@@ -67,9 +67,6 @@ class OpenLLM(LLM):
         json_response = response.json()
         completion = json_response["responses"][0]
 
-        if completion:
-            completion = completion[len(prompt):]
-
         if stop is not None:
             completion = enforce_stop_tokens(completion, stop)
 
