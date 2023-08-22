@@ -42,12 +42,12 @@ const config: ProviderConfig = {
         key: 'app_id',
         required: true,
         label: {
-          'en': 'API ID',
-          'zh-Hans': 'API ID',
+          'en': 'APP ID',
+          'zh-Hans': 'APP ID',
         },
         placeholder: {
-          'en': 'Enter your API ID here',
-          'zh-Hans': '在此输入您的 API ID',
+          'en': 'Enter your APP ID here',
+          'zh-Hans': '在此输入您的 APP ID',
         },
       },
       {
