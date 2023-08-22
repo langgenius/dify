@@ -14,7 +14,8 @@ class XinferenceEmbedding(BaseEmbedding):
         )
 
         client = XinferenceEmbeddings(
-            **credentials,
+            server_url=credentials['server_url'],
+            model_uid=credentials['model_uid'],
         )
 
         super().__init__(model_provider, client, name)
