@@ -8,7 +8,7 @@ import tongyi from './tongyi'
 import spark from './spark'
 import minimax from './minimax'
 import chatglm from './chatglm'
-import xference from './xinference'
+import xinference from './xinference'
 import openllm from './openllm'
 
 export default {
@@ -22,6 +22,6 @@ export default {
   spark,
   minimax,
   chatglm,
-  xference,
+  xinference,
   openllm,
 }

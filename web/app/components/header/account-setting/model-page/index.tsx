@@ -45,7 +45,7 @@ const MODEL_LIST = [
   config.tongyi,
   config.wenxin,
   config.chatglm,
-  config.xference,
+  config.xinference,
   config.openllm,
 ]
 
