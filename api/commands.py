@@ -20,7 +20,7 @@ from models.model import Account
 import secrets
 import base64
 
-from models.provider import Provider, ProviderType, ProviderQuotaType
+from models.provider import Provider, ProviderType, ProviderQuotaType, ProviderModel
 
 
 @click.command('reset-password', help='Reset the account password.')
@@ -102,6 +102,7 @@ def reset_encrypt_key_pair():
     tenant.encrypt_public_key = generate_key_pair(tenant.id)
 
     db.session.query(Provider).filter(Provider.provider_type == 'custom').delete()
+    db.session.query(ProviderModel).delete()
     db.session.commit()
 
     click.echo(click.style('Congratulations! '
