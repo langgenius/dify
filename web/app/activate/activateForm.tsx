@@ -47,13 +47,14 @@ const ActivateForm = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en, [])
 
-  const showErrorMessage = (message: string) => {
+  const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
       type: 'error',
       message,
     })
-  }
-  const valid = () => {
+  }, [])
+
+  const valid = useCallback(() => {
     if (!name.trim()) {
       showErrorMessage(t('login.error.nameEmpty'))
       return false
@@ -66,9 +67,9 @@ const ActivateForm = () => {
       showErrorMessage(t('login.error.passwordInvalid'))
 
     return true
-  }
+  }, [name, password, showErrorMessage, t])
 
-  const handleActivate = async () => {
+  const handleActivate = useCallback(async () => {
     if (!valid())
       return
     try {
@@ -84,13 +85,13 @@ const ActivateForm = () => {
           timezone,
         },
       })
-      setLocaleOnClient(language.startsWith('en') ? 'en' : 'zh-Hans')
+      setLocaleOnClient(language.startsWith('en') ? 'en' : 'zh-Hans', false)
       setShowSuccess(true)
     }
     catch {
       recheck()
     }
-  }
+  }, [email, language, name, password, recheck, setLocaleOnClient, timezone, token, valid, workspaceID])
 
   return (
     <div className={
