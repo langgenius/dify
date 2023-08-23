@@ -17,7 +17,8 @@ HOSTED_INFERENCE_API_VALIDATE_CREDENTIAL = {
 INFERENCE_ENDPOINTS_VALIDATE_CREDENTIAL = {
     'huggingfacehub_api_type': 'inference_endpoints',
     'huggingfacehub_api_token': 'valid_key',
-    'huggingfacehub_endpoint_url': 'valid_url'
+    'huggingfacehub_endpoint_url': 'valid_url',
+    'task_type': 'text-generation'
 }
 
 def encrypt_side_effect(tenant_id, encrypt_key):
