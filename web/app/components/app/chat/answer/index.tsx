@@ -6,7 +6,6 @@ import { useContext } from 'use-context-selector'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
 import type { DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc, ThoughtItem } from '../type'
-import { randomString } from '../../../app-sidebar/basic'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
 import { EditIcon, EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
@@ -14,6 +13,7 @@ import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
 import Thought from '../thought'
+import { randomString } from '@/utils'
 import type { Annotation, MessageRating } from '@/models/log'
 import AppContext from '@/context/app-context'
 import Tooltip from '@/app/components/base/tooltip'
@@ -225,7 +225,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                           setLoading(true)
                           const res = await onSubmitAnnotation?.(id, inputValue)
                           if (res)
-                            setAnnotation({ ...annotation, content: inputValue } as any)
+                            setAnnotation({ ...annotation, content: inputValue } as Annotation)
                           setLoading(false)
                           setShowEdit(false)
                         }}>{t('common.operation.confirm')}</Button>

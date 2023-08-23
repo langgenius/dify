@@ -10,15 +10,17 @@ from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.conversation_message_task import ConversationMessageTask
+from core.model_providers.models.entity.message import PromptMessage
+from core.model_providers.models.llm.base import BaseLLM
 
 
 class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
     raise_error: bool = True
 
-    def __init__(self, model_name, conversation_message_task: ConversationMessageTask) -> None:
+    def __init__(self, model_instant: BaseLLM, conversation_message_task: ConversationMessageTask) -> None:
         """Initialize callback handler."""
-        self.model_name = model_name
+        self.model_instant = model_instant
         self.conversation_message_task = conversation_message_task
         self._agent_loops = []
         self._current_loop = None
@@ -67,6 +69,10 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             self._current_loop.status = 'llm_end'
             if response.llm_output:
                 self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
+            else:
+                self._current_loop.prompt_tokens = self.model_instant.get_num_tokens(
+                    [PromptMessage(content=self._current_loop.prompt)]
+                )
             completion_generation = response.generations[0][0]
             if isinstance(completion_generation, ChatGeneration):
                 completion_message = completion_generation.message
@@ -80,11 +86,15 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
 
             if response.llm_output:
                 self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
+            else:
+                self._current_loop.completion_tokens = self.model_instant.get_num_tokens(
+                    [PromptMessage(content=self._current_loop.completion)]
+                )
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
-        logging.error(error)
+        logging.debug("Agent on_llm_error: %s", error)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
@@ -152,7 +162,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             self._current_loop.latency = self._current_loop.completed_at - self._current_loop.started_at
 
             self.conversation_message_task.on_agent_end(
-                self._message_agent_thought, self.model_name, self._current_loop
+                self._message_agent_thought, self.model_instant, self._current_loop
             )
 
             self._agent_loops.append(self._current_loop)
@@ -163,7 +173,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         """Do nothing."""
-        logging.error(error)
+        logging.debug("Agent on_tool_error: %s", error)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
@@ -183,7 +193,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             )
 
             self.conversation_message_task.on_agent_end(
-                self._message_agent_thought, self.model_name, self._current_loop
+                self._message_agent_thought, self.model_instant, self._current_loop
             )
 
             self._agent_loops.append(self._current_loop)

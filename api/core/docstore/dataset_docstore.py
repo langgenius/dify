@@ -3,22 +3,20 @@ from typing import Any, Dict, Optional, Sequence
 from langchain.schema import Document
 from sqlalchemy import func
 
-from core.llm.token_calculator import TokenCalculator
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
 
 class DatesetDocumentStore:
     def __init__(
-        self,
-        dataset: Dataset,
-        user_id: str,
-        embedding_model_name: str,
-        document_id: Optional[str] = None,
+            self,
+            dataset: Dataset,
+            user_id: str,
+            document_id: Optional[str] = None,
     ):
         self._dataset = dataset
         self._user_id = user_id
-        self._embedding_model_name = embedding_model_name
         self._document_id = document_id
 
     @classmethod
@@ -38,10 +36,6 @@ class DatesetDocumentStore:
     @property
     def user_id(self) -> Any:
         return self._user_id
-
-    @property
-    def embedding_model_name(self) -> Any:
-        return self._embedding_model_name
 
     @property
     def docs(self) -> Dict[str, Document]:
@@ -65,7 +59,7 @@ class DatesetDocumentStore:
         return output
 
     def add_documents(
-        self, docs: Sequence[Document], allow_update: bool = True
+            self, docs: Sequence[Document], allow_update: bool = True
     ) -> None:
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document_id == self._document_id
@@ -73,6 +67,12 @@ class DatesetDocumentStore:
 
         if max_position is None:
             max_position = 0
+
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=self._dataset.tenant_id,
+            model_provider_name=self._dataset.embedding_model_provider,
+            model_name=self._dataset.embedding_model
+        )
 
         for doc in docs:
             if not isinstance(doc, Document):
@@ -88,7 +88,7 @@ class DatesetDocumentStore:
                 )
 
             # calc embedding use tokens
-            tokens = TokenCalculator.get_num_tokens(self._embedding_model_name, doc.page_content)
+            tokens = embedding_model.get_num_tokens(doc.page_content)
 
             if not segment_document:
                 max_position += 1
@@ -103,6 +103,7 @@ class DatesetDocumentStore:
                     content=doc.page_content,
                     word_count=len(doc.page_content),
                     tokens=tokens,
+                    enabled=False,
                     created_by=self._user_id,
                 )
                 if 'answer' in doc.metadata and doc.metadata['answer']:
@@ -125,7 +126,7 @@ class DatesetDocumentStore:
         return result is not None
 
     def get_document(
-        self, doc_id: str, raise_error: bool = True
+            self, doc_id: str, raise_error: bool = True
     ) -> Optional[Document]:
         document_segment = self.get_document_segment(doc_id)
 

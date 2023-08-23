@@ -2,7 +2,6 @@ import re
 from typing import Type
 
 from flask import current_app
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.tools import BaseTool
 from pydantic import Field, BaseModel
 
@@ -10,7 +9,8 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
-from core.llm.llm_builder import LLMBuilder
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
@@ -71,15 +71,18 @@ class DatasetRetrieverTool(BaseTool):
             documents = kw_table_index.search(query, search_kwargs={'k': self.k})
             return str("\n".join([document.page_content for document in documents]))
         else:
-            model_credentials = LLMBuilder.get_model_credentials(
-                tenant_id=dataset.tenant_id,
-                model_provider=LLMBuilder.get_default_provider(dataset.tenant_id, 'text-embedding-ada-002'),
-                model_name='text-embedding-ada-002'
-            )
 
-            embeddings = CacheEmbedding(OpenAIEmbeddings(
-                **model_credentials
-            ))
+            try:
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                return ''
+            except ProviderTokenNotInitError:
+                return ''
+            embeddings = CacheEmbedding(embedding_model)
 
             vector_index = VectorIndex(
                 dataset=dataset,
@@ -109,7 +112,11 @@ class DatasetRetrieverTool(BaseTool):
                                                     ).all()
 
             if segments:
-                for segment in segments:
+                index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
+                sorted_segments = sorted(segments,
+                                         key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
+                                                                                           float('inf')))
+                for segment in sorted_segments:
                     if segment.answer:
                         document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer}')
                     else:

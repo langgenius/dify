@@ -1,0 +1,14 @@
+[
+  "openai",
+  "azure_openai",
+  "anthropic",
+  "minimax",
+  "tongyi",
+  "spark",
+  "wenxin",
+  "chatglm",
+  "replicate",
+  "huggingface_hub",
+  "xinference",
+  "openllm"
+]

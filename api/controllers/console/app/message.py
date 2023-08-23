@@ -3,7 +3,7 @@ import logging
 from typing import Union, Generator
 
 from flask import Response, stream_with_context
-from flask_login import current_user, login_required
+from flask_login import current_user
 from flask_restful import Resource, reqparse, marshal_with, fields
 from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError, NotFound
@@ -14,8 +14,9 @@ from controllers.console.app.error import CompletionRequestError, ProviderNotIni
     AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.llm.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
+from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.login.login import login_required
 from libs.helper import uuid_value, TimestampField
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db

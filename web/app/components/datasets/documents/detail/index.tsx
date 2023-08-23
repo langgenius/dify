@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
-import { createContext } from 'use-context-selector'
+import { createContext, useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { omit } from 'lodash-es'
@@ -13,19 +13,15 @@ import s from '../style.module.css'
 import Completed from './completed'
 import Embedding from './embedding'
 import Metadata from './metadata'
+import SegmentAdd, { ProcessStatus } from './segment-add'
+import BatchModal from './batch-modal'
 import style from './style.module.css'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import type { MetadataType } from '@/service/datasets'
-import { fetchDocumentDetail } from '@/service/datasets'
-
-export const BackCircleBtn: FC<{ onClick: () => void }> = ({ onClick }) => {
-  return (
-    <div onClick={onClick} className={'rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]'}>
-      <ArrowLeftIcon className='text-primary-600 fill-current stroke-current h-4 w-4' />
-    </div>
-  )
-}
+import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
+import { ToastContext } from '@/app/components/base/toast'
+import type { DocForm } from '@/models/datasets'
 
 export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
@@ -51,10 +47,45 @@ type Props = {
 }
 
 const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
-  const { t } = useTranslation()
   const router = useRouter()
+  const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const [showMetadata, setShowMetadata] = useState(true)
-  const [showNewSegmentModal, setShowNewSegmentModal] = useState(false)
+  const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
+  const [batchModalVisible, setBatchModalVisible] = useState(false)
+  const [importStatus, setImportStatus] = useState<ProcessStatus | string>()
+  const showNewSegmentModal = () => setNewSegmentModalVisible(true)
+  const showBatchModal = () => setBatchModalVisible(true)
+  const hideBatchModal = () => setBatchModalVisible(false)
+  const resetProcessStatus = () => setImportStatus('')
+  const checkProcess = async (jobID: string) => {
+    try {
+      const res = await checkSegmentBatchImportProgress({ jobID })
+      setImportStatus(res.job_status)
+      if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
+        setTimeout(() => checkProcess(res.job_id), 2500)
+      if (res.job_status === ProcessStatus.ERROR)
+        notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}` })
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+    }
+  }
+  const runBatch = async (csv: File) => {
+    const formData = new FormData()
+    formData.append('file', csv)
+    try {
+      const res = await segmentBatchImport({
+        url: `/datasets/${datasetId}/documents/${documentId}/segments/batch_import`,
+        body: formData,
+      })
+      setImportStatus(res.job_status)
+      checkProcess(res.job_id)
+    }
+    catch (e: any) {
+      notify({ type: 'error', message: `${t('datasetDocuments.list.batchModal.runError')}${'message' in e ? `: ${e.message}` : ''}` })
+    }
+  }
 
   const { data: documentDetail, error, mutate: detailMutate } = useSWR({
     action: 'fetchDocumentDetail',
@@ -91,22 +122,32 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
     <DocumentContext.Provider value={{ datasetId, documentId, docForm: documentDetail?.doc_form || '' }}>
       <div className='flex flex-col h-full'>
         <div className='flex h-16 border-b-gray-100 border-b items-center p-4'>
-          <BackCircleBtn onClick={backToPrev} />
+          <div onClick={backToPrev} className={'rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]'}>
+            <ArrowLeftIcon className='text-primary-600 fill-current stroke-current h-4 w-4' />
+          </div>
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' />
+          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
+          {documentDetail && !documentDetail.archived && (
+            <SegmentAdd
+              importStatus={importStatus}
+              clearProcessStatus={resetProcessStatus}
+              showNewSegmentModal={showNewSegmentModal}
+              showBatchModal={showBatchModal}
+            />
+          )}
           <OperationAction
             scene='detail'
             detail={{
               enabled: documentDetail?.enabled || false,
               archived: documentDetail?.archived || false,
               id: documentId,
+              data_source_type: documentDetail?.data_source_type || '',
               doc_form: documentDetail?.doc_form || '',
             }}
             datasetId={datasetId}
             onUpdate={handleOperate}
             className='!w-[216px]'
-            showNewSegmentModal={() => setShowNewSegmentModal(true)}
           />
           <button
             className={cn(style.layoutRightIcon, showMetadata ? style.iconShow : style.iconClose)}
@@ -120,18 +161,26 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed
-                  showNewSegmentModal={showNewSegmentModal}
-                  onNewSegmentModalChange={setShowNewSegmentModal}
+                  showNewSegmentModal={newSegmentModalVisible}
+                  onNewSegmentModalChange={setNewSegmentModalVisible}
+                  importStatus={importStatus}
+                  archived={documentDetail?.archived}
                 />
               }
             </div>
           }
           {showMetadata && <Metadata
-            docDetail={{ ...documentDetail, ...documentMetadata } as any}
+            docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentDetail?.doc_type === 'others' ? '' : documentDetail?.doc_type } as any}
             loading={isMetadataLoading}
             onUpdate={metadataMutate}
           />}
         </div>
+        <BatchModal
+          isShow={batchModalVisible}
+          onCancel={hideBatchModal}
+          onConfirm={runBatch}
+          docForm={documentDetail?.doc_form as DocForm}
+        />
       </div>
     </DocumentContext.Provider>
   )

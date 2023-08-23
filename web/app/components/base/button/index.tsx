@@ -7,6 +7,7 @@ export type IButtonProps = {
   className?: string
   disabled?: boolean
   loading?: boolean
+  tabIndex?: number
   children: React.ReactNode
   onClick?: MouseEventHandler<HTMLDivElement>
 }
@@ -18,6 +19,7 @@ const Button: FC<IButtonProps> = ({
   className,
   onClick,
   loading = false,
+  tabIndex,
 }) => {
   let style = 'cursor-pointer'
   switch (type) {
@@ -35,6 +37,7 @@ const Button: FC<IButtonProps> = ({
   return (
     <div
       className={`inline-flex justify-center items-center content-center h-9 leading-5 rounded-lg px-4 py-2 text-base ${style} ${className && className}`}
+      tabIndex={tabIndex}
       onClick={disabled ? undefined : onClick}
     >
       {children}

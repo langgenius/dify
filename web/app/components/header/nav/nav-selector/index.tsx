@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
 import Indicator from '../../indicator'
 import AppIcon from '@/app/components/base/app-icon'
+import { useAppContext } from '@/context/app-context'
 
 type NavItem = {
   id: string
@@ -29,6 +30,7 @@ const itemClassName = `
 
 const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSelectorProps) => {
   const router = useRouter()
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const handleScroll = useCallback(debounce((e) => {
     if (typeof onLoadmore === 'function') {
@@ -61,7 +63,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
           className="
             absolute -left-11 right-0 mt-1.5 w-60 max-w-80
             divide-y divide-gray-100 origin-top-right rounded-lg bg-white
-            shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
+            shadow-lg
           "
         >
           <div className="px-1 py-1 overflow-auto" style={{ maxHeight: '50vh' }} onScroll={handleScroll}>
@@ -81,7 +83,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
               ))
             }
           </div>
-          <Menu.Item>
+          {isCurrentWorkspaceManager && <Menu.Item>
             <div className='p-1' onClick={onCreate}>
               <div
                 className='flex items-center h-12 rounded-lg cursor-pointer hover:bg-gray-100'
@@ -98,7 +100,7 @@ const NavSelector = ({ curNav, navs, createText, onCreate, onLoadmore }: INavSel
                 <div className='font-normal text-[14px] text-gray-700'>{createText}</div>
               </div>
             </div>
-          </Menu.Item>
+          </Menu.Item>}
         </Menu.Items>
       </Menu>
     </div>

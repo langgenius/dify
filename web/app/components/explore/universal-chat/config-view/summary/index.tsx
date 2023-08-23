@@ -7,11 +7,16 @@ import s from './style.module.css'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
+import { useProviderContext } from '@/context/provider-context'
+import type { DataSet } from '@/models/datasets'
 
 export type ISummaryProps = {
   modelId: string
+  providerName: ProviderEnum
   plugins: Record<string, boolean>
-  dataSets: any[]
+  dataSets: DataSet[]
 }
 
 const getColorInfo = (modelId: string) => {
@@ -40,9 +45,13 @@ const getPlugIcon = (pluginId: string) => {
 
 const Summary: FC<ISummaryProps> = ({
   modelId,
+  providerName,
   plugins,
   dataSets,
 }) => {
+  const { agentThoughtModelList } = useProviderContext()
+  const currModel = agentThoughtModelList.find(item => item.model_name === modelId && item.model_provider.provider_name === providerName)
+
   // current_datetime is not configable and do not have icon
   const pluginIds = Object.keys(plugins).filter(key => plugins[key] && key !== 'current_datetime')
   const [isShowConfig, { setFalse: hideConfig, toggle: toggleShowConfig }] = useBoolean(false)
@@ -54,8 +63,8 @@ const Summary: FC<ISummaryProps> = ({
   return (
     <div ref={configContentRef} className='relative'>
       <div onClick={toggleShowConfig} className={cn(getColorInfo(modelId), 'flex items-center px-1 h-8 rounded-lg border cursor-pointer')}>
-        <ModelIcon modelId={modelId} className='!w-6 !h-6' />
-        <div className='ml-2 text-[13px] font-medium text-gray-900'>{modelId}</div>
+        <ModelIcon providerName={providerName} modelId={modelId} className='!w-6 !h-6' />
+        <div className='ml-2 text-[13px] font-medium text-gray-900'><ModelName modelId={modelId} modelDisplayName={currModel?.model_display_name} /></div>
         {
           pluginIds.length > 0 && (
             <div className='ml-1.5 flex items-center'>
@@ -75,7 +84,10 @@ const Summary: FC<ISummaryProps> = ({
       </div>
       {isShowConfig && (
         <ConfigDetail
-          modelId={modelId} plugins={plugins} dataSets={dataSets}
+          modelId={modelId}
+          providerName={providerName}
+          plugins={plugins}
+          dataSets={dataSets}
         />
       )}
     </div>

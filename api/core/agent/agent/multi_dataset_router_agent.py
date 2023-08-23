@@ -4,9 +4,11 @@ from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts.chat import BaseMessagePromptTemplate
-from langchain.schema import AgentAction, AgentFinish, BaseLanguageModel, SystemMessage
+from langchain.schema import AgentAction, AgentFinish, SystemMessage
+from langchain.schema.language_model import BaseLanguageModel
 from langchain.tools import BaseTool
 
+from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
@@ -14,6 +16,12 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     """
     An Multi Dataset Retrieve Agent driven by Router.
     """
+    model_instance: BaseLLM
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        arbitrary_types_allowed = True
 
     def should_use_agent(self, query: str):
         """
@@ -51,7 +59,11 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             _, observation = intermediate_steps[-1]
             return AgentFinish(return_values={"output": observation}, log=observation)
 
-        return super().plan(intermediate_steps, callbacks, **kwargs)
+        try:
+            return super().plan(intermediate_steps, callbacks, **kwargs)
+        except Exception as e:
+            new_exception = self.model_instance.handle_exceptions(e)
+            raise new_exception
 
     async def aplan(
             self,

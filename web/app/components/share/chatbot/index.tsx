@@ -12,13 +12,12 @@ import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
 import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
-import Sidebar from '@/app/components/share/chatbot/sidebar'
 import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
-import { /* delConversation, */ fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, pinConversation, sendChatMessage, stopChatMessageResponding, unpinConversation, updateFeedback } from '@/service/share'
+import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
+import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -26,7 +25,7 @@ import Loading from '@/app/components/base/loading'
 import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
-// import Confirm from '@/app/components/base/confirm'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -52,8 +51,6 @@ const Main: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [inited, setInited] = useState<boolean>(false)
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
-  // in mobile, show sidebar by click button
-  const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title) {
@@ -124,37 +121,6 @@ const Main: FC<IMainProps> = ({
 
     setControlUpdateConversationList(Date.now())
   }
-
-  const handlePin = async (id: string) => {
-    await pinConversation(isInstalledApp, installedAppInfo?.id, id)
-    notify({ type: 'success', message: t('common.api.success') })
-    noticeUpdateList()
-  }
-
-  const handleUnpin = async (id: string) => {
-    await unpinConversation(isInstalledApp, installedAppInfo?.id, id)
-    notify({ type: 'success', message: t('common.api.success') })
-    noticeUpdateList()
-  }
-  const [isShowConfirm, { setTrue: showConfirm, setFalse: hideConfirm }] = useBoolean(false)
-  const [toDeleteConversationId, setToDeleteConversationId] = useState('')
-
-  const handleDelete = (id: string) => {
-    setToDeleteConversationId(id)
-    hideSidebar() // mobile
-    showConfirm()
-  }
-
-  // const didDelete = async () => {
-  //   await delConversation(isInstalledApp, installedAppInfo?.id, toDeleteConversationId)
-  //   notify({ type: 'success', message: t('common.api.success') })
-  //   hideConfirm()
-  //   if (currConversationId === toDeleteConversationId)
-  //     handleConversationIdChange('-1')
-
-  //   noticeUpdateList()
-  // }
-
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
@@ -234,20 +200,6 @@ const Main: FC<IMainProps> = ({
     setControlFocus(Date.now())
   }
   useEffect(handleConversationSwitch, [currConversationId, inited])
-
-  const handleConversationIdChange = (id: string) => {
-    if (id === '-1') {
-      createNewChat()
-      setConversationIdChangeBecauseOfNew(true)
-    }
-    else {
-      setConversationIdChangeBecauseOfNew(false)
-    }
-    // trigger handleConversationSwitch
-    setCurrConversationId(id, appId)
-    setIsShowSuggestion(false)
-    hideSidebar()
-  }
 
   /*
   * chat info. chat is under conversation.
@@ -416,6 +368,7 @@ const Main: FC<IMainProps> = ({
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
+  const [shouldReload, setShouldReload] = useState(false)
 
   const handleSend = async (message: string) => {
     if (isResponsing) {
@@ -500,7 +453,9 @@ const Main: FC<IMainProps> = ({
           setIsShowSuggestion(true)
         }
       },
-      onError() {
+      onError(errorMessage, errorCode) {
+        if (['provider_not_initialize', 'completion_request_error'].includes(errorCode as string))
+          setShouldReload(true)
         setResponsingFalse()
         // role back placeholder answer
         setChatList(produce(getChatList(), (draft) => {
@@ -525,31 +480,11 @@ const Main: FC<IMainProps> = ({
     notify({ type: 'success', message: t('common.api.success') })
   }
 
-  const renderSidebar = () => {
-    if (!appId || !siteInfo || !promptConfig)
-      return null
-    return (
-      <Sidebar
-        list={conversationList}
-        isClearConversationList={isClearConversationList}
-        pinnedList={pinnedConversationList}
-        isClearPinnedConversationList={isClearPinnedConversationList}
-        onMoreLoaded={onMoreLoaded}
-        onPinnedMoreLoaded={onPinnedMoreLoaded}
-        isNoMore={!hasMore}
-        isPinnedNoMore={!hasPinnedMore}
-        onCurrentIdChange={handleConversationIdChange}
-        currentId={currConversationId}
-        copyRight={siteInfo.copyright || siteInfo.title}
-        isInstalledApp={isInstalledApp}
-        installedAppId={installedAppInfo?.id}
-        siteInfo={siteInfo}
-        onPin={handlePin}
-        onUnpin={handleUnpin}
-        controlUpdateList={controlUpdateConversationList}
-        onDelete={handleDelete}
-      />
-    )
+  const handleReload = () => {
+    setCurrConversationId('-1', appId, false)
+    setChatNotStarted()
+    setShouldReload(false)
+    createNewChat()
   }
 
   const difyIcon = (
@@ -571,24 +506,9 @@ const Main: FC<IMainProps> = ({
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
         isMobile={isMobile}
-      // onShowSideBar={showSidebar}
-      // onCreateNewChat={() => handleConversationIdChange('-1')}
       />
 
       <div className={'flex bg-white overflow-hidden'}>
-        {/* sidebar */}
-        {/* {!isMobile && renderSidebar()} */}
-        {/* {isMobile && isShowSidebar && (
-          <div className='fixed inset-0 z-50'
-            style={{ backgroundColor: 'rgba(35, 56, 118, 0.2)' }}
-            onClick={hideSidebar}
-          >
-            <div className='inline-block' onClick={e => e.stopPropagation()}>
-              {renderSidebar()}
-            </div>
-          </div>
-        )} */}
-        {/* main */}
         <div className={cn(
           isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
           'flex-grow flex flex-col overflow-y-auto',
@@ -606,7 +526,22 @@ const Main: FC<IMainProps> = ({
             onInputsChange={setCurrInputs}
             plan={plan}
           ></ConfigScene>
-
+          {
+            shouldReload && (
+              <div className='flex items-center justify-between mb-5 px-4 py-2 bg-[#FEF0C7]'>
+                <div className='flex items-center text-xs font-medium text-[#DC6803]'>
+                  <AlertTriangle className='mr-2 w-4 h-4' />
+                  {t('share.chat.temporarySystemIssue')}
+                </div>
+                <div
+                  className='flex items-center px-3 h-7 bg-white shadow-xs rounded-md text-xs font-medium text-gray-700 cursor-pointer'
+                  onClick={handleReload}
+                >
+                  {t('share.chat.tryToSolve')}
+                </div>
+              </div>
+            )
+          }
           {
             hasSetInputs && (
               <div className={cn(doShowSuggestion ? 'pb-[140px]' : (isResponsing ? 'pb-[113px]' : 'pb-[76px]'), 'relative grow h-[200px] pc:w-[794px] max-w-full mobile:w-full mx-auto mb-3.5 overflow-hidden')}>

@@ -1,21 +1,23 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
+import useSWR from 'swr'
 import s from './index.module.css'
-import type { File as FileEntity } from '@/models/datasets'
+import type { CustomFile as File, FileItem } from '@/models/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 
 import { upload } from '@/service/base'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type IFileUploaderProps = {
-  fileList: any[]
+  fileList: FileItem[]
   titleClassName?: string
-  prepareFileList: (files: any[]) => void
-  onFileUpdate: (fileItem: any, progress: number, list: any[]) => void
+  prepareFileList: (files: FileItem[]) => void
+  onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: any) => void
-  onPreview: (file: FileEntity) => void
+  onPreview: (file: File) => void
 }
 
 const ACCEPTS = [
@@ -27,11 +29,8 @@ const ACCEPTS = [
   '.txt',
   // '.xls',
   '.xlsx',
-  '.csv',
+  // '.csv',
 ]
-
-const MAX_SIZE = 15 * 1024 * 1024
-const BATCH_COUNT = 5
 
 const FileUploader = ({
   fileList,
@@ -48,7 +47,13 @@ const FileUploader = ({
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
 
-  const fileListRef = useRef<any>([])
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
+    file_size_limit: 15,
+    batch_count_limit: 5,
+  }, [fileUploadConfigResponse])
+
+  const fileListRef = useRef<FileItem[]>([])
 
   // utils
   const getFileType = (currentFile: File) => {
@@ -66,21 +71,21 @@ const FileUploader = ({
     return `${(size / 1024 / 1024).toFixed(2)}MB`
   }
 
-  const isValid = (file: File) => {
+  const isValid = useCallback((file: File) => {
     const { size } = file
     const ext = `.${getFileType(file)}`
     const isValidType = ACCEPTS.includes(ext)
     if (!isValidType)
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
 
-    const isValidSize = size <= MAX_SIZE
+    const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size') })
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }
+  }, [fileUploadConfig, notify, t])
 
-  const fileUpload = async (fileItem: any) => {
+  const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
     formData.append('file', fileItem.file)
     const onProgress = (e: ProgressEvent) => {
@@ -90,19 +95,19 @@ const FileUploader = ({
       }
     }
 
+    const fileListCopy = fileListRef.current
     return upload({
       xhr: new XMLHttpRequest(),
       data: formData,
       onprogress: onProgress,
     })
-      .then((res: FileEntity) => {
-        const fileListCopy = fileListRef.current
-
+      .then((res: File) => {
         const completeFile = {
           fileID: fileItem.fileID,
           file: res,
+          progress: -1,
         }
-        const index = fileListCopy.findIndex((item: any) => item.fileID === fileItem.fileID)
+        const index = fileListCopy.findIndex(item => item.fileID === fileItem.fileID)
         fileListCopy[index] = completeFile
         onFileUpdate(completeFile, 100, fileListCopy)
         return Promise.resolve({ ...completeFile })
@@ -113,42 +118,44 @@ const FileUploader = ({
         return Promise.resolve({ ...fileItem })
       })
       .finally()
-  }
-  const uploadBatchFiles = (bFiles: any) => {
-    bFiles.forEach((bf: any) => (bf.progress = 0))
-    return Promise.all(bFiles.map((bFile: any) => fileUpload(bFile)))
-  }
-  const uploadMultipleFiles = async (files: any) => {
+  }, [fileListRef, notify, onFileUpdate, t])
+
+  const uploadBatchFiles = useCallback((bFiles: FileItem[]) => {
+    bFiles.forEach(bf => (bf.progress = 0))
+    return Promise.all(bFiles.map(fileUpload))
+  }, [fileUpload])
+
+  const uploadMultipleFiles = useCallback(async (files: FileItem[]) => {
+    const batchCountLimit = fileUploadConfig.batch_count_limit
     const length = files.length
     let start = 0
     let end = 0
 
     while (start < length) {
-      if (start + BATCH_COUNT > length)
+      if (start + batchCountLimit > length)
         end = length
       else
-        end = start + BATCH_COUNT
+        end = start + batchCountLimit
       const bFiles = files.slice(start, end)
       await uploadBatchFiles(bFiles)
       start = end
     }
-  }
-  const initialUpload = (files: any) => {
+  }, [fileUploadConfig, uploadBatchFiles])
+
+  const initialUpload = useCallback((files: File[]) => {
     if (!files.length)
       return false
-    const preparedFiles = files.map((file: any, index: number) => {
-      const fileItem = {
-        fileID: `file${index}-${Date.now()}`,
-        file,
-        progress: -1,
-      }
-      return fileItem
-    })
+    const preparedFiles = files.map((file, index) => ({
+      fileID: `file${index}-${Date.now()}`,
+      file,
+      progress: -1,
+    }))
     const newFiles = [...fileListRef.current, ...preparedFiles]
     prepareFileList(newFiles)
     fileListRef.current = newFiles
     uploadMultipleFiles(preparedFiles)
-  }
+  }, [prepareFileList, uploadMultipleFiles])
+
   const handleDragEnter = (e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -164,18 +171,17 @@ const FileUploader = ({
     e.target === dragRef.current && setDragging(false)
   }
 
-  const handleDrop = (e: DragEvent) => {
+  const handleDrop = useCallback((e: DragEvent) => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
     if (!e.dataTransfer)
       return
 
-    const files = [...e.dataTransfer.files]
-    const validFiles = files.filter(file => isValid(file))
-    // fileUpload(files[0])
+    const files = [...e.dataTransfer.files] as File[]
+    const validFiles = files.filter(isValid)
     initialUpload(validFiles)
-  }
+  }, [initialUpload, isValid])
 
   const selectHandle = () => {
     if (fileUploader.current)
@@ -186,13 +192,13 @@ const FileUploader = ({
     if (fileUploader.current)
       fileUploader.current.value = ''
 
-    fileListRef.current = fileListRef.current.filter((item: any) => item.fileID !== fileID)
+    fileListRef.current = fileListRef.current.filter(item => item.fileID !== fileID)
     onFileListUpdate?.([...fileListRef.current])
   }
-  const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = [...(e.target.files ?? [])].filter(file => isValid(file))
-    initialUpload(files)
-  }
+  const fileChangeHandle = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = [...(e.target.files ?? [])] as File[]
+    initialUpload(files.filter(isValid))
+  }, [isValid, initialUpload])
 
   useEffect(() => {
     dropRef.current?.addEventListener('dragenter', handleDragEnter)
@@ -205,7 +211,7 @@ const FileUploader = ({
       dropRef.current?.removeEventListener('dragleave', handleDragLeave)
       dropRef.current?.removeEventListener('drop', handleDrop)
     }
-  }, [])
+  }, [handleDrop])
 
   return (
     <div className={s.fileUploader}>
@@ -225,7 +231,7 @@ const FileUploader = ({
           <span>{t('datasetCreation.stepOne.uploader.button')}</span>
           <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
         </div>
-        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip')}</div>
+        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', { size: fileUploadConfig.file_size_limit })}</div>
         {dragging && <div ref={dragRef} className={s.draggingCover}/>}
       </div>
       <div className={s.fileList}>

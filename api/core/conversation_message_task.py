@@ -6,9 +6,9 @@ from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.callback_handler.entity.chain_result import ChainResult
-from core.constant import llm_constant
-from core.llm.llm_builder import LLMBuilder
-from core.llm.provider.llm_provider_service import LLMProviderService
+from core.model_providers.model_factory import ModelFactory
+from core.model_providers.models.entity.message import to_prompt_messages, MessageType
+from core.model_providers.models.llm.base import BaseLLM
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from events.message_event import message_was_created
@@ -16,12 +16,11 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DatasetQuery
 from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, MessageChain
-from models.provider import ProviderType, Provider
 
 
 class ConversationMessageTask:
     def __init__(self, task_id: str, app: App, app_model_config: AppModelConfig, user: Account,
-                 inputs: dict, query: str, streaming: bool,
+                 inputs: dict, query: str, streaming: bool, model_instance: BaseLLM,
                  conversation: Optional[Conversation] = None, is_override: bool = False):
         self.task_id = task_id
 
@@ -38,9 +37,12 @@ class ConversationMessageTask:
         self.conversation = conversation
         self.is_new_conversation = False
 
+        self.model_instance = model_instance
+
         self.message = None
 
         self.model_dict = self.app_model_config.model_dict
+        self.provider_name = self.model_dict.get('provider')
         self.model_name = self.model_dict.get('name')
         self.mode = app.mode
 
@@ -56,22 +58,9 @@ class ConversationMessageTask:
         )
 
     def init(self):
-        provider_name = LLMBuilder.get_default_provider(self.app.tenant_id, self.model_name)
-        self.model_dict['provider'] = provider_name
-
         override_model_configs = None
         if self.is_override:
-            override_model_configs = {
-                "model": self.app_model_config.model_dict,
-                "pre_prompt": self.app_model_config.pre_prompt,
-                "agent_mode": self.app_model_config.agent_mode_dict,
-                "opening_statement": self.app_model_config.opening_statement,
-                "suggested_questions": self.app_model_config.suggested_questions_list,
-                "suggested_questions_after_answer": self.app_model_config.suggested_questions_after_answer_dict,
-                "more_like_this": self.app_model_config.more_like_this_dict,
-                "sensitive_word_avoidance": self.app_model_config.sensitive_word_avoidance_dict,
-                "user_input_form": self.app_model_config.user_input_form_list,
-            }
+            override_model_configs = self.app_model_config.to_dict()
 
         introduction = ''
         system_instruction = ''
@@ -89,15 +78,19 @@ class ConversationMessageTask:
             if self.app_model_config.pre_prompt:
                 system_message = PromptBuilder.to_system_message(self.app_model_config.pre_prompt, self.inputs)
                 system_instruction = system_message.content
-                llm = LLMBuilder.to_llm(self.tenant_id, self.model_name)
-                system_instruction_tokens = llm.get_num_tokens_from_messages([system_message])
+                model_instance = ModelFactory.get_text_generation_model(
+                    tenant_id=self.tenant_id,
+                    model_provider_name=self.provider_name,
+                    model_name=self.model_name
+                )
+                system_instruction_tokens = model_instance.get_num_tokens(to_prompt_messages([system_message]))
 
         if not self.conversation:
             self.is_new_conversation = True
             self.conversation = Conversation(
                 app_id=self.app_model_config.app_id,
                 app_model_config_id=self.app_model_config.id,
-                model_provider=self.model_dict.get('provider'),
+                model_provider=self.provider_name,
                 model_id=self.model_name,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=self.mode,
@@ -117,7 +110,7 @@ class ConversationMessageTask:
 
         self.message = Message(
             app_id=self.app_model_config.app_id,
-            model_provider=self.model_dict.get('provider'),
+            model_provider=self.provider_name,
             model_id=self.model_name,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=self.conversation.id,
@@ -126,12 +119,14 @@ class ConversationMessageTask:
             message="",
             message_tokens=0,
             message_unit_price=0,
+            message_price_unit=0,
             answer="",
             answer_tokens=0,
             answer_unit_price=0,
+            answer_price_unit=0,
             provider_response_latency=0,
             total_price=0,
-            currency=llm_constant.model_currency,
+            currency=self.model_instance.get_currency(),
             from_source=('console' if isinstance(self.user, Account) else 'api'),
             from_end_user_id=(self.user.id if isinstance(self.user, EndUser) else None),
             from_account_id=(self.user.id if isinstance(self.user, Account) else None),
@@ -145,25 +140,28 @@ class ConversationMessageTask:
         self._pub_handler.pub_text(text)
 
     def save_message(self, llm_message: LLMMessage, by_stopped: bool = False):
-        model_name = self.app_model_config.model_dict.get('name')
-
         message_tokens = llm_message.prompt_tokens
         answer_tokens = llm_message.completion_tokens
-        message_unit_price = llm_constant.model_prices[model_name]['prompt']
-        answer_unit_price = llm_constant.model_prices[model_name]['completion']
 
-        total_price = self.calc_total_price(message_tokens, message_unit_price, answer_tokens, answer_unit_price)
+        message_unit_price = self.model_instance.get_tokens_unit_price(MessageType.HUMAN)
+        message_price_unit = self.model_instance.get_price_unit(MessageType.HUMAN)
+        answer_unit_price = self.model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
+        answer_price_unit = self.model_instance.get_price_unit(MessageType.ASSISTANT)
+
+        message_total_price = self.model_instance.calc_tokens_price(message_tokens, MessageType.HUMAN)
+        answer_total_price = self.model_instance.calc_tokens_price(answer_tokens, MessageType.ASSISTANT)
+        total_price = message_total_price + answer_total_price
 
         self.message.message = llm_message.prompt
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
+        self.message.message_price_unit = message_price_unit
         self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
+        self.message.answer_price_unit = answer_price_unit
         self.message.provider_response_latency = llm_message.latency
         self.message.total_price = total_price
-
-        self.update_provider_quota()
 
         db.session.commit()
 
@@ -175,20 +173,6 @@ class ConversationMessageTask:
 
         if not by_stopped:
             self.end()
-
-    def update_provider_quota(self):
-        llm_provider_service = LLMProviderService(
-            tenant_id=self.app.tenant_id,
-            provider_name=self.message.model_provider,
-        )
-
-        provider = llm_provider_service.get_provider_db_record()
-        if provider and provider.provider_type == ProviderType.SYSTEM.value:
-            db.session.query(Provider).filter(
-                Provider.tenant_id == self.app.tenant_id,
-                Provider.provider_name == provider.provider_name,
-                Provider.quota_limit > Provider.quota_used
-            ).update({'quota_used': Provider.quota_used + 1})
 
     def init_chain(self, chain_result: ChainResult):
         message_chain = MessageChain(
@@ -217,7 +201,9 @@ class ConversationMessageTask:
             tool=agent_loop.tool_name,
             tool_input=agent_loop.tool_input,
             message=agent_loop.prompt,
+            message_price_unit=0,
             answer=agent_loop.completion,
+            answer_price_unit=0,
             created_by_role=('account' if isinstance(self.user, Account) else 'end_user'),
             created_by=self.user.id
         )
@@ -229,31 +215,32 @@ class ConversationMessageTask:
 
         return message_agent_thought
 
-    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_name: str,
+    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instant: BaseLLM,
                      agent_loop: AgentLoop):
-        agent_message_unit_price = llm_constant.model_prices[agent_model_name]['prompt']
-        agent_answer_unit_price = llm_constant.model_prices[agent_model_name]['completion']
+        agent_message_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.HUMAN)
+        agent_message_price_unit = agent_model_instant.get_price_unit(MessageType.HUMAN)
+        agent_answer_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.ASSISTANT)
+        agent_answer_price_unit = agent_model_instant.get_price_unit(MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
 
-        loop_total_price = self.calc_total_price(
-            loop_message_tokens,
-            agent_message_unit_price,
-            loop_answer_tokens,
-            agent_answer_unit_price
-        )
+        loop_message_total_price = agent_model_instant.calc_tokens_price(loop_message_tokens, MessageType.HUMAN)
+        loop_answer_total_price = agent_model_instant.calc_tokens_price(loop_answer_tokens, MessageType.ASSISTANT)
+        loop_total_price = loop_message_total_price + loop_answer_total_price
 
         message_agent_thought.observation = agent_loop.tool_output
         message_agent_thought.tool_process_data = ''  # currently not support
         message_agent_thought.message_token = loop_message_tokens
         message_agent_thought.message_unit_price = agent_message_unit_price
+        message_agent_thought.message_price_unit = agent_message_price_unit
         message_agent_thought.answer_token = loop_answer_tokens
         message_agent_thought.answer_unit_price = agent_answer_unit_price
+        message_agent_thought.answer_price_unit = agent_answer_price_unit
         message_agent_thought.latency = agent_loop.latency
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
-        message_agent_thought.currency = llm_constant.model_currency
+        message_agent_thought.currency = agent_model_instant.get_currency()
         db.session.flush()
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):
@@ -267,15 +254,6 @@ class ConversationMessageTask:
         )
 
         db.session.add(dataset_query)
-
-    def calc_total_price(self, message_tokens, message_unit_price, answer_tokens, answer_unit_price):
-        message_tokens_per_1k = (decimal.Decimal(message_tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                                  rounding=decimal.ROUND_HALF_UP)
-        answer_tokens_per_1k = (decimal.Decimal(answer_tokens) / 1000).quantize(decimal.Decimal('0.001'),
-                                                                                rounding=decimal.ROUND_HALF_UP)
-
-        total_price = message_tokens_per_1k * message_unit_price + answer_tokens_per_1k * answer_unit_price
-        return total_price.quantize(decimal.Decimal('0.0000001'), rounding=decimal.ROUND_HALF_UP)
 
     def end(self):
         self._pub_handler.pub_end()

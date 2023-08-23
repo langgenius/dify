@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, reqparse, fields, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
 
@@ -79,6 +80,13 @@ class AppSite(Resource):
             value = args.get(attr_name)
             if value is not None:
                 setattr(site, attr_name, value)
+
+                if attr_name == 'title':
+                    app_model.name = value
+                elif attr_name == 'icon':
+                    app_model.icon = value
+                elif attr_name == 'icon_background':
+                    app_model.icon_background = value
 
         db.session.commit()
 

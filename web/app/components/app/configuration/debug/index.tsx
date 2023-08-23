@@ -12,7 +12,7 @@ import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import { AppType } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
-import type { IChatItem } from '@/app/components/app/chat'
+import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
@@ -52,7 +52,7 @@ const Debug: FC<IDebug> = ({
     modelConfig,
     completionParams,
   } = useContext(ConfigContext)
-  const { currentProvider } = useProviderContext()
+  const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -390,7 +390,7 @@ const Debug: FC<IDebug> = ({
                   }}
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
-                  isShowSpeechToText={speechToTextConfig.enabled && currentProvider?.provider_name === 'openai'}
+                  isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
                 />
               </div>
             </div>

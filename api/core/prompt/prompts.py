@@ -39,18 +39,18 @@ MORE_LIKE_THIS_GENERATE_PROMPT = (
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"
-    "The output must be in JSON format following the specified schema:\n"
+    "The output must be an array in JSON format following the specified schema:\n"
     "[\"question1\",\"question2\",\"question3\"]\n"
 )
 
 GENERATOR_QA_PROMPT = (
-    "Please respond according to the language of the user's input text. If the text is in language [A], you must also reply in language [A].\n"
+    'The user will send a long text. Please think step by step.'
     'Step 1: Understand and summarize the main content of this text.\n'
     'Step 2: What key information or concepts are mentioned in this text?\n'
     'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
     'Step 4: Generate 20 questions and answers based on these key information and concepts.'
     'The questions should be clear and detailed, and the answers should be detailed and complete.\n'
-    "Answer in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
+    "Answer must be the language:{language} and in the following format: Q1:\nA1:\nQ2:\nA2:...\n"
 )
 
 RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \

@@ -1,6 +1,6 @@
 .answerIcon {
   position: relative;
-  background: url(./icons/robot.svg);
+  background: url(./icons/robot.svg) 100%/100%;
 }
 
 .typeingIcon {

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { fetchAppDetail } from '@/service/apps'
 import type { PeriodParams } from '@/app/components/app/overview/appChart'
-import { AvgResponseTime, AvgSessionInteractions, ConversationsChart, CostChart, EndUsersChart, UserSatisfactionRate } from '@/app/components/app/overview/appChart'
+import { AvgResponseTime, AvgSessionInteractions, ConversationsChart, CostChart, EndUsersChart, TokenPerSecond, UserSatisfactionRate } from '@/app/components/app/overview/appChart'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_LIST } from '@/app/components/app/log/filter'
@@ -46,29 +46,24 @@ export default function ChartView({ appId }: IChartViewProps) {
           defaultValue={7}
         />
       </div>
-      <div className='flex flex-row w-full mb-6'>
-        <div className='flex-1 mr-3'>
-          <ConversationsChart period={period} id={appId} />
-        </div>
-        <div className='flex-1 ml-3'>
-          <EndUsersChart period={period} id={appId} />
-        </div>
+      <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <ConversationsChart period={period} id={appId} />
+        <EndUsersChart period={period} id={appId} />
       </div>
-      <div className='flex flex-row w-full mb-6'>
-        <div className='flex-1 mr-3'>
-          {isChatApp
-            ? (
-              <AvgSessionInteractions period={period} id={appId} />
-            )
-            : (
-              <AvgResponseTime period={period} id={appId} />
-            )}
-        </div>
-        <div className='flex-1 ml-3'>
-          <UserSatisfactionRate period={period} id={appId} />
-        </div>
+      <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        {isChatApp
+          ? (
+            <AvgSessionInteractions period={period} id={appId} />
+          )
+          : (
+            <AvgResponseTime period={period} id={appId} />
+          )}
+        <TokenPerSecond period={period} id={appId} />
       </div>
-      <CostChart period={period} id={appId} />
+      <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+        <UserSatisfactionRate period={period} id={appId} />
+        <CostChart period={period} id={appId} />
+      </div>
     </div>
   )
 }

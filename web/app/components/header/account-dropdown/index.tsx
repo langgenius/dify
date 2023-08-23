@@ -71,7 +71,7 @@ export default function AppSelector() {
                   className="
                     absolute right-0 mt-1.5 w-60 max-w-80
                     divide-y divide-gray-100 origin-top-right rounded-lg bg-white
-                    shadow-[0_10px_15px_-3px_rgba(0,0,0,0.1),0_4px_6px_rgba(0,0,0,0.05)]
+                    shadow-lg
                   "
                 >
                   <Menu.Item>
@@ -97,7 +97,7 @@ export default function AppSelector() {
                       <Link
                         className={classNames(itemClassName, 'group justify-between')}
                         href={
-                          locale === 'zh-Hans' ? 'https://docs.dify.ai/v/zh-hans/' : 'https://docs.dify.ai/'
+                          locale === 'en' ? 'https://docs.dify.ai/' : `https://docs.dify.ai/v/${locale.toLowerCase()}/`
                         }
                         target='_blank'>
                         <div>{t('common.userProfile.helpCenter')}</div>

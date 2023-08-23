@@ -20,10 +20,13 @@ def handle(sender, **kwargs):
             # generate conversation name
             try:
                 name = LLMGenerator.generate_conversation_name(app_model.tenant_id, message.query, message.answer)
+
+                if len(name) > 75:
+                    name = name[:75] + '...'
+
                 conversation.name = name
             except:
                 conversation.name = 'New Chat'
-                logging.exception('generate_conversation_name failed')
 
             db.session.add(conversation)
             db.session.commit()

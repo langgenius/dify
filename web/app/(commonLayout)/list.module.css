@@ -1,5 +1,5 @@
 .listItem {
-  @apply col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg;
+  @apply col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-xs min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg;
 }
 
 .listItem.newItemCard {
@@ -14,9 +14,14 @@
   @apply relative;
 }
 .listItem.selectable::before {
-  content: '';
+  content: "";
   @apply absolute top-0 left-0 block w-full h-full rounded-lg pointer-events-none opacity-0 transition-opacity duration-200 ease-in-out hover:opacity-100;
-  background: linear-gradient(0deg, rgba(235, 245, 255, 0.5), rgba(235, 245, 255, 0.5)), #FFFFFF;
+  background: linear-gradient(
+      0deg,
+      rgba(235, 245, 255, 0.5),
+      rgba(235, 245, 255, 0.5)
+    ),
+    #ffffff;
 }
 .listItem.selectable:hover::before {
   @apply opacity-100;
@@ -65,13 +70,13 @@
   @apply text-primary-600;
 }
 .newItemIconAdd {
-  background-image: url('./apps/assets/add.svg');
+  background-image: url("./apps/assets/add.svg");
 }
 .newItemIconChat {
-  background-image: url('./apps/assets/chat.svg');
+  background-image: url("./apps/assets/chat.svg");
 }
 .newItemIconComplete {
-  background-image: url('./apps/assets/completion.svg');
+  background-image: url("./apps/assets/completion.svg");
 }
 
 .listItemTitle {
@@ -86,12 +91,18 @@
   @apply absolute top-0 left-0 w-full h-full overflow-hidden text-ellipsis whitespace-nowrap;
 }
 
-.deleteAppIcon {
+.actionIconWrapper {
+  @apply hidden h-8 w-8 p-2 rounded-md border-none hover:bg-gray-100 !important;
+}
+.listItem:hover .actionIconWrapper {
+  @apply !inline-flex;
+}
+.deleteDatasetIcon {
   @apply hidden grow-0 shrink-0 basis-8 w-8 h-8 rounded-lg transition-colors duration-200 ease-in-out bg-white border border-gray-200 hover:bg-gray-100 bg-center bg-no-repeat;
   background-size: 16px;
-  background-image: url('./apps/assets/delete.svg');
+  background-image: url('~@/assets/delete.svg');
 }
-.listItem:hover .deleteAppIcon {
+.listItem:hover .deleteDatasetIcon {
   @apply block;
 }
 
@@ -114,19 +125,19 @@
   @apply block w-3 h-3 bg-center bg-contain;
 }
 .solidChatIcon {
-  background-image: url('./apps/assets/chat-solid.svg');
+  background-image: url("./apps/assets/chat-solid.svg");
 }
 .solidCompletionIcon {
-  background-image: url('./apps/assets/completion-solid.svg');
+  background-image: url("./apps/assets/completion-solid.svg");
 }
 .docIcon {
-  background-image: url('./datasets/assets/doc.svg');
+  background-image: url("./datasets/assets/doc.svg");
 }
 .textIcon {
-  background-image: url('./datasets/assets/text.svg');
+  background-image: url("./datasets/assets/text.svg");
 }
 .applicationIcon {
-  background-image: url('./datasets/assets/application.svg');
+  background-image: url("./datasets/assets/application.svg");
 }
 
 .newItemCardHeading {
@@ -140,24 +151,24 @@
   @apply inline-flex items-center gap-1 text-xs text-gray-400 transition-colors duration-200 ease-in-out;
 }
 .listItem:hover .listItemLink {
-  @apply text-primary-600
+  @apply text-primary-600;
 }
 
 .linkIcon {
   @apply block w-[13px] h-[13px] bg-center bg-contain;
-  background-image: url('./apps/assets/link.svg');
+  background-image: url("./apps/assets/link.svg");
 }
 
 .linkIcon.grayLinkIcon {
-  background-image: url('./apps/assets/link-gray.svg');
+  background-image: url("./apps/assets/link-gray.svg");
 }
 .listItem:hover .grayLinkIcon {
-  background-image: url('./apps/assets/link.svg');
+  background-image: url("./apps/assets/link.svg");
 }
 
 .rightIcon {
   @apply block w-[13px] h-[13px] bg-center bg-contain;
-  background-image: url('./apps/assets/right-arrow.svg');
+  background-image: url("./apps/assets/right-arrow.svg");
 }
 
 .socialMediaLink {
@@ -169,11 +180,11 @@
 }
 
 .githubIcon {
-  background-image: url('./apps/assets/github.svg');
+  background-image: url("./apps/assets/github.svg");
 }
 
 .discordIcon {
-  background-image: url('./apps/assets/discord.svg');
+  background-image: url("./apps/assets/discord.svg");
 }
 
 /* #region new app dialog */
@@ -181,3 +192,11 @@
   @apply inline-flex items-center mb-2 text-sm font-medium;
 }
 /* #endregion new app dialog */
+
+.unavailable {
+  @apply opacity-50;
+}
+
+.listItem:hover .unavailable {
+  @apply opacity-100;
+}

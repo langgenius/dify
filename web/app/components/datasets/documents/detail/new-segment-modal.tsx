@@ -10,6 +10,7 @@ import { Hash02, XClose } from '@/app/components/base/icons/src/vender/line/gene
 import { ToastContext } from '@/app/components/base/toast'
 import type { SegmentUpdator } from '@/models/datasets'
 import { addSegment } from '@/service/datasets'
+import TagInput from '@/app/components/base/tag-input'
 
 type NewSegmentModalProps = {
   isShow: boolean
@@ -29,11 +30,14 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const { datasetId, documentId } = useParams()
+  const [keywords, setKeywords] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
 
   const handleCancel = () => {
     setQuestion('')
     setAnswer('')
     onCancel()
+    setKeywords([])
   }
 
   const handleSave = async () => {
@@ -54,10 +58,19 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
       params.content = question
     }
 
-    await addSegment({ datasetId, documentId, body: params })
-    notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    handleCancel()
-    onSave()
+    if (keywords?.length)
+      params.keywords = keywords
+
+    setLoading(true)
+    try {
+      await addSegment({ datasetId, documentId, body: params })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      handleCancel()
+      onSave()
+    }
+    finally {
+      setLoading(false)
+    }
   }
 
   const renderContent = () => {
@@ -117,8 +130,10 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
           </span>
         </div>
         <div className='mb-4 py-1.5 h-[420px] overflow-auto'>{renderContent()}</div>
-        <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetDocuments.segment.keywords')}</div>
-        <div className='mb-8'></div>
+        <div className='text-xs font-medium text-gray-500'>{t('datasetDocuments.segment.keywords')}</div>
+        <div className='mb-8'>
+          <TagInput items={keywords} onChange={newKeywords => setKeywords(newKeywords)} />
+        </div>
         <div className='flex justify-end'>
           <Button
             className='mr-2 !h-9 !px-4 !py-2 text-sm font-medium text-gray-700 !rounded-lg'
@@ -128,7 +143,9 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
           <Button
             type='primary'
             className='!h-9 !px-4 !py-2 text-sm font-medium !rounded-lg'
-            onClick={handleSave}>
+            onClick={handleSave}
+            disabled={loading}
+          >
             {t('common.operation.save')}
           </Button>
         </div>

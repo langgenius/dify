@@ -1,5 +1,6 @@
 'use client'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
@@ -15,11 +16,13 @@ import { languageMaps, languages } from '@/utils/language'
 import { activateMember, invitationCheck } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
+import I18n from '@/context/i18n'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ActivateForm = () => {
   const { t } = useTranslation()
+  const { locale, setLocaleOnClient } = useContext(I18n)
   const searchParams = useSearchParams()
   const workspaceID = searchParams.get('workspace_id')
   const email = searchParams.get('email')
@@ -42,14 +45,16 @@ const ActivateForm = () => {
   const [timezone, setTimezone] = useState('Asia/Shanghai')
   const [language, setLanguage] = useState('en-US')
   const [showSuccess, setShowSuccess] = useState(false)
+  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en, [])
 
-  const showErrorMessage = (message: string) => {
+  const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
       type: 'error',
       message,
     })
-  }
-  const valid = () => {
+  }, [])
+
+  const valid = useCallback(() => {
     if (!name.trim()) {
       showErrorMessage(t('login.error.nameEmpty'))
       return false
@@ -62,9 +67,9 @@ const ActivateForm = () => {
       showErrorMessage(t('login.error.passwordInvalid'))
 
     return true
-  }
+  }, [name, password, showErrorMessage, t])
 
-  const handleActivate = async () => {
+  const handleActivate = useCallback(async () => {
     if (!valid())
       return
     try {
@@ -80,17 +85,18 @@ const ActivateForm = () => {
           timezone,
         },
       })
+      setLocaleOnClient(language.startsWith('en') ? 'en' : 'zh-Hans', false)
       setShowSuccess(true)
     }
     catch {
       recheck()
     }
-  }
+  }, [email, language, name, password, recheck, setLocaleOnClient, timezone, token, valid, workspaceID])
 
   return (
     <div className={
       cn(
-        'flex flex-col items-center w-full grow items-center justify-center',
+        'flex flex-col items-center w-full grow justify-center',
         'px-6',
         'md:px-[108px]',
       )
@@ -164,7 +170,7 @@ const ActivateForm = () => {
                 </label>
                 <div className="relative mt-1 rounded-md shadow-sm">
                   <SimpleSelect
-                    defaultValue={languageMaps.en}
+                    defaultValue={defaultLanguage()}
                     items={languages}
                     onSelect={(item) => {
                       setLanguage(item.value as string)
@@ -202,7 +208,7 @@ const ActivateForm = () => {
                 <Link
                   className='text-primary-600'
                   target={'_blank'}
-                  href='https://docs.dify.ai/community/open-source'
+                  href={`https://docs.dify.ai/${locale === 'en' ? '' : `v/${locale.toLowerCase()}`}/community/open-source`}
                 >{t('login.license.link')}</Link>
               </div>
             </div>

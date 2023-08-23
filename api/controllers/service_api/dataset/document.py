@@ -11,7 +11,7 @@ from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
     DatasetNotInitedError
 from controllers.service_api.wraps import DatasetApiResource
-from core.llm.error import ProviderTokenNotInitError
+from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import UploadFile

@@ -16,22 +16,21 @@ import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
-import { ProviderType } from '@/types/app'
+import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import type { AppDetailResponse } from '@/models/app'
 import { ToastContext } from '@/app/components/base/toast'
-import { fetchTenantInfo } from '@/service/common'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
+import { useProviderContext } from '@/context/provider-context'
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
 
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
-  const [hasFetchedKey, setHasFetchedKey] = useState(false)
-  const isLoading = !hasFetchedDetail || !hasFetchedKey
+  const isLoading = !hasFetchedDetail
   const pathname = usePathname()
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
@@ -68,7 +67,7 @@ const Configuration: FC = () => {
     frequency_penalty: 1, // -2-2
   })
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
-    provider: ProviderType.openai,
+    provider: ProviderEnum.openai,
     model_id: 'gpt-3.5-turbo',
     configs: {
       prompt_template: '',
@@ -85,7 +84,7 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
 
-  const setModelId = (modelId: string, provider: ProviderType) => {
+  const setModelId = (modelId: string, provider: ProviderEnum) => {
     const newModelConfig = produce(modelConfig, (draft: any) => {
       draft.provider = provider
       draft.model_id = modelId
@@ -113,24 +112,26 @@ const Configuration: FC = () => {
     })
   }
 
-  const [hasSetCustomAPIKEY, setHasSetCustomerAPIKEY] = useState(true)
-  const [isTrailFinished, setIsTrailFinished] = useState(false)
+  const { textGenerationModelList } = useProviderContext()
+  const hasSetCustomAPIKEY = !!textGenerationModelList?.find(({ model_provider: provider }) => {
+    if (provider.provider_type === 'system' && provider.quota_type === 'paid')
+      return true
+
+    if (provider.provider_type === 'custom')
+      return true
+
+    return false
+  })
+  const isTrailFinished = !hasSetCustomAPIKEY && textGenerationModelList
+    .filter(({ model_provider: provider }) => provider.quota_type === 'trial')
+    .every(({ model_provider: provider }) => {
+      const { quota_used, quota_limit } = provider
+      return quota_used === quota_limit
+    })
+
   const hasSetAPIKEY = hasSetCustomAPIKEY || !isTrailFinished
 
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
-
-  const checkAPIKey = async () => {
-    const { in_trail, trial_end_reason } = await fetchTenantInfo({ url: '/info' })
-    const isTrailFinished = in_trail && trial_end_reason === 'trial_exceeded'
-    const hasSetCustomAPIKEY = trial_end_reason === 'using_custom'
-    setHasSetCustomerAPIKEY(hasSetCustomAPIKEY)
-    setIsTrailFinished(isTrailFinished)
-    setHasFetchedKey(true)
-  }
-
-  useEffect(() => {
-    checkAPIKey()
-  }, [])
 
   useEffect(() => {
     (fetchAppDetail({ url: '/apps', id: appId }) as any).then(async (res: AppDetailResponse) => {
@@ -284,6 +285,7 @@ const Configuration: FC = () => {
               {/* Model and Parameters */}
               <ConfigModel
                 mode={mode}
+                provider={modelConfig.provider as ProviderEnum}
                 completionParams={completionParams}
                 modelId={modelConfig.model_id}
                 setModelId={setModelId}
@@ -291,10 +293,6 @@ const Configuration: FC = () => {
                   setCompletionParams(newParams)
                 }}
                 disabled={!hasSetAPIKEY}
-                canUseGPT4={hasSetCustomAPIKEY}
-                onShowUseGPT4Confirm={() => {
-                  setShowUseGPT4Confirm(true)
-                }}
               />
               <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
@@ -341,7 +339,6 @@ const Configuration: FC = () => {
           )
         }
         {isShowSetAPIKey && <AccountSetting activeTab="provider" onCancel={async () => {
-          await checkAPIKey()
           hideSetAPIkey()
         }} />}
       </>

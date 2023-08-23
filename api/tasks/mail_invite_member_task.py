@@ -8,7 +8,7 @@ from flask import current_app
 from extensions.ext_mail import mail
 
 
-@shared_task
+@shared_task(queue='mail')
 def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspace_id: str, workspace_name: str):
     """
     Async Send invite member mail

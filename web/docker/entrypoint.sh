@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
 set -e
 
@@ -19,5 +19,4 @@ fi
 
 export NEXT_PUBLIC_SENTRY_DSN=${SENTRY_DSN}
 
-/usr/local/bin/pm2 -v
-/usr/local/bin/pm2-runtime start /app/web/pm2.json
+node ./server.js

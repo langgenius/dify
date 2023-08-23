@@ -3,12 +3,13 @@ import json
 
 from flask import request
 from flask_restful import Resource
-from flask_login import login_required, current_user
+from flask_login import current_user
 
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.login.login import login_required
 from events.app_event import app_model_config_was_updated
 from extensions.ext_database import db
 from models.model import AppModelConfig
@@ -28,27 +29,15 @@ class ModelConfigResource(Resource):
 
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
+            tenant_id=current_user.current_tenant_id,
             account=current_user,
-            config=request.json,
-            mode=app_model.mode
+            config=request.json
         )
 
         new_app_model_config = AppModelConfig(
             app_id=app_model.id,
-            provider="",
-            model_id="",
-            configs={},
-            opening_statement=model_configuration['opening_statement'],
-            suggested_questions=json.dumps(model_configuration['suggested_questions']),
-            suggested_questions_after_answer=json.dumps(model_configuration['suggested_questions_after_answer']),
-            speech_to_text=json.dumps(model_configuration['speech_to_text']),
-            more_like_this=json.dumps(model_configuration['more_like_this']),
-            sensitive_word_avoidance=json.dumps(model_configuration['sensitive_word_avoidance']),
-            model=json.dumps(model_configuration['model']),
-            user_input_form=json.dumps(model_configuration['user_input_form']),
-            pre_prompt=model_configuration['pre_prompt'],
-            agent_mode=json.dumps(model_configuration['agent_mode']),
         )
+        new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
         db.session.add(new_app_model_config)
         db.session.flush()

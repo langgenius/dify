@@ -108,7 +108,7 @@ class AppModelConfig(db.Model):
     def suggested_questions_after_answer_dict(self) -> dict:
         return json.loads(self.suggested_questions_after_answer) if self.suggested_questions_after_answer \
             else {"enabled": False}
-    
+
     @property
     def speech_to_text_dict(self) -> dict:
         return json.loads(self.speech_to_text) if self.speech_to_text \
@@ -147,6 +147,47 @@ class AppModelConfig(db.Model):
             "pre_prompt": self.pre_prompt,
             "agent_mode": self.agent_mode_dict
         }
+
+    def from_model_config_dict(self, model_config: dict):
+        self.provider = ""
+        self.model_id = ""
+        self.configs = {}
+        self.opening_statement = model_config['opening_statement']
+        self.suggested_questions = json.dumps(model_config['suggested_questions'])
+        self.suggested_questions_after_answer = json.dumps(model_config['suggested_questions_after_answer'])
+        self.speech_to_text = json.dumps(model_config['speech_to_text']) \
+            if model_config.get('speech_to_text') else None
+        self.more_like_this = json.dumps(model_config['more_like_this'])
+        self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
+            if model_config.get('sensitive_word_avoidance') else None
+        self.model = json.dumps(model_config['model'])
+        self.user_input_form = json.dumps(model_config['user_input_form'])
+        self.pre_prompt = model_config['pre_prompt']
+        self.agent_mode = json.dumps(model_config['agent_mode'])
+
+        return self
+
+    def copy(self):
+        new_app_model_config = AppModelConfig(
+            id=self.id,
+            app_id=self.app_id,
+            provider="",
+            model_id="",
+            configs={},
+            opening_statement=self.opening_statement,
+            suggested_questions=self.suggested_questions,
+            suggested_questions_after_answer=self.suggested_questions_after_answer,
+            speech_to_text=self.speech_to_text,
+            more_like_this=self.more_like_this,
+            sensitive_word_avoidance=self.sensitive_word_avoidance,
+            model=self.model,
+            user_input_form=self.user_input_form,
+            pre_prompt=self.pre_prompt,
+            agent_mode=self.agent_mode
+        )
+
+        return new_app_model_config
+
 
 class RecommendedApp(db.Model):
     __tablename__ = 'recommended_apps'
@@ -226,7 +267,7 @@ class Conversation(db.Model):
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     status = db.Column(db.String(255), nullable=False)
     from_source = db.Column(db.String(255), nullable=False)
-    from_end_user_id = db.Column(UUID, db.ForeignKey('end_users.id'))
+    from_end_user_id = db.Column(UUID)
     from_account_id = db.Column(UUID)
     read_at = db.Column(db.DateTime)
     read_account_id = db.Column(UUID)
@@ -234,9 +275,8 @@ class Conversation(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
-    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
-
-    end_user = db.relationship("EndUser", backref="conversations")
+    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select',
+                                          passive_deletes="all")
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
 
@@ -347,6 +387,15 @@ class Conversation(db.Model):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
     @property
+    def from_end_user_session_id(self):
+        if self.from_end_user_id:
+            end_user = db.session.query(EndUser).filter(EndUser.id == self.from_end_user_id).first()
+            if end_user:
+                return end_user.session_id
+
+        return None
+
+    @property
     def in_debug_mode(self):
         return self.override_model_configs is not None
 
@@ -372,9 +421,11 @@ class Message(db.Model):
     message = db.Column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
+    message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
     answer = db.Column(db.Text, nullable=False)
     answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
+    answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text('0'))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
@@ -422,7 +473,7 @@ class Message(db.Model):
 
     @property
     def agent_thoughts(self):
-        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id)\
+        return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id) \
             .order_by(MessageAgentThought.position.asc()).all()
 
 
@@ -550,7 +601,8 @@ class Site(db.Model):
 
     @property
     def app_base_url(self):
-        return (current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
+        return (
+            current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
 
 
 class ApiToken(db.Model):
@@ -655,9 +707,11 @@ class MessageAgentThought(db.Model):
     message = db.Column(db.Text, nullable=True)
     message_token = db.Column(db.Integer, nullable=True)
     message_unit_price = db.Column(db.Numeric, nullable=True)
+    message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
     answer = db.Column(db.Text, nullable=True)
     answer_token = db.Column(db.Integer, nullable=True)
     answer_unit_price = db.Column(db.Numeric, nullable=True)
+    answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
     tokens = db.Column(db.Integer, nullable=True)
     total_price = db.Column(db.Numeric, nullable=True)
     currency = db.Column(db.String, nullable=True)

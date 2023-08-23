@@ -77,6 +77,54 @@ export { default as <%= svgName %> } from './<%= svgName %>'
   await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ svgName: fileName })}\n`)
 }
 
+const generateImageComponent = async (entry, pathList) => {
+  const currentPath = path.resolve(__dirname, 'src', ...pathList.slice(2))
+
+  try {
+    await access(currentPath)
+  }
+  catch {
+    await generateDir(currentPath)
+  }
+
+  const prefixFileName = camelCase(entry.split('.')[0])
+  const fileName = prefixFileName.charAt(0).toUpperCase() + prefixFileName.slice(1)
+
+  const componentCSSRender = template(`
+.wrapper {
+  display: inline-flex;
+  background: url(<%= assetPath %>) center center no-repeat;
+  background-size: contain;
+}
+`.trim())
+
+  await writeFile(path.resolve(currentPath, `${fileName}.module.css`), `${componentCSSRender({ assetPath: path.join('~@/app/components/base/icons/assets', ...pathList.slice(2), entry) })}\n`)
+
+  const componentRender = template(`
+// GENERATE BY script
+// DON NOT EDIT IT MANUALLY
+
+import * as React from 'react'
+import cn from 'classnames'
+import s from './<%= fileName %>.module.css'
+
+const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>>((
+  { className, ...restProps },
+  ref,
+) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />)
+
+export default Icon
+`.trim())
+
+  await writeFile(path.resolve(currentPath, `${fileName}.tsx`), `${componentRender({ fileName })}\n`)
+
+  const indexingRender = template(`
+export { default as <%= fileName %> } from './<%= fileName %>'
+`.trim())
+
+  await appendFile(path.resolve(currentPath, 'index.ts'), `${indexingRender({ fileName })}\n`)
+}
+
 const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
   const currentPath = path.resolve(...pathList, entry)
   let fileHandle
@@ -94,6 +142,9 @@ const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
 
     if (stat.isFile() && /.+\.svg$/g.test(entry))
       await generateSvgComponent(fileHandle, entry, pathList, replaceFillOrStrokeColor)
+
+    if (stat.isFile() && /.+\.png$/g.test(entry))
+      await generateImageComponent(entry, pathList)
   }
   finally {
     fileHandle?.close()
@@ -104,4 +155,5 @@ const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
   await rm(path.resolve(__dirname, 'src'), { recursive: true, force: true })
   await walk('public', [__dirname, 'assets'])
   await walk('vender', [__dirname, 'assets'], true)
+  await walk('image', [__dirname, 'assets'])
 })()

@@ -10,7 +10,7 @@ import { HashtagIcon } from '@heroicons/react/24/solid'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import type { Feedbacktype } from '@/app/components/app/chat'
+import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 
 const MAX_DEPTH = 3
@@ -136,7 +136,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const mainStyle = (() => {
-    const res: any = !isTop
+    const res: React.CSSProperties = !isTop
       ? {
         background: depth % 2 === 0 ? 'linear-gradient(90.07deg, #F9FAFB 0.05%, rgba(249, 250, 251, 0) 99.93%)' : '#fff',
       }

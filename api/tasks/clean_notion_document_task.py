@@ -10,7 +10,7 @@ from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset, Document
 
 
-@shared_task
+@shared_task(queue='dataset')
 def clean_notion_document_task(document_ids: List[str], dataset_id: str):
     """
     Clean document when document deleted.

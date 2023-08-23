@@ -14,7 +14,7 @@ from models.dataset import Document, Dataset, DocumentSegment
 from models.source import DataSourceBinding
 
 
-@shared_task
+@shared_task(queue='dataset')
 def document_indexing_sync_task(dataset_id: str, document_id: str):
     """
     Async update document

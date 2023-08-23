@@ -27,10 +27,11 @@ const WorkplaceSelector = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
-  const currentWrokspace = workspaces.filter(item => item.current)?.[0]
+  const currentWorkspace = workspaces.find(v => v.current)
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
+      if (currentWorkspace?.id === tenant_id) return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       location.assign(`${location.origin}`)
@@ -51,8 +52,8 @@ const WorkplaceSelector = () => {
                 group hover:bg-gray-50 cursor-pointer ${open && 'bg-gray-50'} rounded-lg
               `,
             )}>
-              <div className={itemIconClassName}>{currentWrokspace?.name[0].toLocaleUpperCase()}</div>
-              <div className={`${itemNameClassName} truncate`}>{currentWrokspace?.name}</div>
+              <div className={itemIconClassName}>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
+              <div className={`${itemNameClassName} truncate`}>{currentWorkspace?.name}</div>
               <ChevronRight className='shrink-0 w-[14px] h-[14px] text-gray-500' />
             </Menu.Button>
             <Transition

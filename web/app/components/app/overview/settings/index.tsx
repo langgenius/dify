@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
@@ -18,7 +18,7 @@ export type ISettingsModalProps = {
   isShow: boolean
   defaultValue?: string
   onClose: () => void
-  onSave: (params: ConfigParams) => Promise<any>
+  onSave?: (params: ConfigParams) => Promise<void>
 }
 
 export type ConfigParams = {
@@ -26,6 +26,10 @@ export type ConfigParams = {
   description: string
   default_language: string
   prompt_public: boolean
+  copyright: string
+  privacy_policy: string
+  icon: string
+  icon_background: string
 }
 
 const LANGUAGE_MAP: Record<Language, string> = {
@@ -51,6 +55,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon, icon_background })
 
+  useEffect(() => {
+    setInputInfo({ title, desc: description, copyright, privacyPolicy: privacy_policy })
+    setLanguage(default_language)
+    setEmoji({ icon, icon_background })
+  }, [appInfo])
+
   const onHide = () => {
     onClose()
     setTimeout(() => {
@@ -70,13 +80,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: emoji.icon,
       icon_background: emoji.icon_background,
     }
-    await onSave(params)
+    await onSave?.(params)
     setSaveLoading(false)
     onHide()
   }
 
   const onChange = (field: string) => {
-    return (e: any) => {
+    return (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setInputInfo(item => ({ ...item, [field]: e.target.value }))
     }
   }
@@ -99,7 +109,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           />
           <input className={`flex-grow rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
             value={inputInfo.title}
-            onChange={onChange('title')} />
+            onChange={onChange('title')}
+            placeholder={t('app.appNamePlaceholder') || ''}
+          />
         </div>
         <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.webDesc`)}</div>
         <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.webDescTip`)}</p>
@@ -157,7 +169,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             setShowEmojiPicker(false)
           }}
           onClose={() => {
-            setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
+            setEmoji({ icon: appInfo.site.icon, icon_background: appInfo.site.icon_background })
             setShowEmojiPicker(false)
           }}
         />}

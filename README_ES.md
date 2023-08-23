@@ -32,7 +32,7 @@ Visita [Dify.ai](https://dify.ai)
 
 Antes de instalar Dify, asegúrate de que tu máquina cumple con los siguientes requisitos mínimos del sistema:
 
-- CPU >= 1 Core
+- CPU >= 2 Core
 - RAM >= 4GB
 
 ### Inicio rápido
@@ -115,7 +115,6 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 Este software utiliza el siguiente software de código abierto:
 
 - Chase, H. (2022). LangChain [Software de computadora]. https://github.com/hwchase17/langchain
-- Liu, J. (2022). LlamaIndex [Software de computadora]. doi: 10.5281/zenodo.1234.
 
 Para obtener más información, consulta el sitio web oficial o el texto de la licencia del software correspondiente.
 

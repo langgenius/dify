@@ -8,6 +8,7 @@ import { debounce, isNil, omitBy } from 'lodash-es'
 import cn from 'classnames'
 import { StatusItem } from '../../list'
 import { DocumentContext } from '../index'
+import { ProcessStatus } from '../segment-add'
 import s from './style.module.css'
 import InfiniteVirtualList from './InfiniteVirtualList'
 import { formatNumber } from '@/utils/format'
@@ -18,7 +19,7 @@ import Input from '@/app/components/base/input'
 import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
-import { disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
+import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
 import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
@@ -26,6 +27,8 @@ import { Edit03, XClose } from '@/app/components/base/icons/src/vender/line/gene
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import Button from '@/app/components/base/button'
 import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
+import TagInput from '@/app/components/base/tag-input'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -45,14 +48,16 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
-  onUpdate: (segmentId: string, q: string, a: string) => void
+  onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
   onCancel: () => void
+  archived?: boolean
 }
 /**
  * Show all the contents of the segment
  */
 export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   segInfo,
+  archived,
   onChangeSwitch,
   onUpdate,
   onCancel,
@@ -61,14 +66,25 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   const [isEditing, setIsEditing] = useState(false)
   const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
+  const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [loading, setLoading] = useState(false)
+
+  eventEmitter?.useSubscription((v) => {
+    if (v === 'update-segment')
+      setLoading(true)
+    else
+      setLoading(false)
+  })
 
   const handleCancel = () => {
     setIsEditing(false)
     setQuestion(segInfo?.content || '')
     setAnswer(segInfo?.answer || '')
+    setKeywords(segInfo?.keywords || [])
   }
   const handleSave = () => {
-    onUpdate(segInfo?.id || '', question, answer)
+    onUpdate(segInfo?.id || '', question, answer, keywords)
   }
 
   const renderContent = () => {
@@ -113,31 +129,32 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   return (
     <div className={'flex flex-col relative'}>
       <div className='absolute right-0 top-0 flex items-center h-7'>
-        {
-          isEditing
-            ? (
-              <>
-                <Button
-                  className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
-                  onClick={handleCancel}>
-                  {t('common.operation.cancel')}
-                </Button>
-                <Button
-                  type='primary'
-                  className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
-                  onClick={handleSave}>
-                  {t('common.operation.save')}
-                </Button>
-              </>
-            )
-            : (
-              <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
-                <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
-                <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
-              </div>
-            )
-        }
-        <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+        {isEditing && (
+          <>
+            <Button
+              className='mr-2 !h-7 !px-3 !py-[5px] text-xs font-medium text-gray-700 !rounded-md'
+              onClick={handleCancel}>
+              {t('common.operation.cancel')}
+            </Button>
+            <Button
+              type='primary'
+              className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
+              onClick={handleSave}
+              disabled={loading}
+            >
+              {t('common.operation.save')}
+            </Button>
+          </>
+        )}
+        {!isEditing && !archived && (
+          <>
+            <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
+              <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
+              <Edit03 className='w-4 h-4 text-gray-500' onClick={() => setIsEditing(true)} />
+            </div>
+            <div className='mx-3 w-[1px] h-3 bg-gray-200' />
+          </>
+        )}
         <div className='flex justify-center items-center w-6 h-6 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
@@ -148,9 +165,15 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
       <div className={s.keywordWrapper}>
         {!segInfo?.keywords?.length
           ? '-'
-          : segInfo?.keywords?.map((word: any) => {
-            return <div className={s.keyword}>{word}</div>
-          })}
+          : (
+            <TagInput
+              items={keywords}
+              onChange={newKeywords => setKeywords(newKeywords)}
+              disableAdd={!isEditing}
+              disableRemove={!isEditing || (keywords.length === 1)}
+            />
+          )
+        }
       </div>
       <div className={cn(s.footer, s.numberInfo)}>
         <div className='flex items-center'>
@@ -167,6 +190,7 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
             onChange={async (val) => {
               await onChangeSwitch?.(segInfo?.id || '', val)
             }}
+            disabled={archived}
           />
         </div>
       </div>
@@ -186,13 +210,20 @@ export const splitArray = (arr: any[], size = 3) => {
 type ICompletedProps = {
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
+  importStatus: ProcessStatus | string | undefined
+  archived?: boolean
   // data: Array<{}> // all/part segments
 }
 /**
  * Embedding done, show list of all segments
  * Support search and filter
  */
-const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModalChange }) => {
+const Completed: FC<ICompletedProps> = ({
+  showNewSegmentModal,
+  onNewSegmentModalChange,
+  importStatus,
+  archived,
+}) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { datasetId = '', documentId = '', docForm } = useContext(DocumentContext)
@@ -206,6 +237,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
   const [allSegments, setAllSegments] = useState<Array<SegmentDetailModel[]>>([]) // all segments data
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState<number | undefined>()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const onChangeStatus = ({ value }: Item) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
@@ -241,11 +273,6 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     getSegments(false)
   }
 
-  useEffect(() => {
-    if (lastSegmentsRes !== undefined)
-      getSegments(false)
-  }, [selectedStatus, searchValue])
-
   const onClickCard = (detail: SegmentDetailModel) => {
     setCurrSegment({ segInfo: detail, showModal: true })
   }
@@ -272,7 +299,18 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
     }
   }
 
-  const handleUpdateSegment = async (segmentId: string, question: string, answer: string) => {
+  const onDelete = async (segId: string) => {
+    const [e] = await asyncRunSafe<CommonResponse>(deleteSegment({ datasetId, documentId, segmentId: segId }) as Promise<CommonResponse>)
+    if (!e) {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      resetList()
+    }
+    else {
+      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+    }
+  }
+
+  const handleUpdateSegment = async (segmentId: string, question: string, answer: string, keywords: string[]) => {
     const params: SegmentUpdator = { content: '' }
     if (docForm === 'qa_model') {
       if (!question.trim())
@@ -290,23 +328,43 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
       params.content = question
     }
 
-    const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
-    notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    onCloseModal()
-    for (const item of allSegments) {
-      for (const seg of item) {
-        if (seg.id === segmentId) {
-          seg.answer = res.data.answer
-          seg.content = res.data.content
-          seg.word_count = res.data.word_count
-          seg.hit_count = res.data.hit_count
-          seg.index_node_hash = res.data.index_node_hash
-          seg.enabled = res.data.enabled
+    if (keywords.length)
+      params.keywords = keywords
+
+    try {
+      eventEmitter?.emit('update-segment')
+      const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      onCloseModal()
+      for (const item of allSegments) {
+        for (const seg of item) {
+          if (seg.id === segmentId) {
+            seg.answer = res.data.answer
+            seg.content = res.data.content
+            seg.keywords = res.data.keywords
+            seg.word_count = res.data.word_count
+            seg.hit_count = res.data.hit_count
+            seg.index_node_hash = res.data.index_node_hash
+            seg.enabled = res.data.enabled
+          }
         }
       }
+      setAllSegments([...allSegments])
     }
-    setAllSegments([...allSegments])
+    finally {
+      eventEmitter?.emit('')
+    }
   }
+
+  useEffect(() => {
+    if (lastSegmentsRes !== undefined)
+      getSegments(false)
+  }, [selectedStatus, searchValue])
+
+  useEffect(() => {
+    if (importStatus === ProcessStatus.COMPLETED)
+      resetList()
+  }, [importStatus])
 
   return (
     <>
@@ -330,7 +388,9 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
         items={allSegments}
         loadNextPage={getSegments}
         onChangeSwitch={onChangeSwitch}
+        onDelete={onDelete}
         onClick={onClickCard}
+        archived={archived}
       />
       <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
@@ -338,6 +398,7 @@ const Completed: FC<ICompletedProps> = ({ showNewSegmentModal, onNewSegmentModal
           onChangeSwitch={onChangeSwitch}
           onUpdate={handleUpdateSegment}
           onCancel={onCloseModal}
+          archived={archived}
         />
       </Modal>
       <NewSegmentModal

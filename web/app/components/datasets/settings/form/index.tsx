@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import type { Dispatch } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
@@ -10,6 +11,10 @@ import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { fetchDataDetail, updateDatasetSetting } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import AccountSetting from '@/app/components/header/account-setting'
 
 const rowClass = `
   flex justify-between py-4
@@ -20,7 +25,7 @@ const labelClass = `
 const inputClass = `
   w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
-const useInitialValue = (depend: any, dispatch: any) => {
+const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, dispatch) => {
   useEffect(() => {
     dispatch(depend)
   }, [depend])
@@ -41,7 +46,7 @@ const Form = ({
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
-
+  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
   const handleSave = async () => {
     if (loading)
       return
@@ -129,6 +134,32 @@ const Form = ({
         </div>
       </div>
       <div className={rowClass}>
+        <div className={labelClass}>
+          <div>{t('datasetSettings.form.embeddingModel')}</div>
+        </div>
+        <div className='w-[480px]'>
+          {currentDataset && (
+            <>
+              <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
+                <ModelSelector
+                  readonly
+                  value={{
+                    providerName: currentDataset.embedding_model_provider as ProviderEnum,
+                    modelName: currentDataset.embedding_model,
+                  }}
+                  modelType={ModelType.embeddings}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
+                {t('datasetSettings.form.embeddingModelTip')}
+                <span className='text-[#155eef] cursor-pointer' onClick={() => setShowSetAPIKeyModal(true)}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+      <div className={rowClass}>
         <div className={labelClass} />
         <div className='w-[480px]'>
           <Button
@@ -140,6 +171,11 @@ const Form = ({
           </Button>
         </div>
       </div>
+      {showSetAPIKeyModal && (
+        <AccountSetting activeTab="provider" onCancel={async () => {
+          setShowSetAPIKeyModal(false)
+        }} />
+      )}
     </div>
   )
 }

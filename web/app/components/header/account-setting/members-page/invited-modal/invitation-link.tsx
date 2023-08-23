@@ -1,10 +1,10 @@
 'use client'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
+import copy from 'copy-to-clipboard'
 import s from './index.module.css'
 import Tooltip from '@/app/components/base/tooltip'
-import useCopyToClipboard from '@/hooks/use-copy-to-clipboard'
-import { randomString } from '@/app/components/app-sidebar/basic'
+import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
   value?: string
@@ -15,12 +15,11 @@ const InvitationLink = ({
 }: IInvitationLinkProps) => {
   const [isCopied, setIsCopied] = useState(false)
   const selector = useRef(`invite-link-${randomString(4)}`)
-  const [_, copy] = useCopyToClipboard()
 
   const copyHandle = useCallback(() => {
     copy(value)
     setIsCopied(true)
-  }, [value, copy])
+  }, [value])
 
   useEffect(() => {
     if (isCopied) {

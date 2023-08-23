@@ -10,7 +10,7 @@ from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, Datase
     AppDatasetJoin, Document
 
 
-@shared_task
+@shared_task(queue='dataset')
 def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str, index_struct: str):
     """
     Clean dataset when dataset deleted.
