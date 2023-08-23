@@ -124,8 +124,9 @@ const ModelPage = () => {
     updateModelList(ModelType.embeddings)
     mutateProviders()
   }
-  const handleSave = async (v?: FormValue) => {
-    if (v && modelModalConfig) {
+  const handleSave = async (originValue?: FormValue) => {
+    if (originValue && modelModalConfig) {
+      const v = modelModalConfig.filterValue ? modelModalConfig.filterValue(originValue) : originValue
       let body, url
       if (ConfigurableProviders.includes(modelModalConfig.key)) {
         const { model_name, model_type, ...config } = v
