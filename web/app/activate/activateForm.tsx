@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
@@ -45,7 +45,7 @@ const ActivateForm = () => {
   const [timezone, setTimezone] = useState('Asia/Shanghai')
   const [language, setLanguage] = useState('en-US')
   const [showSuccess, setShowSuccess] = useState(false)
-  const defaultLanguage = (navigator.language?.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en
+  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? languageMaps['zh-Hans'] : languageMaps.en) || languageMaps.en, [])
 
   const showErrorMessage = (message: string) => {
     Toast.notify({
@@ -169,7 +169,7 @@ const ActivateForm = () => {
                 </label>
                 <div className="relative mt-1 rounded-md shadow-sm">
                   <SimpleSelect
-                    defaultValue={defaultLanguage}
+                    defaultValue={defaultLanguage()}
                     items={languages}
                     onSelect={(item) => {
                       setLanguage(item.value as string)
