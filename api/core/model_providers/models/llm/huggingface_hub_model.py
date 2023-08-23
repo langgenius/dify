@@ -22,8 +22,7 @@ class HuggingfaceHubModel(BaseLLM):
                 task=self.credentials['task_type'],
                 model_kwargs=provider_model_kwargs,
                 huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
-                callbacks=self.callbacks,
-                streaming=self.streaming
+                callbacks=self.callbacks
             )
         else:
             client = HuggingFaceHub(
