@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -26,11 +26,11 @@ const Apps: FC = () => {
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
 
-  const currList = (() => {
+  const currList = useMemo(() => {
     if (currCategory === '')
       return allList
     return allList.filter(item => item.category === currCategory)
-  })()
+  }, [allList, currCategory])
   const [categories, setCategories] = React.useState([])
   useEffect(() => {
     (async () => {
@@ -41,18 +41,19 @@ const Apps: FC = () => {
     })()
   }, [])
 
-  const handleAddToWorkspace = async (appId: string) => {
+  const handleAddToWorkspace = useCallback(async (appId: string) => {
     await installApp(appId)
     Toast.notify({
       type: 'success',
       message: t('common.api.success'),
     })
     setControlUpdateInstalledApps(Date.now())
-  }
+    setAllList(allList.map(item => item.app_id === appId ? { ...item, installed: true } : item))
+  }, [allList, setControlUpdateInstalledApps, t])
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
-  const onCreate: CreateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCreate: CreateAppModalProps['onConfirm'] = useCallback(async ({ name, icon, icon_background }) => {
     const { app_model_config: model_config } = await fetchAppDetail(currApp?.app.id as string)
 
     try {
@@ -74,7 +75,7 @@ const Apps: FC = () => {
     catch (e) {
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
-  }
+  }, [currApp?.app.id, currApp?.app.mode, router, t])
 
   if (!isLoaded) {
     return (

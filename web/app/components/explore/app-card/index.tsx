@@ -44,10 +44,10 @@ const AppCard = ({
             <AppModeLabel mode={appBasicInfo.mode} />
           </div>
           <div className={cn(s.opWrap, 'flex items-center w-full space-x-2')}>
-            <Button type='primary' className='grow flex items-center !h-7' onClick={() => onAddToWorkspace(appBasicInfo.id)}>
+            {!app.installed && (<Button type='primary' className='grow flex items-center !h-7' onClick={() => onAddToWorkspace(appBasicInfo.id)}>
               <PlusIcon className='w-4 h-4 mr-1' />
               <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
-            </Button>
+            </Button>)}
             {canCreate && (
               <Button className='grow flex items-center !h-7 space-x-1' onClick={onCreate}>
                 {CustomizeBtn}
