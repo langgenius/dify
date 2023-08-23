@@ -39,6 +39,8 @@ export enum ProviderEnum {
   'spark' = 'spark',
   'minimax' = 'minimax',
   'chatglm' = 'chatglm',
+  'xinference' = 'xinference',
+  'openllm' = 'openllm',
 }
 
 export type ProviderConfigItem = {

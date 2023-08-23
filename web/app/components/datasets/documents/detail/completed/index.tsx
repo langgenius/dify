@@ -28,6 +28,7 @@ import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/commo
 import Button from '@/app/components/base/button'
 import NewSegmentModal from '@/app/components/datasets/documents/detail/new-segment-modal'
 import TagInput from '@/app/components/base/tag-input'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export const SegmentIndexTag: FC<{ positionId: string | number; className?: string }> = ({ positionId, className }) => {
   const localPositionId = useMemo(() => {
@@ -66,6 +67,15 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
   const [question, setQuestion] = useState(segInfo?.content || '')
   const [answer, setAnswer] = useState(segInfo?.answer || '')
   const [keywords, setKeywords] = useState<string[]>(segInfo?.keywords || [])
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [loading, setLoading] = useState(false)
+
+  eventEmitter?.useSubscription((v) => {
+    if (v === 'update-segment')
+      setLoading(true)
+    else
+      setLoading(false)
+  })
 
   const handleCancel = () => {
     setIsEditing(false)
@@ -129,7 +139,9 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
             <Button
               type='primary'
               className='!h-7 !px-3 !py-[5px] text-xs font-medium !rounded-md'
-              onClick={handleSave}>
+              onClick={handleSave}
+              disabled={loading}
+            >
               {t('common.operation.save')}
             </Button>
           </>
@@ -225,6 +237,7 @@ const Completed: FC<ICompletedProps> = ({
   const [allSegments, setAllSegments] = useState<Array<SegmentDetailModel[]>>([]) // all segments data
   const [loading, setLoading] = useState(false)
   const [total, setTotal] = useState<number | undefined>()
+  const { eventEmitter } = useEventEmitterContextContext()
 
   const onChangeStatus = ({ value }: Item) => {
     setSelectedStatus(value === 'all' ? 'all' : !!value)
@@ -318,23 +331,29 @@ const Completed: FC<ICompletedProps> = ({
     if (keywords.length)
       params.keywords = keywords
 
-    const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
-    notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-    onCloseModal()
-    for (const item of allSegments) {
-      for (const seg of item) {
-        if (seg.id === segmentId) {
-          seg.answer = res.data.answer
-          seg.content = res.data.content
-          seg.keywords = res.data.keywords
-          seg.word_count = res.data.word_count
-          seg.hit_count = res.data.hit_count
-          seg.index_node_hash = res.data.index_node_hash
-          seg.enabled = res.data.enabled
+    try {
+      eventEmitter?.emit('update-segment')
+      const res = await updateSegment({ datasetId, documentId, segmentId, body: params })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      onCloseModal()
+      for (const item of allSegments) {
+        for (const seg of item) {
+          if (seg.id === segmentId) {
+            seg.answer = res.data.answer
+            seg.content = res.data.content
+            seg.keywords = res.data.keywords
+            seg.word_count = res.data.word_count
+            seg.hit_count = res.data.hit_count
+            seg.index_node_hash = res.data.index_node_hash
+            seg.enabled = res.data.enabled
+          }
         }
       }
+      setAllSegments([...allSegments])
     }
-    setAllSegments([...allSegments])
+    finally {
+      eventEmitter?.emit('')
+    }
   }
 
   useEffect(() => {

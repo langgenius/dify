@@ -6,7 +6,7 @@ import type {
   ICurrentWorkspace,
   IWorkspace, LangGeniusVersionResponse, Member,
   OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
-  SetupStatusResponse, TenantInfoResponse, UserProfileOriginResponse,
+  SetupStatusResponse, UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -32,10 +32,6 @@ export const fetchUserProfile: Fetcher<UserProfileOriginResponse, { url: string;
 
 export const updateUserProfile: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse>
-}
-
-export const fetchTenantInfo: Fetcher<TenantInfoResponse, { url: string }> = ({ url }) => {
-  return get(url) as Promise<TenantInfoResponse>
 }
 
 export const logout: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
