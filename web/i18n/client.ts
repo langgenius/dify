@@ -9,8 +9,8 @@ export const getLocaleOnClient = (): Locale => {
   return Cookies.get(LOCALE_COOKIE_NAME) as Locale || i18n.defaultLocale
 }
 
-export const setLocaleOnClient = (locale: Locale) => {
+export const setLocaleOnClient = (locale: Locale, reloadPage = true) => {
   Cookies.set(LOCALE_COOKIE_NAME, locale)
   changeLanguage(locale)
-  location.reload()
+  reloadPage && location.reload()
 }
