@@ -51,7 +51,7 @@ class HuggingfaceHubProvider(BaseModelProvider):
             top_p=KwargRule[float](min=0.01, max=0.99, default=0.7),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias='max_new_tokens', min=10, max=1500, default=200),
+            max_tokens=KwargRule[int](alias='max_new_tokens', min=10, max=4000, default=200),
         )
 
     @classmethod
