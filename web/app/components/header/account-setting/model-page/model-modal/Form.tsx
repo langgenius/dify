@@ -68,7 +68,7 @@ const Form: FC<FormProps> = ({
           return true
         },
         run: () => {
-          return validateModelProviderFn(modelModal!.key, v)
+          return validateModelProviderFn(modelModal!.key, modelModal?.filterValue ? modelModal?.filterValue(v) : v)
         },
       })
     }
