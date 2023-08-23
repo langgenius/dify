@@ -38,7 +38,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - streaming 流式返回。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现流式返回。
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
-      （选填）<strong>‼️ 会话标识符，首次对话为空 ‼️</strong>，如果要继续对话请传入上下文返回的 conversation_id
+      （必填）<strong>‼️ 会话标识符，首次对话为 conversation_id: "" ‼️</strong>，如果要继续对话请传入上下文返回的 conversation_id
       </Property>
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
@@ -47,7 +47,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST 'https://cloud.langgenius.dev/api/chat-messages' \
@@ -57,7 +57,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         "inputs": {},
         "query": "eh",
         "response_mode": "streaming",
-        "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
+        "conversation_id": "",
         "user": "abc-123"
     }'
     ```
