@@ -394,11 +394,20 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
+            count = 0
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                count = len(upload_file_list)
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
+                count = len(notion_page_list)
             documents_count = DocumentService.get_tenant_documents_count()
+            total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
+            if total_count > tenant_document_count:
                 raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
@@ -649,12 +658,20 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
+        count = 0
+        if document_data["data_source"]["type"] == "upload_file":
+            upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+            count = len(upload_file_list)
+        elif document_data["data_source"]["type"] == "notion_import":
+            notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
+            count = len(notion_page_list)
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
             documents_count = DocumentService.get_tenant_documents_count()
+            total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
-                raise ValueError(f"over document limit {tenant_document_count}.")
+            if total_count > tenant_document_count:
+                raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
         embedding_model = ModelFactory.get_embedding_model(
             tenant_id=tenant_id
         )
