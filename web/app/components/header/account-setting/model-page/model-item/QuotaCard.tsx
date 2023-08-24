@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { formatNumber } from '@/utils/format'
 
 type QuotaCardProps = {
   remainTokens: number
@@ -17,7 +18,7 @@ const QuotaCard: FC<QuotaCardProps> = ({
           {t('common.modelProvider.item.freeQuota')}
         </div>
         <div className='flex items-center h-5 text-sm font-medium text-gray-700'>
-          {remainTokens}
+          {formatNumber(remainTokens)}
           <div className='ml-1 font-normal'>Tokens</div>
         </div>
       </div>

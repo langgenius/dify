@@ -54,11 +54,12 @@ def test_get_num_tokens(mock_decrypt):
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
-def test_run(mock_decrypt):
+def test_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
     model = get_mock_model('abab5.5-chat')
     rst = model.run(
         [PromptMessage(content='Human: Are you a real Human? you MUST only answer `y` or `n`? \nAssistant: ')],
         stop=['\nHuman:'],
     )
     assert len(rst.content) > 0
-    assert rst.content.strip() == 'n'

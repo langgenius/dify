@@ -16,7 +16,7 @@ EXPOSE 5001
 WORKDIR /app/api
 
 RUN apt-get update && \
-    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev
+    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev nodejs
 
 COPY requirements.txt /app/api/requirements.txt
 

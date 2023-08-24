@@ -242,7 +242,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   archived_reason: 'rule_modified' | 're_upload'
   archived_by: string
   archived_at: number
-  doc_type?: DocType | null
+  doc_type?: DocType | null | 'others'
   doc_metadata?: DocMetadata | null
   segment_count: number
   [key: string]: any

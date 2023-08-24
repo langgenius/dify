@@ -38,7 +38,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
         - streaming returns. Implementation of streaming return based on SSE （**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）.
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
-       (Optional) Conversation ID: <strong>‼️ leave empty for first-time conversation ‼️</strong>; pass conversation_id from context to continue dialogue.
+       (Required) Conversation ID: <strong>‼️ leave it empty for first-time (eg. conversation_id: "") conversation ‼️</strong>; pass conversation_id from context to continue dialogue.
       </Property>
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the app.
@@ -47,7 +47,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
     curl --location --request POST 'https://cloud.langgenius.dev/api/chat-messages' \

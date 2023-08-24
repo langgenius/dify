@@ -127,7 +127,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           </div>
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' />
+          <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
           {documentDetail && !documentDetail.archived && (
             <SegmentAdd
               importStatus={importStatus}
@@ -170,7 +170,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             </div>
           }
           {showMetadata && <Metadata
-            docDetail={{ ...documentDetail, ...documentMetadata } as any}
+            docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentDetail?.doc_type === 'others' ? '' : documentDetail?.doc_type } as any}
             loading={isMetadataLoading}
             onUpdate={metadataMutate}
           />}

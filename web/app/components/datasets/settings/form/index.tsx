@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import type { Dispatch } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
@@ -24,7 +25,7 @@ const labelClass = `
 const inputClass = `
   w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
-const useInitialValue = (depend: any, dispatch: any) => {
+const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, dispatch) => {
   useEffect(() => {
     dispatch(depend)
   }, [depend])

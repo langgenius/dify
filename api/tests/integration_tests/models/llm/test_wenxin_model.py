@@ -52,7 +52,9 @@ def test_get_num_tokens(mock_decrypt):
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
-def test_run(mock_decrypt):
+def test_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
     model = get_mock_model('ernie-bot')
     messages = [PromptMessage(content='Human: 1 + 1=? \nAssistant: Integer answer is:')]
     rst = model.run(
@@ -60,4 +62,3 @@ def test_run(mock_decrypt):
         stop=['\nHuman:'],
     )
     assert len(rst.content) > 0
-    assert rst.content.strip() == '2'

@@ -52,7 +52,7 @@ const Debug: FC<IDebug> = ({
     modelConfig,
     completionParams,
   } = useContext(ConfigContext)
-  const { currentProvider } = useProviderContext()
+  const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
@@ -390,7 +390,7 @@ const Debug: FC<IDebug> = ({
                   }}
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
-                  isShowSpeechToText={speechToTextConfig.enabled && currentProvider?.provider_name === 'openai'}
+                  isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
                 />
               </div>
             </div>

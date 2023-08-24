@@ -2,29 +2,29 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
-import { fetchModelList, fetchTenantInfo } from '@/service/common'
+import { fetchDefaultModal, fetchModelList } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 const ProviderContext = createContext<{
-  currentProvider: {
-    provider: string
-    provider_name: string
-    token_is_set: boolean
-    is_valid: boolean
-    token_is_valid: boolean
-  } | null | undefined
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
   speech2textModelList: BackendModel[]
   agentThoughtModelList: BackendModel[]
   updateModelList: (type: ModelType) => void
+  embeddingsDefaultModel?: BackendModel
+  mutateEmbeddingsDefaultModel: () => void
+  speech2textDefaultModel?: BackendModel
+  mutateSpeech2textDefaultModel: () => void
 }>({
-      currentProvider: null,
       textGenerationModelList: [],
       embeddingsModelList: [],
       speech2textModelList: [],
       agentThoughtModelList: [],
       updateModelList: () => {},
+      speech2textDefaultModel: undefined,
+      mutateSpeech2textDefaultModel: () => {},
+      embeddingsDefaultModel: undefined,
+      mutateEmbeddingsDefaultModel: () => {},
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -35,8 +35,8 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
-  const { data: userInfo } = useSWR({ url: '/info' }, fetchTenantInfo)
-  const currentProvider = userInfo?.providers?.find(({ token_is_set, is_valid, provider_name }) => token_is_set && is_valid && (provider_name === 'openai' || provider_name === 'azure_openai'))
+  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
+  const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-type/'
   const { data: textGenerationModelList, mutate: mutateTextGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
   const { data: embeddingsModelList, mutate: mutateEmbeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
@@ -54,12 +54,15 @@ export const ProviderContextProvider = ({
 
   return (
     <ProviderContext.Provider value={{
-      currentProvider,
       textGenerationModelList: textGenerationModelList || [],
       embeddingsModelList: embeddingsModelList || [],
       speech2textModelList: speech2textModelList || [],
       agentThoughtModelList: agentThoughtModelList || [],
       updateModelList,
+      embeddingsDefaultModel,
+      mutateEmbeddingsDefaultModel,
+      speech2textDefaultModel,
+      mutateSpeech2textDefaultModel,
     }}>
       {children}
     </ProviderContext.Provider>

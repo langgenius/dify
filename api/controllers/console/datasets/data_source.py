@@ -3,7 +3,8 @@ import json
 
 from cachetools import TTLCache
 from flask import request, current_app
-from flask_login import login_required, current_user
+from flask_login import current_user
+from core.login.login import login_required
 from flask_restful import Resource, marshal_with, fields, reqparse, marshal
 from werkzeug.exceptions import NotFound
 

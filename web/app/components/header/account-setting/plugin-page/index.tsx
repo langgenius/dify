@@ -10,7 +10,7 @@ const PluginPage = () => {
   const { t } = useTranslation()
   const { data: plugins, mutate } = useSWR('/workspaces/current/tool-providers', fetchPluginProviders)
 
-  const Plugin_MAP: Record<string, any> = {
+  const Plugin_MAP: Record<string, (plugin: PluginProvider) => JSX.Element> = {
     serpapi: (plugin: PluginProvider) => <SerpapiPlugin key='serpapi' plugin={plugin} onUpdate={() => mutate()} />,
   }
 

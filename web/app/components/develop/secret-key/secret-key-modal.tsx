@@ -79,7 +79,7 @@ const SecretKeyModal = ({
     return `${token.slice(0, 3)}...${token.slice(-20)}`
   }
 
-  const formatDate = (timestamp: any) => {
+  const formatDate = (timestamp: string) => {
     if (locale === 'en')
       return new Intl.DateTimeFormat('en-US', { year: 'numeric', month: 'long', day: 'numeric' }).format((+timestamp) * 1000)
     else

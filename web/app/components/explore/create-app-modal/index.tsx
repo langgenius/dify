@@ -9,10 +9,14 @@ import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 
-type IProps = {
+export type CreateAppModalProps = {
   appName: string
   show: boolean
-  onConfirm: (info: any) => void
+  onConfirm: (info: {
+    name: string
+    icon: string
+    icon_background: string
+  }) => Promise<void>
   onHide: () => void
 }
 
@@ -21,7 +25,7 @@ const CreateAppModal = ({
   show = false,
   onConfirm,
   onHide,
-}: IProps) => {
+}: CreateAppModalProps) => {
   const { t } = useTranslation()
 
   const [name, setName] = React.useState('')
