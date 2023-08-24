@@ -874,6 +874,10 @@ class SegmentService:
         if document.doc_form == 'qa_model':
             if 'answer' not in args or not args['answer']:
                 raise ValueError("Answer is required")
+            if len(args['answer'].replace(" ", "")) == 0:
+                raise ValueError("Answer is empty")
+        if 'content' not in args or not args['content'] or len(args['content'].replace(" ", "")) == 0:
+            raise ValueError("Content is empty")
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
