@@ -22,7 +22,8 @@ class HuggingfaceHubModel(BaseLLM):
                 task=self.credentials['task_type'],
                 model_kwargs=provider_model_kwargs,
                 huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
-                callbacks=self.callbacks
+                callbacks=self.callbacks,
+                streaming=self.streaming
             )
         else:
             client = HuggingFaceHub(
@@ -78,5 +79,5 @@ class HuggingfaceHubModel(BaseLLM):
 
     @classmethod
     def support_streaming(cls):
-        return False
+        return True
 
