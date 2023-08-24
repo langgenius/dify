@@ -526,7 +526,7 @@ class IndexingRunner:
             split_documents = []
             for document_node in documents:
 
-                if len(document_node.page_content.replace(" ", "")) > 0:
+                if document_node.page_content.strip():
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(document_node.page_content)
                     document_node.metadata['doc_id'] = doc_id

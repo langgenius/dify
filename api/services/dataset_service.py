@@ -874,9 +874,9 @@ class SegmentService:
         if document.doc_form == 'qa_model':
             if 'answer' not in args or not args['answer']:
                 raise ValueError("Answer is required")
-            if len(args['answer'].replace(" ", "")) == 0:
+            if not args['answer'].strip():
                 raise ValueError("Answer is empty")
-        if 'content' not in args or not args['content'] or len(args['content'].replace(" ", "")) == 0:
+        if 'content' not in args or not args['content'] or not args['content'].strip():
             raise ValueError("Content is empty")
 
     @classmethod
