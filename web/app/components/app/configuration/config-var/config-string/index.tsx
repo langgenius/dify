@@ -9,17 +9,14 @@ export type IConfigStringProps = {
   onChange: (value: number | undefined) => void
 }
 
-const MAX_LENGTH = 256
+// const MAX_LENGTH = 256
 
 const ConfigString: FC<IConfigStringProps> = ({
   value,
-  modelId,
   isParagraph,
   onChange,
 }) => {
-  // TODO
-  const getMaxToken = () => 10000
-  const MAX_LENGTH = isParagraph ? (getMaxToken(modelId) / 2) : 256
+  const MAX_LENGTH = isParagraph ? 1000 : 256
   useEffect(() => {
     if (value && value > MAX_LENGTH)
       onChange(MAX_LENGTH)

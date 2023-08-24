@@ -34,7 +34,6 @@ enum TaskStatus {
 
 type TaskParam = {
   inputs: Record<string, any>
-  query: string
 }
 
 type Task = {
@@ -65,7 +64,6 @@ const TextGeneration: FC<IMainProps> = ({
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
-  const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
@@ -111,11 +109,10 @@ const TextGeneration: FC<IMainProps> = ({
       return {}
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}
-    const { inputs, query } = task.params
+    const { inputs } = task.params
     promptConfig?.prompt_variables.forEach((v) => {
       res[v.name] = inputs[v.key]
     })
-    res[t('share.generation.queryTitle')] = query
     res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
     return res
   })
@@ -134,9 +131,6 @@ const TextGeneration: FC<IMainProps> = ({
       if (item.name !== headerData[index])
         isMapVarName = false
     })
-
-    if (headerData[varLen] !== t('share.generation.queryTitle'))
-      isMapVarName = false
 
     if (!isMapVarName) {
       notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
@@ -195,14 +189,6 @@ const TextGeneration: FC<IMainProps> = ({
           errorRowIndex = index + 1
         }
       })
-
-      if (errorRowIndex !== 0)
-        return
-
-      if (item[varLen] === '') {
-        requiredVarName = t('share.generation.queryTitle')
-        errorRowIndex = index + 1
-      }
     })
 
     if (errorRowIndex !== 0) {
@@ -234,7 +220,6 @@ const TextGeneration: FC<IMainProps> = ({
         status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
-          query: item[varLen],
         },
       }
     })
@@ -334,7 +319,6 @@ const TextGeneration: FC<IMainProps> = ({
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
     inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
-    query={isCallBatchAPI ? (task as Task).params.query : query}
     controlSend={controlSend}
     controlStopResponding={controlStopResponding}
     onShowRes={showResSidebar}
@@ -459,8 +443,6 @@ const TextGeneration: FC<IMainProps> = ({
                 inputs={inputs}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
-                query={query}
-                onQueryChange={setQuery}
                 onSend={handleSend}
               />
             </div>
