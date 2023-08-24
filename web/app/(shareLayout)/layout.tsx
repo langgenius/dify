@@ -6,9 +6,11 @@ const Layout: FC<{
   children: React.ReactNode
 }> = ({ children }) => {
   return (
-    <div className="min-w-[300px]">
-      <GA gaType={GaType.webapp} />
-      {children}
+    <div className=''>
+      <div className="min-w-[300px]">
+        <GA gaType={GaType.webapp} />
+        {children}
+      </div>
     </div>
   )
 }
