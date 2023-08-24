@@ -138,6 +138,10 @@ export type DataSourceNotionPage = {
   is_bound: boolean
 }
 
+export type NotionPage = DataSourceNotionPage & {
+  workspace_id: string
+}
+
 export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
 
 export type DataSourceNotionWorkspace = {

@@ -1,7 +1,8 @@
 import React from 'react'
-import type { FC } from 'react'
 import NavLink from './navLink'
 import AppBasic from './basic'
+
+import type { NavIcon } from './navLink'
 
 export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
@@ -12,13 +13,13 @@ export type IAppDetailNavProps = {
   navigation: Array<{
     name: string
     href: string
-    icon: any
-    selectedIcon: any
+    icon: NavIcon
+    selectedIcon: NavIcon
   }>
   extraInfo?: React.ReactNode
 }
 
-const AppDetailNav: FC<IAppDetailNavProps> = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }) => {
+const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
   return (
     <div className="flex flex-col w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
       <div className="flex flex-shrink-0 p-4">

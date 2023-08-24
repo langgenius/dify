@@ -7,7 +7,7 @@ import { useContext } from 'use-context-selector'
 import Toast from '../../base/toast'
 import s from './style.module.css'
 import ExploreContext from '@/context/explore-context'
-import type { App } from '@/models/explore'
+import type { App, AppCategory } from '@/models/explore'
 import Category from '@/app/components/explore/category'
 import AppCard from '@/app/components/explore/app-card'
 import { fetchAppDetail, fetchAppList, installApp } from '@/service/explore'
@@ -22,7 +22,7 @@ const Apps: FC = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { setControlUpdateInstalledApps, hasEditPermission } = useContext(ExploreContext)
-  const [currCategory, setCurrCategory] = React.useState('')
+  const [currCategory, setCurrCategory] = React.useState<AppCategory | ''>('')
   const [allList, setAllList] = React.useState<App[]>([])
   const [isLoaded, setIsLoaded] = React.useState(false)
 
@@ -31,7 +31,8 @@ const Apps: FC = () => {
       return allList
     return allList.filter(item => item.category === currCategory)
   })()
-  const [categories, setCategories] = React.useState([])
+
+  const [categories, setCategories] = React.useState<AppCategory[]>([])
   useEffect(() => {
     (async () => {
       const { categories, recommended_apps }: any = await fetchAppList()

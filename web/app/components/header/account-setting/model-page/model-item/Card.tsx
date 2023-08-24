@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 type CardProps = {
   providerType: ProviderEnum
   models: Model[]
-  onOpenModal: (v: any) => void
+  onOpenModal: (v: Omit<Model, 'config'> & Model['config']) => void
   onOperate: (v: Record<string, any>) => void
 }
 
