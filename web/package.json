@@ -94,7 +94,6 @@
     "@types/sortablejs": "^1.15.1",
     "eslint": "8.36.0",
     "eslint-config-next": "^13.4.7",
-    "eslint-plugin-react-hooks": "^4.6.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",
