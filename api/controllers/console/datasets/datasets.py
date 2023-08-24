@@ -87,10 +87,13 @@ class DatasetListApi(Resource):
         #     raise ProviderNotInitializeError(
         #         f"No Embedding Model available. Please configure a valid provider "
         #         f"in the Settings -> Model Provider.")
-        model_names = [item['model_name'] for item in valid_model_list]
+        model_names = []
+        for valid_model in valid_model_list:
+            model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            if item['embedding_model'] in model_names:
+            item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+            if item_model in model_names:
                 item['embedding_available'] = True
             else:
                 item['embedding_available'] = False
