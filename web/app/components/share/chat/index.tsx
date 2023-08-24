@@ -574,7 +574,7 @@ const Main: FC<IMainProps> = ({
     return <Loading type='app' />
 
   return (
-    <div className='bg-gray-100 flex w-full h-full'>
+    <div className='bg-gray-100'>
       {!isInstalledApp && (
         <Header
           title={siteInfo.title}
@@ -611,7 +611,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          isInstalledApp ? s.installedApp : '',
+          isInstalledApp ? s.installedApp : 'h-screen',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
