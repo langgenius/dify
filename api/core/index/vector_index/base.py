@@ -173,3 +173,49 @@ class BaseVectorIndex(BaseIndex):
 
         self.dataset = dataset
         logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def create_qdrant_dataset(self, dataset: Dataset):
+        logging.info(f"create_qdrant_dataset {dataset.id}")
+
+        try:
+            self.delete()
+        except UnexpectedStatusCodeException as e:
+            if e.status_code != 400:
+                # 400 means index not exists
+                raise e
+
+        dataset_documents = db.session.query(DatasetDocument).filter(
+            DatasetDocument.dataset_id == dataset.id,
+            DatasetDocument.indexing_status == 'completed',
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
+        ).all()
+
+        documents = []
+        for dataset_document in dataset_documents:
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.status == 'completed',
+                DocumentSegment.enabled == True
+            ).all()
+
+            for segment in segments:
+                document = Document(
+                    page_content=segment.content,
+                    metadata={
+                        "doc_id": segment.index_node_id,
+                        "doc_hash": segment.index_node_hash,
+                        "document_id": segment.document_id,
+                        "dataset_id": segment.dataset_id,
+                    }
+                )
+
+                documents.append(document)
+
+        if documents:
+            try:
+                self.create(documents)
+            except Exception as e:
+                raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
