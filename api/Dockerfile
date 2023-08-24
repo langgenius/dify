@@ -18,7 +18,7 @@ WORKDIR /app/api
 RUN apt-get update && \
     apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev nodejs
 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
 
 COPY requirements.txt /app/api/requirements.txt
 
