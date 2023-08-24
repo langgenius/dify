@@ -1,5 +1,6 @@
 'use client'
 import React, { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import FilePreview from '../file-preview'
@@ -13,6 +14,7 @@ import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { fetchDocumentsLimit } from '@/service/common'
 
 type IStepOneProps = {
   datasetId?: string
@@ -61,6 +63,7 @@ const StepOne = ({
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
+  const { data: limitsData } = useSWR('/datasets/limit', fetchDocumentsLimit)
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
@@ -160,6 +163,8 @@ const StepOne = ({
                 onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
+                countLimit={limitsData?.documents_limit || 0}
+                countUsed={limitsData?.documents_count || 0}
               />
               <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
@@ -170,7 +175,13 @@ const StepOne = ({
               {hasConnection && (
                 <>
                   <div className='mb-8 w-[640px]'>
-                    <NotionPageSelector value={notionPages.map(page => page.page_id)} onSelect={updateNotionPages} onPreview={updateCurrentPage} />
+                    <NotionPageSelector
+                      value={notionPages.map(page => page.page_id)}
+                      onSelect={updateNotionPages}
+                      onPreview={updateCurrentPage}
+                      countLimit={limitsData?.documents_limit || 0}
+                      countUsed={limitsData?.documents_count || 0}
+                    />
                   </div>
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
