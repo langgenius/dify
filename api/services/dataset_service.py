@@ -464,7 +464,7 @@ class DocumentService:
                     data_source_info = {
                         "upload_file_id": file_id,
                     }
-                    document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
                                                              document_data["doc_form"],
                                                              document_data["doc_language"],
@@ -510,7 +510,7 @@ class DocumentService:
                                 "notion_page_icon": page['page_icon'],
                                 "type": page['type']
                             }
-                            document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                                      document_data["data_source"]["type"],
                                                                      document_data["doc_form"],
                                                                      document_data["doc_language"],
@@ -534,7 +534,7 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
-    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
+    def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
                       document_language: str, data_source_info: dict, created_from: str, position: int,
                       account: Account,
                       name: str, batch: str):
@@ -1007,10 +1007,11 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
-        # send delete segment index task
-        redis_client.setex(indexing_cache_key, 600, 1)
+        
         # enabled segment need to delete index
         if segment.enabled:
+            # send delete segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
         db.session.delete(segment)
         db.session.commit()
