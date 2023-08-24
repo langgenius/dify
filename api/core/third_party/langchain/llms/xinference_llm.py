@@ -108,12 +108,12 @@ class XinferenceLLM(Xinference):
         Yields:
             A string token.
         """
-        if isinstance(model, RESTfulGenerateModelHandle):
-            streaming_response = model.generate(
+        if isinstance(model, (RESTfulChatModelHandle, RESTfulChatglmCppChatModelHandle)):
+            streaming_response = model.chat(
                 prompt=prompt, generate_config=generate_config
             )
         else:
-            streaming_response = model.chat(
+            streaming_response = model.generate(
                 prompt=prompt, generate_config=generate_config
             )
 
@@ -123,7 +123,12 @@ class XinferenceLLM(Xinference):
                 if choices:
                     choice = choices[0]
                     if isinstance(choice, dict):
-                        token = choice.get("text", "")
+                        if 'text' in choice:
+                            token = choice.get("text", "")
+                        elif 'delta' in choice and 'content' in choice['delta']:
+                            token = choice.get('delta').get('content')
+                        else:
+                            continue
                         log_probs = choice.get("logprobs")
                         if run_manager:
                             run_manager.on_llm_new_token(
