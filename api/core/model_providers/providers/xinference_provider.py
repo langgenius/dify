@@ -2,7 +2,6 @@ import json
 from typing import Type
 
 import requests
-from xinference.client import RESTfulGenerateModelHandle, RESTfulChatModelHandle, RESTfulChatglmCppChatModelHandle
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
@@ -73,7 +72,7 @@ class XinferenceProvider(BaseModelProvider):
                 top_p=KwargRule[float](min=0, max=1, default=0.7),
                 presence_penalty=KwargRule[float](enabled=False),
                 frequency_penalty=KwargRule[float](enabled=False),
-                max_tokens=KwargRule[int](alias='max_new_tokens', min=10, max=4000, default=256),
+                max_tokens=KwargRule[int](min=10, max=4000, default=256),
             )
 
 
