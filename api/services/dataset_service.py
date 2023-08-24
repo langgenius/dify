@@ -990,10 +990,11 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
-        # send delete segment index task
-        redis_client.setex(indexing_cache_key, 600, 1)
+        
         # enabled segment need to delete index
         if segment.enabled:
+            # send delete segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
         db.session.delete(segment)
         db.session.commit()
