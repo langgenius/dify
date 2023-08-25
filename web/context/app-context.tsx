@@ -121,7 +121,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       mutateCurrentWorkspace,
     }}>
       <div className='flex flex-col h-full'>
-        <MaintenanceNotice />
+        {process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE && <MaintenanceNotice />}
         <div ref={pageContainerRef} className='grow relative flex flex-col overflow-auto bg-gray-100'>
           {children}
         </div>
