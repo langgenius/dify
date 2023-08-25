@@ -1,23 +1,25 @@
 import re
 from typing import Type
 
-from flask import current_app
-from langchain.tools import BaseTool
-from pydantic import Field, BaseModel
-
-from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.callback_handler.index_tool_callback_handler import \
+    DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
-from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
+from core.index.keyword_table_index.keyword_table_index import (
+    KeywordTableConfig, KeywordTableIndex)
 from core.index.vector_index.vector_index import VectorIndex
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_providers.error import (LLMBadRequestError,
+                                        ProviderTokenNotInitError)
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
+from flask import current_app
+from langchain.tools import BaseTool
 from models.dataset import Dataset, DocumentSegment
+from pydantic import BaseModel, Field
 
 
 class DatasetRetrieverToolInput(BaseModel):
     dataset_id: str = Field(..., description="ID of dataset to be queried. MUST be UUID format.")
-    query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
+    query: str = Field(..., description="MUST BE THE ORIGINAL USER INPUT.")
 
 
 class DatasetRetrieverTool(BaseTool):
