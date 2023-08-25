@@ -53,7 +53,7 @@ Did you have an issue, like a merge conflict, or don't know how to open a pull r
 
 ## Community channels
 
-Stuck somewhere? Have any questions? Join the [Discord Community Server](https://discord.gg/AhzKf7dNgk). We are here to help!
+Stuck somewhere? Have any questions? Join the [Discord Community Server](https://discord.gg/j3XRWSPBf7). We are here to help!
 
 ### i18n (Internationalization) Support
 
