@@ -9,6 +9,7 @@ import Loading from '@/app/components/base/loading'
 import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
 import type { App } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 
 export type AppContextValue = {
   apps: App[]
@@ -119,8 +120,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceManager,
       mutateCurrentWorkspace,
     }}>
-      <div ref={pageContainerRef} className='relative flex flex-col h-full overflow-auto bg-gray-100'>
-        {children}
+      <div className='flex flex-col h-full'>
+        {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
+        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-auto bg-gray-100'>
+          {children}
+        </div>
       </div>
     </AppContext.Provider>
   )
