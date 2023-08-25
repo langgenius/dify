@@ -17,7 +17,7 @@ from models.dataset import Dataset, DocumentSegment
 
 class DatasetRetrieverToolInput(BaseModel):
     dataset_id: str = Field(..., description="ID of dataset to be queried. MUST be UUID format.")
-    query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
+    query: str = Field(..., description="MUST BE THE ORIGINAL USER INPUT.")
 
 
 class DatasetRetrieverTool(BaseTool):
