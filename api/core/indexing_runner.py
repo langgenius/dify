@@ -525,12 +525,13 @@ class IndexingRunner:
             documents = splitter.split_documents([text_doc])
             split_documents = []
             for document_node in documents:
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document_node.page_content)
-                document_node.metadata['doc_id'] = doc_id
-                document_node.metadata['doc_hash'] = hash
 
-                split_documents.append(document_node)
+                if document_node.page_content.strip():
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document_node.page_content)
+                    document_node.metadata['doc_id'] = doc_id
+                    document_node.metadata['doc_hash'] = hash
+                    split_documents.append(document_node)
             all_documents.extend(split_documents)
         # processing qa document
         if document_form == 'qa_model':

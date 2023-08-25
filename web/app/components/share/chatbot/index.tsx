@@ -494,8 +494,11 @@ const Main: FC<IMainProps> = ({
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
-  if (!appId || !siteInfo || !promptConfig)
-    return <Loading type='app' />
+  if (!appId || !siteInfo || !promptConfig) {
+    return <div className='flex h-screen w-full'>
+      <Loading type='app' />
+    </div>
+  }
 
   return (
     <div>
@@ -510,7 +513,7 @@ const Main: FC<IMainProps> = ({
 
       <div className={'flex bg-white overflow-hidden'}>
         <div className={cn(
-          isInstalledApp ? s.installedApp : '',
+          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>

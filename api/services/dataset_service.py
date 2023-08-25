@@ -394,11 +394,20 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
+            count = 0
+            if document_data["data_source"]["type"] == "upload_file":
+                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                count = len(upload_file_list)
+            elif document_data["data_source"]["type"] == "notion_import":
+                notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
+                count = len(notion_page_list)
             documents_count = DocumentService.get_tenant_documents_count()
+            total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
+            if total_count > tenant_document_count:
                 raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
@@ -455,7 +464,7 @@ class DocumentService:
                     data_source_info = {
                         "upload_file_id": file_id,
                     }
-                    document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                              document_data["data_source"]["type"],
                                                              document_data["doc_form"],
                                                              document_data["doc_language"],
@@ -501,7 +510,7 @@ class DocumentService:
                                 "notion_page_icon": page['page_icon'],
                                 "type": page['type']
                             }
-                            document = DocumentService.save_document(dataset, dataset_process_rule.id,
+                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
                                                                      document_data["data_source"]["type"],
                                                                      document_data["doc_form"],
                                                                      document_data["doc_language"],
@@ -525,7 +534,7 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
-    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
+    def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
                       document_language: str, data_source_info: dict, created_from: str, position: int,
                       account: Account,
                       name: str, batch: str):
@@ -649,12 +658,20 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
+        count = 0
+        if document_data["data_source"]["type"] == "upload_file":
+            upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+            count = len(upload_file_list)
+        elif document_data["data_source"]["type"] == "notion_import":
+            notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
+            count = len(notion_page_list)
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
             documents_count = DocumentService.get_tenant_documents_count()
+            total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
-                raise ValueError(f"over document limit {tenant_document_count}.")
+            if total_count > tenant_document_count:
+                raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
         embedding_model = ModelFactory.get_embedding_model(
             tenant_id=tenant_id
         )
@@ -874,6 +891,10 @@ class SegmentService:
         if document.doc_form == 'qa_model':
             if 'answer' not in args or not args['answer']:
                 raise ValueError("Answer is required")
+            if not args['answer'].strip():
+                raise ValueError("Answer is empty")
+        if 'content' not in args or not args['content'] or not args['content'].strip():
+            raise ValueError("Content is empty")
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
@@ -990,10 +1011,11 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
-        # send delete segment index task
-        redis_client.setex(indexing_cache_key, 600, 1)
+        
         # enabled segment need to delete index
         if segment.enabled:
+            # send delete segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
         db.session.delete(segment)
         db.session.commit()
