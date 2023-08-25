@@ -57,7 +57,7 @@ class LocalAIProvider(BaseModelProvider):
         :param credentials:
         """
         if 'openai_api_base' not in credentials:
-            raise CredentialsValidateFailedError('Xinference Server URL must be provided.')
+            raise CredentialsValidateFailedError('LocalAI Server URL must be provided.')
 
         try:
             credential_kwargs = {
