@@ -351,6 +351,12 @@ def create_qdrant_indexes():
                     embeddings=embeddings
                 )
                 if index:
+                    index_struct = {
+                        "type": 'qdrant',
+                        "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
+                    }
+                    dataset.index_struct = json.dumps(index_struct)
+                    db.session.commit()
                     index.create_qdrant_dataset(dataset)
                     create_count += 1
                 else:
