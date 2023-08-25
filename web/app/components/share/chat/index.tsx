@@ -30,7 +30,7 @@ import {
 } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
-import type { Feedbacktype, IChatItem } from '@/app/components/app/chat'
+import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -570,8 +570,11 @@ const Main: FC<IMainProps> = ({
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
-  if (!appId || !siteInfo || !promptConfig)
-    return <Loading type='app' />
+  if (!appId || !siteInfo || !promptConfig) {
+    return <div className='flex h-screen w-full'>
+      <Loading type='app' />
+    </div>
+  }
 
   return (
     <div className='bg-gray-100'>
@@ -588,7 +591,7 @@ const Main: FC<IMainProps> = ({
 
       <div
         className={cn(
-          'flex rounded-t-2xl bg-white overflow-hidden',
+          'flex rounded-t-2xl bg-white overflow-hidden h-full w-full',
           isInstalledApp && 'rounded-b-2xl',
         )}
         style={isInstalledApp
@@ -611,7 +614,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)] tablet:h-screen',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>

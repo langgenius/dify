@@ -278,7 +278,7 @@ class IndexingRunner:
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
                     "total_price": '{:f}'.format(
-                        text_generation_model.get_token_price(total_segments * 2000, MessageType.HUMAN)),
+                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
                     "currency": embedding_model.get_currency(),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -286,7 +286,7 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.get_token_price(tokens)),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
             "currency": embedding_model.get_currency(),
             "preview": preview_texts
         }
@@ -371,7 +371,7 @@ class IndexingRunner:
                     "total_segments": total_segments * 20,
                     "tokens": total_segments * 2000,
                     "total_price": '{:f}'.format(
-                        text_generation_model.get_token_price(total_segments * 2000, MessageType.HUMAN)),
+                        text_generation_model.calc_tokens_price(total_segments * 2000, MessageType.HUMAN)),
                     "currency": embedding_model.get_currency(),
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
@@ -379,7 +379,7 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.get_token_price(tokens)),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
             "currency": embedding_model.get_currency(),
             "preview": preview_texts
         }
@@ -525,12 +525,13 @@ class IndexingRunner:
             documents = splitter.split_documents([text_doc])
             split_documents = []
             for document_node in documents:
-                doc_id = str(uuid.uuid4())
-                hash = helper.generate_text_hash(document_node.page_content)
-                document_node.metadata['doc_id'] = doc_id
-                document_node.metadata['doc_hash'] = hash
 
-                split_documents.append(document_node)
+                if document_node.page_content.strip():
+                    doc_id = str(uuid.uuid4())
+                    hash = helper.generate_text_hash(document_node.page_content)
+                    document_node.metadata['doc_id'] = doc_id
+                    document_node.metadata['doc_hash'] = hash
+                    split_documents.append(document_node)
             all_documents.extend(split_documents)
         # processing qa document
         if document_form == 'qa_model':
@@ -691,6 +692,7 @@ class IndexingRunner:
                 DocumentSegment.status == "indexing"
             ).update({
                 DocumentSegment.status: "completed",
+                DocumentSegment.enabled: True,
                 DocumentSegment.completed_at: datetime.datetime.utcnow()
             })
 

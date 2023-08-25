@@ -103,6 +103,7 @@ class DatesetDocumentStore:
                     content=doc.page_content,
                     word_count=len(doc.page_content),
                     tokens=tokens,
+                    enabled=False,
                     created_by=self._user_id,
                 )
                 if 'answer' in doc.metadata and doc.metadata['answer']:

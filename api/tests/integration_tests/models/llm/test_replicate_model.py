@@ -65,6 +65,8 @@ def test_get_num_tokens(mock_decrypt, mocker):
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
 def test_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
     model = get_mock_model('a16z-infra/llama-2-13b-chat', '2a7f981751ec7fdf87b5b91ad4db53683a98082e9ff7bfd12c8cd5ea85980a52', mocker)
     messages = [PromptMessage(content='Human: 1+1=? \nAnswer: ')]
     rst = model.run(

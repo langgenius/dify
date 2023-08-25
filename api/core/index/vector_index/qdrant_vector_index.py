@@ -44,15 +44,20 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def get_index_name(self, dataset: Dataset) -> str:
         if self.dataset.index_struct_dict:
-            return self.dataset.index_struct_dict['vector_store']['collection_name']
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+            if not class_prefix.endswith('_Node'):
+                # original class_prefix
+                class_prefix += '_Node'
+
+            return class_prefix
 
         dataset_id = dataset.id
-        return "Index_" + dataset_id.replace("-", "_")
+        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
 
     def to_index_struct(self) -> dict:
         return {
             "type": self.get_type(),
-            "vector_store": {"collection_name": self.get_index_name(self.dataset)}
+            "vector_store": {"class_prefix": self.get_index_name(self.dataset)}
         }
 
     def create(self, texts: list[Document], **kwargs) -> BaseIndex:
@@ -62,7 +67,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             self._embeddings,
             collection_name=self.get_index_name(self.dataset),
             ids=uuids,
-            content_payload_key='text',
+            content_payload_key='page_content',
             **self._client_config.to_qdrant_params()
         )
 
@@ -72,7 +77,9 @@ class QdrantVectorIndex(BaseVectorIndex):
         """Only for created index."""
         if self._vector_store:
             return self._vector_store
-        
+        attributes = ['doc_id', 'dataset_id', 'document_id']
+        if self._is_origin():
+            attributes = ['doc_id']
         client = qdrant_client.QdrantClient(
             **self._client_config.to_qdrant_params()
         )
@@ -81,7 +88,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             client=client,
             collection_name=self.get_index_name(self.dataset),
             embeddings=self._embeddings,
-            content_payload_key='text'
+            content_payload_key='page_content'
         )
 
     def _get_vector_store_class(self) -> type:
@@ -108,8 +115,8 @@ class QdrantVectorIndex(BaseVectorIndex):
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:
-            class_prefix: str = self.dataset.index_struct_dict['vector_store']['collection_name']
-            if class_prefix.startswith('Vector_'):
+            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+            if not class_prefix.endswith('_Node'):
                 # original class_prefix
                 return True
 

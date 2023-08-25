@@ -30,7 +30,7 @@ Visual data analysis, log review, and annotation for applications
 - [x] **Spark**
 - [x] **Wenxin**
 - [x] **Tongyi**
-- [x] **ChatGLM**
+
 
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
 * 600,000 free Claude model tokens to build Claude-powered apps

@@ -65,7 +65,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                         documents.append(document)
 
                 # save vector index
-                index.add_texts(documents)
+                index.create(documents)
 
         end_at = time.perf_counter()
         logging.info(

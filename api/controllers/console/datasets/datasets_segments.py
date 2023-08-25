@@ -1,9 +1,8 @@
 # -*- coding:utf-8 -*-
 import uuid
 from datetime import datetime
-
 from flask import request
-from flask_login import login_required, current_user
+from flask_login import current_user
 from flask_restful import Resource, reqparse, fields, marshal
 from werkzeug.exceptions import NotFound, Forbidden
 
@@ -15,6 +14,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
+from core.login.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DocumentSegment

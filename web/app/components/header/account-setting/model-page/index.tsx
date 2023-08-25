@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import type {
   BackendModel,
   FormValue,
@@ -30,21 +31,11 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
+import I18n from '@/context/i18n'
 
 const MODEL_CARD_LIST = [
   config.openai,
   config.anthropic,
-]
-
-const MODEL_LIST = [
-  config.azure_openai,
-  config.replicate,
-  config.huggingface_hub,
-  config.minimax,
-  config.spark,
-  config.tongyi,
-  config.wenxin,
-  config.chatglm,
 ]
 
 const titleClassName = `
@@ -61,11 +52,16 @@ type DeleteModel = {
 
 const ModelPage = () => {
   const { t } = useTranslation()
-  const { updateModelList } = useProviderContext()
+  const { locale } = useContext(I18n)
+  const {
+    updateModelList,
+    embeddingsDefaultModel,
+    mutateEmbeddingsDefaultModel,
+    speech2textDefaultModel,
+    mutateSpeech2textDefaultModel,
+  } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
-  const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR('/workspaces/current/default-model?model_type=embeddings', fetchDefaultModal)
-  const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR('/workspaces/current/default-model?model_type=speech2text', fetchDefaultModal)
   const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
@@ -74,6 +70,37 @@ const ModelPage = () => {
   const [confirmShow, setConfirmShow] = useState(false)
   const [deleteModel, setDeleteModel] = useState<DeleteModel & { providerKey: ProviderEnum }>()
   const [modalMode, setModalMode] = useState('add')
+
+  let modelList = []
+
+  if (locale === 'en') {
+    modelList = [
+      config.azure_openai,
+      config.replicate,
+      config.huggingface_hub,
+      config.minimax,
+      config.spark,
+      config.tongyi,
+      config.wenxin,
+      config.chatglm,
+      config.xinference,
+      config.openllm,
+    ]
+  }
+  else {
+    modelList = [
+      config.huggingface_hub,
+      config.minimax,
+      config.spark,
+      config.azure_openai,
+      config.replicate,
+      config.tongyi,
+      config.wenxin,
+      config.chatglm,
+      config.xinference,
+      config.openllm,
+    ]
+  }
 
   const handleOpenModal = (newModelModalConfig: ProviderConfigModal | undefined, editValue?: FormValue) => {
     if (newModelModalConfig) {
@@ -97,8 +124,9 @@ const ModelPage = () => {
     updateModelList(ModelType.embeddings)
     mutateProviders()
   }
-  const handleSave = async (v?: FormValue) => {
-    if (v && modelModalConfig) {
+  const handleSave = async (originValue?: FormValue) => {
+    if (originValue && modelModalConfig) {
+      const v = modelModalConfig.filterValue ? modelModalConfig.filterValue(originValue) : originValue
       let body, url
       if (ConfigurableProviders.includes(modelModalConfig.key)) {
         const { model_name, model_type, ...config } = v
@@ -280,7 +308,7 @@ const ModelPage = () => {
         }
       </div>
       {
-        MODEL_LIST.slice(0, showMoreModel ? MODEL_LIST.length : 3).map((model, index) => (
+        modelList.slice(0, showMoreModel ? modelList.length : 3).map((model, index) => (
           <ModelItem
             key={index}
             modelItem={model.item}

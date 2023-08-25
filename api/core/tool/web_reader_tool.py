@@ -88,6 +88,11 @@ class WebReaderTool(BaseTool):
             texts = character_splitter.split_text(page_contents)
             docs = [Document(page_content=t) for t in texts]
 
+            if len(docs) == 0:
+                return "No content found."
+
+            docs = docs[1:]
+
             # only use first 5 docs
             if len(docs) > 5:
                 docs = docs[:5]

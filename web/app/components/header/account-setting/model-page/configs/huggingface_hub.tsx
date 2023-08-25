@@ -38,6 +38,7 @@ const config: ProviderConfig = {
     defaultValue: {
       model_type: 'text-generation',
       huggingfacehub_api_type: 'hosted_inference_api',
+      task_type: 'text-generation',
     },
     validateKeys: (v?: FormValue) => {
       if (v?.huggingfacehub_api_type === 'hosted_inference_api') {
@@ -51,9 +52,35 @@ const config: ProviderConfig = {
           'huggingfacehub_api_token',
           'model_name',
           'huggingfacehub_endpoint_url',
+          'task_type',
         ]
       }
       return []
+    },
+    filterValue: (v?: FormValue) => {
+      let filteredKeys: string[] = []
+      if (v?.huggingfacehub_api_type === 'hosted_inference_api') {
+        filteredKeys = [
+          'huggingfacehub_api_type',
+          'huggingfacehub_api_token',
+          'model_name',
+          'model_type',
+        ]
+      }
+      if (v?.huggingfacehub_api_type === 'inference_endpoints') {
+        filteredKeys = [
+          'huggingfacehub_api_type',
+          'huggingfacehub_api_token',
+          'model_name',
+          'huggingfacehub_endpoint_url',
+          'task_type',
+          'model_type',
+        ]
+      }
+      return filteredKeys.reduce((prev: FormValue, next: string) => {
+        prev[next] = v?.[next] || ''
+        return prev
+      }, {})
     },
     fields: [
       {
@@ -119,6 +146,32 @@ const config: ProviderConfig = {
           'en': 'Enter your Endpoint URL here',
           'zh-Hans': '在此输入您的端点 URL',
         },
+      },
+      {
+        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'hosted_inference_api',
+        type: 'radio',
+        key: 'task_type',
+        required: true,
+        label: {
+          'en': 'Task',
+          'zh-Hans': 'Task',
+        },
+        options: [
+          {
+            key: 'text2text-generation',
+            label: {
+              'en': 'Text-to-Text Generation',
+              'zh-Hans': 'Text-to-Text Generation',
+            },
+          },
+          {
+            key: 'text-generation',
+            label: {
+              'en': 'Text Generation',
+              'zh-Hans': 'Text Generation',
+            },
+          },
+        ],
       },
     ],
   },

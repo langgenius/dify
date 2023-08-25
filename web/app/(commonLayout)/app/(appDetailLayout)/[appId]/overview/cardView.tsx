@@ -17,6 +17,7 @@ import type { App } from '@/types/app'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import { asyncRunSafe } from '@/utils'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import type { IAppCardProps } from '@/app/components/app/overview/appCard'
 
 export type ICardViewProps = {
   appId: string
@@ -68,7 +69,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
     handleError(err)
   }
 
-  const onSaveSiteConfig = async (params: any) => {
+  const onSaveSiteConfig: IAppCardProps['onSaveSiteConfig'] = async (params) => {
     const [err] = await asyncRunSafe<App>(
       updateAppSiteConfig({
         url: `/apps/${appId}/site`,

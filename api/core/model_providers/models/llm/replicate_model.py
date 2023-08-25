@@ -81,13 +81,6 @@ class ReplicateModel(BaseLLM):
 
         return self._client.get_num_tokens(prompts)
 
-    def get_token_price(self, tokens: int, message_type: MessageType):
-        # replicate only pay for prediction seconds
-        return decimal.Decimal('0')
-
-    def get_currency(self):
-        return 'USD'
-
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
         self.client.input = provider_model_kwargs
