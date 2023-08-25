@@ -16,6 +16,7 @@ import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
+import type { InvitationResult } from '@/models/common'
 
 dayjs.extend(relativeTime)
 
@@ -30,7 +31,7 @@ const MembersPage = () => {
   const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
-  const [invitationLinks, setInvitationLinks] = useState<string[]>([])
+  const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
@@ -92,9 +93,9 @@ const MembersPage = () => {
         inviteModalVisible && (
           <InviteModal
             onCancel={() => setInviteModalVisible(false)}
-            onSend={(urls) => {
+            onSend={(invitationResults) => {
               setInvitedModalVisible(true)
-              setInvitationLinks(urls)
+              setInvitationResults(invitationResults)
               mutate()
             }}
           />
@@ -103,7 +104,7 @@ const MembersPage = () => {
       {
         invitedModalVisible && (
           <InvitedModal
-            invitationLinks={invitationLinks}
+            invitationResults={invitationResults}
             onCancel={() => setInvitedModalVisible(false)}
           />
         )

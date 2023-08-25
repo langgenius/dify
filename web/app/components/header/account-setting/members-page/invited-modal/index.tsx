@@ -6,13 +6,15 @@ import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
+import type { InvitationResult } from '@/models/common'
+import Tooltip from '@/app/components/base/tooltip'
 
 type IInvitedModalProps = {
-  invitationLinks: string[]
+  invitationResults: InvitationResult[]
   onCancel: () => void
 }
 const InvitedModal = ({
-  invitationLinks,
+  invitationResults,
   onCancel,
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
@@ -37,12 +39,34 @@ const InvitedModal = ({
         {IS_CE_EDITION && (
           <>
             <div className='mb-5 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
-            <div className='mb-9'>
-              <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
+            <div className='flex flex-col gap-2 mb-9'>
               {
-                invitationLinks?.map((invitationLink, index) => (
-                  <InvitationLink key={index} value={invitationLink} />
-                ))
+                !!invitationResults?.filter(item => item.status === 'success').length
+                  && <>
+                    <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
+                    {invitationResults.map(item => item.status === 'success'
+                      && <InvitationLink key={item.email} value={item.url} />)}
+                  </>
+              }
+              {
+                !!invitationResults?.filter(item => item.status !== 'success').length
+                  && <>
+                    <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.failedinvitationEmails')}</div>
+                    <div className='flex flex-wrap justify-between gap-2'>
+                      {
+                        invitationResults.map(item => item.status !== 'success'
+                        && <div key={item.email} className='flex justify-center border hover:border-red-700 border-red-300 border-dashed rounded-md px-1'>
+                          <Tooltip
+                            selector={`invitation-tag-${item.email}`}
+                            htmlContent={item.message}
+                          >
+                            <div tabIndex={0} className='flex justify-center items-center text-sm'>{item.email}</div>
+                          </Tooltip>
+                        </div>,
+                        )
+                      }
+                    </div>
+                  </>
               }
             </div>
           </>

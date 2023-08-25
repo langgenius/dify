@@ -59,7 +59,8 @@ class MemberInviteEmailApi(Resource):
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
         inviter = current_user
-        emailTokens = {}
+        invitation_results = []
+        console_web_url = current_app.config.get("CONSOLE_WEB_URL")
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
@@ -68,31 +69,23 @@ class MemberInviteEmailApi(Resource):
                     TenantAccountJoin, Account.id == TenantAccountJoin.account_id
                 ).filter(Account.email == invitee_email).first()
                 account, role = account
-                emailTokens[invitee_email] = token
+                invitation_results.append({
+                    'status': 'success',
+                    'email': invitee_email,
+                    'url': f'{console_web_url}/activate?workspace_id={current_user.current_tenant_id}&email={invitee_email}&token={token}'
+                })
                 account = marshal(account, account_fields)
                 account['role'] = role
-            except services.errors.account.CannotOperateSelfError as e:
-                emailTokens[invitee_email] = {'code': 'cannot-operate-self', 'message': str(e)}
-            except services.errors.account.NoPermissionError as e:
-                emailTokens[invitee_email] = {'code': 'forbidden', 'message': str(e)}
-            except services.errors.account.AccountAlreadyInTenantError as e:
-                emailTokens[invitee_email] = {'code': 'email-taken', 'message': str(e)}
             except Exception as e:
-                emailTokens[invitee_email] = {'code': 'unexpected-error', 'message': str(e)}
-
-        # todo:413
+                invitation_results.append({
+                    'status': 'failed',
+                    'email': invitee_email,
+                    'message': str(e)
+                })
 
         return {
             'result': 'success',
-            'account': account,
-            'invite_urls': [
-                '{}/activate?workspace_id={}&email={}&token={}'.format(
-                    current_app.config.get("CONSOLE_WEB_URL"),
-                    str(current_user.current_tenant_id),
-                    invitee_email,
-                    emailTokens[invitee_email]
-                ) for invitee_email in invitee_emails if emailTokens[invitee_email] is not None
-            ]
+            'invitation_results': invitation_results,
         }, 201
 
 
