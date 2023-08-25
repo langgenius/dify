@@ -123,10 +123,6 @@ class XinferenceLLM(Xinference):
                 if choices:
                     choice = choices[0]
                     if isinstance(choice, dict):
-                        if 'finish_reason' in choice and choice['finish_reason'] \
-                                and choice['finish_reason'] in ['stop', 'length']:
-                            break
-
                         if 'text' in choice:
                             token = choice.get("text", "")
                         elif 'delta' in choice and 'content' in choice['delta']:
