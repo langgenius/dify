@@ -138,7 +138,7 @@ class BaseLLM(BaseProviderModel):
                 result = self._run(
                     messages=messages,
                     stop=stop,
-                    callbacks=callbacks if not (self.streaming and not self.support_streaming()) else None,
+                    callbacks=callbacks if not (self.streaming and not self.support_streaming) else None,
                     **kwargs
                 )
             except Exception as ex:
@@ -149,7 +149,7 @@ class BaseLLM(BaseProviderModel):
         else:
             completion_content = result.generations[0][0].text
 
-        if self.streaming and not self.support_streaming():
+        if self.streaming and not self.support_streaming:
             # use FakeLLM to simulate streaming when current model not support streaming but streaming is True
             prompts = self._get_prompt_from_messages(messages, ModelMode.CHAT)
             fake_llm = FakeLLM(
@@ -298,8 +298,8 @@ class BaseLLM(BaseProviderModel):
         else:
             self.client.callbacks.extend(callbacks)
 
-    @classmethod
-    def support_streaming(cls):
+    @property
+    def support_streaming(self):
         return False
 
     def get_prompt(self, mode: str,
