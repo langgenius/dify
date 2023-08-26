@@ -82,11 +82,11 @@ class HuggingFaceEndpointLLM(HuggingFaceEndpoint):
 
         if self.streaming and isinstance(response, Iterable):
             combined_text_output = ""
-            for token in self._stream_response(response, gen_kwargs, run_manager):
+            for token in self._stream_response(response, run_manager):
                 combined_text_output += token
             completion = combined_text_output
         else:
-            completion = response.token.text
+            completion = response.generated_text
 
         if self.task == "text-generation":
             text = completion
@@ -111,17 +111,12 @@ class HuggingFaceEndpointLLM(HuggingFaceEndpoint):
     def _stream_response(
             self,
             response: Iterable,
-            gen_kwargs: dict,
             run_manager: Optional[CallbackManagerForLLMRun] = None,
     ) -> Iterator[str]:
         for r in response:
             # skip special tokens
             if r.token.special:
                 continue
-
-            # stop if we encounter a stop sequence
-            if r.token.text in gen_kwargs["stop_sequences"]:
-                break
 
             token = r.token.text
             if run_manager:

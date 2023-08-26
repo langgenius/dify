@@ -74,6 +74,6 @@ class XinferenceModel(BaseLLM):
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"Xinference: {str(ex)}")
 
-    @classmethod
-    def support_streaming(cls):
+    @property
+    def support_streaming(self):
         return True
