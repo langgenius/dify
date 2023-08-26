@@ -154,7 +154,7 @@ const StepOne = ({
               </div>
             )
           }
-          {dataSourceType === DataSourceType.FILE && (
+          {dataSourceType === DataSourceType.FILE && limitsData && (
             <>
               <FileUploader
                 fileList={files}
@@ -163,8 +163,8 @@ const StepOne = ({
                 onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
-                countLimit={limitsData?.documents_limit || 0}
-                countUsed={limitsData?.documents_count || 0}
+                countLimit={limitsData.documents_limit}
+                countUsed={limitsData.documents_count}
               />
               <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
@@ -172,15 +172,15 @@ const StepOne = ({
           {dataSourceType === DataSourceType.NOTION && (
             <>
               {!hasConnection && <NotionConnector onSetting={onSetting} />}
-              {hasConnection && (
+              {hasConnection && limitsData && (
                 <>
                   <div className='mb-8 w-[640px]'>
                     <NotionPageSelector
                       value={notionPages.map(page => page.page_id)}
                       onSelect={updateNotionPages}
                       onPreview={updateCurrentPage}
-                      countLimit={limitsData?.documents_limit || 0}
-                      countUsed={limitsData?.documents_count || 0}
+                      countLimit={limitsData.documents_limit}
+                      countUsed={limitsData.documents_count}
                     />
                   </div>
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
