@@ -6,7 +6,6 @@
   <a href="./README_ES.md">Español</a>
 </p>
 
-
 ####  [官方网站](https://dify.ai) •  [使用文档](https://docs.dify.ai/v/zh-hans)  · [部署文档](https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted)  ·  [FAQ](https://docs.dify.ai/v/zh-hans/getting-started/faq) • [Twitter](https://twitter.com/dify_ai) •  [Discord](https://discord.gg/FngNHpbcY7)
 
 **Dify** 是一个易用的 LLMOps 平台，基于不同的大型语言模型能力，让更多人可以简易地创建可持续运营的原生 AI 应用。Dify 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
@@ -16,8 +15,6 @@
 - 开箱即用的的 Web 站点，支持表单模式和聊天对话模式
 - 一套 API 即可包含插件、上下文增强等能力，替你省下了后端代码的编写工作
 - 可视化的对应用进行数据分析，查阅日志或进行标注
-
-
 
 ## 核心能力
 1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
@@ -38,20 +35,24 @@
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
 * 60 万 Tokens Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
 * 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
-* 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
-* 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用
+
+
 2. **可视化编排 Prompt：** 通过界面化编写 prompt 并调试，只需几分钟即可发布一个 AI 应用。
+
 3. **文本 Embedding 处理（数据集）**：全自动完成文本预处理，使用你的数据作为上下文，无需理解晦涩的概念和技术处理。支持 PDF、txt 等文件格式，支持从 Notion、网页、API 同步数据。
+
 4. **基于 API 开发：** 后端即服务。您可以直接访问网页应用，也可以接入 API 集成到您的应用中，无需关注复杂的后端架构和部署过程。
+
 5. **插件能力：** Dify 「智聊」平台已支持网页浏览、Google 搜索、Wikipedia 查询等第一方插件，可在对话中实现联网搜索、分析网页内容、展示 AI 的推理过程。
+
 6. **团队 Workspace：** 团队成员可加入 Workspace 编辑、管理和使用团队内的 AI 应用。
-6. **数据标注与改进：** 可视化查阅 AI 应用日志并对数据进行改进标注，观测 AI 的推理过程，不断提高其性能。（Coming soon）
+
+7. **数据标注与改进：** 可视化查阅 AI 应用日志并对数据进行改进标注，观测 AI 的推理过程，不断提高其性能。（Coming soon）
  -----------------------------
- ## Use cases
+ ## 使用案例
  * [几分钟创建一个带有业务数据的官网 AI 智能客服](https://docs.dify.ai/v/zh-hans/use-cases/create-an-ai-chatbot-with-business-data-in-minutes)
  * [构建一个 Notion AI 助手](https://docs.dify.ai/v/zh-hans/use-cases/build-an-notion-ai-assistant)
  * [创建 Midjoureny 提示词机器人](https://docs.dify.ai/v/zh-hans/use-cases/create-a-midjoureny-prompt-word-robot-with-zero-code)
-
 
 ## 使用云服务
 
