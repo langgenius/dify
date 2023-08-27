@@ -67,7 +67,7 @@ const recursivePushInParentDescendants = (
   }
 }
 
-const Item = memo(({ index, style, data }: ListChildComponentProps<{
+const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   dataList: NotionPageItem[]
   handleToggle: (index: number) => void
   checkedIds: Set<string>
@@ -150,7 +150,8 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
       }
     </div>
   )
-}, areEqual)
+}
+const Item = memo(ItemComponent, areEqual)
 
 const PageSelector = ({
   value,
