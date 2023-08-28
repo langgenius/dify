@@ -149,7 +149,8 @@ class DatasetDocumentSegmentApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
-
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
@@ -158,20 +159,20 @@ class DatasetDocumentSegmentApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
-        # check embedding model setting
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
+        if dataset.indexing_technique == 'high_quality':
+            # check embedding model setting
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=current_user.current_tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
 
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id),
@@ -244,18 +245,19 @@ class DatasetDocumentSegmentAddApi(Resource):
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
         # check embedding model setting
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
+        if dataset.indexing_technique == 'high_quality':
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=current_user.current_tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -284,25 +286,28 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
-        # check embedding model setting
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        # check segment
+        if dataset.indexing_technique == 'high_quality':
+            # check embedding model setting
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=current_user.current_tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
+            # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id),
@@ -339,6 +344,8 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound('Dataset not found.')
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
@@ -378,18 +385,6 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
         # get file from request
         file = request.files['file']
         # check file

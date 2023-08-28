@@ -217,25 +217,29 @@ class IndexingRunner:
             db.session.commit()
 
     def file_indexing_estimate(self, tenant_id: str, file_details: List[UploadFile], tmp_processing_rule: dict,
-                               doc_form: str = None, doc_language: str = 'English', dataset_id: str = None) -> dict:
+                               doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
+                               indexing_technique: str = 'economy') -> dict:
         """
         Estimate the indexing for the document.
         """
+        embedding_model = None
         if dataset_id:
             dataset = Dataset.query.filter_by(
                 id=dataset_id
             ).first()
             if not dataset:
                 raise ValueError('Dataset not found.')
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
+            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
         else:
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=tenant_id
-            )
+            if indexing_technique == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=tenant_id
+                )
         tokens = 0
         preview_texts = []
         total_segments = 0
@@ -263,8 +267,8 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
-
-                tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
+                if indexing_technique == 'high_quality' or embedding_model:
+                    tokens += embedding_model.get_num_tokens(self.filter_string(document.page_content))
 
         if doc_form and doc_form == 'qa_model':
             text_generation_model = ModelFactory.get_text_generation_model(
@@ -286,32 +290,35 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
-            "currency": embedding_model.get_currency(),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
+            "currency": embedding_model.get_currency() if embedding_model else 'USD',
             "preview": preview_texts
         }
 
     def notion_indexing_estimate(self, tenant_id: str, notion_info_list: list, tmp_processing_rule: dict,
-                                 doc_form: str = None, doc_language: str = 'English', dataset_id: str = None) -> dict:
+                                 doc_form: str = None, doc_language: str = 'English', dataset_id: str = None,
+                                 indexing_technique: str = 'economy') -> dict:
         """
         Estimate the indexing for the document.
         """
+        embedding_model = None
         if dataset_id:
             dataset = Dataset.query.filter_by(
                 id=dataset_id
             ).first()
             if not dataset:
                 raise ValueError('Dataset not found.')
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
+            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
         else:
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=tenant_id
-            )
-
+            if indexing_technique == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=tenant_id
+                )
         # load data from notion
         tokens = 0
         preview_texts = []
@@ -356,8 +363,8 @@ class IndexingRunner:
                 for document in documents:
                     if len(preview_texts) < 5:
                         preview_texts.append(document.page_content)
-
-                    tokens += embedding_model.get_num_tokens(document.page_content)
+                    if indexing_technique == 'high_quality' or embedding_model:
+                        tokens += embedding_model.get_num_tokens(document.page_content)
 
         if doc_form and doc_form == 'qa_model':
             text_generation_model = ModelFactory.get_text_generation_model(
@@ -379,8 +386,8 @@ class IndexingRunner:
         return {
             "total_segments": total_segments,
             "tokens": tokens,
-            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)),
-            "currency": embedding_model.get_currency(),
+            "total_price": '{:f}'.format(embedding_model.calc_tokens_price(tokens)) if embedding_model else 0,
+            "currency": embedding_model.get_currency() if embedding_model else 'USD',
             "preview": preview_texts
         }
 
@@ -657,12 +664,13 @@ class IndexingRunner:
         """
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
-
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id,
-            model_provider_name=dataset.embedding_model_provider,
-            model_name=dataset.embedding_model
-        )
+        embedding_model = None
+        if dataset.indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
 
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
@@ -672,11 +680,11 @@ class IndexingRunner:
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
             chunk_documents = documents[i:i + chunk_size]
-
-            tokens += sum(
-                embedding_model.get_num_tokens(document.page_content)
-                for document in chunk_documents
-            )
+            if dataset.indexing_technique == 'high_quality' or embedding_model:
+                tokens += sum(
+                    embedding_model.get_num_tokens(document.page_content)
+                    for document in chunk_documents
+                )
 
             # save vector index
             if vector_index:
