@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 import base64
+import json
 import logging
 import secrets
 import uuid
@@ -347,6 +348,10 @@ class TenantService:
 class RegisterService:
 
     @classmethod
+    def _get_invitation_token_key(cls, token: str) -> str:
+        return f'member_invite:token:{token}'
+
+    @classmethod
     def register(cls, email, name, password: str = None, open_id: str = None, provider: str = None) -> Account:
         db.session.begin_nested()
         """Register account"""
@@ -401,7 +406,7 @@ class RegisterService:
         # send email
         send_invite_member_mail_task.delay(
             to=email,
-            token=cls.generate_invite_token(tenant, account),
+            token=token,
             inviter_name=inviter.name if inviter else 'Dify',
             workspace_id=tenant.id,
             workspace_name=tenant.name,
@@ -412,21 +417,35 @@ class RegisterService:
     @classmethod
     def generate_invite_token(cls, tenant: Tenant, account: Account) -> str:
         token = str(uuid.uuid4())
-        email_hash = sha256(account.email.encode()).hexdigest()
-        cache_key = 'member_invite_token:{}, {}:{}'.format(str(tenant.id), email_hash, token)
-        redis_client.setex(cache_key, 3600, str(account.id))
+        invitation_data = {
+            'account_id': account.id,
+            'email': account.email,
+            'workspace_id': tenant.id,
+        }
+        redis_client.setex(
+            cls._get_invitation_token_key(token),
+            3600,
+            json.dumps(invitation_data)
+        )
         return token
 
     @classmethod
     def revoke_token(cls, workspace_id: str, email: str, token: str):
-        email_hash = sha256(email.encode()).hexdigest()
-        cache_key = 'member_invite_token:{}, {}:{}'.format(workspace_id, email_hash, token)
-        redis_client.delete(cache_key)
+        if workspace_id and email:
+            email_hash = sha256(email.encode()).hexdigest()
+            cache_key = 'member_invite_token:{}, {}:{}'.format(workspace_id, email_hash, token)
+            redis_client.delete(cache_key)
+        else:
+            redis_client.delete(cls._get_invitation_token_key(token))
 
     @classmethod
-    def get_account_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[Account]:
+    def get_invitation_if_token_valid(cls, workspace_id: str, email: str, token: str) -> Optional[Account]:
+        invitation_data = cls._get_invitation_by_token(token, workspace_id, email)
+        if not invitation_data:
+            return None
+
         tenant = db.session.query(Tenant).filter(
-            Tenant.id == workspace_id,
+            Tenant.id == invitation_data['workspace_id'],
             Tenant.status == 'normal'
         ).first()
 
@@ -435,30 +454,43 @@ class RegisterService:
 
         tenant_account = db.session.query(Account, TenantAccountJoin.role).join(
             TenantAccountJoin, Account.id == TenantAccountJoin.account_id
-        ).filter(Account.email == email, TenantAccountJoin.tenant_id == tenant.id).first()
+        ).filter(Account.email == invitation_data['email'], TenantAccountJoin.tenant_id == tenant.id).first()
 
         if not tenant_account:
-            return None
-
-        account_id = cls._get_account_id_by_invite_token(workspace_id, email, token)
-        if not account_id:
             return None
 
         account = tenant_account[0]
         if not account:
             return None
 
-        if account_id != str(account.id):
+        if invitation_data['account_id'] != str(account.id):
             return None
 
-        return account
+        return {
+                'account': account,
+                'data': invitation_data,
+                'tenant': tenant,
+                }
 
     @classmethod
-    def _get_account_id_by_invite_token(cls, workspace_id: str, email: str, token: str) -> Optional[str]:
-        email_hash = sha256(email.encode()).hexdigest()
-        cache_key = 'member_invite_token:{}, {}:{}'.format(workspace_id, email_hash, token)
-        account_id = redis_client.get(cache_key)
-        if not account_id:
-            return None
+    def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[str]:
+        if workspace_id is not None and email is not None:
+            email_hash = sha256(email.encode()).hexdigest()
+            cache_key = f'member_invite_token:{workspace_id}, {email_hash}:{token}'
+            account_id = redis_client.get(cache_key)
 
-        return account_id.decode('utf-8')
+            if not account_id:
+                return None
+
+            return {
+                'account_id': account_id.decode('utf-8'),
+                'email': email,
+                'workspace_id': workspace_id,
+            }
+        else:
+            data = redis_client.get(cls._get_invitation_token_key(token))
+            if not data:
+                return None
+
+            invitation = json.loads(data)
+            return invitation
