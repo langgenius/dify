@@ -7,7 +7,7 @@ type NotionIconProps = {
   type?: IconTypes
   name?: string | null
   className?: string
-  src?: string | null | Pick<DataSourceNotionPage, 'page_icon'>['page_icon']
+  src?: string | null | DataSourceNotionPage['page_icon']
 }
 const NotionIcon = ({
   type = 'workspace',

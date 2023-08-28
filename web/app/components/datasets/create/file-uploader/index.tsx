@@ -16,7 +16,7 @@ type IFileUploaderProps = {
   titleClassName?: string
   prepareFileList: (files: FileItem[]) => void
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
-  onFileListUpdate?: (files: any) => void
+  onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
   countLimit: number
   countUsed: number

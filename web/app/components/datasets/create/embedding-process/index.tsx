@@ -87,7 +87,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     setIndexingStatusDetail(status.data)
   }
 
-  const [runId, setRunId, getRunId] = useGetState<any>(null)
+  const [_, setRunId, getRunId] = useGetState<ReturnType<typeof setInterval>>()
 
   const stopQueryStatus = () => {
     clearInterval(getRunId())
@@ -136,10 +136,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }
 
   const isEmbedding = useMemo(() => {
-    return indexingStatusBatchDetail.some((indexingStatusDetail: { indexing_status: any }) => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
+    return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    return indexingStatusBatchDetail.every((indexingStatusDetail: { indexing_status: any }) => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
+    return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
   const getSourceName = (id: string) => {
@@ -159,10 +159,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
     const doc = documents.find(document => document.id === id)
     return doc?.data_source_type as DataSourceType
   }
-  const getIcon = (id: string) => {
-    const doc = documents.find(document => document.id === id) as any // TODO type fix
 
-    return doc.data_source_info.notion_page_icon
+  const getIcon = (id: string) => {
+    const doc = documents.find(document => document.id === id)
+
+    return doc?.data_source_info.notion_page_icon
   }
   const isSourceEmbedding = (detail: IndexingStatusResponse) => ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
 

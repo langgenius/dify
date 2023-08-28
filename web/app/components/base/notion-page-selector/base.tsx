@@ -10,17 +10,16 @@ import PageSelector from './page-selector'
 import { preImportNotionPages } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { NotionConnector } from '@/app/components/datasets/create/step-one'
-import type { DataSourceNotionPage, DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { ToastContext } from '@/app/components/base/toast'
 
-export type NotionPageSelectorValue = DataSourceNotionPage & { workspace_id: string }
 
 type NotionPageSelectorProps = {
   value?: string[]
-  onSelect: (selectedPages: NotionPageSelectorValue[]) => void
+  onSelect: (selectedPages: NotionPage[]) => void
   canPreview?: boolean
   previewPageId?: string
-  onPreview?: (selectedPage: NotionPageSelectorValue) => void
+  onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
   countLimit: number
   countUsed: number

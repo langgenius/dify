@@ -10,6 +10,7 @@ import OperationBtn from '../base/operation-btn'
 import VarIcon from '../base/icons/var-icon'
 import EditModel from './config-model'
 import IconTypeIcon from './input-type-icon'
+import type { IInputTypeIconProps } from './input-type-icon'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import type { PromptVariable } from '@/models/debug'
@@ -37,8 +38,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     return obj
   })()
 
-  const updatePromptVariable = (key: string, updateKey: string, newValue: any) => {
-    const newPromptVariables = promptVariables.map((item, i) => {
+  const updatePromptVariable = (key: string, updateKey: string, newValue: string | boolean) => {
+    const newPromptVariables = promptVariables.map((item) => {
       if (item.key === key) {
         return {
           ...item,
@@ -179,7 +180,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
-                      <IconTypeIcon type={type} />
+                      <IconTypeIcon type={type as IInputTypeIconProps['type']} />
                       {!readonly
                         ? (
                           <input

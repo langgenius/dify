@@ -9,6 +9,7 @@ import style from '../list.module.css'
 import AppModeLabel from './AppModeLabel'
 import s from './style.module.css'
 import SettingsModal from '@/app/components/app/overview/settings'
+import type { ConfigParams } from '@/app/components/app/overview/settings'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -73,7 +74,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   }
 
   const onSaveSiteConfig = useCallback(
-    async (params: any) => {
+    async (params: ConfigParams) => {
       const [err] = await asyncRunSafe<App>(
         updateAppSiteConfig({
           url: `/apps/${app.id}/site`,
@@ -100,12 +101,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   )
 
   const Operations = (props: any) => {
-    const onClickSettings = async (e: any) => {
+    const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
       props?.onClose()
       e.preventDefault()
       await getAppDetail()
     }
-    const onClickDelete = async (e: any) => {
+    const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
       props?.onClose()
       e.preventDefault()
       setShowConfirmDelete(true)

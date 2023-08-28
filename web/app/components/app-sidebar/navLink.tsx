@@ -1,17 +1,30 @@
 'use client'
+
 import { useSelectedLayoutSegment } from 'next/navigation'
 import classNames from 'classnames'
 import Link from 'next/link'
+
+export type NavIcon = React.ComponentType<
+React.PropsWithoutRef<React.ComponentProps<'svg'>> & {
+  title?: string | undefined
+  titleId?: string | undefined
+}
+>
+
+export type NavLinkProps = {
+  name: string
+  href: string
+  iconMap: {
+    selected: NavIcon
+    normal: NavIcon
+  }
+}
 
 export default function NavLink({
   name,
   href,
   iconMap,
-}: {
-  name: string
-  href: string
-  iconMap: { selected: any; normal: any }
-}) {
+}: NavLinkProps) {
   const segment = useSelectedLayoutSegment()
   const isActive = href.toLowerCase().split('/')?.pop() === segment?.toLowerCase()
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
