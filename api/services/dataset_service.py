@@ -402,8 +402,9 @@ class DocumentService:
                 upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
                 count = len(upload_file_list)
             elif document_data["data_source"]["type"] == "notion_import":
-                notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
-                count = len(notion_page_list)
+                notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+                for notion_info in notion_info_list:
+                    count = count + len(notion_info['pages'])
             documents_count = DocumentService.get_tenant_documents_count()
             total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
@@ -663,8 +664,9 @@ class DocumentService:
             upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
             count = len(upload_file_list)
         elif document_data["data_source"]["type"] == "notion_import":
-            notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
-            count = len(notion_page_list)
+            notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+            for notion_info in notion_info_list:
+                count = count + len(notion_info['pages'])
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
             documents_count = DocumentService.get_tenant_documents_count()
