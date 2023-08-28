@@ -10,6 +10,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from core.index.index import IndexBuilder
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from flask_login import current_user
@@ -114,6 +115,22 @@ class DatasetService:
             return None
         else:
             return dataset
+
+    @staticmethod
+    def check_dataset_model_setting(dataset):
+        try:
+            ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        except LLMBadRequestError:
+            raise ValueError(
+                f"No Embedding Model available. Please configure a valid provider "
+                f"in the Settings -> Model Provider.")
+        except ProviderTokenNotInitError as ex:
+            raise ValueError(f"The dataset in unavailable, due to: "
+                             f"{ex.description}")
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -465,11 +482,11 @@ class DocumentService:
                         "upload_file_id": file_id,
                     }
                     document = DocumentService.build_document(dataset, dataset_process_rule.id,
-                                                             document_data["data_source"]["type"],
-                                                             document_data["doc_form"],
-                                                             document_data["doc_language"],
-                                                             data_source_info, created_from, position,
-                                                             account, file_name, batch)
+                                                              document_data["data_source"]["type"],
+                                                              document_data["doc_form"],
+                                                              document_data["doc_language"],
+                                                              data_source_info, created_from, position,
+                                                              account, file_name, batch)
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
@@ -511,11 +528,11 @@ class DocumentService:
                                 "type": page['type']
                             }
                             document = DocumentService.build_document(dataset, dataset_process_rule.id,
-                                                                     document_data["data_source"]["type"],
-                                                                     document_data["doc_form"],
-                                                                     document_data["doc_language"],
-                                                                     data_source_info, created_from, position,
-                                                                     account, page['page_name'], batch)
+                                                                      document_data["data_source"]["type"],
+                                                                      document_data["doc_form"],
+                                                                      document_data["doc_language"],
+                                                                      data_source_info, created_from, position,
+                                                                      account, page['page_name'], batch)
                             db.session.add(document)
                             db.session.flush()
                             document_ids.append(document.id)
@@ -535,9 +552,9 @@ class DocumentService:
 
     @staticmethod
     def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
-                      document_language: str, data_source_info: dict, created_from: str, position: int,
-                      account: Account,
-                      name: str, batch: str):
+                       document_language: str, data_source_info: dict, created_from: str, position: int,
+                       account: Account,
+                       name: str, batch: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -1011,7 +1028,7 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
-        
+
         # enabled segment need to delete index
         if segment.enabled:
             # send delete segment index task

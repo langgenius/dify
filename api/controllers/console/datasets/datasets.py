@@ -92,11 +92,14 @@ class DatasetListApi(Resource):
             model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
         data = marshal(datasets, dataset_detail_fields)
         for item in data:
-            item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
-            if item_model in model_names:
-                item['embedding_available'] = True
+            if item['indexing_technique'] == 'high_quality':
+                item_model = f"{item['embedding_model']}:{item['embedding_model_provider']}"
+                if item_model in model_names:
+                    item['embedding_available'] = True
+                else:
+                    item['embedding_available'] = False
             else:
-                item['embedding_available'] = False
+                item['embedding_available'] = True
         response = {
             'data': data,
             'has_more': len(datasets) == limit,
@@ -167,6 +170,11 @@ class DatasetApi(Resource):
     @account_initialization_required
     def patch(self, dataset_id):
         dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', nullable=False,
