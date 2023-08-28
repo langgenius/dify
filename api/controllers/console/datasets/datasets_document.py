@@ -138,6 +138,10 @@ class GetProcessRuleApi(Resource):
         req_data = request.args
 
         document_id = req_data.get('document_id')
+        
+        # get default rules
+        mode = DocumentService.DEFAULT_RULES['mode']
+        rules = DocumentService.DEFAULT_RULES['rules']
         if document_id:
             # get the latest process rule
             document = Document.query.get_or_404(document_id)
@@ -158,11 +162,9 @@ class GetProcessRuleApi(Resource):
                 order_by(DatasetProcessRule.created_at.desc()). \
                 limit(1). \
                 one_or_none()
-            mode = dataset_process_rule.mode
-            rules = dataset_process_rule.rules_dict
-        else:
-            mode = DocumentService.DEFAULT_RULES['mode']
-            rules = DocumentService.DEFAULT_RULES['rules']
+            if dataset_process_rule:
+                mode = dataset_process_rule.mode
+                rules = dataset_process_rule.rules_dict
 
         return {
             'mode': mode,
