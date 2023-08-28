@@ -2,13 +2,17 @@ import json
 from typing import Type
 
 from langchain.embeddings import LocalAIEmbeddings
+from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.localai_embedding import LocalAIEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargsRules, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, ModelType, KwargRule
+from core.model_providers.models.llm.localai_model import LocalAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
 from core.model_providers.models.base import BaseProviderModel
+from core.third_party.langchain.llms.chat_open_ai import EnhanceChatOpenAI
+from core.third_party.langchain.llms.open_ai import EnhanceOpenAI
 from models.provider import ProviderType
 
 
@@ -30,7 +34,9 @@ class LocalAIProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
-        if model_type == ModelType.EMBEDDINGS:
+        if model_type == ModelType.TEXT_GENERATION:
+            model_class = LocalAIModel
+        elif model_type == ModelType.EMBEDDINGS:
             model_class = LocalAIEmbedding
         else:
             raise NotImplementedError
@@ -45,7 +51,11 @@ class LocalAIProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
-        return ModelKwargsRules()
+        return ModelKwargsRules(
+            temperature=KwargRule[float](min=0, max=2, default=0.7),
+            top_p=KwargRule[float](min=0, max=1, default=1),
+            max_tokens=KwargRule[int](min=10, max=4097, default=16),
+        )
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):
@@ -56,20 +66,42 @@ class LocalAIProvider(BaseModelProvider):
         :param model_type:
         :param credentials:
         """
-        if 'openai_api_base' not in credentials:
+        if 'server_url' not in credentials:
             raise CredentialsValidateFailedError('LocalAI Server URL must be provided.')
 
         try:
-            credential_kwargs = {
-                'openai_api_base': credentials['openai_api_base'],
-            }
+            if model_type == ModelType.EMBEDDINGS:
+                model = LocalAIEmbeddings(
+                    openai_api_key='1',
+                    openai_api_base=credentials['server_url']
+                )
 
-            model = LocalAIEmbeddings(
-                openai_api_key="1",
-                **credential_kwargs
-            )
+                model.embed_query("ping")
+            else:
+                if ('completion_type' not in credentials
+                        or credentials['completion_type'] not in ['completion', 'chat_completion']):
+                    raise CredentialsValidateFailedError('LocalAI Completion Type must be provided.')
 
-            model.embed_query("ping")
+                if credentials['completion_type'] == 'chat_completion':
+                    model = EnhanceChatOpenAI(
+                        model_name=model_name,
+                        openai_api_key='1',
+                        openai_api_base=credentials['server_url'] + '/v1',
+                        max_tokens=10,
+                        request_timeout=60,
+                    )
+
+                    model([HumanMessage(content='ping')])
+                else:
+                    model = EnhanceOpenAI(
+                        model_name=model_name,
+                        openai_api_key='1',
+                        openai_api_base=credentials['server_url'] + '/v1',
+                        max_tokens=10,
+                        request_timeout=60,
+                    )
+
+                    model('ping')
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -85,7 +117,7 @@ class LocalAIProvider(BaseModelProvider):
         :param credentials:
         :return:
         """
-        credentials['openai_api_base'] = encrypter.encrypt_token(tenant_id, credentials['openai_api_base'])
+        credentials['server_url'] = encrypter.encrypt_token(tenant_id, credentials['server_url'])
         return credentials
 
     def get_model_credentials(self, model_name: str, model_type: ModelType, obfuscated: bool = False) -> dict:
@@ -104,18 +136,18 @@ class LocalAIProvider(BaseModelProvider):
 
         if not provider_model.encrypted_config:
             return {
-                'openai_api_base': None,
+                'server_url': None,
             }
 
         credentials = json.loads(provider_model.encrypted_config)
-        if credentials['openai_api_base']:
-            credentials['openai_api_base'] = encrypter.decrypt_token(
+        if credentials['server_url']:
+            credentials['server_url'] = encrypter.decrypt_token(
                 self.provider.tenant_id,
-                credentials['openai_api_base']
+                credentials['server_url']
             )
 
             if obfuscated:
-                credentials['openai_api_base'] = encrypter.obfuscated_token(credentials['openai_api_base'])
+                credentials['server_url'] = encrypter.obfuscated_token(credentials['server_url'])
 
         return credentials
 

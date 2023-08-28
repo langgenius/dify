@@ -30,7 +30,7 @@ def get_mock_embedding_model(mocker):
         model_name=model_name,
         model_type=ModelType.EMBEDDINGS.value,
         encrypted_config=json.dumps({
-            'openai_api_base': server_url,
+            'server_url': server_url,
         }),
         is_valid=True,
     )

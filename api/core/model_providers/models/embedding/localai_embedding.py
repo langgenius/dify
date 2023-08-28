@@ -16,7 +16,7 @@ class LocalAIEmbedding(BaseEmbedding):
 
         client = LocalAIEmbeddings(
             openai_api_key="1",
-            openai_api_base=credentials['openai_api_base'],
+            openai_api_base=credentials['server_url'],
         )
 
         super().__init__(model_provider, client, name)

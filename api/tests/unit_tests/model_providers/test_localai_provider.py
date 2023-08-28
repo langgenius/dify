@@ -10,7 +10,7 @@ from models.provider import ProviderType, Provider, ProviderModel
 PROVIDER_NAME = 'localai'
 MODEL_PROVIDER_CLASS = LocalAIProvider
 VALIDATE_CREDENTIAL = {
-    'openai_api_base': 'http://127.0.0.1:8080/'
+    'server_url': 'http://127.0.0.1:8080/'
 }
 
 
@@ -34,7 +34,7 @@ def test_is_credentials_valid_or_raise_valid(mocker):
 
 
 def test_is_credentials_valid_or_raise_invalid():
-    # raise CredentialsValidateFailedError if openai_api_base is not in credentials
+    # raise CredentialsValidateFailedError if server_url is not in credentials
     with pytest.raises(CredentialsValidateFailedError):
         MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
             model_name='test_model_name',
@@ -45,7 +45,7 @@ def test_is_credentials_valid_or_raise_invalid():
 
 @patch('core.helper.encrypter.encrypt_token', side_effect=encrypt_side_effect)
 def test_encrypt_model_credentials(mock_encrypt, mocker):
-    openai_api_base = 'http://127.0.0.1:8080/'
+    server_url = 'http://127.0.0.1:8080/'
 
     result = MODEL_PROVIDER_CLASS.encrypt_model_credentials(
         tenant_id='tenant_id',
@@ -53,8 +53,8 @@ def test_encrypt_model_credentials(mock_encrypt, mocker):
         model_type=ModelType.EMBEDDINGS,
         credentials=VALIDATE_CREDENTIAL.copy()
     )
-    mock_encrypt.assert_called_with('tenant_id', openai_api_base)
-    assert result['openai_api_base'] == f'encrypted_{openai_api_base}'
+    mock_encrypt.assert_called_with('tenant_id', server_url)
+    assert result['server_url'] == f'encrypted_{server_url}'
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
@@ -69,7 +69,7 @@ def test_get_model_credentials_custom(mock_decrypt, mocker):
     )
 
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
-    encrypted_credential['openai_api_base'] = 'encrypted_' + encrypted_credential['openai_api_base']
+    encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
 
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(
@@ -82,7 +82,7 @@ def test_get_model_credentials_custom(mock_decrypt, mocker):
         model_name='test_model_name',
         model_type=ModelType.EMBEDDINGS
     )
-    assert result['openai_api_base'] == 'http://127.0.0.1:8080/'
+    assert result['server_url'] == 'http://127.0.0.1:8080/'
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
@@ -97,7 +97,7 @@ def test_get_model_credentials_obfuscated(mock_decrypt, mocker):
     )
 
     encrypted_credential = VALIDATE_CREDENTIAL.copy()
-    encrypted_credential['openai_api_base'] = 'encrypted_' + encrypted_credential['openai_api_base']
+    encrypted_credential['server_url'] = 'encrypted_' + encrypted_credential['server_url']
 
     mock_query = MagicMock()
     mock_query.filter.return_value.first.return_value = ProviderModel(
@@ -111,6 +111,6 @@ def test_get_model_credentials_obfuscated(mock_decrypt, mocker):
         model_type=ModelType.EMBEDDINGS,
         obfuscated=True
     )
-    middle_token = result['openai_api_base'][6:-2]
-    assert len(middle_token) == max(len(VALIDATE_CREDENTIAL['openai_api_base']) - 8, 0)
+    middle_token = result['server_url'][6:-2]
+    assert len(middle_token) == max(len(VALIDATE_CREDENTIAL['server_url']) - 8, 0)
     assert all(char == '*' for char in middle_token)
