@@ -597,6 +597,7 @@ class DocumentService:
     def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                         account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                         created_from: str = 'web'):
+        DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
         if document.display_status != 'available':
             raise ValueError("Document is not available")

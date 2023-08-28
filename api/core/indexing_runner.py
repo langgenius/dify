@@ -664,12 +664,13 @@ class IndexingRunner:
         """
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         keyword_table_index = IndexBuilder.get_index(dataset, 'economy')
-
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id,
-            model_provider_name=dataset.embedding_model_provider,
-            model_name=dataset.embedding_model
-        )
+        embedding_model = None
+        if dataset.indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
 
         # chunk nodes by chunk size
         indexing_start_at = time.perf_counter()
@@ -679,11 +680,11 @@ class IndexingRunner:
             # check document is paused
             self._check_document_paused_status(dataset_document.id)
             chunk_documents = documents[i:i + chunk_size]
-
-            tokens += sum(
-                embedding_model.get_num_tokens(document.page_content)
-                for document in chunk_documents
-            )
+            if dataset.indexing_technique == 'high_quality' or embedding_model:
+                tokens += sum(
+                    embedding_model.get_num_tokens(document.page_content)
+                    for document in chunk_documents
+                )
 
             # save vector index
             if vector_index:

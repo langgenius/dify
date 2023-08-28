@@ -385,18 +385,6 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
         # get file from request
         file = request.files['file']
         # check file
