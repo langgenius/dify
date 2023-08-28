@@ -137,7 +137,8 @@ class ConversationMessageTask:
         db.session.flush()
 
     def append_message_text(self, text: str):
-        self._pub_handler.pub_text(text)
+        if text is not None:
+            self._pub_handler.pub_text(text)
 
     def save_message(self, llm_message: LLMMessage, by_stopped: bool = False):
         message_tokens = llm_message.prompt_tokens
