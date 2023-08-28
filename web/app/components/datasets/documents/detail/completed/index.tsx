@@ -55,7 +55,7 @@ type ISegmentDetailProps = {
 /**
  * Show all the contents of the segment
  */
-export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
+const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
   segInfo,
   archived,
   onChangeSwitch,
@@ -196,7 +196,8 @@ export const SegmentDetail: FC<ISegmentDetailProps> = memo(({
       </div>
     </div>
   )
-})
+}
+export const SegmentDetail = memo(SegmentDetailComponent)
 
 export const splitArray = (arr: any[], size = 3) => {
   if (!arr || !arr.length)

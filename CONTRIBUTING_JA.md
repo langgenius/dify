@@ -52,4 +52,4 @@ git clone git@github.com:<github_username>/dify.git
 
 ## コミュニティチャンネル
 
-お困りですか？何か質問がありますか？ [Discord Community サーバ](https://discord.gg/AhzKf7dNgk)に参加してください。私たちがお手伝いします！
+お困りですか？何か質問がありますか？ [Discord Community サーバ](https://discord.gg/j3XRWSPBf7) に参加してください。私たちがお手伝いします！

@@ -97,6 +97,13 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, OpenAIFunctio
             messages, functions=self.functions, callbacks=callbacks
         )
         agent_decision = _parse_ai_message(predicted_message)
+
+        if isinstance(agent_decision, AgentAction) and agent_decision.tool == 'dataset':
+            tool_inputs = agent_decision.tool_input
+            if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
+                tool_inputs['query'] = kwargs['input']
+                agent_decision.tool_input = tool_inputs
+
         return agent_decision
 
     @classmethod

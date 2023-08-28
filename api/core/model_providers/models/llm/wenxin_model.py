@@ -57,7 +57,3 @@ class WenxinModel(BaseLLM):
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"Wenxin: {str(ex)}")
-
-    @classmethod
-    def support_streaming(cls):
-        return False

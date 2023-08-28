@@ -102,7 +102,13 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             raise new_exception
 
         try:
-            return self.output_parser.parse(full_output)
+            agent_decision = self.output_parser.parse(full_output)
+            if isinstance(agent_decision, AgentAction):
+                tool_inputs = agent_decision.tool_input
+                if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
+                    tool_inputs['query'] = kwargs['input']
+                    agent_decision.tool_input = tool_inputs
+            return agent_decision
         except OutputParserException:
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
                                           "I don't know how to respond to that."}, "")

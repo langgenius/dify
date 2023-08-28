@@ -416,7 +416,8 @@ class DocumentIndexingEstimateApi(DocumentResource):
 
                 try:
                     response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, [file],
-                                                                      data_process_rule_dict, None, dataset_id)
+                                                                      data_process_rule_dict, None,
+                                                                      'English', dataset_id)
                 except LLMBadRequestError:
                     raise ProviderNotInitializeError(
                         f"No Embedding Model available. Please configure a valid provider "
@@ -485,7 +486,8 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
             indexing_runner = IndexingRunner()
             try:
                 response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
-                                                                  data_process_rule_dict, None, dataset_id)
+                                                                  data_process_rule_dict, None,
+                                                                  'English', dataset_id)
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
@@ -499,7 +501,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
                                                                     info_list,
                                                                     data_process_rule_dict,
-                                                                    None, dataset_id)
+                                                                    None, 'English', dataset_id)
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "

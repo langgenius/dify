@@ -17,12 +17,18 @@ class HuggingfaceHubModel(BaseLLM):
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
         if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+            streaming = self.streaming
+
+            if 'baichuan' in self.name.lower():
+                streaming = False
+
             client = HuggingFaceEndpointLLM(
                 endpoint_url=self.credentials['huggingfacehub_endpoint_url'],
                 task=self.credentials['task_type'],
                 model_kwargs=provider_model_kwargs,
                 huggingfacehub_api_token=self.credentials['huggingfacehub_api_token'],
-                callbacks=self.callbacks
+                callbacks=self.callbacks,
+                streaming=streaming
             )
         else:
             client = HuggingFaceHub(
@@ -76,7 +82,10 @@ class HuggingfaceHubModel(BaseLLM):
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"Huggingface Hub: {str(ex)}")
 
-    @classmethod
-    def support_streaming(cls):
-        return False
+    @property
+    def support_streaming(self):
+        if self.credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+            if 'baichuan' in self.name.lower():
+                return False
 
+        return True

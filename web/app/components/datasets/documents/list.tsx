@@ -89,7 +89,7 @@ export const StatusItem: FC<{
         <Tooltip
           selector='dataset-document-detail-item-status'
           htmlContent={
-            <div className='max-w-[260px]'>{errorMessage}</div>
+            <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
         >
           <HelpCircle className='ml-1 w-[14px] h-[14px] text-gray-700' />
