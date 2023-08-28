@@ -99,6 +99,7 @@ const ModelPage = () => {
       config.chatglm,
       config.xinference,
       config.openllm,
+      config.localai,
     ]
   }
 
