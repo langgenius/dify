@@ -173,3 +173,8 @@ export type FileUploadConfigResponse = {
   file_size_limit: number
   batch_count_limit: number
 }
+
+export type DocumentsLimitResponse = {
+  documents_count: number
+  documents_limit: number
+}

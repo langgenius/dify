@@ -63,7 +63,3 @@ class OpenLLMModel(BaseLLM):
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"OpenLLM: {str(ex)}")
-
-    @classmethod
-    def support_streaming(cls):
-        return False

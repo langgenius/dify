@@ -63,7 +63,7 @@ def test_hosted_inference_api_is_credentials_valid_or_raise_invalid(mock_model_i
 
 def test_inference_endpoints_is_credentials_valid_or_raise_valid(mocker):
     mocker.patch('huggingface_hub.hf_api.HfApi.whoami', return_value=None)
-    mocker.patch('langchain.llms.huggingface_endpoint.HuggingFaceEndpoint._call', return_value="abc")
+    mocker.patch('core.third_party.langchain.llms.huggingface_endpoint_llm.HuggingFaceEndpointLLM._call', return_value="abc")
 
     MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(
         model_name='test_model_name',
@@ -71,8 +71,10 @@ def test_inference_endpoints_is_credentials_valid_or_raise_valid(mocker):
         credentials=INFERENCE_ENDPOINTS_VALIDATE_CREDENTIAL
     )
 
+
 def test_inference_endpoints_is_credentials_valid_or_raise_invalid(mocker):
     mocker.patch('huggingface_hub.hf_api.HfApi.whoami', return_value=None)
+    mocker.patch('core.third_party.langchain.llms.huggingface_endpoint_llm.HuggingFaceEndpointLLM._call', return_value="abc")
 
     with pytest.raises(CredentialsValidateFailedError):
         MODEL_PROVIDER_CLASS.is_model_credentials_valid_or_raise(

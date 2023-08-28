@@ -49,6 +49,7 @@ const translation = {
       confirmButton: 'Create',
       failed: 'Creation failed',
     },
+    overCountLimit: 'All your documents have overed limit {{countLimit}}.',
   },
   stepTwo: {
     segmentation: 'Segmentation settings',
