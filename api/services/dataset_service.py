@@ -92,16 +92,18 @@ class DatasetService:
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
                 f'Dataset with name {name} already exists.')
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=current_user.current_tenant_id
-        )
+        embedding_model = None
+        if indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id
+            )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.model_provider.provider_name
-        dataset.embedding_model = embedding_model.name
+        dataset.embedding_model_provider = embedding_model.model_provider.provider_name if embedding_model else None
+        dataset.embedding_model = embedding_model.name if embedding_model else None
         db.session.add(dataset)
         db.session.commit()
         return dataset
