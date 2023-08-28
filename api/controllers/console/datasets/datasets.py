@@ -262,6 +262,7 @@ class DatasetIndexingEstimateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('info_list', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('indexing_technique', type=str, required=True, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('dataset_id', type=str, required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
@@ -283,7 +284,8 @@ class DatasetIndexingEstimateApi(Resource):
             try:
                 response = indexing_runner.file_indexing_estimate(current_user.current_tenant_id, file_details,
                                                                   args['process_rule'], args['doc_form'],
-                                                                  args['doc_language'], args['dataset_id'])
+                                                                  args['doc_language'], args['dataset_id'],
+                                                                  args['indexing_technique'])
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
