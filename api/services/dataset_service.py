@@ -428,18 +428,19 @@ class DocumentService:
 
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
-            count = 0
-            if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
-                count = len(upload_file_list)
-            elif document_data["data_source"]["type"] == "notion_import":
-                notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
-                count = len(notion_page_list)
-            documents_count = DocumentService.get_tenant_documents_count()
-            total_count = documents_count + count
-            tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if total_count > tenant_document_count:
-                raise ValueError(f"over document limit {tenant_document_count}.")
+            if 'original_document_id' not in document_data or not document_data['original_document_id']:
+                count = 0
+                if document_data["data_source"]["type"] == "upload_file":
+                    upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                    count = len(upload_file_list)
+                elif document_data["data_source"]["type"] == "notion_import":
+                    notion_page_list = document_data["data_source"]['info_list']['notion_info_list']['pages']
+                    count = len(notion_page_list)
+                documents_count = DocumentService.get_tenant_documents_count()
+                total_count = documents_count + count
+                tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
+                if total_count > tenant_document_count:
+                    raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]

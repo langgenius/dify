@@ -125,14 +125,6 @@ class DatasetListApi(Resource):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
 
         try:
             dataset = DatasetService.create_empty_dataset(
@@ -300,7 +292,8 @@ class DatasetIndexingEstimateApi(Resource):
                 response = indexing_runner.notion_indexing_estimate(current_user.current_tenant_id,
                                                                     args['info_list']['notion_info_list'],
                                                                     args['process_rule'], args['doc_form'],
-                                                                    args['doc_language'], args['dataset_id'])
+                                                                    args['doc_language'], args['dataset_id'],
+                                                                    args['indexing_technique'])
             except LLMBadRequestError:
                 raise ProviderNotInitializeError(
                     f"No Embedding Model available. Please configure a valid provider "
