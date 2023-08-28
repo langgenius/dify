@@ -23,7 +23,7 @@ import Loading from '@/app/components/base/loading'
 
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
@@ -32,8 +32,6 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
-
-type Page = DataSourceNotionPage & { workspace_id: string }
 
 type StepTwoProps = {
   isSetting?: boolean
@@ -44,7 +42,7 @@ type StepTwoProps = {
   indexingType?: string
   dataSourceType: DataSourceType
   files: CustomFile[]
-  notionPages?: Page[]
+  notionPages?: NotionPage[]
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -110,16 +108,16 @@ const StepTwo = ({
     return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
   })()
 
-  const scrollHandle = (e: any) => {
-    if (e.target.scrollTop > 0)
+  const scrollHandle = (e: Event) => {
+    if ((e.target as HTMLDivElement).scrollTop > 0)
       setScrolled(true)
 
     else
       setScrolled(false)
   }
 
-  const previewScrollHandle = (e: any) => {
-    if (e.target.scrollTop > 0)
+  const previewScrollHandle = (e: Event) => {
+    if ((e.target as HTMLDivElement).scrollTop > 0)
       setPreviewScrolled(true)
 
     else

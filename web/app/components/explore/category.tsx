@@ -4,14 +4,15 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import exploreI18n from '@/i18n/lang/explore.en'
+import type { AppCategory } from '@/models/explore'
 
 const categoryI18n = exploreI18n.category
 
 export type ICategoryProps = {
   className?: string
-  list: string[]
+  list: AppCategory[]
   value: string
-  onChange: (value: string) => void
+  onChange: (value: AppCategory | '') => void
 }
 
 const Category: FC<ICategoryProps> = ({
@@ -40,7 +41,7 @@ const Category: FC<ICategoryProps> = ({
           style={itemStyle(name === value)}
           onClick={() => onChange(name)}
         >
-          {(categoryI18n as any)[name] ? t(`explore.category.${name}`) : name}
+          {categoryI18n[name] ? t(`explore.category.${name}`) : name}
         </div>
       ))}
     </div>

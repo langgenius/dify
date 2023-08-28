@@ -9,7 +9,7 @@ import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import s from './index.module.css'
 import type { FileItem } from '@/models/datasets'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
@@ -25,13 +25,11 @@ type IStepOneProps = {
   files: FileItem[]
   updateFileList: (files: FileItem[]) => void
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
-  notionPages?: any[]
-  updateNotionPages: (value: any[]) => void
+  notionPages?: NotionPage[]
+  updateNotionPages: (value: NotionPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
 }
-
-type Page = DataSourceNotionPage & { workspace_id: string }
 
 type NotionConnectorProps = {
   onSetting: () => void

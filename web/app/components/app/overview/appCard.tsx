@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { HTMLProps } from 'react'
 import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
@@ -37,7 +37,7 @@ export type IAppCardProps = {
   onGenerateCode?: () => Promise<void>
 }
 
-const EmbedIcon: FC<{ className?: string }> = ({ className = '' }) => {
+const EmbedIcon = ({ className = '' }: HTMLProps<HTMLDivElement>) => {
   return <div className={`${style.codeBrowserIcon} ${className}`}></div>
 }
 

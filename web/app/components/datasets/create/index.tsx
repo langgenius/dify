@@ -11,12 +11,10 @@ import { DataSourceType } from '@/models/datasets'
 import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDataDetail } from '@/service/datasets'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import { useProviderContext } from '@/context/provider-context'
 
 import AccountSetting from '@/app/components/header/account-setting'
-
-type Page = DataSourceNotionPage & { workspace_id: string }
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -35,8 +33,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [hasError, setHasError] = useState(false)
   const { embeddingsDefaultModel } = useProviderContext()
 
-  const [notionPages, setNotionPages] = useState<Page[]>([])
-  const updateNotionPages = (value: Page[]) => {
+  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
+  const updateNotionPages = (value: NotionPage[]) => {
     setNotionPages(value)
   }
 

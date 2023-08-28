@@ -66,7 +66,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     hit_count,
     index_node_hash,
     answer,
-  } = detail as any
+  } = detail as Required<ISegmentCardProps>['detail']
   const isDocScene = scene === 'doc'
   const [showModal, setShowModal] = useState(false)
 

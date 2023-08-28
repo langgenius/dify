@@ -133,7 +133,7 @@ const Result: FC<IResultProps> = ({
 
     setResponsingTrue()
     sendCompletionMessage(data, {
-      onData: (data: string, _isFirstMessage: boolean, { messageId }: any) => {
+      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         tempMessageId = messageId
         res.push(data)
         setCompletionRes(res.join(''))

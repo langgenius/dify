@@ -8,13 +8,15 @@ export type AppBasicInfo = {
   icon_background: string
 }
 
+export type AppCategory = 'Writing' | 'Translate' | 'HR' | 'Programming' | 'Assistant'
+
 export type App = {
   app: AppBasicInfo
   app_id: string
   description: string
   copyright: string
   privacy_policy: string
-  category: string
+  category: AppCategory
   position: number
   is_listed: boolean
   install_count: number
