@@ -2,6 +2,7 @@ import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
+  DocumentsLimitResponse,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace, LangGeniusVersionResponse, Member,
@@ -178,4 +179,8 @@ export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; res
 
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get(url) as Promise<FileUploadConfigResponse>
+}
+
+export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url) => {
+  return get(url) as Promise<DocumentsLimitResponse>
 }
