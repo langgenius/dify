@@ -229,7 +229,7 @@ class IndexingRunner:
             ).first()
             if not dataset:
                 raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality':
+            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
                 embedding_model = ModelFactory.get_embedding_model(
                     tenant_id=dataset.tenant_id,
                     model_provider_name=dataset.embedding_model_provider,
@@ -308,7 +308,7 @@ class IndexingRunner:
             ).first()
             if not dataset:
                 raise ValueError('Dataset not found.')
-            if dataset.indexing_technique == 'high_quality':
+            if dataset.indexing_technique == 'high_quality' or indexing_technique == 'high_quality':
                 embedding_model = ModelFactory.get_embedding_model(
                     tenant_id=dataset.tenant_id,
                     model_provider_name=dataset.embedding_model_provider,

@@ -447,7 +447,6 @@ class DocumentService:
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
-            db.session.commit()
 
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
@@ -455,6 +454,13 @@ class DocumentService:
                 raise ValueError("Indexing technique is required")
 
             dataset.indexing_technique = document_data["indexing_technique"]
+            if document_data["indexing_technique"] == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id
+                )
+                dataset.embedding_model = embedding_model.name
+                dataset.embedding_model_provider = embedding_model.model_provider.provider_name
+
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
