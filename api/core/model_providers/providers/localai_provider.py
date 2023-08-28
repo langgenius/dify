@@ -72,6 +72,7 @@ class LocalAIProvider(BaseModelProvider):
         try:
             if model_type == ModelType.EMBEDDINGS:
                 model = LocalAIEmbeddings(
+                    model=model_name,
                     openai_api_key='1',
                     openai_api_base=credentials['server_url']
                 )

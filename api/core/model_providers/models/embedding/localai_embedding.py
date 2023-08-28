@@ -15,6 +15,7 @@ class LocalAIEmbedding(BaseEmbedding):
         )
 
         client = LocalAIEmbeddings(
+            model=name,
             openai_api_key="1",
             openai_api_base=credentials['server_url'],
         )
