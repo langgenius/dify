@@ -44,9 +44,9 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         input_str: str,
         **kwargs: Any,
     ) -> None:
-        # tool_name = serialized.get('name')
+        tool_name: str = serialized.get('name')
         input_dict = json.loads(input_str.replace("'", "\""))
-        dataset_id = input_dict.get('dataset_id')
+        dataset_id = tool_name.removeprefix('dataset-')
         query = input_dict.get('query')
         self.conversation_message_task.on_dataset_query_end(DatasetQueryObj(dataset_id=dataset_id, query=query))
 

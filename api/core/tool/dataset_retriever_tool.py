@@ -1,4 +1,3 @@
-import re
 from typing import Type
 
 from flask import current_app
@@ -16,7 +15,6 @@ from models.dataset import Dataset, DocumentSegment
 
 
 class DatasetRetrieverToolInput(BaseModel):
-    dataset_id: str = Field(..., description="ID of dataset to be queried. MUST be UUID format.")
     query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
 
 
@@ -37,27 +35,22 @@ class DatasetRetrieverTool(BaseTool):
             description = 'useful for when you want to answer queries about the ' + dataset.name
 
         description = description.replace('\n', '').replace('\r', '')
-        description += '\nID of dataset MUST be ' + dataset.id
         return cls(
+            name=f'dataset-{dataset.id}',
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
             description=description,
             **kwargs
         )
 
-    def _run(self, dataset_id: str, query: str) -> str:
-        pattern = r'\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b'
-        match = re.search(pattern, dataset_id, re.IGNORECASE)
-        if match:
-            dataset_id = match.group()
-
+    def _run(self, query: str) -> str:
         dataset = db.session.query(Dataset).filter(
             Dataset.tenant_id == self.tenant_id,
-            Dataset.id == dataset_id
+            Dataset.id == self.dataset_id
         ).first()
 
         if not dataset:
-            return f'[{self.name} failed to find dataset with id {dataset_id}.]'
+            return f'[{self.name} failed to find dataset with id {self.dataset_id}.]'
 
         if dataset.indexing_technique == "economy":
             # use keyword table query
