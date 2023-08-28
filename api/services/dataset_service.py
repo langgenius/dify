@@ -118,19 +118,20 @@ class DatasetService:
 
     @staticmethod
     def check_dataset_model_setting(dataset):
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ValueError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: "
-                             f"{ex.description}")
+        if dataset.indexing_technique == 'high_quality':
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                raise ValueError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ValueError(f"The dataset in unavailable, due to: "
+                                 f"{ex.description}")
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
