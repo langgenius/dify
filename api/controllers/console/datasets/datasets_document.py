@@ -285,20 +285,6 @@ class DatasetDocumentListApi(Resource):
         # validate args
         DocumentService.document_create_args_validate(args)
 
-        # check embedding model setting
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
         except ProviderTokenNotInitError as ex:
@@ -339,15 +325,15 @@ class DatasetInitApi(Resource):
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
-
-        try:
-            ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id
-            )
-        except LLMBadRequestError:
-            raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
-                f"in the Settings -> Model Provider.")
+        if args['indexing_technique'] == 'high_quality':
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=current_user.current_tenant_id
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
 
         # validate args
         DocumentService.document_create_args_validate(args)

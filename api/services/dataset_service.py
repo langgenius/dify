@@ -142,6 +142,19 @@ class DatasetService:
             if data['indexing_technique'] == 'economy':
                 deal_dataset_vector_index_task.delay(dataset_id, 'remove')
             elif data['indexing_technique'] == 'high_quality':
+                # check embedding model setting
+                try:
+                    ModelFactory.get_embedding_model(
+                        tenant_id=current_user.current_tenant_id,
+                        model_provider_name=dataset.embedding_model_provider,
+                        model_name=dataset.embedding_model
+                    )
+                except LLMBadRequestError:
+                    raise ValueError(
+                        f"No Embedding Model available. Please configure a valid provider "
+                        f"in the Settings -> Model Provider.")
+                except ProviderTokenNotInitError as ex:
+                    raise ValueError(ex.description)
                 deal_dataset_vector_index_task.delay(dataset_id, 'add')
         filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
 
@@ -690,9 +703,11 @@ class DocumentService:
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
             if total_count > tenant_document_count:
                 raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=tenant_id
-        )
+        embedding_model = None
+        if document_data['indexing_technique'] == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
@@ -700,8 +715,8 @@ class DocumentService:
             data_source_type=document_data["data_source"]["type"],
             indexing_technique=document_data["indexing_technique"],
             created_by=account.id,
-            embedding_model=embedding_model.name,
-            embedding_model_provider=embedding_model.model_provider.provider_name
+            embedding_model=embedding_model.name if embedding_model else None,
+            embedding_model_provider=embedding_model.model_provider.provider_name if embedding_model else None
         )
 
         db.session.add(dataset)
@@ -919,15 +934,15 @@ class SegmentService:
         content = args['content']
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
-
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id,
-            model_provider_name=dataset.embedding_model_provider,
-            model_name=dataset.embedding_model
-        )
-
-        # calc embedding use tokens
-        tokens = embedding_model.get_num_tokens(content)
+        tokens = 0
+        if dataset.indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+            # calc embedding use tokens
+            tokens = embedding_model.get_num_tokens(content)
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document_id == document.id
         ).scalar()
@@ -989,15 +1004,16 @@ class SegmentService:
                     kw_index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
             else:
                 segment_hash = helper.generate_text_hash(content)
+                tokens = 0
+                if dataset.indexing_technique == 'high_quality':
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=dataset.embedding_model_provider,
+                        model_name=dataset.embedding_model
+                    )
 
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
-
-                # calc embedding use tokens
-                tokens = embedding_model.get_num_tokens(content)
+                    # calc embedding use tokens
+                    tokens = embedding_model.get_num_tokens(content)
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
