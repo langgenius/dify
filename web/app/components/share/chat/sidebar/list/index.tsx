@@ -1,23 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
+import React, { useRef, useState } from 'react'
 import {
   ChatBubbleOvalLeftEllipsisIcon,
 } from '@heroicons/react/24/outline'
-import { useInfiniteScroll } from 'ahooks'
+import { useBoolean, useInfiniteScroll } from 'ahooks'
 import { ChatBubbleOvalLeftEllipsisIcon as ChatBubbleOvalLeftEllipsisSolidIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
+import RenameModal from '../rename-modal'
 import s from './style.module.css'
 import type { ConversationItem } from '@/models/share'
-import { fetchConversations } from '@/service/share'
+import { fetchConversations, renameConversation } from '@/service/share'
 import { fetchConversations as fetchUniversalConversations } from '@/service/universal-chat'
 import ItemOperation from '@/app/components/explore/item-operation'
+import Toast from '@/app/components/base/toast'
 
 export type IListProps = {
   className: string
   currentId: string
   onCurrentIdChange: (id: string) => void
   list: ConversationItem[]
+  onListChanged?: (newList: ConversationItem[]) => void
   isClearConversationList: boolean
   isInstalledApp: boolean
   isUniversalChat?: boolean
@@ -35,6 +39,7 @@ const List: FC<IListProps> = ({
   currentId,
   onCurrentIdChange,
   list,
+  onListChanged,
   isClearConversationList,
   isInstalledApp,
   isUniversalChat,
@@ -46,6 +51,8 @@ const List: FC<IListProps> = ({
   controlUpdate,
   onDelete,
 }) => {
+  const { t } = useTranslation()
+
   const listRef = useRef<HTMLDivElement>(null)
 
   useInfiniteScroll(
@@ -72,6 +79,33 @@ const List: FC<IListProps> = ({
       reloadDeps: [isNoMore, controlUpdate],
     },
   )
+  const [isShowRename, { setTrue: setShowRename, setFalse: setHideRename }] = useBoolean(false)
+  const [currentConversation, setCurrentConversation] = useState<ConversationItem | null>(null)
+  const showRename = (item: ConversationItem) => {
+    setCurrentConversation(item)
+    setShowRename()
+  }
+  const handleRename = async (newName: string) => {
+    if (!newName.trim() || !currentConversation)
+      return
+
+    const currId = currentConversation.id
+    await renameConversation(isInstalledApp, installedAppId, currId as string, newName)
+    Toast.notify({
+      type: 'success',
+      message: t('common.actionMsg.modifiedSuccessfully'),
+    })
+    onListChanged?.(list.map((item) => {
+      if (item.id === currId) {
+        return {
+          ...item,
+          name: newName,
+        }
+      }
+      return item
+    }))
+    setHideRename()
+  }
   return (
     <nav
       ref={listRef}
@@ -110,6 +144,8 @@ const List: FC<IListProps> = ({
                 <ItemOperation
                   isPinned={isPinned}
                   togglePin={() => onPinChanged(item.id)}
+                  isShowRenameConversation
+                  onRenameConversation={() => showRename(item)}
                   isShowDelete
                   onDelete={() => onDelete(item.id)}
                 />
@@ -118,6 +154,15 @@ const List: FC<IListProps> = ({
           </div>
         )
       })}
+      {isShowRename && (
+        <RenameModal
+          isShow={isShowRename}
+          onClose={setHideRename}
+          saveLoading={false}
+          name={currentConversation?.name || ''}
+          onSave={handleRename}
+        />
+      )}
     </nav>
   )
 }

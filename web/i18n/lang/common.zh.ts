@@ -334,6 +334,11 @@ const translation = {
     'claude-instant-1': 'Claude-Instant',
     'claude-2': 'Claude-2',
   },
+  chat: {
+    renameConversation: '重命名会话',
+    conversationName: '会话名称',
+    conversationNamePlaceholder: '请输入会话名称',
+  },
 }
 
 export default translation
