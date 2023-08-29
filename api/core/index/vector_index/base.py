@@ -15,12 +15,12 @@ from models.dataset import Document as DatasetDocument
 
 
 class BaseVectorIndex(BaseIndex):
-    
+
     def __init__(self, dataset: Dataset, embeddings: Embeddings):
         super().__init__(dataset)
         self._embeddings = embeddings
         self._vector_store = None
-        
+
     def get_type(self) -> str:
         raise NotImplementedError
 
@@ -143,7 +143,7 @@ class BaseVectorIndex(BaseIndex):
                 DocumentSegment.status == 'completed',
                 DocumentSegment.enabled == True
             ).all()
-            
+
             for segment in segments:
                 document = Document(
                     page_content=segment.content,
@@ -215,6 +215,30 @@ class BaseVectorIndex(BaseIndex):
         if documents:
             try:
                 self.create(documents)
+            except Exception as e:
+                raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def update_qdrant_dataset(self, dataset: Dataset):
+        logging.info(f"update_qdrant_dataset {dataset.id}")
+
+        segment = db.session.query(DocumentSegment).filter(
+            DocumentSegment.dataset_id == dataset.id,
+            DocumentSegment.status == 'completed',
+            DocumentSegment.enabled == True
+        ).first()
+
+        if segment:
+            try:
+                exist = self.text_exists(segment.index_node_id)
+                if exist:
+                    index_struct = {
+                        "type": 'qdrant',
+                        "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
+                    }
+                    dataset.index_struct = json.dumps(index_struct)
+                    db.session.commit()
             except Exception as e:
                 raise e
 
