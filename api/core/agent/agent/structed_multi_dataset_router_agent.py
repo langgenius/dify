@@ -90,7 +90,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
         elif len(self.dataset_tools) == 1:
             tool = next(iter(self.dataset_tools))
             tool = cast(DatasetRetrieverTool, tool)
-            rst = tool.run(tool_input={'dataset_id': tool.dataset_id, 'query': kwargs['input']})
+            rst = tool.run(tool_input={'query': kwargs['input']})
             return AgentFinish(return_values={"output": rst}, log=rst)
 
         full_inputs = self.get_full_inputs(intermediate_steps, **kwargs)
