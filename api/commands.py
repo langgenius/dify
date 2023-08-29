@@ -318,53 +318,55 @@ def create_qdrant_indexes():
 
         page += 1
         for dataset in datasets:
-            try:
-                click.echo('Create dataset qdrant index: {}'.format(dataset.id))
-                try:
-                    embedding_model = ModelFactory.get_embedding_model(
-                        tenant_id=dataset.tenant_id,
-                        model_provider_name=dataset.embedding_model_provider,
-                        model_name=dataset.embedding_model
-                    )
-                except Exception:
-                    provider = Provider(
-                        id='provider_id',
-                        tenant_id=dataset.tenant_id,
-                        provider_name='openai',
-                        provider_type=ProviderType.CUSTOM.value,
-                        encrypted_config=json.dumps({'openai_api_key': 'TEST'}),
-                        is_valid=True,
-                    )
-                    model_provider = OpenAIProvider(provider=provider)
-                    embedding_model = OpenAIEmbedding(name="text-embedding-ada-002", model_provider=model_provider)
-                embeddings = CacheEmbedding(embedding_model)
+            if dataset.index_struct_dict:
+                if dataset.index_struct_dict['type'] != 'qdrant':
+                    try:
+                        click.echo('Create dataset qdrant index: {}'.format(dataset.id))
+                        try:
+                            embedding_model = ModelFactory.get_embedding_model(
+                                tenant_id=dataset.tenant_id,
+                                model_provider_name=dataset.embedding_model_provider,
+                                model_name=dataset.embedding_model
+                            )
+                        except Exception:
+                            provider = Provider(
+                                id='provider_id',
+                                tenant_id=dataset.tenant_id,
+                                provider_name='openai',
+                                provider_type=ProviderType.CUSTOM.value,
+                                encrypted_config=json.dumps({'openai_api_key': 'TEST'}),
+                                is_valid=True,
+                            )
+                            model_provider = OpenAIProvider(provider=provider)
+                            embedding_model = OpenAIEmbedding(name="text-embedding-ada-002", model_provider=model_provider)
+                        embeddings = CacheEmbedding(embedding_model)
 
-                from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
+                        from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
 
-                index = QdrantVectorIndex(
-                    dataset=dataset,
-                    config=QdrantConfig(
-                        endpoint=current_app.config.get('QDRANT_URL'),
-                        api_key=current_app.config.get('QDRANT_API_KEY'),
-                        root_path=current_app.root_path
-                    ),
-                    embeddings=embeddings
-                )
-                if index:
-                    index_struct = {
-                        "type": 'qdrant',
-                        "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
-                    }
-                    dataset.index_struct = json.dumps(index_struct)
-                    db.session.commit()
-                    index.create_qdrant_dataset(dataset)
-                    create_count += 1
-                else:
-                    click.echo('passed.')
-            except Exception as e:
-                click.echo(
-                    click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
-                continue
+                        index = QdrantVectorIndex(
+                            dataset=dataset,
+                            config=QdrantConfig(
+                                endpoint=current_app.config.get('QDRANT_URL'),
+                                api_key=current_app.config.get('QDRANT_API_KEY'),
+                                root_path=current_app.root_path
+                            ),
+                            embeddings=embeddings
+                        )
+                        if index:
+                            index.create_qdrant_dataset(dataset)
+                            index_struct = {
+                                "type": 'qdrant',
+                                "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
+                            }
+                            dataset.index_struct = json.dumps(index_struct)
+                            db.session.commit()
+                            create_count += 1
+                        else:
+                            click.echo('passed.')
+                    except Exception as e:
+                        click.echo(
+                            click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)), fg='red'))
+                        continue
 
     click.echo(click.style('Congratulations! Create {} dataset indexes.'.format(create_count), fg='green'))
 
