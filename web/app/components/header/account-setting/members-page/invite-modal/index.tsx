@@ -29,7 +29,7 @@ const InviteModal = ({
   const handleSend = async () => {
     if (emails.map(email => emailRegex.test(email)).every(Boolean)) {
       try {
-        const res = await inviteMember({ url: '/workspaces/current/members/invite-email', body: { emails, role: 'admin' } })
+        const res = await inviteMember({ url: '/workspaces/current/members/invite-email', body: { emails, role: 'normal' } })
 
         if (res.result === 'success') {
           onCancel()

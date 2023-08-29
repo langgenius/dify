@@ -1,23 +1,23 @@
 'use client'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './index.module.css'
+import type { SuccessInvationResult } from '.'
 import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
-  value?: string
+  value: SuccessInvationResult
 }
 
 const InvitationLink = ({
-  value = '',
+  value,
 }: IInvitationLinkProps) => {
   const [isCopied, setIsCopied] = useState(false)
-  const selector = useRef(`invite-link-${randomString(4)}`)
 
   const copyHandle = useCallback(() => {
-    copy(value)
+    copy(value.url)
     setIsCopied(true)
   }, [value])
 
@@ -38,16 +38,16 @@ const InvitationLink = ({
       <div className="flex items-center flex-grow h-5">
         <div className='flex-grow bg-gray-100 text-[13px] relative h-full'>
           <Tooltip
-            selector={selector.current}
-            content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+            selector={`invite-link-${randomString(4)}`}
+            content={isCopied ? `${t('appApi.copied')}` : value.url}
             className='z-10'
           >
-            <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={copyHandle}>{value}</div>
+            <div className='absolute top-0 left-0 w-full pl-2 pr-2 truncate cursor-pointer r-0' onClick={copyHandle}>{value.email}</div>
           </Tooltip>
         </div>
         <div className="flex-shrink-0 h-4 bg-gray-200 border" />
         <Tooltip
-          selector={selector.current}
+          selector={`invite-link-${randomString(4)}`}
           content={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           className='z-10'
         >

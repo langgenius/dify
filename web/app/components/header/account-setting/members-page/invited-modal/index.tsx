@@ -1,6 +1,7 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import { useMemo } from 'react'
 import InvitationLink from './invitation-link'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
@@ -8,6 +9,9 @@ import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
 import type { InvitationResult } from '@/models/common'
 import Tooltip from '@/app/components/base/tooltip'
+
+export type SuccessInvationResult = Extract<InvitationResult, { status: 'success' }>
+export type FailedInvationResult = Extract<InvitationResult, { status: 'failed' }>
 
 type IInvitedModalProps = {
   invitationResults: InvitationResult[]
@@ -18,6 +22,9 @@ const InvitedModal = ({
   onCancel,
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
+
+  const successInvationResults = useMemo<SuccessInvationResult[]>(() => invitationResults?.filter(item => item.status === 'success') as SuccessInvationResult[], [invitationResults])
+  const failedInvationResults = useMemo<FailedInvationResult[]>(() => invitationResults?.filter(item => item.status !== 'success') as FailedInvationResult[], [invitationResults])
 
   return (
     <div className={s.wrap}>
@@ -41,28 +48,28 @@ const InvitedModal = ({
             <div className='mb-5 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
             <div className='flex flex-col gap-2 mb-9'>
               {
-                !!invitationResults?.filter(item => item.status === 'success').length
+                !!successInvationResults.length
                   && <>
                     <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
-                    {invitationResults.map(item => item.status === 'success'
-                      && <InvitationLink key={item.email} value={item.url} />)}
+                    {successInvationResults.map(item =>
+                      <InvitationLink key={item.email} value={item} />)}
                   </>
               }
               {
-                !!invitationResults?.filter(item => item.status !== 'success').length
+                !!failedInvationResults.length
                   && <>
                     <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.failedinvitationEmails')}</div>
                     <div className='flex flex-wrap justify-between gap-2'>
                       {
-                        invitationResults.map(item => item.status !== 'success'
-                        && <div key={item.email} className='flex justify-center border hover:border-red-700 border-red-300 border-dashed rounded-md px-1'>
-                          <Tooltip
-                            selector={`invitation-tag-${item.email}`}
-                            htmlContent={item.message}
-                          >
-                            <div tabIndex={0} className='flex justify-center items-center text-sm'>{item.email}</div>
-                          </Tooltip>
-                        </div>,
+                        failedInvationResults.map(item =>
+                          <div key={item.email} className='flex justify-center border hover:border-red-700 border-red-300 border-dashed rounded-md px-1'>
+                            <Tooltip
+                              selector={`invitation-tag-${item.email}`}
+                              htmlContent={item.message}
+                            >
+                              <div tabIndex={0} className='flex justify-center items-center text-sm'>{item.email}</div>
+                            </Tooltip>
+                          </div>,
                         )
                       }
                     </div>
