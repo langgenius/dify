@@ -1,5 +1,5 @@
 import { ProviderEnum } from '../declarations'
-import type { ProviderConfig } from '../declarations'
+import type { FormValue, ProviderConfig } from '../declarations'
 import { Localai, LocalaiText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
@@ -48,14 +48,75 @@ const config: ProviderConfig = {
       },
     },
     defaultValue: {
-      model_type: 'embeddings',
+      model_type: 'text-generation',
+      completion_type: 'completion',
     },
-    validateKeys: [
-      'model_type',
-      'model_name',
-      'server_url',
-    ],
+    validateKeys: (v?: FormValue) => {
+      if (v?.model_type === 'text-generation') {
+        return [
+          'model_type',
+          'model_name',
+          'server_url',
+          'completion_type',
+        ]
+      }
+      if (v?.model_type === 'embeddings') {
+        return [
+          'model_type',
+          'model_name',
+          'server_url',
+        ]
+      }
+      return []
+    },
+    filterValue: (v?: FormValue) => {
+      let filteredKeys: string[] = []
+      if (v?.model_type === 'text-generation') {
+        filteredKeys = [
+          'model_type',
+          'model_name',
+          'server_url',
+          'completion_type',
+        ]
+      }
+      if (v?.model_type === 'embeddings') {
+        filteredKeys = [
+          'model_type',
+          'model_name',
+          'server_url',
+        ]
+      }
+      return filteredKeys.reduce((prev: FormValue, next: string) => {
+        prev[next] = v?.[next] || ''
+        return prev
+      }, {})
+    },
     fields: [
+      {
+        type: 'radio',
+        key: 'model_type',
+        required: true,
+        label: {
+          'en': 'Model Type',
+          'zh-Hans': '模型类型',
+        },
+        options: [
+          {
+            key: 'text-generation',
+            label: {
+              'en': 'Text Generation',
+              'zh-Hans': '文本生成',
+            },
+          },
+          {
+            key: 'embeddings',
+            label: {
+              'en': 'Embeddings',
+              'zh-Hans': 'Embeddings',
+            },
+          },
+        ],
+      },
       {
         type: 'text',
         key: 'model_name',
@@ -68,6 +129,32 @@ const config: ProviderConfig = {
           'en': 'Enter your Model Name here',
           'zh-Hans': '在此输入您的模型名称',
         },
+      },
+      {
+        hidden: (value?: FormValue) => value?.model_type === 'embeddings',
+        type: 'radio',
+        key: 'completion_type',
+        required: true,
+        label: {
+          'en': 'Completion Type',
+          'zh-Hans': 'Completion Type',
+        },
+        options: [
+          {
+            key: 'completion',
+            label: {
+              'en': 'Completion',
+              'zh-Hans': 'Completion',
+            },
+          },
+          {
+            key: 'chat_completion',
+            label: {
+              'en': 'Chat Completion',
+              'zh-Hans': 'Chat Completion',
+            },
+          },
+        ],
       },
       {
         type: 'text',
