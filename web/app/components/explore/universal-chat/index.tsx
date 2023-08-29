@@ -624,8 +624,10 @@ const Main: FC<IMainProps> = () => {
     return (
       <Sidebar
         list={conversationList}
+        onListChanged={setConversationList}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        onPinnedListChanged={setPinnedConversationList}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}

@@ -12,7 +12,7 @@ import RenameModal from '../rename-modal'
 import s from './style.module.css'
 import type { ConversationItem } from '@/models/share'
 import { fetchConversations, renameConversation } from '@/service/share'
-import { fetchConversations as fetchUniversalConversations } from '@/service/universal-chat'
+import { fetchConversations as fetchUniversalConversations, renameConversation as renameUniversalConversation } from '@/service/universal-chat'
 import ItemOperation from '@/app/components/explore/item-operation'
 import Toast from '@/app/components/base/toast'
 
@@ -98,7 +98,12 @@ const List: FC<IListProps> = ({
     setIsSaving()
     const currId = currentConversation.id
     try {
-      await renameConversation(isInstalledApp, installedAppId, currId as string, newName)
+      if (isUniversalChat)
+        await renameUniversalConversation(currId, newName)
+
+      else
+        await renameConversation(isInstalledApp, installedAppId, currId, newName)
+
       Toast.notify({
         type: 'success',
         message: t('common.actionMsg.modifiedSuccessfully'),
