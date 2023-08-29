@@ -338,6 +338,7 @@ const translation = {
     renameConversation: 'Rename Conversation',
     conversationName: 'Conversation name',
     conversationNamePlaceholder: 'Please input conversation name',
+    conversationNameCanNotEmpty: 'Conversation name required',
   },
 }
 

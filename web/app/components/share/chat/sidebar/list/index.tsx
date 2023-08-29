@@ -80,31 +80,43 @@ const List: FC<IListProps> = ({
     },
   )
   const [isShowRename, { setTrue: setShowRename, setFalse: setHideRename }] = useBoolean(false)
+  const [isSaving, { setTrue: setIsSaving, setFalse: setNotSaving }] = useBoolean(false)
   const [currentConversation, setCurrentConversation] = useState<ConversationItem | null>(null)
   const showRename = (item: ConversationItem) => {
     setCurrentConversation(item)
     setShowRename()
   }
   const handleRename = async (newName: string) => {
-    if (!newName.trim() || !currentConversation)
+    if (!newName.trim() || !currentConversation) {
+      Toast.notify({
+        type: 'error',
+        message: t('common.chat.conversationNameCanNotEmpty'),
+      })
       return
+    }
 
+    setIsSaving()
     const currId = currentConversation.id
-    await renameConversation(isInstalledApp, installedAppId, currId as string, newName)
-    Toast.notify({
-      type: 'success',
-      message: t('common.actionMsg.modifiedSuccessfully'),
-    })
-    onListChanged?.(list.map((item) => {
-      if (item.id === currId) {
-        return {
-          ...item,
-          name: newName,
+    try {
+      await renameConversation(isInstalledApp, installedAppId, currId as string, newName)
+      Toast.notify({
+        type: 'success',
+        message: t('common.actionMsg.modifiedSuccessfully'),
+      })
+      onListChanged?.(list.map((item) => {
+        if (item.id === currId) {
+          return {
+            ...item,
+            name: newName,
+          }
         }
-      }
-      return item
-    }))
-    setHideRename()
+        return item
+      }))
+      setHideRename()
+    }
+    finally {
+      setNotSaving()
+    }
   }
   return (
     <nav
@@ -158,7 +170,7 @@ const List: FC<IListProps> = ({
         <RenameModal
           isShow={isShowRename}
           onClose={setHideRename}
-          saveLoading={false}
+          saveLoading={isSaving}
           name={currentConversation?.name || ''}
           onSave={handleRename}
         />

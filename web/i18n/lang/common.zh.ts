@@ -338,6 +338,7 @@ const translation = {
     renameConversation: '重命名会话',
     conversationName: '会话名称',
     conversationNamePlaceholder: '请输入会话名称',
+    conversationNameCanNotEmpty: '会话名称必填',
   },
 }
 
