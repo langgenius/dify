@@ -101,6 +101,7 @@ export function Markdown(props: { content: string }) {
                     style={atelierHeathLight}
                     customStyle={{
                       paddingLeft: 12,
+                      backgroundColor: '#fff',
                     }}
                     language={match[1]}
                     showLineNumbers
