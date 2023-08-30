@@ -406,7 +406,8 @@ class IndexingRunner:
                 filter(UploadFile.id == data_source_info['upload_file_id']). \
                 one_or_none()
 
-            text_docs = FileExtractor.load(file_detail)
+            if file_detail:
+                text_docs = FileExtractor.load(file_detail)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
             text_docs = loader.load()
