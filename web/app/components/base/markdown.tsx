@@ -8,7 +8,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import copy from 'copy-to-clipboard'
+import CopyBtn from '@/app/components/app/chat/copy-btn'
 
 // import { copyToClipboard } from "../utils";
 // https://txtfiddle.com/~hlshwya/extract-urls-from-text
@@ -74,24 +74,34 @@ export function Markdown(props: { content: string }) {
         components={{
           code({ node, inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
+            const language = match?.[1]
+            const languageShowName = (() => {
+              if (language)
+                return language.charAt(0).toUpperCase() + language.substring(1)
+
+              return 'Plain'
+            })()
             return (!inline && match)
               ? (
                 <div>
                   <div
-                    className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
+                    className='flex justify-between h-8 items-center p-1 pl-3 border-b'
                     style={{
-                      boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
-                    }}
-                    onClick={() => {
-                      copy(String(children).replace(/\n$/, ''))
-                      setIsCopied(true)
+                      borderColor: 'rgba(0, 0, 0, 0.05)',
                     }}
                   >
-                    <div className={'w-6 h-6 hover:bg-gray-50'}>复制</div>
+                    <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+                    <CopyBtn
+                      value={String(children).replace(/\n$/, '')}
+                      isPlain
+                    />
                   </div>
                   <SyntaxHighlighter
                     {...props}
                     style={atelierHeathLight}
+                    customStyle={{
+                      paddingLeft: 12,
+                    }}
                     language={match[1]}
                     showLineNumbers
                     PreTag="div"
@@ -99,7 +109,6 @@ export function Markdown(props: { content: string }) {
                     {String(children).replace(/\n$/, '')}
                   </SyntaxHighlighter>
                 </div>
-
               )
               : (
                 <code {...props} className={className}>
