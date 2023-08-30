@@ -65,6 +65,7 @@ function useConversation() {
     setCurrInputs,
     currConversationInfo,
     setNewConversationInfo,
+    existConversationInfo,
     setExistConversationInfo,
   }
 }

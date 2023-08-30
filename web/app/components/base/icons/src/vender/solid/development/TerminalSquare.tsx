@@ -11,4 +11,6 @@ const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseP
   ref,
 ) => <IconBase {...props} ref={ref} data={data as IconData} />)
 
+Icon.displayName = 'TerminalSquare'
+
 export default Icon

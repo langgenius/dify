@@ -7,6 +7,7 @@ const translation = {
     action: {
       pin: '置顶',
       unpin: '取消置顶',
+      rename: '重命名',
       delete: '删除',
     },
     delete: {

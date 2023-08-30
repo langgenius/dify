@@ -73,6 +73,10 @@ export const delConversation = async (isInstalledApp: boolean, installedAppId = 
   return getAction('del', isInstalledApp)(getUrl(`conversations/${id}`, isInstalledApp, installedAppId))
 }
 
+export const renameConversation = async (isInstalledApp: boolean, installedAppId = '', id: string, name: string) => {
+  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { name } })
+}
+
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
   return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
 }

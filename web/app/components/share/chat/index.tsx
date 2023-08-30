@@ -101,6 +101,7 @@ const Main: FC<IMainProps> = ({
     resetNewConversationInputs,
     setCurrInputs,
     setNewConversationInfo,
+    existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -186,6 +187,23 @@ const Main: FC<IMainProps> = ({
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
+  const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
+
+  useEffect(() => {
+    (async () => {
+      if (controlChatUpdateAllConversation && !isNewConversation) {
+        const { data: allConversations } = await fetchAllConversations() as { data: ConversationItem[]; has_more: boolean }
+        const item = allConversations.find(item => item.id === currConversationId)
+        setAllConversationList(allConversations)
+        if (item) {
+          setExistConversationInfo({
+            ...existConversationInfo,
+            name: item?.name || '',
+          } as any)
+        }
+      }
+    })()
+  }, [controlChatUpdateAllConversation])
 
   const handleConversationSwitch = () => {
     if (!inited)
@@ -546,8 +564,16 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
+        onListChanged={(list) => {
+          setConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        onPinnedListChanged={(list) => {
+          setPinnedConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
