@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
 import { ToastContext } from '@/app/components/base/toast'
@@ -88,7 +89,8 @@ const Form = ({
           <div>{t('datasetSettings.form.name')}</div>
         </div>
         <input
-          className={inputClass}
+          disabled={!currentDataset?.embedding_available}
+          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60')}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -99,7 +101,8 @@ const Form = ({
         </div>
         <div>
           <textarea
-            className={`${inputClass} block mb-2 h-[120px] py-2 resize-none`}
+            disabled={!currentDataset?.embedding_available}
+            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -116,6 +119,7 @@ const Form = ({
         </div>
         <div className='w-[480px]'>
           <PermissionsRadio
+            disable={!currentDataset?.embedding_available}
             value={permission}
             onChange={v => setPermission(v)}
           />
@@ -130,6 +134,7 @@ const Form = ({
             </div>
             <div className='w-[480px]'>
               <IndexMethodRadio
+                disable={!currentDataset?.embedding_available}
                 value={indexMethod}
                 onChange={v => setIndexMethod(v)}
               />
@@ -161,18 +166,20 @@ const Form = ({
           </div>
         </div>
       )}
-      <div className={rowClass}>
-        <div className={labelClass} />
-        <div className='w-[480px]'>
-          <Button
-            className='min-w-24 text-sm'
-            type='primary'
-            onClick={handleSave}
-          >
-            {t('datasetSettings.form.save')}
-          </Button>
+      {currentDataset?.embedding_available && (
+        <div className={rowClass}>
+          <div className={labelClass} />
+          <div className='w-[480px]'>
+            <Button
+              className='min-w-24 text-sm'
+              type='primary'
+              onClick={handleSave}
+            >
+              {t('datasetSettings.form.save')}
+            </Button>
+          </div>
         </div>
-      </div>
+      )}
       {showSetAPIKeyModal && (
         <AccountSetting activeTab="provider" onCancel={async () => {
           setShowSetAPIKeyModal(false)
