@@ -148,14 +148,28 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-
         try:
             DatasetService.check_dataset_permission(
                 dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-
-        return marshal(dataset, dataset_detail_fields), 200
+        data = marshal(dataset, dataset_detail_fields)
+        # check embedding setting
+        provider_service = ProviderService()
+        # get valid model list
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
+        model_names = []
+        for valid_model in valid_model_list:
+            model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
+        if data['indexing_technique'] == 'high_quality':
+            item_model = f"{data['embedding_model']}:{data['embedding_model_provider']}"
+            if item_model in model_names:
+                data['embedding_available'] = True
+            else:
+                data['embedding_available'] = False
+        else:
+            data['embedding_available'] = True
+        return data, 200
 
     @setup_required
     @login_required

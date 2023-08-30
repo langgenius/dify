@@ -2,7 +2,7 @@
 import { useTranslation } from 'react-i18next'
 import classNames from 'classnames'
 import s from './index.module.css'
-import { DataSet } from '@/models/datasets'
+import type { DataSet } from '@/models/datasets'
 
 const itemClass = `
   w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
@@ -13,11 +13,13 @@ const radioClass = `
 type IIndexMethodRadioProps = {
   value?: DataSet['indexing_technique']
   onChange: (v?: DataSet['indexing_technique']) => void
+  disable?: boolean
 }
 
 const IndexMethodRadio = ({
   value,
-  onChange
+  onChange,
+  disable,
 }: IIndexMethodRadioProps) => {
   const { t } = useTranslation()
   const options = [
@@ -25,28 +27,32 @@ const IndexMethodRadio = ({
       key: 'high_quality',
       text: t('datasetSettings.form.indexMethodHighQuality'),
       desc: t('datasetSettings.form.indexMethodHighQualityTip'),
-      icon: 'high-quality'
+      icon: 'high-quality',
     },
     {
       key: 'economy',
       text: t('datasetSettings.form.indexMethodEconomy'),
       desc: t('datasetSettings.form.indexMethodEconomyTip'),
-      icon: 'economy'
-    }
+      icon: 'economy',
+    },
   ]
 
   return (
     <div className={classNames(s.wrapper, 'flex justify-between w-full')}>
       {
         options.map(option => (
-          <div 
-            key={option.key} 
+          <div
+            key={option.key}
             className={classNames(
-              option.key === value && s['item-active'], 
+              itemClass,
               s.item,
-              itemClass
+              option.key === value && s['item-active'],
+              disable && s.disable,
             )}
-            onClick={() => onChange(option.key as DataSet['indexing_technique'])}
+            onClick={() => {
+              if (!disable)
+                onChange(option.key as DataSet['indexing_technique'])
+            }}
           >
             <div className='flex items-center mb-1'>
               <div className={classNames(s.icon, s[`${option.icon}-icon`])} />

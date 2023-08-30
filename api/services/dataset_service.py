@@ -137,28 +137,31 @@ class DatasetService:
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
+        filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_permission(dataset, user)
+        action = None
         if dataset.indexing_technique != data['indexing_technique']:
             # if update indexing_technique
             if data['indexing_technique'] == 'economy':
-                deal_dataset_vector_index_task.delay(dataset_id, 'remove')
+                action = 'remove'
+                filtered_data['embedding_model'] = None
+                filtered_data['embedding_model_provider'] = None
             elif data['indexing_technique'] == 'high_quality':
-                # check embedding model setting
+                action = 'add'
+                # get embedding model setting
                 try:
-                    ModelFactory.get_embedding_model(
-                        tenant_id=current_user.current_tenant_id,
-                        model_provider_name=dataset.embedding_model_provider,
-                        model_name=dataset.embedding_model
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=current_user.current_tenant_id
                     )
+                    filtered_data['embedding_model'] = embedding_model.name
+                    filtered_data['embedding_model_provider'] = embedding_model.model_provider.provider_name
                 except LLMBadRequestError:
                     raise ValueError(
                         f"No Embedding Model available. Please configure a valid provider "
                         f"in the Settings -> Model Provider.")
                 except ProviderTokenNotInitError as ex:
                     raise ValueError(ex.description)
-                deal_dataset_vector_index_task.delay(dataset_id, 'add')
-        filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
 
         filtered_data['updated_by'] = user.id
         filtered_data['updated_at'] = datetime.datetime.now()
@@ -166,7 +169,8 @@ class DatasetService:
         dataset.query.filter_by(id=dataset_id).update(filtered_data)
 
         db.session.commit()
-
+        if action:
+            deal_dataset_vector_index_task.delay(dataset_id, action)
         return dataset
 
     @staticmethod
