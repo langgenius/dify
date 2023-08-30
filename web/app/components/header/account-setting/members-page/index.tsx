@@ -16,6 +16,7 @@ import { fetchMembers } from '@/service/common'
 import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
+import type { InvitationResult } from '@/models/common'
 
 dayjs.extend(relativeTime)
 
@@ -30,7 +31,7 @@ const MembersPage = () => {
   const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
-  const [invitationLink, setInvitationLink] = useState('')
+  const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
@@ -78,7 +79,7 @@ const MembersPage = () => {
                   <div className='shrink-0 w-[96px] flex items-center'>
                     {
                       (owner && account.role !== 'owner')
-                        ? <Operation member={account} onOperate={() => mutate()} />
+                        ? <Operation member={account} onOperate={mutate} />
                         : <div className='px-3 text-[13px] text-gray-700'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>
@@ -92,9 +93,9 @@ const MembersPage = () => {
         inviteModalVisible && (
           <InviteModal
             onCancel={() => setInviteModalVisible(false)}
-            onSend={(url) => {
+            onSend={(invitationResults) => {
               setInvitedModalVisible(true)
-              setInvitationLink(url)
+              setInvitationResults(invitationResults)
               mutate()
             }}
           />
@@ -103,7 +104,7 @@ const MembersPage = () => {
       {
         invitedModalVisible && (
           <InvitedModal
-            invitationLink={invitationLink}
+            invitationResults={invitationResults}
             onCancel={() => setInvitedModalVisible(false)}
           />
         )

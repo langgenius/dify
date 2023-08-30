@@ -182,3 +182,17 @@ export type DocumentsLimitResponse = {
   documents_count: number
   documents_limit: number
 }
+
+export type InvitationResult = {
+  status: 'success'
+  email: string
+  url: string
+} | {
+  status: 'failed'
+  email: string
+  message: string
+}
+
+export type InvitationResponse = CommonResponse & {
+  invitation_results: InvitationResult[]
+}

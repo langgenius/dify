@@ -4618,6 +4618,11 @@ react-markdown@^8.0.6:
     unist-util-visit "^4.0.0"
     vfile "^5.0.0"
 
+react-multi-email@^1.0.14:
+  version "1.0.16"
+  resolved "https://registry.yarnpkg.com/react-multi-email/-/react-multi-email-1.0.16.tgz#126f78011d02cc27d7462f47befbafff2a53d683"
+  integrity sha512-dgg4TY3P5FWz6c4ghgxH1bjZOgYL3S/HN+EUNe6dqHbLMVzeyud1ztDUlqvft4NX1sUxKx2IF2zDq1yAJQA5yQ==
+
 react-papaparse@^4.1.0:
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/react-papaparse/-/react-papaparse-4.1.0.tgz#09e1cdae55a0f3e36650aaf7ff9bb5ee2aed164a"
