@@ -138,8 +138,6 @@ const translation = {
     emailPlaceholder: 'Please input emails',
     sendInvite: 'Send Invite',
     invitedAsRole: 'Invited as {{role}} user',
-    invitedAsNormalUserDesc: 'Only can use apps, can not build apps',
-    invitedAsAdminUserDesc: 'Can build apps & manage team settings',
     invitationSent: 'Invitation sent',
     invitationSentTip: 'Invitation sent, and they can sign in to Dify to access your team data.',
     invitationLink: 'Invitation Link',

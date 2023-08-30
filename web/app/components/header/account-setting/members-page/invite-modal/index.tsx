@@ -31,12 +31,12 @@ const InviteModal = ({
 
   const InvitingRoles = useMemo(() => [
     {
-      name: 'Normal',
-      description: t('common.members.invitedAsNormalUserDesc'),
+      name: 'normal',
+      description: t('common.members.normalTip'),
     },
     {
-      name: 'Admin',
-      description: t('common.members.invitedAsAdminUserDesc'),
+      name: 'admin',
+      description: t('common.members.adminTip'),
     },
   ], [t])
   const [role, setRole] = useState(InvitingRoles[0])
@@ -44,11 +44,14 @@ const InviteModal = ({
   const handleSend = useCallback(async () => {
     if (emails.map(email => emailRegex.test(email)).every(Boolean)) {
       try {
-        const res = await inviteMember({ url: '/workspaces/current/members/invite-email', body: { emails, role: role.name.toLowerCase() } })
+        const { result, invitation_results } = await inviteMember({
+          url: '/workspaces/current/members/invite-email',
+          body: { emails, role: role.name },
+        })
 
-        if (res.result === 'success') {
+        if (result === 'success') {
           onCancel()
-          onSend(res.invitation_results)
+          onSend(invitation_results)
         }
       }
       catch (e) {}
@@ -92,7 +95,7 @@ const InviteModal = ({
           <Listbox value={role} onChange={setRole}>
             <div className="relative pb-6">
               <Listbox.Button className="relative w-full py-2 pl-3 pr-10 text-left bg-gray-100 outline-none border-none appearance-none text-sm text-gray-900 rounded-lg">
-                <span className="block truncate">{t('common.members.invitedAsRole', { role: role.name })}</span>
+                <span className="block truncate capitalize">{t('common.members.invitedAsRole', { role: t(`common.members.${role.name}`) })}</span>
               </Listbox.Button>
               <Transition
                 as={Fragment}
@@ -121,10 +124,10 @@ const InviteModal = ({
                             {selected && (<CheckIcon className="h-5 w-5" aria-hidden="true" />)}
                           </span>
                           <div className=' flex flex-col flex-grow'>
-                            <span className={`${selected ? 'font-medium' : 'font-normal'} block truncate`}>
-                              {role.name}
+                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
+                              {t(`common.members.${role.name}`)}
                             </span>
-                            <span className={`${selected ? 'font-medium' : 'font-normal'} block truncate`}>
+                            <span className={`${selected ? 'font-medium' : 'font-normal'} capitalize block truncate`}>
                               {role.description}
                             </span>
                           </div>
