@@ -36,12 +36,12 @@ const ItemOperation: FC<IItemOperationProps> = ({
           e.stopPropagation()
         }}>
           <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>
-            <Pin02 className='w-4 h-4 text-gray-500'/>
+            <Pin02 className='shrink-0 w-4 h-4 text-gray-500'/>
             <span className={s.actionName}>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
             <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={onRenameConversation}>
-              <Edit03 className='w-4 h-4 text-gray-500'/>
+              <Edit03 className='shrink-0 w-4 h-4 text-gray-500'/>
               <span className={s.actionName}>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}
@@ -57,8 +57,8 @@ const ItemOperation: FC<IItemOperationProps> = ({
       trigger='click'
       position='br'
       btnElement={<div />}
-      btnClassName={open => cn(className, s.btn, 'h-6 w-6 rounded-md border-none p-1', open && '!bg-gray-100 !shadow-none')}
-      className={'!w-[120px] h-fit !z-20'}
+      btnClassName={open => cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', open && '!bg-gray-100 !shadow-none')}
+      className={'!w-[120px] !px-0 h-fit !z-20'}
     />
   )
 }
