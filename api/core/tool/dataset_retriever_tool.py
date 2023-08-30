@@ -111,9 +111,10 @@ class DatasetRetrieverTool(BaseTool):
                                                                                            float('inf')))
                 for segment in sorted_segments:
                     if segment.answer:
-                        document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer}')
+                        document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer} \n'
+                                                     f'segment_id:{segment.id}')
                     else:
-                        document_context_list.append(segment.content)
+                        document_context_list.append(f'{segment.content} \nsegment_id:{segment.id}')
 
             return str("\n".join(document_context_list))
 
