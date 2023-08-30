@@ -1,5 +1,5 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import { XMarkIcon } from '@heroicons/react/24/outline'
+import { QuestionMarkCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 import InvitationLink from './invitation-link'
@@ -59,15 +59,18 @@ const InvitedModal = ({
                 !!failedInvationResults.length
                   && <>
                     <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.failedinvitationEmails')}</div>
-                    <div className='flex flex-wrap justify-between gap-2'>
+                    <div className='flex flex-wrap justify-between gap-y-1'>
                       {
                         failedInvationResults.map(item =>
-                          <div key={item.email} className='flex justify-center border hover:border-red-700 border-red-300 border-dashed rounded-md px-1'>
+                          <div key={item.email} className='flex justify-center border border-red-300 rounded-md px-1 bg-orange-50'>
                             <Tooltip
                               selector={`invitation-tag-${item.email}`}
                               htmlContent={item.message}
                             >
-                              <div tabIndex={0} className='flex justify-center items-center text-sm'>{item.email}</div>
+                              <div className='flex justify-center items-center text-sm gap-1'>
+                                {item.email}
+                                <QuestionMarkCircleIcon className='w-4 h-4 text-red-300' />
+                              </div>
                             </Tooltip>
                           </div>,
                         )
