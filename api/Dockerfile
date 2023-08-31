@@ -1,3 +1,4 @@
+# packages install stage
 FROM python:3.10-slim AS base
 
 LABEL maintainer="takatost@gmail.com"
@@ -6,6 +7,7 @@ COPY requirements.txt /requirements.txt
 
 RUN pip install --prefix=/pkg -r requirements.txt
 
+# build stage
 FROM python:3.10-slim AS builder
 
 ENV FLASK_APP app.py
