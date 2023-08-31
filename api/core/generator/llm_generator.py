@@ -1,3 +1,4 @@
+import json
 import logging
 
 from langchain.schema import OutputParserException
@@ -22,18 +23,25 @@ class LLMGenerator:
         if len(query) > 2000:
             query = query[:300] + "...[TRUNCATED]..." + query[-300:]
 
-        prompt = prompt.format(query=query)
+        query = query.replace("\n", " ")
+
+        prompt += query + "\n"
 
         model_instance = ModelFactory.get_text_generation_model(
             tenant_id=tenant_id,
             model_kwargs=ModelKwargs(
-                max_tokens=50
+                temperature=1,
+                max_tokens=100
             )
         )
 
         prompts = [PromptMessage(content=prompt)]
         response = model_instance.run(prompts)
         answer = response.content
+
+        result_dict = json.loads(answer)
+        answer = result_dict['Your Output']
+
         return answer.strip()
 
     @classmethod
