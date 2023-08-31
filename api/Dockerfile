@@ -1,6 +1,12 @@
-FROM python:3.10-slim
+FROM python:3.10-slim AS base
 
 LABEL maintainer="takatost@gmail.com"
+
+COPY requirements.txt /requirements.txt
+
+RUN pip install --prefix=/pkg -r requirements.txt
+
+FROM python:3.10-slim AS builder
 
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
@@ -15,13 +21,12 @@ EXPOSE 5001
 
 WORKDIR /app/api
 
-RUN apt-get update && \
-    apt-get install -y bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev nodejs
+RUN apt-get update \ 
+    && apt-get install -y --no-install-recommends bash curl wget vim gcc g++ python3-dev libc-dev libffi-dev nodejs \
+    && apt-get autoremove \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY requirements.txt /app/api/requirements.txt
-
-RUN pip install -r requirements.txt
-
+COPY --from=base /pkg /usr/local
 COPY . /app/api/
 
 COPY docker/entrypoint.sh /entrypoint.sh
