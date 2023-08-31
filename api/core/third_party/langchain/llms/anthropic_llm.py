@@ -29,6 +29,7 @@ class AnthropicLLM(ChatAnthropic):
                 base_url=values["anthropic_api_url"],
                 api_key=values["anthropic_api_key"],
                 timeout=values["default_request_timeout"],
+                max_retries=0,
                 connection_pool_limits=Limits(max_connections=200, max_keepalive_connections=100),
             )
             values["async_client"] = anthropic.AsyncAnthropic(
