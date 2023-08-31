@@ -6,7 +6,7 @@ import requests
 from langchain.document_loaders import TextLoader, Docx2txtLoader
 from langchain.schema import Document
 
-from core.data_loader.loader.csv import CSVLoader
+from core.data_loader.loader.csv_loader import CSVLoader
 from core.data_loader.loader.excel import ExcelLoader
 from core.data_loader.loader.html import HTMLLoader
 from core.data_loader.loader.markdown import MarkdownLoader
