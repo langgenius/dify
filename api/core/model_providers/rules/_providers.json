@@ -10,5 +10,6 @@
   "replicate",
   "huggingface_hub",
   "xinference",
-  "openllm"
+  "openllm",
+  "localai"
 ]

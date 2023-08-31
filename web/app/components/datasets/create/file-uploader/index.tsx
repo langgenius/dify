@@ -78,7 +78,7 @@ const FileUploader = ({
   const isValid = useCallback((file: File) => {
     const { size } = file
     const ext = `.${getFileType(file)}`
-    const isValidType = ACCEPTS.includes(ext)
+    const isValidType = ACCEPTS.includes(ext.toLowerCase())
     if (!isValidType)
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
 

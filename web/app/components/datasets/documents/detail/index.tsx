@@ -22,6 +22,7 @@ import type { MetadataType } from '@/service/datasets'
 import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
 import type { DocForm } from '@/models/datasets'
+import { useDatasetDetailContext } from '@/context/dataset-detail'
 
 export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
@@ -50,6 +51,8 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   const router = useRouter()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { dataset } = useDatasetDetailContext()
+  const embeddingAvailable = !!dataset?.embedding_available
   const [showMetadata, setShowMetadata] = useState(true)
   const [newSegmentModalVisible, setNewSegmentModalVisible] = useState(false)
   const [batchModalVisible, setBatchModalVisible] = useState(false)
@@ -128,7 +131,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           <Divider className='!h-4' type='vertical' />
           <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
           <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
-          {documentDetail && !documentDetail.archived && (
+          {embeddingAvailable && documentDetail && !documentDetail.archived && (
             <SegmentAdd
               importStatus={importStatus}
               clearProcessStatus={resetProcessStatus}
@@ -138,6 +141,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
           )}
           <OperationAction
             scene='detail'
+            embeddingAvailable={embeddingAvailable}
             detail={{
               enabled: documentDetail?.enabled || false,
               archived: documentDetail?.archived || false,
@@ -161,6 +165,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed
+                  embeddingAvailable={embeddingAvailable}
                   showNewSegmentModal={newSegmentModalVisible}
                   onNewSegmentModalChange={setNewSegmentModalVisible}
                   importStatus={importStatus}
