@@ -18,7 +18,11 @@ import {
 import type { Placement } from '@floating-ui/react'
 
 type PortalToFollowElemOptions = {
-  initialOpen?: boolean
+  /*
+  * top, bottom, left, right
+  * start, end. Default is middle
+  * combine: top-start, top-end
+  */
   placement?: Placement
   open?: boolean
   offset?: number
@@ -123,14 +127,15 @@ React.HTMLProps<HTMLElement> & { asChild?: boolean }
   }
 
   return (
-    <button
+    <div
       ref={ref}
+      className='inline-block'
       // The user can style the trigger based on the state
       data-state={context.open ? 'open' : 'closed'}
       {...context.getReferenceProps(props)}
     >
       {children}
-    </button>
+    </div>
   )
 })
 PortalToFollowElemTrigger.displayName = 'PortalToFollowElemTrigger'
