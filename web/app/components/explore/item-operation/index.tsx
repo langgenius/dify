@@ -32,13 +32,20 @@ const ItemOperation: FC<IItemOperationProps> = ({
 
   return (
     <PortalToFollowElem
-      open={open} onOpenChange={setOpen}
+      open={open}
+      onOpenChange={setOpen}
+      placement='bottom-end'
+      offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger
+        onClick={() => setOpen(v => !v)}
+      >
         <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', open && '!bg-gray-100 !shadow-none')}></div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className="PortalToFollowElem">
-        <div className={`${s.popupPanel} w-full py-1 bg-white`} onClick={(e) => {
+      <PortalToFollowElemContent
+        className="z-50"
+      >
+        <div className={'min-w-[120px] p-1 bg-white rounded-lg border border--gray-200 shadow-lg'} onClick={(e) => {
           e.stopPropagation()
         }}>
           <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>

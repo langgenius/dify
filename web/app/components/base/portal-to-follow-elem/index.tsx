@@ -21,15 +21,16 @@ type PortalToFollowElemOptions = {
   initialOpen?: boolean
   placement?: Placement
   open?: boolean
+  offset?: number
   onOpenChange?: (open: boolean) => void
 }
 
 export function usePortalToFollowElem({
-  placement = 'bottom-end',
-  open: controlledOpen,
+  placement = 'bottom',
+  open,
+  offset: offsetValue = 0,
   onOpenChange: setControlledOpen,
 }: PortalToFollowElemOptions = {}) {
-  const open = controlledOpen
   const setOpen = setControlledOpen
 
   const data = useFloating({
@@ -38,7 +39,7 @@ export function usePortalToFollowElem({
     onOpenChange: setOpen,
     whileElementsMounted: autoUpdate,
     middleware: [
-      offset(5),
+      offset(offsetValue),
       flip({
         crossAxis: placement.includes('-'),
         fallbackAxisSideDirection: 'start',
@@ -52,10 +53,10 @@ export function usePortalToFollowElem({
 
   const hover = useHover(context, {
     move: false,
-    enabled: controlledOpen == null,
+    enabled: open == null,
   })
   const focus = useFocus(context, {
-    enabled: controlledOpen == null,
+    enabled: open == null,
   })
   const dismiss = useDismiss(context)
   const role = useRole(context, { role: 'tooltip' })
