@@ -88,7 +88,7 @@ class WebReaderTool(BaseTool):
             texts = character_splitter.split_text(page_contents)
             docs = [Document(page_content=t) for t in texts]
 
-            if len(docs) == 0:
+            if len(docs) <= 1:
                 return "No content found."
 
             docs = docs[1:]
