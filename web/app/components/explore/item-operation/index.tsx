@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import { Edit03, Pin02, Trash03 } from '../../base/icons/src/vender/line/general'
 
 import s from './style.module.css'
@@ -10,6 +11,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 
 export type IItemOperationProps = {
   className?: string
+  isItemHovering: boolean
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void
@@ -20,6 +22,7 @@ export type IItemOperationProps = {
 
 const ItemOperation: FC<IItemOperationProps> = ({
   className,
+  isItemHovering,
   isPinned,
   togglePin,
   isShowRenameConversation,
@@ -29,7 +32,13 @@ const ItemOperation: FC<IItemOperationProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-
+  const ref = useRef(null)
+  const [isHovering, { setTrue: setIsHovering, setFalse: setNotHovering }] = useBoolean(false)
+  console.log([isItemHovering, isHovering].join(';'))
+  useEffect(() => {
+    if (!isItemHovering && !isHovering)
+      setOpen(false)
+  }, [isItemHovering, isHovering])
   return (
     <PortalToFollowElem
       open={open}
@@ -40,14 +49,20 @@ const ItemOperation: FC<IItemOperationProps> = ({
       <PortalToFollowElemTrigger
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', open && '!bg-gray-100 !shadow-none')}></div>
+        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', open && `${s.open} !bg-gray-100 !shadow-none`)}></div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-50"
       >
-        <div className={'min-w-[120px] p-1 bg-white rounded-lg border border--gray-200 shadow-lg'} onClick={(e) => {
-          e.stopPropagation()
-        }}>
+        <div
+          ref={ref}
+          className={'min-w-[120px] p-1 bg-white rounded-lg border border--gray-200 shadow-lg'}
+          onMouseEnter={setIsHovering}
+          onMouseLeave={setNotHovering}
+          onClick={(e) => {
+            e.stopPropagation()
+          }}
+        >
           <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>
             <Pin02 className='shrink-0 w-4 h-4 text-gray-500'/>
             <span className={s.actionName}>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
@@ -64,7 +79,6 @@ const ItemOperation: FC<IItemOperationProps> = ({
               <span className={cn(s.actionName, s.deleteActionItemChild)}>{t('explore.sidebar.action.delete')}</span>
             </div>
           )}
-
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
