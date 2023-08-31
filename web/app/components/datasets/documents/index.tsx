@@ -51,7 +51,7 @@ const NotionIcon = ({ className }: React.SVGProps<SVGElement>) => {
   </svg>
 }
 
-const EmptyElement: FC<{ onClick: () => void; type?: 'upload' | 'sync' }> = ({ onClick, type = 'upload' }) => {
+const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' | 'sync' }> = ({ canAdd = true, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
   return <div className={s.emptyWrapper}>
     <div className={s.emptyElement}>
@@ -62,7 +62,7 @@ const EmptyElement: FC<{ onClick: () => void; type?: 'upload' | 'sync' }> = ({ o
       <div className={s.emptyTip}>
         {t(`datasetDocuments.list.empty.${type}.tip`)}
       </div>
-      {type === 'upload' && <Button onClick={onClick} className={s.addFileBtn}>
+      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn}>
         <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
       </Button>}
     </div>
@@ -84,6 +84,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
+  const embeddingAvailable = !!dataset?.embedding_available
 
   const query = useMemo(() => {
     return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
@@ -205,20 +206,19 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onChange={debounce(setSearchValue, 500)}
             value={searchValue}
           />
-          <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
-            <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-            {
-              isDataSourceNotion
-                ? t('datasetDocuments.list.addPages')
-                : t('datasetDocuments.list.addFile')
-            }
-          </Button>
+          {embeddingAvailable && (
+            <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
+              <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
+              {isDataSourceNotion && t('datasetDocuments.list.addPages')}
+              {!isDataSourceNotion && t('datasetDocuments.list.addFile')}
+            </Button>
+          )}
         </div>
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
-            : <EmptyElement onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
+            ? <List embeddingAvailable={embeddingAvailable} documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
+            : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > limit)

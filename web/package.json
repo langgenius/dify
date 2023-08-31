@@ -54,6 +54,7 @@
     "react-i18next": "^12.2.0",
     "react-infinite-scroll-component": "^6.1.0",
     "react-markdown": "^8.0.6",
+    "react-multi-email": "^1.0.14",
     "react-papaparse": "^4.1.0",
     "react-slider": "^2.0.4",
     "react-sortablejs": "^6.1.4",

@@ -46,6 +46,7 @@ export const SegmentIndexTag: FC<{ positionId: string | number; className?: stri
 }
 
 type ISegmentDetailProps = {
+  embeddingAvailable: boolean
   segInfo?: Partial<SegmentDetailModel> & { id: string }
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
   onUpdate: (segmentId: string, q: string, a: string, k: string[]) => void
@@ -56,6 +57,7 @@ type ISegmentDetailProps = {
  * Show all the contents of the segment
  */
 const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
+  embeddingAvailable,
   segInfo,
   archived,
   onChangeSwitch,
@@ -146,7 +148,7 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
             </Button>
           </>
         )}
-        {!isEditing && !archived && (
+        {!isEditing && !archived && embeddingAvailable && (
           <>
             <div className='group relative flex justify-center items-center w-6 h-6 hover:bg-gray-100 rounded-md cursor-pointer'>
               <div className={cn(s.editTip, 'hidden items-center absolute -top-10 px-3 h-[34px] bg-white rounded-lg whitespace-nowrap text-xs font-semibold text-gray-700 group-hover:flex')}>{t('common.operation.edit')}</div>
@@ -183,15 +185,19 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
         </div>
         <div className='flex items-center'>
           <StatusItem status={segInfo?.enabled ? 'enabled' : 'disabled'} reverse textCls='text-gray-500 text-xs' />
-          <Divider type='vertical' className='!h-2' />
-          <Switch
-            size='md'
-            defaultValue={segInfo?.enabled}
-            onChange={async (val) => {
-              await onChangeSwitch?.(segInfo?.id || '', val)
-            }}
-            disabled={archived}
-          />
+          {embeddingAvailable && (
+            <>
+              <Divider type='vertical' className='!h-2' />
+              <Switch
+                size='md'
+                defaultValue={segInfo?.enabled}
+                onChange={async (val) => {
+                  await onChangeSwitch?.(segInfo?.id || '', val)
+                }}
+                disabled={archived}
+              />
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -209,6 +215,7 @@ export const splitArray = (arr: any[], size = 3) => {
 }
 
 type ICompletedProps = {
+  embeddingAvailable: boolean
   showNewSegmentModal: boolean
   onNewSegmentModalChange: (state: boolean) => void
   importStatus: ProcessStatus | string | undefined
@@ -220,6 +227,7 @@ type ICompletedProps = {
  * Support search and filter
  */
 const Completed: FC<ICompletedProps> = ({
+  embeddingAvailable,
   showNewSegmentModal,
   onNewSegmentModalChange,
   importStatus,
@@ -384,6 +392,7 @@ const Completed: FC<ICompletedProps> = ({
         <Input showPrefix wrapperClassName='!w-52' className='!h-8' onChange={debounce(setSearchValue, 500)} />
       </div>
       <InfiniteVirtualList
+        embeddingAvailable={embeddingAvailable}
         hasNextPage={lastSegmentsRes?.has_more ?? true}
         isNextPageLoading={loading}
         items={allSegments}
@@ -395,6 +404,7 @@ const Completed: FC<ICompletedProps> = ({
       />
       <Modal isShow={currSegment.showModal} onClose={() => {}} className='!max-w-[640px] !overflow-visible'>
         <SegmentDetail
+          embeddingAvailable={embeddingAvailable}
           segInfo={currSegment.segInfo ?? { id: '' }}
           onChangeSwitch={onChangeSwitch}
           onUpdate={handleUpdateSegment}

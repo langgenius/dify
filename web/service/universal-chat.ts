@@ -45,6 +45,10 @@ export const delConversation = async (id: string) => {
   return del(getUrl(`conversations/${id}`))
 }
 
+export const renameConversation = async (id: string, name: string) => {
+  return post(getUrl(`conversations/${id}/name`), { body: { name } })
+}
+
 export const fetchChatList = async (conversationId: string) => {
   return get(getUrl('messages'), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
 }

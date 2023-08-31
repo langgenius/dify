@@ -136,10 +136,12 @@ const translation = {
     email: '邮箱',
     emailInvalid: '邮箱格式无效',
     emailPlaceholder: '输入邮箱',
-    sendInvite: '添加',
+    sendInvite: '发送邀请',
+    invitedAsRole: '邀请为{{role}}用户',
     invitationSent: '邀请已发送',
     invitationSentTip: '邀请已发送，对方登录 Dify 后即可访问你的团队数据。',
     invitationLink: '邀请链接',
+    failedinvitationEmails: '邀请以下邮箱失败',
     ok: '好的',
     removeFromTeam: '移除团队',
     removeFromTeamTip: '将取消团队访问',
@@ -333,6 +335,12 @@ const translation = {
     'whisper-1': 'Whisper-1',
     'claude-instant-1': 'Claude-Instant',
     'claude-2': 'Claude-2',
+  },
+  chat: {
+    renameConversation: '重命名会话',
+    conversationName: '会话名称',
+    conversationNamePlaceholder: '请输入会话名称',
+    conversationNameCanNotEmpty: '会话名称必填',
   },
 }
 

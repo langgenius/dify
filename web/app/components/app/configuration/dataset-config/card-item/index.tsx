@@ -43,7 +43,7 @@ const CardItem: FC<ICardItemProps> = ({
                 selector={`unavailable-tag-${config.id}`}
                 htmlContent={t('dataset.unavailableTip')}
               >
-                <span className='shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                <span className='shrink-0 inline-flex whitespace-nowrap px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
               </Tooltip>
             )}
           </div>
