@@ -1,6 +1,9 @@
 'use client'
 import cn from 'classnames'
+import React, { useRef } from 'react'
+
 import { useRouter } from 'next/navigation'
+import { useHover } from 'ahooks'
 import s from './style.module.css'
 import ItemOperation from '@/app/components/explore/item-operation'
 import AppIcon from '@/app/components/base/app-icon'
@@ -30,35 +33,30 @@ export default function AppNavItem({
 }: IAppNavItemProps) {
   const router = useRouter()
   const url = `/explore/installed/${id}`
-
+  const ref = useRef(null)
+  const isHovering = useHover(ref)
   return (
     <div
+      ref={ref}
       key={id}
       className={cn(
         s.item,
         isSelected ? s.active : 'hover:bg-gray-200',
-        'flex h-8 justify-between px-2 rounded-lg text-sm font-normal ',
+        'flex h-8 items-center justify-between px-2 rounded-lg text-sm font-normal ',
       )}
       onClick={() => {
         router.push(url) // use Link causes popup item always trigger jump. Can not be solved by e.stopPropagation().
       }}
     >
       <div className='flex items-center space-x-2 w-0 grow'>
-        {/* <div
-          className={cn(
-            'shrink-0 mr-2 h-6 w-6 rounded-md border bg-[#D5F5F6]',
-          )}
-          style={{
-            borderColor: '0.5px solid rgba(0, 0, 0, 0.05)'
-          }}
-        /> */}
         <AppIcon size='tiny' icon={icon} background={icon_background} />
         <div className='overflow-hidden text-ellipsis whitespace-nowrap'>{name}</div>
       </div>
       {
-        <div className={cn(s.opBtn, 'shrink-0')} onClick={e => e.stopPropagation()}>
+        <div className='shrink-0 h-6' onClick={e => e.stopPropagation()}>
           <ItemOperation
             isPinned={isPinned}
+            isItemHovering={isHovering}
             togglePin={togglePin}
             isShowDelete={!uninstallable && !isSelected}
             onDelete={() => onDelete(id)}
