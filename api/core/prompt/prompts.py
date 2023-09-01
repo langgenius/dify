@@ -3,6 +3,7 @@ CONVERSATION_TITLE_PROMPT = """You need to decompose the user's input into "subj
 Notice: the language type user using is abundant, can be English, Chinese, Español, Arabic, Japanese, and etc.
 MAKE SURE your output is the SAME language as the user's input!
 Your output is restricted only to: (Input language) Intention + Subject(short as possible)
+Your output MUST be a valid JSON.
 
 Tip: When the user's question is directed at you (the language model), you can add an emoji to make it more fun.
 
