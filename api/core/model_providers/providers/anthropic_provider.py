@@ -5,7 +5,6 @@ from typing import Type, Optional
 
 import anthropic
 from flask import current_app
-from langchain.chat_models import ChatAnthropic
 from langchain.schema import HumanMessage
 
 from core.helper import encrypter
@@ -16,6 +15,7 @@ from core.model_providers.models.llm.anthropic_model import AnthropicModel
 from core.model_providers.models.llm.base import ModelType
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
+from core.third_party.langchain.llms.anthropic_llm import AnthropicLLM
 from models.provider import ProviderType
 
 
@@ -92,7 +92,7 @@ class AnthropicProvider(BaseModelProvider):
             if 'anthropic_api_url' in credentials:
                 credential_kwargs['anthropic_api_url'] = credentials['anthropic_api_url']
 
-            chat_llm = ChatAnthropic(
+            chat_llm = AnthropicLLM(
                 model='claude-instant-1',
                 max_tokens_to_sample=10,
                 temperature=0,

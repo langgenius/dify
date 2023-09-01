@@ -283,6 +283,7 @@ class OrchestratorRuleParser:
     def _dynamic_calc_retrieve_k(cls, dataset: Dataset, rest_tokens: int) -> int:
         DEFAULT_K = 2
         CONTEXT_TOKENS_PERCENT = 0.3
+        MAX_K = 10
 
         if rest_tokens == -1:
             return DEFAULT_K
@@ -311,5 +312,5 @@ class OrchestratorRuleParser:
         if context_limit_tokens <= segment_max_tokens * DEFAULT_K:
             return DEFAULT_K
 
-        # Expand the k value when there's still some room left in the 30% rest tokens space
-        return context_limit_tokens // segment_max_tokens
+        # Expand the k value when there's still some room left in the 30% rest tokens space, but less than the MAX_K
+        return min(context_limit_tokens // segment_max_tokens, MAX_K)

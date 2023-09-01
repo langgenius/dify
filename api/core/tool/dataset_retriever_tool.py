@@ -98,7 +98,8 @@ class DatasetRetrieverTool(BaseTool):
             hit_callback.on_tool_end(documents)
             document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in documents]
-            segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+            segments = DocumentSegment.query.filter(DocumentSegment.dataset_id == self.dataset_id,
+                                                    DocumentSegment.completed_at.isnot(None),
                                                     DocumentSegment.status == 'completed',
                                                     DocumentSegment.enabled == True,
                                                     DocumentSegment.index_node_id.in_(index_node_ids)
