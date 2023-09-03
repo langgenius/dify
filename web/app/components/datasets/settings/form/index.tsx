@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
 import { ToastContext } from '@/app/components/base/toast'
@@ -88,7 +89,8 @@ const Form = ({
           <div>{t('datasetSettings.form.name')}</div>
         </div>
         <input
-          className={inputClass}
+          disabled={!currentDataset?.embedding_available}
+          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60')}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -99,7 +101,8 @@ const Form = ({
         </div>
         <div>
           <textarea
-            className={`${inputClass} block mb-2 h-[120px] py-2 resize-none`}
+            disabled={!currentDataset?.embedding_available}
+            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
@@ -116,61 +119,67 @@ const Form = ({
         </div>
         <div className='w-[480px]'>
           <PermissionsRadio
+            disable={!currentDataset?.embedding_available}
             value={permission}
             onChange={v => setPermission(v)}
           />
         </div>
       </div>
-      <div className='w-full h-0 border-b-[0.5px] border-b-gray-200 my-2' />
-      <div className={rowClass}>
-        <div className={labelClass}>
-          <div>{t('datasetSettings.form.indexMethod')}</div>
+      {currentDataset && currentDataset.indexing_technique && (
+        <>
+          <div className='w-full h-0 border-b-[0.5px] border-b-gray-200 my-2' />
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div>{t('datasetSettings.form.indexMethod')}</div>
+            </div>
+            <div className='w-[480px]'>
+              <IndexMethodRadio
+                disable={!currentDataset?.embedding_available}
+                value={indexMethod}
+                onChange={v => setIndexMethod(v)}
+              />
+            </div>
+          </div>
+        </>
+      )}
+      {currentDataset && currentDataset.indexing_technique === 'high_quality' && (
+        <div className={rowClass}>
+          <div className={labelClass}>
+            <div>{t('datasetSettings.form.embeddingModel')}</div>
+          </div>
+          <div className='w-[480px]'>
+            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
+              <ModelSelector
+                readonly
+                value={{
+                  providerName: currentDataset.embedding_model_provider as ProviderEnum,
+                  modelName: currentDataset.embedding_model,
+                }}
+                modelType={ModelType.embeddings}
+                onChange={() => {}}
+              />
+            </div>
+            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
+              {t('datasetSettings.form.embeddingModelTip')}
+              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowSetAPIKeyModal(true)}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+            </div>
+          </div>
         </div>
-        <div className='w-[480px]'>
-          <IndexMethodRadio
-            value={indexMethod}
-            onChange={v => setIndexMethod(v)}
-          />
+      )}
+      {currentDataset?.embedding_available && (
+        <div className={rowClass}>
+          <div className={labelClass} />
+          <div className='w-[480px]'>
+            <Button
+              className='min-w-24 text-sm'
+              type='primary'
+              onClick={handleSave}
+            >
+              {t('datasetSettings.form.save')}
+            </Button>
+          </div>
         </div>
-      </div>
-      <div className={rowClass}>
-        <div className={labelClass}>
-          <div>{t('datasetSettings.form.embeddingModel')}</div>
-        </div>
-        <div className='w-[480px]'>
-          {currentDataset && (
-            <>
-              <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-                <ModelSelector
-                  readonly
-                  value={{
-                    providerName: currentDataset.embedding_model_provider as ProviderEnum,
-                    modelName: currentDataset.embedding_model,
-                  }}
-                  modelType={ModelType.embeddings}
-                  onChange={() => {}}
-                />
-              </div>
-              <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-                {t('datasetSettings.form.embeddingModelTip')}
-                <span className='text-[#155eef] cursor-pointer' onClick={() => setShowSetAPIKeyModal(true)}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      <div className={rowClass}>
-        <div className={labelClass} />
-        <div className='w-[480px]'>
-          <Button
-            className='min-w-24 text-sm'
-            type='primary'
-            onClick={handleSave}
-          >
-            {t('datasetSettings.form.save')}
-          </Button>
-        </div>
-      </div>
+      )}
       {showSetAPIKeyModal && (
         <AccountSetting activeTab="provider" onCancel={async () => {
           setShowSetAPIKeyModal(false)

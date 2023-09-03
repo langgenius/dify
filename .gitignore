@@ -149,4 +149,5 @@ sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
-.vscode/
+.vscode/*
+!.vscode/launch.json

@@ -35,6 +35,8 @@ import exploreEn from './lang/explore.en'
 import exploreZh from './lang/explore.zh'
 import { getLocaleOnClient } from '@/i18n/client'
 
+const localLng = getLocaleOnClient()
+
 const resources = {
   'en': {
     translation: {
@@ -86,7 +88,7 @@ i18n.use(initReactI18next)
   // init i18next
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
-    lng: getLocaleOnClient(),
+    lng: localLng,
     fallbackLng: 'en',
     // debug: true,
     resources,

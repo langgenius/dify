@@ -1,10 +1,10 @@
 import logging
+import csv
 from typing import Optional, Dict, List
 
 from langchain.document_loaders import CSVLoader as LCCSVLoader
 from langchain.document_loaders.helpers import detect_file_encodings
-
-from models.dataset import Document
+from langchain.schema import Document
 
 logger = logging.getLogger(__name__)
 

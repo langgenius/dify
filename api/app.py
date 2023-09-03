@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from werkzeug.exceptions import Forbidden
 
@@ -145,8 +145,12 @@ def load_user(user_id):
                     _create_tenant_for_account(account)
                 session['workspace_id'] = account.current_tenant_id
 
-            account.last_active_at = datetime.utcnow()
-            db.session.commit()
+            current_time = datetime.utcnow()
+
+            # update last_active_at when last_active_at is more than 10 minutes ago
+            if current_time - account.last_active_at > timedelta(minutes=10):
+                account.last_active_at = current_time
+                db.session.commit()
 
             # Log in the user with the updated user_id
             flask_login.login_user(account, remember=True)

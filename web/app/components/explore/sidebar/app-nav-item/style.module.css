@@ -7,11 +7,3 @@
   color: #344054;
   font-weight: 500;
 }
-
-.opBtn {
-  visibility: hidden;
-}
-
-.item:hover .opBtn {
-  visibility: visible;
-}

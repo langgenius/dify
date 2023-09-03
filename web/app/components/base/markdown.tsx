@@ -8,6 +8,8 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import CopyBtn from '@/app/components/app/chat/copy-btn'
+
 // import { copyToClipboard } from "../utils";
 // https://txtfiddle.com/~hlshwya/extract-urls-from-text
 // const urlRegex = /\b((https?|ftp|file):\/\/|(www|ftp)\.)[-A-Z0-9+&@#\/%?=~_|$!:,.;]*[A-Z0-9+&@#\/%=~_|$]/ig
@@ -61,6 +63,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 }
 
 export function Markdown(props: { content: string }) {
+  const [isCopied, setIsCopied] = useState(false)
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -71,16 +74,42 @@ export function Markdown(props: { content: string }) {
         components={{
           code({ node, inline, className, children, ...props }) {
             const match = /language-(\w+)/.exec(className || '')
+            const language = match?.[1]
+            const languageShowName = (() => {
+              if (language)
+                return language.charAt(0).toUpperCase() + language.substring(1)
+
+              return 'Plain'
+            })()
             return (!inline && match)
               ? (
-                <SyntaxHighlighter
-                  {...props}
-                  children={String(children).replace(/\n$/, '')}
-                  style={atelierHeathLight}
-                  language={match[1]}
-                  showLineNumbers
-                  PreTag="div"
-                />
+                <div>
+                  <div
+                    className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+                    style={{
+                      borderColor: 'rgba(0, 0, 0, 0.05)',
+                    }}
+                  >
+                    <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+                    <CopyBtn
+                      value={String(children).replace(/\n$/, '')}
+                      isPlain
+                    />
+                  </div>
+                  <SyntaxHighlighter
+                    {...props}
+                    style={atelierHeathLight}
+                    customStyle={{
+                      paddingLeft: 12,
+                      backgroundColor: '#fff',
+                    }}
+                    language={match[1]}
+                    showLineNumbers
+                    PreTag="div"
+                  >
+                    {String(children).replace(/\n$/, '')}
+                  </SyntaxHighlighter>
+                </div>
               )
               : (
                 <code {...props} className={className}>

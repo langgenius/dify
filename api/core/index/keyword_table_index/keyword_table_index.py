@@ -25,7 +25,7 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = {}
         for text in texts:
             keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(text.metadata['doc_id'], list(keywords))
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
         dataset_keyword_table = DatasetKeywordTable(
@@ -52,7 +52,7 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = self._get_dataset_keyword_table()
         for text in texts:
             keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(text.metadata['doc_id'], list(keywords))
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
         self._save_dataset_keyword_table(keyword_table)
@@ -199,15 +199,18 @@ class KeywordTableIndex(BaseIndex):
 
         return sorted_chunk_indices[: k]
 
-    def _update_segment_keywords(self, node_id: str, keywords: List[str]):
-        document_segment = db.session.query(DocumentSegment).filter(DocumentSegment.index_node_id == node_id).first()
+    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]):
+        document_segment = db.session.query(DocumentSegment).filter(
+            DocumentSegment.dataset_id == dataset_id,
+            DocumentSegment.index_node_id == node_id
+        ).first()
         if document_segment:
             document_segment.keywords = keywords
             db.session.commit()
 
     def create_segment_keywords(self, node_id: str, keywords: List[str]):
         keyword_table = self._get_dataset_keyword_table()
-        self._update_segment_keywords(node_id, keywords)
+        self._update_segment_keywords(self.dataset.id, node_id, keywords)
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
 
