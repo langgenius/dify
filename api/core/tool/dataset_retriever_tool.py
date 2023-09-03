@@ -1,3 +1,4 @@
+import json
 from typing import Type
 
 from flask import current_app
@@ -111,10 +112,21 @@ class DatasetRetrieverTool(BaseTool):
                                                                                            float('inf')))
                 for segment in sorted_segments:
                     if segment.answer:
+                        # context = {
+                        #     'question': segment.content,
+                        #     'answer': segment.answer,
+                        #     'segment_id': segment.id
+                        # }
                         document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer} \n'
                                                      f'segment_id:{segment.id}')
+                        # document_context_list.append(json.dumps(context))
                     else:
+                        # context = {
+                        #     'content': segment.content,
+                        #     'segment_id': segment.id
+                        # }
                         document_context_list.append(f'{segment.content} \nsegment_id:{segment.id}')
+                        # document_context_list.append(json.dumps(context))
 
             return str("\n".join(document_context_list))
 
