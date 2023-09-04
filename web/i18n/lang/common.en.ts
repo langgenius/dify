@@ -40,12 +40,12 @@ const translation = {
   actionMsg: {
     noModification: 'No modifications at the moment.',
     modifiedSuccessfully: 'Modified successfully',
-    modificationFailed: 'Modification failed',
+    modifiedUnsuccessfully: 'Modified unsuccessfully',
     copySuccessfully: 'Copied successfully',
     paySucceeded: 'Payment succeeded',
     payCancelled: 'Payment cancelled',
-    generatedSuccessfully: 'Generated Successfully',
-    generationFailed: 'Generation Failed',
+    generatedSuccessfully: 'Generated successfully',
+    generatedUnsuccessfully: 'Generated unsuccessfully',
   },
   model: {
     params: {
