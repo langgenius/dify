@@ -14,7 +14,12 @@ import CopyBtn from '@/app/components/app/chat/copy-btn'
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
   javascript: 'JavaScript',
+  typescript: 'TypeScript',
+  vbscript: 'VBScript',
+  css: 'CSS',
+  html: 'HTML',
   xml: 'XML',
+  php: 'PHP',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
