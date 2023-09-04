@@ -119,9 +119,11 @@ function AppCard({
   }
 
   const onGenCode = async () => {
-    setGenLoading(true)
-    await asyncRunSafe(onGenerateCode?.() as any)
-    setGenLoading(false)
+    if (onGenerateCode) {
+      setGenLoading(true)
+      await asyncRunSafe(onGenerateCode())
+      setGenLoading(false)
+    }
   }
 
   return (

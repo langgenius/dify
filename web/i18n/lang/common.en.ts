@@ -44,6 +44,8 @@ const translation = {
     copySuccessfully: 'Copied successfully',
     paySucceeded: 'Payment succeeded',
     payCancelled: 'Payment cancelled',
+    generatedSuccessfully: 'Generated Successfully',
+    generationFailed: 'Generation Failed',
   },
   model: {
     params: {

@@ -134,7 +134,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                     <div className="space-y-3 ">
                       {promptVariables.map(({ key, name, type, options, max_length, required }) => (
                         <div key={key} className="flex items-center justify-between">
-                          <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                          <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900 break-all">{name || key}</div>
                           {type === 'select'
                             ? (
                               <Select

@@ -33,18 +33,21 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   if (!response)
     return <Loading />
 
-  const handleError = (err: Error | null) => {
+  const handleError = (err: Error | null, msgs = {
+    success: 'modifiedSuccessfully',
+    fail: 'modificationFailed',
+  }) => {
     if (!err) {
       notify({
         type: 'success',
-        message: t('common.actionMsg.modifiedSuccessfully'),
+        message: t(`common.actionMsg.${msgs.success}`),
       })
       mutate(detailParams)
     }
     else {
       notify({
         type: 'error',
-        message: t('common.actionMsg.modificationFailed'),
+        message: t(`common.actionMsg.${msgs.fail}`),
       })
     }
   }
@@ -88,7 +91,11 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
         url: `/apps/${appId}/site/access-token-reset`,
       }) as Promise<UpdateAppSiteCodeResponse>,
     )
-    handleError(err)
+
+    handleError(err, {
+      success: 'generatedSuccessfully',
+      fail: 'generationFailed',
+    })
   }
 
   return (
