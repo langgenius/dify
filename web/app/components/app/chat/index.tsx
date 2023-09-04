@@ -56,7 +56,7 @@ export type IChatProps = {
 const Chat: FC<IChatProps> = ({
   configElem,
   chatList,
-  controlChatUpdateAllConversation,
+
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   isHideSendInput = false,
