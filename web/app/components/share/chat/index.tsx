@@ -318,7 +318,7 @@ const Main: FC<IMainProps> = ({
       content: caculatedIntroduction,
       isAnswer: true,
       feedbackDisabled: true,
-      isOpeningStatement: isPublicVersion,
+      isOpeningStatement: true,
     }
     if (caculatedIntroduction)
       return [openstatement]
