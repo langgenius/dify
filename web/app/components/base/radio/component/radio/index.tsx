@@ -12,7 +12,7 @@ export type IRadioProps = {
   checked?: boolean
   value?: string | number
   disabled?: boolean
-  onChange?: (e: any) => void
+  onChange?: (e?: IRadioProps['value']) => void
 }
 
 export default function Radio({

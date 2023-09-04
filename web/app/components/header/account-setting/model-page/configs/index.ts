@@ -10,6 +10,7 @@ import minimax from './minimax'
 import chatglm from './chatglm'
 import xinference from './xinference'
 import openllm from './openllm'
+import localai from './localai'
 
 export default {
   openai,
@@ -24,4 +25,5 @@ export default {
   chatglm,
   xinference,
   openllm,
+  localai,
 }

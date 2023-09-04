@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.3.16",
+  "version": "0.3.19",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -16,6 +16,7 @@
   "dependencies": {
     "@babel/runtime": "^7.22.3",
     "@emoji-mart/data": "^1.1.2",
+    "@floating-ui/react": "^0.25.2",
     "@formatjs/intl-localematcher": "^0.2.32",
     "@headlessui/react": "^1.7.13",
     "@heroicons/react": "^2.0.16",
@@ -54,6 +55,7 @@
     "react-i18next": "^12.2.0",
     "react-infinite-scroll-component": "^6.1.0",
     "react-markdown": "^8.0.6",
+    "react-multi-email": "^1.0.14",
     "react-papaparse": "^4.1.0",
     "react-slider": "^2.0.4",
     "react-sortablejs": "^6.1.4",
@@ -94,7 +96,6 @@
     "@types/sortablejs": "^1.15.1",
     "eslint": "8.36.0",
     "eslint-config-next": "^13.4.7",
-    "eslint-plugin-react-hooks": "^4.6.0",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",
     "miragejs": "^0.1.47",

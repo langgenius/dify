@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, SVGProps } from 'react'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
@@ -33,7 +33,7 @@ type Props = {
   detailUpdate: VoidFunction
 }
 
-const StopIcon: FC<{ className?: string }> = ({ className }) => {
+const StopIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <g clip-path="url(#clip0_2328_2798)">
       <path d="M1.5 3.9C1.5 3.05992 1.5 2.63988 1.66349 2.31901C1.8073 2.03677 2.03677 1.8073 2.31901 1.66349C2.63988 1.5 3.05992 1.5 3.9 1.5H8.1C8.94008 1.5 9.36012 1.5 9.68099 1.66349C9.96323 1.8073 10.1927 2.03677 10.3365 2.31901C10.5 2.63988 10.5 3.05992 10.5 3.9V8.1C10.5 8.94008 10.5 9.36012 10.3365 9.68099C10.1927 9.96323 9.96323 10.1927 9.68099 10.3365C9.36012 10.5 8.94008 10.5 8.1 10.5H3.9C3.05992 10.5 2.63988 10.5 2.31901 10.3365C2.03677 10.1927 1.8073 9.96323 1.66349 9.68099C1.5 9.36012 1.5 8.94008 1.5 8.1V3.9Z" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -46,7 +46,7 @@ const StopIcon: FC<{ className?: string }> = ({ className }) => {
   </svg>
 }
 
-const ResumeIcon: FC<{ className?: string }> = ({ className }) => {
+const ResumeIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M10 3.5H5C3.34315 3.5 2 4.84315 2 6.5C2 8.15685 3.34315 9.5 5 9.5H10M10 3.5L8 1.5M10 3.5L8 5.5" stroke="#344054" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>

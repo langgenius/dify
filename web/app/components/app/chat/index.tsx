@@ -24,6 +24,7 @@ import type { DataSet } from '@/models/datasets'
 export type IChatProps = {
   configElem?: React.ReactNode
   chatList: IChatItem[]
+  controlChatUpdateAllConversation?: number
   /**
    * Whether to display the editing area and rating status
    */
@@ -55,6 +56,7 @@ export type IChatProps = {
 const Chat: FC<IChatProps> = ({
   configElem,
   chatList,
+  controlChatUpdateAllConversation,
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   isHideSendInput = false,

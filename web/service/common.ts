@@ -2,9 +2,10 @@ import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate, CommonResponse, DataSourceNotion,
+  DocumentsLimitResponse,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace, LangGeniusVersionResponse, Member,
+  IWorkspace, InvitationResponse, LangGeniusVersionResponse, Member,
   OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
   SetupStatusResponse, UserProfileOriginResponse,
 } from '@/models/common'
@@ -69,8 +70,8 @@ export const fetchAccountIntegrates: Fetcher<{ data: AccountIntegrate[] | null }
   return get(url, { params }) as Promise<{ data: AccountIntegrate[] | null }>
 }
 
-export const inviteMember: Fetcher<CommonResponse & { account: Member; invite_url: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<CommonResponse & { account: Member; invite_url: string }>
+export const inviteMember: Fetcher<InvitationResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<InvitationResponse>
 }
 
 export const updateMemberRole: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -178,4 +179,8 @@ export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; res
 
 export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: string }> = ({ url }) => {
   return get(url) as Promise<FileUploadConfigResponse>
+}
+
+export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url) => {
+  return get(url) as Promise<DocumentsLimitResponse>
 }

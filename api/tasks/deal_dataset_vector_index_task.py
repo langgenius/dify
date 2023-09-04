@@ -31,7 +31,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
             raise Exception('Dataset not found')
 
         if action == "remove":
-            index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=True)
+            index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=False)
             index.delete()
         elif action == "add":
             dataset_documents = db.session.query(DatasetDocument).filter(
@@ -43,7 +43,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
 
             if dataset_documents:
                 # save vector index
-                index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=True)
+                index = IndexBuilder.get_index(dataset, 'high_quality', ignore_high_quality_check=False)
                 documents = []
                 for dataset_document in dataset_documents:
                     # delete from vector index
@@ -65,7 +65,7 @@ def deal_dataset_vector_index_task(dataset_id: str, action: str):
                         documents.append(document)
 
                 # save vector index
-                index.add_texts(documents)
+                index.create(documents)
 
         end_at = time.perf_counter()
         logging.info(

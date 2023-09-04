@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import cn from 'classnames'
 import s from './base.module.css'
@@ -8,17 +10,19 @@ import PageSelector from './page-selector'
 import { preImportNotionPages } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { NotionConnector } from '@/app/components/datasets/create/step-one'
-import type { DataSourceNotionPage, DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
+import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import { ToastContext } from '@/app/components/base/toast'
 
-export type NotionPageSelectorValue = DataSourceNotionPage & { workspace_id: string }
 
 type NotionPageSelectorProps = {
   value?: string[]
-  onSelect: (selectedPages: NotionPageSelectorValue[]) => void
+  onSelect: (selectedPages: NotionPage[]) => void
   canPreview?: boolean
   previewPageId?: string
-  onPreview?: (selectedPage: NotionPageSelectorValue) => void
+  onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
+  countLimit: number
+  countUsed: number
 }
 
 const NotionPageSelector = ({
@@ -28,7 +32,11 @@ const NotionPageSelector = ({
   previewPageId,
   onPreview,
   datasetId = '',
+  countLimit,
+  countUsed,
 }: NotionPageSelectorProps) => {
+  const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
   const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
@@ -71,9 +79,13 @@ const NotionPageSelector = ({
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
-  const handleSelecPages = (selectedPagesId: Set<string>) => {
-    setSelectedPagesId(new Set(Array.from(selectedPagesId)))
-    const selectedPages = Array.from(selectedPagesId).map(pageId => getPagesMapAndSelectedPagesId[0][pageId])
+  const handleSelecPages = (newSelectedPagesId: Set<string>) => {
+    const selectedPages = Array.from(newSelectedPagesId).map(pageId => getPagesMapAndSelectedPagesId[0][pageId])
+    if (selectedPages.length > countLimit - countUsed) {
+      notify({ type: 'error', message: t('datasetCreation.stepOne.overCountLimit', { countLimit }) })
+      return false
+    }
+    setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
   }
   const handlePreviewPage = (previewPageId: string) => {

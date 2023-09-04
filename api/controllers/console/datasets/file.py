@@ -83,7 +83,7 @@ class FileApi(Resource):
             raise FileTooLargeError(message)
 
         extension = file.filename.split('.')[-1]
-        if extension not in ALLOWED_EXTENSIONS:
+        if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         # user uuid as file name
@@ -136,7 +136,7 @@ class FilePreviewApi(Resource):
 
         # extract text from file
         extension = upload_file.extension
-        if extension not in ALLOWED_EXTENSIONS:
+        if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         text = FileExtractor.load(upload_file, return_text=True)

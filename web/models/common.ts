@@ -138,6 +138,10 @@ export type DataSourceNotionPage = {
   is_bound: boolean
 }
 
+export type NotionPage = DataSourceNotionPage & {
+  workspace_id: string
+}
+
 export type DataSourceNotionPageMap = Record<string, DataSourceNotionPage & { workspace_id: string }>
 
 export type DataSourceNotionWorkspace = {
@@ -172,4 +176,23 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   file_size_limit: number
   batch_count_limit: number
+}
+
+export type DocumentsLimitResponse = {
+  documents_count: number
+  documents_limit: number
+}
+
+export type InvitationResult = {
+  status: 'success'
+  email: string
+  url: string
+} | {
+  status: 'failed'
+  email: string
+  message: string
+}
+
+export type InvitationResponse = CommonResponse & {
+  invitation_results: InvitationResult[]
 }

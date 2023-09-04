@@ -141,6 +141,6 @@ class AzureOpenAIModel(BaseLLM):
         else:
             return ex
 
-    @classmethod
-    def support_streaming(cls):
+    @property
+    def support_streaming(self):
         return True

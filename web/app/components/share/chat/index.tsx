@@ -101,6 +101,7 @@ const Main: FC<IMainProps> = ({
     resetNewConversationInputs,
     setCurrInputs,
     setNewConversationInfo,
+    existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -186,6 +187,23 @@ const Main: FC<IMainProps> = ({
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
+  const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
+
+  useEffect(() => {
+    (async () => {
+      if (controlChatUpdateAllConversation && !isNewConversation) {
+        const { data: allConversations } = await fetchAllConversations() as { data: ConversationItem[]; has_more: boolean }
+        const item = allConversations.find(item => item.id === currConversationId)
+        setAllConversationList(allConversations)
+        if (item) {
+          setExistConversationInfo({
+            ...existConversationInfo,
+            name: item?.name || '',
+          } as any)
+        }
+      }
+    })()
+  }, [controlChatUpdateAllConversation])
 
   const handleConversationSwitch = () => {
     if (!inited)
@@ -546,8 +564,16 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
+        onListChanged={(list) => {
+          setConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        onPinnedListChanged={(list) => {
+          setPinnedConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
@@ -570,8 +596,11 @@ const Main: FC<IMainProps> = ({
   if (appUnavailable)
     return <AppUnavailable isUnknwonReason={isUnknwonReason} />
 
-  if (!appId || !siteInfo || !promptConfig)
-    return <Loading type='app' />
+  if (!appId || !siteInfo || !promptConfig) {
+    return <div className='flex h-screen w-full'>
+      <Loading type='app' />
+    </div>
+  }
 
   return (
     <div className='bg-gray-100'>
@@ -588,7 +617,7 @@ const Main: FC<IMainProps> = ({
 
       <div
         className={cn(
-          'flex rounded-t-2xl bg-white overflow-hidden',
+          'flex rounded-t-2xl bg-white overflow-hidden h-full w-full',
           isInstalledApp && 'rounded-b-2xl',
         )}
         style={isInstalledApp
@@ -611,7 +640,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)] tablet:h-screen',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>

@@ -2,7 +2,7 @@
 import React from 'react'
 import type { FC } from 'react'
 
-type IInputTypeIconProps = {
+export type IInputTypeIconProps = {
   type: 'string' | 'select'
 }
 

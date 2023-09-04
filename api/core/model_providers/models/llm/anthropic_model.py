@@ -1,11 +1,8 @@
-import decimal
 import logging
-from functools import wraps
 from typing import List, Optional, Any
 
 import anthropic
 from langchain.callbacks.manager import Callbacks
-from langchain.chat_models import ChatAnthropic
 from langchain.schema import LLMResult
 
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
@@ -13,6 +10,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.entity.message import PromptMessage, MessageType
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
+from core.third_party.langchain.llms.anthropic_llm import AnthropicLLM
 
 
 class AnthropicModel(BaseLLM):
@@ -20,7 +18,7 @@ class AnthropicModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        return ChatAnthropic(
+        return AnthropicLLM(
             model=self.name,
             streaming=self.streaming,
             callbacks=self.callbacks,
@@ -75,7 +73,7 @@ class AnthropicModel(BaseLLM):
         else:
             return ex
 
-    @classmethod
-    def support_streaming(cls):
+    @property
+    def support_streaming(self):
         return True
 

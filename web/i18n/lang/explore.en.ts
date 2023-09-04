@@ -7,6 +7,7 @@ const translation = {
     action: {
       pin: 'Pin',
       unpin: 'Unpin',
+      rename: 'Rename',
       delete: 'Delete',
     },
     delete: {

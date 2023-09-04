@@ -6,7 +6,7 @@ import requests
 from langchain.document_loaders import TextLoader, Docx2txtLoader
 from langchain.schema import Document
 
-from core.data_loader.loader.csv import CSVLoader
+from core.data_loader.loader.csv_loader import CSVLoader
 from core.data_loader.loader.excel import ExcelLoader
 from core.data_loader.loader.html import HTMLLoader
 from core.data_loader.loader.markdown import MarkdownLoader
@@ -47,17 +47,18 @@ class FileExtractor:
                        upload_file: Optional[UploadFile] = None) -> Union[List[Document] | str]:
         input_file = Path(file_path)
         delimiter = '\n'
-        if input_file.suffix == '.xlsx':
+        file_extension = input_file.suffix.lower()
+        if file_extension == '.xlsx':
             loader = ExcelLoader(file_path)
-        elif input_file.suffix == '.pdf':
+        elif file_extension == '.pdf':
             loader = PdfLoader(file_path, upload_file=upload_file)
-        elif input_file.suffix in ['.md', '.markdown']:
+        elif file_extension in ['.md', '.markdown']:
             loader = MarkdownLoader(file_path, autodetect_encoding=True)
-        elif input_file.suffix in ['.htm', '.html']:
+        elif file_extension in ['.htm', '.html']:
             loader = HTMLLoader(file_path)
-        elif input_file.suffix == '.docx':
+        elif file_extension == '.docx':
             loader = Docx2txtLoader(file_path)
-        elif input_file.suffix == '.csv':
+        elif file_extension == '.csv':
             loader = CSVLoader(file_path, autodetect_encoding=True)
         else:
             # txt

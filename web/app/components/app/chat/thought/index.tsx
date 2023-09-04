@@ -37,12 +37,13 @@ const Thought: FC<IThoughtProps> = ({
   const getThoughtText = (item: ThoughtItem) => {
     try {
       const input = JSON.parse(item.tool_input)
-
+      // dataset
+      if (item.tool.startsWith('dataset-')) {
+        const dataSetId = item.tool.replace('dataset-', '')
+        const datasetName = dataSets?.find(item => item.id === dataSetId)?.name || 'unknown dataset'
+        return t('explore.universalChat.thought.res.dataset').replace('{datasetName}', `<span class="text-gray-700">${datasetName}</span>`)
+      }
       switch (item.tool) {
-        case 'dataset':
-          // eslint-disable-next-line no-case-declarations
-          const datasetName = dataSets?.find(item => item.id === input.dataset_id)?.name || 'unknown dataset'
-          return t('explore.universalChat.thought.res.dataset').replace('{datasetName}', `<span class="text-gray-700">${datasetName}</span>`)
         case 'web_reader':
           return t(`explore.universalChat.thought.res.webReader.${!input.cursor ? 'normal' : 'hasPageInfo'}`).replace('{url}', `<a href="${input.url}" class="text-[#155EEF]">${input.url}</a>`)
         case 'google_search':

@@ -10,6 +10,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from core.index.index import IndexBuilder
+from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from flask_login import current_user
@@ -91,16 +92,18 @@ class DatasetService:
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
                 f'Dataset with name {name} already exists.')
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=current_user.current_tenant_id
-        )
+        embedding_model = None
+        if indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=current_user.current_tenant_id
+            )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
-        dataset.embedding_model_provider = embedding_model.model_provider.provider_name
-        dataset.embedding_model = embedding_model.name
+        dataset.embedding_model_provider = embedding_model.model_provider.provider_name if embedding_model else None
+        dataset.embedding_model = embedding_model.name if embedding_model else None
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -116,16 +119,49 @@ class DatasetService:
             return dataset
 
     @staticmethod
+    def check_dataset_model_setting(dataset):
+        if dataset.indexing_technique == 'high_quality':
+            try:
+                ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+            except LLMBadRequestError:
+                raise ValueError(
+                    f"No Embedding Model available. Please configure a valid provider "
+                    f"in the Settings -> Model Provider.")
+            except ProviderTokenNotInitError as ex:
+                raise ValueError(f"The dataset in unavailable, due to: "
+                                 f"{ex.description}")
+
+    @staticmethod
     def update_dataset(dataset_id, data, user):
+        filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
         dataset = DatasetService.get_dataset(dataset_id)
         DatasetService.check_dataset_permission(dataset, user)
+        action = None
         if dataset.indexing_technique != data['indexing_technique']:
             # if update indexing_technique
             if data['indexing_technique'] == 'economy':
-                deal_dataset_vector_index_task.delay(dataset_id, 'remove')
+                action = 'remove'
+                filtered_data['embedding_model'] = None
+                filtered_data['embedding_model_provider'] = None
             elif data['indexing_technique'] == 'high_quality':
-                deal_dataset_vector_index_task.delay(dataset_id, 'add')
-        filtered_data = {k: v for k, v in data.items() if v is not None or k == 'description'}
+                action = 'add'
+                # get embedding model setting
+                try:
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=current_user.current_tenant_id
+                    )
+                    filtered_data['embedding_model'] = embedding_model.name
+                    filtered_data['embedding_model_provider'] = embedding_model.model_provider.provider_name
+                except LLMBadRequestError:
+                    raise ValueError(
+                        f"No Embedding Model available. Please configure a valid provider "
+                        f"in the Settings -> Model Provider.")
+                except ProviderTokenNotInitError as ex:
+                    raise ValueError(ex.description)
 
         filtered_data['updated_by'] = user.id
         filtered_data['updated_at'] = datetime.datetime.now()
@@ -133,7 +169,8 @@ class DatasetService:
         dataset.query.filter_by(id=dataset_id).update(filtered_data)
 
         db.session.commit()
-
+        if action:
+            deal_dataset_vector_index_task.delay(dataset_id, action)
         return dataset
 
     @staticmethod
@@ -394,16 +431,26 @@ class DocumentService:
     def save_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                       account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                       created_from: str = 'web'):
+
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
-            documents_count = DocumentService.get_tenant_documents_count()
-            tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
-                raise ValueError(f"over document limit {tenant_document_count}.")
+            if 'original_document_id' not in document_data or not document_data['original_document_id']:
+                count = 0
+                if document_data["data_source"]["type"] == "upload_file":
+                    upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+                    count = len(upload_file_list)
+                elif document_data["data_source"]["type"] == "notion_import":
+                    notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+                    for notion_info in notion_info_list:
+                        count = count + len(notion_info['pages'])
+                documents_count = DocumentService.get_tenant_documents_count()
+                total_count = documents_count + count
+                tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
+                if total_count > tenant_document_count:
+                    raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
-            db.session.commit()
 
         if not dataset.indexing_technique:
             if 'indexing_technique' not in document_data \
@@ -411,6 +458,13 @@ class DocumentService:
                 raise ValueError("Indexing technique is required")
 
             dataset.indexing_technique = document_data["indexing_technique"]
+            if document_data["indexing_technique"] == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id
+                )
+                dataset.embedding_model = embedding_model.name
+                dataset.embedding_model_provider = embedding_model.model_provider.provider_name
+
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
@@ -455,12 +509,12 @@ class DocumentService:
                     data_source_info = {
                         "upload_file_id": file_id,
                     }
-                    document = DocumentService.save_document(dataset, dataset_process_rule.id,
-                                                             document_data["data_source"]["type"],
-                                                             document_data["doc_form"],
-                                                             document_data["doc_language"],
-                                                             data_source_info, created_from, position,
-                                                             account, file_name, batch)
+                    document = DocumentService.build_document(dataset, dataset_process_rule.id,
+                                                              document_data["data_source"]["type"],
+                                                              document_data["doc_form"],
+                                                              document_data["doc_language"],
+                                                              data_source_info, created_from, position,
+                                                              account, file_name, batch)
                     db.session.add(document)
                     db.session.flush()
                     document_ids.append(document.id)
@@ -501,12 +555,12 @@ class DocumentService:
                                 "notion_page_icon": page['page_icon'],
                                 "type": page['type']
                             }
-                            document = DocumentService.save_document(dataset, dataset_process_rule.id,
-                                                                     document_data["data_source"]["type"],
-                                                                     document_data["doc_form"],
-                                                                     document_data["doc_language"],
-                                                                     data_source_info, created_from, position,
-                                                                     account, page['page_name'], batch)
+                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
+                                                                      document_data["data_source"]["type"],
+                                                                      document_data["doc_form"],
+                                                                      document_data["doc_language"],
+                                                                      data_source_info, created_from, position,
+                                                                      account, page['page_name'], batch)
                             db.session.add(document)
                             db.session.flush()
                             document_ids.append(document.id)
@@ -525,10 +579,10 @@ class DocumentService:
         return documents, batch
 
     @staticmethod
-    def save_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
-                      document_language: str, data_source_info: dict, created_from: str, position: int,
-                      account: Account,
-                      name: str, batch: str):
+    def build_document(dataset: Dataset, process_rule_id: str, data_source_type: str, document_form: str,
+                       document_language: str, data_source_info: dict, created_from: str, position: int,
+                       account: Account,
+                       name: str, batch: str):
         document = Document(
             tenant_id=dataset.tenant_id,
             dataset_id=dataset.id,
@@ -557,6 +611,7 @@ class DocumentService:
     def update_document_with_dataset_id(dataset: Dataset, document_data: dict,
                                         account: Account, dataset_process_rule: Optional[DatasetProcessRule] = None,
                                         created_from: str = 'web'):
+        DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
         if document.display_status != 'available':
             raise ValueError("Document is not available")
@@ -649,15 +704,26 @@ class DocumentService:
 
     @staticmethod
     def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
+        count = 0
+        if document_data["data_source"]["type"] == "upload_file":
+            upload_file_list = document_data["data_source"]["info_list"]['file_info_list']['file_ids']
+            count = len(upload_file_list)
+        elif document_data["data_source"]["type"] == "notion_import":
+            notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
+            for notion_info in notion_info_list:
+                count = count + len(notion_info['pages'])
         # check document limit
         if current_app.config['EDITION'] == 'CLOUD':
             documents_count = DocumentService.get_tenant_documents_count()
+            total_count = documents_count + count
             tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if documents_count > tenant_document_count:
-                raise ValueError(f"over document limit {tenant_document_count}.")
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=tenant_id
-        )
+            if total_count > tenant_document_count:
+                raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
+        embedding_model = None
+        if document_data['indexing_technique'] == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=tenant_id
+            )
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
@@ -665,8 +731,8 @@ class DocumentService:
             data_source_type=document_data["data_source"]["type"],
             indexing_technique=document_data["indexing_technique"],
             created_by=account.id,
-            embedding_model=embedding_model.name,
-            embedding_model_provider=embedding_model.model_provider.provider_name
+            embedding_model=embedding_model.name if embedding_model else None,
+            embedding_model_provider=embedding_model.model_provider.provider_name if embedding_model else None
         )
 
         db.session.add(dataset)
@@ -874,21 +940,25 @@ class SegmentService:
         if document.doc_form == 'qa_model':
             if 'answer' not in args or not args['answer']:
                 raise ValueError("Answer is required")
+            if not args['answer'].strip():
+                raise ValueError("Answer is empty")
+        if 'content' not in args or not args['content'] or not args['content'].strip():
+            raise ValueError("Content is empty")
 
     @classmethod
     def create_segment(cls, args: dict, document: Document, dataset: Dataset):
         content = args['content']
         doc_id = str(uuid.uuid4())
         segment_hash = helper.generate_text_hash(content)
-
-        embedding_model = ModelFactory.get_embedding_model(
-            tenant_id=dataset.tenant_id,
-            model_provider_name=dataset.embedding_model_provider,
-            model_name=dataset.embedding_model
-        )
-
-        # calc embedding use tokens
-        tokens = embedding_model.get_num_tokens(content)
+        tokens = 0
+        if dataset.indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+            # calc embedding use tokens
+            tokens = embedding_model.get_num_tokens(content)
         max_position = db.session.query(func.max(DocumentSegment.position)).filter(
             DocumentSegment.document_id == document.id
         ).scalar()
@@ -950,15 +1020,16 @@ class SegmentService:
                     kw_index.update_segment_keywords_index(segment.index_node_id, segment.keywords)
             else:
                 segment_hash = helper.generate_text_hash(content)
+                tokens = 0
+                if dataset.indexing_technique == 'high_quality':
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=dataset.embedding_model_provider,
+                        model_name=dataset.embedding_model
+                    )
 
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
-
-                # calc embedding use tokens
-                tokens = embedding_model.get_num_tokens(content)
+                    # calc embedding use tokens
+                    tokens = embedding_model.get_num_tokens(content)
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
@@ -990,10 +1061,11 @@ class SegmentService:
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is deleting.")
-        # send delete segment index task
-        redis_client.setex(indexing_cache_key, 600, 1)
+
         # enabled segment need to delete index
         if segment.enabled:
+            # send delete segment index task
+            redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
         db.session.delete(segment)
         db.session.commit()

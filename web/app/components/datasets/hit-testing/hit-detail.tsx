@@ -89,7 +89,7 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo, vectorInfo }) => {
         <div className={s.keywordWrapper}>
           {!segInfo?.keywords?.length
             ? '-'
-            : segInfo?.keywords?.map((word: any) => {
+            : segInfo?.keywords?.map((word) => {
               return <div className={s.keyword}>{word}</div>
             })}
         </div>

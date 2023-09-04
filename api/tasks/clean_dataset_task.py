@@ -3,8 +3,10 @@ import time
 
 import click
 from celery import shared_task
+from flask import current_app
 
 from core.index.index import IndexBuilder
+from core.index.vector_index.vector_index import VectorIndex
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
     AppDatasetJoin, Document
@@ -35,11 +37,11 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
 
-        vector_index = IndexBuilder.get_index(dataset, 'high_quality')
         kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         # delete from vector index
-        if vector_index:
+        if dataset.indexing_technique == 'high_quality':
+            vector_index = IndexBuilder.get_default_high_quality_index(dataset)
             try:
                 vector_index.delete()
             except Exception:
