@@ -8,6 +8,7 @@ class LLMRunResult(BaseModel):
     content: str
     prompt_tokens: int
     completion_tokens: int
+    source: list = None
 
 
 class MessageType(enum.Enum):

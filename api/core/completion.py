@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from typing import Optional, List, Union, Tuple
@@ -19,13 +20,15 @@ from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
+from models.dataset import DocumentSegment, Dataset, Document
 from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
 
 
 class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
-                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool, is_override: bool = False):
+                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
+                 is_override: bool = False):
         """
         errors: ProviderTokenNotInitError
         """
@@ -118,7 +121,8 @@ class Completion:
             return
 
     @classmethod
-    def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
+    def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
+                      inputs: dict,
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]):
@@ -150,7 +154,42 @@ class Completion:
             callbacks=[LLMCallbackHandler(model_instance, conversation_message_task)],
             fake_response=fake_response
         )
-
+        try:
+            answer = response.content
+            content = json.loads(answer)
+            source_list = []
+            if content and 'segment_id' in content and content['segment_id']:
+                segment_ids = content['segment_id']
+                for segment_id in segment_ids:
+                    segment = DocumentSegment.query.filter(DocumentSegment.id == segment_id,
+                                                           DocumentSegment.completed_at.isnot(None),
+                                                           DocumentSegment.status == 'completed',
+                                                           DocumentSegment.enabled == True
+                                                           ).first()
+                    if segment:
+                        dataset = Dataset.query.filter(Dataset.id == segment.dataset_id).first()
+                        document = Document.query.filter(Document.id == segment.document_id,
+                                                         Document.enabled == True,
+                                                         Document.archived == False,
+                                                         ).first()
+                        if dataset and document:
+                            source = {
+                                'dataset_id': dataset.id,
+                                'dataset_name': dataset.name,
+                                'document_id': document.id,
+                                'document_name': document.name,
+                                'data_source_type': document.data_source_type,
+                                'segment_id': segment.id,
+                                'index_node_hash': segment.index_node_hash,
+                                'hit_count': segment.hit_count,
+                                'word_count': segment.word_count,
+                                'position': segment.position
+                            }
+                            source_list.append(source)
+                response.source = source_list
+        except ValueError as e:
+            logging.warning(str(e))
+            logging.warning("LLM doesn't return the correct format response")
         return response
 
     @classmethod

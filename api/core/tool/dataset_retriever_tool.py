@@ -12,7 +12,7 @@ from core.index.vector_index.vector_index import VectorIndex
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DocumentSegment, Document
 
 
 class DatasetRetrieverToolInput(BaseModel):
@@ -112,22 +112,44 @@ class DatasetRetrieverTool(BaseTool):
                                          key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
                                                                                            float('inf')))
                 for segment in sorted_segments:
+                    context = {}
+                    dataset = Dataset.query.filter(Dataset.id == segment.dataset_id).first()
+                    document = Document.query.filter(Document.id == segment.document_id,
+                                                     Document.enabled == True,
+                                                     Document.archived == False,
+                                                     ).first()
+                    if dataset and document:
+                        source = {
+                            'dataset_id': dataset.id,
+                            'dataset_name': dataset.name,
+                            'document_id': document.id,
+                            'document_name': document.name,
+                            'data_source_type': document.data_source_type,
+                            'segment_id': segment.id,
+                            'index_node_hash': segment.index_node_hash,
+                            'hit_count': segment.hit_count,
+                            'word_count': segment.word_count,
+                            'position': segment.position
+                        }
+                        context['source'] = source
                     if segment.answer:
                         # context = {
                         #     'question': segment.content,
                         #     'answer': segment.answer,
                         #     'segment_id': segment.id
                         # }
-                        document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer} \n'
-                                                     f'segment_id:{segment.id}')
-                        # document_context_list.append(json.dumps(context))
+                        context['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                        # document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer} \n'
+                        #                              f'segment_id:{segment.id}')
+                        document_context_list.append(json.dumps(context, ensure_ascii=False))
                     else:
                         # context = {
                         #     'content': segment.content,
                         #     'segment_id': segment.id
                         # }
-                        document_context_list.append(f'{segment.content} \nsegment_id:{segment.id}')
-                        # document_context_list.append(json.dumps(context))
+                        context['content'] = segment.content
+                        # document_context_list.append(f'{segment.content} \nsegment_id:{segment.id}')
+                        document_context_list.append(json.dumps(context, ensure_ascii=False))
 
             return str("\n".join(document_context_list))
 
