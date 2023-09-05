@@ -1,6 +1,6 @@
 import decimal
 import json
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
@@ -157,7 +157,8 @@ class ConversationMessageTask:
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
         self.message.message_price_unit = message_price_unit
-        self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
+        self.message.answer = PromptBuilder.process_template(
+            llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
         self.message.answer_price_unit = answer_price_unit
@@ -256,6 +257,11 @@ class ConversationMessageTask:
 
         db.session.add(dataset_query)
 
+    def on_dataset_query_finish(self, resource: List):
+         if resource and len(resource) > 0:
+
+            self._pub_handler.pub_retriever_resource(resource)
+
     def end(self):
         self._pub_handler.pub_end()
 
@@ -350,6 +356,23 @@ class PubHandler:
             self.pub_end()
             raise ConversationTaskStoppedException()
 
+    def pub_retriever_resource(self, resource: List):
+        content = {
+            'event': 'retriever_resource',
+            'data': {
+                'task_id': self._task_id,
+                'message_id': self._message.id,
+                'resource': resource,
+                'mode': self._conversation.mode,
+                'conversation_id': self._conversation.id
+            }
+        }
+
+        redis_client.publish(self._channel, json.dumps(content))
+
+        if self._is_stopped():
+            self.pub_end()
+            raise ConversationTaskStoppedException()
 
     def pub_end(self):
         content = {

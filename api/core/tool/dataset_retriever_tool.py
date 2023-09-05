@@ -111,6 +111,7 @@ class DatasetRetrieverTool(BaseTool):
                 sorted_segments = sorted(segments,
                                          key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
                                                                                            float('inf')))
+                resource_number = 1
                 for segment in sorted_segments:
                     context = {}
                     dataset = Dataset.query.filter(Dataset.id == segment.dataset_id).first()
@@ -120,6 +121,7 @@ class DatasetRetrieverTool(BaseTool):
                                                      ).first()
                     if dataset and document:
                         source = {
+                            'resource_number': resource_number,
                             'dataset_id': dataset.id,
                             'dataset_name': dataset.name,
                             'document_id': document.id,
@@ -133,25 +135,14 @@ class DatasetRetrieverTool(BaseTool):
                         }
                         context['source'] = source
                     if segment.answer:
-                        # context = {
-                        #     'question': segment.content,
-                        #     'answer': segment.answer,
-                        #     'segment_id': segment.id
-                        # }
                         context['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
-                        # document_context_list.append(f'question:{segment.content} \nanswer:{segment.answer} \n'
-                        #                              f'segment_id:{segment.id}')
-                        document_context_list.append(json.dumps(context, ensure_ascii=False))
+                        document_context_list.append(context)
                     else:
-                        # context = {
-                        #     'content': segment.content,
-                        #     'segment_id': segment.id
-                        # }
                         context['content'] = segment.content
-                        # document_context_list.append(f'{segment.content} \nsegment_id:{segment.id}')
-                        document_context_list.append(json.dumps(context, ensure_ascii=False))
+                        document_context_list.append(context)
+                    resource_number += 1
 
-            return str("\n".join(document_context_list))
+            return json.dumps(document_context_list, ensure_ascii=False)
 
     async def _arun(self, tool_input: str) -> str:
         raise NotImplementedError()

@@ -64,11 +64,12 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         llm_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        # kwargs={'name': 'Search'}
-        # llm_prefix='Thought:'
-        # observation_prefix='Observation: '
-        # output='53 years'
-        pass
+        try:
+            resource = json.loads(output)
+            self.conversation_message_task.on_dataset_query_finish(resource)
+        except ValueError:
+            pass
+
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

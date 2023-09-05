@@ -154,42 +154,6 @@ class Completion:
             callbacks=[LLMCallbackHandler(model_instance, conversation_message_task)],
             fake_response=fake_response
         )
-        try:
-            answer = response.content
-            content = json.loads(answer)
-            source_list = []
-            if content and 'segment_id' in content and content['segment_id']:
-                segment_ids = content['segment_id']
-                for segment_id in segment_ids:
-                    segment = DocumentSegment.query.filter(DocumentSegment.id == segment_id,
-                                                           DocumentSegment.completed_at.isnot(None),
-                                                           DocumentSegment.status == 'completed',
-                                                           DocumentSegment.enabled == True
-                                                           ).first()
-                    if segment:
-                        dataset = Dataset.query.filter(Dataset.id == segment.dataset_id).first()
-                        document = Document.query.filter(Document.id == segment.document_id,
-                                                         Document.enabled == True,
-                                                         Document.archived == False,
-                                                         ).first()
-                        if dataset and document:
-                            source = {
-                                'dataset_id': dataset.id,
-                                'dataset_name': dataset.name,
-                                'document_id': document.id,
-                                'document_name': document.name,
-                                'data_source_type': document.data_source_type,
-                                'segment_id': segment.id,
-                                'index_node_hash': segment.index_node_hash,
-                                'hit_count': segment.hit_count,
-                                'word_count': segment.word_count,
-                                'position': segment.position
-                            }
-                            source_list.append(source)
-                response.source = source_list
-        except ValueError as e:
-            logging.warning(str(e))
-            logging.warning("LLM doesn't return the correct format response")
         return response
 
     @classmethod

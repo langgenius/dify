@@ -401,6 +401,8 @@ class CompletionService:
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
                                 yield "data: " + json.dumps(cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'retriever_resource':
+                                yield "data: " + json.dumps(cls.get_retriever_resource_data(result.get('data'))) + "\n\n"
                             elif event == 'ping':
                                 yield "event: ping\n\n"
                             else:
@@ -427,6 +429,19 @@ class CompletionService:
             'created_at': int(time.time())
         }
 
+        if data.get('mode') == 'chat':
+            response_data['conversation_id'] = data.get('conversation_id')
+
+        return response_data
+
+    @classmethod
+    def get_retriever_resource_data(cls, data: dict):
+        response_data = {
+            'event': 'retriever_resource',
+            'task_id': data.get('task_id'),
+            'id': data.get('message_id'),
+            'resource': data.get('resource')
+        }
         if data.get('mode') == 'chat':
             response_data['conversation_id'] = data.get('conversation_id')
 
