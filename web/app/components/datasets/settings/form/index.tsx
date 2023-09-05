@@ -70,7 +70,7 @@ const Form = ({
       await mutateDatasets()
     }
     catch (e) {
-      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {
       setLoading(false)

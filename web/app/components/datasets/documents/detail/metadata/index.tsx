@@ -292,7 +292,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
     if (!e)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
-      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)

@@ -93,7 +93,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       else {
         notify({
           type: 'error',
-          message: t('common.actionMsg.modificationFailed'),
+          message: t('common.actionMsg.modifiedUnsuccessfully'),
         })
       }
     },
