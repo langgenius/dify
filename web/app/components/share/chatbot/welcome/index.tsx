@@ -10,7 +10,7 @@ import type { SiteInfo } from '@/models/share'
 import type { PromptConfig } from '@/models/debug'
 import { ToastContext } from '@/app/components/base/toast'
 import Select from '@/app/components/base/select'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { DEFAULT_PARAGRAPH_VALUE_MAX_LEN, DEFAULT_VALUE_MAX_LEN } from '@/config'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -97,10 +97,10 @@ const Welcome: FC<IWelcomeProps> = ({
     return (
       <div className='space-y-3'>
         {promptConfig.prompt_variables.map(item => (
-          <div className='tablet:flex tablet:!h-9 mobile:space-y-2 tablet:space-y-0 mobile:text-xs tablet:text-sm' key={item.key}>
-            <label className={`flex-shrink-0 flex items-center mobile:text-gray-700 tablet:text-gray-900 mobile:font-medium pc:font-normal ${s.formLabel}`}>{item.name}</label>
+          <div className='tablet:flex items-start  mobile:space-y-2 tablet:space-y-0 mobile:text-xs tablet:text-sm' key={item.key}>
+            <label className={`flex-shrink-0 flex items-center tablet:leading-9 mobile:text-gray-700 tablet:text-gray-900 mobile:font-medium pc:font-normal ${s.formLabel}`}>{item.name}</label>
             {item.type === 'select'
-              ? (
+              && (
                 <Select
                   className='w-full'
                   defaultValue={inputs?.[item.key]}
@@ -110,15 +110,25 @@ const Welcome: FC<IWelcomeProps> = ({
                   bgClassName='bg-gray-50'
                 />
               )
-              : (
-                <input
-                  placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                  value={inputs?.[item.key] || ''}
-                  onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
-                  className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
-                  maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
-                />
-              )}
+            }
+            {item.type === 'string' && (
+              <input
+                placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                value={inputs?.[item.key] || ''}
+                onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                className={'w-full flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50'}
+                maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
+              />
+            )}
+            {item.type === 'paragraph' && (
+              <textarea
+                className="w-full h-[104px] flex-grow py-2 pl-3 pr-3 box-border rounded-lg bg-gray-50"
+                placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                value={inputs?.[item.key] || ''}
+                onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
+                maxLength={item.max_length || DEFAULT_PARAGRAPH_VALUE_MAX_LEN}
+              />
+            )}
           </div>
         ))}
       </div>
