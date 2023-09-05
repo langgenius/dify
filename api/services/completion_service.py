@@ -34,7 +34,7 @@ class CompletionService:
         inputs = args['inputs']
         query = args['query']
 
-        if not query:
+        if app_model.mode != 'completion' and not query:
             raise ValueError('query is required')
 
         query = query.replace('\x00', '')
