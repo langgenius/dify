@@ -188,7 +188,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               </div>
             </>
             : <>
-              <div className="h-[140px] overflow-hidden text-ellipsis text-sm font-normal text-gray-800">
+              <div className="break-all line-clamp-2 text-ellipsis text-sm font-normal text-gray-800">
                 {renderContent()}
               </div>
               <div className={cn('w-full bg-gray-50 group-hover:bg-white')}>
