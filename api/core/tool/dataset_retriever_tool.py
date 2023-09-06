@@ -6,6 +6,7 @@ from langchain.tools import BaseTool
 from pydantic import Field, BaseModel
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
+from core.conversation_message_task import ConversationMessageTask
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.index.vector_index.vector_index import VectorIndex
@@ -28,6 +29,10 @@ class DatasetRetrieverTool(BaseTool):
     tenant_id: str
     dataset_id: str
     k: int = 3
+    conversation_message_task: ConversationMessageTask
+    return_resource: str
+    retriever_from: str
+
 
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
@@ -87,7 +92,7 @@ class DatasetRetrieverTool(BaseTool):
             if self.k > 0:
                 documents = vector_index.search(
                     query,
-                    search_type='similarity',
+                    search_type='similarity_score_threshold',
                     search_kwargs={
                         'k': self.k
                     }
@@ -95,8 +100,12 @@ class DatasetRetrieverTool(BaseTool):
             else:
                 documents = []
 
-            hit_callback = DatasetIndexToolCallbackHandler(dataset.id)
+            hit_callback = DatasetIndexToolCallbackHandler(dataset.id, self.conversation_message_task)
             hit_callback.on_tool_end(documents)
+            document_score_list = {}
+            if dataset.indexing_technique != "economy":
+                for item in documents:
+                    document_score_list[item.metadata['score']] = item.metadata['doc_id']
             document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in documents]
             segments = DocumentSegment.query.filter(DocumentSegment.dataset_id == self.dataset_id,
@@ -111,38 +120,48 @@ class DatasetRetrieverTool(BaseTool):
                 sorted_segments = sorted(segments,
                                          key=lambda segment: index_node_id_to_position.get(segment.index_node_id,
                                                                                            float('inf')))
-                resource_number = 1
                 for segment in sorted_segments:
-                    context = {}
-                    dataset = Dataset.query.filter(Dataset.id == segment.dataset_id).first()
-                    document = Document.query.filter(Document.id == segment.document_id,
-                                                     Document.enabled == True,
-                                                     Document.archived == False,
-                                                     ).first()
-                    if dataset and document:
-                        source = {
-                            'resource_number': resource_number,
-                            'dataset_id': dataset.id,
-                            'dataset_name': dataset.name,
-                            'document_id': document.id,
-                            'document_name': document.name,
-                            'data_source_type': document.data_source_type,
-                            'segment_id': segment.id,
-                            'index_node_hash': segment.index_node_hash,
-                            'hit_count': segment.hit_count,
-                            'word_count': segment.word_count,
-                            'position': segment.position
-                        }
-                        context['source'] = source
                     if segment.answer:
-                        context['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
-                        document_context_list.append(context)
+                        document_context_list.append(f'question:{segment.content} answer:{segment.answer}')
                     else:
-                        context['content'] = segment.content
-                        document_context_list.append(context)
-                    resource_number += 1
+                        document_context_list.append(segment.content)
+                if self.return_resource:
+                    context_list = []
+                    resource_number = 1
+                    for segment in sorted_segments:
+                        context = {}
+                        document = Document.query.filter(Document.id == segment.document_id,
+                                                         Document.enabled == True,
+                                                         Document.archived == False,
+                                                         ).first()
+                        if dataset and document:
+                            source = {
+                                'resource_number': resource_number,
+                                'dataset_id': dataset.id,
+                                'dataset_name': dataset.name,
+                                'document_id': document.id,
+                                'document_name': document.name,
+                                'data_source_type': document.data_source_type,
+                                'segment_id': segment.id,
+                                'retriever_from': self.retriever_from
+                            }
+                            if dataset.indexing_technique != "economy":
+                                source['score'] = document_score_list.get(segment.index_node_id)
+                            if self.retriever_from == 'dev':
+                                source['hit_count'] = segment.hit_count
+                                source['word_count'] = segment.word_count
+                                source['segment_position'] = segment.position
+                                source['index_node_hash'] = segment.index_node_hash
+                            context['source'] = source
+                        if segment.answer:
+                            context['content'] = f'question:{segment.content} \nanswer:{segment.answer}'
+                        else:
+                            context['content'] = segment.content
+                        context_list.append(context)
+                        resource_number += 1
+                    hit_callback.return_retriever_resource_info(context_list)
 
-            return json.dumps(document_context_list, ensure_ascii=False)
+            return str("\n".join(document_context_list))
 
     async def _arun(self, tool_input: str) -> str:
         raise NotImplementedError()

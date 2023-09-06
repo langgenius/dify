@@ -64,11 +64,7 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         llm_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        try:
-            resource = json.loads(output)
-            self.conversation_message_task.on_dataset_query_finish(resource)
-        except ValueError:
-            pass
+        pass
 
 
     def on_tool_error(

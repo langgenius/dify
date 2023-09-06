@@ -28,7 +28,7 @@ class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
                  user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
-                 is_override: bool = False):
+                 is_override: bool = False, return_resource: bool = False, retriever_from: str = 'dev'):
         """
         errors: ProviderTokenNotInitError
         """

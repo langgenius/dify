@@ -36,8 +36,8 @@ class OrchestratorRuleParser:
         self.app_model_config = app_model_config
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
-                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
-            -> Optional[AgentExecutor]:
+                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler,
+                          return_resource: bool = False, retriever_from: str = 'dev') -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
 
@@ -74,7 +74,7 @@ class OrchestratorRuleParser:
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
-                         or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
+                    or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
                 if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
@@ -99,7 +99,9 @@ class OrchestratorRuleParser:
                 tool_configs=tool_configs,
                 conversation_message_task=conversation_message_task,
                 rest_tokens=rest_tokens,
-                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
+                callbacks=[agent_callback, DifyStdOutCallbackHandler()],
+                return_resource=return_resource,
+                retriever_from=retriever_from
             )
 
             if len(tools) == 0:
@@ -145,8 +147,10 @@ class OrchestratorRuleParser:
 
         return None
 
-    def to_tools(self, agent_model_instance: BaseLLM, tool_configs: list, conversation_message_task: ConversationMessageTask,
-                 rest_tokens: int, callbacks: Callbacks = None) -> list[BaseTool]:
+    def to_tools(self, agent_model_instance: BaseLLM, tool_configs: list,
+                 conversation_message_task: ConversationMessageTask,
+                 rest_tokens: int, callbacks: Callbacks = None, return_resource: bool = False,
+                 retriever_from: str = 'dev') -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
@@ -155,6 +159,8 @@ class OrchestratorRuleParser:
         :param tool_configs: app agent tool configs
         :param conversation_message_task:
         :param callbacks:
+        :param return_resource:
+        :param retriever_from:
         :return:
         """
         tools = []
@@ -166,7 +172,7 @@ class OrchestratorRuleParser:
 
             tool = None
             if tool_type == "dataset":
-                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens)
+                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens, return_resource, retriever_from)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool(agent_model_instance)
             elif tool_type == "google_search":
@@ -183,13 +189,15 @@ class OrchestratorRuleParser:
         return tools
 
     def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask,
-                                  rest_tokens: int) \
+                                  rest_tokens: int, return_resource: bool = False, retriever_from: str = 'dev') \
             -> Optional[BaseTool]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param rest_tokens:
         :param tool_config:
         :param conversation_message_task:
+        :param return_resource:
+        :param retriever_from:
         :return:
         """
         # get dataset from dataset id
@@ -208,7 +216,10 @@ class OrchestratorRuleParser:
         tool = DatasetRetrieverTool.from_dataset(
             dataset=dataset,
             k=k,
-            callbacks=[DatasetToolCallbackHandler(conversation_message_task)]
+            callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
+            conversation_message_task=conversation_message_task,
+            return_resource=return_resource,
+            retriever_from=retriever_from
         )
 
         return tool
