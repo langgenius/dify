@@ -45,7 +45,6 @@ model_templates = {
                         "label": "Default Input",
                         "variable": "default_input",
                         "required": True,
-                        "max_length": 48,
                         "default": ""
                     }
                 }
