@@ -145,7 +145,8 @@ class CompletionService:
             'user': user,
             'conversation': conversation,
             'streaming': streaming,
-            'is_model_config_override': is_model_config_override
+            'is_model_config_override': is_model_config_override,
+            'retriever_from': args['retriever_from'] if 'retriever_from' in args else 'dev'
         })
 
         generate_worker_thread.start()
@@ -170,7 +171,7 @@ class CompletionService:
     def generate_worker(cls, flask_app: Flask, generate_task_id: str, app_model: App, app_model_config: AppModelConfig,
                         query: str, inputs: dict, user: Union[Account, EndUser],
                         conversation: Conversation, streaming: bool, is_model_config_override: bool,
-                        return_resource: bool = False, retriever_from: str = 'dev'):
+                        retriever_from: str = 'dev'):
         with flask_app.app_context():
             try:
                 if conversation:
@@ -189,7 +190,7 @@ class CompletionService:
                     conversation=conversation,
                     streaming=streaming,
                     is_override=is_model_config_override,
-                    return_resource=return_resource,
+                    return_resource=app_model_config.retriever_resource_dict['enabled'],
                     retriever_from=retriever_from
                 )
             except ConversationTaskStoppedException:

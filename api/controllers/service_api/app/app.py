@@ -39,6 +39,7 @@ class AppParameterApi(AppApiResource):
             'suggested_questions': app_model_config.suggested_questions_list,
             'suggested_questions_after_answer': app_model_config.suggested_questions_after_answer_dict,
             'speech_to_text': app_model_config.speech_to_text_dict,
+            'retriever_resource': app_model_config.retriever_resource_dict,
             'more_like_this': app_model_config.more_like_this_dict,
             'user_input_form': app_model_config.user_input_form_list
         }

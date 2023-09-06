@@ -91,6 +91,7 @@ class AppModelConfig(db.Model):
     pre_prompt = db.Column(db.Text)
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
+    retriever_resource = db.Column(db.Text)
 
     @property
     def app(self):
@@ -113,6 +114,11 @@ class AppModelConfig(db.Model):
     @property
     def speech_to_text_dict(self) -> dict:
         return json.loads(self.speech_to_text) if self.speech_to_text \
+            else {"enabled": False}
+
+    @property
+    def retriever_resource_dict(self) -> dict:
+        return json.loads(self.retriever_resource) if self.retriever_resource \
             else {"enabled": False}
 
     @property
@@ -141,6 +147,7 @@ class AppModelConfig(db.Model):
             "suggested_questions": self.suggested_questions_list,
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
+            "retriever_resource": self.retriever_resource,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "model": self.model_dict,
@@ -165,7 +172,8 @@ class AppModelConfig(db.Model):
         self.user_input_form = json.dumps(model_config['user_input_form'])
         self.pre_prompt = model_config['pre_prompt']
         self.agent_mode = json.dumps(model_config['agent_mode'])
-
+        self.retriever_resource = json.dumps(model_config['retriever_resource']) \
+            if model_config.get('retriever_resource') else None
         return self
 
     def copy(self):
@@ -319,6 +327,7 @@ class Conversation(db.Model):
             model_config['suggested_questions'] = app_model_config.suggested_questions_list
             model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
             model_config['speech_to_text'] = app_model_config.speech_to_text_dict
+            model_config['retriever_resource'] = app_model_config.retriever_resource_dict
             model_config['more_like_this'] = app_model_config.more_like_this_dict
             model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
             model_config['user_input_form'] = app_model_config.user_input_form_list

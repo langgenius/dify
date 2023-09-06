@@ -38,7 +38,6 @@ class UniversalChatMessageListApi(UniversalChatResource):
 
     retriever_resource_fields = {
         'id': fields.String,
-        'chain_id': fields.String,
         'message_id': fields.String,
         'position': fields.Integer,
         'dataset_id': fields.String,
