@@ -102,12 +102,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const Operations = (props: any) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      props?.onClose()
+      props?.onClick()
       e.preventDefault()
       await getAppDetail()
     }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
-      props?.onClose()
+      props?.onClick()
       e.preventDefault()
       setShowConfirmDelete(true)
     }
@@ -157,6 +157,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               )
             }
             className={'!w-[128px] h-fit !z-20'}
+            manualClose
           />}
         </div>
         <div className={style.listItemDescription}>
