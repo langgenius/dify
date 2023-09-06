@@ -47,7 +47,7 @@ You can start editing the file under folder `app`. The page auto-updates as you 
 ### Run by Docker
 First, Build the frontend image：
 ```bash
-cd web && docker build . -t dify-web
+docker build . -t dify-web
 ```
 
 Then, configure the environment variables.Use the same method mentioned in run by source code.
