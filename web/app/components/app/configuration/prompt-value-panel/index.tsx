@@ -14,6 +14,7 @@ import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import Tooltip from '@/app/components/base/tooltip-plus'
 
 export type IPromptValuePanelProps = {
   appType: AppType
@@ -33,7 +34,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onSend,
 }) => {
   const { t } = useTranslation()
-  const { modelConfig, inputs, setInputs } = useContext(ConfigContext)
+  const { modelConfig, inputs, setInputs, mode } = useContext(ConfigContext)
   const [promptPreviewCollapse, setPromptPreviewCollapse] = useState(false)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptTemplate = modelConfig.configs.prompt_template
@@ -49,6 +50,19 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     return obj
   })()
 
+  const canNotRun = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const renderRunButton = () => {
+    return (
+      <Button
+        type="primary"
+        disabled={canNotRun}
+        onClick={() => onSend && onSend()}
+        className="w-[80px] !h-8">
+        <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+        <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
+      </Button>
+    )
+  }
   const handleInputValueChange = (key: string, value: string) => {
     if (!(key in promptVariableObj))
       return
@@ -193,13 +207,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               >
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
-              <Button
-                type="primary"
-                onClick={() => onSend && onSend()}
-                className="w-[80px] !h-8">
-                <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
-                <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
-              </Button>
+
+              {canNotRun
+                ? (<Tooltip
+                  popupContent={t('appDebug.otherError.promptNoBeEmpty')}
+                >
+                  {renderRunButton()}
+                </Tooltip>)
+                : renderRunButton()}
             </div>
           </div>
         )

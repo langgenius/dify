@@ -24,6 +24,7 @@ import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from
 import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
+import { AppType } from '@/types/app'
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
@@ -187,6 +188,10 @@ const Configuration: FC = () => {
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
+    if (mode === AppType.completion && !promptTemplate) {
+      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      return
+    }
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
         enabled: true,

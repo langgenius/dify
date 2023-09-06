@@ -123,6 +123,9 @@ const translation = {
     notStartWithNumber: 'Variable key: {{key}} can not start with a number',
     keyAlreadyExists: 'Variable key: :{{key}} already exists',
   },
+  otherError: {
+    promptNoBeEmpty: 'Prefix prompt can not be empty',
+  },
   variableConig: {
     modalTitle: 'Field settings',
     description: 'Setting for variable {{varName}}',

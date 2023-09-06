@@ -119,6 +119,9 @@ const translation = {
     notStartWithNumber: '变量: {{key}} 不能以数字开头',
     keyAlreadyExists: '变量:{{key}} 已存在',
   },
+  otherError: {
+    promptNoBeEmpty: '前缀提示词不能为空',
+  },
   variableConig: {
     modalTitle: '变量设置',
     description: '设置变量 {{varName}}',
