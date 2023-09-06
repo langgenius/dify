@@ -10,7 +10,7 @@ import type { SiteInfo } from '@/models/share'
 import type { PromptConfig } from '@/models/debug'
 import { ToastContext } from '@/app/components/base/toast'
 import Select from '@/app/components/base/select'
-import { DEFAULT_PARAGRAPH_VALUE_MAX_LEN, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -126,7 +126,6 @@ const Welcome: FC<IWelcomeProps> = ({
                 placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                 value={inputs?.[item.key] || ''}
                 onChange={(e) => { setInputs({ ...inputs, [item.key]: e.target.value }) }}
-                maxLength={item.max_length || DEFAULT_PARAGRAPH_VALUE_MAX_LEN}
               />
             )}
           </div>

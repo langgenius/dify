@@ -11,7 +11,7 @@ import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
 import Select from '@/app/components/base/select'
-import { DEFAULT_PARAGRAPH_VALUE_MAX_LEN, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
@@ -165,7 +165,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                             placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                             value={inputs[key] ? `${inputs[key]}` : ''}
                             onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                            maxLength={max_length || DEFAULT_PARAGRAPH_VALUE_MAX_LEN}
                           />
                         )}
 

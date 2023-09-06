@@ -102,17 +102,18 @@ const ConfigModal: FC<IConfigModalProps> = ({
           </div>
         </div>
 
-        <div className='mt-6'>
-          <div className={s.title}>{title}</div>
-          {isStringInput
-            ? (
-              <ConfigString modelId={modelConfig.model_id} isParagraph={tempType === 'paragraph'} value={tempMaxLength} onChange={setTempMaxValue} />
-            )
-            : (
-              <ConfigSelect options={tempOptions} onChange={setTempOptions} />
-            )}
-        </div>
-
+        {tempType !== 'paragraph' && (
+          <div className='mt-6'>
+            <div className={s.title}>{title}</div>
+            {isStringInput
+              ? (
+                <ConfigString modelId={modelConfig.model_id} value={tempMaxLength} onChange={setTempMaxValue} />
+              )
+              : (
+                <ConfigSelect options={tempOptions} onChange={setTempOptions} />
+              )}
+          </div>
+        )}
       </div>
       <ModalFoot
         onConfirm={handleConfirm}

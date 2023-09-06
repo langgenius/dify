@@ -5,18 +5,15 @@ import React, { useEffect } from 'react'
 export type IConfigStringProps = {
   value: number | undefined
   modelId: string
-  isParagraph: boolean
   onChange: (value: number | undefined) => void
 }
 
-// const MAX_LENGTH = 256
+const MAX_LENGTH = 256
 
 const ConfigString: FC<IConfigStringProps> = ({
   value,
-  isParagraph,
   onChange,
 }) => {
-  const MAX_LENGTH = isParagraph ? 1000 : 256
   useEffect(() => {
     if (value && value > MAX_LENGTH)
       onChange(MAX_LENGTH)
