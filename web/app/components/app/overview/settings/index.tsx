@@ -47,7 +47,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 }) => {
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
-  const { title, description = undefined, copyright, privacy_policy, default_language } = appInfo.site
+  const { title, description, copyright, privacy_policy, default_language } = appInfo.site
   const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)

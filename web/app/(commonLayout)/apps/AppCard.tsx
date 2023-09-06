@@ -16,6 +16,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { deleteApp, fetchAppDetail, updateAppSiteConfig } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext, { useAppContext } from '@/context/app-context'
+import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import { asyncRunSafe } from '@/utils'
@@ -100,14 +101,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     [app.id],
   )
 
-  const Operations = (props: any) => {
+  const Operations = (props: HtmlContentProps) => {
     const onClickSettings = async (e: React.MouseEvent<HTMLButtonElement>) => {
-      props?.onClick()
+      props.onClick?.()
       e.preventDefault()
       await getAppDetail()
     }
     const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
-      props?.onClick()
+      props.onClick?.()
       e.preventDefault()
       setShowConfirmDelete(true)
     }
