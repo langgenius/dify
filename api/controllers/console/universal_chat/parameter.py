@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+import json
+
 from flask_restful import marshal_with, fields
 
 from controllers.console import api
@@ -22,6 +24,7 @@ class UniversalChatParameterApi(UniversalChatResource):
         """Retrieve app parameters."""
         app_model = universal_app
         app_model_config = app_model.app_model_config
+        app_model_config.retriever_resource = json.dumps({'enabled': True})
 
         return {
             'opening_statement': app_model_config.opening_statement,
