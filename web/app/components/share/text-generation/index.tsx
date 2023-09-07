@@ -23,8 +23,9 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
-import { appDefaultIconBackground } from '@/config'
+import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+
 const PARALLEL_LIMIT = 5
 enum TaskStatus {
   pending = 'pending',
@@ -174,6 +175,8 @@ const TextGeneration: FC<IMainProps> = ({
     }
     let errorRowIndex = 0
     let requiredVarName = ''
+    let moreThanMaxLengthVarName = ''
+    let maxLength = 0
     payloadData.forEach((item, index) => {
       if (errorRowIndex !== 0)
         return
@@ -181,6 +184,15 @@ const TextGeneration: FC<IMainProps> = ({
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
         if (errorRowIndex !== 0)
           return
+        if (varItem.type === 'string') {
+          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
+          if (item[varIndex].length > maxLen) {
+            moreThanMaxLengthVarName = varItem.name
+            maxLength = maxLen
+            errorRowIndex = index + 1
+            return
+          }
+        }
         if (varItem.required === false)
           return
 
@@ -192,7 +204,12 @@ const TextGeneration: FC<IMainProps> = ({
     })
 
     if (errorRowIndex !== 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+      if (requiredVarName)
+        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+
+      if (moreThanMaxLengthVarName)
+        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+
       return false
     }
     return true
@@ -363,7 +380,6 @@ const TextGeneration: FC<IMainProps> = ({
               </div>
             )}
           </div>
-
         </div>
 
         <div className='grow overflow-y-auto'>
