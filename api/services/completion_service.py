@@ -444,7 +444,7 @@ class CompletionService:
     @classmethod
     def get_message_end_data(cls, data: dict):
         response_data = {
-            'event': ' message_end',
+            'event': 'message_end',
             'task_id': data.get('task_id'),
             'id': data.get('message_id')
         }
