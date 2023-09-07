@@ -289,6 +289,7 @@ class ConversationMessageTask:
         self._pub_handler.pub_message_end(self.retriever_resource)
 
     def end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
         self._pub_handler.pub_end()
 
 

@@ -99,7 +99,6 @@ class Completion:
             should_use_agent = agent_executor.should_use_agent(query)
             if should_use_agent:
                 agent_execute_result = agent_executor.run(query)
-
         # run the final llm
         try:
             cls.run_final_llm(
@@ -112,7 +111,6 @@ class Completion:
                 conversation_message_task=conversation_message_task,
                 memory=memory
             )
-            conversation_message_task.message_end()
         except ConversationTaskStoppedException:
             return
         except ChunkedEncodingError as e:
