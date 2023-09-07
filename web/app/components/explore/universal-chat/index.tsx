@@ -199,6 +199,7 @@ const Main: FC<IMainProps> = () => {
 
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
 
@@ -593,6 +594,22 @@ const Main: FC<IMainProps> = () => {
           })
         setChatList(newListWithAnswer)
       },
+      onCitation: (citation) => {
+        responseItem.citation = citation
+
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return
+        }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
       onError() {
         setErrorHappened(true)
         // role back placeholder answer
@@ -783,6 +800,7 @@ const Main: FC<IMainProps> = () => {
                 isShowSuggestion={doShowSuggestion}
                 suggestionList={suggestQuestions}
                 isShowSpeechToText={speechToTextConfig?.enabled}
+                isShowCitation={citationConfig?.enabled}
                 dataSets={dataSets}
               />
             </div>

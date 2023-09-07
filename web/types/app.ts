@@ -99,6 +99,9 @@ export type ModelConfig = {
   speech_to_text: {
     enabled: boolean
   }
+  retriever_resource: {
+    enabled: boolean
+  }
   agent_mode: {
     enabled: boolean
     tools: ToolItem[]

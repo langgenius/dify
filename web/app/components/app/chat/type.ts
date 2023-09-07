@@ -23,10 +23,31 @@ export type ThoughtItem = {
   tool_input: string
   message_id: string
 }
+export type CitationSource = {
+  data_source_type: string
+  dataset_name: string
+  dataset_id: string
+  document_id: string
+  document_name: string
+  hit_count: number
+  index_node_hash: string
+  segment_id: string
+  segment_position: number
+  score: number
+}
+export type CitationResource = {
+  content: string
+  source: CitationSource
+}
+export type CitationItem = {
+  id: string
+  resource: CitationResource[]
+}
 export type IChatItem = {
   id: string
   content: string
   agent_thoughts?: ThoughtItem[]
+  citation?: CitationItem
   /**
    * Specific message type
    */

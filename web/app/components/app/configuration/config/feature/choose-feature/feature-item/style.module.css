@@ -27,3 +27,7 @@
 .speechToTextPreview {
   background-image: url(./preview-imgs/speech-to-text.svg);
 }
+
+.citationPreview {
+  background-image: url(./preview-imgs/citation.svg);
+}

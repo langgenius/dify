@@ -48,9 +48,11 @@ export type IChatProps = {
   isShowSuggestion?: boolean
   suggestionList?: string[]
   isShowSpeechToText?: boolean
+  isShowCitation?: boolean
   answerIconClassName?: string
   isShowConfigElem?: boolean
   dataSets?: DataSet[]
+  isShowCitationHitInfo?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -74,9 +76,11 @@ const Chat: FC<IChatProps> = ({
   isShowSuggestion,
   suggestionList,
   isShowSpeechToText,
+  isShowCitation,
   answerIconClassName,
   isShowConfigElem,
   dataSets,
+  isShowCitationHitInfo,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -162,6 +166,7 @@ const Chat: FC<IChatProps> = ({
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
             const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
+            const citation = item.citation
             const isThinking = !item.content && item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
@@ -174,8 +179,11 @@ const Chat: FC<IChatProps> = ({
               isResponsing={isResponsing && isLast}
               answerIconClassName={answerIconClassName}
               thoughts={thoughts}
+              citation={citation}
               isThinking={isThinking}
               dataSets={dataSets}
+              isShowCitation={isShowCitation}
+              isShowCitationHitInfo={isShowCitationHitInfo}
             />
           }
           return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />

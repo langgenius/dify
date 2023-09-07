@@ -40,6 +40,7 @@ const Debug: FC<IDebug> = ({
     introduction,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
+    citationConfig,
     moreLikeThisConfig,
     inputs,
     // setInputs,
@@ -162,6 +163,7 @@ const Debug: FC<IDebug> = ({
       },
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -199,7 +201,7 @@ const Debug: FC<IDebug> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,
@@ -266,6 +268,18 @@ const Debug: FC<IDebug> = ({
           setIsShowSuggestion(true)
         }
       },
+      onCitation: (citation) => {
+        responseItem.citation = citation
+
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -312,6 +326,7 @@ const Debug: FC<IDebug> = ({
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
       more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,

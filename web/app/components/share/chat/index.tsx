@@ -474,7 +474,7 @@ const Main: FC<IMainProps> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,
@@ -532,6 +532,22 @@ const Main: FC<IMainProps> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+      },
+      onCitation: (citation) => {
+        responseItem.citation = citation
+
+        if (prevTempNewConversationId !== getCurrConversationId()) {
+          setIsResponsingConCurrCon(false)
+          return
+        }
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()

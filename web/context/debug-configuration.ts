@@ -1,5 +1,5 @@
 import { createContext } from 'use-context-selector'
-import type { CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { CitationConfig, CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 
 type IDebugConfiguration = {
@@ -21,6 +21,8 @@ type IDebugConfiguration = {
   setSuggestedQuestionsAfterAnswerConfig: (suggestedQuestionsAfterAnswerConfig: SuggestedQuestionsAfterAnswerConfig) => void
   speechToTextConfig: SpeechToTextConfig
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
+  citationConfig: CitationConfig
+  setCitationConfig: (citationConfig: CitationConfig) => void
   formattingChanged: boolean
   setFormattingChanged: (formattingChanged: boolean) => void
   inputs: Inputs
@@ -65,6 +67,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     enabled: false,
   },
   setSpeechToTextConfig: () => { },
+  citationConfig: {
+    enabled: false,
+  },
+  setCitationConfig: () => {},
   formattingChanged: false,
   setFormattingChanged: () => { },
   inputs: {},

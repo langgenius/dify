@@ -1,9 +1,10 @@
-import type { IOnCompleted, IOnData, IOnError } from './base'
+import type { IOnCitation, IOnCompleted, IOnData, IOnError } from './base'
 import { get, post, ssePost } from './base'
 
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController }: {
   onData: IOnData
   onCompleted: IOnCompleted
+  onCitation: IOnCitation
   onError: IOnError
   getAbortController?: (abortController: AbortController) => void
 }) => {
