@@ -42,6 +42,8 @@ class ConversationMessageTask:
 
         self.message = None
 
+        self.retriever_resource = None
+
         self.model_dict = self.app_model_config.model_dict
         self.provider_name = self.model_dict.get('provider')
         self.model_name = self.model_dict.get('name')
@@ -263,25 +265,28 @@ class ConversationMessageTask:
             for item in resource:
                 dataset_retriever_resource = DatasetRetrieverResource(
                     message_id=self.message.id,
-                    position=item.get('source').get('resource_number'),
-                    dataset_id=item.get('source').get('dataset_id'),
-                    dataset_name=item.get('source').get('dataset_name'),
-                    document_id=item.get('source').get('document_id'),
-                    document_name=item.get('source').get('document_name'),
-                    data_source_type=item.get('source').get('data_source_type'),
-                    segment_id=item.get('source').get('segment_id'),
-                    score=item.get('source').get('score') if 'score' in item.get('source') else None,
-                    hit_count=item.get('source').get('hit_count') if 'hit_count' in item.get('source') else None,
-                    word_count=item.get('source').get('word_count') if 'word_count' in item.get('source') else None,
-                    segment_position=item.get('source').get('segment_position') if 'segment_position' in item.get('source') else None,
-                    index_node_hash=item.get('source').get('index_node_hash') if 'index_node_hash' in item.get('source') else None,
+                    position=item.get('position'),
+                    dataset_id=item.get('dataset_id'),
+                    dataset_name=item.get('dataset_name'),
+                    document_id=item.get('document_id'),
+                    document_name=item.get('document_name'),
+                    data_source_type=item.get('data_source_type'),
+                    segment_id=item.get('segment_id'),
+                    score=item.get('score') if 'score' in item else None,
+                    hit_count=item.get('hit_count') if 'hit_count' else None,
+                    word_count=item.get('word_count') if 'word_count' in item else None,
+                    segment_position=item.get('segment_position') if 'segment_position' in item else None,
+                    index_node_hash=item.get('index_node_hash') if 'index_node_hash' in item else None,
                     content=item.get('content'),
-                    retriever_from=item.get('source').get('retriever_from'),
+                    retriever_from=item.get('retriever_from'),
                     created_by=self.user.id
                 )
                 db.session.add(dataset_retriever_resource)
                 db.session.flush()
-            self._pub_handler.pub_retriever_resource(resource)
+            self.retriever_resource = resource
+
+    def message_end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
 
     def end(self):
         self._pub_handler.pub_end()
@@ -377,18 +382,18 @@ class PubHandler:
             self.pub_end()
             raise ConversationTaskStoppedException()
 
-    def pub_retriever_resource(self, resource: List):
+    def pub_message_end(self, retriever_resource: List):
         content = {
-            'event': 'retriever_resource',
+            'event': 'message_end',
             'data': {
                 'task_id': self._task_id,
                 'message_id': self._message.id,
-                'resource': resource,
                 'mode': self._conversation.mode,
                 'conversation_id': self._conversation.id
             }
         }
-        self._message.retriever_resource = json.dumps(resource)
+        if retriever_resource:
+            content['data']['retriever_resource'] = retriever_resource
         redis_client.publish(self._channel, json.dumps(content))
 
         if self._is_stopped():

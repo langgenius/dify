@@ -28,7 +28,7 @@ class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
                  user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
-                 is_override: bool = False, return_resource: bool = False, retriever_from: str = 'dev'):
+                 is_override: bool = False, retriever_from: str = 'dev'):
         """
         errors: ProviderTokenNotInitError
         """
@@ -112,6 +112,7 @@ class Completion:
                 conversation_message_task=conversation_message_task,
                 memory=memory
             )
+            conversation_message_task.message_end()
         except ConversationTaskStoppedException:
             return
         except ChunkedEncodingError as e:
