@@ -70,5 +70,5 @@ export type IChatItem = {
 
 export type MessageEnd = {
   id: string
-  retriever_resource?: CitationItem[]
+  retriever_resources?: CitationItem[]
 }

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
 import Tooltip from './tooltip'
+import ProgressTooltip from './progress-tooltip'
 import type { Resources } from './index'
 import {
   PortalToFollowElem,
@@ -89,12 +90,7 @@ const Popup: FC<PopupProps> = ({
                             text={t('common.chat.citation.vectorHash')}
                             data={source.index_node_hash.substring(0, 7)}
                           />
-                          <div className='grow flex items-center'>
-                            <div className='mr-1 w-16 h-1.5 rounded-[3px] border border-gray-400 overflow-hidden'>
-                              <div className='bg-gray-400' style={{ width: `${source.score * 100}%` }}></div>
-                            </div>
-                            {source.score}
-                          </div>
+                          <ProgressTooltip data={Number(source.score.toFixed(2))} />
                         </div>
                       )
                     }

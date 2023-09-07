@@ -7,11 +7,11 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 
-type WordCountTooltipProps = {
+type ProgressTooltipProps = {
   data: number
 }
 
-const WordCountTooltip: FC<WordCountTooltipProps> = ({
+const ProgressTooltip: FC<ProgressTooltipProps> = ({
   data,
 }) => {
   const { t } = useTranslation()
@@ -29,7 +29,7 @@ const WordCountTooltip: FC<WordCountTooltipProps> = ({
       >
         <div className='grow flex items-center'>
           <div className='mr-1 w-16 h-1.5 rounded-[3px] border border-gray-400 overflow-hidden'>
-            <div className='bg-gray-400' style={{ width: `${data * 100}%` }}></div>
+            <div className='bg-gray-400 h-full' style={{ width: `${data * 100}%` }}></div>
           </div>
           {data}
         </div>
@@ -43,4 +43,4 @@ const WordCountTooltip: FC<WordCountTooltipProps> = ({
   )
 }
 
-export default WordCountTooltip
+export default ProgressTooltip

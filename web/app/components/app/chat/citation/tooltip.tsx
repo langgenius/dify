@@ -7,12 +7,12 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { TypeSquare } from '@/app/components/base/icons/src/vender/line/editor'
 
-type WordCountTooltipProps = {
+type TooltipProps = {
   data: number | string
   text: string
 }
 
-const WordCountTooltip: FC<WordCountTooltipProps> = ({
+const Tooltip: FC<TooltipProps> = ({
   data,
   text,
 }) => {
@@ -42,4 +42,4 @@ const WordCountTooltip: FC<WordCountTooltipProps> = ({
   )
 }
 
-export default WordCountTooltip
+export default Tooltip

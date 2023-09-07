@@ -88,7 +88,6 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
       try {
         lines.forEach((message) => {
           if (message.startsWith('data: ')) { // check if it starts with data:
-            // console.log(message);
             try {
               bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
             }

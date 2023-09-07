@@ -269,7 +269,17 @@ const Debug: FC<IDebug> = ({
         }
       },
       onMessageEnd: (messageEnd) => {
-        responseItem.citation = messageEnd.retriever_resource
+        responseItem.citation = messageEnd.retriever_resources
+
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()
