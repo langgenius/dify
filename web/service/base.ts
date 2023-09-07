@@ -123,7 +123,6 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               onThought?.(bufferObj as any)
             }
             else if (bufferObj.event === 'message_end') {
-              console.log(bufferObj)
               onMessageEnd?.(bufferObj as any)
             }
           }
