@@ -7,6 +7,7 @@ import Modal from '@/app/components/base/modal'
 import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
+import { IS_CE_EDITION } from '@/config'
 
 // const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -30,7 +31,15 @@ const OPTION_MAP = {
   scripts: {
     getContent: (url: string, token: string, isTestEnv?: boolean) =>
       `<script>
- window.difyChatbotConfig = { token: '${token}'${isTestEnv ? ', isDev: true' : ''} }
+ window.difyChatbotConfig = { 
+  token: '${token}'${isTestEnv
+  ? `, 
+  isDev: true`
+  : ''}${IS_CE_EDITION
+  ? `, 
+  baseUrl: '${url}'`
+  : ''}
+ }
 </script>
 <script
  src="${url}/embed.min.js"
