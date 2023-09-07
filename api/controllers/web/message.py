@@ -55,7 +55,7 @@ class MessageListApi(WebApiResource):
         'query': fields.String,
         'answer': fields.String,
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
-        'retriever_resource': fields.List(fields.Nested(retriever_resource_fields)),
+        'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
         'created_at': TimestampField
     }
 
