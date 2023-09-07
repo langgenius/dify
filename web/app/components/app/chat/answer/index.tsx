@@ -46,7 +46,7 @@ export type IAnswerProps = {
   isResponsing?: boolean
   answerIconClassName?: string
   thoughts?: ThoughtItem[]
-  citation?: CitationItem
+  citation?: CitationItem[]
   isThinking?: boolean
   dataSets?: DataSet[]
   isShowCitation?: boolean
@@ -242,7 +242,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                   </>
                 }
                 {
-                  citation && !isThinking && isShowCitation && !isResponsing && (
+                  !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }

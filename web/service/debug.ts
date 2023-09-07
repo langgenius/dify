@@ -1,10 +1,10 @@
-import type { IOnCitation, IOnCompleted, IOnData, IOnError } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd } from './base'
 import { get, post, ssePost } from './base'
 
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onCitation }: {
+export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
-  onCitation: IOnCitation
+  onMessageEnd: IOnMessageEnd
   onError: IOnError
   getAbortController?: (abortController: AbortController) => void
 }) => {
@@ -13,7 +13,7 @@ export const sendChatMessage = async (appId: string, body: Record<string, any>, 
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onError, getAbortController, onCitation })
+  }, { onData, onCompleted, onError, getAbortController, onMessageEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {

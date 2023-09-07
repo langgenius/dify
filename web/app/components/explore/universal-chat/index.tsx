@@ -272,6 +272,7 @@ const Main: FC<IMainProps> = () => {
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -595,8 +596,8 @@ const Main: FC<IMainProps> = () => {
           })
         setChatList(newListWithAnswer)
       },
-      onCitation: (citation) => {
-        responseItem.citation = citation
+      onMessageEnd: (messageEnd) => {
+        responseItem.citation = messageEnd.retriever_resource
       },
       onError() {
         setErrorHappened(true)

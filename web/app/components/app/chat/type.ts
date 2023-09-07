@@ -23,7 +23,8 @@ export type ThoughtItem = {
   tool_input: string
   message_id: string
 }
-export type CitationSource = {
+export type CitationItem = {
+  content: string
   data_source_type: string
   dataset_name: string
   dataset_id: string
@@ -36,19 +37,12 @@ export type CitationSource = {
   score: number
   word_count: number
 }
-export type CitationResource = {
-  content: string
-  source: CitationSource
-}
-export type CitationItem = {
-  id: string
-  resource: CitationResource[]
-}
+
 export type IChatItem = {
   id: string
   content: string
   agent_thoughts?: ThoughtItem[]
-  citation?: CitationItem
+  citation?: CitationItem[]
   /**
    * Specific message type
    */
@@ -72,4 +66,9 @@ export type IChatItem = {
   annotation?: Annotation
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
+}
+
+export type MessageEnd = {
+  id: string
+  retriever_resource?: CitationItem[]
 }

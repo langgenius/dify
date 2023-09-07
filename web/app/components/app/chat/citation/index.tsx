@@ -1,18 +1,18 @@
 import { useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { CitationItem, CitationResource } from '../type'
+import type { CitationItem } from '../type'
 import Popup from './popup'
 
 export type Resources = {
   documentId: string
   documentName: string
   dataSourceType: string
-  sources: CitationResource[]
+  sources: CitationItem[]
 }
 
 type CitationProps = {
-  data: CitationItem
+  data: CitationItem[]
   showHitInfo?: boolean
 }
 const Citation: FC<CitationProps> = ({
@@ -20,10 +20,10 @@ const Citation: FC<CitationProps> = ({
   showHitInfo,
 }) => {
   const { t } = useTranslation()
-  const resources = useMemo(() => data.resource.reduce((prev: Resources[], next) => {
-    const documentId = next.source.document_id
-    const documentName = next.source.document_name
-    const dataSourceType = next.source.data_source_type
+  const resources = useMemo(() => data.reduce((prev: Resources[], next) => {
+    const documentId = next.document_id
+    const documentName = next.document_name
+    const dataSourceType = next.data_source_type
     const documentIndex = prev.findIndex(i => i.documentId === documentId)
 
     if (documentIndex > -1) {
@@ -39,7 +39,7 @@ const Citation: FC<CitationProps> = ({
     }
 
     return prev
-  }, []), [data.resource])
+  }, []), [data])
 
   return (
     <div className='mt-3'>

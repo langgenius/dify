@@ -268,8 +268,8 @@ const Debug: FC<IDebug> = ({
           setIsShowSuggestion(true)
         }
       },
-      onCitation: (citation) => {
-        responseItem.citation = citation
+      onMessageEnd: (messageEnd) => {
+        responseItem.citation = messageEnd.retriever_resource
       },
       onError() {
         setResponsingFalse()

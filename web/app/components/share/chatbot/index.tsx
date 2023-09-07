@@ -189,6 +189,7 @@ const Main: FC<IMainProps> = ({
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -454,8 +455,8 @@ const Main: FC<IMainProps> = ({
           setIsShowSuggestion(true)
         }
       },
-      onCitation: (citation) => {
-        responseItem.citation = citation
+      onMessageEnd: (messageEnd) => {
+        responseItem.citation = messageEnd.retriever_resource
       },
       onError(errorMessage, errorCode) {
         if (['provider_not_initialize', 'completion_request_error'].includes(errorCode as string))

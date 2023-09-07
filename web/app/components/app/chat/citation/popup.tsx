@@ -62,10 +62,10 @@ const Popup: FC<PopupProps> = ({
                         <div className='flex items-center justify-between mb-2'>
                           <div className='flex items-center px-1.5 h-5 border border-gray-200 rounded-md'>
                             <Hash02 className='mr-0.5 w-3 h-3 text-gray-400' />
-                            <div className='text-[11px] font-medium text-gray-500'>{source.source.segment_position}</div>
+                            <div className='text-[11px] font-medium text-gray-500'>{source.segment_position}</div>
                           </div>
                           <Link
-                            href={`/datasets/${source.source.dataset_id}/documents/${source.source.document_id}`}
+                            href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
                             className='hidden items-center h-[18px] text-xs text-primary-600 group-hover:flex'>
                             Link to dataset
                             <ArrowUpRight className='ml-1 w-3 h-3' />
@@ -79,21 +79,21 @@ const Popup: FC<PopupProps> = ({
                         <div className='flex items-center mt-2 text-xs font-medium text-gray-500'>
                           <Tooltip
                             text={t('common.chat.citation.characters')}
-                            data={source.source.word_count}
+                            data={source.word_count}
                           />
                           <Tooltip
                             text={t('common.chat.citation.hitCount')}
-                            data={source.source.hit_count}
+                            data={source.hit_count}
                           />
                           <Tooltip
                             text={t('common.chat.citation.vectorHash')}
-                            data={source.source.index_node_hash.substring(0, 7)}
+                            data={source.index_node_hash.substring(0, 7)}
                           />
                           <div className='grow flex items-center'>
                             <div className='mr-1 w-16 h-1.5 rounded-[3px] border border-gray-400 overflow-hidden'>
-                              <div className='bg-gray-400' style={{ width: `${source.source.score * 100}%` }}></div>
+                              <div className='bg-gray-400' style={{ width: `${source.score * 100}%` }}></div>
                             </div>
-                            {source.source.score}
+                            {source.score}
                           </div>
                         </div>
                       )
