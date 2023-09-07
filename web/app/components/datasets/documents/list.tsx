@@ -150,7 +150,7 @@ export const OperationAction: FC<{
     if (!e)
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
-      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     onUpdate(operationName)
   }
 
