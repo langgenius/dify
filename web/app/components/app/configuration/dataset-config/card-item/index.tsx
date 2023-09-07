@@ -29,9 +29,9 @@ const CardItem: FC<ICardItemProps> = ({
     <div
       className={
         cn(className, s.card,
-          'flex items-center justify-between rounded-xl  px-3 py-2.5 bg-white border border-gray-200  cursor-pointer')
+          'relative flex items-center rounded-xl  px-3 py-2.5 bg-white border border-gray-200  cursor-pointer')
       }>
-      <div className='shrink-0 flex items-center space-x-2'>
+      <div className='flex items-center space-x-2'>
         <div className={cn(!config.embedding_available && 'opacity-50')}>
           <TypeIcon type="upload_file" />
         </div>
@@ -47,13 +47,13 @@ const CardItem: FC<ICardItemProps> = ({
               </Tooltip>
             )}
           </div>
-          <div className={cn('flex text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>
+          <div className={cn('max-w-[150px] flex text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>
             {formatNumber(config.word_count)} {t('appDebug.feature.dataSet.words')} · {formatNumber(config.document_count)} {t('appDebug.feature.dataSet.textBlocks')}
           </div>
         </div>
       </div>
 
-      {!readonly && <RemoveIcon className={`${s.deleteBtn} shrink-0`} onClick={() => onRemove(config.id)} />}
+      {!readonly && <RemoveIcon className={`${s.deleteBtn} absolute right-1 top-1/2 translate-y-[-50%]`} onClick={() => onRemove(config.id)} />}
     </div>
   )
 }

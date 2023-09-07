@@ -8,9 +8,9 @@
 }
 
 .deleteBtn {
-  display: none;
+  visibility: hidden;
 }
 
 .card:hover .deleteBtn {
-  display: block;
+  visibility: visible;
 }
