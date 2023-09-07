@@ -24,6 +24,7 @@ class AppParameterApi(InstalledAppResource):
         'suggested_questions': fields.Raw,
         'suggested_questions_after_answer': fields.Raw,
         'speech_to_text': fields.Raw,
+        'retriever_resource': fields.Raw,
         'more_like_this': fields.Raw,
         'user_input_form': fields.Raw,
     }
