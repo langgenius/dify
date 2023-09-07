@@ -34,6 +34,7 @@ export type CitationSource = {
   segment_id: string
   segment_position: number
   score: number
+  word_count: number
 }
 export type CitationResource = {
   content: string

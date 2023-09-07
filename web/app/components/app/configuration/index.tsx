@@ -166,6 +166,9 @@ const Configuration: FC = () => {
       if (modelConfig.speech_to_text)
         setSpeechToTextConfig(modelConfig.speech_to_text)
 
+      if (modelConfig.retriever_resource)
+        setCitationConfig(modelConfig.retriever_resource)
+
       const config = {
         modelConfig: {
           provider: model.provider,

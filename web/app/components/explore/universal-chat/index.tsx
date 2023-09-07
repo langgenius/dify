@@ -375,7 +375,7 @@ const Main: FC<IMainProps> = () => {
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
 
         setNewConversationInfo({
@@ -388,6 +388,7 @@ const Main: FC<IMainProps> = () => {
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
+        setCitationConfig(retriever_resource)
 
         if (isNotNewConversation)
           setCurrConversationId(_conversationId, APP_ID, false)
@@ -596,19 +597,6 @@ const Main: FC<IMainProps> = () => {
       },
       onCitation: (citation) => {
         responseItem.citation = citation
-
-        if (prevTempNewConversationId !== getCurrConversationId()) {
-          setIsResponsingConCurrCon(false)
-          return
-        }
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
       },
       onError() {
         setErrorHappened(true)

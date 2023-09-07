@@ -242,7 +242,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                   </>
                 }
                 {
-                  citation && !isThinking && isShowCitation && (
+                  citation && !isThinking && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
                   )
                 }

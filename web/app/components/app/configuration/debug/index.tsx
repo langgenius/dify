@@ -270,15 +270,6 @@ const Debug: FC<IDebug> = ({
       },
       onCitation: (citation) => {
         responseItem.citation = citation
-
-        const newListWithAnswer = produce(
-          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
-          (draft) => {
-            if (!draft.find(item => item.id === questionId))
-              draft.push({ ...questionItem })
-            draft.push({ ...responseItem })
-          })
-        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()
@@ -406,6 +397,8 @@ const Debug: FC<IDebug> = ({
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
                   isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                  isShowCitation={citationConfig.enabled}
+                  isShowCitationHitInfo
                 />
               </div>
             </div>
