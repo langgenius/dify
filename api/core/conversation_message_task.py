@@ -393,7 +393,7 @@ class PubHandler:
             }
         }
         if retriever_resource:
-            content['data']['retriever_resource'] = retriever_resource
+            content['data']['retriever_resources'] = retriever_resource
         redis_client.publish(self._channel, json.dumps(content))
 
         if self._is_stopped():
