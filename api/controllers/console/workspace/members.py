@@ -72,7 +72,7 @@ class MemberInviteEmailApi(Resource):
                 invitation_results.append({
                     'status': 'success',
                     'email': invitee_email,
-                    'url': f'{console_web_url}/activate?token={token}'
+                    'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
                 })
                 account = marshal(account, account_fields)
                 account['role'] = role
