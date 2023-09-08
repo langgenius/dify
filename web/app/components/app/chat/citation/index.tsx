@@ -55,7 +55,7 @@ const Citation: FC<CitationProps> = ({
         totalWidth -= elesRef.current[i].clientWidth
 
         if (totalWidth + 34 > containerWidth!)
-          setlimitNumberInOneLine(i + 1)
+          setlimitNumberInOneLine(i - 1)
         else
           setlimitNumberInOneLine(i)
 
