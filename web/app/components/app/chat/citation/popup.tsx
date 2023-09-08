@@ -40,13 +40,13 @@ const Popup: FC<PopupProps> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='flex items-center mr-1 px-2 max-w-[240px] h-7 bg-white rounded-lg'>
+        <div className='flex items-center px-2 max-w-[240px] h-7 bg-white rounded-lg'>
           <FileIcon type={fileType} className='mr-1 w-4 h-4' />
           <div className='text-xs text-gray-600 truncate'>{data.documentName}</div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
-        <div className='w-[360px] bg-gray-50 rounded-xl shadow-lg'>
+        <div className='w-[360px] bg-gray-50 rounded-xl shadow-lg z-[1000]'>
           <div className='px-4 pt-3 pb-2'>
             <div className='flex items-center h-[18px]'>
               <FileIcon type={fileType} className='mr-1 w-4 h-4' />

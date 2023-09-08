@@ -175,7 +175,7 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
             </div>
           }
         </div>
-        <div className={s.answerWrapWrap}>
+        <div className={cn(s.answerWrapWrap, 'chat-answer-container')}>
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
