@@ -11,8 +11,15 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import FileIcon from '@/app/components/base/file-icon'
-import { Hash02 } from '@/app/components/base/icons/src/vender/line/general'
+import {
+  Hash02,
+  Target04,
+} from '@/app/components/base/icons/src/vender/line/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import {
+  BezierCurve03,
+  TypeSquare,
+} from '@/app/components/base/icons/src/vender/line/editor'
 
 type PopupProps = {
   data: Resources
@@ -81,14 +88,17 @@ const Popup: FC<PopupProps> = ({
                           <Tooltip
                             text={t('common.chat.citation.characters')}
                             data={source.word_count}
+                            icon={<TypeSquare className='mr-1 w-3 h-3' />}
                           />
                           <Tooltip
                             text={t('common.chat.citation.hitCount')}
                             data={source.hit_count}
+                            icon={<Target04 className='mr-1 w-3 h-3' />}
                           />
                           <Tooltip
                             text={t('common.chat.citation.vectorHash')}
                             data={source.index_node_hash.substring(0, 7)}
+                            icon={<BezierCurve03 className='mr-1 w-3 h-3' />}
                           />
                           <ProgressTooltip data={Number(source.score.toFixed(2))} />
                         </div>

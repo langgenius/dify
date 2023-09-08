@@ -34,7 +34,7 @@ const ProgressTooltip: FC<ProgressTooltipProps> = ({
           {data}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent style={{ zIndex: 1001 }}>
         <div className='p-3 bg-white text-xs font-medium text-gray-500 rounded-lg shadow-lg'>
           {t('common.chat.citation.hitScore')} {data}
         </div>
