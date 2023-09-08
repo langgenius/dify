@@ -89,7 +89,8 @@ class HuggingfaceHubProvider(BaseModelProvider):
                 raise CredentialsValidateFailedError('Task Type must be provided.')
 
             if credentials['task_type'] not in ("text2text-generation", "text-generation", "summarization"):
-                raise CredentialsValidateFailedError('Task Type must be one of text2text-generation, text-generation, summarization.')
+                raise CredentialsValidateFailedError('Task Type must be one of text2text-generation, '
+                                                     'text-generation, summarization.')
 
             try:
                 llm = HuggingFaceEndpointLLM(
@@ -108,7 +109,7 @@ class HuggingfaceHubProvider(BaseModelProvider):
                 if not model_info:
                     raise ValueError(f'Model {model_name} not found.')
 
-                if 'inference' in model_info.cardData and not model_info.cardData['inference']:
+                if 'inference' not in model_info.cardData or not model_info.cardData['inference']:
                     raise ValueError(f'Inference API has been turned off for this model {model_name}.')
 
                 VALID_TASKS = ("text2text-generation", "text-generation", "summarization")
