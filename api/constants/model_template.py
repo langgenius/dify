@@ -42,14 +42,14 @@ model_templates = {
             'user_input_form': json.dumps([
                 {
                     "paragraph": {
-                        "label": "Default Input",
-                        "variable": "default_input",
+                        "label": "Query",
+                        "variable": "query",
                         "required": True,
                         "default": ""
                     }
                 }
             ]),
-            'pre_prompt': '{{default_input}}'
+            'pre_prompt': '{{query}}'
         }
     },
 

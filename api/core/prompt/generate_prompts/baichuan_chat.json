@@ -8,6 +8,6 @@
     "pre_prompt",
     "histories_prompt"
   ],
-  "query_prompt": "用户：{{query}}",
+  "query_prompt": "\n\n用户：{{query}}",
   "stops": ["用户："]
 }
