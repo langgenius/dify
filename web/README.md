@@ -2,41 +2,91 @@
 This is a [Next.js](https://nextjs.org/) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
 ## Getting Started
+### Run by source code
+To start the web frontend service, you will need [Node.js v18.x (LTS)](https://nodejs.org/en) and [NPM version 8.x.x](https://www.npmjs.com/) or [Yarn](https://yarnpkg.com/).
 
-First, run the development server:
+First, install the dependencies:
+
+```bash
+npm install
+# or
+yarn
+```
+
+Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
+```
+# For production release, change this to PRODUCTION
+NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
+# The deployment edition, SELF_HOSTED or CLOUD
+NEXT_PUBLIC_EDITION=SELF_HOSTED
+# The base URL of console application, refers to the Console base URL of WEB service if console domain is
+# different from api or web app domain.
+# example: http://cloud.dify.ai/console/api
+NEXT_PUBLIC_API_PREFIX=http://localhost:5001/console/api
+# The URL for Web APP, refers to the Web App base URL of WEB service if web app domain is different from
+# console or api domain.
+# example: http://udify.app/api
+NEXT_PUBLIC_PUBLIC_API_PREFIX=http://localhost:5001/api
+
+# SENTRY
+NEXT_PUBLIC_SENTRY_DSN=
+```
+
+Finally, run the development server:
 
 ```bash
 npm run dev
 # or
 yarn dev
-# or
-pnpm dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+You can start editing the file under folder `app`. The page auto-updates as you edit the file.
 
-[API routes](https://nextjs.org/docs/api-routes/introduction) can be accessed on [http://localhost:3000/api/hello](http://localhost:3000/api/hello). This endpoint can be edited in `pages/api/hello.ts`.
+### Run by Docker
+First, Build the frontend image：
+```bash
+docker build . -t dify-web
+```
 
-The `pages/api` directory is mapped to `/api/*`. Files in this directory are treated as [API routes](https://nextjs.org/docs/api-routes/introduction) instead of React pages.
+Then, configure the environment variables.Use the same method mentioned in run by source code.
 
-This project uses [`next/font`](https://nextjs.org/docs/basic-features/font-optimization) to automatically optimize and load Inter, a custom Google Font.
+Finally, run the frontend service:
+```bash
+docker run -it -p 3000:3000 -e EDITION=SELF_HOSTED -e CONSOLE_URL=http://127.0.0.1:3000 -e APP_URL=http://127.0.0.1:3000 dify-web
+```
+
+When the console api domain and web app api domain are different, you can set the CONSOLE_URL and APP_URL separately.
+
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+## Deploy
+### Deploy on server
+First, build the app for production:
+
+```bash
+npm run build
+```
+
+Then, move the static files to standalone folder:
+```bash
+mv .next/static .next/standalone/.next
+cp -r ./public .next/standalone/.next/
+```
+
+Finally, start the app:
+```bash
+node .next/standalone/server.js 
+```
+
+If your project needs alternative port or hostname for listening, you can define PORT and HOSTNAME environment variables, before running server.js. For example, `PORT=3000 HOSTNAME=localhost node .next/standalone/server.js`.
 
 ## Lint Code
-If your ide is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
+If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
 
-## Learn More
+## Documentation
+Visit https://docs.dify.ai/getting-started/readme to view the full documentation.
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js/) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/deployment) for more details.
+## Community
+The Dify community can be found on [Discord community](https://discord.com/invite/FngNHpbcY7), where you can ask questions, voice ideas, and share your projects.
