@@ -88,4 +88,6 @@ class HuggingfaceHubModel(BaseLLM):
             if 'baichuan' in self.name.lower():
                 return False
 
-        return True
+            return True
+        else:
+            return False

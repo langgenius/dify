@@ -36,6 +36,7 @@ class HuggingFaceHubLLM(HuggingFaceHub):
             token=huggingfacehub_api_token,
             task=values.get("task"),
         )
+        client.options = {"wait_for_model": False, "use_gpu": False}
         values["client"] = client
         return values
 
@@ -51,7 +52,7 @@ class HuggingFaceHubLLM(HuggingFaceHub):
         if not model_info:
             raise ValueError(f"Model {self.repo_id} not found.")
 
-        if 'inference' not in model_info.cardData or not model_info.cardData['inference']:
+        if 'inference' in model_info.cardData and not model_info.cardData['inference']:
             raise ValueError(f"Inference API has been turned off for this model {self.repo_id}.")
 
         if model_info.pipeline_tag not in VALID_TASKS:
