@@ -45,8 +45,8 @@ const Popup: FC<PopupProps> = ({
           <div className='text-xs text-gray-600 truncate'>{data.documentName}</div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
-        <div className='w-[360px] bg-gray-50 rounded-xl shadow-lg z-[1000]'>
+      <PortalToFollowElemContent style={{ zIndex: 1000 }}>
+        <div className='w-[360px] bg-gray-50 rounded-xl shadow-lg'>
           <div className='px-4 pt-3 pb-2'>
             <div className='flex items-center h-[18px]'>
               <FileIcon type={fileType} className='mr-1 w-4 h-4' />
