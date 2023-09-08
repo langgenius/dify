@@ -68,6 +68,7 @@ class QdrantVectorIndex(BaseVectorIndex):
             collection_name=self.get_index_name(self.dataset),
             ids=uuids,
             content_payload_key='page_content',
+            group_id=self.dataset.id,
             **self._client_config.to_qdrant_params()
         )
 

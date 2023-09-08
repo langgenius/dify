@@ -954,6 +954,7 @@ class Qdrant(VectorStore):
         texts: List[str],
         embedding: Embeddings,
         metadatas: Optional[List[dict]] = None,
+        group_id: Optional[str] = None,
         ids: Optional[Sequence[str]] = None,
         location: Optional[str] = None,
         url: Optional[str] = None,
@@ -1068,6 +1069,8 @@ class Qdrant(VectorStore):
                 Use data stored in another collection to initialize this collection
             force_recreate:
                 Force recreating the collection
+            group_id:
+                for dataset group by
             **kwargs:
                 Additional arguments passed directly into REST client initialization
 
@@ -1120,7 +1123,7 @@ class Qdrant(VectorStore):
             force_recreate,
             **kwargs,
         )
-        qdrant.add_texts(texts, metadatas, ids, batch_size)
+        qdrant.add_texts(texts, metadatas, ids, batch_size, group_id)
         return qdrant
 
     @classmethod
