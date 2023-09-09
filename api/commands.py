@@ -517,7 +517,10 @@ def update_app_model_configs(batch_size):
                         .join(TenantAccountJoin, Account.id == TenantAccountJoin.account_id) \
                         .filter(TenantAccountJoin.role == 'owner') \
                         .filter(TenantAccountJoin.tenant_id == app_data.tenant_id) \
-                        .one()
+                        .one_or_none()
+
+                    if not account_data:
+                        continue
 
                     if data.user_input_form is None or data.user_input_form == 'null':
                         data.user_input_form = json.dumps(user_input_form_template[account_data.interface_language])
