@@ -6,6 +6,7 @@ import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
+import cn from 'classnames'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import type { CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
@@ -24,6 +25,7 @@ import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from
 import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
+import { AppType } from '@/types/app'
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
@@ -193,11 +195,16 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
+  const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
   const saveAppConfig = async () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
+    if (cannotPublish) {
+      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      return
+    }
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
         enabled: true,
@@ -311,7 +318,7 @@ const Configuration: FC = () => {
               />
               <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-              <Button type='primary' onClick={saveAppConfig} className='shrink-0 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.applyConfig')}</Button>
+              <Button type='primary' onClick={saveAppConfig} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
             </div>
           </div>
           <div className='flex grow h-[200px]'>

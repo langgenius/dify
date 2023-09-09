@@ -128,11 +128,15 @@ const translation = {
     notStartWithNumber: 'Variable key: {{key}} can not start with a number',
     keyAlreadyExists: 'Variable key: :{{key}} already exists',
   },
+  otherError: {
+    promptNoBeEmpty: 'Prefix prompt can not be empty',
+  },
   variableConig: {
     modalTitle: 'Field settings',
     description: 'Setting for variable {{varName}}',
     fieldType: 'Field type',
-    string: 'Text',
+    string: 'Short Text',
+    paragraph: 'Paragraph',
     select: 'Select',
     notSet: 'Not set, try typing {{input}} in the prefix prompt',
     stringTitle: 'Form text box options',

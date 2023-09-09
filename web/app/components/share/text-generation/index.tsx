@@ -23,8 +23,9 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import Res from '@/app/components/share/text-generation/result'
 import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
-import { appDefaultIconBackground } from '@/config'
+import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+
 const PARALLEL_LIMIT = 5
 enum TaskStatus {
   pending = 'pending',
@@ -34,7 +35,6 @@ enum TaskStatus {
 
 type TaskParam = {
   inputs: Record<string, any>
-  query: string
 }
 
 type Task = {
@@ -65,7 +65,6 @@ const TextGeneration: FC<IMainProps> = ({
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
-  const [query, setQuery] = useState('') // run once query content
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
@@ -111,11 +110,10 @@ const TextGeneration: FC<IMainProps> = ({
       return {}
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}
-    const { inputs, query } = task.params
+    const { inputs } = task.params
     promptConfig?.prompt_variables.forEach((v) => {
       res[v.name] = inputs[v.key]
     })
-    res[t('share.generation.queryTitle')] = query
     res[t('share.generation.completionResult')] = batchCompletionResLatest[task.id]
     return res
   })
@@ -134,9 +132,6 @@ const TextGeneration: FC<IMainProps> = ({
       if (item.name !== headerData[index])
         isMapVarName = false
     })
-
-    if (headerData[varLen] !== t('share.generation.queryTitle'))
-      isMapVarName = false
 
     if (!isMapVarName) {
       notify({ type: 'error', message: t('share.generation.errorMsg.fileStructNotMatch') })
@@ -180,6 +175,8 @@ const TextGeneration: FC<IMainProps> = ({
     }
     let errorRowIndex = 0
     let requiredVarName = ''
+    let moreThanMaxLengthVarName = ''
+    let maxLength = 0
     payloadData.forEach((item, index) => {
       if (errorRowIndex !== 0)
         return
@@ -187,6 +184,15 @@ const TextGeneration: FC<IMainProps> = ({
       promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
         if (errorRowIndex !== 0)
           return
+        if (varItem.type === 'string') {
+          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
+          if (item[varIndex].length > maxLen) {
+            moreThanMaxLengthVarName = varItem.name
+            maxLength = maxLen
+            errorRowIndex = index + 1
+            return
+          }
+        }
         if (varItem.required === false)
           return
 
@@ -195,18 +201,15 @@ const TextGeneration: FC<IMainProps> = ({
           errorRowIndex = index + 1
         }
       })
-
-      if (errorRowIndex !== 0)
-        return
-
-      if (item[varLen] === '') {
-        requiredVarName = t('share.generation.queryTitle')
-        errorRowIndex = index + 1
-      }
     })
 
     if (errorRowIndex !== 0) {
-      notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+      if (requiredVarName)
+        notify({ type: 'error', message: t('share.generation.errorMsg.invalidLine', { rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
+
+      if (moreThanMaxLengthVarName)
+        notify({ type: 'error', message: t('share.generation.errorMsg.moreThanMaxLengthLine', { rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
+
       return false
     }
     return true
@@ -234,7 +237,6 @@ const TextGeneration: FC<IMainProps> = ({
         status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
-          query: item[varLen],
         },
       }
     })
@@ -334,7 +336,6 @@ const TextGeneration: FC<IMainProps> = ({
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
     inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
-    query={isCallBatchAPI ? (task as Task).params.query : query}
     controlSend={controlSend}
     controlStopResponding={controlStopResponding}
     onShowRes={showResSidebar}
@@ -379,7 +380,6 @@ const TextGeneration: FC<IMainProps> = ({
               </div>
             )}
           </div>
-
         </div>
 
         <div className='grow overflow-y-auto'>
@@ -459,8 +459,6 @@ const TextGeneration: FC<IMainProps> = ({
                 inputs={inputs}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
-                query={query}
-                onQueryChange={setQuery}
                 onSend={handleSend}
               />
             </div>

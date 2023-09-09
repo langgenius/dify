@@ -34,7 +34,7 @@ class CompletionService:
         inputs = args['inputs']
         query = args['query']
 
-        if not query:
+        if app_model.mode != 'completion' and not query:
             raise ValueError('query is required')
 
         query = query.replace('\x00', '')
@@ -347,8 +347,8 @@ class CompletionService:
                 if value not in options:
                     raise ValueError(f"{variable} in input form must be one of the following: {options}")
             else:
-                if 'max_length' in variable:
-                    max_length = variable['max_length']
+                if 'max_length' in input_config:
+                    max_length = input_config['max_length']
                     if len(value) > max_length:
                         raise ValueError(f'{variable} in input form must be less than {max_length} characters')
 

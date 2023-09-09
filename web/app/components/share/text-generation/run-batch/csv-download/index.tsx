@@ -16,7 +16,7 @@ const CSVDownload: FC<ICSVDownloadProps> = ({
 }) => {
   const { t } = useTranslation()
   const { CSVDownloader, Type } = useCSVDownloader()
-  const addQueryContentVars = [...vars, { name: t('share.generation.queryTitle') }]
+  const addQueryContentVars = [...vars]
   const template = (() => {
     const res: Record<string, string> = {}
     addQueryContentVars.forEach((item) => {

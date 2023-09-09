@@ -124,11 +124,15 @@ const translation = {
     notStartWithNumber: '变量: {{key}} 不能以数字开头',
     keyAlreadyExists: '变量:{{key}} 已存在',
   },
+  otherError: {
+    promptNoBeEmpty: '前缀提示词不能为空',
+  },
   variableConig: {
     modalTitle: '变量设置',
     description: '设置变量 {{varName}}',
     fieldType: '字段类型',
     string: '文本',
+    paragraph: '段落',
     select: '下拉选项',
     notSet: '未设置，在 Prompt 中输入 {{input}} 试试',
     stringTitle: '文本框设置',

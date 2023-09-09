@@ -216,8 +216,8 @@ class AppModelConfigService:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in ["text-input", "select"]:
-                raise ValueError("Keys in user_input_form list can only be 'text-input' or 'select'")
+            if key not in ["text-input", "select", "paragraph"]:
+                raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
 
             form_item = item[key]
             if 'label' not in form_item:

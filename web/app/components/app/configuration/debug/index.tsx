@@ -297,7 +297,6 @@ const Debug: FC<IDebug> = ({
       setChatList([])
   }, [controlClearChatMessage])
 
-  const [completionQuery, setCompletionQuery] = useState('')
   const [completionRes, setCompletionRes] = useState('')
 
   const sendTextCompletion = async () => {
@@ -308,11 +307,6 @@ const Debug: FC<IDebug> = ({
 
     if (!checkCanSend())
       return
-
-    if (!completionQuery) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
 
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
@@ -342,7 +336,6 @@ const Debug: FC<IDebug> = ({
 
     const data = {
       inputs,
-      query: completionQuery,
       model_config: postModelConfig,
     }
 
@@ -380,8 +373,6 @@ const Debug: FC<IDebug> = ({
         </div>
         <PromptValuePanel
           appType={mode as AppType}
-          value={completionQuery}
-          onChange={setCompletionQuery}
           onSend={sendTextCompletion}
         />
       </div>

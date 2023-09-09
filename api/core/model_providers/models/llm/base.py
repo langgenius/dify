@@ -342,7 +342,7 @@ class BaseLLM(BaseProviderModel):
             if order == 'context_prompt':
                 prompt += context_prompt_content
             elif order == 'pre_prompt':
-                prompt += (pre_prompt_content + '\n\n') if pre_prompt_content else ''
+                prompt += pre_prompt_content
 
         query_prompt = prompt_rules['query_prompt'] if 'query_prompt' in prompt_rules else '{{query}}'
 
