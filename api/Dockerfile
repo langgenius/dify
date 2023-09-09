@@ -26,13 +26,15 @@ EXPOSE 5001
 
 WORKDIR /app/api
 
-RUN apt-get update \ 
+RUN apt-get update \
     && apt-get install -y --no-install-recommends bash curl wget vim nodejs \
     && apt-get autoremove \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=base /pkg /usr/local
 COPY . /app/api/
+
+RUN python -c "from transformers import GPT2TokenizerFast; GPT2TokenizerFast.from_pretrained('gpt2')"
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
