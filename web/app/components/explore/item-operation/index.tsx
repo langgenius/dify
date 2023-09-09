@@ -11,7 +11,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 
 export type IItemOperationProps = {
   className?: string
-  isItemHovering: boolean
+  isItemHovering?: boolean
   isPinned: boolean
   isShowRenameConversation?: boolean
   onRenameConversation?: () => void

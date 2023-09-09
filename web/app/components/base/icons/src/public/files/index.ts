@@ -1,2 +1,8 @@
 export { default as Csv } from './Csv'
+export { default as Html } from './Html'
+export { default as Json } from './Json'
 export { default as Md } from './Md'
+export { default as Pdf } from './Pdf'
+export { default as Txt } from './Txt'
+export { default as Unknow } from './Unknow'
+export { default as Xlsx } from './Xlsx'

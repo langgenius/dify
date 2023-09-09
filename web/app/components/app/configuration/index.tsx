@@ -56,6 +56,9 @@ const Configuration: FC = () => {
   const [speechToTextConfig, setSpeechToTextConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
+    enabled: false,
+  })
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
@@ -77,6 +80,7 @@ const Configuration: FC = () => {
     more_like_this: null,
     suggested_questions_after_answer: null,
     speech_to_text: null,
+    retriever_resource: null,
     dataSets: [],
   })
 
@@ -108,6 +112,9 @@ const Configuration: FC = () => {
       enabled: false,
     })
     setSpeechToTextConfig(modelConfig.speech_to_text || {
+      enabled: false,
+    })
+    setCitationConfig(modelConfig.retriever_resource || {
       enabled: false,
     })
   }
@@ -159,6 +166,9 @@ const Configuration: FC = () => {
       if (modelConfig.speech_to_text)
         setSpeechToTextConfig(modelConfig.speech_to_text)
 
+      if (modelConfig.retriever_resource)
+        setCitationConfig(modelConfig.retriever_resource)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -171,6 +181,7 @@ const Configuration: FC = () => {
           more_like_this: modelConfig.more_like_this,
           suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
           speech_to_text: modelConfig.speech_to_text,
+          retriever_resource: modelConfig.retriever_resource,
           dataSets: datasets || [],
         },
         completionParams: model.completion_params,
@@ -202,6 +213,7 @@ const Configuration: FC = () => {
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -219,6 +231,7 @@ const Configuration: FC = () => {
       draft.more_like_this = moreLikeThisConfig
       draft.suggested_questions_after_answer = suggestedQuestionsAfterAnswerConfig
       draft.speech_to_text = speechToTextConfig
+      draft.retriever_resource = citationConfig
       draft.dataSets = dataSets
     })
     setPublishedConfig({
@@ -263,6 +276,8 @@ const Configuration: FC = () => {
       setSuggestedQuestionsAfterAnswerConfig,
       speechToTextConfig,
       setSpeechToTextConfig,
+      citationConfig,
+      setCitationConfig,
       formattingChanged,
       setFormattingChanged,
       inputs,
