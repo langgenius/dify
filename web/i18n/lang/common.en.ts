@@ -40,10 +40,12 @@ const translation = {
   actionMsg: {
     noModification: 'No modifications at the moment.',
     modifiedSuccessfully: 'Modified successfully',
-    modificationFailed: 'Modification failed',
+    modifiedUnsuccessfully: 'Modified unsuccessfully',
     copySuccessfully: 'Copied successfully',
     paySucceeded: 'Payment succeeded',
     payCancelled: 'Payment cancelled',
+    generatedSuccessfully: 'Generated successfully',
+    generatedUnsuccessfully: 'Generated unsuccessfully',
   },
   model: {
     params: {
@@ -341,6 +343,14 @@ const translation = {
     conversationName: 'Conversation name',
     conversationNamePlaceholder: 'Please input conversation name',
     conversationNameCanNotEmpty: 'Conversation name required',
+    citation: {
+      title: 'CITATIONS',
+      linkToDataset: 'Link to dataset',
+      characters: 'Characters:',
+      hitCount: 'Hit count:',
+      vectorHash: 'Vector hash:',
+      hitScore: 'Hit Score:',
+    },
   },
 }
 

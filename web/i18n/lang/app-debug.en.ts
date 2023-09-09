@@ -51,6 +51,11 @@ const translation = {
       description: 'Once enabled, you can use voice input.',
       resDes: 'Voice input is enabled',
     },
+    citation: {
+      title: 'Citations and Attributions',
+      description: 'Once enabled, show source document and attributed section of the generated content.',
+      resDes: 'Citations and Attributions is enabled',
+    },
     dataSet: {
       title: 'Context',
       noData: 'You can import datasets as context',

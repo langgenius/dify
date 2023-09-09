@@ -304,7 +304,7 @@ const Completed: FC<ICompletedProps> = ({
       setAllSegments([...allSegments])
     }
     else {
-      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 
@@ -315,7 +315,7 @@ const Completed: FC<ICompletedProps> = ({
       resetList()
     }
     else {
-      notify({ type: 'error', message: t('common.actionMsg.modificationFailed') })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 

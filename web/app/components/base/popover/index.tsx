@@ -2,9 +2,14 @@ import { Popover, Transition } from '@headlessui/react'
 import { Fragment, cloneElement, useRef } from 'react'
 import s from './style.module.css'
 
+export type HtmlContentProps = {
+  onClose?: () => void
+  onClick?: () => void
+}
+
 type IPopover = {
   className?: string
-  htmlContent: React.ReactNode
+  htmlContent: React.ReactElement<HtmlContentProps>
   trigger?: 'click' | 'hover'
   position?: 'bottom' | 'br'
   btnElement?: string | React.ReactNode
@@ -84,7 +89,7 @@ export default function CustomPopover({
                         })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactElement, {
+                      {cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
                         onClose: () => onMouseLeave(open),
                         ...(manualClose
                           ? {

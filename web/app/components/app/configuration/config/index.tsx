@@ -36,6 +36,8 @@ const Config: FC = () => {
     setSuggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     setSpeechToTextConfig,
+    citationConfig,
+    setCitationConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
   const { speech2textDefaultModel } = useProviderContext()
@@ -88,9 +90,15 @@ const Config: FC = () => {
         draft.enabled = value
       }))
     },
+    citation: citationConfig.enabled,
+    setCitation: (value) => {
+      setCitationConfig(produce(citationConfig, (draft) => {
+        draft.enabled = value
+      }))
+    },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel))
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
   const hasToolbox = false
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
@@ -161,6 +169,7 @@ const Config: FC = () => {
               }
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
               isShowSpeechText={featureConfig.speechToText && !!speech2textDefaultModel}
+              isShowCitation={featureConfig.citation}
             />
           )
         }

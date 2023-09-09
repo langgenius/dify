@@ -51,6 +51,11 @@ const translation = {
       description: '启用后，您可以使用语音输入。',
       resDes: '语音输入已启用',
     },
+    citation: {
+      title: '引用和归属',
+      description: '启用后，显示源文档和生成内容的归属部分。',
+      resDes: '引用和归属已启用',
+    },
     dataSet: {
       title: '上下文',
       noData: '您可以导入数据集作为上下文',

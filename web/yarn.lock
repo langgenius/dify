@@ -307,10 +307,10 @@
   resolved "https://registry.npmjs.org/@miragejs/pretender-node-polyfill/-/pretender-node-polyfill-0.1.2.tgz"
   integrity sha512-M/BexG/p05C5lFfMunxo/QcgIJnMT2vDVCd00wNqK2ImZONIlEETZwWJu1QtLxtmYlSHlCFl3JNzp0tLe7OJ5g==
 
-"@next/env@13.3.1":
-  version "13.3.1"
-  resolved "https://registry.npmjs.org/@next/env/-/env-13.3.1.tgz"
-  integrity sha512-EDtCoedIZC7JlUQ3uaQpSc4aVmyhbLHmQVALg7pFfQgOTjgSnn7mKtA0DiCMkYvvsx6aFb5octGMtWrOtGXW9A==
+"@next/env@13.3.4":
+  version "13.3.4"
+  resolved "https://registry.npmjs.org/@next/env/-/env-13.3.4.tgz"
+  integrity sha512-oTK/wRV2qga86m/4VdrR1+/56UA6U1Qv3sIgowB+bZjahniZLEG5BmmQjfoGv7ZuLXBZ8Eec6hkL9BqJcrEL2g==
 
 "@next/eslint-plugin-next@13.4.12":
   version "13.4.12"
@@ -326,10 +326,10 @@
   dependencies:
     source-map "^0.7.0"
 
-"@next/swc-darwin-arm64@13.3.1":
-  version "13.3.1"
-  resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-13.3.1.tgz"
-  integrity sha512-UXPtriEc/pBP8luSLSCZBcbzPeVv+SSjs9cH/KygTbhmACye8/OOXRZO13Z2Wq1G0gLmEAIHQAOuF+vafPd2lw==
+"@next/swc-darwin-arm64@13.3.4":
+  version "13.3.4"
+  resolved "https://registry.npmjs.org/@next/swc-darwin-arm64/-/swc-darwin-arm64-13.3.4.tgz"
+  integrity sha512-vux7RWfzxy1lD21CMwZsy9Ej+0+LZdIIj1gEhVmzOQqQZ5N56h8JamrjIVCfDL+Lpj8KwOmFZbPHE8qaYnL2pg==
 
 "@nodelib/fs.scandir@2.1.5":
   version "2.1.5"
@@ -438,10 +438,10 @@
     "@sentry/types" "7.54.0"
     tslib "^1.9.3"
 
-"@swc/helpers@0.5.0":
-  version "0.5.0"
-  resolved "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.0.tgz"
-  integrity sha512-SjY/p4MmECVVEWspzSRpQEM3sjR17sP8PbGxELWrT+YZMBfiUyt1MRUNjMV23zohwlG2HYtCQOsCwsTHguXkyg==
+"@swc/helpers@0.5.1":
+  version "0.5.1"
+  resolved "https://registry.npmjs.org/@swc/helpers/-/helpers-0.5.1.tgz"
+  integrity sha512-sJ902EfIzn1Fa+qYmjdQqh8tPsoxyBz+8yBKC2HKUxyezKJFwPGOn7pv4WY6QuQW//ySQi5lJjA/ZT9sNWWNTg==
   dependencies:
     tslib "^2.4.0"
 
@@ -4275,27 +4275,27 @@ neo-async@^2.6.2:
   resolved "https://registry.npmjs.org/neo-async/-/neo-async-2.6.2.tgz"
   integrity sha512-Yd3UES5mWCSqR+qNT93S3UoYUkqAZ9lLg8a7g9rimsWmYGK8cVToA4/sF3RrshdyV3sAGMXVUmpMYOw+dLpOuw==
 
-next@13.3.1:
-  version "13.3.1"
-  resolved "https://registry.npmjs.org/next/-/next-13.3.1.tgz"
-  integrity sha512-eByWRxPzKHs2oQz1yE41LX35umhz86ZSZ+mYyXBqn2IBi2hyUqxBA88avywdr4uyH+hCJczegGsDGWbzQA5Rqw==
+next@13.3.4:
+  version "13.3.4"
+  resolved "https://registry.npmjs.org/next/-/next-13.3.4.tgz"
+  integrity sha512-sod7HeokBSvH5QV0KB+pXeLfcXUlLrGnVUXxHpmhilQ+nQYT3Im2O8DswD5e4uqbR8Pvdu9pcWgb1CbXZQZlmQ==
   dependencies:
-    "@next/env" "13.3.1"
-    "@swc/helpers" "0.5.0"
+    "@next/env" "13.3.4"
+    "@swc/helpers" "0.5.1"
     busboy "1.6.0"
     caniuse-lite "^1.0.30001406"
     postcss "8.4.14"
     styled-jsx "5.1.1"
   optionalDependencies:
-    "@next/swc-darwin-arm64" "13.3.1"
-    "@next/swc-darwin-x64" "13.3.1"
-    "@next/swc-linux-arm64-gnu" "13.3.1"
-    "@next/swc-linux-arm64-musl" "13.3.1"
-    "@next/swc-linux-x64-gnu" "13.3.1"
-    "@next/swc-linux-x64-musl" "13.3.1"
-    "@next/swc-win32-arm64-msvc" "13.3.1"
-    "@next/swc-win32-ia32-msvc" "13.3.1"
-    "@next/swc-win32-x64-msvc" "13.3.1"
+    "@next/swc-darwin-arm64" "13.3.4"
+    "@next/swc-darwin-x64" "13.3.4"
+    "@next/swc-linux-arm64-gnu" "13.3.4"
+    "@next/swc-linux-arm64-musl" "13.3.4"
+    "@next/swc-linux-x64-gnu" "13.3.4"
+    "@next/swc-linux-x64-musl" "13.3.4"
+    "@next/swc-win32-arm64-msvc" "13.3.4"
+    "@next/swc-win32-ia32-msvc" "13.3.4"
+    "@next/swc-win32-x64-msvc" "13.3.4"
 
 node-releases@^2.0.12:
   version "2.0.12"
@@ -4845,7 +4845,7 @@ react-markdown@^8.0.6:
 
 react-multi-email@^1.0.14:
   version "1.0.16"
-  resolved "https://registry.yarnpkg.com/react-multi-email/-/react-multi-email-1.0.16.tgz#126f78011d02cc27d7462f47befbafff2a53d683"
+  resolved "https://registry.npmjs.org/react-multi-email/-/react-multi-email-1.0.16.tgz"
   integrity sha512-dgg4TY3P5FWz6c4ghgxH1bjZOgYL3S/HN+EUNe6dqHbLMVzeyud1ztDUlqvft4NX1sUxKx2IF2zDq1yAJQA5yQ==
 
 react-papaparse@^4.1.0:

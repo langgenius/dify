@@ -40,8 +40,10 @@ const translation = {
   actionMsg: {
     noModification: '暂无修改',
     modifiedSuccessfully: '修改成功',
-    modificationFailed: '修改失败',
+    modifiedUnsuccessfully: '修改失败',
     copySuccessfully: '复制成功',
+    generatedSuccessfully: '已重新生成',
+    generatedUnsuccessfully: '生成失败',
     paySucceeded: '已支付成功',
     payCancelled: '已取消支付',
   },
@@ -341,6 +343,14 @@ const translation = {
     conversationName: '会话名称',
     conversationNamePlaceholder: '请输入会话名称',
     conversationNameCanNotEmpty: '会话名称必填',
+    citation: {
+      title: '引用',
+      linkToDataset: '去往数据集',
+      characters: '字符：',
+      hitCount: '命中次数：',
+      vectorHash: '向量哈希：',
+      hitScore: '命中得分：',
+    },
   },
 }
 
