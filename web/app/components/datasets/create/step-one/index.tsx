@@ -8,7 +8,7 @@ import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import s from './index.module.css'
-import type { FileItem } from '@/models/datasets'
+import type { CustomFile, FileItem } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
@@ -64,21 +64,21 @@ const StepOne = ({
   const { data: limitsData } = useSWR('/datasets/limit', fetchDocumentsLimit)
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
-  const [currentFile, setCurrentFile] = useState<File | undefined>()
-  const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
+  const [currentFile, setCurrentFile] = useState<File & CustomFile | undefined>()
+  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
   const { t } = useTranslation()
 
   const modalShowHandle = () => setShowModal(true)
   const modalCloseHandle = () => setShowModal(false)
 
-  const updateCurrentFile = (file: File) => {
+  const updateCurrentFile = (file: File & CustomFile) => {
     setCurrentFile(file)
   }
   const hideFilePreview = () => {
     setCurrentFile(undefined)
   }
 
-  const updateCurrentPage = (page: Page) => {
+  const updateCurrentPage = (page: NotionPage) => {
     setCurrentNotionPage(page)
   }
 

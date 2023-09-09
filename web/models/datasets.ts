@@ -28,9 +28,9 @@ export type DataSet = {
 }
 
 export type CustomFile = File & {
-  id?: string
-  extension?: string
-  mime_type?: string
+  id: string
+  extension: string
+  mime_type: string
   created_by?: string
   created_at?: number
 }
