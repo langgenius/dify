@@ -531,7 +531,7 @@ def update_app_model_configs(batch_size):
                 db.session.commit()
 
             except Exception as e:
-                click.secho(f"Error while migrating data: {e}", fg='red')
+                click.secho(f"Error while migrating data: {e}, app_id: {data.app_id}, app_model_config_id: {data.id}", fg='red')
                 continue
             
             click.secho(f"Successfully migrated batch {i+1}/{num_batches}.", fg='green')
