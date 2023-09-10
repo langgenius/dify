@@ -3,7 +3,7 @@ FROM python:3.10-slim AS base
 
 LABEL maintainer="takatost@gmail.com"
 
-RUN apt-get update \ 
+RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ python3-dev libc-dev libffi-dev
 
 COPY requirements.txt /requirements.txt
@@ -16,6 +16,7 @@ FROM python:3.10-slim AS builder
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
+ENV TRANSFORMERS_OFFLINE true
 ENV CONSOLE_API_URL http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL http://127.0.0.1:3000
 ENV SERVICE_API_URL http://127.0.0.1:5001
