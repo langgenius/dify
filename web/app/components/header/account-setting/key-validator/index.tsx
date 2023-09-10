@@ -100,7 +100,7 @@ const KeyValidator = ({
                   className='mb-4'
                   name={form.title}
                   placeholder={form.placeholder}
-                  value={value[form.key] || ''}
+                  value={value[form.key] as string || ''}
                   onChange={v => handleChange(form, v)}
                   onFocus={() => handleFocus(form)}
                   validating={validating}
