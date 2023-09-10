@@ -43,7 +43,7 @@ type ISegmentCardProps = {
   scene?: UsageScene
   className?: string
   archived?: boolean
-  embeddingAvailable: boolean
+  embeddingAvailable?: boolean
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({

@@ -26,7 +26,7 @@ from models.model import UploadFile
 
 cache = TTLCache(maxsize=None, ttl=30)
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
 PREVIEW_WORDS_LIMIT = 3000
 
 
