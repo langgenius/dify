@@ -1,6 +1,6 @@
 import decimal
 import json
-from typing import Optional, Union
+from typing import Optional, Union, List
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
@@ -15,7 +15,8 @@ from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DatasetQuery
-from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, MessageChain
+from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, \
+    MessageChain, DatasetRetrieverResource
 
 
 class ConversationMessageTask:
@@ -40,6 +41,8 @@ class ConversationMessageTask:
         self.model_instance = model_instance
 
         self.message = None
+
+        self.retriever_resource = None
 
         self.model_dict = self.app_model_config.model_dict
         self.provider_name = self.model_dict.get('provider')
@@ -157,7 +160,8 @@ class ConversationMessageTask:
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
         self.message.message_price_unit = message_price_unit
-        self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
+        self.message.answer = PromptBuilder.process_template(
+            llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
         self.message.answer_price_unit = answer_price_unit
@@ -256,7 +260,36 @@ class ConversationMessageTask:
 
         db.session.add(dataset_query)
 
+    def on_dataset_query_finish(self, resource: List):
+        if resource and len(resource) > 0:
+            for item in resource:
+                dataset_retriever_resource = DatasetRetrieverResource(
+                    message_id=self.message.id,
+                    position=item.get('position'),
+                    dataset_id=item.get('dataset_id'),
+                    dataset_name=item.get('dataset_name'),
+                    document_id=item.get('document_id'),
+                    document_name=item.get('document_name'),
+                    data_source_type=item.get('data_source_type'),
+                    segment_id=item.get('segment_id'),
+                    score=item.get('score') if 'score' in item else None,
+                    hit_count=item.get('hit_count') if 'hit_count' else None,
+                    word_count=item.get('word_count') if 'word_count' in item else None,
+                    segment_position=item.get('segment_position') if 'segment_position' in item else None,
+                    index_node_hash=item.get('index_node_hash') if 'index_node_hash' in item else None,
+                    content=item.get('content'),
+                    retriever_from=item.get('retriever_from'),
+                    created_by=self.user.id
+                )
+                db.session.add(dataset_retriever_resource)
+                db.session.flush()
+            self.retriever_resource = resource
+
+    def message_end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
+
     def end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
         self._pub_handler.pub_end()
 
 
@@ -350,6 +383,23 @@ class PubHandler:
             self.pub_end()
             raise ConversationTaskStoppedException()
 
+    def pub_message_end(self, retriever_resource: List):
+        content = {
+            'event': 'message_end',
+            'data': {
+                'task_id': self._task_id,
+                'message_id': self._message.id,
+                'mode': self._conversation.mode,
+                'conversation_id': self._conversation.id
+            }
+        }
+        if retriever_resource:
+            content['data']['retriever_resources'] = retriever_resource
+        redis_client.publish(self._channel, json.dumps(content))
+
+        if self._is_stopped():
+            self.pub_end()
+            raise ConversationTaskStoppedException()
 
     def pub_end(self):
         content = {

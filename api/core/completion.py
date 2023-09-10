@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from typing import Optional, List, Union, Tuple
@@ -19,13 +20,15 @@ from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
+from models.dataset import DocumentSegment, Dataset, Document
 from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
 
 
 class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
-                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool, is_override: bool = False):
+                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
+                 is_override: bool = False, retriever_from: str = 'dev'):
         """
         errors: ProviderTokenNotInitError
         """
@@ -96,7 +99,6 @@ class Completion:
             should_use_agent = agent_executor.should_use_agent(query)
             if should_use_agent:
                 agent_execute_result = agent_executor.run(query)
-
         # run the final llm
         try:
             cls.run_final_llm(
@@ -118,7 +120,8 @@ class Completion:
             return
 
     @classmethod
-    def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str, inputs: dict,
+    def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
+                      inputs: dict,
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]):
@@ -150,7 +153,6 @@ class Completion:
             callbacks=[LLMCallbackHandler(model_instance, conversation_message_task)],
             fake_response=fake_response
         )
-
         return response
 
     @classmethod

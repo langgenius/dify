@@ -113,6 +113,25 @@ class QdrantVectorIndex(BaseVectorIndex):
             ],
         ))
 
+    def delete_by_ids(self, ids: list[str]) -> None:
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+            return
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        from qdrant_client.http import models
+        for node_id in ids:
+            vector_store.del_texts(models.Filter(
+                must=[
+                    models.FieldCondition(
+                        key="metadata.doc_id",
+                        match=models.MatchValue(value=node_id),
+                    ),
+                ],
+            ))
+
     def _is_origin(self):
         if self.dataset.index_struct_dict:
             class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']

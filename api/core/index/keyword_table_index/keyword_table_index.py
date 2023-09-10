@@ -74,7 +74,7 @@ class KeywordTableIndex(BaseIndex):
             DocumentSegment.document_id == document_id
         ).all()
 
-        ids = [segment.id for segment in segments]
+        ids = [segment.index_node_id for segment in segments]
 
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
