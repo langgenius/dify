@@ -16,7 +16,6 @@ FROM python:3.10-slim AS builder
 ENV FLASK_APP app.py
 ENV EDITION SELF_HOSTED
 ENV DEPLOY_ENV PRODUCTION
-ENV TRANSFORMERS_OFFLINE true
 ENV CONSOLE_API_URL http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL http://127.0.0.1:3000
 ENV SERVICE_API_URL http://127.0.0.1:5001
@@ -36,6 +35,7 @@ COPY --from=base /pkg /usr/local
 COPY . /app/api/
 
 RUN python -c "from transformers import GPT2TokenizerFast; GPT2TokenizerFast.from_pretrained('gpt2')"
+ENV TRANSFORMERS_OFFLINE true
 
 COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
