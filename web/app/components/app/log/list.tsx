@@ -81,7 +81,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
       id: `question-${item.id}`,
-      content: item.query,
+      content: item.inputs.query || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
     })
 
@@ -413,7 +413,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <tbody className="text-gray-500">
           {logs.data.map((log) => {
             const endUser = log.from_end_user_session_id
-            const leftValue = get(log, isChatMode ? 'summary' : 'message.query')
+            const leftValue = get(log, isChatMode ? 'summary' : 'message.inputs.query')
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
