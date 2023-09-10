@@ -52,13 +52,18 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.(newPromptVariables)
   }
 
-  const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[]) => {
+  const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[], isParagraph?: boolean) => {
     const newPromptVariables = promptVariables.map((item) => {
       if (item.key === key) {
         const newItem: any = { ...item }
         updateKeys.forEach((updateKey, i) => {
           newItem[updateKey] = newValues[i]
         })
+        if (isParagraph) {
+          delete newItem.max_length
+          delete newItem.options
+        }
+        console.log(newItem)
         return newItem
       }
 
@@ -247,9 +252,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           onConfirm={({ type, value }) => {
             if (type === 'string')
               batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], [type, value || DEFAULT_VALUE_MAX_LEN])
-
             else
-              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, value || []])
+              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, value || []], type === 'paragraph')
 
             hideEditModal()
           }}
