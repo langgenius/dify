@@ -6,6 +6,7 @@ from langchain.embeddings.base import Embeddings
 from langchain.schema import Document, BaseRetriever
 from langchain.vectorstores import VectorStore
 from pydantic import BaseModel
+from qdrant_client.http.models import HnswConfigDiff
 
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
@@ -17,7 +18,7 @@ class QdrantConfig(BaseModel):
     endpoint: str
     api_key: Optional[str]
     root_path: Optional[str]
-    
+
     def to_qdrant_params(self):
         if self.endpoint and self.endpoint.startswith('path:'):
             path = self.endpoint.replace('path:', '')
@@ -69,6 +70,9 @@ class QdrantVectorIndex(BaseVectorIndex):
             ids=uuids,
             content_payload_key='page_content',
             group_id=self.dataset.id,
+            group_payload_key='group_id',
+            hnsw_config=HnswConfigDiff(m=0, payload_m=16, ef_construct=100, full_scan_threshold=10000,
+                                       max_indexing_threads=0, on_disk=False),
             **self._client_config.to_qdrant_params()
         )
 
