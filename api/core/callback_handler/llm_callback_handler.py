@@ -1,5 +1,4 @@
 import logging
-import time
 from typing import Any, Dict, List, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
@@ -7,8 +6,6 @@ from langchain.schema import LLMResult, BaseMessage
 
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
-from core.helper import moderation
-from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 
@@ -34,13 +31,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
-        moderation_result = moderation.check_moderation(
-            self.model_instance,
-            "\n".join([message.content for message in messages[0]])
-        )
-        if not moderation_result:
-            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
-
         real_prompts = []
         for message in messages[0]:
             if message.type == 'human':
@@ -61,10 +51,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
-        moderation_result = moderation.check_moderation(self.model_instance, prompts[0])
-        if not moderation_result:
-            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
-
         self.llm_message.prompt = [{
             "role": 'user',
             "text": prompts[0]

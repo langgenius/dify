@@ -10,8 +10,6 @@ from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.conversation_message_task import ConversationMessageTask
-from core.helper import moderation
-from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 
@@ -54,13 +52,6 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
-        moderation_result = moderation.check_moderation(
-            self.model_instance,
-            "\n".join([message.content for message in messages[0]])
-        )
-        if not moderation_result:
-            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
-
         if not self._current_loop:
             # Agent start with a LLM query
             self._current_loop = AgentLoop(
@@ -77,10 +68,6 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         # serialized={'name': 'OpenAI'}
         # prompts=['Answer the following questions...\nThought:']
         # kwargs={}
-        moderation_result = moderation.check_moderation(self.model_instance, "\n".join([prompt for prompt in prompts]))
-        if not moderation_result:
-            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
-
         if not self._current_loop:
             # Agent start with a LLM query
             self._current_loop = AgentLoop(

@@ -16,6 +16,7 @@ from core.agent.agent.structed_multi_dataset_router_agent import StructuredMulti
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
+from core.helper import moderation
 from core.model_providers.error import LLMError
 from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
@@ -117,6 +118,18 @@ class AgentExecutor:
         return self.agent.should_use_agent(query)
 
     def run(self, query: str) -> AgentExecuteResult:
+        moderation_result = moderation.check_moderation(
+            self.configuration.model_instance.model_provider,
+            query
+        )
+
+        if not moderation_result:
+            return AgentExecuteResult(
+                output="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
+                strategy=self.configuration.strategy,
+                configuration=self.configuration
+            )
+
         agent_executor = LCAgentExecutor.from_agent_and_tools(
             agent=self.agent,
             tools=self.configuration.tools,

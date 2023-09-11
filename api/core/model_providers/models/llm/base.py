@@ -10,6 +10,7 @@ from langchain.memory.chat_memory import BaseChatMemory
 from langchain.schema import LLMResult, SystemMessage, AIMessage, HumanMessage, BaseMessage, ChatGeneration
 
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, DifyStdOutCallbackHandler
+from core.helper import moderation
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
@@ -116,6 +117,15 @@ class BaseLLM(BaseProviderModel):
         :param callbacks:
         :return:
         """
+        moderation_result = moderation.check_moderation(
+            self.model_provider,
+            "\n".join([message.content for message in messages])
+        )
+
+        if not moderation_result:
+            kwargs['fake_response'] = "I apologize for any confusion, " \
+                                      "but I'm an AI assistant to be helpful, harmless, and honest."
+
         if self.deduct_quota:
             self.model_provider.check_quota_over_limit()
 
