@@ -7,6 +7,8 @@ from langchain.schema import LLMResult, BaseMessage
 
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
+from core.helper import moderation
+from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 
@@ -32,7 +34,13 @@ class LLMCallbackHandler(BaseCallbackHandler):
             messages: List[List[BaseMessage]],
             **kwargs: Any
     ) -> Any:
-        self.start_at = time.perf_counter()
+        moderation_result = moderation.check_moderation(
+            self.model_instance,
+            "\n".join([message.content for message in messages[0]])
+        )
+        if not moderation_result:
+            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
+
         real_prompts = []
         for message in messages[0]:
             if message.type == 'human':
@@ -53,7 +61,9 @@ class LLMCallbackHandler(BaseCallbackHandler):
     def on_llm_start(
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
-        self.start_at = time.perf_counter()
+        moderation_result = moderation.check_moderation(self.model_instance, prompts[0])
+        if not moderation_result:
+            raise LLMBadRequestError('Your content violates our usage policy. Please revise and try again.')
 
         self.llm_message.prompt = [{
             "role": 'user',
@@ -63,9 +73,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.llm_message.prompt_tokens = self.model_instance.get_num_tokens([PromptMessage(content=prompts[0])])
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        end_at = time.perf_counter()
-        self.llm_message.latency = end_at - self.start_at
-
         if not self.conversation_message_task.streaming:
             self.conversation_message_task.append_message_text(response.generations[0][0].text)
             self.llm_message.completion = response.generations[0][0].text
@@ -89,8 +96,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
         """Do nothing."""
         if isinstance(error, ConversationTaskStoppedException):
             if self.conversation_message_task.streaming:
-                end_at = time.perf_counter()
-                self.llm_message.latency = end_at - self.start_at
                 self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
                     [PromptMessage(content=self.llm_message.completion)]
                 )

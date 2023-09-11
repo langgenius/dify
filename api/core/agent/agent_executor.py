@@ -16,6 +16,7 @@ from core.agent.agent.structed_multi_dataset_router_agent import StructuredMulti
 from core.agent.agent.structured_chat import AutoSummarizingStructuredChatAgent
 from langchain.agents import AgentExecutor as LCAgentExecutor
 
+from core.model_providers.error import LLMError
 from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
@@ -128,7 +129,9 @@ class AgentExecutor:
 
         try:
             output = agent_executor.run(query)
-        except Exception:
+        except LLMError as ex:
+            raise ex
+        except Exception as ex:
             logging.exception("agent_executor run failed")
             output = None
 

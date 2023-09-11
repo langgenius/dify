@@ -8,6 +8,7 @@ from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.base import BaseEmbedding
 from core.model_providers.models.entity.model_params import ModelKwargs, ModelType
 from core.model_providers.models.llm.base import BaseLLM
+from core.model_providers.models.moderation.base import BaseModeration
 from core.model_providers.models.speech2text.base import BaseSpeech2Text
 from extensions.ext_database import db
 from models.provider import TenantDefaultModel
@@ -180,7 +181,7 @@ class ModelFactory:
     def get_moderation_model(cls,
                              tenant_id: str,
                              model_provider_name: str,
-                             model_name: str) -> Optional[BaseProviderModel]:
+                             model_name: str) -> Optional[BaseModeration]:
         """
         get moderation model.
 
