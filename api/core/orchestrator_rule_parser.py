@@ -1,6 +1,7 @@
 import math
 from typing import Optional
 
+from flask import current_app
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -26,6 +27,7 @@ from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
+from models.provider import ProviderType
 
 
 class OrchestratorRuleParser:
@@ -123,20 +125,46 @@ class OrchestratorRuleParser:
 
         return chain
 
-    def to_sensitive_word_avoidance_chain(self, callbacks: Callbacks = None, **kwargs) \
+    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) \
             -> Optional[SensitiveWordAvoidanceChain]:
         """
         Convert app sensitive word avoidance config to chain
 
+        :param model_instance: model instance
+        :param callbacks: callbacks for the chain
         :param kwargs:
         :return:
         """
+        sensitive_word_avoidance_params = {
+            'enabled': False,
+            'type': None,
+            'canned_response': '',
+            'extra_params': {
+                'sensitive_words': []
+            }
+        }
+
+        if current_app.config['HOSTED_MODERATION_ENABLED'] and current_app.config['HOSTED_MODERATION_PROVIDERS']:
+            moderation_providers = current_app.config['HOSTED_MODERATION_PROVIDERS'].split(',')
+
+            if model_instance.model_provider.provider.provider_type == ProviderType.SYSTEM.value \
+                and model_instance.model_provider.provider_name in moderation_providers:
+                sensitive_word_avoidance_params['enabled'] = True
+                sensitive_word_avoidance_params['type'] = 'moderation'
+                sensitive_word_avoidance_params['canned_response'] = 'Your content violates our usage policy. ' \
+                                                                     'Please revise and try again.'
+
+        # TODO
+
         if not self.app_model_config.sensitive_word_avoidance_dict:
             return None
 
         sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
         sensitive_words = sensitive_word_avoidance_config.get("words", "")
         if sensitive_word_avoidance_config.get("enabled", False) and sensitive_words:
+            sensitive_word_avoidance_enabled = True
+
+        if sensitive_word_avoidance_enabled:
             return SensitiveWordAvoidanceChain(
                 sensitive_words=sensitive_words.split(","),
                 canned_response=sensitive_word_avoidance_config.get("canned_response", ''),

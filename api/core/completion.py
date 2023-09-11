@@ -81,7 +81,7 @@ class Completion:
 
         # parse sensitive_word_avoidance_chain
         chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
-        sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain([chain_callback])
+        sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain(final_model_instance, [chain_callback])
         if sensitive_word_avoidance_chain:
             query = sensitive_word_avoidance_chain.run(query)
 
