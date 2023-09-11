@@ -47,11 +47,3 @@ body:
     placeholder: What happened instead?
   validations:
     required: false
-
-- type: textarea
-  attributes:
-    label: Other Software
-    description: If you're reporting a bug about our interaction with other software, what software? What versions?
-    placeholder: |
-  validations:
-    required: false
