@@ -345,7 +345,7 @@ const translation = {
     conversationNameCanNotEmpty: '会话名称必填',
     citation: {
       title: '引用',
-      linkToDataset: '去往数据集',
+      linkToDataset: '跳转至数据集',
       characters: '字符：',
       hitCount: '命中次数：',
       vectorHash: '向量哈希：',
