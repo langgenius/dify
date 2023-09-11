@@ -169,6 +169,10 @@ const baseFetch = (
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
+  else {
+    const accessToken = localStorage.getItem('jwt-token') || ''
+    options.headers.set('Authorization', `Bearer ${accessToken}`)
+  }
 
   if (deleteContentType) {
     options.headers.delete('Content-Type')

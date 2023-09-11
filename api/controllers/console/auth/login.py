@@ -11,6 +11,7 @@ from controllers.console.setup import setup_required
 from libs.helper import email
 from libs.password import valid_password
 from services.account_service import AccountService, TenantService
+from libs.passport import PassportService
 
 
 class LoginApi(Resource):
@@ -41,8 +42,13 @@ class LoginApi(Resource):
         AccountService.update_last_login(account, request)
 
         # todo: return the user info
+        payload = {
+            "user_id": account.id,
+        }
 
-        return {'result': 'success'}
+        token = PassportService().issue(payload)
+
+        return {'result': 'success', 'data': token}
 
 
 class LogoutApi(Resource):

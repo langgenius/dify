@@ -2,7 +2,7 @@
 import os
 from datetime import datetime, timedelta
 
-from werkzeug.exceptions import Forbidden
+from werkzeug.exceptions import Forbidden, Unauthorized
 
 if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
     from gevent import monkey
@@ -33,6 +33,7 @@ from commands import register_commands
 from models.account import TenantAccountJoin, AccountStatus
 from models.model import Account, EndUser, App
 from services.account_service import TenantService
+from libs.passport import PassportService
 
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
@@ -103,10 +104,21 @@ def _create_tenant_for_account(account):
 
 # Flask-Login configuration
 @login_manager.user_loader
-def load_user(user_id):
+def load_user():
     """Load user based on the user_id."""
     if request.blueprint == 'console':
         # Check if the user_id contains a dot, indicating the old format
+        auth_header = request.headers.get('Authorization', '')
+        if ' ' not in auth_header:
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+        auth_scheme, auth_token = auth_header.split(None, 1)
+        auth_scheme = auth_scheme.lower()
+        if auth_scheme != 'bearer':
+            raise Unauthorized('Invalid Authorization header format. Expected \'Bearer <api-key>\' format.')
+        
+        decoded = PassportService().verify(auth_token)
+        user_id = decoded.get('user_id')
+
         if '.' in user_id:
             tenant_id, account_id = user_id.split('.')
         else:
