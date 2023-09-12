@@ -61,6 +61,7 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
 const VariablePicker = () => {
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
+    maxLength: 2,
   })
 
   const options = [

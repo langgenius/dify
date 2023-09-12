@@ -1,10 +1,14 @@
 import type { FC } from 'react'
+import { useCallback } from 'react'
 import ReactDOM from 'react-dom'
+import type { TextNode } from 'lexical'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Variable } from '@/app/components/base/icons/src/vender/line/development'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -68,6 +72,7 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
 }
 
 const ComponentPicker = () => {
+  const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0,
   })
@@ -76,7 +81,9 @@ const ComponentPicker = () => {
     new ComponentPickerOption('Context', {
       desc: 'Description text here',
       icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
-      onSelect: () => {},
+      onSelect: () => {
+        editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
+      },
     }),
     new ComponentPickerOption('Variables', {
       desc: 'Description text here',
@@ -95,11 +102,29 @@ const ComponentPicker = () => {
     }),
   ]
 
+  const onSelectOption = useCallback(
+    (
+      selectedOption: ComponentPickerOption,
+      nodeToRemove: TextNode | null,
+      closeMenu: () => void,
+      matchingString: string,
+    ) => {
+      editor.update(() => {
+        if (nodeToRemove)
+          nodeToRemove.remove()
+
+        selectedOption.onSelect(matchingString)
+        closeMenu()
+      })
+    },
+    [editor],
+  )
+
   return (
     <LexicalTypeaheadMenuPlugin
       options={options}
       onQueryChange={() => {}}
-      onSelectOption={() => {}}
+      onSelectOption={onSelectOption}
       menuRenderFn={(
         anchorElementRef,
         { selectOptionAndCleanUp, setHighlightedIndex },
