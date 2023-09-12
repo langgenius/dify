@@ -51,3 +51,4 @@ stripe~=5.5.0
 pandas==1.5.3
 xinference==0.2.1
 safetensors==0.3.2
+zhipuai==1.0.7
