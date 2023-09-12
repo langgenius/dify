@@ -9,17 +9,28 @@ import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
+import SVGBtn from '@/app/components/app/chat/svg'
+import Flowchart from "@/app/components/app/chat/mermaid";
+
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
   sql: 'SQL',
   javascript: 'JavaScript',
+  java: 'Java',
   typescript: 'TypeScript',
   vbscript: 'VBScript',
   css: 'CSS',
   html: 'HTML',
   xml: 'XML',
   php: 'PHP',
+  python: 'Python',
+  yaml: 'Yaml',
+  shell: 'Shell',
+  powershell: 'PowerShell',
+  markdown: 'MarkDown',
+  makefile: 'MarkFile',
+  json: 'JSON',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -85,6 +96,7 @@ export function Markdown(props: { content: string }) {
             const match = /language-(\w+)/.exec(className || '')
             const language = match?.[1]
             const languageShowName = getCorrectCapitalizationLanguageName(language || '')
+            const [isSVG, setIsSVG] = useState(false);
             return (!inline && match)
               ? (
                 <div>
@@ -95,24 +107,36 @@ export function Markdown(props: { content: string }) {
                     }}
                   >
                     <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-                    <CopyBtn
-                      value={String(children).replace(/\n$/, '')}
-                      isPlain
-                    />
+                    <div style={{'display': 'flex'}}>
+                      {language === 'mermaid' &&
+                        <SVGBtn
+                          isSVG={isSVG}
+                          setIsSVG={setIsSVG}
+                        />
+                      }
+                      <CopyBtn
+                        value={String(children).replace(/\n$/, '')}
+                        isPlain
+                      />
+                    </div>
                   </div>
-                  <SyntaxHighlighter
-                    {...props}
-                    style={atelierHeathLight}
-                    customStyle={{
-                      paddingLeft: 12,
-                      backgroundColor: '#fff',
-                    }}
-                    language={match[1]}
-                    showLineNumbers
-                    PreTag="div"
-                  >
-                    {String(children).replace(/\n$/, '')}
-                  </SyntaxHighlighter>
+                  { language === 'mermaid' && isSVG ?
+                      <Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />
+                      :
+                      <SyntaxHighlighter
+                            {...props}
+                            style={atelierHeathLight}
+                            customStyle={{
+                              paddingLeft: 12,
+                              backgroundColor: '#fff',
+                            }}
+                            language={match[1]}
+                            showLineNumbers
+                            PreTag="div"
+                      >
+                      {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                  }
                 </div>
               )
               : (
