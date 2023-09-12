@@ -9,6 +9,7 @@ import {
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
+import { INSERT_QUERY_BLOCK_COMMAND } from './query-block'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Variable } from '@/app/components/base/icons/src/vender/line/development'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -98,7 +99,9 @@ const ComponentPicker = () => {
     new ComponentPickerOption('Query', {
       desc: 'Insert user query template',
       icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
-      onSelect: () => {},
+      onSelect: () => {
+        editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)
+      },
     }),
   ]
 

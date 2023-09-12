@@ -10,6 +10,35 @@ import ComponentPicker from './plugins/component-picker'
 import VariablePicker from './plugins/variable-picker'
 import ContextBlock from './plugins/context-block'
 import { ContextBlockNode } from './plugins/context-block/node'
+import QueryBlock from './plugins/query-block'
+import { QueryBlockNode } from './plugins/query-block/node'
+
+export type PromptEditorProps = {
+  contextBlock?: {
+    enable: boolean
+    selectable: boolean
+    addedContext: []
+    onAddContext: () => void
+  }
+  variableBlock?: {
+    enable: boolean
+    selectable: boolean
+    variables: []
+    onAddVariable: () => void
+  }
+  historyBlock?: {
+    enable: boolean
+    selectable: boolean
+    history: {
+      user: string
+      assistant: string
+    }
+  }
+  queryBlock?: {
+    enable: boolean
+    selectable: boolean
+  }
+}
 
 const PromptEditor = () => {
   const initialConfig = {
@@ -17,7 +46,7 @@ const PromptEditor = () => {
     onError: (error: Error) => {
       throw error
     },
-    nodes: [ContextBlockNode],
+    nodes: [ContextBlockNode, QueryBlockNode],
   }
 
   return (
@@ -31,6 +60,7 @@ const PromptEditor = () => {
         <ComponentPicker />
         <VariablePicker />
         <ContextBlock />
+        <QueryBlock />
         <TreeView />
       </div>
     </LexicalComposer>
