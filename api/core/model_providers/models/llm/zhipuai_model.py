@@ -55,3 +55,7 @@ class ZhipuAIModel(BaseLLM):
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"ZhipuAI: {str(ex)}")
+
+    @property
+    def support_streaming(self):
+        return True

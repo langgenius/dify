@@ -64,7 +64,12 @@ class ZhipuModelAPI(BaseModel):
                 "api_key not provided, you could provide it."
             )
 
-        return jwt_token.generate_token(self.api_key)
+        try:
+            return jwt_token.generate_token(self.api_key)
+        except Exception:
+            raise ValueError(
+                f"ZhipuAI: Your api_key is invalid, please check it."
+            )
 
 
 class ZhipuAIChatLLM(BaseChatModel):

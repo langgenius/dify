@@ -79,7 +79,7 @@ class ZhipuAIProvider(BaseModelProvider):
         """
         return ModelKwargsRules(
             temperature=KwargRule[float](min=0.01, max=1, default=0.95),
-            top_p=KwargRule[float](min=0.01, max=0.99, default=0.8),
+            top_p=KwargRule[float](min=0.1, max=0.9, default=0.8),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
             max_tokens=KwargRule[int](enabled=False),
