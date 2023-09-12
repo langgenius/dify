@@ -331,7 +331,7 @@ const Configuration: FC = () => {
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-[574px] shrink-0 h-full overflow-y-auto  py-4 px-6">
+            <div className="w-[574px]">
               <Config />
             </div>
             <div className="relative grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>

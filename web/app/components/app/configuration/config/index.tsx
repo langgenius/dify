@@ -1,15 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useScroll } from 'ahooks'
 import DatasetConfig from '../dataset-config'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import AddFeatureBtn from './feature/add-feature-btn'
-import AutomaticBtn from './automatic/automatic-btn'
 import type { AutomaticRes } from './automatic/get-automatic-res'
 import GetAutomaticResModal from './automatic/get-automatic-res'
 import ChooseFeature from './feature/choose-feature'
@@ -113,13 +112,25 @@ const Config: FC = () => {
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
   }
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const wrapScroll = useScroll(wrapRef)
+  const toBottomHeight = (() => {
+    if (!wrapRef.current)
+      return 999
+    const elem = wrapRef.current
+    const { clientHeight } = elem
+    const value = (wrapScroll?.top || 0) + clientHeight
+    console.log(value)
+    return value
+  })()
   return (
     <>
-      <div className="pb-[20px]">
-        <div className='flex justify-between items-center mb-4'>
-          <AddFeatureBtn onClick={showChooseFeatureTrue} />
-          <AutomaticBtn onClick={showAutomaticTrue}/>
-        </div>
+      <div
+        ref={wrapRef}
+        className="relative py-4 px-6 pb-[20px] overflow-y-auto h-full"
+      >
+        <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
+        {/* <AutomaticBtn onClick={showAutomaticTrue}/> */}
 
         {showChooseFeature && (
           <ChooseFeature
