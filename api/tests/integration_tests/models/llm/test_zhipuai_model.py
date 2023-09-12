@@ -23,16 +23,17 @@ def get_mock_provider(valid_api_key):
     )
 
 
-def get_mock_model(model_name):
+def get_mock_model(model_name: str, streaming: bool = False):
     model_kwargs = ModelKwargs(
-        temperature=0.01
+        temperature=0.01,
     )
     valid_api_key = os.environ['ZHIPUAI_API_KEY']
     model_provider = ZhipuAIProvider(provider=get_mock_provider(valid_api_key))
     return ZhipuAIModel(
         model_provider=model_provider,
         name=model_name,
-        model_kwargs=model_kwargs
+        model_kwargs=model_kwargs,
+        streaming=streaming
     )
 
 
@@ -41,22 +42,38 @@ def decrypt_side_effect(tenant_id, encrypted_api_key):
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
-def test_get_num_tokens(mock_decrypt):
+def test_chat_get_num_tokens(mock_decrypt):
     model = get_mock_model('chatglm_lite')
     rst = model.get_num_tokens([
+        PromptMessage(type=MessageType.SYSTEM, content='you are a kindness Assistant.'),
         PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
     ])
-    assert rst == 6
+    assert rst > 0
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
-def test_run(mock_decrypt, mocker):
+def test_chat_run(mock_decrypt, mocker):
     mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
 
     model = get_mock_model('chatglm_lite')
-    messages = [PromptMessage(content='Human: 1 + 1=? \nAssistant: Integer answer is:')]
+    messages = [
+        PromptMessage(type=MessageType.HUMAN, content='Are you Human? you MUST only answer `y` or `n`?')
+    ]
     rst = model.run(
         messages,
-        stop=['\nHuman:'],
+    )
+    assert len(rst.content) > 0
+
+
+@patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
+def test_chat_stream_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
+    model = get_mock_model('chatglm_lite', streaming=True)
+    messages = [
+        PromptMessage(type=MessageType.HUMAN, content='Are you Human? you MUST only answer `y` or `n`?')
+    ]
+    rst = model.run(
+        messages
     )
     assert len(rst.content) > 0

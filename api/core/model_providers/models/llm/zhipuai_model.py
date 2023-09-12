@@ -45,7 +45,7 @@ class ZhipuAIModel(BaseLLM):
         :return:
         """
         prompts = self._get_prompt_from_messages(messages)
-        return max(self._client.get_num_tokens_from_messages(prompts) - len(prompts), 0)
+        return max(self._client.get_num_tokens_from_messages(prompts), 0)
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)

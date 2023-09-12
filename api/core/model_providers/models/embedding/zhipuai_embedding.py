@@ -15,6 +15,7 @@ class ZhipuAIEmbedding(BaseEmbedding):
         )
 
         client = ZhipuAIEmbeddings(
+            model=name,
             api_key=credentials['api_key']
         )
 

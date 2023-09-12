@@ -2,6 +2,8 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+from langchain.schema import HumanMessage
+
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.zhipuai_embedding import ZhipuAIEmbedding
@@ -101,7 +103,7 @@ class ZhipuAIProvider(BaseModelProvider):
                 **credential_kwargs
             )
 
-            llm("ping")
+            llm([HumanMessage(content='ping')])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
