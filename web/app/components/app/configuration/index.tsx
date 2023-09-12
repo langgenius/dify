@@ -10,7 +10,7 @@ import cn from 'classnames'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
-import type { CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import { type CompletionParams, type Inputs, type ModelConfig, type MoreLikeThisConfig, type PromptConfig, PromptMode, type PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -258,13 +258,13 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
+  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
     </div>
   }
-
-  const promptMode = 'simple'
 
   return (
     <ConfigContext.Provider value={{
@@ -272,6 +272,8 @@ const Configuration: FC = () => {
       hasSetAPIKEY,
       isTrailFinished,
       mode,
+      setPromptMode,
+      promptMode,
       conversationId,
       introduction,
       setIntroduction,

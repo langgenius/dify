@@ -1,4 +1,5 @@
 import { createContext } from 'use-context-selector'
+import { PromptMode } from '@/models/debug'
 import type { CitationConfig, CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 
@@ -7,6 +8,8 @@ type IDebugConfiguration = {
   hasSetAPIKEY: boolean
   isTrailFinished: boolean
   mode: string
+  promptMode: PromptMode
+  setPromptMode: (promptMode: PromptMode) => void
   conversationId: string | null // after first chat send
   setConversationId: (conversationId: string | null) => void
   introduction: string
@@ -44,6 +47,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   hasSetAPIKEY: false,
   isTrailFinished: false,
   mode: '',
+  promptMode: PromptMode.simple,
+  setPromptMode: () => { },
   conversationId: '',
   setConversationId: () => { },
   introduction: '',

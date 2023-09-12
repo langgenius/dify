@@ -23,6 +23,7 @@ import { useProviderContext } from '@/context/provider-context'
 const Config: FC = () => {
   const {
     mode,
+    promptMode,
     introduction,
     setIntroduction,
     modelConfig,
@@ -153,6 +154,7 @@ const Config: FC = () => {
         {/* Template */}
         <ConfigPrompt
           mode={mode as AppType}
+          promptMode={promptMode}
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
           onChange={handlePromptChange}

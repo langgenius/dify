@@ -1,5 +1,10 @@
 export type Inputs = Record<string, string | number | object>
 
+export enum PromptMode {
+  simple = 'simple',
+  advanced = 'advanced',
+}
+
 export type PromptVariable = {
   key: string
   name: string

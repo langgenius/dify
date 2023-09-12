@@ -4,9 +4,8 @@ import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Toast from '../toast'
 import { varHighlightHTML } from '../../app/configuration/base/var-highlight'
-import Button from '@/app/components/base/button'
+import Toast from '../toast'
 import { checkKeys } from '@/utils/var'
 
 // regex to match the {{}} and replace it with a span
@@ -65,7 +64,7 @@ const BlockInput: FC<IBlockInputProps> = ({
   }, [isEditing])
 
   const style = classNames({
-    'block px-4 py-1 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
+    'block px-4 py-2 w-full h-full text-sm text-gray-900 outline-0 border-0 break-all': true,
     'block-input--editing': isEditing,
   })
 
@@ -76,9 +75,8 @@ const BlockInput: FC<IBlockInputProps> = ({
     .replace(/\n/g, '<br />')
 
   // Not use useCallback. That will cause out callback get old data.
-  const handleSubmit = () => {
+  const handleSubmit = (value: string) => {
     if (onConfirm) {
-      const value = currentValue
       const keys = getInputKeys(value)
       const { isValid, errorKey, errorMessageKey } = checkKeys(keys)
       if (!isValid) {
@@ -89,17 +87,13 @@ const BlockInput: FC<IBlockInputProps> = ({
         return
       }
       onConfirm(value, keys)
-      setIsEditing(false)
     }
   }
 
-  const handleCancel = useCallback(() => {
-    setIsEditing(false)
-    setCurrentValue(value)
-  }, [value])
-
   const onValueChange = useCallback((e: ChangeEvent<HTMLTextAreaElement>) => {
-    setCurrentValue(e.target.value)
+    const value = e.target.value
+    setCurrentValue(value)
+    handleSubmit(value)
   }, [])
 
   // Prevent rerendering caused cursor to jump to the start of the contentEditable element
@@ -117,18 +111,16 @@ const BlockInput: FC<IBlockInputProps> = ({
   const textAreaContent = (
     <div className={classNames(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
-        ? <div className='h-full px-4 py-1'>
+        ? <div className='h-full px-4 py-2'>
           <textarea
             ref={contentEditableRef}
-            className={classNames(editAreaClassName, 'block w-full h-full absolut3e resize-none')}
+            className={classNames(editAreaClassName, 'block w-full h-full resize-none')}
             placeholder={placeholder}
             onChange={onValueChange}
             value={currentValue}
             onBlur={() => {
               blur()
-              if (!isContentChanged)
-                setIsEditing(false)
-
+              setIsEditing(false)
               // click confirm also make blur. Then outter value is change. So below code has problem.
               // setTimeout(() => {
               //   handleCancel()
@@ -140,38 +132,12 @@ const BlockInput: FC<IBlockInputProps> = ({
     </div>)
 
   return (
-    <div className={classNames('block-input w-full overflow-y-auto border-none rounded-lg')}>
+    <div className={classNames('block-input w-full overflow-y-auto bg-white border-none rounded-xl')}>
       {textAreaContent}
       {/* footer */}
       {!readonly && (
-        <div className='flex item-center h-14 px-4'>
-          {isContentChanged
-            ? (
-              <div className='flex items-center justify-between w-full'>
-                <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue?.length}</div>
-                <div className='flex space-x-2'>
-                  <Button
-                    onClick={handleCancel}
-                    className='w-20 !h-8 !text-[13px]'
-                  >
-                    {t('common.operation.cancel')}
-                  </Button>
-                  <Button
-                    onClick={handleSubmit}
-                    type="primary"
-                    className='w-20 !h-8 !text-[13px]'
-                  >
-                    {t('common.operation.confirm')}
-                  </Button>
-                </div>
-
-              </div>
-            )
-            : (
-              <p className="leading-5 text-xs text-gray-500">
-                {t('appDebug.promptTip')}
-              </p>
-            )}
+        <div className='pl-4 pb-2 flex'>
+          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{currentValue?.length}</div>
         </div>
       )}
 
