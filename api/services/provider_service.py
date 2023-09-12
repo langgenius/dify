@@ -518,7 +518,8 @@ class ProviderService:
 
     def free_quota_submit(self, tenant_id: str, provider_name: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
-        api_url = os.environ.get("FREE_QUOTA_APPLY_URL")
+        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
+        api_url = api_base_url + '/api/v1/providers/apply'
 
         headers = {
             'Content-Type': 'application/json',
@@ -545,4 +546,40 @@ class ProviderService:
             return {
                 'type': rst['type'],
                 'result': 'success'
+            }
+
+    def free_quota_qualification_verify(self, tenant_id: str, provider_name: str):
+        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
+        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
+        api_url = api_base_url + '/api/v1/providers/qualification-verify'
+
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {api_key}"
+        }
+        response = requests.post(api_url, headers=headers,
+                                 json={'workspace_id': tenant_id, 'provider_name': provider_name})
+        if not response.ok:
+            logging.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
+            raise ValueError(f"Error: {response.status_code} ")
+
+        rst = response.json()
+        if rst["code"] != 'success':
+            raise ValueError(
+                f"error: {rst['message']}"
+            )
+
+        data = rst['data']
+        if data['qualified'] is True:
+            return {
+                'result': 'success',
+                'provider_name': provider_name,
+                'flag': True
+            }
+        else:
+            return {
+                'result': 'success',
+                'provider_name': provider_name,
+                'flag': False,
+                'reason': data['reason']
             }

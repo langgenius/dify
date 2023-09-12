@@ -89,7 +89,8 @@ class HuggingfaceHubProvider(BaseModelProvider):
                 raise CredentialsValidateFailedError('Task Type must be provided.')
 
             if credentials['task_type'] not in ("text2text-generation", "text-generation", "summarization"):
-                raise CredentialsValidateFailedError('Task Type must be one of text2text-generation, text-generation, summarization.')
+                raise CredentialsValidateFailedError('Task Type must be one of text2text-generation, '
+                                                     'text-generation, summarization.')
 
             try:
                 llm = HuggingFaceEndpointLLM(

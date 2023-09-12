@@ -1,0 +1,26 @@
+name: "⭐ Feature or enhancement request"
+description: Propose something new.
+labels:
+- enhancement
+body:
+- type: textarea
+  attributes: 
+    label: Description of the new feature / enhancement
+    placeholder: What is the expected behavior of the proposed feature?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Scenario when this would be used?
+    placeholder: What is the scenario this would be used? Why is this important to your workflow as a dify user?
+  validations:
+    required: true
+- type: textarea
+  attributes:
+    label: Supporting information
+    placeholder: "Having additional evidence, data, tweets, blog posts, research, ... anything is extremely helpful. This information provides context to the scenario that may otherwise be lost."
+  validations:
+    required: false
+- type: markdown
+  attributes:
+    value: Please limit one request per issue.

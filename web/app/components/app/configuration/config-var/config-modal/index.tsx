@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import ModalFoot from '../modal-foot'
 import type { Options } from '../config-select'
 import ConfigSelect from '../config-select'
@@ -11,6 +12,7 @@ import s from './style.module.css'
 import Toast from '@/app/components/base/toast'
 import type { PromptVariable } from '@/models/debug'
 import { getNewVar } from '@/utils/var'
+import ConfigContext from '@/context/debug-configuration'
 
 import Modal from '@/app/components/base/modal'
 
@@ -28,6 +30,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   onClose,
   onConfirm,
 }) => {
+  const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
   const { type, name, key, options, max_length } = payload || getNewVar('')
 
@@ -41,7 +44,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
   }
 
-  const isStringInput = tempType === 'string'
+  const isStringInput = tempType === 'string' || tempType === 'paragraph'
   const title = isStringInput ? t('appDebug.variableConig.maxLength') : t('appDebug.variableConig.options')
 
   // string type
@@ -93,22 +96,24 @@ const ConfigModal: FC<IConfigModalProps> = ({
         <div className='mb-2'>
           <div className={s.title}>{t('appDebug.variableConig.fieldType')}</div>
           <div className='flex space-x-2'>
-            <SelectTypeItem type='string' selected={isStringInput} onClick={handleTypeChange('string')} />
-            <SelectTypeItem type='select' selected={!isStringInput} onClick={handleTypeChange('select')} />
+            <SelectTypeItem type='string' selected={tempType === 'string'} onClick={handleTypeChange('string')} />
+            <SelectTypeItem type='paragraph' selected={tempType === 'paragraph'} onClick={handleTypeChange('paragraph')} />
+            <SelectTypeItem type='select' selected={tempType === 'select'} onClick={handleTypeChange('select')} />
           </div>
         </div>
 
-        <div className='mt-6'>
-          <div className={s.title}>{title}</div>
-          {isStringInput
-            ? (
-              <ConfigString value={tempMaxLength} onChange={setTempMaxValue} />
-            )
-            : (
-              <ConfigSelect options={tempOptions} onChange={setTempOptions} />
-            )}
-        </div>
-
+        {tempType !== 'paragraph' && (
+          <div className='mt-6'>
+            <div className={s.title}>{title}</div>
+            {isStringInput
+              ? (
+                <ConfigString modelId={modelConfig.model_id} value={tempMaxLength} onChange={setTempMaxValue} />
+              )
+              : (
+                <ConfigSelect options={tempOptions} onChange={setTempOptions} />
+              )}
+          </div>
+        )}
       </div>
       <ModalFoot
         onConfirm={handleConfirm}

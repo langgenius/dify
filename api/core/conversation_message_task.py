@@ -1,6 +1,6 @@
-import decimal
 import json
-from typing import Optional, Union
+import time
+from typing import Optional, Union, List
 
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
@@ -15,13 +15,16 @@ from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import DatasetQuery
-from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, MessageChain
+from models.model import AppModelConfig, Conversation, Account, Message, EndUser, App, MessageAgentThought, \
+    MessageChain, DatasetRetrieverResource
 
 
 class ConversationMessageTask:
     def __init__(self, task_id: str, app: App, app_model_config: AppModelConfig, user: Account,
                  inputs: dict, query: str, streaming: bool, model_instance: BaseLLM,
                  conversation: Optional[Conversation] = None, is_override: bool = False):
+        self.start_at = time.perf_counter()
+
         self.task_id = task_id
 
         self.app = app
@@ -41,6 +44,8 @@ class ConversationMessageTask:
 
         self.message = None
 
+        self.retriever_resource = None
+
         self.model_dict = self.app_model_config.model_dict
         self.provider_name = self.model_dict.get('provider')
         self.model_name = self.model_dict.get('name')
@@ -58,6 +63,7 @@ class ConversationMessageTask:
         )
 
     def init(self):
+
         override_model_configs = None
         if self.is_override:
             override_model_configs = self.app_model_config.to_dict()
@@ -157,11 +163,12 @@ class ConversationMessageTask:
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
         self.message.message_price_unit = message_price_unit
-        self.message.answer = PromptBuilder.process_template(llm_message.completion.strip()) if llm_message.completion else ''
+        self.message.answer = PromptBuilder.process_template(
+            llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price
         self.message.answer_price_unit = answer_price_unit
-        self.message.provider_response_latency = llm_message.latency
+        self.message.provider_response_latency = time.perf_counter() - self.start_at
         self.message.total_price = total_price
 
         db.session.commit()
@@ -216,18 +223,18 @@ class ConversationMessageTask:
 
         return message_agent_thought
 
-    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instant: BaseLLM,
+    def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instance: BaseLLM,
                      agent_loop: AgentLoop):
-        agent_message_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.HUMAN)
-        agent_message_price_unit = agent_model_instant.get_price_unit(MessageType.HUMAN)
-        agent_answer_unit_price = agent_model_instant.get_tokens_unit_price(MessageType.ASSISTANT)
-        agent_answer_price_unit = agent_model_instant.get_price_unit(MessageType.ASSISTANT)
+        agent_message_unit_price = agent_model_instance.get_tokens_unit_price(MessageType.HUMAN)
+        agent_message_price_unit = agent_model_instance.get_price_unit(MessageType.HUMAN)
+        agent_answer_unit_price = agent_model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
+        agent_answer_price_unit = agent_model_instance.get_price_unit(MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
 
-        loop_message_total_price = agent_model_instant.calc_tokens_price(loop_message_tokens, MessageType.HUMAN)
-        loop_answer_total_price = agent_model_instant.calc_tokens_price(loop_answer_tokens, MessageType.ASSISTANT)
+        loop_message_total_price = agent_model_instance.calc_tokens_price(loop_message_tokens, MessageType.HUMAN)
+        loop_answer_total_price = agent_model_instance.calc_tokens_price(loop_answer_tokens, MessageType.ASSISTANT)
         loop_total_price = loop_message_total_price + loop_answer_total_price
 
         message_agent_thought.observation = agent_loop.tool_output
@@ -241,7 +248,7 @@ class ConversationMessageTask:
         message_agent_thought.latency = agent_loop.latency
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
-        message_agent_thought.currency = agent_model_instant.get_currency()
+        message_agent_thought.currency = agent_model_instance.get_currency()
         db.session.flush()
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):
@@ -256,7 +263,36 @@ class ConversationMessageTask:
 
         db.session.add(dataset_query)
 
+    def on_dataset_query_finish(self, resource: List):
+        if resource and len(resource) > 0:
+            for item in resource:
+                dataset_retriever_resource = DatasetRetrieverResource(
+                    message_id=self.message.id,
+                    position=item.get('position'),
+                    dataset_id=item.get('dataset_id'),
+                    dataset_name=item.get('dataset_name'),
+                    document_id=item.get('document_id'),
+                    document_name=item.get('document_name'),
+                    data_source_type=item.get('data_source_type'),
+                    segment_id=item.get('segment_id'),
+                    score=item.get('score') if 'score' in item else None,
+                    hit_count=item.get('hit_count') if 'hit_count' else None,
+                    word_count=item.get('word_count') if 'word_count' in item else None,
+                    segment_position=item.get('segment_position') if 'segment_position' in item else None,
+                    index_node_hash=item.get('index_node_hash') if 'index_node_hash' in item else None,
+                    content=item.get('content'),
+                    retriever_from=item.get('retriever_from'),
+                    created_by=self.user.id
+                )
+                db.session.add(dataset_retriever_resource)
+                db.session.flush()
+            self.retriever_resource = resource
+
+    def message_end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
+
     def end(self):
+        self._pub_handler.pub_message_end(self.retriever_resource)
         self._pub_handler.pub_end()
 
 
@@ -350,6 +386,23 @@ class PubHandler:
             self.pub_end()
             raise ConversationTaskStoppedException()
 
+    def pub_message_end(self, retriever_resource: List):
+        content = {
+            'event': 'message_end',
+            'data': {
+                'task_id': self._task_id,
+                'message_id': self._message.id,
+                'mode': self._conversation.mode,
+                'conversation_id': self._conversation.id
+            }
+        }
+        if retriever_resource:
+            content['data']['retriever_resources'] = retriever_resource
+        redis_client.publish(self._channel, json.dumps(content))
+
+        if self._is_stopped():
+            self.pub_end()
+            raise ConversationTaskStoppedException()
 
     def pub_end(self):
         content = {

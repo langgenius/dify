@@ -31,8 +31,9 @@ class CompletionApi(InstalledAppResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, location='json')
+        parser.add_argument('query', type=str, location='json', default='')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
+        parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
@@ -92,6 +93,7 @@ class ChatApi(InstalledAppResource):
         parser.add_argument('query', type=str, required=True, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
+        parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'

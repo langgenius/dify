@@ -1,3 +1,4 @@
+import json
 from typing import Tuple, List, Any, Union, Sequence, Optional, cast
 
 from langchain.agents import OpenAIFunctionsAgent, BaseSingleActionAgent
@@ -53,6 +54,10 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             tool = next(iter(self.tools))
             tool = cast(DatasetRetrieverTool, tool)
             rst = tool.run(tool_input={'query': kwargs['input']})
+            # output = ''
+            # rst_json = json.loads(rst)
+            # for item in rst_json:
+            #     output += f'{item["content"]}\n'
             return AgentFinish(return_values={"output": rst}, log=rst)
 
         if intermediate_steps:

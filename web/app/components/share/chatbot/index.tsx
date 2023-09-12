@@ -188,6 +188,7 @@ const Main: FC<IMainProps> = ({
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -289,7 +290,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -399,7 +400,7 @@ const Main: FC<IMainProps> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,

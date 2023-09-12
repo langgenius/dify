@@ -8,7 +8,7 @@ import type { Timeout } from 'ahooks/lib/useRequest/src/types'
 import Panel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import VarIcon from '../base/icons/var-icon'
-import EditModel from './config-model'
+import EditModal from './config-modal'
 import IconTypeIcon from './input-type-icon'
 import type { IInputTypeIconProps } from './input-type-icon'
 import s from './style.module.css'
@@ -52,13 +52,18 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.(newPromptVariables)
   }
 
-  const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[]) => {
+  const batchUpdatePromptVariable = (key: string, updateKeys: string[], newValues: any[], isParagraph?: boolean) => {
     const newPromptVariables = promptVariables.map((item) => {
       if (item.key === key) {
         const newItem: any = { ...item }
         updateKeys.forEach((updateKey, i) => {
           newItem[updateKey] = newValues[i]
         })
+        if (isParagraph) {
+          delete newItem.max_length
+          delete newItem.options
+        }
+        console.log(newItem)
         return newItem
       }
 
@@ -240,16 +245,15 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
 
       {isShowEditModal && (
-        <EditModel
+        <EditModal
           payload={currItem as PromptVariable}
           isShow={isShowEditModal}
           onClose={hideEditModal}
           onConfirm={({ type, value }) => {
             if (type === 'string')
               batchUpdatePromptVariable(currKey as string, ['type', 'max_length'], [type, value || DEFAULT_VALUE_MAX_LEN])
-
             else
-              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, value || []])
+              batchUpdatePromptVariable(currKey as string, ['type', 'options'], [type, value || []], type === 'paragraph')
 
             hideEditModal()
           }}

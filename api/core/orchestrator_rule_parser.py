@@ -1,6 +1,7 @@
 import math
 from typing import Optional
 
+from flask import current_app
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -12,7 +13,7 @@ from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGa
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
+from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain, SensitiveWordAvoidanceRule
 from core.conversation_message_task import ConversationMessageTask
 from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
@@ -26,6 +27,7 @@ from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
+from models.provider import ProviderType
 
 
 class OrchestratorRuleParser:
@@ -36,8 +38,8 @@ class OrchestratorRuleParser:
         self.app_model_config = app_model_config
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
-                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler) \
-            -> Optional[AgentExecutor]:
+                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler,
+                          return_resource: bool = False, retriever_from: str = 'dev') -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
 
@@ -63,7 +65,7 @@ class OrchestratorRuleParser:
 
             # add agent callback to record agent thoughts
             agent_callback = AgentLoopGatherCallbackHandler(
-                model_instant=agent_model_instance,
+                model_instance=agent_model_instance,
                 conversation_message_task=conversation_message_task
             )
 
@@ -74,7 +76,7 @@ class OrchestratorRuleParser:
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
-                         or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
+                    or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
                 if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
@@ -99,7 +101,9 @@ class OrchestratorRuleParser:
                 tool_configs=tool_configs,
                 conversation_message_task=conversation_message_task,
                 rest_tokens=rest_tokens,
-                callbacks=[agent_callback, DifyStdOutCallbackHandler()]
+                callbacks=[agent_callback, DifyStdOutCallbackHandler()],
+                return_resource=return_resource,
+                retriever_from=retriever_from
             )
 
             if len(tools) == 0:
@@ -121,23 +125,45 @@ class OrchestratorRuleParser:
 
         return chain
 
-    def to_sensitive_word_avoidance_chain(self, callbacks: Callbacks = None, **kwargs) \
+    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) \
             -> Optional[SensitiveWordAvoidanceChain]:
         """
         Convert app sensitive word avoidance config to chain
 
+        :param model_instance: model instance
+        :param callbacks: callbacks for the chain
         :param kwargs:
         :return:
         """
-        if not self.app_model_config.sensitive_word_avoidance_dict:
-            return None
+        sensitive_word_avoidance_rule = None
 
-        sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
-        sensitive_words = sensitive_word_avoidance_config.get("words", "")
-        if sensitive_word_avoidance_config.get("enabled", False) and sensitive_words:
+        if self.app_model_config.sensitive_word_avoidance_dict:
+            sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
+            if sensitive_word_avoidance_config.get("enabled", False):
+                if sensitive_word_avoidance_config.get('type') == 'moderation':
+                    sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
+                        type=SensitiveWordAvoidanceRule.Type.MODERATION,
+                        canned_response=sensitive_word_avoidance_config.get("canned_response")
+                        if sensitive_word_avoidance_config.get("canned_response")
+                        else 'Your content violates our usage policy. Please revise and try again.',
+                    )
+                else:
+                    sensitive_words = sensitive_word_avoidance_config.get("words", "")
+                    if sensitive_words:
+                        sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
+                            type=SensitiveWordAvoidanceRule.Type.KEYWORDS,
+                            canned_response=sensitive_word_avoidance_config.get("canned_response")
+                            if sensitive_word_avoidance_config.get("canned_response")
+                            else 'Your content violates our usage policy. Please revise and try again.',
+                            extra_params={
+                                'sensitive_words': sensitive_words.split(','),
+                            }
+                        )
+
+        if sensitive_word_avoidance_rule:
             return SensitiveWordAvoidanceChain(
-                sensitive_words=sensitive_words.split(","),
-                canned_response=sensitive_word_avoidance_config.get("canned_response", ''),
+                model_instance=model_instance,
+                sensitive_word_avoidance_rule=sensitive_word_avoidance_rule,
                 output_key="sensitive_word_avoidance_output",
                 callbacks=callbacks,
                 **kwargs
@@ -145,8 +171,10 @@ class OrchestratorRuleParser:
 
         return None
 
-    def to_tools(self, agent_model_instance: BaseLLM, tool_configs: list, conversation_message_task: ConversationMessageTask,
-                 rest_tokens: int, callbacks: Callbacks = None) -> list[BaseTool]:
+    def to_tools(self, agent_model_instance: BaseLLM, tool_configs: list,
+                 conversation_message_task: ConversationMessageTask,
+                 rest_tokens: int, callbacks: Callbacks = None, return_resource: bool = False,
+                 retriever_from: str = 'dev') -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
@@ -155,6 +183,8 @@ class OrchestratorRuleParser:
         :param tool_configs: app agent tool configs
         :param conversation_message_task:
         :param callbacks:
+        :param return_resource:
+        :param retriever_from:
         :return:
         """
         tools = []
@@ -166,7 +196,7 @@ class OrchestratorRuleParser:
 
             tool = None
             if tool_type == "dataset":
-                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens)
+                tool = self.to_dataset_retriever_tool(tool_val, conversation_message_task, rest_tokens, return_resource, retriever_from)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool(agent_model_instance)
             elif tool_type == "google_search":
@@ -183,13 +213,15 @@ class OrchestratorRuleParser:
         return tools
 
     def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask,
-                                  rest_tokens: int) \
+                                  rest_tokens: int, return_resource: bool = False, retriever_from: str = 'dev') \
             -> Optional[BaseTool]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param rest_tokens:
         :param tool_config:
         :param conversation_message_task:
+        :param return_resource:
+        :param retriever_from:
         :return:
         """
         # get dataset from dataset id
@@ -208,7 +240,10 @@ class OrchestratorRuleParser:
         tool = DatasetRetrieverTool.from_dataset(
             dataset=dataset,
             k=k,
-            callbacks=[DatasetToolCallbackHandler(conversation_message_task)]
+            callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
+            conversation_message_task=conversation_message_task,
+            return_resource=return_resource,
+            retriever_from=retriever_from
         )
 
         return tool

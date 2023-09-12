@@ -33,21 +33,20 @@ export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
 export type SpeechToTextConfig = MoreLikeThisConfig
 
+export type CitationConfig = MoreLikeThisConfig
+
+export type RetrieverResourceConfig = MoreLikeThisConfig
+
 // frontend use. Not the same as backend
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
   configs: PromptConfig
   opening_statement: string | null
-  more_like_this: {
-    enabled: boolean
-  } | null
-  suggested_questions_after_answer: {
-    enabled: boolean
-  } | null
-  speech_to_text: {
-    enabled: boolean
-  } | null
+  more_like_this: MoreLikeThisConfig | null
+  suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
+  speech_to_text: SpeechToTextConfig | null
+  retriever_resource: RetrieverResourceConfig | null
   dataSets: any[]
 }
 
