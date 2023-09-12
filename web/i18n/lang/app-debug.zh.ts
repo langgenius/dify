@@ -1,5 +1,12 @@
 const translation = {
-  pageTitle: '提示词编排',
+  pageTitle: {
+    line1: '提示词',
+    line2: '编排',
+  },
+  promptMode: {
+    simple: '简单模式',
+    advanced: '高级模式',
+  },
   operation: {
     applyConfig: '发布',
     resetConfig: '重置',

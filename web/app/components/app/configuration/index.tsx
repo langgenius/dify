@@ -9,6 +9,7 @@ import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
+import s from './style.module.css'
 import type { CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
@@ -263,6 +264,8 @@ const Configuration: FC = () => {
     </div>
   }
 
+  const promptMode = 'simple'
+
   return (
     <ConfigContext.Provider value={{
       appId,
@@ -301,8 +304,14 @@ const Configuration: FC = () => {
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex items-center justify-between px-6 border-b shrink-0 h-14 boder-gray-100'>
-            <div className='text-xl text-gray-900'>{t('appDebug.pageTitle')}</div>
+          <div className='flex items-center justify-between px-6 shrink-0 h-14'>
+            <div>
+              <div className='italic text-base font-bold text-gray-900 leading-[30px]'>{t('appDebug.pageTitle.line1')}</div>
+              <div className='flex space-x-1 text-xs italic'>
+                <div className='text-gray-500 font-medium'>{t('appDebug.pageTitle.line2')}</div>
+                <div className={`${s.promptMode} cursor-pointer text-indigo-600`}>{t(`appDebug.promptMode.${promptMode}`)}</div>
+              </div>
+            </div>
             <div className='flex items-center'>
               {/* Model and Parameters */}
               <ConfigModel
@@ -322,10 +331,10 @@ const Configuration: FC = () => {
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-[574px] shrink-0 h-full overflow-y-auto border-r border-gray-100 py-4 px-6">
+            <div className="w-[574px] shrink-0 h-full overflow-y-auto  py-4 px-6">
               <Config />
             </div>
-            <div className="relative grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col">
+            <div className="relative grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={showSetAPIKey} />
             </div>
           </div>

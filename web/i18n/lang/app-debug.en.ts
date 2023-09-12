@@ -1,5 +1,12 @@
 const translation = {
-  pageTitle: 'Prompt Engineering',
+  pageTitle: {
+    line1: 'PROMPT',
+    line2: 'Engineering',
+  },
+  promptMode: {
+    simple: 'Simple Mode',
+    advanced: 'Advanced Mode',
+  },
   operation: {
     applyConfig: 'Publish',
     resetConfig: 'Reset',
@@ -161,7 +168,7 @@ const translation = {
     title: 'Model and Parameters',
   },
   inputs: {
-    title: 'Debugging and Previewing',
+    title: 'Debug and Preview',
     noPrompt: 'Try write some prompt in pre-prompt input',
     userInputField: 'User Input Field',
     noVar: 'Fill in the value of the variable, which will be automatically replaced in the prompt word every time a new session is started.',
