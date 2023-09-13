@@ -452,6 +452,7 @@ class CompletionService:
             'task_id': message.get('task_id'),
             'id': message.get('message_id'),
             'answer': message.get('text'),
+            'metadata': {},
             'created_at': int(time.time())
         }
 
@@ -460,7 +461,7 @@ class CompletionService:
         if 'message_end' in data:
             message_end = data.get('message_end')
             if 'retriever_resources' in message_end:
-                response_data['retriever_resources'] = message_end.get('retriever_resources')
+                response_data['metadata']['retriever_resources'] = message_end.get('retriever_resources')
 
         return response_data
 
