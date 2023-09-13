@@ -10,6 +10,8 @@ import ComponentPicker from './plugins/component-picker'
 import VariablePicker from './plugins/variable-picker'
 import ContextBlock from './plugins/context-block'
 import { ContextBlockNode } from './plugins/context-block/node'
+import HistoryBlock from './plugins/history-block'
+import { HistoryBlockNode } from './plugins/history-block/node'
 import QueryBlock from './plugins/query-block'
 import { QueryBlockNode } from './plugins/query-block/node'
 
@@ -46,7 +48,7 @@ const PromptEditor = () => {
     onError: (error: Error) => {
       throw error
     },
-    nodes: [ContextBlockNode, QueryBlockNode],
+    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode],
   }
 
   return (
@@ -60,6 +62,7 @@ const PromptEditor = () => {
         <ComponentPicker />
         <VariablePicker />
         <ContextBlock />
+        <HistoryBlock />
         <QueryBlock />
         <TreeView />
       </div>

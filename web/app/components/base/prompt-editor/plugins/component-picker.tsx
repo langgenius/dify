@@ -9,6 +9,7 @@ import {
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
+import { INSERT_HISTORY_BLOCK_COMMAND } from './history-block'
 import { INSERT_QUERY_BLOCK_COMMAND } from './query-block'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Variable } from '@/app/components/base/icons/src/vender/line/development'
@@ -94,7 +95,9 @@ const ComponentPicker = () => {
     new ComponentPickerOption('Conversation History', {
       desc: 'Insert historical message template',
       icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
-      onSelect: () => {},
+      onSelect: () => {
+        editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
+      },
     }),
     new ComponentPickerOption('Query', {
       desc: 'Insert user query template',
