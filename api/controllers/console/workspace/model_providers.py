@@ -246,7 +246,8 @@ class ModelProviderModelParameterRuleApi(Resource):
                 'enabled': v.enabled,
                 'min': v.min,
                 'max': v.max,
-                'default': v.default
+                'default': v.default,
+                'precision': v.precision
             }
             for k, v in vars(parameter_rules).items()
         }

@@ -72,6 +72,7 @@ class ReplicateProvider(BaseModelProvider):
                         min=float(value.get('minimum')) if value.get('minimum') is not None else None,
                         max=float(value.get('maximum')) if value.get('maximum') is not None else None,
                         default=float(value.get('default')) if value.get('default') is not None else None,
+                        precision = 2
                     )
                     if key == 'temperature':
                         model_kwargs_rules.temperature = kwarg_rule
@@ -84,6 +85,7 @@ class ReplicateProvider(BaseModelProvider):
                         min=int(value.get('minimum')) if value.get('minimum') is not None else 1,
                         max=int(value.get('maximum')) if value.get('maximum') is not None else 8000,
                         default=int(value.get('default')) if value.get('default') is not None else 500,
+                        precision = 0
                     )
 
         return model_kwargs_rules
