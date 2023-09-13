@@ -13,8 +13,8 @@ const config: ProviderConfig = {
   item: {
     key: ProviderEnum.zhipuai,
     titleIcon: {
-      'en': <ZhipuaiText className='h-6' />,
-      'zh-Hans': <ZhipuaiTextCn className='h-6' />,
+      'en': <ZhipuaiText className='-ml-1 h-7' />,
+      'zh-Hans': <ZhipuaiTextCn className='h-8' />,
     },
   },
   modal: {
