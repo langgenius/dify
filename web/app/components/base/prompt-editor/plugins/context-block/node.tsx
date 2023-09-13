@@ -1,4 +1,4 @@
-import type { LexicalNode } from 'lexical'
+import type { LexicalNode, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
 
@@ -9,6 +9,10 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
 
   static clone(): ContextBlockNode {
     return new ContextBlockNode()
+  }
+
+  isIsolated(): boolean {
+    return true
   }
 
   createDOM(): HTMLElement {
@@ -23,6 +27,14 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
 
   decorate(): JSX.Element {
     return <ContextBlockComponent nodeKey={this.getKey()} />
+  }
+
+  exportJSON(): SerializedLexicalNode & { zxh: string } {
+    return {
+      type: 'context-block',
+      zxh: 'haa',
+      version: 1,
+    }
   }
 }
 export function $createContextBlockNode(): ContextBlockNode {

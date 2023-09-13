@@ -17,6 +17,9 @@ import HistoryBlock from './plugins/history-block'
 import { HistoryBlockNode } from './plugins/history-block/node'
 import QueryBlock from './plugins/query-block'
 import { QueryBlockNode } from './plugins/query-block/node'
+import VariableBlock from './plugins/variable-block'
+import VariableValueBlock from './plugins/variable-value-block'
+import { VariableValueNode } from './plugins/variable-value-block/node'
 
 export type PromptEditorProps = {
   contextBlock?: {
@@ -51,7 +54,7 @@ const PromptEditor = () => {
     onError: (error: Error) => {
       throw error
     },
-    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode],
+    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode, VariableValueNode],
   }
 
   // const handleEditorChange = (editorState: EditorState) => {
@@ -69,8 +72,10 @@ const PromptEditor = () => {
         <ComponentPicker />
         <VariablePicker />
         <ContextBlock />
+        <VariableBlock />
         <HistoryBlock />
         <QueryBlock />
+        <VariableValueBlock />
         <TreeView />
         {/* <OnChangePlugin onChange={handleEditorChange} /> */}
       </div>

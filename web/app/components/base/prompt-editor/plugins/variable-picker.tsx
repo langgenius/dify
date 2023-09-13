@@ -33,11 +33,13 @@ class VariablePickerOption extends MenuOption {
 }
 
 type VariablePickerMenuItemProps = {
+  isSelected: boolean
   onClick: () => void
   onMouseEnter: () => void
   option: VariablePickerOption
 }
 const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
+  isSelected,
   onClick,
   onMouseEnter,
   option,
@@ -45,7 +47,10 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
   return (
     <div
       key={option.key}
-      className='flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer'
+      className={`
+        flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
+        ${isSelected && 'bg-primary-50'}
+      `}
       tabIndex={-1}
       ref={option.setRefElement}
       onMouseEnter={onMouseEnter}
@@ -87,14 +92,19 @@ const VariablePicker = () => {
     }),
   ]
 
+  const newOption = new VariablePickerOption('New variable', {
+    icon: <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />,
+    onSelect: () => {},
+  })
+
   return (
     <LexicalTypeaheadMenuPlugin
-      options={options}
+      options={[...options, newOption]}
       onQueryChange={() => {}}
       onSelectOption={() => {}}
       menuRenderFn={(
         anchorElementRef,
-        { selectOptionAndCleanUp, setHighlightedIndex },
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
       ) =>
         (anchorElementRef.current && options.length)
           ? ReactDOM.createPortal(
@@ -102,6 +112,7 @@ const VariablePicker = () => {
               <div className='p-1'>
                 {options.map((option, i: number) => (
                   <VariablePickerMenuItem
+                    isSelected={selectedIndex === i}
                     onClick={() => {
                       setHighlightedIndex(i)
                       selectOptionAndCleanUp(option)
@@ -116,9 +127,24 @@ const VariablePicker = () => {
               </div>
               <div className='h-[1px] bg-gray-100' />
               <div className='p-1'>
-                <div className='flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer'>
-                  <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />
-                  <div className='text-[13px] text-gray-900'>New variable</div>
+                <div
+                  className={`
+                    flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
+                    ${selectedIndex === 5 && 'bg-primary-50'}
+                  `}
+                  ref={newOption.setRefElement}
+                  tabIndex={-1}
+                  onClick={() => {
+                    setHighlightedIndex(5)
+                    selectOptionAndCleanUp(newOption)
+                  }}
+                  onMouseEnter={() => {
+                    setHighlightedIndex(5)
+                  }}
+                  key={newOption.key}
+                >
+                  {newOption.icon}
+                  <div className='text-[13px] text-gray-900'>{newOption.title}</div>
                 </div>
               </div>
             </div>,
