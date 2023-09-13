@@ -1,6 +1,6 @@
 import { ProviderEnum } from '../declarations'
 import type { ProviderConfig } from '../declarations'
-import { IflytekSpark, IflytekSparkText, IflytekSparkTextCn } from '@/app/components/base/icons/src/public/llm'
+import { Zhipuai, ZhipuaiText, ZhipuaiTextCn } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
   selector: {
@@ -8,13 +8,13 @@ const config: ProviderConfig = {
       'en': 'ZHIPU AI',
       'zh-Hans': '智谱 AI',
     },
-    icon: <IflytekSpark className='w-full h-full' />,
+    icon: <Zhipuai className='w-full h-full' />,
   },
   item: {
     key: ProviderEnum.zhipuai,
     titleIcon: {
-      'en': <IflytekSparkText className='h-6' />,
-      'zh-Hans': <IflytekSparkTextCn className='h-6' />,
+      'en': <ZhipuaiText className='h-6' />,
+      'zh-Hans': <ZhipuaiTextCn className='h-6' />,
     },
   },
   modal: {
@@ -23,7 +23,7 @@ const config: ProviderConfig = {
       'en': 'ZHIPU AI',
       'zh-Hans': '智谱 AI',
     },
-    icon: <IflytekSpark className='w-6 h-6' />,
+    icon: <Zhipuai className='w-6 h-6' />,
     link: {
       href: 'https://open.bigmodel.cn/usercenter/apikeys',
       label: {
