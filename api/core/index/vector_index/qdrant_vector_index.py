@@ -56,10 +56,6 @@ class QdrantVectorIndex(BaseVectorIndex):
         else:
             if self.dataset.index_struct_dict:
                 class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
-                if not class_prefix.endswith('_Node'):
-                    # original class_prefix
-                    class_prefix += '_Node'
-
                 return class_prefix
 
             dataset_id = dataset.id
@@ -77,6 +73,23 @@ class QdrantVectorIndex(BaseVectorIndex):
             texts,
             self._embeddings,
             collection_name=self.get_index_name(self.dataset),
+            ids=uuids,
+            content_payload_key='page_content',
+            group_id=self.dataset.id,
+            group_payload_key='group_id',
+            hnsw_config=HnswConfigDiff(m=0, payload_m=16, ef_construct=100, full_scan_threshold=10000,
+                                       max_indexing_threads=0, on_disk=False),
+            **self._client_config.to_qdrant_params()
+        )
+
+        return self
+
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        uuids = self._get_uuids(texts)
+        self._vector_store = QdrantVectorStore.from_documents(
+            texts,
+            self._embeddings,
+            collection_name=collection_name,
             ids=uuids,
             content_payload_key='page_content',
             group_id=self.dataset.id,

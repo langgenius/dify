@@ -17,6 +17,10 @@ class BaseIndex(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        raise NotImplementedError
+
+    @abstractmethod
     def add_texts(self, texts: list[Document], **kwargs):
         raise NotImplementedError
 
