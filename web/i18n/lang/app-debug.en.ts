@@ -7,6 +7,12 @@ const translation = {
     simple: 'Switch to Advanced Mode to edit the built-in PROMPT',
     advanced: 'Advanced Mode',
     switchBack: 'Switch back',
+    advancedWarning: {
+      title: 'You have switched to Advanced Mode, and once you modify the PROMPT, you CANNOT return to the simple mode.',
+      description: 'In Advanced Mode, you can edit built-in PROMPT.',
+      learnMore: 'Learn more',
+      ok: 'OK',
+    },
   },
   operation: {
     applyConfig: 'Publish',

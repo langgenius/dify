@@ -28,7 +28,6 @@ import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
-
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -347,6 +346,7 @@ const Configuration: FC = () => {
                 )}
               </div>
             </div>
+
             <div className='flex items-center'>
               {/* Model and Parameters */}
               <ConfigModel

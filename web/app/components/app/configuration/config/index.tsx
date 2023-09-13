@@ -13,9 +13,11 @@ import type { AutomaticRes } from './automatic/get-automatic-res'
 import GetAutomaticResModal from './automatic/get-automatic-res'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
+import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
+import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
@@ -24,6 +26,7 @@ const Config: FC = () => {
   const {
     mode,
     promptMode,
+    canReturnToSimpleMode,
     introduction,
     setIntroduction,
     modelConfig,
@@ -128,11 +131,15 @@ const Config: FC = () => {
     <>
       <div
         ref={wrapRef}
-        className="relative py-4 px-6 pb-[20px] overflow-y-auto h-full"
+        className="relative pb-4 px-6 pb-[20px] overflow-y-auto h-full"
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {/* <AutomaticBtn onClick={showAutomaticTrue}/> */}
-
+        {
+          (promptMode === PromptMode.advanced && canReturnToSimpleMode) && (
+            <AdvancedModeWaring />
+          )
+        }
         {showChooseFeature && (
           <ChooseFeature
             isShow={showChooseFeature}
