@@ -1610,7 +1610,7 @@ class Qdrant(VectorStore):
         else:
             out.append(
                 rest.FieldCondition(
-                    key=f"{self.metadata_payload_key}.{key}",
+                    key=key,
                     match=rest.MatchValue(value=value),
                 )
             )

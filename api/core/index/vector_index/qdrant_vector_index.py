@@ -11,7 +11,8 @@ from qdrant_client.http.models import HnswConfigDiff
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
 from core.vector_store.qdrant_vector_store import QdrantVectorStore
-from models.dataset import Dataset
+from extensions.ext_database import db
+from models.dataset import Dataset, DatasetCollectionBinding
 
 
 class QdrantConfig(BaseModel):
@@ -44,16 +45,25 @@ class QdrantVectorIndex(BaseVectorIndex):
         return 'qdrant'
 
     def get_index_name(self, dataset: Dataset) -> str:
-        if self.dataset.index_struct_dict:
-            class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
-            if not class_prefix.endswith('_Node'):
-                # original class_prefix
-                class_prefix += '_Node'
+        if dataset.collection_binding_id:
+            dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
+                filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
+                one_or_none()
+            if dataset_collection_binding:
+                return dataset_collection_binding.collection_name
+            else:
+                raise ValueError('Dataset Collection Bindings is not exist!')
+        else:
+            if self.dataset.index_struct_dict:
+                class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
+                if not class_prefix.endswith('_Node'):
+                    # original class_prefix
+                    class_prefix += '_Node'
 
-            return class_prefix
+                return class_prefix
 
-        dataset_id = dataset.id
-        return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
+            dataset_id = dataset.id
+            return "Vector_index_" + dataset_id.replace("-", "_") + '_Node'
 
     def to_index_struct(self) -> dict:
         return {
