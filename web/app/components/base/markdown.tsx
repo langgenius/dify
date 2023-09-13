@@ -10,7 +10,7 @@ import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from "@/app/components/app/chat/mermaid";
+import Flowchart from '@/app/components/app/chat/mermaid'
 
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
