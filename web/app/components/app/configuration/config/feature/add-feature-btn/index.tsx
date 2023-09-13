@@ -18,7 +18,7 @@ const AddFeatureBtn: FC<IAddFeatureBtnProps> = ({
   const { t } = useTranslation()
   return (
     <div
-      className='absolute z-20 left-0 right-0 flex justify-center pb-4'
+      className='absolute z-[9] left-0 right-0 flex justify-center pb-4'
       style={{
         top: toBottomHeight - ITEM_HEIGHT,
         background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FFF 100%)',

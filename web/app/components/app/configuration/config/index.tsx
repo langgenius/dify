@@ -9,8 +9,6 @@ import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import AddFeatureBtn from './feature/add-feature-btn'
-import type { AutomaticRes } from './automatic/get-automatic-res'
-import GetAutomaticResModal from './automatic/get-automatic-res'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
 import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
@@ -104,18 +102,6 @@ const Config: FC = () => {
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
   const hasToolbox = false
 
-  const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
-  const handleAutomaticRes = (res: AutomaticRes) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_template = res.prompt
-      draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
-    })
-    setModelConfig(newModelConfig)
-    setPrevPromptConfig(modelConfig.configs)
-    if (mode === AppType.chat)
-      setIntroduction(res.opening_statement)
-    showAutomaticFalse()
-  }
   const wrapRef = useRef<HTMLDivElement>(null)
   const wrapScroll = useScroll(wrapRef)
   const toBottomHeight = (() => {
@@ -134,7 +120,6 @@ const Config: FC = () => {
         className="relative pb-4 px-6 pb-[20px] overflow-y-auto h-full"
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
-        {/* <AutomaticBtn onClick={showAutomaticTrue}/> */}
         {
           (promptMode === PromptMode.advanced && canReturnToSimpleMode) && (
             <AdvancedModeWaring />
@@ -150,14 +135,7 @@ const Config: FC = () => {
             showSpeechToTextItem={!!speech2textDefaultModel}
           />
         )}
-        {showAutomatic && (
-          <GetAutomaticResModal
-            mode={mode as AppType}
-            isShow={showAutomatic}
-            onClose={showAutomaticFalse}
-            onFinished={handleAutomaticRes}
-          />
-        )}
+
         {/* Template */}
         <ConfigPrompt
           mode={mode as AppType}
