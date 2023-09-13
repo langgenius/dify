@@ -4,8 +4,9 @@ const translation = {
     line2: '编排',
   },
   promptMode: {
-    simple: '简单模式',
+    simple: '切换到高级模式以编辑内置的提示词',
     advanced: '高级模式',
+    switchBack: '切换回去',
   },
   operation: {
     applyConfig: '发布',

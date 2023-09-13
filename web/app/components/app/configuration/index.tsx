@@ -27,6 +27,7 @@ import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType } from '@/types/app'
+import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
@@ -197,7 +198,7 @@ const Configuration: FC = () => {
   }, [appId])
 
   const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
-  const saveAppConfig = async () => {
+  const handlePublish = async () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
@@ -247,6 +248,8 @@ const Configuration: FC = () => {
       completionParams,
     })
     notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    setCanReturnToSimpleMode(false)
   }
 
   const [showConfirm, setShowConfirm] = useState(false)
@@ -258,8 +261,15 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
-  const [promptMode, setPromptMode] = useState(PromptMode.simple)
+  const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
+  // can return to simple mode if switch to advanced mode and not published
+  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(false)
+  const setPromptMode = (mode: PromptMode) => {
+    if (mode === PromptMode.advanced)
+      setCanReturnToSimpleMode(true)
 
+    doSetPromptMode(mode)
+  }
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
@@ -274,6 +284,8 @@ const Configuration: FC = () => {
       mode,
       setPromptMode,
       promptMode,
+      canReturnToSimpleMode,
+      setCanReturnToSimpleMode,
       conversationId,
       introduction,
       setIntroduction,
@@ -308,10 +320,31 @@ const Configuration: FC = () => {
         <div className="flex flex-col h-full">
           <div className='flex items-center justify-between px-6 shrink-0 h-14'>
             <div>
-              <div className='italic text-base font-bold text-gray-900 leading-[30px]'>{t('appDebug.pageTitle.line1')}</div>
-              <div className='flex space-x-1 text-xs italic'>
-                <div className='text-gray-500 font-medium'>{t('appDebug.pageTitle.line2')}</div>
-                <div className={`${s.promptMode} cursor-pointer text-indigo-600`}>{t(`appDebug.promptMode.${promptMode}`)}</div>
+              <div className='italic text-base font-bold text-gray-900 leading-[18px]'>{t('appDebug.pageTitle.line1')}</div>
+              <div className='flex items-center h-6 space-x-1 text-xs'>
+                <div className='text-gray-500 font-medium italic'>{t('appDebug.pageTitle.line2')}</div>
+                {promptMode === PromptMode.simple && (
+                  <div
+                    onClick={() => setPromptMode(PromptMode.advanced)}
+                    className={'cursor-pointer text-indigo-600'}
+                  >
+                    {t('appDebug.promptMode.simple')}
+                  </div>
+                )}
+                {promptMode === PromptMode.advanced && (
+                  <div className='flex items-center space-x-2'>
+                    <div className={`${s.advancedPromptMode} cursor-pointer text-indigo-600`}>{t('appDebug.promptMode.advanced')}</div>
+                    {canReturnToSimpleMode && (
+                      <div
+                        onClick={() => setPromptMode(PromptMode.simple)}
+                        className='flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
+                      >
+                        <FlipBackward className='w-3 h-3 text-white'/>
+                        <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
             <div className='flex items-center'>
@@ -329,7 +362,7 @@ const Configuration: FC = () => {
               />
               <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-              <Button type='primary' onClick={saveAppConfig} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
+              <Button type='primary' onClick={handlePublish} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
             </div>
           </div>
           <div className='flex grow h-[200px]'>

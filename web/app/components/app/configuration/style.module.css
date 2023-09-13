@@ -1,8 +1,8 @@
-.promptMode {
+.advancedPromptMode {
   position: relative;
 }
 
-.promptMode::before {
+.advancedPromptMode::before {
   content: '';
   position: absolute;
   bottom: 0;

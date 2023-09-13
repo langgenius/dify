@@ -4,8 +4,9 @@ const translation = {
     line2: 'Engineering',
   },
   promptMode: {
-    simple: 'Simple Mode',
+    simple: 'Switch to Advanced Mode to edit the built-in PROMPT',
     advanced: 'Advanced Mode',
+    switchBack: 'Switch back',
   },
   operation: {
     applyConfig: 'Publish',
