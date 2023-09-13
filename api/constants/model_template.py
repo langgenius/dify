@@ -38,7 +38,18 @@ model_templates = {
                     "presence_penalty": 0,
                     "frequency_penalty": 0
                 }
-            })
+            }),
+            'user_input_form': json.dumps([
+                {
+                    "paragraph": {
+                        "label": "Query",
+                        "variable": "query",
+                        "required": True,
+                        "default": ""
+                    }
+                }
+            ]),
+            'pre_prompt': '{{query}}'
         }
     },
 

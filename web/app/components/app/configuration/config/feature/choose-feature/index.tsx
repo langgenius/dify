@@ -8,11 +8,13 @@ import FeatureItem from './feature-item'
 import Modal from '@/app/components/base/modal'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
   suggestedQuestionsAfterAnswer: boolean
   speechToText: boolean
+  citation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -85,6 +87,14 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                   />
                 )
               }
+              <FeatureItem
+                icon={<Citations className='w-4 h-4 text-[#FD853A]' />}
+                previewImgClassName='citationPreview'
+                title={t('appDebug.feature.citation.title')}
+                description={t('appDebug.feature.citation.description')}
+                value={config.citation}
+                onChange={value => onChange('citation', value)}
+              />
             </>
           </FeatureGroup>
         )}

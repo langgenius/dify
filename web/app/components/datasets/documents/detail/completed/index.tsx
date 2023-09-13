@@ -239,7 +239,7 @@ const Completed: FC<ICompletedProps> = ({
   // the current segment id and whether to show the modal
   const [currSegment, setCurrSegment] = useState<{ segInfo?: SegmentDetailModel; showModal: boolean }>({ showModal: false })
 
-  const [searchValue, setSearchValue] = useState() // the search value
+  const [searchValue, setSearchValue] = useState<string>() // the search value
   const [selectedStatus, setSelectedStatus] = useState<boolean | 'all'>('all') // the selected status, enabled/disabled/undefined
 
   const [lastSegmentsRes, setLastSegmentsRes] = useState<SegmentsResponse | undefined>(undefined)

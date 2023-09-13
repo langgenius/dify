@@ -15,7 +15,7 @@ import {
   useRole,
 } from '@floating-ui/react'
 
-import type { Placement } from '@floating-ui/react'
+import type { OffsetOptions, Placement } from '@floating-ui/react'
 
 type PortalToFollowElemOptions = {
   /*
@@ -25,7 +25,7 @@ type PortalToFollowElemOptions = {
   */
   placement?: Placement
   open?: boolean
-  offset?: number
+  offset?: number | OffsetOptions
   onOpenChange?: (open: boolean) => void
 }
 

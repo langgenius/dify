@@ -12,7 +12,7 @@ export type DatasetsContextValue = {
 const DatasetsContext = createContext<DatasetsContextValue>({
   datasets: [],
   mutateDatasets: () => {},
-  currentDataset: undefined
+  currentDataset: undefined,
 })
 
 export const useDatasetsContext = () => useContext(DatasetsContext)

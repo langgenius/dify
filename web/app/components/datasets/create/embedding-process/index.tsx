@@ -194,7 +194,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
       </div>
       <div className={s.progressContainer}>
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
-          <div className={cn(
+          <div key={indexingStatusDetail.id} className={cn(
             s.sourceItem,
             indexingStatusDetail.indexing_status === 'error' && s.error,
             indexingStatusDetail.indexing_status === 'completed' && s.success,

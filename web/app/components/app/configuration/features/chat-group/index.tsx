@@ -7,6 +7,7 @@ import type { IOpeningStatementProps } from './opening-statement'
 import OpeningStatement from './opening-statement'
 import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
 import SpeechToText from './speech-to-text'
+import Citation from './citation'
 
 /*
 * Include
@@ -19,12 +20,14 @@ type ChatGroupProps = {
   openingStatementConfig: IOpeningStatementProps
   isShowSuggestedQuestionsAfterAnswer: boolean
   isShowSpeechText: boolean
+  isShowCitation: boolean
 }
 const ChatGroup: FC<ChatGroupProps> = ({
   isShowOpeningStatement,
   openingStatementConfig,
   isShowSuggestedQuestionsAfterAnswer,
   isShowSpeechText,
+  isShowCitation,
 }) => {
   const { t } = useTranslation()
 
@@ -41,6 +44,11 @@ const ChatGroup: FC<ChatGroupProps> = ({
         {
           isShowSpeechText && (
             <SpeechToText />
+          )
+        }
+        {
+          isShowCitation && (
+            <Citation />
           )
         }
       </div>

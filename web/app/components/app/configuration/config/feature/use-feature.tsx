@@ -9,6 +9,8 @@ function useFeature({
   setSuggestedQuestionsAfterAnswer,
   speechToText,
   setSpeechToText,
+  citation,
+  setCitation,
 }: {
   introduction: string
   setIntroduction: (introduction: string) => void
@@ -18,6 +20,8 @@ function useFeature({
   setSuggestedQuestionsAfterAnswer: (suggestedQuestionsAfterAnswer: boolean) => void
   speechToText: boolean
   setSpeechToText: (speechToText: boolean) => void
+  citation: boolean
+  setCitation: (citation: boolean) => void
 }) {
   const [tempshowOpeningStatement, setTempShowOpeningStatement] = React.useState(!!introduction)
   useEffect(() => {
@@ -36,6 +40,7 @@ function useFeature({
     moreLikeThis,
     suggestedQuestionsAfterAnswer,
     speechToText,
+    citation,
   }
   const handleFeatureChange = (key: string, value: boolean) => {
     switch (key) {
@@ -53,6 +58,9 @@ function useFeature({
         break
       case 'speechToText':
         setSpeechToText(value)
+        break
+      case 'citation':
+        setCitation(value)
     }
   }
   return {

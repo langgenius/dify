@@ -2,7 +2,7 @@ import json
 import os
 from unittest.mock import patch
 
-from core.model_providers.models.moderation.openai_moderation import OpenAIModeration, DEFAULT_AUDIO_MODEL
+from core.model_providers.models.moderation.openai_moderation import OpenAIModeration, DEFAULT_MODEL
 from core.model_providers.providers.openai_provider import OpenAIProvider
 from models.provider import Provider, ProviderType
 
@@ -23,7 +23,7 @@ def get_mock_openai_moderation_model():
     openai_provider = OpenAIProvider(provider=get_mock_provider(valid_openai_api_key))
     return OpenAIModeration(
         model_provider=openai_provider,
-        name=DEFAULT_AUDIO_MODEL
+        name=DEFAULT_MODEL
     )
 
 
@@ -36,5 +36,4 @@ def test_run(mock_decrypt):
     model = get_mock_openai_moderation_model()
     rst = model.run('hello')
 
-    assert isinstance(rst, dict)
-    assert 'id' in rst
+    assert rst is True

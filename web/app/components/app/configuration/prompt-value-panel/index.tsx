@@ -14,11 +14,10 @@ import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import Tooltip from '@/app/components/base/tooltip-plus'
 
 export type IPromptValuePanelProps = {
   appType: AppType
-  value?: string
-  onChange?: (value: string) => void
   onSend?: () => void
 }
 
@@ -32,12 +31,10 @@ const starIcon = (
 
 const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   appType,
-  value,
-  onChange,
   onSend,
 }) => {
   const { t } = useTranslation()
-  const { modelConfig, inputs, setInputs } = useContext(ConfigContext)
+  const { modelConfig, inputs, setInputs, mode } = useContext(ConfigContext)
   const [promptPreviewCollapse, setPromptPreviewCollapse] = useState(false)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptTemplate = modelConfig.configs.prompt_template
@@ -53,6 +50,19 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     return obj
   })()
 
+  const canNotRun = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const renderRunButton = () => {
+    return (
+      <Button
+        type="primary"
+        disabled={canNotRun}
+        onClick={() => onSend && onSend()}
+        className="w-[80px] !h-8">
+        <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+        <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
+      </Button>
+    )
+  }
   const handleInputValueChange = (key: string, value: string) => {
     if (!(key in promptVariableObj))
       return
@@ -61,6 +71,14 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     promptVariables.forEach((input) => {
       if (input.key === key)
         newInputs[key] = value
+    })
+    setInputs(newInputs)
+  }
+
+  const onClear = () => {
+    const newInputs: Record<string, any> = {}
+    promptVariables.forEach((item) => {
+      newInputs[item.key] = ''
     })
     setInputs(newInputs)
   }
@@ -125,83 +143,78 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             <div className="mt-1 text-xs leading-normal text-gray-500">{t('appDebug.inputs.completionVarTip')}</div>
           )}
         </div>
-        {
-          !userInputFieldCollapse && (
-            <>
-              {
-                promptVariables.length > 0
-                  ? (
-                    <div className="space-y-3 ">
-                      {promptVariables.map(({ key, name, type, options, max_length, required }) => (
-                        <div key={key} className="flex items-center justify-between">
-                          <div className="mr-1 shrink-0 w-[120px] text-sm text-gray-900 break-all">{name || key}</div>
-                          {type === 'select'
-                            ? (
-                              <Select
-                                className='w-full'
-                                defaultValue={inputs[key] as string}
-                                onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
-                                items={(options || []).map(i => ({ name: i, value: i }))}
-                                allowSearch={false}
-                                bgClassName='bg-gray-50'
-                                overlayClassName='z-[11]'
-                              />
-                            )
-                            : (
-                              <input
-                                className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-                                placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
-                                type="text"
-                                value={inputs[key] ? `${inputs[key]}` : ''}
-                                onChange={(e) => { handleInputValueChange(key, e.target.value) }}
-                                maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
-                              />
-                            )}
+        {!userInputFieldCollapse && (
+          <>
+            {
+              promptVariables.length > 0
+                ? (
+                  <div className="space-y-3 ">
+                    {promptVariables.map(({ key, name, type, options, max_length, required }) => (
+                      <div key={key} className="flex justify-between">
+                        <div className="mr-1 pt-2 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                        {type === 'select' && (
+                          <Select
+                            className='w-full'
+                            defaultValue={inputs[key] as string}
+                            onSelect={(i) => { handleInputValueChange(key, i.value as string) }}
+                            items={(options || []).map(i => ({ name: i, value: i }))}
+                            allowSearch={false}
+                            bgClassName='bg-gray-50'
+                          />
+                        )
+                        }
+                        {type === 'string' && (
+                          <input
+                            className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                            placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                            type="text"
+                            value={inputs[key] ? `${inputs[key]}` : ''}
+                            onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                            maxLength={max_length || DEFAULT_VALUE_MAX_LEN}
+                          />
+                        )}
+                        {type === 'paragraph' && (
+                          <textarea
+                            className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                            placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+                            value={inputs[key] ? `${inputs[key]}` : ''}
+                            onChange={(e) => { handleInputValueChange(key, e.target.value) }}
+                          />
+                        )}
 
-                        </div>
-                      ))}
-                    </div>
-                  )
-                  : (
-                    <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
-                  )
-              }
-            </>
-          )
+                      </div>
+                    ))}
+                  </div>
+                )
+                : (
+                  <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
+                )
+            }
+          </>
+        )
         }
       </div>
 
       {
         appType === AppType.completion && (
-          <div className='px-4'>
-            <div className="mt-3 border-b border-gray-100"></div>
-            <div className="mt-4">
-              <div>
-                <div className="text-[13px] text-gray-900 font-medium">{t('appDebug.inputs.queryTitle')}</div>
-                <div className="mt-2 mb-4 overflow-hidden border border-gray-200 rounded-lg grow bg-gray-50 ">
-                  <div className="px-4 py-2 rounded-t-lg bg-gray-50">
-                    <textarea
-                      rows={4}
-                      className="w-full px-0 text-sm text-gray-900 border-0 bg-gray-50 focus:outline-none placeholder:bg-gray-50"
-                      placeholder={t('appDebug.inputs.queryPlaceholder') as string}
-                      value={value}
-                      onChange={e => onChange && onChange(e.target.value)}
-                    ></textarea>
-                  </div>
-                  <div className="flex items-center justify-between px-3 py-2 bg-gray-50">
-                    <div className="flex pl-0 space-x-1 sm:pl-2">
-                      <span className="bg-gray-100 text-gray-500 text-xs font-medium mr-2 px-2.5 py-0.5 rounded cursor-pointer">{value?.length}</span>
-                    </div>
-                    <Button
-                      type="primary"
-                      onClick={() => onSend && onSend()}
-                      className="w-[80px] !h-8">
-                      <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
-                      <span className='uppercase text-[13px]'>{t('appDebug.inputs.run')}</span>
-                    </Button>
-                  </div>
-                </div>
-              </div>
+          <div>
+            <div className="mt-5 border-b border-gray-100"></div>
+            <div className="flex justify-between mt-4 px-4">
+              <Button
+                className='!h-8 !p-3'
+                onClick={onClear}
+                disabled={false}
+              >
+                <span className='text-[13px]'>{t('common.operation.clear')}</span>
+              </Button>
+
+              {canNotRun
+                ? (<Tooltip
+                  popupContent={t('appDebug.otherError.promptNoBeEmpty')}
+                >
+                  {renderRunButton()}
+                </Tooltip>)
+                : renderRunButton()}
             </div>
           </div>
         )

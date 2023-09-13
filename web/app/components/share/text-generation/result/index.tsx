@@ -21,7 +21,6 @@ export type IResultProps = {
   promptConfig: PromptConfig | null
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
-  query: string
   controlSend?: number
   controlStopResponding?: number
   onShowRes: () => void
@@ -39,7 +38,6 @@ const Result: FC<IResultProps> = ({
   promptConfig,
   moreLikeThisEnabled,
   inputs,
-  query,
   controlSend,
   controlStopResponding,
   onShowRes,
@@ -109,14 +107,8 @@ const Result: FC<IResultProps> = ({
     if (!checkCanSend())
       return
 
-    if (!query) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
-
     const data = {
       inputs,
-      query,
     }
 
     setMessageId(null)

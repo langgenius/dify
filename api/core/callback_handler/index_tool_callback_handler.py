@@ -2,6 +2,7 @@ from typing import List
 
 from langchain.schema import Document
 
+from core.conversation_message_task import ConversationMessageTask
 from extensions.ext_database import db
 from models.dataset import DocumentSegment
 
@@ -9,8 +10,9 @@ from models.dataset import DocumentSegment
 class DatasetIndexToolCallbackHandler:
     """Callback handler for dataset tool."""
 
-    def __init__(self, dataset_id: str) -> None:
+    def __init__(self, dataset_id: str, conversation_message_task: ConversationMessageTask) -> None:
         self.dataset_id = dataset_id
+        self.conversation_message_task = conversation_message_task
 
     def on_tool_end(self, documents: List[Document]) -> None:
         """Handle tool end."""
@@ -27,3 +29,7 @@ class DatasetIndexToolCallbackHandler:
             )
 
             db.session.commit()
+
+    def return_retriever_resource_info(self, resource: List):
+        """Handle return_retriever_resource_info."""
+        self.conversation_message_task.on_dataset_query_finish(resource)

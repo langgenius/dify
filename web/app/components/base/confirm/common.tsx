@@ -8,7 +8,7 @@ import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alerts
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Button from '@/app/components/base/button'
 
-type ConfirmCommonProps = {
+export type ConfirmCommonProps = {
   type?: string
   isShow: boolean
   onCancel: () => void
