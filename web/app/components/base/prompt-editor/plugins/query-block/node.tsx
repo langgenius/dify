@@ -22,7 +22,7 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <QueryBlockComponent />
+    return <QueryBlockComponent nodeKey={this.getKey()} />
   }
 }
 export function $createQueryBlockNode(): QueryBlockNode {

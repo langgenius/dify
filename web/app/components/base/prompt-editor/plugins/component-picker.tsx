@@ -45,11 +45,13 @@ class ComponentPickerOption extends MenuOption {
 }
 
 type ComponentPickerMenuItemProps = {
+  isSelected: boolean
   onClick: () => void
   onMouseEnter: () => void
   option: ComponentPickerOption
 }
 const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
+  isSelected,
   onClick,
   onMouseEnter,
   option,
@@ -57,7 +59,10 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
   return (
     <div
       key={option.key}
-      className='flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer'
+      className={`
+        flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer
+        ${isSelected && '!bg-gray-50'}
+      `}
       tabIndex={-1}
       ref={option.setRefElement}
       onMouseEnter={onMouseEnter}
@@ -133,13 +138,14 @@ const ComponentPicker = () => {
       onSelectOption={onSelectOption}
       menuRenderFn={(
         anchorElementRef,
-        { selectOptionAndCleanUp, setHighlightedIndex },
+        { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
       ) =>
         (anchorElementRef.current && options.length)
           ? ReactDOM.createPortal(
             <div className='mt-[25px] p-1 w-[400px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
               {options.map((option, i: number) => (
                 <ComponentPickerMenuItem
+                  isSelected={selectedIndex === i}
                   onClick={() => {
                     setHighlightedIndex(i)
                     selectOptionAndCleanUp(option)

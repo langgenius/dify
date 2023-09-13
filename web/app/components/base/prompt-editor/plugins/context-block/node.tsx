@@ -22,7 +22,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <ContextBlockComponent />
+    return <ContextBlockComponent nodeKey={this.getKey()} />
   }
 }
 export function $createContextBlockNode(): ContextBlockNode {

@@ -1,9 +1,10 @@
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import {
   $getSelection,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $createContextBlockNode,
@@ -13,23 +14,27 @@ import {
 export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand()
 
 const ContextBlock = () => {
+  const nodeKeyRef = useRef('')
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
     if (!editor.hasNodes([ContextBlockNode]))
       throw new Error('ContextBlockPlugin: ContextBlock not registered on editor')
 
-    return editor.registerCommand(
-      INSERT_CONTEXT_BLOCK_COMMAND,
-      () => {
-        const contextBlockNode = $createContextBlockNode()
-        const selection = $getSelection()
+    return mergeRegister(
+      editor.registerCommand(
+        INSERT_CONTEXT_BLOCK_COMMAND,
+        () => {
+          const contextBlockNode = $createContextBlockNode()
+          nodeKeyRef.current = contextBlockNode.getKey()
+          const selection = $getSelection()
 
-        selection?.insertNodes([contextBlockNode])
+          selection?.insertNodes([contextBlockNode])
 
-        return true
-      },
-      COMMAND_PRIORITY_EDITOR,
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
     )
   }, [editor])
 

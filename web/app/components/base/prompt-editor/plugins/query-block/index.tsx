@@ -17,7 +17,7 @@ const QueryBlock = () => {
 
   useEffect(() => {
     if (!editor.hasNodes([QueryBlockNode]))
-      throw new Error('ContextBlockPlugin: ContextBlock not registered on editor')
+      throw new Error('QueryBlockPlugin: QueryBlock not registered on editor')
 
     return editor.registerCommand(
       INSERT_QUERY_BLOCK_COMMAND,

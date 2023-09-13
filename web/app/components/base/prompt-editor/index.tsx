@@ -1,9 +1,12 @@
 'use client'
 
+// import { $getRoot } from 'lexical'
+// import type { EditorState } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
+// import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
 import ComponentPicker from './plugins/component-picker'
@@ -51,6 +54,10 @@ const PromptEditor = () => {
     nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode],
   }
 
+  // const handleEditorChange = (editorState: EditorState) => {
+  //   console.log(editorState.read(() => $getRoot().getTextContent()))
+  // }
+
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className='relative'>
@@ -65,6 +72,7 @@ const PromptEditor = () => {
         <HistoryBlock />
         <QueryBlock />
         <TreeView />
+        {/* <OnChangePlugin onChange={handleEditorChange} /> */}
       </div>
     </LexicalComposer>
   )

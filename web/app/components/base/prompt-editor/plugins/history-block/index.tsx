@@ -17,15 +17,15 @@ const HistoryBlock = () => {
 
   useEffect(() => {
     if (!editor.hasNodes([HistoryBlockNode]))
-      throw new Error('ContextBlockPlugin: ContextBlock not registered on editor')
+      throw new Error('HistoryBlockPlugin: HistoryBlock not registered on editor')
 
     return editor.registerCommand(
       INSERT_HISTORY_BLOCK_COMMAND,
       () => {
-        const contextBlockNode = $createHistoryBlockNode()
+        const historyBlockNode = $createHistoryBlockNode()
         const selection = $getSelection()
 
-        selection?.insertNodes([contextBlockNode])
+        selection?.insertNodes([historyBlockNode])
 
         return true
       },

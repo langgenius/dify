@@ -4,7 +4,7 @@ import HistoryBlockComponent from './component'
 
 export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   static getType(): string {
-    return 'context-block'
+    return 'history-block'
   }
 
   static clone(): HistoryBlockNode {
@@ -22,7 +22,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <HistoryBlockComponent />
+    return <HistoryBlockComponent nodeKey={this.getKey()} />
   }
 }
 export function $createHistoryBlockNode(): HistoryBlockNode {
