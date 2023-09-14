@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 
@@ -25,6 +25,22 @@ const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max
       return 10
     return 1
   }
+
+  const getFitPrecisionValue = (num: number) => {
+    if (!precision || !(`${num}`).includes('.'))
+      return num
+
+    const currNumPrecision = (`${num}`).split('.')[1].length
+    if (currNumPrecision > precision)
+      return parseFloat(num.toFixed(precision))
+
+    return num
+  }
+
+  useEffect(() => {
+    if (precision)
+      onChange(id, getFitPrecisionValue(value))
+  }, [precision])
   const times = getToIntTimes(max)
   return (
     <div className="flex items-center justify-between">
@@ -44,13 +60,12 @@ const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max
           }} />
         </div>
         <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
-          let value = parseFloat(e.target.value)
-          if ((`${value}`).includes('.')) { // is float
-            value = parseFloat(value.toFixed(precision || 1))
-          }
-          if (value < min || value > max)
-            return
+          let value = getFitPrecisionValue(isNaN(parseFloat(e.target.value)) ? min : parseFloat(e.target.value))
+          if (value < min)
+            value = min
 
+          if (value > max)
+            value = max
           onChange(id, value)
         }} />
       </div>
