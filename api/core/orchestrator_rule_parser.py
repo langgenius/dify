@@ -1,6 +1,7 @@
 import math
 from typing import Optional
 
+from flask import current_app
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -12,7 +13,7 @@ from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGa
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain
+from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain, SensitiveWordAvoidanceRule
 from core.conversation_message_task import ConversationMessageTask
 from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
@@ -26,6 +27,7 @@ from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
+from models.provider import ProviderType
 
 
 class OrchestratorRuleParser:
@@ -63,7 +65,7 @@ class OrchestratorRuleParser:
 
             # add agent callback to record agent thoughts
             agent_callback = AgentLoopGatherCallbackHandler(
-                model_instant=agent_model_instance,
+                model_instance=agent_model_instance,
                 conversation_message_task=conversation_message_task
             )
 
@@ -123,23 +125,45 @@ class OrchestratorRuleParser:
 
         return chain
 
-    def to_sensitive_word_avoidance_chain(self, callbacks: Callbacks = None, **kwargs) \
+    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) \
             -> Optional[SensitiveWordAvoidanceChain]:
         """
         Convert app sensitive word avoidance config to chain
 
+        :param model_instance: model instance
+        :param callbacks: callbacks for the chain
         :param kwargs:
         :return:
         """
-        if not self.app_model_config.sensitive_word_avoidance_dict:
-            return None
+        sensitive_word_avoidance_rule = None
 
-        sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
-        sensitive_words = sensitive_word_avoidance_config.get("words", "")
-        if sensitive_word_avoidance_config.get("enabled", False) and sensitive_words:
+        if self.app_model_config.sensitive_word_avoidance_dict:
+            sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
+            if sensitive_word_avoidance_config.get("enabled", False):
+                if sensitive_word_avoidance_config.get('type') == 'moderation':
+                    sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
+                        type=SensitiveWordAvoidanceRule.Type.MODERATION,
+                        canned_response=sensitive_word_avoidance_config.get("canned_response")
+                        if sensitive_word_avoidance_config.get("canned_response")
+                        else 'Your content violates our usage policy. Please revise and try again.',
+                    )
+                else:
+                    sensitive_words = sensitive_word_avoidance_config.get("words", "")
+                    if sensitive_words:
+                        sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
+                            type=SensitiveWordAvoidanceRule.Type.KEYWORDS,
+                            canned_response=sensitive_word_avoidance_config.get("canned_response")
+                            if sensitive_word_avoidance_config.get("canned_response")
+                            else 'Your content violates our usage policy. Please revise and try again.',
+                            extra_params={
+                                'sensitive_words': sensitive_words.split(','),
+                            }
+                        )
+
+        if sensitive_word_avoidance_rule:
             return SensitiveWordAvoidanceChain(
-                sensitive_words=sensitive_words.split(","),
-                canned_response=sensitive_word_avoidance_config.get("canned_response", ''),
+                model_instance=model_instance,
+                sensitive_word_avoidance_rule=sensitive_word_avoidance_rule,
                 output_key="sensitive_word_avoidance_output",
                 callbacks=callbacks,
                 **kwargs

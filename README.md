@@ -16,6 +16,10 @@ Out-of-the-box web sites supporting form mode and chat conversation mode
 A single API encompassing plugin capabilities, context enhancement, and more, saving you backend coding effort
 Visual data analysis, log review, and annotation for applications
 
+
+https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e191da4d0f6
+
+
 ## Highlighted Features
 **1. LLMs support:** Choose capabilities based on different models when building your Dify AI apps. Dify is compatible with Langchain, meaning it will support various LLMs. Currently supported:
 

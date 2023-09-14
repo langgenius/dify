@@ -1,5 +1,6 @@
 'use client'
 import cn from 'classnames'
+import { useState } from 'react'
 
 type AvatarProps = {
   name: string
@@ -17,14 +18,20 @@ const Avatar = ({
 }: AvatarProps) => {
   const avatarClassName = 'shrink-0 flex items-center rounded-full bg-primary-600'
   const style = { width: `${size}px`, height: `${size}px`, fontSize: `${size}px`, lineHeight: `${size}px` }
+  const [imgError, setImgError] = useState(false)
 
-  if (avatar) {
+  const handleError = () => {
+    setImgError(true)
+  }
+
+  if (avatar && !imgError) {
     return (
       <img
         className={cn(avatarClassName, className)}
         style={style}
         alt={name}
         src={avatar}
+        onError={handleError}
       />
     )
   }
