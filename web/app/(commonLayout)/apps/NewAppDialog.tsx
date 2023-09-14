@@ -139,7 +139,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         </div>
         {isWithTemplate
           ? (
-            <ul className='grid grid-cols-3 gap-4'>
+            <ul className='grid grid-cols-2 gap-4'>
               {templates?.data?.map((template, index) => (
                 <li
                   key={index}
