@@ -184,3 +184,7 @@ export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: str
 export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url) => {
   return get(url) as Promise<DocumentsLimitResponse>
 }
+
+export const fetchSparkFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
+  return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
+}

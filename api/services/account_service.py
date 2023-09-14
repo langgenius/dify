@@ -466,7 +466,6 @@ class RegisterService:
             to=email,
             token=token,
             inviter_name=inviter.name if inviter else 'Dify',
-            workspace_id=tenant.id,
             workspace_name=tenant.name,
         )
 
