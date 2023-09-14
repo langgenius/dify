@@ -4,8 +4,8 @@
   background-repeat: no-repeat;
 }
 
-.svgIcon:hover {
-  background-image: url(~@/app/components/develop/secret-key/assets/svg-hover.svg);
+.svgIconed {
+  background-image: url(~@/app/components/develop/secret-key/assets/svged.svg);
   background-position: center;
   background-repeat: no-repeat;
 }

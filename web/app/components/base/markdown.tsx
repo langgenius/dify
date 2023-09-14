@@ -8,10 +8,11 @@ import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
+import cn from 'classnames'
 import CopyBtn from '@/app/components/app/chat/copy-btn'
 import SVGBtn from '@/app/components/app/chat/svg'
 import Flowchart from '@/app/components/app/chat/mermaid'
-
+import s from '@/app/components/app/chat/style.module.css'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -26,11 +27,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   php: 'PHP',
   python: 'Python',
   yaml: 'Yaml',
-  shell: 'Shell',
-  powershell: 'PowerShell',
-  markdown: 'MarkDown',
-  makefile: 'MarkFile',
-  json: 'JSON',
+  mermaid: 'Mermaid',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -84,6 +81,7 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 
 export function Markdown(props: { content: string }) {
   const [isCopied, setIsCopied] = useState(false)
+  const [isSVG, setIsSVG] = useState(false)
   return (
     <div className="markdown-body">
       <ReactMarkdown
@@ -96,7 +94,6 @@ export function Markdown(props: { content: string }) {
             const match = /language-(\w+)/.exec(className || '')
             const language = match?.[1]
             const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-            const [isSVG, setIsSVG] = useState(false);
             return (!inline && match)
               ? (
                 <div>
@@ -107,36 +104,35 @@ export function Markdown(props: { content: string }) {
                     }}
                   >
                     <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-                    <div style={{'display': 'flex'}}>
-                      {language === 'mermaid' &&
-                        <SVGBtn
+                    <div style={{ display: 'flex' }}>
+                      {language === 'mermaid'
+                        && <SVGBtn
                           isSVG={isSVG}
                           setIsSVG={setIsSVG}
                         />
                       }
                       <CopyBtn
+                        className={cn(s.copyBtn, 'mr-1')}
                         value={String(children).replace(/\n$/, '')}
                         isPlain
                       />
                     </div>
                   </div>
-                  { language === 'mermaid' && isSVG ?
-                      <Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />
-                      :
-                      <SyntaxHighlighter
-                            {...props}
-                            style={atelierHeathLight}
-                            customStyle={{
-                              paddingLeft: 12,
-                              backgroundColor: '#fff',
-                            }}
-                            language={match[1]}
-                            showLineNumbers
-                            PreTag="div"
-                      >
+                  { (language === 'mermaid' && isSVG)
+                    ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
+                    : (<SyntaxHighlighter
+                      {...props}
+                      style={atelierHeathLight}
+                      customStyle={{
+                        paddingLeft: 12,
+                        backgroundColor: '#fff',
+                      }}
+                      language={match[1]}
+                      showLineNumbers
+                      PreTag="div"
+                    >
                       {String(children).replace(/\n$/, '')}
-                      </SyntaxHighlighter>
-                  }
+                    </SyntaxHighlighter>)}
                 </div>
               )
               : (
