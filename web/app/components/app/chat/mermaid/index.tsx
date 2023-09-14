@@ -90,7 +90,7 @@ const Flowchart = React.forwardRef((props: {
     // @ts-expect-error
     <div ref={ref}>
       {
-        isRender && <div id={chartId.current} className="mermaid" style={style}>{svgCode && (<img src={svgCode} style={{ minWidth: '100%', height: 'auto' }} alt="Mermaid chart" />)}</div>
+        isRender && <div id={chartId.current} className="mermaid" style={style}>{svgCode && (<img src={svgCode} style={{ Width: '100%', height: 'auto' }} alt="Mermaid chart" />)}</div>
       }
       <button onClick={handleReRender}>{t('appApi.merMaind.rerender')}</button>
     </div>
