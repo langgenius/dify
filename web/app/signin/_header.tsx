@@ -9,7 +9,7 @@ import I18n from '@/context/i18n'
 const Header = () => {
   const { locale, setLocaleOnClient } = useContext(I18n)
 
-  if (localStorage.getItem('jwt-token'))
+  if (localStorage?.getItem('jwt-token'))
     localStorage.removeItem('jwt-token')
 
   return <div className='flex items-center justify-between p-6 w-full'>

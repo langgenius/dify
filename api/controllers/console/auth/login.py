@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+from datetime import datetime, timedelta
+
 import flask
 import flask_login
 from flask import request, current_app
@@ -44,6 +46,7 @@ class LoginApi(Resource):
         # todo: return the user info
         payload = {
             "user_id": account.id,
+            "exp": datetime.utcnow() + timedelta(days=30),
         }
 
         token = PassportService().issue(payload)

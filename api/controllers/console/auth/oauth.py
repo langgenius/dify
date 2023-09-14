@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 
 import flask_login
@@ -83,6 +83,7 @@ class OAuthCallback(Resource):
 
         payload = {
             "user_id": account.id,
+            "exp": datetime.utcnow() + timedelta(days=30),
         }
 
         token = PassportService().issue(payload)
