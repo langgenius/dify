@@ -10,8 +10,8 @@ from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.setup import setup_required
 from libs.helper import email
 from libs.password import valid_password
-from services.account_service import AccountService, TenantService
 from libs.passport import PassportService
+from services.account_service import AccountService, TenantService
 
 
 class LoginApi(Resource):

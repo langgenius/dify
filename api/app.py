@@ -96,7 +96,9 @@ def initialize_extensions(app):
 @login_manager.user_loader
 def load_user(user_id):
     """Load user based on the user_id."""
-    flask_login.logout_user()
+    if request.blueprint == 'console':
+        return AccountService.load_user(user_id)
+
 
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
@@ -174,7 +176,6 @@ if app.config['TESTING']:
 @app.after_request
 def after_request(response):
     """Add Version headers to the response."""
-    session.pop("_remember", None)
     response.headers.add('X-Version', app.config['CURRENT_VERSION'])
     response.headers.add('X-Env', app.config['DEPLOY_ENV'])
     return response
