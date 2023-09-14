@@ -9,6 +9,7 @@ import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
+import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 export type IPromptProps = {
   promptMode?: PromptMode
@@ -37,6 +38,10 @@ const Prompt: FC<IPromptProps> = ({
       draft[index].type = type
     })
     setMessageList(newMessageList)
+  }
+
+  const handleAddMessage = () => {
+
   }
 
   const handleMessageDelete = (index: number) => {
@@ -71,7 +76,12 @@ const Prompt: FC<IPromptProps> = ({
           />
         ))}
       </div>
-      <div className='mt-3 flex items-center h-8 justify-center bg-gray-50 cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>Add Message</div>
+      <div
+        onClick={handleAddMessage}
+        className='mt-3 flex items-center h-8 justify-center bg-gray-50 cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>
+        <Plus className='w-4 h-4' />
+        <div>Add Message</div>
+      </div>
     </div>
   )
 }
