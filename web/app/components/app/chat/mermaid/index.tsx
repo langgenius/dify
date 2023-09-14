@@ -18,6 +18,12 @@ if (typeof window !== 'undefined') {
   mermaidAPI = mermaid.mermaidAPI
 }
 
+const style = {
+  minWidth: '480px',
+  height: 'auto',
+  overflow: 'auto',
+}
+
 // eslint-disable-next-line react/display-name
 const Flowchart = React.forwardRef((props: {
   PrimitiveCode: string
@@ -79,18 +85,12 @@ const Flowchart = React.forwardRef((props: {
     }, 100)
   }, [props.PrimitiveCode])
 
-  const style = {
-    minWidth: '480px',
-    height: 'auto',
-    overflow: 'auto',
-  }
-
   return (
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-expect-error
     <div ref={ref}>
       {
-        isRender && <div id={chartId.current} className="mermaid" style={style}>{svgCode && (<img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />)}</div>
+        isRender && <div id={chartId.current} className="mermaid" style={style}>{svgCode && (<img src={svgCode} style={{ minWidth: '100%', height: 'auto' }} alt="Mermaid chart" />)}</div>
       }
       <button onClick={handleReRender}>{t('appApi.merMaind.rerender')}</button>
     </div>
