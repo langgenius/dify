@@ -222,11 +222,9 @@ export function getHashtagRegexString(): string {
   // but not all numbers.
   const hashtag
     = `(${
-      hashtagBoundary
-    })(${
       hashLeftCharList
-    })(`
-    + `)(${
+    })`
+    + `(${
       hashLeftCharList
     })(${
       hashtagAlphanumeric
