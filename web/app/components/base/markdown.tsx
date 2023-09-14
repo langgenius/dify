@@ -29,7 +29,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   yaml: 'Yaml',
   mermaid: 'Mermaid',
   markdown: 'MarkDown',
-  makefile: 'MarkFile',
+  makefile: 'MakeFile',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
