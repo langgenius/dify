@@ -1,17 +1,20 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import SimplePromptInput from './simple-prompt-input'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
 import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
+import ConfigContext from '@/context/debug-configuration'
+
 export type IPromptProps = {
   promptMode?: PromptMode
   mode: AppType
   promptTemplate: string
   promptVariables: PromptVariable[]
-  messageList?: any[]
   readonly?: boolean
   onChange?: (promp: string, promptVariables: PromptVariable[]) => void
 }
@@ -20,11 +23,22 @@ const Prompt: FC<IPromptProps> = ({
   mode,
   promptMode = PromptMode.simple,
   promptTemplate,
-  messageList = [],
   promptVariables,
   readonly = false,
   onChange,
 }) => {
+  const {
+    messageList = [],
+    setMessageList,
+  } = useContext(ConfigContext)
+
+  const handleMessageTypeChange = (index: number, type: string) => {
+    const newMessageList = produce(messageList, (draft) => {
+      draft[index].type = type
+    })
+    setMessageList(newMessageList)
+  }
+
   if (promptMode === PromptMode.simple) {
     return (
       <SimplePromptInput
@@ -44,6 +58,7 @@ const Prompt: FC<IPromptProps> = ({
             key={index}
             type={item.type}
             message={item.message}
+            onTypeChange={type => handleMessageTypeChange(index, type)}
             canDelete={messageList.length > 1}
           />
         ))}
