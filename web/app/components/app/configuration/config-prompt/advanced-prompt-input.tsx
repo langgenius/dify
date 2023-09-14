@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
+import cn from 'classnames'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import type { MessageType } from '@/models/debug'
@@ -27,9 +28,9 @@ const AdvancedPromptInput: FC<Props> = ({
   return (
     <div className={`${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
-        <div className='flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl border-b bg-white'>
+        <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
           <MessageTypeSelector value={type} onChange={onTypeChange} />
-          <div className='flex items-center space-x-1'>
+          <div className={cn(s.optionWrap, 'items-center space-x-1')}>
             {canDelete && (
               <Trash03 onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
             )}

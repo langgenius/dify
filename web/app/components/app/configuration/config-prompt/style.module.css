@@ -14,6 +14,10 @@
   box-sizing: border-box;
 }
 
-.boxHeader:hover {
-  border-bottom: 1px solid #000;
+.optionWrap {
+  display: none;
+}
+
+.boxHeader:hover .optionWrap {
+  display: flex;
 }
