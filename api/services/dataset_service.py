@@ -750,7 +750,7 @@ class DocumentService:
             created_by=account.id,
             embedding_model=embedding_model.name if embedding_model else None,
             embedding_model_provider=embedding_model.model_provider.provider_name if embedding_model else None,
-            dataset_collection_binding_id=dataset_collection_binding_id
+            collection_binding_id=dataset_collection_binding_id
         )
 
         db.session.add(dataset)
