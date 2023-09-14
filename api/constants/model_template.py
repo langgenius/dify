@@ -328,6 +328,6 @@ demo_model_templates = {
                 }),
                 user_input_form=None
             )
-        },
+        }
     ],
 }
