@@ -39,6 +39,13 @@ const Prompt: FC<IPromptProps> = ({
     setMessageList(newMessageList)
   }
 
+  const handleMessageDelete = (index: number) => {
+    const newMessageList = produce(messageList, (draft) => {
+      draft.splice(index, 1)
+    })
+    setMessageList(newMessageList)
+  }
+
   if (promptMode === PromptMode.simple) {
     return (
       <SimplePromptInput
@@ -60,6 +67,7 @@ const Prompt: FC<IPromptProps> = ({
             message={item.message}
             onTypeChange={type => handleMessageTypeChange(index, type)}
             canDelete={messageList.length > 1}
+            onDelete={() => handleMessageDelete(index)}
           />
         ))}
       </div>

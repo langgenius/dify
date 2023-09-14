@@ -1,17 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import copy from 'copy-to-clipboard'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import type { MessageType } from '@/models/debug'
 import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
-import { Clipboard } from '@/app/components/base/icons/src/vender/line/files'
+import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 
 type Props = {
   type: MessageType
   message: string
   onTypeChange: (value: MessageType) => void
   canDelete: boolean
+  onDelete: () => void
 }
 
 const AdvancedPromptInput: FC<Props> = ({
@@ -19,7 +21,9 @@ const AdvancedPromptInput: FC<Props> = ({
   message,
   onTypeChange,
   canDelete,
+  onDelete,
 }) => {
+  const [isCopied, setIsCopied] = React.useState(false)
   return (
     <div className={`${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
@@ -27,9 +31,19 @@ const AdvancedPromptInput: FC<Props> = ({
           <MessageTypeSelector value={type} onChange={onTypeChange} />
           <div className='flex items-center space-x-1'>
             {canDelete && (
-              <Trash03 className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+              <Trash03 onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
             )}
-            <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+            {!isCopied
+              ? (
+                <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
+                  copy(message)
+                  setIsCopied(true)
+                }} />
+              )
+              : (
+                <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
+              )}
+
           </div>
         </div>
         <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
