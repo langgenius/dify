@@ -9,6 +9,7 @@ import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 
 export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand()
+export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand()
 
 const VariableBlock = () => {
   const [editor] = useLexicalComposerContext()
@@ -18,10 +19,22 @@ const VariableBlock = () => {
       editor.registerCommand(
         INSERT_VARIABLE_BLOCK_COMMAND,
         () => {
-          const contextBlockNode = new TextNode('{')
+          const textNode = new TextNode('{')
           const selection = $getSelection()
 
-          selection?.insertNodes([contextBlockNode])
+          selection?.insertNodes([textNode])
+
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
+        (value: string) => {
+          const textNode = new TextNode(value)
+          const selection = $getSelection()
+
+          selection?.insertNodes([textNode])
 
           return true
         },

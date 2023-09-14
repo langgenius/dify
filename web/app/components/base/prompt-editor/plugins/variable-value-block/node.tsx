@@ -1,20 +1,38 @@
 import type {
+  EditorConfig,
   LexicalNode,
   NodeKey,
+  SerializedTextNode,
 } from 'lexical'
-import { $applyNodeReplacement, TextNode } from 'lexical'
+import {
+  $applyNodeReplacement,
+  TextNode,
+} from 'lexical'
 
-export class VariableValueNode extends TextNode {
+export class VariableValueBlockNode extends TextNode {
   static getType(): string {
-    return 'variable-value'
+    return 'variable-value-block'
   }
 
-  static clone(node: VariableValueNode): VariableValueNode {
-    return new VariableValueNode(node.__text, node.__key)
+  static clone(node: VariableValueBlockNode): VariableValueBlockNode {
+    return new VariableValueBlockNode(node.__text, node.__key)
   }
 
   constructor(text: string, key?: NodeKey) {
     super(text, key)
+  }
+
+  createDOM(config: EditorConfig): HTMLElement {
+    const element = super.createDOM(config)
+    element.classList.add('inline-flex', 'items-center', 'px-0.5', 'h-[22px]', 'bg-[#EFF4FF]', 'text-[#155EEF]', 'rounded-[5px]')
+    return element
+  }
+
+  exportJSON(): SerializedTextNode {
+    return {
+      ...super.exportJSON(),
+      type: 'variable-value',
+    }
   }
 
   canInsertTextBefore(): boolean {
@@ -26,12 +44,12 @@ export class VariableValueNode extends TextNode {
   }
 }
 
-export function $createVariableValueNode(text = ''): VariableValueNode {
-  return $applyNodeReplacement(new VariableValueNode(text))
+export function $createVariableValueBlockNode(text = ''): VariableValueBlockNode {
+  return $applyNodeReplacement(new VariableValueBlockNode(text))
 }
 
-export function $isVariableValueNode(
+export function $isVariableValueNodeBlock(
   node: LexicalNode | null | undefined,
-): node is VariableValueNode {
-  return node instanceof VariableValueNode
+): node is VariableValueBlockNode {
+  return node instanceof VariableValueBlockNode
 }

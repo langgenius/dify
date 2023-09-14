@@ -19,7 +19,7 @@ import QueryBlock from './plugins/query-block'
 import { QueryBlockNode } from './plugins/query-block/node'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
-import { VariableValueNode } from './plugins/variable-value-block/node'
+import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 
 export type PromptEditorProps = {
   contextBlock?: {
@@ -54,7 +54,7 @@ const PromptEditor = () => {
     onError: (error: Error) => {
       throw error
     },
-    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode, VariableValueNode],
+    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode, VariableValueBlockNode],
   }
 
   // const handleEditorChange = (editorState: EditorState) => {

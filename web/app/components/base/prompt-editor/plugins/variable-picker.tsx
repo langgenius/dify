@@ -1,10 +1,14 @@
 import type { FC } from 'react'
+import { useCallback } from 'react'
 import ReactDOM from 'react-dom'
+import type { TextNode } from 'lexical'
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
   useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from './variable-block'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 
 class VariablePickerOption extends MenuOption {
@@ -64,6 +68,7 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
 }
 
 const VariablePicker = () => {
+  const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
     maxLength: 2,
@@ -72,7 +77,9 @@ const VariablePicker = () => {
   const options = [
     new VariablePickerOption('user', {
       icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {},
+      onSelect: () => {
+        editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{user}}')
+      },
     }),
     new VariablePickerOption('name', {
       icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
@@ -97,11 +104,29 @@ const VariablePicker = () => {
     onSelect: () => {},
   })
 
+  const onSelectOption = useCallback(
+    (
+      selectedOption: VariablePickerOption,
+      nodeToRemove: TextNode | null,
+      closeMenu: () => void,
+      matchingString: string,
+    ) => {
+      editor.update(() => {
+        if (nodeToRemove)
+          nodeToRemove.remove()
+
+        selectedOption.onSelect(matchingString)
+        closeMenu()
+      })
+    },
+    [editor],
+  )
+
   return (
     <LexicalTypeaheadMenuPlugin
       options={[...options, newOption]}
       onQueryChange={() => {}}
-      onSelectOption={() => {}}
+      onSelectOption={onSelectOption}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },

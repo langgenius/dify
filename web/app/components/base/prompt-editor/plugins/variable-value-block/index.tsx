@@ -6,22 +6,23 @@ import type { TextNode } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalTextEntity } from '@lexical/react/useLexicalTextEntity'
 import {
-  $createVariableValueNode,
-  VariableValueNode,
+  $createVariableValueBlockNode,
+  VariableValueBlockNode,
 } from './node'
+import { getHashtagRegexString } from './utils'
 
-const REGEX = /{{([^{{}}].*)?}}/g
+const REGEX = new RegExp(getHashtagRegexString(), 'i')
 
 const VariableValueBlock = () => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
-    if (!editor.hasNodes([VariableValueNode]))
+    if (!editor.hasNodes([VariableValueBlockNode]))
       throw new Error('VariableValueBlockPlugin: VariableValueNode not registered on editor')
   }, [editor])
 
-  const createVariableValueNode = useCallback((textNode: TextNode): VariableValueNode => {
-    return $createVariableValueNode(textNode.getTextContent().slice(2, -2))
+  const createVariableValueBlockNode = useCallback((textNode: TextNode): VariableValueBlockNode => {
+    return $createVariableValueBlockNode(textNode.getTextContent())
   }, [])
 
   const getVariableValueMatch = useCallback((text: string) => {
@@ -30,19 +31,19 @@ const VariableValueBlock = () => {
     if (matchArr === null)
       return null
 
-    const variableValueLength = matchArr[0].length
-    const startOffset = matchArr.index
-    const endOffset = startOffset + variableValueLength
+    const hashtagLength = matchArr[5].length + 2
+    const startOffset = matchArr.index + matchArr[1].length
+    const endOffset = startOffset + hashtagLength + 2
     return {
       end: endOffset,
       start: startOffset,
     }
   }, [])
 
-  useLexicalTextEntity<VariableValueNode>(
+  useLexicalTextEntity<VariableValueBlockNode>(
     getVariableValueMatch,
-    VariableValueNode,
-    createVariableValueNode,
+    VariableValueBlockNode,
+    createVariableValueBlockNode,
   )
 
   return null
