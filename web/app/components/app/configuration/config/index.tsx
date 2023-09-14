@@ -25,6 +25,7 @@ const Config: FC = () => {
     mode,
     promptMode,
     canReturnToSimpleMode,
+    messageList,
     introduction,
     setIntroduction,
     modelConfig,
@@ -141,6 +142,7 @@ const Config: FC = () => {
           mode={mode as AppType}
           promptMode={promptMode}
           promptTemplate={promptTemplate}
+          messageList={messageList}
           promptVariables={promptVariables}
           onChange={handlePromptChange}
         />

@@ -5,6 +5,12 @@ export enum PromptMode {
   advanced = 'advanced',
 }
 
+export enum MessageType {
+  system = 'system',
+  user = 'user',
+  assistant = 'assistant',
+}
+
 export type PromptVariable = {
   key: string
   name: string

@@ -28,6 +28,8 @@ import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
+import { MessageType } from '@/models/debug'
+
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -44,6 +46,21 @@ const Configuration: FC = () => {
   } | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
+  // advanced mode prompts
+  const [messageList, setMessageList] = React.useState<any[]>([
+    {
+      type: MessageType.system,
+      message: 'You are a friendly assistant',
+    },
+    {
+      type: MessageType.user,
+      message: 'Hello',
+    },
+    {
+      type: MessageType.assistant,
+      message: '...',
+    },
+  ])
   const [introduction, setIntroduction] = useState<string>('')
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
   const [prevPromptConfig, setPrevPromptConfig] = useState<PromptConfig>({
@@ -260,7 +277,8 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
-  const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
+  const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
+  // const modelMode = 'chat'
   // can return to simple mode if switch to advanced mode and not published
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(false)
   const setPromptMode = (mode: PromptMode) => {
@@ -285,6 +303,8 @@ const Configuration: FC = () => {
       promptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
+      messageList,
+      setMessageList,
       conversationId,
       introduction,
       setIntroduction,

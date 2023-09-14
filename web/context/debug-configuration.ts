@@ -12,6 +12,8 @@ type IDebugConfiguration = {
   setPromptMode: (promptMode: PromptMode) => void
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
+  messageList: any[]
+  setMessageList: (messageList: any[]) => void
   conversationId: string | null // after first chat send
   setConversationId: (conversationId: string | null) => void
   introduction: string
@@ -53,6 +55,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setPromptMode: () => { },
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
+  messageList: [],
+  setMessageList: () => { },
   conversationId: '',
   setConversationId: () => { },
   introduction: '',
