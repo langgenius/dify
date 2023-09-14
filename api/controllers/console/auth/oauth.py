@@ -77,7 +77,7 @@ class OAuthCallback(Resource):
 
         # login user
         session.clear()
-        flask_login.login_user(account, remember=True)
+        flask_login.login_user(account)
         AccountService.update_last_login(account, request)
 
         return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_login=success')
