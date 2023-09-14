@@ -13,3 +13,7 @@
   padding: 2px;
   box-sizing: border-box;
 }
+
+.boxHeader:hover {
+  border-bottom: 1px solid #000;
+}

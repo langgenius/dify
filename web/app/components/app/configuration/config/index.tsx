@@ -111,7 +111,6 @@ const Config: FC = () => {
     const elem = wrapRef.current
     const { clientHeight } = elem
     const value = (wrapScroll?.top || 0) + clientHeight
-    console.log(value)
     return value
   })()
   return (
