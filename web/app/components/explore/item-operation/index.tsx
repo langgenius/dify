@@ -48,7 +48,7 @@ const ItemOperation: FC<IItemOperationProps> = ({
       <PortalToFollowElemTrigger
         onClick={() => setOpen(v => !v)}
       >
-        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', open && `${s.open} !bg-gray-100 !shadow-none`)}></div>
+        <div className={cn(className, s.btn, 'h-6 w-6 rounded-md border-none py-1', (isItemHovering || open) && `${s.open} !bg-gray-100 !shadow-none`)}></div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-50"
