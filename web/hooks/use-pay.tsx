@@ -58,6 +58,7 @@ const QUOTA_RECEIVE_STATUS = {
 const FREE_CHECK_PROVIDER = [ProviderEnum.spark, ProviderEnum.zhipuai]
 export const useCheckFreeQuota = () => {
   const { locale } = useContext(I18n)
+  const router = useRouter()
   const [shouldVerify, setShouldVerify] = useState(false)
   const searchParams = useSearchParams()
   const type = searchParams.get('type')
@@ -65,12 +66,17 @@ export const useCheckFreeQuota = () => {
   const result = searchParams.get('result')
   const token = searchParams.get('token')
 
-  const { data } = useSWR(
+  const { data, error } = useSWR(
     shouldVerify
       ? `/workspaces/current/model-providers/${provider}/free-quota-qualification-verify?token=${token}`
       : null,
     fetchFreeQuotaVerify,
   )
+
+  useEffect(() => {
+    if (error)
+      router.replace('/', { forceOptimisticNavigation: false })
+  }, [error, router])
 
   useEffect(() => {
     if (type === 'provider_apply_callback' && FREE_CHECK_PROVIDER.includes(provider) && result === 'success')
