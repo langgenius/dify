@@ -81,6 +81,12 @@ const translation = {
       toCreate: '去创建',
       notSupportSelectMulti: '目前只支持引用一个数据集',
     },
+    conversationHistory: {
+      title: '对话历史',
+      description: '设置对话角色的前缀名称',
+      tip: '对话历史未启用，请在上面的提示中添加<histories>。',
+      learnMore: '了解更多',
+    },
   },
   automatic: {
     title: '自动编排',

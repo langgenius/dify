@@ -8,6 +8,7 @@ import DatasetConfig from '../dataset-config'
 import ChatGroup from '../features/chat-group'
 import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
+import HistoryPanel from '../config-prompt/conversation-histroy/history-panel'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
@@ -19,13 +20,11 @@ import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
-
 const Config: FC = () => {
   const {
     mode,
     promptMode,
     canReturnToSimpleMode,
-    messageList,
     introduction,
     setIntroduction,
     modelConfig,
@@ -153,6 +152,8 @@ const Config: FC = () => {
 
         {/* Dataset */}
         <DatasetConfig />
+
+        <HistoryPanel showWarning={false} />
 
         {/* ChatConifig */}
         {

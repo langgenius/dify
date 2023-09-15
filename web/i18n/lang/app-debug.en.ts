@@ -81,6 +81,12 @@ const translation = {
       toCreate: 'Go to create',
       notSupportSelectMulti: 'Currently only support one dataset',
     },
+    conversationHistory: {
+      title: 'Conversation History',
+      description: 'Set prefix names for conversation roles',
+      tip: 'The Conversation History is not enabled, please add <histories> in the prompt above.',
+      learnMore: 'Learn more',
+    },
   },
   automatic: {
     title: 'Automated application orchestration',
