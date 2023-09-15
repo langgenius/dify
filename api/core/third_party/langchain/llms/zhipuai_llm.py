@@ -69,7 +69,7 @@ class ZhipuModelAPI(BaseModel):
             return jwt_token.generate_token(self.api_key)
         except Exception:
             raise ValueError(
-                f"ZhipuAI: Your api_key is invalid, please check it."
+                f"Your api_key is invalid, please check it."
             )
 
 
