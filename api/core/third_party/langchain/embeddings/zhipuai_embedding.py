@@ -18,6 +18,7 @@ class ZhipuAIEmbeddings(BaseModel, Embeddings):
     model: str
     """Model name to use."""
 
+    base_url: str = "https://open.bigmodel.cn/api/paas/v3/model-api"
     api_key: Optional[str] = None
 
     class Config:
@@ -31,7 +32,7 @@ class ZhipuAIEmbeddings(BaseModel, Embeddings):
         values["api_key"] = get_from_dict_or_env(
             values, "api_key", "ZHIPUAI_API_KEY"
         )
-        values['client'] = ZhipuModelAPI(api_key=values['api_key'])
+        values['client'] = ZhipuModelAPI(api_key=values['api_key'], base_url=values['base_url'])
         return values
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
