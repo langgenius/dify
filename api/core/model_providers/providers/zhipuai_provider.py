@@ -136,6 +136,9 @@ class ZhipuAIProvider(BaseModelProvider):
         else:
             return {}
 
+    def should_deduct_quota(self):
+        return True
+
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):
         """

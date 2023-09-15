@@ -237,7 +237,7 @@ class ZhipuAIChatLLM(BaseChatModel):
                     run_manager.on_llm_new_token(event.data)
             elif event.event == "error" or event.event == "interrupted":
                 raise ValueError(
-                    f"ZhipuAI API error: {event.data}"
+                    f"{event.data}"
                 )
             elif event.event == "finish":
                 meta = json.loads(event.meta)
