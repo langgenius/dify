@@ -57,13 +57,13 @@ const translation = {
         'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.',
       presence_penalty: 'Presence penalty',
       presence_penaltyTip:
-        'How much to penalize new tokens based on whether they appear in the text so far. Increases the model\'s likelihood to talk about new topics.',
+        'How much to penalize new tokens based on whether they appear in the text so far.\nIncreases the model\'s likelihood to talk about new topics.',
       frequency_penalty: 'Frequency penalty',
       frequency_penaltyTip:
-        'How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model\'s likelihood to repeat the same line verbatim.',
+        'How much to penalize new tokens based on their existing frequency in the text so far.\nDecreases the model\'s likelihood to repeat the same line verbatim.',
       max_tokens: 'Max token',
       max_tokensTip:
-        'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
+        'Used to limit the maximum length of the reply, in tokens. \nLarger values may limit the space left for prompt words, chat logs, and data sets. \nIt is recommended to set it below two-thirds.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
       setToCurrentModelMaxTokenTip: 'Max token is updated to the 80% maximum token of the current model {{maxToken}}.',
     },
