@@ -42,7 +42,12 @@ class ZhipuModelAPI(BaseModel):
 
     def invoke(self, **kwargs):
         url = self._build_api_url(kwargs, InvokeType.SYNC)
-        return post(url, self._generate_token(), kwargs, self.api_timeout_seconds)
+        response = post(url, self._generate_token(), kwargs, self.api_timeout_seconds)
+        if not response['success']:
+            raise ValueError(
+                f"Error Code: {response['code']}, Message: {response['msg']} "
+            )
+        return response
 
     def sse_invoke(self, **kwargs):
         url = self._build_api_url(kwargs, InvokeType.SSE)
