@@ -184,6 +184,10 @@ const translation = {
     model: 'Model',
     setTone: 'Set tone of responses',
     title: 'Model and Parameters',
+    modeType: {
+      chat: 'Chat',
+      completion: 'Complete',
+    },
   },
   inputs: {
     title: 'Debug and Preview',

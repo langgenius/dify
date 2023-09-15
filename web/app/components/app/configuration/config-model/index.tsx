@@ -9,6 +9,7 @@ import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
 import ModelName from './model-name'
+import ModelTypeLabel from './model-type-label'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
@@ -25,7 +26,7 @@ import Loading from '@/app/components/base/loading'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
-
+import { ModelType as ModelType2 } from '@/types/app'
 export type IConfigModelProps = {
   mode: string
   modelId: string
@@ -259,6 +260,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         <div className='text-[13px] text-gray-900 font-medium'>
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
+        <ModelTypeLabel type={ModelType2.chat} />
         {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
       </div>
       {isShowConfig && (

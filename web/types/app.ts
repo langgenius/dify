@@ -14,6 +14,11 @@ export enum AppType {
   'completion' = 'completion',
 }
 
+export enum ModelType {
+  'chat' = 'chat',
+  'completion' = 'completion',
+}
+
 export type VariableInput = {
   key: string
   name: string

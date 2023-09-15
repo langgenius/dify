@@ -3814,9 +3814,9 @@ lexical@^0.12.2, lexical@0.12.2:
   integrity sha512-Kxavd+ETjxtVwG/hvPd6WZfXD44sLOKe9Vlkwxy7lBQ1qZArS+rZfs+u5iXwXe6tX9f2PIM0u3RHsrCEDDE0fw==
 
 lib0@^0.2.74:
-  version "0.2.83"
-  resolved "https://registry.npmjs.org/lib0/-/lib0-0.2.83.tgz"
-  integrity sha512-O72x2MGVOG3TwQ1aXXkk1Ebb438OrxyQcg60oiWRm66U9uCnE12fDfO+NlQ43OVQkgNLvw2hzHYxkp76YLSxRw==
+  version "0.2.85"
+  resolved "https://registry.npmjs.org/lib0/-/lib0-0.2.85.tgz"
+  integrity sha512-vtAhVttLXCu3ps2OIsTz8CdKYKdcMo7ds1MNBIcSXz6vrY8sxASqpTi4vmsAIn7xjWvyT7haKcWW6woP6jebjQ==
   dependencies:
     isomorphic.js "^0.2.4"
 
