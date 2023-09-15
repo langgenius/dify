@@ -49,21 +49,21 @@ const translation = {
   },
   model: {
     params: {
-      temperature: '多样性',
+      temperature: '随机性 temperature',
       temperatureTip:
-        '较高的 Temperature 设置将导致更多样和创造性的输出，而较低的 Temperature 将产生更保守的输出并且类似于训练数据。',
-      top_p: '采样范围',
+        '控制回复的随机性。\n值越大，回复越随机。\n值越小，回复越确定或一致。',
+      top_p: '核采样 top_p',
       top_pTip:
-        'Top P值越低，输出与训练文本越相似，Top P值越高，输出越有创意和变化。它可用于使输出更适合特定用例。',
-      presence_penalty: '词汇控制',
+        '控制生成多样性。\n值越大，输出会包括更多的单词选项。\n值越小，模型会更集中在高概率的单词上，输出更确定但可能缺乏多样性。\n核采样和随机性不建议同时修改。',
+      presence_penalty: '话题新鲜度 presence_penalty',
       presence_penaltyTip:
-        'Presence penalty 是根据新词是否出现在目前的文本中来对其进行惩罚。正值将降低模型谈论新话题的可能性。',
-      frequency_penalty: '重复控制',
+        '控制生成时对上文已存在的话题的偏好程度。\n值越大，越可能使用到新的话题。',
+      frequency_penalty: '频率惩罚度 frequency_penalty',
       frequency_penaltyTip:
-        'Frequency penalty 是根据重复词在目前文本中的出现频率来对其进行惩罚。正值将不太可能重复常用单词和短语。',
-      max_tokens: '最大 Token',
+        '影响常见与罕见词汇使用。\n值较大时，倾向于生成不常见的词汇和表达方式。\n值越小，更倾向于使用常见和普遍接受的词汇或短语。',
+      max_tokens: '单词回复限制 max_tokens',
       max_tokensTip:
-        '生成的最大令牌数取决于模型。提示和完成共享令牌数限制。一个令牌约等于 1 个英文或 半个中文字符。',
+        '用于限制回复的最大长度，以 token 为单位。\n较大的值可能会限制给提示词、聊天记录和数据集留出的空间。\n建议将其设置在三分之二以下。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}} 的 80%。',
     },
