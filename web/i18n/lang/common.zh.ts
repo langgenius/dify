@@ -61,7 +61,7 @@ const translation = {
       frequency_penalty: '频率惩罚度 frequency_penalty',
       frequency_penaltyTip:
         '影响常见与罕见词汇使用。\n值较大时，倾向于生成不常见的词汇和表达方式。\n值越小，更倾向于使用常见和普遍接受的词汇或短语。',
-      max_tokens: '单词回复限制 max_tokens',
+      max_tokens: '单次回复限制 max_tokens',
       max_tokensTip:
         '用于限制回复的最大长度，以 token 为单位。\n较大的值可能会限制给提示词、聊天记录和数据集留出的空间。\n建议将其设置在三分之二以下。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
