@@ -17,7 +17,7 @@ const translation = {
     dataSourceType: {
       file: 'Import from text file',
       notion: 'Sync from Notion',
-      web: 'Sync from web site',
+      web: 'Sync from website',
     },
     uploader: {
       title: 'Upload text file',
