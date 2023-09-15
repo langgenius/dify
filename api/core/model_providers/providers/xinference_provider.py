@@ -125,8 +125,9 @@ class XinferenceProvider(BaseModelProvider):
         :param credentials:
         :return:
         """
-        extra_credentials = cls._get_extra_credentials(credentials)
-        credentials.update(extra_credentials)
+        if model_type == ModelType.TEXT_GENERATION:
+            extra_credentials = cls._get_extra_credentials(credentials)
+            credentials.update(extra_credentials)
 
         credentials['server_url'] = encrypter.encrypt_token(tenant_id, credentials['server_url'])
 
