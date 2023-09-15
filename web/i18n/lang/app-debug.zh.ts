@@ -86,6 +86,11 @@ const translation = {
       description: '设置对话角色的前缀名称',
       tip: '对话历史未启用，请在上面的提示中添加<histories>。',
       learnMore: '了解更多',
+      editModal: {
+        title: '编辑对话角色名称',
+        userPrefix: '用户前缀',
+        assistantPrefix: '助手前缀',
+      },
     },
   },
   automatic: {

@@ -8,10 +8,12 @@ import { MessageClockCircle } from '@/app/components/base/icons/src/public/other
 
 type Props = {
   showWarning: boolean
+  onShowEditModal: () => void
 }
 
 const HistoryPanel: FC<Props> = ({
   showWarning,
+  onShowEditModal,
 }) => {
   const { t } = useTranslation()
 
@@ -31,7 +33,7 @@ const HistoryPanel: FC<Props> = ({
         <div className='flex items-center'>
           <div className='text-xs text-gray-500'>{t('appDebug.feature.conversationHistory.description')}</div>
           <div className='ml-3 w-[1px] h-[14px] bg-gray-200'></div>
-          <OperationBtn type="edit" onClick={() => {}} />
+          <OperationBtn type="edit" onClick={onShowEditModal} />
         </div>
       }
       noBodySpacing

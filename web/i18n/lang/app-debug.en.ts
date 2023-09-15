@@ -86,6 +86,11 @@ const translation = {
       description: 'Set prefix names for conversation roles',
       tip: 'The Conversation History is not enabled, please add <histories> in the prompt above.',
       learnMore: 'Learn more',
+      editModal: {
+        title: 'Edit Conversation Role Names',
+        userPrefix: 'User prefix',
+        assistantPrefix: 'Assistant prefix',
+      },
     },
   },
   automatic: {

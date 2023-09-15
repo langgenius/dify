@@ -83,7 +83,7 @@ const Prompt: FC<IPromptProps> = ({
       </div>
       <div
         onClick={handleAddMessage}
-        className='mt-3 flex items-center h-8 justify-center bg-gray-50 cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>
+        className='mt-3 flex items-center h-8 justify-center bg-gray-50 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>
         <Plus className='w-4 h-4' />
         <div>Add Message</div>
       </div>
