@@ -5,7 +5,7 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import SimplePromptInput from './simple-prompt-input'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
-import { PromptMode } from '@/models/debug'
+import { MessageType, PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -17,7 +17,7 @@ export type IPromptProps = {
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
-  onChange?: (promp: string, promptVariables: PromptVariable[]) => void
+  onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
 }
 
 const Prompt: FC<IPromptProps> = ({
@@ -41,7 +41,12 @@ const Prompt: FC<IPromptProps> = ({
   }
 
   const handleAddMessage = () => {
-
+    const lastMessageType = messageList[messageList.length - 1].type
+    const appendMessage = {
+      type: lastMessageType === MessageType.user ? MessageType.assistant : MessageType.user,
+      message: '',
+    }
+    setMessageList([...messageList, appendMessage])
   }
 
   const handleMessageDelete = (index: number) => {
