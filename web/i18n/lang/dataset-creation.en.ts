@@ -69,7 +69,7 @@ const translation = {
     indexMode: 'Index mode',
     qualified: 'High Quality',
     recommend: 'Recommend',
-    qualifiedTip: 'Call OpenAI\'s embedding interface for processing to provide higher accuracy when users query.',
+    qualifiedTip: 'Call default system embedding interface for processing to provide higher accuracy when users query.',
     warning: 'Please set up the model provider API key first.',
     click: 'Go to settings',
     economical: 'Economical',
