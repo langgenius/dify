@@ -11,7 +11,7 @@ from core.model_providers.models.entity.model_params import ModelKwargsRules, Kw
 from core.model_providers.models.llm.zhipuai_model import ZhipuAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.zhipuai_llm import ZhipuAIChatLLM
-from models.provider import ProviderType
+from models.provider import ProviderType, ProviderQuotaType
 
 
 class ZhipuAIProvider(BaseModelProvider):
@@ -113,7 +113,9 @@ class ZhipuAIProvider(BaseModelProvider):
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
-        if self.provider.provider_type == ProviderType.CUSTOM.value:
+        if self.provider.provider_type == ProviderType.CUSTOM.value \
+                or (self.provider.provider_type == ProviderType.SYSTEM.value
+                    and self.provider.quota_type == ProviderQuotaType.FREE.value):
             try:
                 credentials = json.loads(self.provider.encrypted_config)
             except JSONDecodeError:
@@ -132,9 +134,7 @@ class ZhipuAIProvider(BaseModelProvider):
 
             return credentials
         else:
-            return {
-                'api_key': None
-            }
+            return {}
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):
