@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 
 class ZhipuModelAPI(BaseModel):
+    base_url: str
     api_key: str
     api_timeout_seconds = 60
 
@@ -56,7 +57,7 @@ class ZhipuModelAPI(BaseModel):
         else:
             model = "-"
 
-        return posixpath.join(zhipuai.model_api_url, model, *path)
+        return posixpath.join(self.base_url, model, *path)
 
     def _generate_token(self):
         if not self.api_key:
@@ -100,7 +101,7 @@ class ZhipuAIChatLLM(BaseChatModel):
     """Whether to stream the response or return it all at once."""
     api_key: Optional[str] = None
 
-    base_url: str = "https://open.bigmodel.cn/api/paas/v3/model-api/{model}/{invoke_method}"
+    base_url: str = "https://open.bigmodel.cn/api/paas/v3/model-api"
 
     class Config:
         """Configuration for this pydantic object."""
@@ -113,7 +114,7 @@ class ZhipuAIChatLLM(BaseChatModel):
         values["api_key"] = get_from_dict_or_env(
             values, "api_key", "ZHIPUAI_API_KEY"
         )
-        values['client'] = ZhipuModelAPI(api_key=values['api_key'])
+        values['client'] = ZhipuModelAPI(api_key=values['api_key'], base_url=values['base_url'])
         return values
 
     @property
