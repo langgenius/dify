@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import { MessageClockCircle } from '@/app/components/base/icons/src/public/others'
+import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type Props = {
   showWarning: boolean
@@ -27,7 +27,7 @@ const HistoryPanel: FC<Props> = ({
       }
       headerIcon={
         <div className='p-1 rounded-md bg-white shadow-xs'>
-          <MessageClockCircle className='w-4 h-4' />
+          <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />
         </div>}
       headerRight={
         <div className='flex items-center'>
