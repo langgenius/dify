@@ -119,6 +119,10 @@ class ZhipuAIChatLLM(BaseChatModel):
         values["api_key"] = get_from_dict_or_env(
             values, "api_key", "ZHIPUAI_API_KEY"
         )
+
+        if 'test' in values['base_url']:
+            values['model'] = 'chatglm_130b_test'
+
         values['client'] = ZhipuModelAPI(api_key=values['api_key'], base_url=values['base_url'])
         return values
 
