@@ -10,6 +10,7 @@ import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import CardItem from './card-item'
 import SelectDataSet from './select-dataset'
+import ParamsConfig from './params-config'
 import ConfigContext from '@/context/debug-configuration'
 import type { DataSet } from '@/models/datasets'
 
@@ -65,7 +66,12 @@ const DatasetConfig: FC = () => {
       className='mt-3'
       headerIcon={Icon}
       title={t('appDebug.feature.dataSet.title')}
-      headerRight={<OperationBtn type="add" onClick={showSelectDataSet} />}
+      headerRight={
+        <div className='flex items-center gap-1'>
+          <ParamsConfig />
+          <OperationBtn type="add" onClick={showSelectDataSet} />
+        </div>
+      }
       hasHeaderBottomBorder={!hasData}
     >
       {hasData

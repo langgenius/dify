@@ -194,6 +194,13 @@ const translation = {
     run: '运行',
   },
   result: '结果',
+  datasetConfig: {
+    params: '参数设置',
+    top_k: 'Top K',
+    top_kTip: '分数最高的该数值个数的分段将被采用',
+    score_threshold: 'Score 阈值',
+    score_thresholdTip: '分数大于该数值的分段将被采用',
+  },
 }
 
 export default translation

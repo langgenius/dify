@@ -200,6 +200,13 @@ const translation = {
     run: 'RUN',
   },
   result: 'Output Text',
+  datasetConfig: {
+    params: 'Params',
+    top_k: 'Top K',
+    top_kTip: 'The number of segments with high score will be take',
+    score_threshold: 'Score Threshold',
+    score_thresholdTip: 'Segments with scores greater than this value will be take',
+  },
 }
 
 export default translation

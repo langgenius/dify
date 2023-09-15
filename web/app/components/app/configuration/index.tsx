@@ -10,7 +10,7 @@ import cn from 'classnames'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
-import { type CompletionParams, type Inputs, type ModelConfig, type MoreLikeThisConfig, type PromptConfig, PromptMode, type PromptVariable } from '@/models/debug'
+import { type CompletionParams, type DatasetConfigParams, type Inputs, type ModelConfig, type MoreLikeThisConfig, type PromptConfig, PromptMode, type PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -102,6 +102,10 @@ const Configuration: FC = () => {
     speech_to_text: null,
     retriever_resource: null,
     dataSets: [],
+  })
+  const [datasetConfigParams, setDatasetConfigParams] = useState<DatasetConfigParams>({
+    top_k: 10,
+    score_threshold: 0.78,
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -333,6 +337,8 @@ const Configuration: FC = () => {
       setModelConfig,
       dataSets,
       setDataSets,
+      datasetConfigParams,
+      setDatasetConfigParams,
     }}
     >
       <>

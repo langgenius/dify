@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { CitationConfig, CompletionParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { CitationConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 
 type IDebugConfiguration = {
@@ -44,6 +44,9 @@ type IDebugConfiguration = {
   setModelConfig: (modelConfig: ModelConfig) => void
   dataSets: DataSet[]
   setDataSets: (dataSet: DataSet[]) => void
+  // dataset config
+  datasetConfigParams: DatasetConfigParams
+  setDatasetConfigParams: (config: DatasetConfigParams) => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -115,6 +118,11 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setModelConfig: () => { },
   dataSets: [],
   setDataSets: () => { },
+  datasetConfigParams: {
+    top_k: 10,
+    score_threshold: 0.78,
+  },
+  setDatasetConfigParams: () => {},
 })
 
 export default DebugConfigurationContext
