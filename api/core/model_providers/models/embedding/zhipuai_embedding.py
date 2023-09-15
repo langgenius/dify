@@ -13,7 +13,7 @@ class ZhipuAIEmbedding(BaseEmbedding):
 
         client = ZhipuAIEmbeddings(
             model=name,
-            api_key=credentials['api_key']
+            **credentials,
         )
 
         super().__init__(model_provider, client, name)
