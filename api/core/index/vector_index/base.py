@@ -278,8 +278,11 @@ class BaseVectorIndex(BaseIndex):
         if documents:
             try:
                 self.create_with_collection_name(documents, dataset_collection_binding.collection_name)
+                self.delete()
             except Exception as e:
                 raise e
         dataset.collection_binding_id = dataset_collection_binding.id
+        db.session.add(dataset)
+        db.session.commit()
 
         logging.info(f"Dataset {dataset.id} recreate successfully.")
