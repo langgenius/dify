@@ -1,4 +1,3 @@
-/* eslint-disable no-new, prefer-promise-reject-errors */
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { MessageEnd, ThoughtItem } from '@/app/components/app/chat/type'
@@ -48,6 +47,17 @@ type IOtherOptions = {
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
+}
+
+type ResponseError = {
+  code: string
+  message: string
+  status: number
+}
+
+type FetchOptionType = Omit<RequestInit, 'body'> & {
+  params?: Record<string, any>
+  body?: BodyInit | Record<string, any> | null
 }
 
 function unicodeToChar(text: string) {
@@ -146,17 +156,17 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
   read()
 }
 
-const baseFetch = (
+const baseFetch = <T>(
   url: string,
-  fetchOptions: any,
+  fetchOptions: FetchOptionType,
   {
     isPublicAPI = false,
     bodyStringify = true,
     needAllResponseContent,
     deleteContentType,
   }: IOtherOptions,
-) => {
-  const options = Object.assign({}, baseOptions, fetchOptions)
+): Promise<T> => {
+  const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
@@ -209,27 +219,27 @@ const baseFetch = (
       }, TIME_OUT)
     }),
     new Promise((resolve, reject) => {
-      globalThis.fetch(urlWithPrefix, options)
-        .then((res: any) => {
+      globalThis.fetch(urlWithPrefix, options as RequestInit)
+        .then((res) => {
           const resClone = res.clone()
           // Error handler
-          if (!/^(2|3)\d{2}$/.test(res.status)) {
+          if (!/^(2|3)\d{2}$/.test(String(res.status))) {
             const bodyJson = res.json()
             switch (res.status) {
               case 401: {
                 if (isPublicAPI) {
                   Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return bodyJson.then((data: any) => Promise.reject(data))
+                  return bodyJson.then((data: T) => Promise.reject(data))
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
                 if (IS_CE_EDITION) {
-                  bodyJson.then((data: any) => {
+                  bodyJson.then((data: ResponseError) => {
                     if (data.code === 'not_setup') {
                       globalThis.location.href = `${globalThis.location.origin}/install`
                     }
                     else {
                       if (location.pathname === '/signin') {
-                        bodyJson.then((data: any) => {
+                        bodyJson.then((data: ResponseError) => {
                           Toast.notify({ type: 'error', message: data.message })
                         })
                       }
@@ -238,26 +248,22 @@ const baseFetch = (
                       }
                     }
                   })
-                  return Promise.reject()
+                  return Promise.reject(Error('Unauthorized'))
                 }
                 globalThis.location.href = loginUrl
                 break
               }
               case 403:
-                new Promise(() => {
-                  bodyJson.then((data: any) => {
-                    Toast.notify({ type: 'error', message: data.message })
-                    if (data.code === 'already_setup')
-                      globalThis.location.href = `${globalThis.location.origin}/signin`
-                  })
+                bodyJson.then((data: ResponseError) => {
+                  Toast.notify({ type: 'error', message: data.message })
+                  if (data.code === 'already_setup')
+                    globalThis.location.href = `${globalThis.location.origin}/signin`
                 })
                 break
               // fall through
               default:
-                new Promise(() => {
-                  bodyJson.then((data: any) => {
-                    Toast.notify({ type: 'error', message: data.message })
-                  })
+                bodyJson.then((data: ResponseError) => {
+                  Toast.notify({ type: 'error', message: data.message })
                 })
             }
             return Promise.reject(resClone)
@@ -270,7 +276,7 @@ const baseFetch = (
           }
 
           // return data
-          const data = options.headers.get('Content-type') === ContentType.download ? res.blob() : res.json()
+          const data: Promise<T> = options.headers.get('Content-type') === ContentType.download ? res.blob() : res.json()
 
           resolve(needAllResponseContent ? resClone : data)
         })
@@ -279,7 +285,7 @@ const baseFetch = (
           reject(err)
         })
     }),
-  ])
+  ]) as Promise<T>
 }
 
 export const upload = (options: any): Promise<any> => {
@@ -315,7 +321,7 @@ export const upload = (options: any): Promise<any> => {
   })
 }
 
-export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -336,14 +342,11 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
   if (body)
     options.body = JSON.stringify(body)
 
-  globalThis.fetch(urlWithPrefix, options)
-    .then((res: any) => {
-      // debugger
-      if (!/^(2|3)\d{2}$/.test(res.status)) {
-        new Promise(() => {
-          res.json().then((data: any) => {
-            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
-          })
+  globalThis.fetch(urlWithPrefix, options as RequestInit)
+    .then((res) => {
+      if (!/^(2|3)\d{2}$/.test(String(res.status))) {
+        res.json().then((data: any) => {
+          Toast.notify({ type: 'error', message: data.message || 'Server Error' })
         })
         onError?.('Server Error')
         return
@@ -365,47 +368,49 @@ export const ssePost = (url: string, fetchOptions: any, { isPublicAPI = false, o
     })
 }
 
-export const request = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return baseFetch(url, options, otherOptions || {})
+// base request
+export const request = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return baseFetch<T>(url, options, otherOptions || {})
 }
 
-export const get = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
+// request methods
+export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(url, Object.assign({}, options, { method: 'GET' }), otherOptions)
 }
 
 // For public API
-export const getPublic = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return get(url, options, { ...otherOptions, isPublicAPI: true })
+export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-export const post = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
+export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
 
-export const postPublic = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return post(url, options, { ...otherOptions, isPublicAPI: true })
+export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-export const put = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
+export const put = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(url, Object.assign({}, options, { method: 'PUT' }), otherOptions)
 }
 
-export const putPublic = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return put(url, options, { ...otherOptions, isPublicAPI: true })
+export const putPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return put<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-export const del = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
+export const del = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(url, Object.assign({}, options, { method: 'DELETE' }), otherOptions)
 }
 
-export const delPublic = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return del(url, options, { ...otherOptions, isPublicAPI: true })
+export const delPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return del<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
 
-export const patch = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return request(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
+export const patch = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return request<T>(url, Object.assign({}, options, { method: 'PATCH' }), otherOptions)
 }
 
-export const patchPublic = (url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return patch(url, options, { ...otherOptions, isPublicAPI: true })
+export const patchPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return patch<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }
