@@ -284,9 +284,16 @@ class BaseVectorIndex(BaseIndex):
         if documents:
             try:
                 self.create_with_collection_name(documents, dataset_collection_binding.collection_name)
-                self.delete()
             except Exception as e:
                 raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def delete_original_collection(self, dataset: Dataset, dataset_collection_binding: DatasetCollectionBinding):
+        logging.info(f"delete original collection: {dataset.id}")
+
+        self.delete()
+
         dataset.collection_binding_id = dataset_collection_binding.id
         db.session.add(dataset)
         db.session.commit()

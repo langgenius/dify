@@ -518,6 +518,20 @@ def normalization_collections():
                     )
                     if index:
                         index.restore_dataset_in_one(dataset, dataset_collection_binding)
+                    else:
+                        click.echo('passed.')
+
+                    original_index = QdrantVectorIndex(
+                        dataset=dataset,
+                        config=QdrantConfig(
+                            endpoint=current_app.config.get('QDRANT_URL'),
+                            api_key=current_app.config.get('QDRANT_API_KEY'),
+                            root_path=current_app.root_path
+                        ),
+                        embeddings=embeddings
+                    )
+                    if original_index:
+                        original_index.delete_original_collection(dataset, dataset_collection_binding)
                         normalization_count += 1
                     else:
                         click.echo('passed.')
