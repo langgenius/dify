@@ -240,7 +240,13 @@ def clean_unused_dataset_indexes():
                         kw_index = IndexBuilder.get_index(dataset, 'economy')
                         # delete from vector index
                         if vector_index:
-                            vector_index.delete()
+                            if dataset.collection_binding_id:
+                                vector_index.delete_by_group_id(dataset.id)
+                            else:
+                                if dataset.collection_binding_id:
+                                    vector_index.delete_by_group_id(dataset.id)
+                                else:
+                                    vector_index.delete()
                         kw_index.delete()
                         # update document
                         update_params = {

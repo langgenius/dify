@@ -110,6 +110,12 @@ class BaseVectorIndex(BaseIndex):
         for node_id in ids:
             vector_store.del_text(node_id)
 
+    def delete_by_group_id(self, group_id: str) -> None:
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.delete()
+
     def delete(self) -> None:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)

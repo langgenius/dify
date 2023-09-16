@@ -106,8 +106,6 @@ class QdrantVectorIndex(BaseVectorIndex):
         if self._vector_store:
             return self._vector_store
         attributes = ['doc_id', 'dataset_id', 'document_id']
-        if self._is_origin():
-            attributes = ['doc_id']
         client = qdrant_client.QdrantClient(
             **self._client_config.to_qdrant_params()
         )
@@ -123,9 +121,6 @@ class QdrantVectorIndex(BaseVectorIndex):
         return QdrantVectorStore
 
     def delete_by_document_id(self, document_id: str):
-        if self._is_origin():
-            self.recreate_dataset(self.dataset)
-            return
 
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
@@ -142,9 +137,6 @@ class QdrantVectorIndex(BaseVectorIndex):
         ))
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        if self._is_origin():
-            self.recreate_dataset(self.dataset)
-            return
 
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
@@ -159,6 +151,22 @@ class QdrantVectorIndex(BaseVectorIndex):
                     ),
                 ],
             ))
+
+    def delete_by_group_id(self, group_id: str) -> None:
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        from qdrant_client.http import models
+        vector_store.del_texts(models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="group_id",
+                    match=models.MatchValue(value=group_id),
+                ),
+            ],
+        ))
+
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:

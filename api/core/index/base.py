@@ -33,6 +33,10 @@ class BaseIndex(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def delete_by_group_id(self, group_id: str) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
     def delete_by_document_id(self, document_id: str):
         raise NotImplementedError
 
