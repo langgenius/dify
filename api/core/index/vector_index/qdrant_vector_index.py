@@ -114,7 +114,9 @@ class QdrantVectorIndex(BaseVectorIndex):
             client=client,
             collection_name=self.get_index_name(self.dataset),
             embeddings=self._embeddings,
-            content_payload_key='page_content'
+            content_payload_key='page_content',
+            group_id=self.dataset.id,
+            group_payload_key='group_id'
         )
 
     def _get_vector_store_class(self) -> type:
