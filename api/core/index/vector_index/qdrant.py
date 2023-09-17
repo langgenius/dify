@@ -192,6 +192,7 @@ class Qdrant(VectorStore):
                 collection_name=self.collection_name, points=points, **kwargs
             )
             added_ids.extend(batch_ids)
+        # if is new collection, create payload index on group_id
         if self.is_new_collection:
             self.client.create_payload_index(self.collection_name, self.group_payload_key,
                                              field_schema=PayloadSchemaType.KEYWORD,
