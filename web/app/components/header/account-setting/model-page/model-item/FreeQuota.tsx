@@ -19,6 +19,10 @@ const TIP_MAP: { [k: string]: TypeWithI18N } = {
     'en': 'Earn 3 million tokens for free',
     'zh-Hans': '免费获取 300 万个 token',
   },
+  [ProviderEnumValue.zhipuai]: {
+    'en': 'Earn 10 million tokens for free',
+    'zh-Hans': '免费获取 1000 万个 token',
+  },
 }
 type FreeQuotaProps = {
   modelItem: ProviderConfigItem

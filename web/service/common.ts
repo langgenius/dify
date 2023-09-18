@@ -185,6 +185,6 @@ export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url
   return get<DocumentsLimitResponse>(url)
 }
 
-export const fetchSparkFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
+export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
   return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
 }
