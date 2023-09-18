@@ -487,8 +487,10 @@ const StepTwo = ({
                       <input
                         type="number"
                         className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={max}
-                        onChange={e => setMax(Number(e.target.value))}
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
+                        value={max}
+                        min={1}
+                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
                     </div>
                   </div>
@@ -497,7 +499,7 @@ const StepTwo = ({
                       <div className={s.label}>{t('datasetCreation.stepTwo.rules')}</div>
                       {rules.map(rule => (
                         <div key={rule.id} className={s.ruleItem}>
-                          <input id={rule.id} type="checkbox" defaultChecked={rule.enabled} onChange={() => ruleChangeHandle(rule.id)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
+                          <input id={rule.id} type="checkbox" checked={rule.enabled} onChange={() => ruleChangeHandle(rule.id)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
                           <label htmlFor={rule.id} className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
                         </div>
                       ))}
