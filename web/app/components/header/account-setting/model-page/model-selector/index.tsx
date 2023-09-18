@@ -15,6 +15,8 @@ import ModelIcon from '@/app/components/app/configuration/config-model/model-ico
 import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
+import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
+import { ModelModeType } from '@/types/app'
 
 type Props = {
   value: {
@@ -22,6 +24,7 @@ type Props = {
     modelName: string
   } | undefined
   modelType: ModelType
+  isShowModelModeType?: boolean
   supportAgentThought?: boolean
   onChange: (value: BackendModel) => void
   popClassName?: string
@@ -42,6 +45,7 @@ type ModelOption = {
 const ModelSelector: FC<Props> = ({
   value,
   modelType,
+  isShowModelModeType,
   supportAgentThought,
   onChange,
   popClassName,
@@ -117,7 +121,10 @@ const ModelSelector: FC<Props> = ({
                           modelId={value.modelName}
                           providerName={value.providerName}
                         />
-                        <div className='mr-1.5 grow text-left text-sm text-gray-900 truncate'><ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} /></div>
+                        <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
+                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
+                          <ModelModeTypeLabel className='ml-1' type={ModelModeType.chat} />
+                        </div>
                       </>
                     )
                     : (
@@ -148,7 +155,7 @@ const ModelSelector: FC<Props> = ({
             leaveFrom='opacity-100'
             leaveTo='opacity-0'
           >
-            <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-w-[260px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
+            <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-w-[276px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
               <div className='px-2 pt-2 pb-1'>
                 <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
                   <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
@@ -206,7 +213,10 @@ const ModelSelector: FC<Props> = ({
                           modelId={model.value}
                           providerName={model.providerName}
                         />
-                        <div className='grow text-left text-sm text-gray-900 truncate'><ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} /></div>
+                        <div className='mr-2 grow flex items-center text-left text-sm text-gray-900 truncate'>
+                          <ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} />
+                          <ModelModeTypeLabel className='ml-1' type={ModelModeType.chat} />
+                        </div>
                         { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='shrink-0 w-4 h-4 text-primary-600' /> }
                       </Popover.Button>
                     )

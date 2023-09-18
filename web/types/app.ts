@@ -14,7 +14,7 @@ export enum AppType {
   'completion' = 'completion',
 }
 
-export enum ModelType {
+export enum ModelModeType {
   'chat' = 'chat',
   'completion' = 'completion',
 }
