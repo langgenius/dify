@@ -46,6 +46,11 @@ class QdrantVectorStore(Qdrant):
 
         self.client.delete_collection(collection_name=self.collection_name)
 
+    def delete_group(self):
+        self._reload_if_needed()
+
+        self.client.delete_collection(collection_name=self.collection_name)
+
     @classmethod
     def _document_from_scored_point(
             cls,
