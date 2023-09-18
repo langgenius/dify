@@ -11,7 +11,7 @@ flask-cors==3.0.10
 gunicorn~=21.2.0
 gevent~=22.10.2
 langchain==0.0.250
-openai~=0.27.8
+openai~=0.28.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.17
 python-dotenv==1.0.0
