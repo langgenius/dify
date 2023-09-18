@@ -74,11 +74,11 @@ class MinimaxProvider(BaseModelProvider):
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0.01, max=1, default=0.9),
-            top_p=KwargRule[float](min=0, max=1, default=0.95),
+            temperature=KwargRule[float](min=0.01, max=1, default=0.9, precision=2),
+            top_p=KwargRule[float](min=0, max=1, default=0.95, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name, 6144), default=1024),
+            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name, 6144), default=1024, precision=0),
         )
 
     @classmethod
