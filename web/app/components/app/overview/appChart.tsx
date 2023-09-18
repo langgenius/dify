@@ -5,14 +5,20 @@ import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import useSWR from 'swr'
 import dayjs from 'dayjs'
+import utc from 'dayjs/plugin/utc'
+import timezone from 'dayjs/plugin/timezone'
 import { get } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
+import { useAppContext } from '@/context/app-context'
 import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
 import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
 import { getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts } from '@/service/apps'
+
 const valueFormatter = (v: string | number) => v
+dayjs.extend(utc)
+dayjs.extend(timezone)
 
 const COLOR_TYPE_MAP = {
   green: {
@@ -100,6 +106,7 @@ const Chart: React.FC<IChartProps> = ({
   className,
 }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const statistics = chartData.data
   const statisticsLen = statistics.length
   const extraDataForMarkLine = new Array(statisticsLen >= 2 ? statisticsLen - 2 : statisticsLen).fill('1')
@@ -132,7 +139,8 @@ const Chart: React.FC<IChartProps> = ({
         hideOverlap: true,
         overflow: 'break',
         formatter(value) {
-          return dayjs(value).format(commonDateFormat)
+          // The time zone returned by the api is the time zone selected by the user
+          return dayjs(value).tz(userProfile.timezone, true).format(commonDateFormat)
         },
       },
       axisLine: { show: false },
@@ -247,23 +255,26 @@ const Chart: React.FC<IChartProps> = ({
   )
 }
 
-const getDefaultChartData = ({ start, end, key = 'count' }: { start: string; end: string; key?: string }) => {
-  const diffDays = dayjs(end).diff(dayjs(start), 'day')
-  return Array.from({ length: diffDays || 1 }, () => ({ date: '', [key]: 0 })).map((item, index) => {
-    item.date = dayjs(start).add(index, 'day').format(commonDateFormat)
+const getDefaultChartData = (periodInfo: { start: string; end: string; key?: string; timezone?: string }) => {
+  const { start, end, key = 'count', timezone } = periodInfo
+  const diffDays = dayjs(end).tz(timezone, true).diff(dayjs(start).tz(timezone, true), 'day')
+  return Array.from({ length: diffDays + 1 || 1 }, () => ({ date: '', [key]: 0 })).map((item, index) => {
+    item.date = dayjs(start).tz(timezone, true).add(index, 'day').format(commonDateFormat)
     return item
   })
 }
 
 export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
+
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-conversations`, params: period.query }, getAppDailyConversations)
   if (!response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.totalMessages.title'), explanation: t('appOverview.analysis.totalMessages.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), timezone: userProfile.timezone }) }}
     chartType='conversations'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -271,6 +282,7 @@ export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
 
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-end-users`, id, params: period.query }, getAppDailyEndUsers)
   if (!response)
@@ -278,7 +290,7 @@ export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.activeUsers.title'), explanation: t('appOverview.analysis.activeUsers.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), timezone: userProfile.timezone }) }}
     chartType='endUsers'
     {...(noDataFlag && { yMax: 500 })}
   />
@@ -286,13 +298,15 @@ export const EndUsersChart: FC<IBizChartProps> = ({ id, period }) => {
 
 export const AvgSessionInteractions: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
+
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/average-session-interactions`, params: period.query }, getAppStatistics)
   if (!response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.avgSessionInteractions.title'), explanation: t('appOverview.analysis.avgSessionInteractions.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'interactions' }) } as any}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'interactions', timezone: userProfile.timezone }) } as any}
     chartType='conversations'
     valueKey='interactions'
     isAvg
@@ -302,13 +316,14 @@ export const AvgSessionInteractions: FC<IBizChartProps> = ({ id, period }) => {
 
 export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/average-response-time`, params: period.query }, getAppStatistics)
   if (!response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.avgResponseTime.title'), explanation: t('appOverview.analysis.avgResponseTime.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'latency' }) } as any}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'latency', timezone: userProfile.timezone }) } as any}
     valueKey='latency'
     chartType='conversations'
     isAvg
@@ -319,13 +334,14 @@ export const AvgResponseTime: FC<IBizChartProps> = ({ id, period }) => {
 
 export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/tokens-per-second`, params: period.query }, getAppStatistics)
   if (!response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.tps.title'), explanation: t('appOverview.analysis.tps.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'tps' }) } as any}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'tps', timezone: userProfile.timezone }) } as any}
     valueKey='tps'
     chartType='conversations'
     isAvg
@@ -336,13 +352,15 @@ export const TokenPerSecond: FC<IBizChartProps> = ({ id, period }) => {
 
 export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
+
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/user-satisfaction-rate`, params: period.query }, getAppStatistics)
   if (!response)
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.userSatisfactionRate.title'), explanation: t('appOverview.analysis.userSatisfactionRate.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'rate' }) } as any}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), key: 'rate', timezone: userProfile.timezone }) } as any}
     valueKey='rate'
     chartType='endUsers'
     isAvg
@@ -353,6 +371,7 @@ export const UserSatisfactionRate: FC<IBizChartProps> = ({ id, period }) => {
 
 export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
   const { t } = useTranslation()
+  const { userProfile } = useAppContext()
 
   const { data: response } = useSWR({ url: `/apps/${id}/statistics/token-costs`, params: period.query }, getAppTokenCosts)
   if (!response)
@@ -360,7 +379,7 @@ export const CostChart: FC<IBizChartProps> = ({ id, period }) => {
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
     basicInfo={{ title: t('appOverview.analysis.tokenUsage.title'), explanation: t('appOverview.analysis.tokenUsage.explanation'), timePeriod: period.name }}
-    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData({ ...(period.query ?? defaultPeriod), timezone: userProfile.timezone }) }}
     chartType='costs'
     {...(noDataFlag && { yMax: 100 })}
   />
