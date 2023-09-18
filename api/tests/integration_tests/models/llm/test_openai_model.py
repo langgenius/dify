@@ -42,7 +42,7 @@ def decrypt_side_effect(tenant_id, encrypted_openai_api_key):
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
 def test_get_num_tokens(mock_decrypt):
-    openai_model = get_mock_openai_model('text-davinci-003')
+    openai_model = get_mock_openai_model('gpt-3.5-turbo-instruct')
     rst = openai_model.get_num_tokens([PromptMessage(content='you are a kindness Assistant.')])
     assert rst == 6
 
@@ -61,7 +61,7 @@ def test_chat_get_num_tokens(mock_decrypt):
 def test_run(mock_decrypt, mocker):
     mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
 
-    openai_model = get_mock_openai_model('text-davinci-003')
+    openai_model = get_mock_openai_model('gpt-3.5-turbo-instruct')
     rst = openai_model.run(
         [PromptMessage(content='Human: Are you Human? you MUST only answer `y` or `n`? \nAssistant: ')],
         stop=['\nHuman:'],
