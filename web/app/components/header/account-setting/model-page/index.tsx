@@ -136,6 +136,7 @@ const ModelPage = () => {
         body = {
           model_name,
           model_type,
+          // todo modal_mode
           config,
         }
         url = `/workspaces/current/model-providers/${modelModalConfig.key}/models`

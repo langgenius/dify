@@ -49,6 +49,7 @@ const config: ProviderConfig = {
     },
     defaultValue: {
       model_type: 'text-generation',
+      model_mode: 'chat',
     },
     validateKeys: [
       'model_type',
@@ -78,6 +79,31 @@ const config: ProviderConfig = {
             label: {
               'en': 'Embeddings',
               'zh-Hans': 'Embeddings',
+            },
+          },
+        ],
+      },
+      {
+        type: 'radio',
+        key: 'model_mode',
+        required: true,
+        label: {
+          'en': 'Model Mode',
+          'zh-Hans': '模型模式',
+        },
+        options: [
+          {
+            key: 'chat',
+            label: {
+              'en': 'Chat',
+              'zh-Hans': '对话',
+            },
+          },
+          {
+            key: 'complete',
+            label: {
+              'en': 'Complete',
+              'zh-Hans': '文本',
             },
           },
         ],
