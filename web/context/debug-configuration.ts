@@ -2,12 +2,15 @@ import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type { CitationConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
+import { ModelModeType } from '@/types/app'
 
 type IDebugConfiguration = {
   appId: string
   hasSetAPIKEY: boolean
   isTrailFinished: boolean
   mode: string
+  modelModeType: ModelModeType
+  setModelModeType: (modelModeType: ModelModeType) => void
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
   canReturnToSimpleMode: boolean
@@ -54,6 +57,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   hasSetAPIKEY: false,
   isTrailFinished: false,
   mode: '',
+  modelModeType: ModelModeType.chat,
+  setModelModeType: () => { },
   promptMode: PromptMode.simple,
   setPromptMode: () => { },
   canReturnToSimpleMode: false,

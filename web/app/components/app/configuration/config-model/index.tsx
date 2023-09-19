@@ -251,10 +251,11 @@ const ConfigModel: FC<IConfigModelProps> = ({
   return (
     <div className='relative' ref={configContentRef}>
       <div
-        className={cn('flex items-center border h-8 px-2.5 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
+        className={cn('flex items-center border h-8 px-2 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
         <ModelIcon
+          className='!w-5 !h-5'
           modelId={modelId}
           providerName={provider}
         />
@@ -262,7 +263,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
         <ModelModeTypeLabel type={ModelType2.chat} isHighlight />
-        {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <SlidersH className='w-3.5 h-3.5 text-indigo-600' />}
+        {disabled ? <InformationCircleIcon className='w-4 h-4 text-[#F79009]' /> : <SlidersH className='w-4 h-4 text-indigo-600' />}
       </div>
       {isShowConfig && (
         <Panel

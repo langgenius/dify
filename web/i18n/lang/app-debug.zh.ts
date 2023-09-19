@@ -13,6 +13,9 @@ const translation = {
       learnMore: '了解更多',
       ok: '确定',
     },
+    operation: {
+      addMessage: '添加消息',
+    },
   },
   operation: {
     applyConfig: '发布',

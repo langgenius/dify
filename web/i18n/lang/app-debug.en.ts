@@ -13,6 +13,9 @@ const translation = {
       learnMore: 'Learn more',
       ok: 'OK',
     },
+    operation: {
+      addMessage: 'Add Message',
+    },
   },
   operation: {
     applyConfig: 'Publish',

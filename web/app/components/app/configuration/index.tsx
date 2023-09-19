@@ -26,7 +26,7 @@ import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from
 import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType } from '@/types/app'
+import { AppType, ModelModeType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { MessageType } from '@/models/debug'
 
@@ -107,6 +107,9 @@ const Configuration: FC = () => {
     top_k: 10,
     score_threshold: 0.78,
   })
+
+  // TODO: for test. It will get from backend.
+  const [modelModeType, setModelModeType] = useState(ModelModeType.chat)
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
@@ -303,6 +306,8 @@ const Configuration: FC = () => {
       hasSetAPIKEY,
       isTrailFinished,
       mode,
+      modelModeType,
+      setModelModeType,
       setPromptMode,
       promptMode,
       canReturnToSimpleMode,
@@ -368,6 +373,10 @@ const Configuration: FC = () => {
                         <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
                       </div>
                     )}
+                    {/* For Test */}
+                    <div className='ml-2'>ModelMode:{modelModeType} <button onClick={() => {
+                      setModelModeType(modelModeType === ModelModeType.chat ? ModelModeType.completion : ModelModeType.chat)
+                    }}>Toggle</button></div>
                   </div>
                 )}
               </div>

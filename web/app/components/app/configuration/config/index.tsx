@@ -19,12 +19,12 @@ import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
-import { AppType } from '@/types/app'
+import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
-
 const Config: FC = () => {
   const {
     mode,
+    modelModeType,
     promptMode,
     canReturnToSimpleMode,
     introduction,
@@ -161,10 +161,13 @@ const Config: FC = () => {
         {/* Dataset */}
         <DatasetConfig />
 
-        <HistoryPanel
-          showWarning={false}
-          onShowEditModal={showEditHistoryPrefixModal}
-        />
+        {isChatApp && modelModeType === ModelModeType.completion && (
+          <HistoryPanel
+            showWarning={false}
+            onShowEditModal={showEditHistoryPrefixModal}
+          />
+        )}
+
         {isShowEditHistoryPrefixModal && (
           <EditHistoryPrefixModal
             isShow={isShowEditHistoryPrefixModal}
