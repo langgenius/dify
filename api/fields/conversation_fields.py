@@ -171,12 +171,7 @@ conversation_infinite_scroll_pagination_fields = {
 }
 
 conversation_with_model_config_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'inputs': fields.Raw,
-    'status': fields.String,
-    'introduction': fields.String,
-    'created_at': TimestampField,
+    **simple_conversation_fields,
     'model_config': fields.Raw,
 }
 
