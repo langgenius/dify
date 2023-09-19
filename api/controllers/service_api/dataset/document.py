@@ -1,7 +1,7 @@
 import datetime
 import uuid
 
-from flask import current_app
+from flask import current_app, request
 from flask_restful import reqparse
 from werkzeug.exceptions import NotFound
 
@@ -14,24 +14,36 @@ from controllers.service_api.wraps import DatasetApiResource
 from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.dataset import Dataset
 from models.model import UploadFile
 from services.dataset_service import DocumentService
+from services.file_service import FileService
 
 
-class DocumentListApi(DatasetApiResource):
+class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
     def post(self, dataset):
-        """Create document."""
+        """Create document by text."""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('text', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('doc_type', type=str, location='json')
-        parser.add_argument('doc_metadata', type=dict, location='json')
+        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('original_document_id', type=str, required=False, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
+                            location='json')
+        parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
 
-        if not dataset.indexing_technique:
-            raise DatasetNotInitedError("Dataset indexing technique must be set.")
+        if not dataset.indexing_technique and not args['indexing_technique']:
+            raise ValueError('indexing_technique is required.')
+
+        # validate args
+        DocumentService.document_create_args_validate(args)
 
         doc_type = args.get('doc_type')
         doc_metadata = args.get('doc_metadata')
@@ -39,41 +51,16 @@ class DocumentListApi(DatasetApiResource):
         if doc_type and doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
             raise ValueError('Invalid doc_type.')
 
-        # user uuid as file name
-        file_uuid = str(uuid.uuid4())
-        file_key = 'upload_files/' + dataset.tenant_id + '/' + file_uuid + '.txt'
-
-        # save file to storage
-        storage.save(file_key, args.get('text'))
-
-        # save file to db
-        config = current_app.config
-        upload_file = UploadFile(
-            tenant_id=dataset.tenant_id,
-            storage_type=config['STORAGE_TYPE'],
-            key=file_key,
-            name=args.get('name') + '.txt',
-            size=len(args.get('text')),
-            extension='txt',
-            mime_type='text/plain',
-            created_by=dataset.created_by,
-            created_at=datetime.datetime.utcnow(),
-            used=True,
-            used_by=dataset.created_by,
-            used_at=datetime.datetime.utcnow()
-        )
-
-        db.session.add(upload_file)
-        db.session.commit()
-
+        upload_file = FileService.upload_text(args.get('text'), args.get('text_name'))
         document_data = {
             'data_source': {
                 'type': 'upload_file',
-                'info': [
-                    {
-                        'upload_file_id': upload_file.id
+                'info_list': {
+                    'data_source_type': 'upload_file',
+                    'file_info_list': {
+                        'file_ids': [upload_file.id]
                     }
-                ]
+                }
             }
         }
 
@@ -81,6 +68,75 @@ class DocumentListApi(DatasetApiResource):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 document_data=document_data,
+                account=dataset.created_by_account,
+                dataset_process_rule=dataset.latest_process_rule,
+                created_from='api'
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        document = documents[0]
+        if doc_type and doc_metadata:
+            metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
+
+            document.doc_metadata = {}
+
+            for key, value_type in metadata_schema.items():
+                value = doc_metadata.get(key)
+                if value is not None and isinstance(value, value_type):
+                    document.doc_metadata[key] = value
+
+            document.doc_type = doc_type
+            document.updated_at = datetime.datetime.utcnow()
+            db.session.commit()
+
+        return {'id': document.id}
+
+
+class DocumentAddByFileApi(DatasetApiResource):
+    """Resource for documents."""
+
+    def post(self, dataset):
+        """Create document by upload file."""
+        parser = reqparse.RequestParser()
+        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('original_document_id', type=str, required=False, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
+                            location='json')
+        parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
+        args = parser.parse_args()
+
+        if not dataset.indexing_technique and not args['indexing_technique']:
+            raise ValueError('indexing_technique is required.')
+
+        # validate args
+        DocumentService.document_create_args_validate(args)
+
+        doc_type = args.get('doc_type')
+        doc_metadata = args.get('doc_metadata')
+
+        if doc_type and doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
+            raise ValueError('Invalid doc_type.')
+        # save file info
+        file = request.files['file']
+        upload_file = FileService.upload_file(file)
+        data_source = {
+            'type': 'upload_file',
+            'info_list': {
+                'file_info_list': {
+                    'file_ids': [upload_file.id]
+                }
+            }
+        }
+        args['data_source'] = data_source
+
+        try:
+            documents, batch = DocumentService.save_document_with_dataset_id(
+                dataset=dataset,
+                document_data=args,
                 account=dataset.created_by_account,
                 dataset_process_rule=dataset.latest_process_rule,
                 created_from='api'
@@ -129,5 +185,6 @@ class DocumentApi(DatasetApiResource):
         return {'result': 'success'}, 204
 
 
-api.add_resource(DocumentListApi, '/documents')
+api.add_resource(DocumentAddByTextApi, '/text/documents')
+api.add_resource(DocumentAddByFileApi, '/file/documents')
 api.add_resource(DocumentApi, '/documents/<uuid:document_id>')

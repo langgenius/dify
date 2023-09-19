@@ -8,25 +8,10 @@ from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from fields.app_fields import app_site_fields
 from libs.helper import supported_language
 from extensions.ext_database import db
 from models.model import Site
-
-app_site_fields = {
-    'app_id': fields.String,
-    'access_token': fields.String(attribute='code'),
-    'code': fields.String,
-    'title': fields.String,
-    'icon': fields.String,
-    'icon_background': fields.String,
-    'description': fields.String,
-    'default_language': fields.String,
-    'customize_domain': fields.String,
-    'copyright': fields.String,
-    'privacy_policy': fields.String,
-    'customize_token_strategy': fields.String,
-    'prompt_public': fields.Boolean
-}
 
 
 def parse_app_site_args():

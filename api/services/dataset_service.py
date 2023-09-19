@@ -465,7 +465,6 @@ class DocumentService:
                 dataset.embedding_model = embedding_model.name
                 dataset.embedding_model_provider = embedding_model.model_provider.provider_name
 
-
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
         if 'original_document_id' in document_data and document_data["original_document_id"]:
