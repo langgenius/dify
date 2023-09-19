@@ -467,9 +467,9 @@ def normalization_collections():
             break
         datasets_result = datasets.items
         page += 1
-        for i in range(0, len(datasets_result), 20):
+        for i in range(0, len(datasets_result), 5):
             threads = []
-            sub_datasets = datasets_result[i:i + 20]
+            sub_datasets = datasets_result[i:i + 5]
             for dataset in sub_datasets:
                 document_format_thread = threading.Thread(target=deal_dataset_vector, kwargs={
                     'flask_app': current_app._get_current_object(),
