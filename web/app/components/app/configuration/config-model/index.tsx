@@ -4,12 +4,13 @@ import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useClickAway, useGetState } from 'ahooks'
-import { Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
+import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
 import ModelName from './model-name'
 import ModelModeTypeLabel from './model-mode-type-label'
+import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
@@ -261,7 +262,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
         <ModelModeTypeLabel type={ModelType2.chat} isHighlight />
-        {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
+        {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <SlidersH className='w-3.5 h-3.5 text-indigo-600' />}
       </div>
       {isShowConfig && (
         <Panel
@@ -284,6 +285,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
+                isShowModelModeType
                 popClassName='right-0'
                 triggerIconSmall
                 value={{

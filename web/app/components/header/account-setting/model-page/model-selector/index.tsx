@@ -124,7 +124,9 @@ const ModelSelector: FC<Props> = ({
                         />
                         <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
                           <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
-                          <ModelModeTypeLabel className='ml-2' type={ModelModeType.chat} />
+                          {isShowModelModeType && (
+                            <ModelModeTypeLabel className='ml-2' type={ModelModeType.chat} />
+                          )}
                         </div>
                       </>
                     )
@@ -156,7 +158,7 @@ const ModelSelector: FC<Props> = ({
             leaveFrom='opacity-100'
             leaveTo='opacity-0'
           >
-            <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-w-[280px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
+            <Popover.Panel className={cn(popClassName, isShowModelModeType ? 'max-w-[312px]' : 'max-w-[260px]', 'absolute top-10 p-1 min-w-[232px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
               <div className='px-2 pt-2 pb-1'>
                 <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
                   <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
@@ -216,7 +218,9 @@ const ModelSelector: FC<Props> = ({
                         />
                         <div className='mr-2 grow flex items-center text-left text-sm text-gray-900 truncate'>
                           <ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} />
-                          <ModelModeTypeLabel className={`${s.modelModeLabel} ml-2`} type={ModelModeType.chat} />
+                          {isShowModelModeType && (
+                            <ModelModeTypeLabel className={`${s.modelModeLabel} ml-2`} type={ModelModeType.completion} />
+                          )}
                         </div>
                         { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='shrink-0 w-4 h-4 text-primary-600' /> }
                       </Popover.Button>
