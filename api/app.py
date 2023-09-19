@@ -97,7 +97,7 @@ def initialize_extensions(app):
 def load_user(user_id):
     """Load user based on the user_id."""
     if request.blueprint == 'console':
-        session.pop('_remember')
+        session.pop('_remember', None)
         return AccountService.load_user(user_id)
 
 
