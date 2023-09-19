@@ -169,7 +169,6 @@ class QdrantVectorIndex(BaseVectorIndex):
             ],
         ))
 
-
     def _is_origin(self):
         if self.dataset.index_struct_dict:
             class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']

@@ -461,66 +461,67 @@ def normalization_collections():
     page = 1
     while True:
         try:
-            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality') \
+            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality',
+                                                        Dataset.id == '37857f44-034c-44df-93ea-74a23717089a') \
                 .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
         except NotFound:
             break
 
         page += 1
         for dataset in datasets:
-            if not dataset.collection_binding_id:
+            try:
+                click.echo('restore dataset index: {}'.format(dataset.id))
                 try:
-                    click.echo('restore dataset index: {}'.format(dataset.id))
-                    try:
-                        embedding_model = ModelFactory.get_embedding_model(
-                            tenant_id=dataset.tenant_id,
-                            model_provider_name=dataset.embedding_model_provider,
-                            model_name=dataset.embedding_model
-                        )
-                    except Exception:
-                        provider = Provider(
-                            id='provider_id',
-                            tenant_id=dataset.tenant_id,
-                            provider_name='openai',
-                            provider_type=ProviderType.CUSTOM.value,
-                            encrypted_config=json.dumps({'openai_api_key': 'TEST'}),
-                            is_valid=True,
-                        )
-                        model_provider = OpenAIProvider(provider=provider)
-                        embedding_model = OpenAIEmbedding(name="text-embedding-ada-002",
-                                                          model_provider=model_provider)
-                    embeddings = CacheEmbedding(embedding_model)
-                    dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                        filter(DatasetCollectionBinding.provider_name == embedding_model.model_provider.provider_name,
-                               DatasetCollectionBinding.model_name == embedding_model.name). \
-                        order_by(DatasetCollectionBinding.created_at). \
-                        first()
-
-                    if not dataset_collection_binding:
-                        dataset_collection_binding = DatasetCollectionBinding(
-                            provider_name=embedding_model.model_provider.provider_name,
-                            model_name=embedding_model.name,
-                            collection_name="Vector_index_" + str(uuid.uuid4()).replace("-", "_") + '_Node'
-                        )
-                        db.session.add(dataset_collection_binding)
-                        db.session.commit()
-
-                    from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
-
-                    index = QdrantVectorIndex(
-                        dataset=dataset,
-                        config=QdrantConfig(
-                            endpoint=current_app.config.get('QDRANT_URL'),
-                            api_key=current_app.config.get('QDRANT_API_KEY'),
-                            root_path=current_app.root_path
-                        ),
-                        embeddings=embeddings
+                    embedding_model = ModelFactory.get_embedding_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=dataset.embedding_model_provider,
+                        model_name=dataset.embedding_model
                     )
-                    if index:
-                        index.restore_dataset_in_one(dataset, dataset_collection_binding)
-                    else:
-                        click.echo('passed.')
+                except Exception:
+                    provider = Provider(
+                        id='provider_id',
+                        tenant_id=dataset.tenant_id,
+                        provider_name='openai',
+                        provider_type=ProviderType.CUSTOM.value,
+                        encrypted_config=json.dumps({'openai_api_key': 'TEST'}),
+                        is_valid=True,
+                    )
+                    model_provider = OpenAIProvider(provider=provider)
+                    embedding_model = OpenAIEmbedding(name="text-embedding-ada-002",
+                                                      model_provider=model_provider)
+                embeddings = CacheEmbedding(embedding_model)
+                dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
+                    filter(DatasetCollectionBinding.provider_name == embedding_model.model_provider.provider_name,
+                           DatasetCollectionBinding.model_name == embedding_model.name). \
+                    order_by(DatasetCollectionBinding.created_at). \
+                    first()
 
+                if not dataset_collection_binding:
+                    dataset_collection_binding = DatasetCollectionBinding(
+                        provider_name=embedding_model.model_provider.provider_name,
+                        model_name=embedding_model.name,
+                        collection_name="Vector_index_" + str(uuid.uuid4()).replace("-", "_") + '_Node'
+                    )
+                    db.session.add(dataset_collection_binding)
+                    db.session.commit()
+
+                from core.index.vector_index.qdrant_vector_index import QdrantVectorIndex, QdrantConfig
+
+                index = QdrantVectorIndex(
+                    dataset=dataset,
+                    config=QdrantConfig(
+                        endpoint=current_app.config.get('QDRANT_URL'),
+                        api_key=current_app.config.get('QDRANT_API_KEY'),
+                        root_path=current_app.root_path
+                    ),
+                    embeddings=embeddings
+                )
+                if index:
+                    index.delete_by_group_id(dataset.id)
+                    index.restore_dataset_in_one(dataset, dataset_collection_binding)
+                else:
+                    click.echo('passed.')
+                if not dataset.collection_binding_id:
                     original_index = QdrantVectorIndex(
                         dataset=dataset,
                         config=QdrantConfig(
@@ -532,14 +533,14 @@ def normalization_collections():
                     )
                     if original_index:
                         original_index.delete_original_collection(dataset, dataset_collection_binding)
-                        normalization_count += 1
                     else:
                         click.echo('passed.')
-                except Exception as e:
-                    click.echo(
-                        click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
-                                    fg='red'))
-                    continue
+                normalization_count += 1
+            except Exception as e:
+                click.echo(
+                    click.style('Create dataset index error: {} {}'.format(e.__class__.__name__, str(e)),
+                                fg='red'))
+                continue
 
     click.echo(click.style('Congratulations! restore {} dataset indexes.'.format(normalization_count), fg='green'))
 
