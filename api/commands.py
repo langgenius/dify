@@ -461,8 +461,7 @@ def normalization_collections():
     page = 1
     while True:
         try:
-            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality',
-                                                        Dataset.id == 'c3c46d23-1297-434e-be09-50447757d2cd') \
+            datasets = db.session.query(Dataset).filter(Dataset.indexing_technique == 'high_quality') \
                 .order_by(Dataset.created_at.desc()).paginate(page=page, per_page=50)
         except NotFound:
             break
