@@ -99,7 +99,7 @@ const Configuration: FC = () => {
   }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-
+  const hasSetContextVar = !!modelConfig.configs.prompt_variables.find(item => item.isContextVar)
   const syncToPublishedConfig = (_publishedConfig: any) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
@@ -195,6 +195,7 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
+  // const
   const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
   const saveAppConfig = async () => {
     const modelId = modelConfig.model_id
@@ -297,6 +298,7 @@ const Configuration: FC = () => {
       setModelConfig,
       dataSets,
       setDataSets,
+      hasSetContextVar,
     }}
     >
       <>
