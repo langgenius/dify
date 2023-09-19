@@ -43,7 +43,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
         if dataset.indexing_technique == 'high_quality':
             vector_index = IndexBuilder.get_default_high_quality_index(dataset)
             try:
-                vector_index.delete()
+                vector_index.delete_by_group_id(dataset.id)
             except Exception:
                 logging.exception("Delete doc index failed when dataset deleted.")
 
