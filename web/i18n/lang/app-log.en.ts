@@ -43,6 +43,7 @@ const translation = {
       editAnnotation: 'Edit Improvement',
       annotationPlaceholder: 'Enter the expected answer that you want AI to reply, which can be used for model fine-tuning and continuous improvement of text generation quality in the future.',
     },
+    variables: 'Variables',
   },
   filter: {
     period: {

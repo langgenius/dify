@@ -9,7 +9,6 @@ import {
   InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { SparklesIcon } from '@heroicons/react/24/solid'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -18,6 +17,7 @@ import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
+import VarPanel from './var-panel'
 import { randomString } from '@/utils'
 import { EditIconSolid } from '@/app/components/app/chat/icon-component'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/app/chat/type'
@@ -173,7 +173,13 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
   const modelName = (detail.model_config as any).model.name
   const provideName = (detail.model_config as any).model.provider as any
-
+  const varList = (detail.model_config as any).user_input_form.map((item) => {
+    const itemContent = item[Object.keys(item)[0]]
+    return {
+      label: itemContent.label,
+      value: 'Value ...', // wait for api
+    }
+  })
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
@@ -220,12 +226,11 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       </div>
     </div>
     {/* Panel Body */}
-    <div className='bg-gray-50 border border-gray-100 px-4 py-3 mx-6 my-4 rounded-lg'>
-      <div className='text-gray-500 text-xs flex items-center'>
-        <SparklesIcon className='h-3 w-3 mr-1' />{isChatMode ? t('appLog.detail.promptTemplateBeforeChat') : t('appLog.detail.promptTemplate')}
+    {varList.length > 0 && (
+      <div className='px-6 pt-4 pb-2'>
+        <VarPanel varList={varList} />
       </div>
-      <div className='text-gray-700 font-medium text-sm mt-2'>{detail.model_config?.pre_prompt || emptyText}</div>
-    </div>
+    )}
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
