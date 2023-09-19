@@ -28,7 +28,6 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
-    "autoprefixer": "^10.4.14",
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.1.1",
@@ -73,8 +72,6 @@
     "server-only": "^0.0.1",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
-    "tailwindcss": "^3.3.3",
-    "typescript": "4.9.5",
     "use-context-selector": "^1.4.1"
   },
   "devDependencies": {
@@ -102,7 +99,10 @@
     "miragejs": "^0.1.47",
     "postcss": "^8.4.21",
     "sass": "^1.61.0",
-    "uglify-js": "^3.17.4"
+    "uglify-js": "^3.17.4",
+    "tailwindcss": "^3.3.3",
+    "typescript": "4.9.5",
+    "autoprefixer": "^10.4.14"
   },
   "lint-staged": {
     "**/*.js?(x)": [
