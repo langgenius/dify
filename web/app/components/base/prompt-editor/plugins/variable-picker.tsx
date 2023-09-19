@@ -71,7 +71,6 @@ const VariablePicker = () => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
-    maxLength: 2,
   })
 
   const options = [

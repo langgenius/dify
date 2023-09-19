@@ -214,7 +214,6 @@ export function getHashtagRegexString(): string {
 
   const hashtagAlpha = `[${alpha}]`
   const hashtagAlphanumeric = `[${alphanumeric}]`
-  const hashtagBoundary = `^|$|[^&/${alphanumeric}]`
   const hashLeftCharList = `[${leftChars}]`
   const hashRightCharList = `[${rightChars}]`
 

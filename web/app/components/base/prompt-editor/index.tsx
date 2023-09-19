@@ -2,6 +2,7 @@
 
 // import { $getRoot } from 'lexical'
 // import type { EditorState } from 'lexical'
+import { TextNode } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -20,6 +21,7 @@ import { QueryBlockNode } from './plugins/query-block/node'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
+import { CustomTextNode } from './plugins/custom-text/node'
 
 export type PromptEditorProps = {
   contextBlock?: {
@@ -54,7 +56,17 @@ const PromptEditor = () => {
     onError: (error: Error) => {
       throw error
     },
-    nodes: [ContextBlockNode, HistoryBlockNode, QueryBlockNode, VariableValueBlockNode],
+    nodes: [
+      CustomTextNode,
+      {
+        replace: TextNode,
+        with: (node: TextNode) => new CustomTextNode(node.__text),
+      },
+      ContextBlockNode,
+      HistoryBlockNode,
+      QueryBlockNode,
+      VariableValueBlockNode,
+    ],
   }
 
   // const handleEditorChange = (editorState: EditorState) => {
@@ -65,7 +77,7 @@ const PromptEditor = () => {
     <LexicalComposer initialConfig={initialConfig}>
       <div className='relative'>
         <RichTextPlugin
-          contentEditable={<ContentEditable className='outline-none text-sm leading-6' />}
+          contentEditable={<ContentEditable className='outline-none text-sm text-gray-700 leading-6' />}
           placeholder={<Placeholder />}
           ErrorBoundary={LexicalErrorBoundary}
         />

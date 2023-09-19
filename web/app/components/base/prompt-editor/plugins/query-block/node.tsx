@@ -17,7 +17,7 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
 
   createDOM(): HTMLElement {
     const div = document.createElement('div')
-    div.classList.add('inline-flex', 'items-center')
+    div.classList.add('inline-flex', 'items-center', 'align-middle')
     return div
   }
 
