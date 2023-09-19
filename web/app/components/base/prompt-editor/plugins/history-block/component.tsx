@@ -43,7 +43,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
             <DotsHorizontal className='w-3 h-3' />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent style={{ zIndex: 100 }}>
           <div className='w-[360px] bg-white rounded-xl shadow-lg'>
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>Example</div>

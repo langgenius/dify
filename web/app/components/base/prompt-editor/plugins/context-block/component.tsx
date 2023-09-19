@@ -41,7 +41,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             ${open ? 'bg-[#6938EF] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
           `}>2</div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent style={{ zIndex: 100 }}>
           <div className='w-[360px] bg-white rounded-xl shadow-lg'>
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>2 Datasets in Context</div>
