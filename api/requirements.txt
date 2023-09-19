@@ -11,7 +11,7 @@ flask-cors==3.0.10
 gunicorn~=21.2.0
 gevent~=22.10.2
 langchain==0.0.250
-openai~=0.27.8
+openai~=0.28.0
 psycopg2-binary~=2.9.6
 pycryptodome==3.17
 python-dotenv==1.0.0
@@ -19,7 +19,7 @@ pytest~=7.3.1
 pytest-mock~=3.11.1
 tiktoken==0.3.3
 Authlib==1.2.0
-boto3~=1.26.123
+boto3==1.28.17
 tenacity==8.2.2
 cachetools~=5.3.0
 weaviate-client~=3.21.0
@@ -49,5 +49,6 @@ huggingface_hub~=0.16.4
 transformers~=4.31.0
 stripe~=5.5.0
 pandas==1.5.3
-xinference==0.2.1
+xinference==0.4.2
 safetensors==0.3.2
+zhipuai==1.0.7

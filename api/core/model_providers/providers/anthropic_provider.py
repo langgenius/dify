@@ -69,11 +69,11 @@ class AnthropicProvider(BaseModelProvider):
         :return:
         """
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0, max=1, default=1),
-            top_p=KwargRule[float](min=0, max=1, default=0.7),
+            temperature=KwargRule[float](min=0, max=1, default=1, precision=2),
+            top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=100000, default=256),
+            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=100000, default=256, precision=0),
         )
 
     @classmethod

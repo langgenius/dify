@@ -2,6 +2,7 @@ import json
 from typing import Type
 
 import requests
+from langchain.embeddings import XinferenceEmbeddings
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
@@ -52,27 +53,27 @@ class XinferenceProvider(BaseModelProvider):
         credentials = self.get_model_credentials(model_name, model_type)
         if credentials['model_format'] == "ggmlv3" and credentials["model_handle_type"] == "chatglm":
             return ModelKwargsRules(
-                temperature=KwargRule[float](min=0.01, max=2, default=1),
-                top_p=KwargRule[float](min=0, max=1, default=0.7),
+                temperature=KwargRule[float](min=0.01, max=2, default=1, precision=2),
+                top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
                 presence_penalty=KwargRule[float](enabled=False),
                 frequency_penalty=KwargRule[float](enabled=False),
-                max_tokens=KwargRule[int](min=10, max=4000, default=256),
+                max_tokens=KwargRule[int](min=10, max=4000, default=256, precision=0),
             )
         elif credentials['model_format'] == "ggmlv3":
             return ModelKwargsRules(
-                temperature=KwargRule[float](min=0.01, max=2, default=1),
-                top_p=KwargRule[float](min=0, max=1, default=0.7),
-                presence_penalty=KwargRule[float](min=-2, max=2, default=0),
-                frequency_penalty=KwargRule[float](min=-2, max=2, default=0),
-                max_tokens=KwargRule[int](min=10, max=4000, default=256),
+                temperature=KwargRule[float](min=0.01, max=2, default=1, precision=2),
+                top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
+                presence_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+                frequency_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+                max_tokens=KwargRule[int](min=10, max=4000, default=256, precision=0),
             )
         else:
             return ModelKwargsRules(
-                temperature=KwargRule[float](min=0.01, max=2, default=1),
-                top_p=KwargRule[float](min=0, max=1, default=0.7),
+                temperature=KwargRule[float](min=0.01, max=2, default=1, precision=2),
+                top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
                 presence_penalty=KwargRule[float](enabled=False),
                 frequency_penalty=KwargRule[float](enabled=False),
-                max_tokens=KwargRule[int](min=10, max=4000, default=256),
+                max_tokens=KwargRule[int](min=10, max=4000, default=256, precision=0),
             )
 
 
@@ -97,11 +98,18 @@ class XinferenceProvider(BaseModelProvider):
                 'model_uid': credentials['model_uid'],
             }
 
-            llm = XinferenceLLM(
-                **credential_kwargs
-            )
+            if model_type == ModelType.TEXT_GENERATION:
+                llm = XinferenceLLM(
+                    **credential_kwargs
+                )
 
-            llm("ping")
+                llm("ping")
+            elif model_type == ModelType.EMBEDDINGS:
+                embedding = XinferenceEmbeddings(
+                    **credential_kwargs
+                )
+
+                embedding.embed_query("ping")
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -117,8 +125,9 @@ class XinferenceProvider(BaseModelProvider):
         :param credentials:
         :return:
         """
-        extra_credentials = cls._get_extra_credentials(credentials)
-        credentials.update(extra_credentials)
+        if model_type == ModelType.TEXT_GENERATION:
+            extra_credentials = cls._get_extra_credentials(credentials)
+            credentials.update(extra_credentials)
 
         credentials['server_url'] = encrypter.encrypt_token(tenant_id, credentials['server_url'])
 

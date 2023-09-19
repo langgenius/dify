@@ -30,6 +30,12 @@
             "unit": "0.001",
             "currency": "USD"
         },
+        "gpt-3.5-turbo-instruct": {
+            "prompt": "0.0015",
+            "completion": "0.002",
+            "unit": "0.001",
+            "currency": "USD"
+        },
         "gpt-3.5-turbo-16k": {
             "prompt": "0.003",
             "completion": "0.004",

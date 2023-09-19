@@ -46,6 +46,32 @@ class KeywordTableIndex(BaseIndex):
 
         return self
 
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table = {}
+        for text in texts:
+            keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
+            keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
+
+        dataset_keyword_table = DatasetKeywordTable(
+            dataset_id=self.dataset.id,
+            keyword_table=json.dumps({
+                '__type__': 'keyword_table',
+                '__data__': {
+                    "index_id": self.dataset.id,
+                    "summary": None,
+                    "table": {}
+                }
+            }, cls=SetEncoder)
+        )
+        db.session.add(dataset_keyword_table)
+        db.session.commit()
+
+        self._save_dataset_keyword_table(keyword_table)
+
+        return self
+
     def add_texts(self, texts: list[Document], **kwargs):
         keyword_table_handler = JiebaKeywordTableHandler()
 
@@ -115,6 +141,12 @@ class KeywordTableIndex(BaseIndex):
         return documents
 
     def delete(self) -> None:
+        dataset_keyword_table = self.dataset.dataset_keyword_table
+        if dataset_keyword_table:
+            db.session.delete(dataset_keyword_table)
+            db.session.commit()
+
+    def delete_by_group_id(self, group_id: str) -> None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             db.session.delete(dataset_keyword_table)

@@ -213,7 +213,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
   const handleParamChange = (key: string, value: number) => {
     const currParamsRule = getAllParams()[provider]?.[modelId]
-    let notOutRangeValue = parseFloat(value.toFixed(2))
+    let notOutRangeValue = parseFloat((value || 0).toFixed(2))
     notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
     notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
 

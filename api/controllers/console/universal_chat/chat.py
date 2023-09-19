@@ -33,7 +33,6 @@ class UniversalChatApi(UniversalChatResource):
         args = parser.parse_args()
 
         app_model_config = app_model.app_model_config
-        app_model_config
 
         # update app model config
         args['model_config'] = app_model_config.to_dict()

@@ -28,6 +28,7 @@ from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
+from qdrant_client.http.models import PayloadSchemaType
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -84,6 +85,7 @@ class Qdrant(VectorStore):
 
     CONTENT_KEY = "page_content"
     METADATA_KEY = "metadata"
+    GROUP_KEY = "group_id"
     VECTOR_NAME = None
 
     def __init__(
@@ -93,9 +95,12 @@ class Qdrant(VectorStore):
         embeddings: Optional[Embeddings] = None,
         content_payload_key: str = CONTENT_KEY,
         metadata_payload_key: str = METADATA_KEY,
+        group_payload_key: str = GROUP_KEY,
+        group_id: str = None,
         distance_strategy: str = "COSINE",
         vector_name: Optional[str] = VECTOR_NAME,
         embedding_function: Optional[Callable] = None,  # deprecated
+        is_new_collection: bool = False
     ):
         """Initialize with necessary components."""
         try:
@@ -129,7 +134,10 @@ class Qdrant(VectorStore):
         self.collection_name = collection_name
         self.content_payload_key = content_payload_key or self.CONTENT_KEY
         self.metadata_payload_key = metadata_payload_key or self.METADATA_KEY
+        self.group_payload_key = group_payload_key or self.GROUP_KEY
         self.vector_name = vector_name or self.VECTOR_NAME
+        self.group_id = group_id
+        self.is_new_collection= is_new_collection
 
         if embedding_function is not None:
             warnings.warn(
@@ -170,6 +178,8 @@ class Qdrant(VectorStore):
             batch_size:
                 How many vectors upload per-request.
                 Default: 64
+            group_id:
+                collection group
 
         Returns:
             List of ids from adding the texts into the vectorstore.
@@ -182,7 +192,11 @@ class Qdrant(VectorStore):
                 collection_name=self.collection_name, points=points, **kwargs
             )
             added_ids.extend(batch_ids)
-
+        # if is new collection, create payload index on group_id
+        if self.is_new_collection:
+            self.client.create_payload_index(self.collection_name, self.group_payload_key,
+                                             field_schema=PayloadSchemaType.KEYWORD,
+                                             field_type=PayloadSchemaType.KEYWORD)
         return added_ids
 
     @sync_call_fallback
@@ -970,6 +984,8 @@ class Qdrant(VectorStore):
         distance_func: str = "Cosine",
         content_payload_key: str = CONTENT_KEY,
         metadata_payload_key: str = METADATA_KEY,
+        group_payload_key: str = GROUP_KEY,
+        group_id: str = None,
         vector_name: Optional[str] = VECTOR_NAME,
         batch_size: int = 64,
         shard_number: Optional[int] = None,
@@ -1034,6 +1050,11 @@ class Qdrant(VectorStore):
             metadata_payload_key:
                 A payload key used to store the metadata of the document.
                 Default: "metadata"
+            group_payload_key:
+                A payload key used to store the content of the document.
+                Default: "group_id"
+            group_id:
+                collection group id
             vector_name:
                 Name of the vector to be used internally in Qdrant.
                 Default: None
@@ -1107,6 +1128,8 @@ class Qdrant(VectorStore):
             distance_func,
             content_payload_key,
             metadata_payload_key,
+            group_payload_key,
+            group_id,
             vector_name,
             shard_number,
             replication_factor,
@@ -1321,6 +1344,8 @@ class Qdrant(VectorStore):
         distance_func: str = "Cosine",
         content_payload_key: str = CONTENT_KEY,
         metadata_payload_key: str = METADATA_KEY,
+        group_payload_key: str = GROUP_KEY,
+        group_id: str = None,
         vector_name: Optional[str] = VECTOR_NAME,
         shard_number: Optional[int] = None,
         replication_factor: Optional[int] = None,
@@ -1350,6 +1375,7 @@ class Qdrant(VectorStore):
         vector_size = len(partial_embeddings[0])
         collection_name = collection_name or uuid.uuid4().hex
         distance_func = distance_func.upper()
+        is_new_collection = False
         client = qdrant_client.QdrantClient(
             location=location,
             url=url,
@@ -1454,6 +1480,7 @@ class Qdrant(VectorStore):
                 init_from=init_from,
                 timeout=timeout,  # type: ignore[arg-type]
             )
+            is_new_collection = True
         qdrant = cls(
             client=client,
             collection_name=collection_name,
@@ -1462,6 +1489,9 @@ class Qdrant(VectorStore):
             metadata_payload_key=metadata_payload_key,
             distance_strategy=distance_func,
             vector_name=vector_name,
+            group_id=group_id,
+            group_payload_key=group_payload_key,
+            is_new_collection=is_new_collection
         )
         return qdrant
 
@@ -1516,6 +1546,8 @@ class Qdrant(VectorStore):
         metadatas: Optional[List[dict]],
         content_payload_key: str,
         metadata_payload_key: str,
+        group_id: str,
+        group_payload_key: str
     ) -> List[dict]:
         payloads = []
         for i, text in enumerate(texts):
@@ -1529,6 +1561,7 @@ class Qdrant(VectorStore):
                 {
                     content_payload_key: text,
                     metadata_payload_key: metadata,
+                    group_payload_key: group_id
                 }
             )
 
@@ -1578,7 +1611,7 @@ class Qdrant(VectorStore):
         else:
             out.append(
                 rest.FieldCondition(
-                    key=f"{self.metadata_payload_key}.{key}",
+                    key=key,
                     match=rest.MatchValue(value=value),
                 )
             )
@@ -1654,6 +1687,7 @@ class Qdrant(VectorStore):
         metadatas: Optional[List[dict]] = None,
         ids: Optional[Sequence[str]] = None,
         batch_size: int = 64,
+        group_id: Optional[str] = None,
     ) -> Generator[Tuple[List[str], List[rest.PointStruct]], None, None]:
         from qdrant_client.http import models as rest
 
@@ -1684,6 +1718,8 @@ class Qdrant(VectorStore):
                         batch_metadatas,
                         self.content_payload_key,
                         self.metadata_payload_key,
+                        self.group_id,
+                        self.group_payload_key
                     ),
                 )
             ]

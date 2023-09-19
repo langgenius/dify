@@ -34,7 +34,7 @@ const Setting: FC<SettingProps> = ({
   return (
     <div className='flex items-center'>
       {
-        (modelItem.key === ProviderEnum.minimax || modelItem.key === ProviderEnum.spark) && systemFree && !systemFree?.is_valid && !IS_CE_EDITION && locale === 'zh-Hans' && (
+        (modelItem.key === ProviderEnum.minimax || modelItem.key === ProviderEnum.spark || modelItem.key === ProviderEnum.zhipuai) && systemFree && !systemFree?.is_valid && !IS_CE_EDITION && locale === 'zh-Hans' && (
           <FreeQuota
             modelItem={modelItem}
             onUpdate={onUpdate}
