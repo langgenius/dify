@@ -27,12 +27,7 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
     start_at = time.perf_counter()
 
     try:
-        dataset = Dataset(
-            id=dataset_id,
-            tenant_id=tenant_id,
-            indexing_technique=indexing_technique,
-            index_struct=index_struct
-        )
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
         documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
