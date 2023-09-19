@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import {} from 'use-context-selector'
+import { } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import AutosizeInput from 'react-18-input-autosize'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
@@ -11,6 +11,7 @@ type TagInputProps = {
   onChange: (items: string[]) => void
   disableRemove?: boolean
   disableAdd?: boolean
+  customizedConfirmKey?: 'Enter' | 'Tab'
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -18,6 +19,7 @@ const TagInput: FC<TagInputProps> = ({
   onChange,
   disableAdd,
   disableRemove,
+  customizedConfirmKey = 'Enter',
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -31,7 +33,10 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (customizedConfirmKey === 'Tab' && e.key === 'Enter')
+      setValue(`${value}↵`)
+
+    if (e.key === customizedConfirmKey) {
       const valueTrimed = value.trim()
       if (!valueTrimed || (items.find(item => item === valueTrimed)))
         return
@@ -81,7 +86,9 @@ const TagInput: FC<TagInputProps> = ({
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}
             value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setValue(e.target.value)
+            }}
             onKeyDown={handleKeyDown}
             placeholder={t('datasetDocuments.segment.addKeyWord')}
           />

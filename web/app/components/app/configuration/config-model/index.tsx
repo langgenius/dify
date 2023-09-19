@@ -214,6 +214,9 @@ const ConfigModel: FC<IConfigModelProps> = ({
   }, [completionParams])
 
   const handleParamChange = (key: string, value: number) => {
+    if (key === 'stop_sequences')
+      console.log('value:', value)
+
     const currParamsRule = getAllParams()[provider]?.[modelId]
     let notOutRangeValue = parseFloat(value.toFixed(2))
     notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
@@ -230,7 +233,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const getToneIcon = (toneId: number) => {
     const className = 'w-[14px] h-[14px]'
     const res = ({
-      1: <Brush01 className={className}/>,
+      1: <Brush01 className={className} />,
       2: <Scales02 className={className} />,
       3: <Target04 className={className} />,
       4: <Sliders02 className={className} />,
@@ -350,7 +353,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className={cn(hasEnableParams && 'mt-4', 'space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
               {allParams[provider]?.[modelId]
                 ? (
-                  currSupportParams.map(key => (<ParamItem
+                  currSupportParams.concat(['stop_sequences']).map(key => (<ParamItem
                     key={key}
                     id={key}
                     name={t(`common.model.params.${key}`)}
@@ -358,10 +361,11 @@ const ConfigModel: FC<IConfigModelProps> = ({
                     {...currParams[key] as any}
                     value={(completionParams as any)[key] as any}
                     onChange={handleParamChange}
+                    inputType={key === 'stop_sequences' ? 'inputTag' : 'slider'}
                   />))
                 )
                 : (
-                  <Loading type='area'/>
+                  <Loading type='area' />
                 )}
             </div>
           </div>

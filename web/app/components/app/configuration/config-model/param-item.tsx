@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
+import TagInput from '@/app/components/base/tag-input'
 
 export type IParamIteProps = {
   id: string
@@ -12,10 +13,11 @@ export type IParamIteProps = {
   step?: number
   min?: number
   max: number
-  onChange: (key: string, value: number) => void
+  onChange: (key: string, value: number | string[]) => void
+  inputType?: 'inputTag' | 'slider'
 }
 
-const ParamIte: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max, value, onChange }) => {
+const ParamIte: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max, value, onChange, inputType = 'slider' }) => {
   return (
     <div className="flex items-center justify-between">
       <div className="flex items-center">
@@ -27,17 +29,29 @@ const ParamIte: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max,
           </svg>
         </Tooltip>
       </div>
+      {inputType === 'inputTag' && <div className="text-gray-400 text-xs font-normal">Enter sequence and press Tab</div>}
       <div className="flex items-center">
-        <div className="mr-4 w-[120px]">
-          <Slider value={max < 5 ? value * 10 : value} min={min < 0 ? min * 10 : min} max={max < 5 ? max * 10 : max} onChange={value => onChange(id, value / (max < 5 ? 10 : 1))} />
-        </div>
-        <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
-          const value = parseFloat(e.target.value)
-          if (value < min || value > max)
-            return
+        {inputType === 'inputTag'
+          ? <TagInput
+            items={[]}
+            onChange={newSequences => onChange(id, newSequences)}
+            customizedConfirmKey='Tab'
+          />
+          : (
+            <>
+              <div className="mr-4 w-[120px]">
+                <Slider value={max < 5 ? value * 10 : value} min={min < 0 ? min * 10 : min} max={max < 5 ? max * 10 : max} onChange={value => onChange(id, value / (max < 5 ? 10 : 1))} />
+              </div>
+              <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
+                const value = parseFloat(e.target.value)
+                if (value < min || value > max)
+                  return
 
-          onChange(id, value)
-        }} />
+                onChange(id, value)
+              }} />
+            </>
+          )
+        }
       </div>
     </div>
   )
