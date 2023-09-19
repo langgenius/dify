@@ -32,7 +32,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
         placement='top-end'
         offset={{
           mainAxis: 4,
-          crossAxis: -148,
+          alignmentAxis: -148,
         }}
       >
         <PortalToFollowElemTrigger ref={triggerRef}>

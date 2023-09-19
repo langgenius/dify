@@ -32,7 +32,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
         placement='bottom-end'
         offset={{
           mainAxis: 3,
-          crossAxis: -147,
+          alignmentAxis: -147,
         }}
       >
         <PortalToFollowElemTrigger ref={triggerRef}>
