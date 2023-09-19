@@ -27,7 +27,7 @@ import Loading from '@/app/components/base/loading'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
-import { ModelModeType as ModelType2 } from '@/types/app'
+import { ModelModeType } from '@/types/app'
 export type IConfigModelProps = {
   mode: string
   modelId: string
@@ -262,7 +262,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         <div className='text-[13px] text-gray-900 font-medium'>
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
-        <ModelModeTypeLabel type={ModelType2.chat} isHighlight />
+        <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
         {disabled ? <InformationCircleIcon className='w-4 h-4 text-[#F79009]' /> : <SlidersH className='w-4 h-4 text-indigo-600' />}
       </div>
       {isShowConfig && (

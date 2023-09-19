@@ -16,6 +16,7 @@ import dayjs from 'dayjs'
 import { createContext, useContext } from 'use-context-selector'
 import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import s from './style.module.css'
 import { randomString } from '@/utils'
 import { EditIconSolid } from '@/app/components/app/chat/icon-component'
@@ -30,6 +31,10 @@ import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
+import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
+import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
+import { ModelModeType } from '@/types/app'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -166,6 +171,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     return res
   })?.name ?? 'custom'
 
+  const modelName = (detail.model_config as any).model.name
+  const provideName = (detail.model_config as any).model.provider as any
+
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
@@ -173,7 +181,19 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         <span className='text-gray-500 text-[10px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</span>
         <div className='text-gray-800 text-sm'>{isChatMode ? detail.id : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat'))}</div>
       </div>
-      <div className='mr-2 bg-gray-50 py-1.5 px-2.5 rounded-lg flex items-center text-[13px]'><OpenAIIcon className='mr-2' />{detail.model_config.model_id}</div>
+      <div
+        className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
+      >
+        <ModelIcon
+          className='!w-5 !h-5'
+          modelId={modelName}
+          providerName={provideName}
+        />
+        <div className='text-[13px] text-gray-900 font-medium'>
+          <ModelName modelId={modelName} modelDisplayName={modelName} />
+        </div>
+        <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+      </div>
       <Popover
         position='br'
         className='!w-[280px]'
