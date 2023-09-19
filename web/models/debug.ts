@@ -8,6 +8,7 @@ export type PromptVariable = {
   required: boolean
   options?: string[]
   max_length?: number
+  isContextVar?: boolean
 }
 
 export type CompletionParams = {

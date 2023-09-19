@@ -12,6 +12,8 @@ import CardItem from './card-item'
 import SelectDataSet from './select-dataset'
 import ConfigContext from '@/context/debug-configuration'
 import type { DataSet } from '@/models/datasets'
+import { AppType } from '@/types/app'
+import Select from '@/app/components/base/select'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,9 +25,12 @@ const Icon = (
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
   const {
+    mode,
     dataSets: dataSet,
     setDataSets: setDataSet,
     setFormattingChanged,
+    modelConfig,
+    setModelConfig,
   } = useContext(ConfigContext)
   const selectedIds = dataSet.map(item => item.id)
 
@@ -60,6 +65,25 @@ const DatasetConfig: FC = () => {
     setFormattingChanged(true)
   }
 
+  const promptVariables = modelConfig.configs.prompt_variables
+  const promptVariablesToSelect = promptVariables.map(item => ({
+    name: item.name,
+    value: item.key,
+  }))
+  const selectedContextVar = promptVariables?.find(item => item.isContextVar)
+  const handleSelectContextVar = (selected: any) => {
+    // debugger
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_variables = modelConfig.configs.prompt_variables.map((item) => {
+        return ({
+          ...item,
+          isContextVar: item.key === selected.value,
+        })
+      })
+    })
+    setModelConfig(newModelConfig)
+  }
+
   return (
     <FeaturePanel
       className='mt-3'
@@ -84,6 +108,17 @@ const DatasetConfig: FC = () => {
         : (
           <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
         )}
+
+      {mode === AppType.completion && dataSet.length > 0 && (
+        <div className='flex items-center space-x-2'>
+          <div>QueryVar</div>
+          <Select
+            defaultValue={selectedContextVar?.key}
+            items={promptVariablesToSelect}
+            onSelect={handleSelectContextVar}
+          />
+        </div>
+      )}
 
       {isShowSelectDataSet && (
         <SelectDataSet
