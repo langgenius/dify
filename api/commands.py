@@ -538,20 +538,6 @@ def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count:
                 index.restore_dataset_in_one(dataset, dataset_collection_binding)
             else:
                 click.echo('passed.')
-            if not dataset.collection_binding_id:
-                original_index = QdrantVectorIndex(
-                    dataset=dataset,
-                    config=QdrantConfig(
-                        endpoint=current_app.config.get('QDRANT_URL'),
-                        api_key=current_app.config.get('QDRANT_API_KEY'),
-                        root_path=current_app.root_path
-                    ),
-                    embeddings=embeddings
-                )
-                if original_index:
-                    original_index.delete_original_collection(dataset, dataset_collection_binding)
-                else:
-                    click.echo('passed.')
             normalization_count.append(1)
         except Exception as e:
             click.echo(
