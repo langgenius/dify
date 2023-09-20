@@ -99,7 +99,7 @@ const Configuration: FC = () => {
   }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-  const hasSetContextVar = !!modelConfig.configs.prompt_variables.find(item => item.isContextVar)
+  const hasSetContextVar = !!modelConfig.configs.prompt_variables.find(item => item.is_context_var)
   const syncToPublishedConfig = (_publishedConfig: any) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)

@@ -70,14 +70,14 @@ const DatasetConfig: FC = () => {
     name: item.name,
     value: item.key,
   }))
-  const selectedContextVar = promptVariables?.find(item => item.isContextVar)
+  const selectedContextVar = promptVariables?.find(item => item.is_context_var)
   const handleSelectContextVar = (selected: any) => {
     // debugger
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_variables = modelConfig.configs.prompt_variables.map((item) => {
         return ({
           ...item,
-          isContextVar: item.key === selected.value,
+          is_context_var: item.key === selected.value,
         })
       })
     })
