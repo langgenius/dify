@@ -76,6 +76,8 @@ const translation = {
         unableToQueryDataSetTip: 'Unable to query the dataset successfully, please choose a context query variable in the context section.',
         ok: 'OK',
         contextVarNotEmpty: 'context query variable can not be empty',
+        deleteContextVarTitle: 'Delete variable “{{varName}}”?',
+        deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
       },
     },
   },

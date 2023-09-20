@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Cog8ToothIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import type { Timeout } from 'ahooks/lib/useRequest/src/types'
+import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import EditModal from './config-modal'
@@ -19,6 +20,9 @@ import { checkKeys, getNewVar } from '@/utils/var'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import ConfirmModal from '@/app/components/base/confirm/common'
+import ConfigContext from '@/context/debug-configuration'
+import { AppType } from '@/types/app'
 
 export type IConfigVarProps = {
   promptVariables: PromptVariable[]
@@ -30,6 +34,11 @@ let conflictTimer: Timeout
 
 const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVariablesChange }) => {
   const { t } = useTranslation()
+  const {
+    mode,
+    dataSets,
+  } = useContext(ConfigContext)
+
   const hasVar = promptVariables.length > 0
   const promptVariableObj = (() => {
     const obj: Record<string, boolean> = {}
@@ -128,8 +137,21 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     onPromptVariablesChange?.([...promptVariables, newVar])
   }
 
-  const handleRemoveVar = (index: number) => {
+  const [isShowDeleteContextVarModal, { setTrue: showDeleteContextVarModal, setFalse: hideDeleteContextVarModal }] = useBoolean(false)
+  const [removeIndex, setRemoveIndex] = useState<number | null>(null)
+  const didRemoveVar = (index: number) => {
     onPromptVariablesChange?.(promptVariables.filter((_, i) => i !== index))
+  }
+
+  const handleRemoveVar = (index: number) => {
+    const removeVar = promptVariables[index]
+
+    if (mode === AppType.completion && dataSets.length > 0 && removeVar.is_context_var) {
+      showDeleteContextVarModal()
+      setRemoveIndex(index)
+      return
+    }
+    didRemoveVar(index)
   }
 
   const [currKey, setCurrKey] = useState<string | null>(null)
@@ -257,6 +279,20 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
 
             hideEditModal()
           }}
+        />
+      )}
+
+      {isShowDeleteContextVarModal && (
+        <ConfirmModal
+          isShow={isShowDeleteContextVarModal}
+          title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
+          desc={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip') as string}
+          confirmBtnClassName='bg-[#B42318] hover:bg-[#B42318]'
+          onConfirm={() => {
+            didRemoveVar(removeIndex as number)
+            hideDeleteContextVarModal()
+          }}
+          onCancel={hideDeleteContextVarModal}
         />
       )}
 

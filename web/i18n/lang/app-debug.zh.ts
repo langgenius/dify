@@ -76,6 +76,8 @@ const translation = {
         unableToQueryDataSetTip: '无法成功查询数据集，请在上下文部分选择一个上下文查询变量。',
         ok: '好的',
         contextVarNotEmpty: '上下文查询变量不能为空',
+        deleteContextVarTitle: '删除变量“{{varName}}”？',
+        deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
     },
   },
