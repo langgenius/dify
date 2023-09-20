@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
+import s from './style.module.css'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -48,8 +49,12 @@ const VarPicker: FC<Props> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn(notSetVar ? 'bg-[#FFFCF5] border-[#FEDF89] text-[#DC6803]' : 'bg-white hover:bg-gray-50 border-gray-200 text-primary-600', `
-          flex items-center h-8 justify-center px-2 space-x-1 rounded-lg border   shadow-xs cursor-pointer
+        <div className={cn(
+          s.trigger,
+          notSetVar ? 'bg-[#FFFCF5] border-[#FEDF89] text-[#DC6803]' : ' hover:bg-gray-50 border-gray-200 text-primary-600',
+          open ? 'bg-gray-50' : 'bg-white',
+          `
+          flex items-center h-8 justify-center px-2 space-x-1 rounded-lg border  shadow-xs cursor-pointer
           text-[13px]  font-medium
           `)}>
           <div>
@@ -61,7 +66,7 @@ const VarPicker: FC<Props> = ({
                 {t('appDebug.feature.dataSet.queryVariable.choosePlaceholder')}
               </div>)}
           </div>
-          <ChevronDownIcon className='w-3.5 h-3.5' />
+          <ChevronDownIcon className={cn(s.dropdownIcon, open && 'rotate-180 text-[#98A2B3]', 'w-3.5 h-3.5')} />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
