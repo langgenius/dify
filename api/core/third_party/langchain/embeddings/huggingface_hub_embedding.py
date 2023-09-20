@@ -29,7 +29,7 @@ class HuggingfaceHubEmbeddings(BaseModel, Embeddings):
             values, "huggingfacehub_api_token", "HUGGINGFACEHUB_API_TOKEN"
         )
 
-        values['client'] = InferenceClient(values['huggingfacehub_api_token'])
+        values['client'] = InferenceClient(token=values['huggingfacehub_api_token'])
 
         return values
 
