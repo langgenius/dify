@@ -13,13 +13,15 @@ from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, Datase
 
 
 @shared_task(queue='dataset')
-def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str, index_struct: str):
+def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
+                       index_struct: str, collection_binding_id: str):
     """
     Clean dataset when dataset deleted.
     :param dataset_id: dataset id
     :param tenant_id: tenant id
     :param indexing_technique: indexing technique
     :param index_struct: index struct dict
+    :param collection_binding_id: collection binding id
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
@@ -27,8 +29,13 @@ def clean_dataset_task(dataset_id: str, tenant_id: str, indexing_technique: str,
     start_at = time.perf_counter()
 
     try:
-        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-
+        dataset = Dataset(
+            id=dataset_id,
+            tenant_id=tenant_id,
+            indexing_technique=indexing_technique,
+            index_struct=index_struct,
+            collection_binding_id=collection_binding_id
+        )
         documents = db.session.query(Document).filter(Document.dataset_id == dataset_id).all()
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.dataset_id == dataset_id).all()
 

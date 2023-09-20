@@ -534,7 +534,7 @@ def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count:
                 embeddings=embeddings
             )
             if index:
-                index.delete_by_group_id(dataset.id)
+                # index.delete_by_group_id(dataset.id)
                 index.restore_dataset_in_one(dataset, dataset_collection_binding)
             else:
                 click.echo('passed.')
