@@ -185,7 +185,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                 <tr key={index} className="h-9 leading-9">
                   <td className="w-[160px] border-b border-gray-100 pl-3">
                     <div className='flex items-center space-x-1'>
-                      <IconTypeIcon type={type as IInputTypeIconProps['type']} />
+                      <IconTypeIcon type={type as IInputTypeIconProps['type']} className='text-gray-400' />
                       {!readonly
                         ? (
                           <input
