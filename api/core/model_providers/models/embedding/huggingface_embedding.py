@@ -1,5 +1,3 @@
-from replicate.exceptions import ModelError
-
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.embeddings.huggingface_hub_embedding import HuggingfaceHubEmbeddings

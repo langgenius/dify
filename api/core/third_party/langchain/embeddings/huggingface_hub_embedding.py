@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional
 import json
 import numpy as np
 
@@ -62,7 +62,7 @@ class HuggingfaceHubEmbeddings(BaseModel, Embeddings):
     # (depending on if you sent a string or a list of string, 
     # and if the automatic reduction, usually mean_pooling for instance was applied for you or not. 
     # This should be explained on the model's README.)
-    def mean_pooling(self, embeddings: List[float]) -> List[float]:
+    def mean_pooling(self, embeddings: List) -> List[float]:
         # If automatic reduction by giving model, no need to mean_pooling.
         # For example one: List[List[float]]
         if not isinstance(embeddings[0][0], list):
