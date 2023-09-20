@@ -6,7 +6,7 @@ import { useContext } from 'use-context-selector'
 import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
-import VarIcon from '../base/icons/var-icon'
+import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
 import { AppType } from '@/types/app'
@@ -131,7 +131,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
           `${!userInputFieldCollapse && 'mb-2'}`
         }>
           <div className='flex items-center space-x-1 cursor-pointer' onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
-            <div className='flex items-center justify-center w-4 h-4'><VarIcon /></div>
+            <div className='flex items-center justify-center w-4 h-4'><VarIcon className='w-4 h-4 text-primary-500'/></div>
             <div className='text-xs font-medium text-gray-800'>{t('appDebug.inputs.userInputField')}</div>
             {
               userInputFieldCollapse

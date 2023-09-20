@@ -66,6 +66,13 @@ const translation = {
       noDataSet: '未找到数据集',
       toCreate: '去创建',
       notSupportSelectMulti: '目前只支持引用一个数据集',
+      queryVariable: {
+        title: '查询变量',
+        tip: '该变量将用作上下文检索的查询输入，获取与该变量的输入相关的上下文信息。',
+        choosePlaceholder: '请选择变量',
+        noVar: '没有变量',
+        noVarTip: '请创建变量',
+      },
     },
   },
   automatic: {

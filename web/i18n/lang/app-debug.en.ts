@@ -66,6 +66,13 @@ const translation = {
       noDataSet: 'No dataset found',
       toCreate: 'Go to create',
       notSupportSelectMulti: 'Currently only support one dataset',
+      queryVariable: {
+        title: 'Query variable',
+        tip: 'This variable will be used as the query input for context retrieval, obtaining context information related to the input of this variable.',
+        choosePlaceholder: 'Choose query variable',
+        noVar: 'No variables',
+        noVarTip: 'please create a variable under the Variables section',
+      },
     },
   },
   automatic: {

@@ -10,10 +10,10 @@ import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import CardItem from './card-item'
 import SelectDataSet from './select-dataset'
+import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
 import type { DataSet } from '@/models/datasets'
 import { AppType } from '@/types/app'
-import Select from '@/app/components/base/select'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -68,16 +68,16 @@ const DatasetConfig: FC = () => {
   const promptVariables = modelConfig.configs.prompt_variables
   const promptVariablesToSelect = promptVariables.map(item => ({
     name: item.name,
+    type: item.type,
     value: item.key,
   }))
   const selectedContextVar = promptVariables?.find(item => item.is_context_var)
-  const handleSelectContextVar = (selected: any) => {
-    // debugger
+  const handleSelectContextVar = (selectedValue: string) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_variables = modelConfig.configs.prompt_variables.map((item) => {
         return ({
           ...item,
-          is_context_var: item.key === selected.value,
+          is_context_var: item.key === selectedValue,
         })
       })
     })
@@ -91,10 +91,11 @@ const DatasetConfig: FC = () => {
       title={t('appDebug.feature.dataSet.title')}
       headerRight={<OperationBtn type="add" onClick={showSelectDataSet} />}
       hasHeaderBottomBorder={!hasData}
+      noBodySpacing
     >
       {hasData
         ? (
-          <div className='flex flex-wrap justify-between'>
+          <div className='flex flex-wrap mt-1 px-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
                 className="mb-2"
@@ -110,14 +111,11 @@ const DatasetConfig: FC = () => {
         )}
 
       {mode === AppType.completion && dataSet.length > 0 && (
-        <div className='flex items-center space-x-2'>
-          <div>QueryVar</div>
-          <Select
-            defaultValue={selectedContextVar?.key}
-            items={promptVariablesToSelect}
-            onSelect={handleSelectContextVar}
-          />
-        </div>
+        <ContextVar
+          value={selectedContextVar?.key}
+          options={promptVariablesToSelect}
+          onChange={handleSelectContextVar}
+        />
       )}
 
       {isShowSelectDataSet && (
