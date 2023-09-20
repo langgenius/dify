@@ -8,29 +8,29 @@ services:
       # Startup mode, 'api' starts the API server.
       MODE: api
       # The log level for the application. Supported values are `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL`
-      LOG_LEVEL: INFO
+      LOG_LEVEL: DEBUG
       # A secret key that is used for securely signing the session cookie and encrypting sensitive information on the database. You can generate a strong key using `openssl rand -base64 42`.
       SECRET_KEY: sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U
       # The base URL of console application web frontend, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_WEB_URL: ''
+      CONSOLE_WEB_URL: 'https://ai.njueai.com:8443'
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
       # different from api or web app domain.
       # example: http://cloud.dify.ai
-      CONSOLE_API_URL: ''
+      CONSOLE_API_URL: 'https://ai.njueai.com:8443'
       # The URL for Service API endpoints，refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
-      SERVICE_API_URL: ''
+      SERVICE_API_URL: 'https://ai.njueai.com:8443'
       # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_API_URL: ''
+      APP_API_URL: 'https://ai.njueai.com:8443'
       # The URL for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
-      APP_WEB_URL: ''
+      APP_WEB_URL: 'https://ai.njueai.com:8443'
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
