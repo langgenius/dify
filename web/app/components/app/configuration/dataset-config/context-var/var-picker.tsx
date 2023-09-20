@@ -33,7 +33,7 @@ const VarPicker: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const currItem = options.find(item => item.value === value)
 
   return (
@@ -63,20 +63,28 @@ const VarPicker: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className='w-[240px] p-1 bg-white border border-gray-200 rounded-lg shadow-lg'>
-          {options.map(({ name, value, type }, index) => (
-            <div
-              key={index}
-              className='px-3 py-1 flex rounded-lg hover:bg-gray-50 cursor-pointer'
-              onClick={() => {
-                onChange(value)
-                setOpen(false)
-              }}
-            >
-              <VarItem item={{ name, value, type }} />
+        {options.length > 0
+          ? (<div className='w-[240px] p-1 bg-white border border-gray-200 rounded-lg shadow-lg'>
+            {options.map(({ name, value, type }, index) => (
+              <div
+                key={index}
+                className='px-3 py-1 flex rounded-lg hover:bg-gray-50 cursor-pointer'
+                onClick={() => {
+                  onChange(value)
+                  setOpen(false)
+                }}
+              >
+                <VarItem item={{ name, value, type }} />
+              </div>
+            ))}
+          </div>)
+          : (
+            <div className='w-[240px] p-6 bg-white border border-gray-200 rounded-lg shadow-lg'>
+              <div className='mb-1 text-sm font-medium text-gray-700'>{t('appDebug.feature.dataSet.queryVariable.noVar')}</div>
+              <div className='text-xs leading-normal text-gray-500'>{t('appDebug.feature.dataSet.queryVariable.noVarTip')}</div>
             </div>
-          ))}
-        </div>
+          )}
+
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
