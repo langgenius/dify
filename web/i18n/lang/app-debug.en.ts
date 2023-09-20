@@ -75,6 +75,7 @@ const translation = {
         unableToQueryDataSet: 'Unable to query the dataset',
         unableToQueryDataSetTip: 'Unable to query the dataset successfully, please choose a context query variable in the context section.',
         ok: 'OK',
+        contextVarNotEmpty: 'context query variable can not be empty',
       },
     },
   },

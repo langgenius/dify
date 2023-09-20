@@ -107,7 +107,9 @@ const DatasetConfig: FC = () => {
           </div>
         )
         : (
-          <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
+          <div className='mt-1 px-3 pb-3'>
+            <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
+          </div>
         )}
 
       {mode === AppType.completion && dataSet.length > 0 && (

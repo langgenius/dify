@@ -75,6 +75,7 @@ const translation = {
         unableToQueryDataSet: '无法查询数据集',
         unableToQueryDataSetTip: '无法成功查询数据集，请在上下文部分选择一个上下文查询变量。',
         ok: '好的',
+        contextVarNotEmpty: '上下文查询变量不能为空',
       },
     },
   },

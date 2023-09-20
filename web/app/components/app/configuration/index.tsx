@@ -195,15 +195,20 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
-  // const
-  const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const promptEmpty = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
+  const cannotPublish = promptEmpty || contextVarEmpty
   const saveAppConfig = async () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
-    if (cannotPublish) {
+    if (promptEmpty) {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      return
+    }
+    if (contextVarEmpty) {
+      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
