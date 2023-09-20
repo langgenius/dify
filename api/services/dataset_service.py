@@ -996,6 +996,60 @@ class SegmentService:
         return segment
 
     @classmethod
+    def mutil_create_segment(cls, args: list, document: Document, dataset: Dataset):
+        pre_segment_data_list = []
+        for args_item in args:
+            content = args_item['content']
+            doc_id = str(uuid.uuid4())
+            segment_hash = helper.generate_text_hash(content)
+            tokens = 0
+            if dataset.indexing_technique == 'high_quality':
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=dataset.tenant_id,
+                    model_provider_name=dataset.embedding_model_provider,
+                    model_name=dataset.embedding_model
+                )
+                # calc embedding use tokens
+                tokens = embedding_model.get_num_tokens(content)
+            max_position = db.session.query(func.max(DocumentSegment.position)).filter(
+                DocumentSegment.document_id == document.id
+            ).scalar()
+            segment_document = DocumentSegment(
+                tenant_id=current_user.current_tenant_id,
+                dataset_id=document.dataset_id,
+                document_id=document.id,
+                index_node_id=doc_id,
+                index_node_hash=segment_hash,
+                position=max_position + 1 if max_position else 1,
+                content=content,
+                word_count=len(content),
+                tokens=tokens,
+                status='completed',
+                indexing_at=datetime.datetime.utcnow(),
+                completed_at=datetime.datetime.utcnow(),
+                created_by=current_user.id
+            )
+            if document.doc_form == 'qa_model':
+                segment_document.answer = args_item['answer']
+
+            db.session.add(segment_document)
+            db.session.commit()
+
+
+            # save vector index
+            try:
+                VectorService.create_segment_vector(args_item['keywords'], segment_document, dataset)
+            except Exception as e:
+                logging.exception("create segment index failed")
+                segment_document.enabled = False
+                segment_document.disabled_at = datetime.datetime.utcnow()
+                segment_document.status = 'error'
+                segment_document.error = str(e)
+                db.session.commit()
+            segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
+            return segment
+
+    @classmethod
     def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):
         indexing_cache_key = 'segment_{}_indexing'.format(segment.id)
         cache_result = redis_client.get(indexing_cache_key)
