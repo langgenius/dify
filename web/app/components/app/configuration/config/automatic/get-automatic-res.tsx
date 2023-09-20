@@ -14,18 +14,14 @@ import OpeningStatement from '@/app/components/app/configuration/features/chat-g
 import GroupName from '@/app/components/app/configuration/base/group-name'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
+// type
+import type { AutomaticRes } from '@/service/debug'
 
 const noDataIcon = (
   <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
     <path d="M10.4998 51.3333V39.6666M10.4998 16.3333V4.66663M4.6665 10.5H16.3332M4.6665 45.5H16.3332M30.3332 6.99996L26.2868 17.5206C25.6287 19.2315 25.2997 20.0869 24.7881 20.8065C24.3346 21.4442 23.7774 22.0014 23.1397 22.4549C22.4202 22.9665 21.5647 23.2955 19.8538 23.9535L9.33317 28L19.8539 32.0464C21.5647 32.7044 22.4202 33.0334 23.1397 33.5451C23.7774 33.9985 24.3346 34.5557 24.7881 35.1934C25.2997 35.913 25.6287 36.7684 26.2868 38.4793L30.3332 49L34.3796 38.4793C35.0376 36.7684 35.3666 35.913 35.8783 35.1934C36.3317 34.5557 36.8889 33.9985 37.5266 33.5451C38.2462 33.0334 39.1016 32.7044 40.8125 32.0464L51.3332 28L40.8125 23.9535C39.1016 23.2955 38.2462 22.9665 37.5266 22.4549C36.8889 22.0014 36.3317 21.4442 35.8783 20.8065C35.3666 20.0869 35.0376 19.2315 34.3796 17.5206L30.3332 6.99996Z" stroke="#EAECF0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
   </svg>
 )
-
-export type AutomaticRes = {
-  prompt: string
-  variables: string[]
-  opening_statement: string
-}
 
 export type IGetAutomaticResProps = {
   mode: AppType
@@ -98,7 +94,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         audiences,
         hoping_to_solve: hopingToSolve,
       })
-      setRes(res as AutomaticRes)
+      setRes(res)
     }
     finally {
       setLoadingFalse()
@@ -193,7 +189,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             onClose={() => setShowConfirmOverwrite(false)}
             onConfirm={() => {
               setShowConfirmOverwrite(false)
-              onFinished(res as AutomaticRes)
+              onFinished(res!)
             }}
             onCancel={() => setShowConfirmOverwrite(false)}
           />
