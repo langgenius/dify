@@ -209,6 +209,25 @@ const config: ProviderConfig = {
           },
         ],
       },
+      {
+        hidden: (value?: FormValue) => !(value?.huggingfacehub_api_type === 'inference_endpoints' && value?.model_type === 'embeddings'),
+        type: 'radio',
+        key: 'task_type',
+        required: true,
+        label: {
+          'en': 'Task',
+          'zh-Hans': 'Task',
+        },
+        options: [
+          {
+            key: 'feature-extraction',
+            label: {
+              'en': 'Feature Extraction',
+              'zh-Hans': 'Feature Extraction',
+            },
+          },
+        ],
+      },
     ],
   },
 }
