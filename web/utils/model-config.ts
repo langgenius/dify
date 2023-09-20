@@ -24,6 +24,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type,
         max_length: content.max_length,
         options: [],
+        is_context_var: content.is_context_var,
       })
     }
     else {
@@ -33,6 +34,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         required: content.required,
         type: 'select',
         options: content.options,
+        is_context_var: content.is_context_var,
       })
     }
   })
@@ -55,6 +57,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           required: item.required !== false, // default true
           max_length: item.max_length,
           default: '',
+          is_context_var: item.is_context_var,
         },
       } as any)
     }
@@ -66,6 +69,7 @@ export const promptVariablesToUserInputsForm = (promptVariables: PromptVariable[
           required: item.required !== false, // default true
           options: item.options,
           default: '',
+          is_context_var: item.is_context_var,
         },
       } as any)
     }
