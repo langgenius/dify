@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
+import cn from 'classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -10,6 +11,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
 import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
+
 type Option = { name: string; value: string; type: string }
 export type Props = {
   value: string | undefined
@@ -35,7 +37,7 @@ const VarPicker: FC<Props> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const currItem = options.find(item => item.value === value)
-
+  const notSetVar = !currItem
   return (
     <PortalToFollowElem
       open={open}
@@ -46,10 +48,10 @@ const VarPicker: FC<Props> = ({
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='
-          flex items-center h-8 justify-center px-2 space-x-1 rounded-lg border border-gray-200 bg-white hover:bg-gray-50 shadow-xs cursor-pointer
-          text-[13px] text-primary-600 font-medium
-        '>
+        <div className={cn(notSetVar ? 'bg-[#FFFCF5] border-[#FEDF89] text-[#DC6803]' : 'bg-white hover:bg-gray-50 border-gray-200 text-primary-600', `
+          flex items-center h-8 justify-center px-2 space-x-1 rounded-lg border   shadow-xs cursor-pointer
+          text-[13px]  font-medium
+          `)}>
           <div>
             {value
               ? (
@@ -64,7 +66,7 @@ const VarPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         {options.length > 0
-          ? (<div className='w-[240px] p-1 bg-white border border-gray-200 rounded-lg shadow-lg'>
+          ? (<div className='w-[240px] p-1  border bg-white border-gray-200 rounded-lg shadow-lg'>
             {options.map(({ name, value, type }, index) => (
               <div
                 key={index}
