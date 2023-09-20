@@ -73,10 +73,27 @@ def test_endpoint_url_inference_api_embed_documents(mock_decrypt, mocker):
         '',
         'inference_endpoints',
         mocker)
+    mocker.patch('core.third_party.langchain.embeddings.huggingface_hub_embedding.InferenceClient.post'
+                 , return_value=bytes(json.dumps([[1, 2, 3], [4, 5, 6]]), 'utf-8'))
+    
     rst = embedding_model.client.embed_documents(['test', 'test1'])
     assert isinstance(rst, list)
     assert len(rst) == 2
-    assert len(rst[0]) == 384
+    assert len(rst[0]) == 3
+
+@patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
+def test_endpoint_url_inference_api_embed_documents_two(mock_decrypt, mocker):
+    embedding_model = get_mock_embedding_model(
+        '',
+        'inference_endpoints',
+        mocker)
+    mocker.patch('core.third_party.langchain.embeddings.huggingface_hub_embedding.InferenceClient.post'
+                 , return_value=bytes(json.dumps([[[[1,2,3],[4,5,6],[7,8,9]]],[[[1,2,3],[4,5,6],[7,8,9]]]]), 'utf-8'))
+    
+    rst = embedding_model.client.embed_documents(['test', 'test1'])
+    assert isinstance(rst, list)
+    assert len(rst) == 2
+    assert len(rst[0]) == 3
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
@@ -96,6 +113,24 @@ def test_endpoint_url_inference_api_embed_query(mock_decrypt, mocker):
         '',
         'inference_endpoints',
         mocker)
+    
+    mocker.patch('core.third_party.langchain.embeddings.huggingface_hub_embedding.InferenceClient.post'
+                 , return_value=bytes(json.dumps([[1, 2, 3]]), 'utf-8'))
+
     rst = embedding_model.client.embed_query('test')
     assert isinstance(rst, list)
-    assert len(rst) == 384
+    assert len(rst) == 3
+
+@patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
+def test_endpoint_url_inference_api_embed_query_two(mock_decrypt, mocker):
+    embedding_model = get_mock_embedding_model(
+        '',
+        'inference_endpoints',
+        mocker)
+    
+    mocker.patch('core.third_party.langchain.embeddings.huggingface_hub_embedding.InferenceClient.post'
+                 , return_value=bytes(json.dumps([[[[1,2,3],[4,5,6],[7,8,9]]]]), 'utf-8'))
+
+    rst = embedding_model.client.embed_query('test')
+    assert isinstance(rst, list)
+    assert len(rst) == 3
