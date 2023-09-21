@@ -412,8 +412,12 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig)
-    return <Loading type='app' />
+  if (!appId || !siteInfo || !promptConfig) {
+    return (
+      <div className='flex items-center h-screen'>
+        <Loading type='app' />
+      </div>)
+  }
 
   return (
     <>
