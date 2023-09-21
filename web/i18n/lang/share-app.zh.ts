@@ -51,6 +51,11 @@ const translation = {
     csvStructureTitle: 'CSV 文件必须符合以下结构：',
     downloadTemplate: '下载模板',
     field: '',
+    batchFailed: {
+      info: '{{num}} 次运行失败',
+      retry: '重试',
+      outputPlaceholder: '无输出内容',
+    },
     errorMsg: {
       empty: '上传文件的内容不能为空',
       fileStructNotMatch: '上传文件的内容与结构不匹配',

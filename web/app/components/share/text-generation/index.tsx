@@ -8,6 +8,7 @@ import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
+import { AlertCircle } from '../../base/icons/src/vender/solid/alertsAndFeedback'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -25,7 +26,6 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
-
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
@@ -105,7 +105,7 @@ const TextGeneration: FC<IMainProps> = ({
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
-  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
+  const allFailedTaskList = [1, 2, 3, 4]// allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
   const exportRes = allTaskList.map((task) => {
@@ -366,6 +366,14 @@ const TextGeneration: FC<IMainProps> = ({
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
+            {allFailedTaskList.length > 0 && (
+              <div className='flex items-center'>
+                <AlertCircle className='w-4 h-4 text-[#D92D20]' />
+                <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+                <Button type='primary' className='ml-2 !h-8 !px-3'>{t('share.generation.batchFailed.retry')}</Button>
+                <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+              </div>
+            )}
             {allSuccessTaskList.length > 0 && (
               <ResDownload
                 isMobile={isMobile}

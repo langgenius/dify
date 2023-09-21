@@ -45,6 +45,7 @@ const Result: FC<IResultProps> = ({
   taskId,
   onCompleted,
 }) => {
+  const isError = true
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
@@ -153,6 +154,7 @@ const Result: FC<IResultProps> = ({
   const renderTextGenerationRes = () => (
     <TextGenerationRes
       className='mt-3'
+      isError={isError}
       content={completionRes}
       messageId={messageId}
       isInWebApp
