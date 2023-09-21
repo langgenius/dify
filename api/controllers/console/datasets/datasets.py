@@ -354,7 +354,7 @@ class DatasetIndexingStatusApi(Resource):
         return data
 
 
-class DatasetApiKeyListApi(Resource):
+class DatasetApiKeyApi(Resource):
     max_keys = 10
     token_prefix = 'dataset-'
     resource_type = 'dataset'
@@ -398,6 +398,29 @@ class DatasetApiKeyListApi(Resource):
         db.session.commit()
         return api_token, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, api_key_id):
+        api_key_id = str(api_key_id)
+
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        key = db.session.query(ApiToken). \
+            filter(ApiToken.tenant_id == current_user.current_tenant_id, ApiToken.type == self.resource_type,
+                   ApiToken.id == api_key_id). \
+            first()
+
+        if key is None:
+            flask_restful.abort(404, message='API key not found')
+
+        db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
+        db.session.commit()
+
+        return {'result': 'success'}, 204
+
 
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
@@ -405,4 +428,4 @@ api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
-api.add_resource(DatasetListApi, '/datasets/api-keys')
+api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
