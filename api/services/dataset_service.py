@@ -95,7 +95,7 @@ class DatasetService:
         embedding_model = None
         if indexing_technique == 'high_quality':
             embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=current_user.current_tenant_id
+                tenant_id=tenant_id
             )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
@@ -996,24 +996,27 @@ class SegmentService:
         return segment
 
     @classmethod
-    def mutil_create_segment(cls, args: list, document: Document, dataset: Dataset):
+    def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
+        embedding_model = None
+        if dataset.indexing_technique == 'high_quality':
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=dataset.embedding_model_provider,
+                model_name=dataset.embedding_model
+            )
+        max_position = db.session.query(func.max(DocumentSegment.position)).filter(
+            DocumentSegment.document_id == document.id
+        ).scalar()
         pre_segment_data_list = []
-        for args_item in args:
-            content = args_item['content']
+        segment_data_list = []
+        for segment_item in segments:
+            content = segment_item['content']
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
             tokens = 0
-            if dataset.indexing_technique == 'high_quality':
-                embedding_model = ModelFactory.get_embedding_model(
-                    tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
-                )
+            if dataset.indexing_technique == 'high_quality' and embedding_model:
                 # calc embedding use tokens
                 tokens = embedding_model.get_num_tokens(content)
-            max_position = db.session.query(func.max(DocumentSegment.position)).filter(
-                DocumentSegment.document_id == document.id
-            ).scalar()
             segment_document = DocumentSegment(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=document.dataset_id,
@@ -1030,24 +1033,27 @@ class SegmentService:
                 created_by=current_user.id
             )
             if document.doc_form == 'qa_model':
-                segment_document.answer = args_item['answer']
-
+                segment_document.answer = segment_item['answer']
             db.session.add(segment_document)
-            db.session.commit()
+            segment_data_list.append(segment_document)
+            pre_segment_data = {
+                'segment': segment_document,
+                'keywords': segment_item['keywords']
+            }
+            pre_segment_data_list.append(pre_segment_data)
 
-
+        try:
             # save vector index
-            try:
-                VectorService.create_segment_vector(args_item['keywords'], segment_document, dataset)
-            except Exception as e:
-                logging.exception("create segment index failed")
+            VectorService.multi_create_segment_vector(pre_segment_data_list, dataset)
+        except Exception as e:
+            logging.exception("create segment index failed")
+            for segment_document in segment_data_list:
                 segment_document.enabled = False
                 segment_document.disabled_at = datetime.datetime.utcnow()
                 segment_document.status = 'error'
                 segment_document.error = str(e)
-                db.session.commit()
-            segment = db.session.query(DocumentSegment).filter(DocumentSegment.id == segment_document.id).first()
-            return segment
+        db.session.commit()
+        return segment_data_list
 
     @classmethod
     def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):

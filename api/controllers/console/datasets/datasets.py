@@ -1,6 +1,9 @@
 # -*- coding:utf-8 -*-
+import flask_restful
 from flask import request
 from flask_login import current_user
+
+from controllers.console.apikey import api_key_list, api_key_fields
 from core.login.login import login_required
 from flask_restful import Resource, reqparse, fields, marshal, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
@@ -18,7 +21,7 @@ from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fi
 from fields.document_fields import document_status_fields
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Document
-from models.model import UploadFile
+from models.model import UploadFile, ApiToken
 from services.dataset_service import DatasetService, DocumentService
 from services.provider_service import ProviderService
 
@@ -53,7 +56,8 @@ class DatasetListApi(Resource):
 
         # check embedding setting
         provider_service = ProviderService()
-        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
+                                                                 ModelType.EMBEDDINGS.value)
         # if len(valid_model_list) == 0:
         #     raise ProviderNotInitializeError(
         #         f"No Embedding Model available. Please configure a valid provider "
@@ -128,7 +132,8 @@ class DatasetApi(Resource):
         # check embedding setting
         provider_service = ProviderService()
         # get valid model list
-        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
+                                                                 ModelType.EMBEDDINGS.value)
         model_names = []
         for valid_model in valid_model_list:
             model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
@@ -242,7 +247,8 @@ class DatasetIndexingEstimateApi(Resource):
         parser.add_argument('indexing_technique', type=str, required=True, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('dataset_id', type=str, required=False, nullable=False, location='json')
-        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
@@ -348,9 +354,55 @@ class DatasetIndexingStatusApi(Resource):
         return data
 
 
+class DatasetApiKeyListApi(Resource):
+    max_keys = 10
+    token_prefix = 'dataset-'
+    resource_type = 'dataset'
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(api_key_list)
+    def get(self):
+        keys = db.session.query(ApiToken). \
+            filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id). \
+            all()
+        return {"items": keys}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(api_key_fields)
+    def post(self):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        current_key_count = db.session.query(ApiToken). \
+            filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id). \
+            count()
+
+        if current_key_count >= self.max_keys:
+            flask_restful.abort(
+                400,
+                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
+                code='max_keys_exceeded'
+            )
+
+        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        api_token = ApiToken()
+        api_token.tenant_id = current_user.current_tenant_id
+        api_token.token = key
+        api_token.type = self.resource_type
+        db.session.add(api_token)
+        db.session.commit()
+        return api_token, 200
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
+api.add_resource(DatasetListApi, '/datasets/api-keys')

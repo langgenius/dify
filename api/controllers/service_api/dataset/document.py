@@ -2,19 +2,22 @@ import datetime
 import uuid
 
 from flask import current_app, request
-from flask_restful import reqparse
+from flask_restful import reqparse, marshal
+from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
-    DatasetNotInitedError
+    NoFileUploadedError, TooManyFilesError
 from controllers.service_api.wraps import DatasetApiResource
+from core.login.login import current_user
 from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.dataset import Dataset
+from fields.document_fields import document_fields, document_status_fields
+from models.dataset import Dataset, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.file_service import FileService
@@ -23,7 +26,7 @@ from services.file_service import FileService
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
-    def post(self, dataset):
+    def post(self, dataset_id, tenant_id):
         """Create document by text."""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
@@ -38,6 +41,15 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
         parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+
+        if not dataset:
+            raise ValueError('Dataset is not exist.')
 
         if not dataset.indexing_technique and not args['indexing_technique']:
             raise ValueError('indexing_technique is required.')
@@ -68,7 +80,7 @@ class DocumentAddByTextApi(DatasetApiResource):
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 document_data=document_data,
-                account=dataset.created_by_account,
+                account=current_user,
                 dataset_process_rule=dataset.latest_process_rule,
                 created_from='api'
             )
@@ -89,13 +101,17 @@ class DocumentAddByTextApi(DatasetApiResource):
             document.updated_at = datetime.datetime.utcnow()
             db.session.commit()
 
-        return {'id': document.id}
+        documents_and_batch_fields = {
+            'document': marshal(document, document_fields),
+            'batch': batch
+        }
+        return documents_and_batch_fields, 200
 
 
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
 
-    def post(self, dataset):
+    def post(self, dataset_id, tenant_id):
         """Create document by upload file."""
         parser = reqparse.RequestParser()
         parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
@@ -108,7 +124,16 @@ class DocumentAddByFileApi(DatasetApiResource):
         parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
         parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
 
+        if not dataset:
+            raise ValueError('Dataset is not exist.')
         if not dataset.indexing_technique and not args['indexing_technique']:
             raise ValueError('indexing_technique is required.')
 
@@ -122,6 +147,13 @@ class DocumentAddByFileApi(DatasetApiResource):
             raise ValueError('Invalid doc_type.')
         # save file info
         file = request.files['file']
+        # check file
+        if 'file' not in request.files:
+            raise NoFileUploadedError()
+
+        if len(request.files) > 1:
+            raise TooManyFilesError()
+
         upload_file = FileService.upload_file(file)
         data_source = {
             'type': 'upload_file',
@@ -157,14 +189,28 @@ class DocumentAddByFileApi(DatasetApiResource):
             document.doc_type = doc_type
             document.updated_at = datetime.datetime.utcnow()
             db.session.commit()
+        documents_and_batch_fields = {
+            'documents': marshal(documents, document_fields),
+            'batch': batch
+        }
+        return documents_and_batch_fields, 200
 
-        return {'id': document.id}
 
-
-class DocumentApi(DatasetApiResource):
-    def delete(self, dataset, document_id):
+class DocumentDeleteApi(DatasetApiResource):
+    def delete(self, dataset_id, document_id, tenant_id):
         """Delete document."""
         document_id = str(document_id)
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+
+        # get dataset info
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+
+        if not dataset:
+            raise ValueError('Dataset is not exist.')
 
         document = DocumentService.get_document(dataset.id, document_id)
 
@@ -182,9 +228,83 @@ class DocumentApi(DatasetApiResource):
         except services.errors.document.DocumentIndexingError:
             raise DocumentIndexingError('Cannot delete document during indexing.')
 
-        return {'result': 'success'}, 204
+        return {'result': 'success'}, 200
 
 
-api.add_resource(DocumentAddByTextApi, '/text/documents')
-api.add_resource(DocumentAddByFileApi, '/file/documents')
-api.add_resource(DocumentApi, '/documents/<uuid:document_id>')
+class DocumentListApi(DatasetApiResource):
+    def get(self, dataset_id, tenant_id):
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=20, type=int)
+        search = request.args.get('keyword', default=None, type=str)
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+        if not dataset:
+            raise NotFound('Dataset not found.')
+
+        query = Document.query.filter_by(
+            dataset_id=str(dataset_id), tenant_id=tenant_id)
+
+        if search:
+            search = f'%{search}%'
+            query = query.filter(Document.name.like(search))
+
+        query = query.order_by(desc(Document.created_at))
+
+        paginated_documents = query.paginate(
+            page=page, per_page=limit, max_per_page=100, error_out=False)
+        documents = paginated_documents.items
+
+        response = {
+            'data': marshal(documents, document_fields),
+            'has_more': len(documents) == limit,
+            'limit': limit,
+            'total': paginated_documents.total,
+            'page': page
+        }
+
+        return response
+
+
+class DocumentIndexingStatusApi(DatasetApiResource):
+    def get(self, dataset_id, batch, tenant_id):
+        dataset_id = str(dataset_id)
+        batch = str(batch)
+        tenant_id = str(tenant_id)
+        # get dataset
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+        if not dataset:
+            raise NotFound('Dataset not found.')
+        # get documents
+        documents = DocumentService.get_batch_documents(dataset_id, batch)
+        if not documents:
+            raise NotFound('Documents not found.')
+        documents_status = []
+        for document in documents:
+            completed_segments = DocumentSegment.query.filter(DocumentSegment.completed_at.isnot(None),
+                                                              DocumentSegment.document_id == str(document.id),
+                                                              DocumentSegment.status != 're_segment').count()
+            total_segments = DocumentSegment.query.filter(DocumentSegment.document_id == str(document.id),
+                                                          DocumentSegment.status != 're_segment').count()
+            document.completed_segments = completed_segments
+            document.total_segments = total_segments
+            if document.is_paused:
+                document.indexing_status = 'paused'
+            documents_status.append(marshal(document, document_status_fields))
+        data = {
+            'data': documents_status
+        }
+        return data
+
+
+api.add_resource(DocumentAddByTextApi, '/datasets/<uuid:dataset_id>/document/create_by_text')
+api.add_resource(DocumentAddByFileApi, '/datasets/<uuid:dataset_id>/document/create_by_file')
+api.add_resource(DocumentDeleteApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>')
+api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents')
+api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents/<str:batch>/indexing-status')
