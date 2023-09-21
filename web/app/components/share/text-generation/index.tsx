@@ -104,11 +104,11 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
+  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
   const exportRes = allTaskList.map((task) => {
-    if (allTaskList.length > 0 && !allTaskFinished)
-      return {}
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}
     const { inputs } = task.params
@@ -366,7 +366,7 @@ const TextGeneration: FC<IMainProps> = ({
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
-            {allTaskList.length > 0 && allTaskFinished && (
+            {allSuccessTaskList.length > 0 && (
               <ResDownload
                 isMobile={isMobile}
                 values={exportRes}
