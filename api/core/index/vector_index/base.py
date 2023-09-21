@@ -285,7 +285,7 @@ class BaseVectorIndex(BaseIndex):
 
         if documents:
             try:
-                self.create_with_collection_name(documents, dataset_collection_binding.collection_name)
+                self.add_texts(documents)
             except Exception as e:
                 raise e
 
