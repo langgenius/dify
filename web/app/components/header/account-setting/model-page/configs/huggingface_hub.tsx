@@ -174,11 +174,11 @@ const config: ProviderConfig = {
         key: 'huggingface_namespace',
         required: true,
         label: {
-          'en': 'user name / organization name',
+          'en': 'User Name / Organization Name',
           'zh-Hans': '用户名 / 组织名称',
         },
         placeholder: {
-          'en': 'Enter your user name / organization name here',
+          'en': 'Enter your User Name / Organization Name here',
           'zh-Hans': '在此输入您的用户名 / 组织名称',
         },
       },

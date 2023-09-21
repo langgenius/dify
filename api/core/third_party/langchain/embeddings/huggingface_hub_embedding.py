@@ -16,6 +16,7 @@ class HuggingfaceHubEmbeddings(BaseModel, Embeddings):
     client: Any
     model: str
 
+    huggingface_namespace: Optional[str] = None
     task_type: Optional[str] = None
     huggingfacehub_api_type: Optional[str] = None
     huggingfacehub_api_token: Optional[str] = None

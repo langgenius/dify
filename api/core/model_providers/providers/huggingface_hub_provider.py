@@ -1,5 +1,6 @@
 import json
 from typing import Type
+import requests
 
 from huggingface_hub import HfApi
 
@@ -13,6 +14,8 @@ from core.third_party.langchain.llms.huggingface_endpoint_llm import HuggingFace
 from core.third_party.langchain.embeddings.huggingface_hub_embedding import HuggingfaceHubEmbeddings
 from core.model_providers.models.embedding.huggingface_embedding import HuggingfaceEmbedding
 from models.provider import ProviderType
+
+HUGGINGFACE_ENDPOINT_API = 'https://api.endpoints.huggingface.cloud/v2/endpoint/'
 
 
 class HuggingfaceHubProvider(BaseModelProvider):
@@ -132,12 +135,43 @@ class HuggingfaceHubProvider(BaseModelProvider):
 
     @classmethod
     def check_embedding_valid(cls, credentials: dict, model_name: str):
+
+        cls.check_endpoint_url_model_repository_name(credentials, model_name)
+        
         embedding_model = HuggingfaceHubEmbeddings(
             model=model_name,
             **credentials
         )
 
         embedding_model.embed_query("ping")
+
+    @classmethod
+    def check_endpoint_url_model_repository_name(cls, credentials: dict, model_name: str):
+        try:
+            url = f'{HUGGINGFACE_ENDPOINT_API}{credentials["huggingface_namespace"]}'
+            headers = {
+                'Authorization': f'Bearer {credentials["huggingfacehub_api_token"]}',
+                'Content-Type': 'application/json'
+            }
+
+            response =requests.get(url=url, headers=headers)
+
+            if response.status_code != 200:
+                raise ValueError('User Name or Organization Name is invalid.')
+
+            model_repository_name = ''
+
+            for item in response.json().get("items", []):
+                if item.get("status", {}).get("url") == credentials['huggingfacehub_endpoint_url']:
+                    model_repository_name = item.get("model", {}).get("repository")
+                    break
+            
+            if model_repository_name != model_name:
+                raise ValueError(f'Model Name {model_name} is invalid. Please check it on the inference endpoints console.')
+
+        except Exception as e:
+            raise ValueError(str(e))
+        
 
     @classmethod
     def encrypt_model_credentials(cls, tenant_id: str, model_name: str, model_type: ModelType,
