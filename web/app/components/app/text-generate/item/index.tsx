@@ -19,7 +19,8 @@ import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
-  isError?: boolean
+  isError: boolean
+  onRetry: () => void
   content: string
   messageId?: string | null
   isLoading?: boolean
@@ -56,22 +57,10 @@ export const copyIcon = (
   </svg>
 )
 
-const moreLikeThisIcon = (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g clipPath="url(#clip0_4138_1944)">
-      <path d="M2.62533 12.8337V9.91699M2.62533 4.08366V1.16699M1.16699 2.62533H4.08366M1.16699 11.3753H4.08366M7.58366 1.75033L6.57206 4.38049C6.40755 4.80821 6.32529 5.02207 6.19738 5.20196C6.08402 5.36139 5.94472 5.50069 5.78529 5.61405C5.6054 5.74196 5.39155 5.82421 4.96383 5.98872L2.33366 7.00033L4.96383 8.01193C5.39155 8.17644 5.60541 8.25869 5.78529 8.3866C5.94472 8.49996 6.08402 8.63926 6.19738 8.79869C6.32529 8.97858 6.40755 9.19244 6.57206 9.62016L7.58366 12.2503L8.59526 9.62015C8.75977 9.19244 8.84202 8.97858 8.96993 8.79869C9.0833 8.63926 9.22259 8.49996 9.38203 8.3866C9.56191 8.25869 9.77577 8.17644 10.2035 8.01193L12.8337 7.00033L10.2035 5.98872C9.77577 5.82421 9.56191 5.74196 9.38203 5.61405C9.22259 5.50069 9.0833 5.36139 8.96993 5.20196C8.84202 5.02207 8.75977 4.80821 8.59526 4.38049L7.58366 1.75033Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-    </g>
-    <defs>
-      <clipPath id="clip0_4138_1944">
-        <rect width="14" height="14" fill="white" />
-      </clipPath>
-    </defs>
-  </svg>
-)
-
 const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
+  onRetry,
   content,
   messageId,
   isLoading,
@@ -217,7 +206,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       <Bookmark className='w-3.5 h-3.5' />
                       {!isMobile && <div>{t('common.operation.save')}</div>}
                     </SimpleBtn>
-                    {((moreLikeThis || true) && depth < MAX_DEPTH) && (
+                    {(moreLikeThis && depth < MAX_DEPTH) && (
                       <SimpleBtn
                         isDisabled={isError || !messageId}
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
@@ -226,7 +215,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         <Stars02 className='w-3.5 h-3.5' />
                         {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
                       </SimpleBtn>)}
-                    {isError && <SimpleBtn className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')} >
+                    {isError && <SimpleBtn
+                      onClick={onRetry}
+                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                    >
                       <RefreshCcw01 className='w-3.5 h-3.5' />
                       {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
                     </SimpleBtn>}
@@ -288,7 +280,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
       {((childMessageId || isQuerying) && depth < 3) && (
         <div className='pl-4'>
-          <GenerationItem {...childProps} />
+          <GenerationItem {...childProps as any} />
         </div>
       )}
 

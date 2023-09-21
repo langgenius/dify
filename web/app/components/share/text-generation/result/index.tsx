@@ -18,10 +18,12 @@ export type IResultProps = {
   isMobile: boolean
   isInstalledApp: boolean
   installedAppInfo?: InstalledApp
+  isError: boolean
   promptConfig: PromptConfig | null
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
   controlSend?: number
+  controlRetry?: number
   controlStopResponding?: number
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
@@ -35,17 +37,18 @@ const Result: FC<IResultProps> = ({
   isMobile,
   isInstalledApp,
   installedAppInfo,
+  isError,
   promptConfig,
   moreLikeThisEnabled,
   inputs,
   controlSend,
+  controlRetry,
   controlStopResponding,
   onShowRes,
   handleSaveMessage,
   taskId,
   onCompleted,
 }) => {
-  const isError = true
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
@@ -151,10 +154,16 @@ const Result: FC<IResultProps> = ({
     }
   }, [controlSend])
 
+  useEffect(() => {
+    if (controlRetry)
+      handleSend()
+  }, [controlRetry])
+
   const renderTextGenerationRes = () => (
     <TextGenerationRes
       className='mt-3'
       isError={isError}
+      onRetry={handleSend}
       content={completionRes}
       messageId={messageId}
       isInWebApp

@@ -100,12 +100,16 @@ const TextGeneration: FC<IMainProps> = ({
     showResSidebar()
   }
 
+  const [controlRetry, setControlRetry] = useState(0)
+  const handleRetryAllFailedTask = () => {
+    setControlRetry(Date.now())
+  }
   const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
-  const allFailedTaskList = [1, 2, 3, 4]// allTaskList.filter(task => task.status === TaskStatus.failed)
+  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
   const exportRes = allTaskList.map((task) => {
@@ -124,7 +128,6 @@ const TextGeneration: FC<IMainProps> = ({
       return false
     }
     const headerData = data[0]
-    const varLen = promptConfig?.prompt_variables.length || 0
     let isMapVarName = true
     promptConfig?.prompt_variables.forEach((item, index) => {
       if (!isMapVarName)
@@ -334,10 +337,12 @@ const TextGeneration: FC<IMainProps> = ({
     isMobile={isMobile}
     isInstalledApp={!!isInstalledApp}
     installedAppInfo={installedAppInfo}
+    isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
     inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
     controlSend={controlSend}
+    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
     controlStopResponding={controlStopResponding}
     onShowRes={showResSidebar}
     handleSaveMessage={handleSaveMessage}
@@ -370,7 +375,11 @@ const TextGeneration: FC<IMainProps> = ({
               <div className='flex items-center'>
                 <AlertCircle className='w-4 h-4 text-[#D92D20]' />
                 <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-                <Button type='primary' className='ml-2 !h-8 !px-3'>{t('share.generation.batchFailed.retry')}</Button>
+                <Button
+                  type='primary'
+                  className='ml-2 !h-8 !px-3'
+                  onClick={handleRetryAllFailedTask}
+                >{t('share.generation.batchFailed.retry')}</Button>
                 <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
               </div>
             )}
