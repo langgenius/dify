@@ -140,7 +140,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(self.message)
-        db.session.flush()
+        db.session.commit()
 
     def append_message_text(self, text: str):
         if text is not None:
@@ -191,7 +191,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(message_chain)
-        db.session.flush()
+        db.session.commit()
 
         return message_chain
 
@@ -217,7 +217,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(message_agent_thought)
-        db.session.flush()
+        db.session.commit()
 
         self._pub_handler.pub_agent_thought(message_agent_thought)
 
@@ -249,7 +249,7 @@ class ConversationMessageTask:
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
         message_agent_thought.currency = agent_model_instance.get_currency()
-        db.session.flush()
+        db.session.commit()
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):
         dataset_query = DatasetQuery(
@@ -285,7 +285,7 @@ class ConversationMessageTask:
                     created_by=self.user.id
                 )
                 db.session.add(dataset_retriever_resource)
-                db.session.flush()
+                db.session.commit()
             self.retriever_resource = resource
 
     def message_end(self):
