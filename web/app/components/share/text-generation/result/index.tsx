@@ -49,6 +49,9 @@ const Result: FC<IResultProps> = ({
   taskId,
   onCompleted,
 }) => {
+  useEffect(() => {
+    console.log(`[#${taskId}]: start`)
+  }, [])
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
@@ -128,6 +131,17 @@ const Result: FC<IResultProps> = ({
       onShowRes()
 
     setResponsingTrue()
+    const startTime = Date.now()
+    let isTimeout = false
+    const runId = setInterval(() => {
+      if (Date.now() - startTime > 1000 * 60) { // 1min timeout
+        clearInterval(runId)
+        setResponsingFalse()
+        onCompleted(getCompletionRes(), taskId, false)
+        isTimeout = true
+        console.log(`[#${taskId}]: timeout`)
+      }
+    }, 1000)
     sendCompletionMessage(data, {
       onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         tempMessageId = messageId
@@ -135,13 +149,23 @@ const Result: FC<IResultProps> = ({
         setCompletionRes(res.join(''))
       },
       onCompleted: () => {
+        if (isTimeout)
+          return
+
         setResponsingFalse()
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
+        clearInterval(runId)
+        console.log(`[#${taskId}]: success`)
       },
       onError() {
+        if (isTimeout)
+          return
+
         setResponsingFalse()
         onCompleted(getCompletionRes(), taskId, false)
+        clearInterval(runId)
+        console.log(`[#${taskId}]: failed`)
       },
     }, isInstalledApp, installedAppInfo?.id)
   }

@@ -257,7 +257,8 @@ const TextGeneration: FC<IMainProps> = ({
     const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
     const hadRunedTaskNum = allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
-    const needToAddNextGroupTask = hadRunedTaskNum % GROUP_SIZE === 0 && pendingTaskList.length > 0
+    const needToAddNextGroupTask = pendingTaskList.length > 0 && (hadRunedTaskNum % GROUP_SIZE === 0 || (allTasklistLatest.length - hadRunedTaskNum < GROUP_SIZE))
+    console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}. hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
