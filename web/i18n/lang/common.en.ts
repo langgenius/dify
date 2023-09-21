@@ -68,6 +68,7 @@ const translation = {
       setToCurrentModelMaxTokenTip: 'Max token is updated to the 80% maximum token of the current model {{maxToken}}.',
       stop_sequences: 'Stop sequences',
       stop_sequencesTip: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+      stop_sequencesPlaceholder: 'Enter sequence here',
     },
     tone: {
       Creative: 'Creative',

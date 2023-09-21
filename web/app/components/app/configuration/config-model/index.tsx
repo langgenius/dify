@@ -213,19 +213,24 @@ const ConfigModel: FC<IConfigModelProps> = ({
     setToneId(matchToneId(completionParams))
   }, [completionParams])
 
-  const handleParamChange = (key: string, value: number) => {
-    if (key === 'stop_sequences')
+  const handleParamChange = (key: string, value: number | string[]) => {
+    if (key === 'stop_sequences') {
       console.log('value:', value)
-
-    const currParamsRule = getAllParams()[provider]?.[modelId]
-    let notOutRangeValue = parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
-    notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
-
-    onCompletionParamsChange({
-      ...completionParams,
-      [key]: notOutRangeValue,
-    })
+      onCompletionParamsChange({
+        ...completionParams,
+        [key]: value as string[],
+      })
+    }
+    else {
+      const currParamsRule = getAllParams()[provider]?.[modelId]
+      let notOutRangeValue = parseFloat((value as number).toFixed(2))
+      notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
+      notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
+      onCompletionParamsChange({
+        ...completionParams,
+        [key]: notOutRangeValue,
+      })
+    }
   }
   const ableStyle = 'bg-indigo-25 border-[#2A87F5] cursor-pointer'
   const diabledStyle = 'bg-[#FFFCF5] border-[#F79009]'

@@ -27,6 +27,7 @@ export type CompletionParams = {
   top_p: number
   presence_penalty: number
   frequency_penalty: number
+  stop_sequences?: string[]
 }
 
 export type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
