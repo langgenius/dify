@@ -26,11 +26,12 @@ import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
 
-const PARALLEL_LIMIT = 5
+const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
   completed = 'completed',
+  failed = 'failed',
 }
 
 type TaskParam = {
@@ -234,7 +235,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
       return {
         id: i + 1,
-        status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
+        status: i < GROUP_SIZE ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
         },
@@ -248,20 +249,21 @@ const TextGeneration: FC<IMainProps> = ({
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     showResSidebar()
   }
-  const handleCompleted = (completionRes: string, taskId?: number) => {
+  const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
     const allTasklistLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
-    const nextPendingTaskId = pendingTaskList[0]?.id
-    // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
+    const hadRunedTaskNum = allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
+    const needToAddNextGroupTask = hadRunedTaskNum % GROUP_SIZE === 0 && pendingTaskList.length > 0
+    const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
         return {
           ...item,
-          status: TaskStatus.completed,
+          status: isSuccess ? TaskStatus.completed : TaskStatus.failed,
         }
       }
-      if (item.id === nextPendingTaskId) {
+      if (needToAddNextGroupTask && nextPendingTaskIds.includes(item.id)) {
         return {
           ...item,
           status: TaskStatus.running,
@@ -269,7 +271,6 @@ const TextGeneration: FC<IMainProps> = ({
       }
       return item
     })
-    // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
     setAllTaskList(newAllTaskList)
     if (taskId) {
       setBatchCompletionRes({
