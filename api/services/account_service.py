@@ -9,7 +9,7 @@ from hashlib import sha256
 from typing import Optional
 
 from werkzeug.exceptions import Forbidden, Unauthorized
-from flask import session
+from flask import session, current_app
 from sqlalchemy import func
 
 from events.tenant_event import tenant_was_created
@@ -90,6 +90,8 @@ class AccountService:
         payload = {
             "user_id": account.id,
             "exp": datetime.utcnow() + timedelta(days=30),
+            "iss":  current_app.config['EDITION'],
+            "sub": 'Console API Passport',
         }
 
         token = PassportService().issue(payload)
