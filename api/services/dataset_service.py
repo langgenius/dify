@@ -614,6 +614,9 @@ class DocumentService:
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
         if document.display_status != 'available':
             raise ValueError("Document is not available")
+        # update document name
+        if 'name' in document_data and document_data['name']:
+            document.name = document_data['name']
         # save process rule
         if 'process_rule' in document_data and document_data['process_rule']:
             process_rule = document_data["process_rule"]
@@ -748,7 +751,7 @@ class DocumentService:
         return dataset, documents, batch
 
     @classmethod
-    def document_create_args_validate(cls, args: dict):
+    def  document_create_args_validate(cls, args: dict):
         if 'original_document_id' not in args or not args['original_document_id']:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)

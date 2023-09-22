@@ -38,8 +38,6 @@ class DocumentAddByTextApi(DatasetApiResource):
                             location='json')
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
                             location='json')
-        parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
-        parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -54,18 +52,62 @@ class DocumentAddByTextApi(DatasetApiResource):
         if not dataset.indexing_technique and not args['indexing_technique']:
             raise ValueError('indexing_technique is required.')
 
+        upload_file = FileService.upload_text(args.get('text'), args.get('name'))
+        data_source = {
+            'type': 'upload_file',
+            'info_list': {
+                'data_source_type': 'upload_file',
+                'file_info_list': {
+                    'file_ids': [upload_file.id]
+                }
+            }
+        }
+        args['data_source'] = data_source['data_source']
         # validate args
         DocumentService.document_create_args_validate(args)
 
-        doc_type = args.get('doc_type')
-        doc_metadata = args.get('doc_metadata')
+        try:
+            documents, batch = DocumentService.save_document_with_dataset_id(
+                dataset=dataset,
+                document_data=args,
+                account=current_user,
+                dataset_process_rule=dataset.latest_process_rule if 'process_rule' not in args else None,
+                created_from='api'
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        document = documents[0]
 
-        if doc_type and doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
-            raise ValueError('Invalid doc_type.')
+        documents_and_batch_fields = {
+            'document': marshal(document, document_fields),
+            'batch': batch
+        }
+        return documents_and_batch_fields, 200
 
-        upload_file = FileService.upload_text(args.get('text'), args.get('text_name'))
-        document_data = {
-            'data_source': {
+
+class DocumentUpdateByTextApi(DatasetApiResource):
+    """Resource for update documents."""
+
+    def post(self, dataset_id, document_id, tenant_id):
+        """Update document by text."""
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('text', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
+        args = parser.parse_args()
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+
+        if not dataset:
+            raise ValueError('Dataset is not exist.')
+
+        if args['text']:
+            upload_file = FileService.upload_text(args.get('text'), args.get('text_name'))
+            data_source = {
                 'type': 'upload_file',
                 'info_list': {
                     'data_source_type': 'upload_file',
@@ -74,32 +116,22 @@ class DocumentAddByTextApi(DatasetApiResource):
                     }
                 }
             }
-        }
+            args['data_source'] = data_source
+        # validate args
+        args['original_document_id'] = document_id
+        DocumentService.document_create_args_validate(args)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
-                document_data=document_data,
+                document_data=args,
                 account=current_user,
-                dataset_process_rule=dataset.latest_process_rule,
+                dataset_process_rule=dataset.latest_process_rule if 'process_rule' not in args else None,
                 created_from='api'
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-        if doc_type and doc_metadata:
-            metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
-
-            document.doc_metadata = {}
-
-            for key, value_type in metadata_schema.items():
-                value = doc_metadata.get(key)
-                if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
-
-            document.doc_type = doc_type
-            document.updated_at = datetime.datetime.utcnow()
-            db.session.commit()
 
         documents_and_batch_fields = {
             'document': marshal(document, document_fields),
@@ -121,8 +153,6 @@ class DocumentAddByFileApi(DatasetApiResource):
                             location='json')
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
                             location='json')
-        parser.add_argument('doc_type', type=str, required=False, nullable=True, location='json')
-        parser.add_argument('doc_metadata', type=str, required=False, nullable=True, location='json')
         args = parser.parse_args()
         # get dataset info
         dataset_id = str(dataset_id)
@@ -137,14 +167,6 @@ class DocumentAddByFileApi(DatasetApiResource):
         if not dataset.indexing_technique and not args['indexing_technique']:
             raise ValueError('indexing_technique is required.')
 
-        # validate args
-        DocumentService.document_create_args_validate(args)
-
-        doc_type = args.get('doc_type')
-        doc_metadata = args.get('doc_metadata')
-
-        if doc_type and doc_type not in DocumentService.DOCUMENT_METADATA_SCHEMA:
-            raise ValueError('Invalid doc_type.')
         # save file info
         file = request.files['file']
         # check file
@@ -164,33 +186,81 @@ class DocumentAddByFileApi(DatasetApiResource):
             }
         }
         args['data_source'] = data_source
+        # validate args
+        DocumentService.document_create_args_validate(args)
 
         try:
             documents, batch = DocumentService.save_document_with_dataset_id(
                 dataset=dataset,
                 document_data=args,
                 account=dataset.created_by_account,
-                dataset_process_rule=dataset.latest_process_rule,
+                dataset_process_rule=dataset.latest_process_rule if 'process_rule' not in args else None,
                 created_from='api'
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-        if doc_type and doc_metadata:
-            metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
-
-            document.doc_metadata = {}
-
-            for key, value_type in metadata_schema.items():
-                value = doc_metadata.get(key)
-                if value is not None and isinstance(value, value_type):
-                    document.doc_metadata[key] = value
-
-            document.doc_type = doc_type
-            document.updated_at = datetime.datetime.utcnow()
-            db.session.commit()
         documents_and_batch_fields = {
-            'documents': marshal(documents, document_fields),
+            'document': marshal(document, document_fields),
+            'batch': batch
+        }
+        return documents_and_batch_fields, 200
+
+
+class DocumentUpdateByFileApi(DatasetApiResource):
+    """Resource for update documents."""
+
+    def post(self, dataset_id, document_id, tenant_id):
+        """Update document by upload file."""
+        parser = reqparse.RequestParser()
+        parser.add_argument('name', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
+        args = parser.parse_args()
+        # get dataset info
+        dataset_id = str(dataset_id)
+        tenant_id = str(tenant_id)
+        dataset = db.session.query(Dataset).filter(
+            Dataset.tenant_id == tenant_id,
+            Dataset.id == dataset_id
+        ).first()
+
+        if not dataset:
+            raise ValueError('Dataset is not exist.')
+        if 'file' in request.files:
+            # save file info
+            file = request.files['file']
+
+
+            if len(request.files) > 1:
+                raise TooManyFilesError()
+
+            upload_file = FileService.upload_file(file)
+            data_source = {
+                'type': 'upload_file',
+                'info_list': {
+                    'file_info_list': {
+                        'file_ids': [upload_file.id]
+                    }
+                }
+            }
+            args['data_source'] = data_source
+        # validate args
+        args['original_document_id'] = document_id
+        DocumentService.document_create_args_validate(args)
+
+        try:
+            documents, batch = DocumentService.save_document_with_dataset_id(
+                dataset=dataset,
+                document_data=args,
+                account=dataset.created_by_account,
+                dataset_process_rule=dataset.latest_process_rule if 'process_rule' not in args else None,
+                created_from='api'
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        document = documents[0]
+        documents_and_batch_fields = {
+            'document': marshal(document, document_fields),
             'batch': batch
         }
         return documents_and_batch_fields, 200
@@ -305,6 +375,8 @@ class DocumentIndexingStatusApi(DatasetApiResource):
 
 api.add_resource(DocumentAddByTextApi, '/datasets/<uuid:dataset_id>/document/create_by_text')
 api.add_resource(DocumentAddByFileApi, '/datasets/<uuid:dataset_id>/document/create_by_file')
+api.add_resource(DocumentUpdateByTextApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text')
+api.add_resource(DocumentUpdateByFileApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file')
 api.add_resource(DocumentDeleteApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>')
 api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents')
 api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents/<str:batch>/indexing-status')
