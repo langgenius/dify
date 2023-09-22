@@ -49,9 +49,6 @@ const Result: FC<IResultProps> = ({
   taskId,
   onCompleted,
 }) => {
-  useEffect(() => {
-    console.log(`[#${taskId}]: start`)
-  }, [])
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
     if (controlStopResponding)
@@ -156,7 +153,6 @@ const Result: FC<IResultProps> = ({
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
         clearInterval(runId)
-        console.log(`[#${taskId}]: success`)
       },
       onError() {
         if (isTimeout)
@@ -165,7 +161,6 @@ const Result: FC<IResultProps> = ({
         setResponsingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         clearInterval(runId)
-        console.log(`[#${taskId}]: failed`)
       },
     }, isInstalledApp, installedAppInfo?.id)
   }

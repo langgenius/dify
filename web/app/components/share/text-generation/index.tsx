@@ -104,10 +104,17 @@ const TextGeneration: FC<IMainProps> = ({
   const handleRetryAllFailedTask = () => {
     setControlRetry(Date.now())
   }
-  const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
+  const [allTaskList, doSetAllTaskList] = useState<Task[]>([])
+  const allTaskListRef = useRef<Task[]>([])
+  const getLatestTaskList = () => allTaskListRef.current
+  const setAllTaskList = (taskList: Task[]) => {
+    doSetAllTaskList(taskList)
+    allTaskListRef.current = taskList
+  }
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  const [currGroupNum, setCurrGroupNum, getCurrGroupNum] = useGetState(0)
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
@@ -256,9 +263,15 @@ const TextGeneration: FC<IMainProps> = ({
     const allTasklistLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
-    const hadRunedTaskNum = allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
-    const needToAddNextGroupTask = pendingTaskList.length > 0 && (hadRunedTaskNum % GROUP_SIZE === 0 || (allTasklistLatest.length - hadRunedTaskNum < GROUP_SIZE))
-    console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}. hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
+    const hadRunedTaskNum = 1 + allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
+    const needToAddNextGroupTask = (getCurrGroupNum() !== hadRunedTaskNum) && pendingTaskList.length > 0 && (hadRunedTaskNum % GROUP_SIZE === 0 || (allTasklistLatest.length - hadRunedTaskNum < GROUP_SIZE))
+    // avoid add many task at the same time
+    if (needToAddNextGroupTask)
+      setCurrGroupNum(hadRunedTaskNum)
+    // console.group()
+    // console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}.currGroupNum: ${getCurrGroupNum()}.hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
+    // console.log([...allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).map(item => item.id), taskId].sort((a: any, b: any) => a - b).join(','))
+    // console.groupEnd()
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
