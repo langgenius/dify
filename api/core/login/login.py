@@ -54,7 +54,6 @@ def login_required(func):
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
-        session.pop('_remember', None)
         auth_header = request.headers.get('Authorization')
         admin_api_key_enable = os.getenv('ADMIN_API_KEY_ENABLE', default='False')
         if admin_api_key_enable:
