@@ -40,7 +40,6 @@ class LoginApi(Resource):
         except Exception:
             pass
 
-        flask_login.login_user(account)
         AccountService.update_last_login(account, request)
 
         # todo: return the user info

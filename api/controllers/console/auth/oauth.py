@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, timedelta
 from typing import Optional
 
-import flask_login
 import requests
 from flask import request, redirect, current_app, session
 from flask_restful import Resource
@@ -76,9 +75,6 @@ class OAuthCallback(Resource):
             account.initialized_at = datetime.utcnow()
             db.session.commit()
 
-        # login user
-        session.clear()
-        flask_login.login_user(account)
         AccountService.update_last_login(account, request)
 
         payload = {

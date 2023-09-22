@@ -49,15 +49,6 @@ services:
       REDIS_USE_SSL: 'false'
       # use redis db 0 for redis cache
       REDIS_DB: 0
-      # The configurations of session, Supported values are `sqlalchemy`. `redis`
-      SESSION_TYPE: redis
-      SESSION_REDIS_HOST: redis
-      SESSION_REDIS_PORT: 6379
-      SESSION_REDIS_USERNAME: ''
-      SESSION_REDIS_PASSWORD: difyai123456
-      SESSION_REDIS_USE_SSL: 'false'
-      # use redis db 2 for session store
-      SESSION_REDIS_DB: 2
       # The configurations of celery broker.
       # Use redis as the broker, and redis db 1 for celery broker.
       CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
@@ -76,10 +67,6 @@ services:
       # If you want to enable cross-origin support,
       # you must use the HTTPS protocol and set the configuration to `SameSite=None, Secure=true, HttpOnly=true`.
       #
-      # For **production** purposes, please set `SameSite=Lax, Secure=true, HttpOnly=true`.
-      COOKIE_HTTPONLY: 'true'
-      COOKIE_SAMESITE: 'Lax'
-      COOKIE_SECURE: 'false'
       # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
       STORAGE_TYPE: local
       # The path to the local storage directory, the directory relative the root path of API service codes or absolute path. Default: `storage` or `/home/john/storage`.

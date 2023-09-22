@@ -83,9 +83,6 @@ class AccountService:
                 account.last_active_at = current_time
                 db.session.commit()
 
-            # Log in the user with the updated user_id
-            flask_login.login_user(account)
-
         return account
 
     @staticmethod

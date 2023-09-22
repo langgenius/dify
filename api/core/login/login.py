@@ -1,11 +1,10 @@
 import os
 from functools import wraps
 
-import flask_login
 from flask import current_app
 from flask import g
 from flask import has_request_context
-from flask import request
+from flask import request, session
 from flask_login import user_logged_in
 from flask_login.config import EXEMPT_METHODS
 from werkzeug.exceptions import Unauthorized
@@ -55,6 +54,7 @@ def login_required(func):
 
     @wraps(func)
     def decorated_view(*args, **kwargs):
+        session.pop('_remember', None)
         auth_header = request.headers.get('Authorization')
         admin_api_key_enable = os.getenv('ADMIN_API_KEY_ENABLE', default='False')
         if admin_api_key_enable:

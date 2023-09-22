@@ -11,12 +11,11 @@ import logging
 import json
 import threading
 
-from flask import Flask, request, Response, session
-import flask_login
+from flask import Flask, request, Response
 from flask_cors import CORS
 
 from core.model_providers.providers import hosted
-from extensions import ext_session, ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
+from extensions import ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
     ext_database, ext_storage, ext_mail, ext_stripe
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
@@ -26,12 +25,9 @@ from models import model, account, dataset, web, task, source, tool
 from events import event_handlers
 # DO NOT REMOVE ABOVE
 
-import core
 from config import Config, CloudEditionConfig
 from commands import register_commands
-from models.account import TenantAccountJoin, AccountStatus
-from models.model import Account, EndUser, App
-from services.account_service import TenantService, AccountService
+from services.account_service import AccountService
 from libs.passport import PassportService
 
 import warnings
@@ -85,7 +81,6 @@ def initialize_extensions(app):
     ext_redis.init_app(app)
     ext_storage.init_app(app)
     ext_celery.init_app(app)
-    ext_session.init_app(app)
     ext_login.init_app(app)
     ext_mail.init_app(app)
     ext_sentry.init_app(app)
@@ -93,14 +88,6 @@ def initialize_extensions(app):
 
 
 # Flask-Login configuration
-@login_manager.user_loader
-def load_user(user_id):
-    """Load user based on the user_id."""
-    if request.blueprint == 'console':
-        session.pop('_remember', None)
-        return AccountService.load_user(user_id)
-
-
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
