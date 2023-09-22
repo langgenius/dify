@@ -81,7 +81,7 @@ class AppModelConfigService:
         return filtered_cp
 
     @staticmethod
-    def validate_configuration(tenant_id: str, account: Account, config: dict) -> dict:
+    def validate_configuration(tenant_id: str, account: Account, config: dict, mode: str) -> dict:
         # opening_statement
         if 'opening_statement' not in config or not config["opening_statement"]:
             config["opening_statement"] = ""
@@ -335,6 +335,9 @@ class AppModelConfigService:
 
                 if not AppModelConfigService.is_dataset_exists(account, tool_item["id"]):
                     raise ValueError("Dataset ID does not exist, please check your permission.")
+        
+        # user_input_form.is_context_var
+        AppModelConfigService.is_context_var_valid(config, mode)
 
         # Filter out extra parameters
         filtered_config = {
@@ -356,3 +359,24 @@ class AppModelConfigService:
         }
 
         return filtered_config
+    
+    @staticmethod
+    def is_context_var_valid(config: dict, mode: str) -> None:
+        # Only check when mode is completion
+        if mode != 'completion':
+            return
+        
+        agent_mode = config.get("agent_mode", {})
+        tools = agent_mode.get("tools", [])
+        dataset_exists = "dataset" in str(tools)
+
+        user_input_form = config.get("user_input_form", [])
+        context_var_count = 0
+        for form in user_input_form:
+            for field in form.values():
+                if field.get("is_context_var", False):
+                    context_var_count += 1
+
+        if dataset_exists and context_var_count != 1:
+            raise ValueError("There must be one and only one context var when dataset exists.")
+

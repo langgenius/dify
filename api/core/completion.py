@@ -108,12 +108,14 @@ class Completion:
                 retriever_from=retriever_from
             )
 
+            query_for_agent = cls.transfer_completion_app_userinputs_to_agent_query(app, app_model_config, query, inputs)
+
             # run agent executor
             agent_execute_result = None
             if agent_executor:
-                should_use_agent = agent_executor.should_use_agent(query)
+                should_use_agent = agent_executor.should_use_agent(query_for_agent)
                 if should_use_agent:
-                    agent_execute_result = agent_executor.run(query)
+                    agent_execute_result = agent_executor.run(query_for_agent)
 
             # When no extra pre prompt is specified,
             # the output of the agent can be used directly as the main output content without calling LLM again
@@ -142,6 +144,20 @@ class Completion:
             logging.warning(f'ChunkedEncodingError: {e}')
             conversation_message_task.end()
             return
+        
+    @classmethod
+    def transfer_completion_app_userinputs_to_agent_query(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
+        if  app.mode != 'completion':
+            return query
+        
+        user_input_form = app_model_config.user_input_form
+        
+        for input in json.loads(user_input_form):
+            for field in input.values():
+                if field.get("is_context_var", False):
+                    variable_name = field['variable']
+                    query = inputs[variable_name]
+        return query
 
     @classmethod
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
