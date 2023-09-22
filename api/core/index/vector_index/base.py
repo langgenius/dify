@@ -113,8 +113,10 @@ class BaseVectorIndex(BaseIndex):
     def delete_by_group_id(self, group_id: str) -> None:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
-
-        vector_store.delete()
+        if self.dataset.collection_binding_id:
+            vector_store.delete_by_group_id(group_id)
+        else:
+            vector_store.delete()
 
     def delete(self) -> None:
         vector_store = self._get_vector_store()
@@ -283,7 +285,7 @@ class BaseVectorIndex(BaseIndex):
 
         if documents:
             try:
-                self.create_with_collection_name(documents, dataset_collection_binding.collection_name)
+                self.add_texts(documents)
             except Exception as e:
                 raise e
 

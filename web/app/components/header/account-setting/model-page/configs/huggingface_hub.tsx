@@ -48,6 +48,15 @@ const config: ProviderConfig = {
         ]
       }
       if (v?.huggingfacehub_api_type === 'inference_endpoints') {
+        if (v.model_type === 'embeddings') {
+          return [
+            'huggingfacehub_api_token',
+            'huggingface_namespace',
+            'model_name',
+            'huggingfacehub_endpoint_url',
+            'task_type',
+          ]
+        }
         return [
           'huggingfacehub_api_token',
           'model_name',
@@ -68,14 +77,27 @@ const config: ProviderConfig = {
         ]
       }
       if (v?.huggingfacehub_api_type === 'inference_endpoints') {
-        filteredKeys = [
-          'huggingfacehub_api_type',
-          'huggingfacehub_api_token',
-          'model_name',
-          'huggingfacehub_endpoint_url',
-          'task_type',
-          'model_type',
-        ]
+        if (v.model_type === 'embeddings') {
+          filteredKeys = [
+            'huggingfacehub_api_type',
+            'huggingfacehub_api_token',
+            'huggingface_namespace',
+            'model_name',
+            'huggingfacehub_endpoint_url',
+            'task_type',
+            'model_type',
+          ]
+        }
+        else {
+          filteredKeys = [
+            'huggingfacehub_api_type',
+            'huggingfacehub_api_token',
+            'model_name',
+            'huggingfacehub_endpoint_url',
+            'task_type',
+            'model_type',
+          ]
+        }
       }
       return filteredKeys.reduce((prev: FormValue, next: string) => {
         prev[next] = v?.[next] || ''
@@ -83,6 +105,31 @@ const config: ProviderConfig = {
       }, {})
     },
     fields: [
+      {
+        type: 'radio',
+        key: 'model_type',
+        required: true,
+        label: {
+          'en': 'Model Type',
+          'zh-Hans': '模型类型',
+        },
+        options: [
+          {
+            key: 'text-generation',
+            label: {
+              'en': 'Text Generation',
+              'zh-Hans': '文本生成',
+            },
+          },
+          {
+            key: 'embeddings',
+            label: {
+              'en': 'Embeddings',
+              'zh-Hans': 'Embeddings',
+            },
+          },
+        ],
+      },
       {
         type: 'radio',
         key: 'huggingfacehub_api_type',
@@ -122,6 +169,20 @@ const config: ProviderConfig = {
         },
       },
       {
+        hidden: (value?: FormValue) => !(value?.huggingfacehub_api_type === 'inference_endpoints' && value?.model_type === 'embeddings'),
+        type: 'text',
+        key: 'huggingface_namespace',
+        required: true,
+        label: {
+          'en': 'User Name / Organization Name',
+          'zh-Hans': '用户名 / 组织名称',
+        },
+        placeholder: {
+          'en': 'Enter your User Name / Organization Name here',
+          'zh-Hans': '在此输入您的用户名 / 组织名称',
+        },
+      },
+      {
         type: 'text',
         key: 'model_name',
         required: true,
@@ -148,7 +209,7 @@ const config: ProviderConfig = {
         },
       },
       {
-        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'hosted_inference_api',
+        hidden: (value?: FormValue) => value?.huggingfacehub_api_type === 'hosted_inference_api' || value?.model_type === 'embeddings',
         type: 'radio',
         key: 'task_type',
         required: true,
@@ -169,6 +230,25 @@ const config: ProviderConfig = {
             label: {
               'en': 'Text Generation',
               'zh-Hans': 'Text Generation',
+            },
+          },
+        ],
+      },
+      {
+        hidden: (value?: FormValue) => !(value?.huggingfacehub_api_type === 'inference_endpoints' && value?.model_type === 'embeddings'),
+        type: 'radio',
+        key: 'task_type',
+        required: true,
+        label: {
+          'en': 'Task',
+          'zh-Hans': 'Task',
+        },
+        options: [
+          {
+            key: 'feature-extraction',
+            label: {
+              'en': 'Feature Extraction',
+              'zh-Hans': 'Feature Extraction',
             },
           },
         ],
