@@ -10,7 +10,6 @@ from typing import Optional
 
 from werkzeug.exceptions import Forbidden, Unauthorized
 from flask import session
-import flask_login
 from sqlalchemy import func
 
 from events.tenant_event import tenant_was_created
@@ -21,6 +20,7 @@ from services.errors.account import AccountLoginError, CurrentPasswordIncorrectE
 from libs.helper import get_remote_ip
 from libs.password import compare_password, hash_password
 from libs.rsa import generate_key_pair
+from libs.passport import PassportService
 from models.account import *
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 
@@ -84,6 +84,16 @@ class AccountService:
                 db.session.commit()
 
         return account
+    
+    @staticmethod
+    def get_account_jwt_token(account):
+        payload = {
+            "user_id": account.id,
+            "exp": datetime.utcnow() + timedelta(days=30),
+        }
+
+        token = PassportService().issue(payload)
+        return token
 
     @staticmethod
     def authenticate(email: str, password: str) -> Account:

@@ -97,7 +97,7 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      localStorage.setItem('jwt-token', res.data)
+      localStorage.setItem('console_token', res.data)
       router.replace('/apps')
     }
     finally {

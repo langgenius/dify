@@ -1,6 +1,4 @@
 # -*- coding:utf-8 -*-
-from datetime import datetime, timedelta
-
 import flask
 import flask_login
 from flask import request, current_app
@@ -8,11 +6,9 @@ from flask_restful import Resource, reqparse
 
 import services
 from controllers.console import api
-from controllers.console.error import AccountNotLinkTenantError
 from controllers.console.setup import setup_required
 from libs.helper import email
 from libs.password import valid_password
-from libs.passport import PassportService
 from services.account_service import AccountService, TenantService
 
 
@@ -43,12 +39,7 @@ class LoginApi(Resource):
         AccountService.update_last_login(account, request)
 
         # todo: return the user info
-        payload = {
-            "user_id": account.id,
-            "exp": datetime.utcnow() + timedelta(days=30),
-        }
-
-        token = PassportService().issue(payload)
+        token = AccountService.get_account_jwt_token(account)
 
         return {'result': 'success', 'data': token}
 

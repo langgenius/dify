@@ -180,7 +180,7 @@ const baseFetch = <T>(
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
   else {
-    const accessToken = localStorage.getItem('jwt-token') || ''
+    const accessToken = localStorage.getItem('console_token') || ''
     options.headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
