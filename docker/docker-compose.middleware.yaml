@@ -50,3 +50,14 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     ports:
       - "8080:8080"
+
+  # The Qdrant vector store.
+  qdrant:
+    image: qdrant/qdrant:v1.5.1
+    ports:
+      - 6333:6333
+    restart: always
+    volumes:
+      - ./qdrant/data/:/qdrant/storage
+    environment:
+      QDRANT__SERVICE__API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pnnq
