@@ -118,6 +118,7 @@ const TextGeneration: FC<IMainProps> = ({
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const allTaskRuned = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
   const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
   const exportRes = allTaskList.map((task) => {
     const batchCompletionResLatest = getBatchCompletionRes()
@@ -502,6 +503,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunBatch
                 vars={promptConfig.prompt_variables}
                 onSend={handleRunBatch}
+                isAllFinished={allTaskRuned}
               />
             </div>
 
