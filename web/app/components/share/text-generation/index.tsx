@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { useBoolean, useClickAway, useGetState } from 'ahooks'
+import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
@@ -114,12 +114,26 @@ const TextGeneration: FC<IMainProps> = ({
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  const [currGroupNum, setCurrGroupNum, getCurrGroupNum] = useGetState(0)
+  const [currGroupNum, doSetCurrGroupNum] = useState(0)
+  const currGroupNumRef = useRef(0)
+  const setCurrGroupNum = (num: number) => {
+    doSetCurrGroupNum(num)
+    currGroupNumRef.current = num
+  }
+  const getCurrGroupNum = () => {
+    return currGroupNumRef.current
+  }
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
   const allTaskRuned = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
+  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
+  const batchCompletionResRef = useRef<Record<string, string>>({})
+  const setBatchCompletionRes = (res: Record<string, string>) => {
+    doSetBatchCompletionRes(res)
+    batchCompletionResRef.current = res
+  }
+  const getBatchCompletionRes = () => batchCompletionResRef.current
   const exportRes = allTaskList.map((task) => {
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}

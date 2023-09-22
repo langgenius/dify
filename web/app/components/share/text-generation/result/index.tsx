@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useBoolean, useGetState } from 'ahooks'
+import React, { useEffect, useRef, useState } from 'react'
+import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import cn from 'classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
@@ -55,7 +55,13 @@ const Result: FC<IResultProps> = ({
       setResponsingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, setCompletionRes, getCompletionRes] = useGetState('')
+  const [completionRes, doSetCompletionRes] = useState('')
+  const completionResRef = useRef('')
+  const setCompletionRes = (res: string) => {
+    completionResRef.current = res
+    doSetCompletionRes(res)
+  }
+  const getCompletionRes = () => completionResRef.current
   const { notify } = Toast
   const isNoData = !completionRes
 
