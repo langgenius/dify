@@ -379,4 +379,4 @@ api.add_resource(DocumentUpdateByTextApi, '/datasets/<uuid:dataset_id>/documents
 api.add_resource(DocumentUpdateByFileApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file')
 api.add_resource(DocumentDeleteApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>')
 api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents')
-api.add_resource(DocumentListApi, '/datasets/<uuid:dataset_id>/documents/<str:batch>/indexing-status')
+api.add_resource(DocumentIndexingStatusApi, '/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status')
