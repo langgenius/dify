@@ -95,9 +95,9 @@ class HuggingfaceHubProvider(BaseModelProvider):
             if 'task_type' not in credentials:
                 raise CredentialsValidateFailedError('Task Type must be provided.')
 
-            if credentials['task_type'] not in ("text2text-generation", "text-generation", "summarization", 'feature-extraction'):
+            if credentials['task_type'] not in ("text2text-generation", "text-generation", 'feature-extraction'):
                 raise CredentialsValidateFailedError('Task Type must be one of text2text-generation, '
-                                                     'text-generation, summarization, feature-extraction.')
+                                                     'text-generation, feature-extraction.')
 
             try:
                 if credentials['task_type'] == 'feature-extraction':
@@ -115,7 +115,7 @@ class HuggingfaceHubProvider(BaseModelProvider):
                 if 'inference' in model_info.cardData and not model_info.cardData['inference']:
                     raise ValueError(f'Inference API has been turned off for this model {model_name}.')
 
-                VALID_TASKS = ("text2text-generation", "text-generation", "summarization", "feature-extraction")
+                VALID_TASKS = ("text2text-generation", "text-generation", "feature-extraction")
                 if model_info.pipeline_tag not in VALID_TASKS:
                     raise ValueError(f"Model {model_name} is not a valid task, "
                                      f"must be one of {VALID_TASKS}.")
