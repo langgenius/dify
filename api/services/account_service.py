@@ -87,7 +87,7 @@ class AccountService:
     
     @staticmethod
     def get_account_jwt_token(account):
-        session.pop('_remember')
+        session.pop('_remember', None)
         payload = {
             "user_id": account.id,
             "exp": datetime.utcnow() + timedelta(days=30),
