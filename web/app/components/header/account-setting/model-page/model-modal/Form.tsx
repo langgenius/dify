@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { Dispatch, FC, SetStateAction } from 'react'
 import { useContext } from 'use-context-selector'
-import type { Field, FormValue, ProviderConfigModal } from '../declarations'
+import { type Field, type FormValue, type ProviderConfigModal, ProviderEnum } from '../declarations'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import { validateModelProviderFn } from '../utils'
@@ -85,10 +85,31 @@ const Form: FC<FormProps> = ({
   }
 
   const handleFormChange = (k: string, v: string) => {
-    if (mode === 'edit' && !cleared)
+    if (mode === 'edit' && !cleared) {
       handleClear({ [k]: v })
-    else
-      handleMultiFormChange({ ...value, [k]: v }, k)
+    }
+    else {
+      const extraValue: Record<string, string> = {}
+      if (
+        (
+          (k === 'model_type' && v === 'embeddings' && value.huggingfacehub_api_type === 'inference_endpoints')
+          || (k === 'huggingfacehub_api_type' && v === 'inference_endpoints' && value.model_type === 'embeddings')
+        )
+        && modelModal?.key === ProviderEnum.huggingface_hub
+      )
+        extraValue.task_type = 'feature-extraction'
+
+      if (
+        (
+          (k === 'model_type' && v === 'text-generation' && value.huggingfacehub_api_type === 'inference_endpoints')
+          || (k === 'huggingfacehub_api_type' && v === 'inference_endpoints' && value.model_type === 'text-generation')
+        )
+        && modelModal?.key === ProviderEnum.huggingface_hub
+      )
+        extraValue.task_type = 'text-generation'
+
+      handleMultiFormChange({ ...value, [k]: v, ...extraValue }, k)
+    }
   }
 
   const handleFocus = () => {

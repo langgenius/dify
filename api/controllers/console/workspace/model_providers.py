@@ -246,7 +246,8 @@ class ModelProviderModelParameterRuleApi(Resource):
                 'enabled': v.enabled,
                 'min': v.min,
                 'max': v.max,
-                'default': v.default
+                'default': v.default,
+                'precision': v.precision
             }
             for k, v in vars(parameter_rules).items()
         }
@@ -290,10 +291,15 @@ class ModelProviderFreeQuotaQualificationVerifyApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_name: str):
+        parser = reqparse.RequestParser()
+        parser.add_argument('token', type=str, required=False, nullable=True, location='args')
+        args = parser.parse_args()
+
         provider_service = ProviderService()
         result = provider_service.free_quota_qualification_verify(
             tenant_id=current_user.current_tenant_id,
-            provider_name=provider_name
+            provider_name=provider_name,
+            token=args['token']
         )
 
         return result

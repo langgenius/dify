@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import AppCard from './AppCard'
@@ -10,11 +9,7 @@ import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import Confirm from '@/app/components/base/confirm/common'
-import {
-  useAnthropicCheckPay,
-  useSparkCheckQuota,
-} from '@/hooks/use-pay'
+import { CheckModal } from '@/hooks/use-pay'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -27,15 +22,6 @@ const Apps = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
   const anchorRef = useRef<HTMLDivElement>(null)
-  const router = useRouter()
-  const [showPayStatusModal, setShowPayStatusModal] = useState(true)
-  const anthropicConfirmInfo = useAnthropicCheckPay()
-  const sparkConfirmInfo = useSparkCheckQuota()
-
-  const handleCancelShowPayStatusModal = useCallback(() => {
-    setShowPayStatusModal(false)
-    router.replace('/', { forceOptimisticNavigation: false })
-  }, [router])
 
   useEffect(() => {
     document.title = `${t('app.title')} -  Dify`
@@ -64,33 +50,7 @@ const Apps = () => {
       {data?.map(({ data: apps }) => apps.map(app => (
         <AppCard key={app.id} app={app} onRefresh={mutate} />
       )))}
-      {
-        showPayStatusModal && anthropicConfirmInfo && (
-          <Confirm
-            isShow
-            onCancel={handleCancelShowPayStatusModal}
-            onConfirm={handleCancelShowPayStatusModal}
-            type={anthropicConfirmInfo.type}
-            title={anthropicConfirmInfo.title}
-            showOperateCancel={false}
-            confirmText={(anthropicConfirmInfo.type === 'danger' && t('common.operation.ok')) || ''}
-          />
-        )
-      }
-      {
-        showPayStatusModal && sparkConfirmInfo && (
-          <Confirm
-            isShow
-            onCancel={handleCancelShowPayStatusModal}
-            onConfirm={handleCancelShowPayStatusModal}
-            type={sparkConfirmInfo.type}
-            title={sparkConfirmInfo.title}
-            desc={sparkConfirmInfo.desc}
-            showOperateCancel={false}
-            confirmText={(sparkConfirmInfo.type === 'danger' && t('common.operation.ok')) || ''}
-          />
-        )
-      }
+      <CheckModal />
     </nav>
     <div ref={anchorRef} className='h-0'> </div>
     </>

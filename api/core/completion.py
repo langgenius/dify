@@ -7,6 +7,7 @@ from requests.exceptions import ChunkedEncodingError
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
+from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceError
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
@@ -76,28 +77,53 @@ class Completion:
             app_model_config=app_model_config
         )
 
-        # parse sensitive_word_avoidance_chain
-        chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
-        sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain(final_model_instance, [chain_callback])
-        if sensitive_word_avoidance_chain:
-            query = sensitive_word_avoidance_chain.run(query)
-
-        # get agent executor
-        agent_executor = orchestrator_rule_parser.to_agent_executor(
-            conversation_message_task=conversation_message_task,
-            memory=memory,
-            rest_tokens=rest_tokens_for_context_and_memory,
-            chain_callback=chain_callback
-        )
-
-        # run agent executor
-        agent_execute_result = None
-        if agent_executor:
-            should_use_agent = agent_executor.should_use_agent(query)
-            if should_use_agent:
-                agent_execute_result = agent_executor.run(query)
-        # run the final llm
         try:
+            # parse sensitive_word_avoidance_chain
+            chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
+            sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain(
+                final_model_instance, [chain_callback])
+            if sensitive_word_avoidance_chain:
+                try:
+                    query = sensitive_word_avoidance_chain.run(query)
+                except SensitiveWordAvoidanceError as ex:
+                    cls.run_final_llm(
+                        model_instance=final_model_instance,
+                        mode=app.mode,
+                        app_model_config=app_model_config,
+                        query=query,
+                        inputs=inputs,
+                        agent_execute_result=None,
+                        conversation_message_task=conversation_message_task,
+                        memory=memory,
+                        fake_response=ex.message
+                    )
+                    return
+
+            # get agent executor
+            agent_executor = orchestrator_rule_parser.to_agent_executor(
+                conversation_message_task=conversation_message_task,
+                memory=memory,
+                rest_tokens=rest_tokens_for_context_and_memory,
+                chain_callback=chain_callback,
+                retriever_from=retriever_from
+            )
+
+            # run agent executor
+            agent_execute_result = None
+            if agent_executor:
+                should_use_agent = agent_executor.should_use_agent(query)
+                if should_use_agent:
+                    agent_execute_result = agent_executor.run(query)
+
+            # When no extra pre prompt is specified,
+            # the output of the agent can be used directly as the main output content without calling LLM again
+            fake_response = None
+            if not app_model_config.pre_prompt and agent_execute_result and agent_execute_result.output \
+                    and agent_execute_result.strategy not in [PlanningStrategy.ROUTER,
+                                                              PlanningStrategy.REACT_ROUTER]:
+                fake_response = agent_execute_result.output
+
+            # run the final llm
             cls.run_final_llm(
                 model_instance=final_model_instance,
                 mode=app.mode,
@@ -106,7 +132,8 @@ class Completion:
                 inputs=inputs,
                 agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
-                memory=memory
+                memory=memory,
+                fake_response=fake_response
             )
         except ConversationTaskStoppedException:
             return
@@ -121,14 +148,8 @@ class Completion:
                       inputs: dict,
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
-                      memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory]):
-        # When no extra pre prompt is specified,
-        # the output of the agent can be used directly as the main output content without calling LLM again
-        fake_response = None
-        if not app_model_config.pre_prompt and agent_execute_result and agent_execute_result.output \
-                and agent_execute_result.strategy not in [PlanningStrategy.ROUTER, PlanningStrategy.REACT_ROUTER]:
-            fake_response = agent_execute_result.output
-
+                      memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
+                      fake_response: Optional[str]):
         # get llm prompt
         prompt_messages, stop_words = model_instance.get_prompt(
             mode=mode,

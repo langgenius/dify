@@ -69,6 +69,19 @@ class MilvusVectorIndex(BaseVectorIndex):
 
         return self
 
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        uuids = self._get_uuids(texts)
+        self._vector_store = WeaviateVectorStore.from_documents(
+            texts,
+            self._embeddings,
+            client=self._client,
+            index_name=collection_name,
+            uuids=uuids,
+            by_text=False
+        )
+
+        return self
+
     def _get_vector_store(self) -> VectorStore:
         """Only for created index."""
         if self._vector_store:

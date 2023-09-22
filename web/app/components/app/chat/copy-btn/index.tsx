@@ -1,9 +1,10 @@
 'use client'
-import React from 'react'
+import { useRef, useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
+import { randomString } from '@/utils'
 
 type ICopyBtnProps = {
   value: string
@@ -16,12 +17,13 @@ const CopyBtn = ({
   className,
   isPlain,
 }: ICopyBtnProps) => {
-  const [isCopied, setIsCopied] = React.useState(false)
+  const [isCopied, setIsCopied] = useState(false)
+  const selector = useRef(`copy-tooltip-${randomString(4)}`)
 
   return (
     <div className={`${className}`}>
       <Tooltip
-        selector={`copy-btn-tooltip-${value}`}
+        selector={selector.current}
         content={(isCopied ? t('appApi.copied') : t('appApi.copy')) as string}
         className='z-10'
       >

@@ -49,6 +49,7 @@ class KwargRule(Generic[T], BaseModel):
     max: Optional[T] = None
     default: Optional[T] = None
     alias: Optional[str] = None
+    precision: Optional[int] = None
 
 
 class ModelKwargsRules(BaseModel):

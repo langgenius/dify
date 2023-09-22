@@ -45,6 +45,18 @@ class HostedModelProviders(BaseModel):
 hosted_model_providers = HostedModelProviders()
 
 
+class HostedModerationConfig(BaseModel):
+    enabled: bool = False
+    providers: list[str] = []
+
+
+class HostedConfig(BaseModel):
+    moderation = HostedModerationConfig()
+
+
+hosted_config = HostedConfig()
+
+
 def init_app(app: Flask):
     if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
         langchain.verbose = True
@@ -77,4 +89,10 @@ def init_app(app: Flask):
             paid_increase_quota=app.config.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA"),
             paid_min_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MIN_QUANTITY"),
             paid_max_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MAX_QUANTITY"),
+        )
+
+    if app.config.get("HOSTED_MODERATION_ENABLED") and app.config.get("HOSTED_MODERATION_PROVIDERS"):
+        hosted_config.moderation = HostedModerationConfig(
+            enabled=app.config.get("HOSTED_MODERATION_ENABLED"),
+            providers=app.config.get("HOSTED_MODERATION_PROVIDERS").split(',')
         )
