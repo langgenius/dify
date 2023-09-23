@@ -296,7 +296,9 @@ export const upload = (options: any): Promise<any> => {
   const defaultOptions = {
     method: 'POST',
     url: `${API_PREFIX}/files/upload`,
-    headers: {},
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
+    },
     data: {},
   }
   options = {
