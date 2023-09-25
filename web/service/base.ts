@@ -179,6 +179,10 @@ const baseFetch = <T>(
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
+  else {
+    const accessToken = localStorage.getItem('console_token') || ''
+    options.headers.set('Authorization', `Bearer ${accessToken}`)
+  }
 
   if (deleteContentType) {
     options.headers.delete('Content-Type')
@@ -292,7 +296,9 @@ export const upload = (options: any): Promise<any> => {
   const defaultOptions = {
     method: 'POST',
     url: `${API_PREFIX}/files/upload`,
-    headers: {},
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
+    },
     data: {},
   }
   options = {
