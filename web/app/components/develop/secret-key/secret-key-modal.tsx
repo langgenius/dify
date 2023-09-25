@@ -48,7 +48,7 @@ const SecretKeyModal = ({
   const { mutate } = useSWRConfig()
   const commonParams = appId
     ? { url: `/apps/${appId}/api-keys`, params: {} }
-    : { url: `/datasets/${appId}/api-keys`, params: {} }
+    : { url: '/datasets/api-keys', params: {} }
   const fetchApiKeysList = appId ? fetchAppApiKeysList : fetchDatasetApiKeysList
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
 

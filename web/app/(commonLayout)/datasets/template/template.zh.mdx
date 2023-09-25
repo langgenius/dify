@@ -3,73 +3,51 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 # 数据集 API
 
-仅用来创建空数据集。
-
 <Heading
   url='/datasets'
   method='POST'
   title='创建空数据集'
-  name='#Create-Empty-Dataset'
+  name='#create_empty_dataset'
 />
 <Row>
   <Col>
-    创建文本补全消息，支持一问一答模式。
-
     ### Request Body
-
     <Properties>
-      <Property name='inputs' type='object' key='inputs'>
-        （选填）以键值对方式提供用户输入字段，与提示词编排中的变量对应。Key 为变量名称，Value 是参数值。如果字段类型为 Select，传入的 Value 需为预设选项之一。
-        <ul>
-         {/* {!!props.variables.length && props.variables.map(
-            val => (
-                <SubProperty name={val.key} type={val.type} key={val.key}>
-                  {val.name ? `${val.name}` : ''}
-                </SubProperty>
-            )
-        )} */}
-        </ul>
-      </Property>
-      <Property name='response_mode' type='string' key='response_mode'>
-        - blocking 阻塞型，等待执行完毕后返回结果。（请求若流程较长可能会被中断）
-        - streaming 流式返回。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现流式返回。
-      </Property>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      <Property name='name' type='string' key='name'>
+        数据集名称。
       </Property>
     </Properties>
   </Col>
   <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
-
+    <CodeGroup title="Request" tag="POST" label="/datasets">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/completion-messages' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "inputs": {},
-        "response_mode": "streaming",
-        "user": "abc-123"
-    }'
+    curl --location --request 'https://api.dify.dev/v1/datasets' \
+      --header 'Authorization: Bearer {api_key}' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{"name":"dify"}' \
+      --compressed
     ```
-
     </CodeGroup>
-    ### blocking
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "0b089b9a-24d9-48cc-94f8-762677276261",
-      "answer": "how are you?",
-      "created_at": 1679586667
+      "id": "",
+      "name": "dify",
+      "description": null,
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "",
+      "created_at": 1695312374,
+      "updated_by": "",
+      "updated_at": 1695312374,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": null
     }
-    ```
-    </CodeGroup>
-    ### streaming
-    <CodeGroup title="Response">
-    ```streaming {{ title: 'Response' }}
-      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
-      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
     ```
     </CodeGroup>
   </Col>
@@ -78,69 +56,58 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/messages/{message_id}/feedbacks'
-  method='POST'
-  title='消息反馈（点赞）'
-  name='#feedbacks'
+  url='/datasets'
+  method='GET'
+  title='数据集列表'
+  name='#dataset_list'
 />
 <Row>
   <Col>
-    代表最终用户对返回消息进行评价，可以点赞与点踩，该数据将在“日志与标注”页中可见，并用于后续的模型微调。
-
-    ### Path Params
-
+    ### Path Query
     <Properties>
-      <Property name='message_id' type='string' key='message_id'>
-        消息 ID
+      <Property name='page' type='string' key='page'>
+        页码
       </Property>
-    </Properties>
-
-    ### Request Body
-
-    <Properties>
-      <Property name='rating' type='string' key='rating'>
-       like 或 dislike， 空值为撤销
-      </Property>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      <Property name='limit' type='string' key='limit'>
+        返回条数，默认 20，范围 1-100
       </Property>
     </Properties>
   </Col>
   <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
-
+    <CodeGroup title="Request" tag="POST" label="/datasets">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "rating": "like",
-        "user": "abc-123"
-    }'
+    curl 'https://api.dify.ai/v1/datasets' \
+      --header 'Authorization: Bearer {api_key}' \
+      --header 'Content-Type: application/json' \
+      --data-raw '{"name":"dify"}' \
+      --compressed
     ```
-
     </CodeGroup>
-
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "has_more": false,
       "data": [
         {
-          "id": "WAz8eIbvDR60rouK",
-          "username": "FrankMcCallister",
-          "phone_number": "1-800-759-3000",
-          "avatar_url": "https://assets.protocol.chat/avatars/frank.jpg",
-          "display_name": null,
-          "conversation_id": "xgQQXg3hrtjh7AvZ",
-          "created_at": 692233200
+          "id": "uuid",
+          "name": "数据集名称",
+          "description": "描述信息",
+          "permission": "only_me",
+          "data_source_type": "upload_file",
+          "indexing_technique": "",
+          "app_count": 2,
+          "document_count": 10,
+          "word_count": 1200
+          "created_by": "uuid",
+          "created_at": "timestamp",
+          "updated_by": "uuid",
+          "updated_at": "timestamp"
         },
-        {
-          "id": "hSIhXBhNe8X1d8Et"
-          // ...
-        }
-      ]
+        ...
+      ],
+      "has_more": true,
+      "limit": 20,
+      "total": 50,
+      "page": 1
     }
     ```
     </CodeGroup>
@@ -150,52 +117,726 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/parameters'
-  method='GET'
-  title='获取应用配置信息'
-  name='#parameters'
+  url='/datasets/<uuid:dataset_id>/documents/create_by_text'
+  method='POST'
+  title='通过文本创建文档'
+  name='#create_by_text'
 />
 <Row>
   <Col>
-    获取已配置的 Input 参数，包括变量名、字段名称、类型与默认值。通常用于客户端加载后显示这些字段的表单或填入默认值。
+    此接口基于已存在数据集，在此数据集的基础上通过文本创建新的文档的操作。
 
-    ### Query
-
+    ### Path Params
     <Properties>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称
+      </Property>
+      <Property name='text' type='string' key='text'>
+        文档内容
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引方式
+          - high_quaility 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则
+          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
+          - rules (text) 自定义规则（自动模式下，该字段为空） 
+            - pre_processing_rules (array[object]) 预处理规则
+              - id (string) 预处理规则的唯一标识符 
+                - 枚举： 
+                  - remove_extra_spaces 替换连续空格、换行符、制表符
+                  - remove_urls_emails 删除 URL、电子邮件地址
+              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
+            - segmentation (object) 分段规则
+              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - max_tokens 最大长度 (token) 默认为 1000
       </Property>
     </Properties>
   </Col>
   <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
-
+    <CodeGroup title="Request" tag="GET">
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/<uuid:dataset_id>/document/create_by_text'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "name": "Dify",
+      "text": "Dify means Do it for you...",
+      "indexing_technique": "high_quality",
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'
     ```
-
     </CodeGroup>
-
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "introduction": "nice to meet you",
-      "variables": [
-        {
-          "key": "book",
-          "name": "Which book?",
-          "description": null,
-          "type": "string",
-          "default": null,
-          "options": null
+      "document": {
+        "id": "",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+          "upload_file_id": ""
         },
-        {
-          // ...
-      ]
+        "dataset_process_rule_id": "",
+        "name": "Dify.txt",
+        "created_from": "api",
+        "created_by": "",
+        "created_at": 1695308667,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": "20230921150427533684"
     }
     ```
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/create_by_file'
+  method='POST'
+  title='通过文件创建文档 '
+  name='#create_by_file'
+/>
+<Row>
+  <Col>
+    此接口基于已存在数据集，在此数据集的基础上通过文件创建新的文档的操作。
+
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='original_document_id' type='string' key='original_document_id'>
+        源文档 ID （选填）
+          - 用于重新上传文档或修改文档清洗、分段配置，缺失的信息从源文档复制。
+          - 源文档不可为归档的文档。
+          - 当传入 original_document_id 时，代表文档进行更新操作，process_rule 为可填项目，不填默认使用源文档的分段方式
+          - 未传入 original_document_id 时，代表文档进行新增操作，process_rule 为必填。
+      </Property>
+      <Property name='file' type='multipart/form-data' key='file'>
+        需要上传的文件。
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引方式
+          - high_quaility 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则
+          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
+          - rules (text) 自定义规则（自动模式下，该字段为空） 
+            - pre_processing_rules (array[object]) 预处理规则
+              - id (string) 预处理规则的唯一标识符 
+                - 枚举： 
+                  - remove_extra_spaces 替换连续空格、换行符、制表符
+                  - remove_urls_emails 删除 URL、电子邮件地址
+              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
+            - segmentation (object) 分段规则
+              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - max_tokens 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/{uuid:dataset_id}/document/create_by_file'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "indexing_technique": "high_quality",
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'  
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "document": {
+      "id": "",
+      "position": 1,
+      "data_source_type": "upload_file",
+      "data_source_info": {
+              "upload_file_id": ""
+      },
+      "dataset_process_rule_id": "",
+      "name": "Dify.txt",
+      "created_from": "api",
+      "created_by": "",
+      "created_at": 1695308667,
+      "tokens": 0,
+      "indexing_status": "waiting",
+      "error": null,
+      "enabled": true,
+      "disabled_at": null,
+      "disabled_by": null,
+      "archived": false,
+      "display_status": "queuing",
+      "word_count": 0,
+      "hit_count": 0,
+      "doc_form": "text_model"
+    },
+    "batch": ""
+}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/update_by_text'
+  method='POST'
+  title='通过文本更新文档 '
+  name='#update_by_text'
+/>
+<Row>
+  <Col>
+    此接口基于已存在数据集，在此数据集的基础上通过文本更新文档的操作。
+
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称 （选填）。
+      </Property>
+      <Property name='text' type='string' key='text'>
+        文档内容（选填）。
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则（选填）
+          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
+          - rules (text) 自定义规则（自动模式下，该字段为空） 
+            - pre_processing_rules (array[object]) 预处理规则
+              - id (string) 预处理规则的唯一标识符 
+                - 枚举： 
+                  - remove_extra_spaces 替换连续空格、换行符、制表符
+                  - remove_urls_emails 删除 URL、电子邮件地址
+              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
+            - segmentation (object) 分段规则
+              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - max_tokens 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_text'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "name": "Dify",
+      "text": "Dify means Do it for you...",
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+    "document": {
+      "id": "",
+      "position": 1,
+      "data_source_type": "upload_file",
+      "data_source_info": {
+              "upload_file_id": ""
+      },
+      "dataset_process_rule_id": "",
+      "name": "Dify.txt",
+      "created_from": "api",
+      "created_by": "",
+      "created_at": 1695308667,
+      "tokens": 0,
+      "indexing_status": "waiting",
+      "error": null,
+      "enabled": true,
+      "disabled_at": null,
+      "disabled_by": null,
+      "archived": false,
+      "display_status": "queuing",
+      "word_count": 0,
+      "hit_count": 0,
+      "doc_form": "text_model"
+    },
+    "batch": ""
+}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/update_by_file'
+  method='POST'
+  title='通过文件更新文档  '
+  name='#update_by_file'
+/>
+<Row>
+  <Col>
+    此接口基于已存在数据集，在此数据集的基础上通过文件更新文档的操作。
+
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称 （选填）。
+      </Property>
+      <Property name='file' type='multipart/form-data' key='file'>
+        需要上传的文件。
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则（选填）
+          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
+          - rules (text) 自定义规则（自动模式下，该字段为空） 
+            - pre_processing_rules (array[object]) 预处理规则
+              - id (string) 预处理规则的唯一标识符 
+                - 枚举： 
+                  - remove_extra_spaces 替换连续空格、换行符、制表符
+                  - remove_urls_emails 删除 URL、电子邮件地址
+              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
+            - segmentation (object) 分段规则
+              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - max_tokens 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_file'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "document": {
+        "id": "a9d88003-a6ff-47fb-8e70-963aaabda799",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+                "upload_file_id": "f1e98170-306a-441e-9f75-2e9422f0e72c"
+        },
+        "dataset_process_rule_id": "7df1eec8-dba6-440b-8c8b-8e36f25a6aec",
+        "name": "Dify.txt",
+        "created_from": "api",
+        "created_by": "ff7e449d-4a0c-4e32-a8a9-4649432a6711",
+        "created_at": 1695308667,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": "20230921150427533684"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/batch/{batch}/indexing-status'
+  method='GET'
+  title='通过文件更新文档  '
+  name='#update_by_file'
+/>
+<Row>
+  <Col>
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='batch' type='string' key='batch'>
+        上传文档的批次号
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_file'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data":[{
+        "id": "",
+        "indexing_status": "indexing", 
+        "processing_started_at": 1681623462.0,
+        "parsing_completed_at": 1681623462.0,
+        "cleaning_completed_at": 1681623462.0,
+        "splitting_completed_at": 1681623462.0,
+        "completed_at": null,
+        "paused_at": null,
+        "error": null,
+        "stopped_at": null,
+        "completed_segments": 24,
+        "total_segments": 100
+      }]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}'
+  method='DELETE'
+  title='删除文档'
+  name='#delete_document'
+/>
+<Row>
+  <Col>
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        数据集 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents'
+  method='GET'
+  title='数据集文档列表'
+  name='#dataset_document_list'
+/>
+<Row>
+  <Col>
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+    </Properties>
+
+    ### Path Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选，目前仅搜索文档名称
+      </Property>
+      <Property name='page' type='string' key='page'>
+        页码，可选
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="GET">
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_file'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw '{
+      "process_rule": {
+        "rules": {
+          "pre_processing_rules": [{
+            "id": "remove_extra_spaces",
+            "enabled": true
+          }, {
+            "id": "remove_urls_emails",
+            "enabled": true
+          }],
+          "segmentation": {
+            "separator": "###",
+            "max_tokens": 500
+          }
+        },
+        "mode": "custom"
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "1e87da99-00b3-4d43-8a6d-34cbb9f3a3f1",
+          "position": 1,
+          "data_source_type": "file_upload",
+          "data_source_info": null,
+          "dataset_process_rule_id": null,
+          "name": "dify",
+          "created_from": "",
+          "created_by": "52b6e9a1-fd0e-48a5-89e9-3b6518658fd2",
+          "created_at": 1681623639,
+          "tokens": 0,
+          "indexing_status": "waiting",
+          "error": null,
+          "enabled": true,
+          "disabled_at": null,
+          "disabled_by": null,
+          "archived": false
+        },
+      ],
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments'
+  method='POST'
+  title='新增分段'
+  name='#create_new_segment'
+/>
+<Row>
+  <Col>
+    ### Path Params
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segments' type='object list' key='segments'>
+        segments (object list) 分段内容
+          - content (text) 文本内容/问题内容，必填
+          - answer(text) 答案内容，非必填，如果数据集的模式为qa模式则传值
+          - keywords(list) 关键字，非必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup title="Request" tag="POST" label="/datasets">
+    ```bash {{ title: 'cURL' }}
+    curl 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}/segment'
+    --header 'Authorization: Bearer {api_key}'
+    --header 'Content-Type: application/json'
+    --data-raw $'"segments":[
+    {"content":"Dify means Do it for you",
+    "keywords":["Dify","Do"]
+    }
+    ]' 
+    --compressed
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "Dify means Do it for you!",
+        "answer": null,
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "Dify"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+错误信息
+- document_indexing，文档索引失败
+- provider_not_initialize， Embedding 模型未配置
+- not_found，文档不存在
+- dataset_name_duplicate ，数据集名称重复
+- provider_quota_exceeded，模型额度超过限制
+- dataset_not_initialized，数据集还未初始化
+- unsupported_file_type，不支持的文件类型 
+  - 目前只支持：txt, markdown, md, pdf, html, htm, xlsx, docx, csv
+- too_many_files，文件数量过多，暂时只支持单一文件上传
+- file_too_large，文件太大，支持15M以下
