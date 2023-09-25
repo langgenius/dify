@@ -16,7 +16,7 @@ class HuggingFaceHubLLM(HuggingFaceHub):
     environment variable ``HUGGINGFACEHUB_API_TOKEN`` set with your API token, or pass
     it as a named parameter to the constructor.
 
-    Only supports `text-generation`, `text2text-generation` and `summarization` for now.
+    Only supports `text-generation`, `text2text-generation` for now.
 
     Example:
         .. code-block:: python

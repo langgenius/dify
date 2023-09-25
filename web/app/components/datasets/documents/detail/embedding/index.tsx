@@ -291,8 +291,8 @@ const EmbeddingDetail: FC<Props> = ({ detail, stopPosition = 'top', datasetId: d
         <Divider />
         <div className={s.previewTip}>{t('datasetDocuments.embedding.previewTip')}</div>
         <div className={style.cardWrapper}>
-          {[1, 2, 3].map(v => (
-            <SegmentCard loading={true} detail={{ position: v } as any} />
+          {[1, 2, 3].map((v, index) => (
+            <SegmentCard key={index} loading={true} detail={{ position: v } as any} />
           ))}
         </div>
       </>}

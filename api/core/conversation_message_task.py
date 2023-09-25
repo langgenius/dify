@@ -112,7 +112,7 @@ class ConversationMessageTask:
             )
 
             db.session.add(self.conversation)
-            db.session.flush()
+            db.session.commit()
 
         self.message = Message(
             app_id=self.app_model_config.app_id,
@@ -197,6 +197,7 @@ class ConversationMessageTask:
 
     def on_chain_end(self, message_chain: MessageChain, chain_result: ChainResult):
         message_chain.output = json.dumps(chain_result.completion)
+        db.session.commit()
 
         self._pub_handler.pub_chain(message_chain)
 
@@ -262,6 +263,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(dataset_query)
+        db.session.commit()
 
     def on_dataset_query_finish(self, resource: List):
         if resource and len(resource) > 0:
