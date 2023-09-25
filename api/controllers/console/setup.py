@@ -1,7 +1,6 @@
 # -*- coding:utf-8 -*-
 from functools import wraps
 
-import flask_login
 from flask import request, current_app
 from flask_restful import Resource, reqparse
 
@@ -58,9 +57,6 @@ class SetupApi(Resource):
         )
 
         setup()
-
-        # Login
-        flask_login.login_user(account)
         AccountService.update_last_login(account, request)
 
         return {'result': 'success'}, 201

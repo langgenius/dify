@@ -89,7 +89,7 @@ const NormalForm = () => {
     }
     try {
       setIsLoading(true)
-      await login({
+      const res = await login({
         url: '/login',
         body: {
           email,
@@ -97,7 +97,8 @@ const NormalForm = () => {
           remember_me: true,
         },
       })
-      router.push('/apps')
+      localStorage.setItem('console_token', res.data)
+      router.replace('/apps')
     }
     finally {
       setIsLoading(false)
