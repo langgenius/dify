@@ -15,8 +15,7 @@ from services.dataset_service import DocumentService, SegmentService
 
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
-
-    def post(self, dataset_id, document_id, tenant_id):
+    def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset
         dataset_id = str(dataset_id)
@@ -57,4 +56,4 @@ class SegmentApi(DatasetApiResource):
         }, 200
 
 
-api.add_resource(SegmentApi, '/documents/<uuid:document_id>/segments')
+api.add_resource(SegmentApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments')

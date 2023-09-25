@@ -73,7 +73,7 @@ class FileService:
         file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.txt'
 
         # save file to storage
-        storage.save(file_key, text)
+        storage.save(file_key, text.encode('utf-8'))
 
         # save file to db
         config = current_app.config

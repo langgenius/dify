@@ -41,7 +41,7 @@ class VectorService:
         for pre_segment_data in pre_segment_data_list:
             segment = pre_segment_data['segment']
             document = Document(
-                page_content=pre_segment_data.content,
+                page_content=segment.content,
                 metadata={
                     "doc_id": segment.index_node_id,
                     "doc_hash": segment.index_node_hash,

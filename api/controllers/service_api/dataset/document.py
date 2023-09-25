@@ -1,4 +1,5 @@
 import datetime
+import json
 import uuid
 
 from flask import current_app, request
@@ -26,7 +27,7 @@ from services.file_service import FileService
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
-    def post(self, dataset_id, tenant_id):
+    def post(self, tenant_id, dataset_id):
         """Create document by text."""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
@@ -62,7 +63,7 @@ class DocumentAddByTextApi(DatasetApiResource):
                 }
             }
         }
-        args['data_source'] = data_source['data_source']
+        args['data_source'] = data_source
         # validate args
         DocumentService.document_create_args_validate(args)
 
@@ -88,7 +89,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
-    def post(self, dataset_id, document_id, tenant_id):
+    def post(self, tenant_id, dataset_id, document_id):
         """Update document by text."""
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=False, nullable=True, location='json')
@@ -142,18 +143,15 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
-
-    def post(self, dataset_id, tenant_id):
+    def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
-        parser = reqparse.RequestParser()
-        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
-        parser.add_argument('original_document_id', type=str, required=False, location='json')
-        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
-        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
-                            location='json')
-        parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
-                            location='json')
-        args = parser.parse_args()
+        args = {}
+        if 'data' in request.form:
+            args = json.loads(request.form['data'])
+        if 'doc_form' not in args:
+            args['doc_form'] = 'text_model'
+        if 'doc_language' not in args:
+            args['doc_language'] = 'English'
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -210,12 +208,12 @@ class DocumentAddByFileApi(DatasetApiResource):
 class DocumentUpdateByFileApi(DatasetApiResource):
     """Resource for update documents."""
 
-    def post(self, dataset_id, document_id, tenant_id):
+    def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
-        parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=False, nullable=True, location='json')
-        parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
-        args = parser.parse_args()
+        args = {}
+        if 'data' in request.form:
+            args = json.loads(request.form['data'])
+
         # get dataset info
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -267,7 +265,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
 
 
 class DocumentDeleteApi(DatasetApiResource):
-    def delete(self, dataset_id, document_id, tenant_id):
+    def delete(self, tenant_id, dataset_id, document_id):
         """Delete document."""
         document_id = str(document_id)
         dataset_id = str(dataset_id)
@@ -302,7 +300,7 @@ class DocumentDeleteApi(DatasetApiResource):
 
 
 class DocumentListApi(DatasetApiResource):
-    def get(self, dataset_id, tenant_id):
+    def get(self, tenant_id, dataset_id):
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
         page = request.args.get('page', default=1, type=int)
@@ -340,7 +338,7 @@ class DocumentListApi(DatasetApiResource):
 
 
 class DocumentIndexingStatusApi(DatasetApiResource):
-    def get(self, dataset_id, batch, tenant_id):
+    def get(self, tenant_id, dataset_id, batch):
         dataset_id = str(dataset_id)
         batch = str(batch)
         tenant_id = str(tenant_id)
