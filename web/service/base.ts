@@ -77,18 +77,18 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd) => {
+const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
-  const reader = response.body.getReader()
+  const reader = response.body?.getReader()
   const decoder = new TextDecoder('utf-8')
   let buffer = ''
-  let bufferObj: any
+  let bufferObj: Record<string, any>
   let isFirstMessage = true
   function read() {
     let hasError = false
-    reader.read().then((result: any) => {
+    reader?.read().then((result: any) => {
       if (result.done) {
         onCompleted && onCompleted()
         return
@@ -99,7 +99,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
         lines.forEach((message) => {
           if (message.startsWith('data: ')) { // check if it starts with data:
             try {
-              bufferObj = JSON.parse(message.substring(6)) // remove data: and parse as json
+              bufferObj = JSON.parse(message.substring(6)) as Record<string, any>// remove data: and parse as json
             }
             catch (e) {
               // mute handle message cut off
@@ -113,11 +113,11 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               onData('', false, {
                 conversationId: undefined,
                 messageId: '',
-                errorMessage: bufferObj.message,
-                errorCode: bufferObj.code,
+                errorMessage: bufferObj?.message,
+                errorCode: bufferObj?.code,
               })
               hasError = true
-              onCompleted && onCompleted(true)
+              onCompleted?.(true)
               return
             }
             if (bufferObj.event === 'message') {
@@ -130,10 +130,10 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
               isFirstMessage = false
             }
             else if (bufferObj.event === 'agent_thought') {
-              onThought?.(bufferObj as any)
+              onThought?.(bufferObj as ThoughtItem)
             }
             else if (bufferObj.event === 'message_end') {
-              onMessageEnd?.(bufferObj as any)
+              onMessageEnd?.(bufferObj as MessageEnd)
             }
           }
         })
@@ -146,7 +146,7 @@ const handleStream = (response: any, onData: IOnData, onCompleted?: IOnCompleted
           errorMessage: `${e}`,
         })
         hasError = true
-        onCompleted && onCompleted(true)
+        onCompleted?.(true)
         return
       }
       if (!hasError)
@@ -178,6 +178,10 @@ const baseFetch = <T>(
 
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
+  }
+  else {
+    const accessToken = localStorage.getItem('console_token') || ''
+    options.headers.set('Authorization', `Bearer ${accessToken}`)
   }
 
   if (deleteContentType) {
@@ -292,7 +296,9 @@ export const upload = (options: any): Promise<any> => {
   const defaultOptions = {
     method: 'POST',
     url: `${API_PREFIX}/files/upload`,
-    headers: {},
+    headers: {
+      Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
+    },
     data: {},
   }
   options = {

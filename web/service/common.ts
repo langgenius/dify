@@ -15,8 +15,8 @@ import type {
 } from '@/models/app'
 import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
 
-export const login: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post<CommonResponse>(url, { body })
+export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & { data: string }>
 }
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {

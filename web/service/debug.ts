@@ -1,6 +1,12 @@
 import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd } from './base'
 import { get, post, ssePost } from './base'
 
+export type AutomaticRes = {
+  prompt: string
+  variables: string[]
+  opening_statement: string
+}
+
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
@@ -46,7 +52,7 @@ export const fetchConvesationMessages = (appId: string, conversation_id: string)
 }
 
 export const generateRule = (body: Record<string, any>) => {
-  return post('/rule-generate', {
+  return post<AutomaticRes>('/rule-generate', {
     body,
   })
 }

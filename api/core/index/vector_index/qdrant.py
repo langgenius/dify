@@ -1390,70 +1390,12 @@ class Qdrant(VectorStore):
             path=path,
             **kwargs,
         )
-        try:
-            # Skip any validation in case of forced collection recreate.
-            if force_recreate:
-                raise ValueError
-
-            # Get the vector configuration of the existing collection and vector, if it
-            # was specified. If the old configuration does not match the current one,
-            # an exception is being thrown.
-            collection_info = client.get_collection(collection_name=collection_name)
-            current_vector_config = collection_info.config.params.vectors
-            if isinstance(current_vector_config, dict) and vector_name is not None:
-                if vector_name not in current_vector_config:
-                    raise QdrantException(
-                        f"Existing Qdrant collection {collection_name} does not "
-                        f"contain vector named {vector_name}. Did you mean one of the "
-                        f"existing vectors: {', '.join(current_vector_config.keys())}? "
-                        f"If you want to recreate the collection, set `force_recreate` "
-                        f"parameter to `True`."
-                    )
-                current_vector_config = current_vector_config.get(
-                    vector_name
-                )  # type: ignore[assignment]
-            elif isinstance(current_vector_config, dict) and vector_name is None:
-                raise QdrantException(
-                    f"Existing Qdrant collection {collection_name} uses named vectors. "
-                    f"If you want to reuse it, please set `vector_name` to any of the "
-                    f"existing named vectors: "
-                    f"{', '.join(current_vector_config.keys())}."  # noqa
-                    f"If you want to recreate the collection, set `force_recreate` "
-                    f"parameter to `True`."
-                )
-            elif (
-                not isinstance(current_vector_config, dict) and vector_name is not None
-            ):
-                raise QdrantException(
-                    f"Existing Qdrant collection {collection_name} doesn't use named "
-                    f"vectors. If you want to reuse it, please set `vector_name` to "
-                    f"`None`. If you want to recreate the collection, set "
-                    f"`force_recreate` parameter to `True`."
-                )
-
-            # Check if the vector configuration has the same dimensionality.
-            if current_vector_config.size != vector_size:  # type: ignore[union-attr]
-                raise QdrantException(
-                    f"Existing Qdrant collection is configured for vectors with "
-                    f"{current_vector_config.size} "  # type: ignore[union-attr]
-                    f"dimensions. Selected embeddings are {vector_size}-dimensional. "
-                    f"If you want to recreate the collection, set `force_recreate` "
-                    f"parameter to `True`."
-                )
-
-            current_distance_func = (
-                current_vector_config.distance.name.upper()  # type: ignore[union-attr]
-            )
-            if current_distance_func != distance_func:
-                raise QdrantException(
-                    f"Existing Qdrant collection is configured for "
-                    f"{current_vector_config.distance} "  # type: ignore[union-attr]
-                    f"similarity. Please set `distance_func` parameter to "
-                    f"`{distance_func}` if you want to reuse it. If you want to "
-                    f"recreate the collection, set `force_recreate` parameter to "
-                    f"`True`."
-                )
-        except (UnexpectedResponse, RpcError, ValueError):
+        all_collection_name = []
+        collections_response = client.get_collections()
+        collection_list = collections_response.collections
+        for collection in collection_list:
+            all_collection_name.append(collection.name)
+        if collection_name not in all_collection_name:
             vectors_config = rest.VectorParams(
                 size=vector_size,
                 distance=rest.Distance[distance_func],
@@ -1481,6 +1423,67 @@ class Qdrant(VectorStore):
                 timeout=timeout,  # type: ignore[arg-type]
             )
             is_new_collection = True
+        if force_recreate:
+            raise ValueError
+
+        # Get the vector configuration of the existing collection and vector, if it
+        # was specified. If the old configuration does not match the current one,
+        # an exception is being thrown.
+        collection_info = client.get_collection(collection_name=collection_name)
+        current_vector_config = collection_info.config.params.vectors
+        if isinstance(current_vector_config, dict) and vector_name is not None:
+            if vector_name not in current_vector_config:
+                raise QdrantException(
+                    f"Existing Qdrant collection {collection_name} does not "
+                    f"contain vector named {vector_name}. Did you mean one of the "
+                    f"existing vectors: {', '.join(current_vector_config.keys())}? "
+                    f"If you want to recreate the collection, set `force_recreate` "
+                    f"parameter to `True`."
+                )
+            current_vector_config = current_vector_config.get(
+                vector_name
+            )  # type: ignore[assignment]
+        elif isinstance(current_vector_config, dict) and vector_name is None:
+            raise QdrantException(
+                f"Existing Qdrant collection {collection_name} uses named vectors. "
+                f"If you want to reuse it, please set `vector_name` to any of the "
+                f"existing named vectors: "
+                f"{', '.join(current_vector_config.keys())}."  # noqa
+                f"If you want to recreate the collection, set `force_recreate` "
+                f"parameter to `True`."
+            )
+        elif (
+                not isinstance(current_vector_config, dict) and vector_name is not None
+        ):
+            raise QdrantException(
+                f"Existing Qdrant collection {collection_name} doesn't use named "
+                f"vectors. If you want to reuse it, please set `vector_name` to "
+                f"`None`. If you want to recreate the collection, set "
+                f"`force_recreate` parameter to `True`."
+            )
+
+        # Check if the vector configuration has the same dimensionality.
+        if current_vector_config.size != vector_size:  # type: ignore[union-attr]
+            raise QdrantException(
+                f"Existing Qdrant collection is configured for vectors with "
+                f"{current_vector_config.size} "  # type: ignore[union-attr]
+                f"dimensions. Selected embeddings are {vector_size}-dimensional. "
+                f"If you want to recreate the collection, set `force_recreate` "
+                f"parameter to `True`."
+            )
+
+        current_distance_func = (
+            current_vector_config.distance.name.upper()  # type: ignore[union-attr]
+        )
+        if current_distance_func != distance_func:
+            raise QdrantException(
+                f"Existing Qdrant collection is configured for "
+                f"{current_vector_config.distance} "  # type: ignore[union-attr]
+                f"similarity. Please set `distance_func` parameter to "
+                f"`{distance_func}` if you want to reuse it. If you want to "
+                f"recreate the collection, set `force_recreate` parameter to "
+                f"`True`."
+            )
         qdrant = cls(
             client=client,
             collection_name=collection_name,

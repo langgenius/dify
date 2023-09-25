@@ -2,9 +2,8 @@ import logging
 from datetime import datetime
 from typing import Optional
 
-import flask_login
 import requests
-from flask import request, redirect, current_app, session
+from flask import request, redirect, current_app
 from flask_restful import Resource
 
 from libs.oauth import OAuthUserInfo, GitHubOAuth, GoogleOAuth
@@ -75,12 +74,11 @@ class OAuthCallback(Resource):
             account.initialized_at = datetime.utcnow()
             db.session.commit()
 
-        # login user
-        session.clear()
-        flask_login.login_user(account, remember=True)
         AccountService.update_last_login(account, request)
 
-        return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_login=success')
+        token = AccountService.get_account_jwt_token(account)
+
+        return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?console_token={token}')
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
