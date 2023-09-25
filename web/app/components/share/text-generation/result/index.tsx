@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useBoolean, useGetState } from 'ahooks'
+import React, { useEffect, useRef, useState } from 'react'
+import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import cn from 'classnames'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
@@ -18,10 +18,12 @@ export type IResultProps = {
   isMobile: boolean
   isInstalledApp: boolean
   installedAppInfo?: InstalledApp
+  isError: boolean
   promptConfig: PromptConfig | null
   moreLikeThisEnabled: boolean
   inputs: Record<string, any>
   controlSend?: number
+  controlRetry?: number
   controlStopResponding?: number
   onShowRes: () => void
   handleSaveMessage: (messageId: string) => void
@@ -35,10 +37,12 @@ const Result: FC<IResultProps> = ({
   isMobile,
   isInstalledApp,
   installedAppInfo,
+  isError,
   promptConfig,
   moreLikeThisEnabled,
   inputs,
   controlSend,
+  controlRetry,
   controlStopResponding,
   onShowRes,
   handleSaveMessage,
@@ -51,7 +55,13 @@ const Result: FC<IResultProps> = ({
       setResponsingFalse()
   }, [controlStopResponding])
 
-  const [completionRes, setCompletionRes, getCompletionRes] = useGetState('')
+  const [completionRes, doSetCompletionRes] = useState('')
+  const completionResRef = useRef('')
+  const setCompletionRes = (res: string) => {
+    completionResRef.current = res
+    doSetCompletionRes(res)
+  }
+  const getCompletionRes = () => completionResRef.current
   const { notify } = Toast
   const isNoData = !completionRes
 
@@ -124,6 +134,17 @@ const Result: FC<IResultProps> = ({
       onShowRes()
 
     setResponsingTrue()
+    const startTime = Date.now()
+    let isTimeout = false
+    const runId = setInterval(() => {
+      if (Date.now() - startTime > 1000 * 60) { // 1min timeout
+        clearInterval(runId)
+        setResponsingFalse()
+        onCompleted(getCompletionRes(), taskId, false)
+        isTimeout = true
+        console.log(`[#${taskId}]: timeout`)
+      }
+    }, 1000)
     sendCompletionMessage(data, {
       onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         tempMessageId = messageId
@@ -131,13 +152,21 @@ const Result: FC<IResultProps> = ({
         setCompletionRes(res.join(''))
       },
       onCompleted: () => {
+        if (isTimeout)
+          return
+
         setResponsingFalse()
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
+        clearInterval(runId)
       },
       onError() {
+        if (isTimeout)
+          return
+
         setResponsingFalse()
         onCompleted(getCompletionRes(), taskId, false)
+        clearInterval(runId)
       },
     }, isInstalledApp, installedAppInfo?.id)
   }
@@ -150,9 +179,16 @@ const Result: FC<IResultProps> = ({
     }
   }, [controlSend])
 
+  useEffect(() => {
+    if (controlRetry)
+      handleSend()
+  }, [controlRetry])
+
   const renderTextGenerationRes = () => (
     <TextGenerationRes
       className='mt-3'
+      isError={isError}
+      onRetry={handleSend}
       content={completionRes}
       messageId={messageId}
       isInWebApp
