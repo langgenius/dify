@@ -401,10 +401,10 @@ const Configuration: FC = () => {
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-[574px]">
+            <div className="w-1/2 min-w-[560px] shrink-0">
               <Config />
             </div>
-            <div className="relative grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+            <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={showSetAPIKey} />
             </div>
           </div>
