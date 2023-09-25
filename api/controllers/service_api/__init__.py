@@ -9,4 +9,4 @@ api = ExternalApi(bp)
 
 from .app import completion, app, conversation, message, audio
 
-from .dataset import document, segment
+from .dataset import document, segment, dataset
