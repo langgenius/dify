@@ -33,7 +33,6 @@ class DatasetRetrieverTool(BaseTool):
     return_resource: str
     retriever_from: str
 
-
     @classmethod
     def from_dataset(cls, dataset: Dataset, **kwargs):
         description = dataset.description
@@ -94,7 +93,10 @@ class DatasetRetrieverTool(BaseTool):
                     query,
                     search_type='similarity_score_threshold',
                     search_kwargs={
-                        'k': self.k
+                        'k': self.k,
+                        'filter': {
+                            'group_id': [dataset.id]
+                        }
                     }
                 )
             else:

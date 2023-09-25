@@ -14,6 +14,9 @@ class EnhanceOpenAI(OpenAI):
     max_retries: int = 1
     """Maximum number of retries to make when generating."""
 
+    def __new__(cls, **data: Any):  # type: ignore
+        return super(EnhanceOpenAI, cls).__new__(cls)
+
     @root_validator()
     def validate_environment(cls, values: Dict) -> Dict:
         """Validate that api key and python package exists in environment."""

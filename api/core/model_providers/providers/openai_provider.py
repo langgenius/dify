@@ -41,6 +41,10 @@ class OpenAIProvider(BaseModelProvider):
                     ]
                 },
                 {
+                    'id': 'gpt-3.5-turbo-instruct',
+                    'name': 'GPT-3.5-Turbo-Instruct',
+                },
+                {
                     'id': 'gpt-3.5-turbo-16k',
                     'name': 'gpt-3.5-turbo-16k',
                     'features': [
@@ -128,16 +132,17 @@ class OpenAIProvider(BaseModelProvider):
             'gpt-4': 8192,
             'gpt-4-32k': 32768,
             'gpt-3.5-turbo': 4096,
+            'gpt-3.5-turbo-instruct': 8192,
             'gpt-3.5-turbo-16k': 16384,
             'text-davinci-003': 4097,
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0, max=2, default=1),
-            top_p=KwargRule[float](min=0, max=1, default=1),
-            presence_penalty=KwargRule[float](min=-2, max=2, default=0),
-            frequency_penalty=KwargRule[float](min=-2, max=2, default=0),
-            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name, 4097), default=16),
+            temperature=KwargRule[float](min=0, max=2, default=1, precision=2),
+            top_p=KwargRule[float](min=0, max=1, default=1, precision=2),
+            presence_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+            frequency_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name, 4097), default=16, precision=0),
         )
 
     @classmethod

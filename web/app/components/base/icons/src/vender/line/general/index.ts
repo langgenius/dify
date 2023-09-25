@@ -1,4 +1,5 @@
 export { default as AtSign } from './AtSign'
+export { default as Bookmark } from './Bookmark'
 export { default as Check } from './Check'
 export { default as DotsHorizontal } from './DotsHorizontal'
 export { default as Edit03 } from './Edit03'

@@ -12,10 +12,15 @@ import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-
+import { Clipboard } from '@/app/components/base/icons/src/vender/line/files'
+import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
+import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
+  isError: boolean
+  onRetry: () => void
   content: string
   messageId?: string | null
   isLoading?: boolean
@@ -32,14 +37,15 @@ export type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
 }
 
-export const SimpleBtn = ({ className, onClick, children }: {
+export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
   className?: string
+  isDisabled?: boolean
   onClick?: () => void
   children: React.ReactNode
 }) => (
   <div
-    className={cn(className, 'flex items-center h-7 px-3 rounded-md border border-gray-200 text-xs text-gray-700 font-medium  cursor-pointer hover:shadow-sm hover:border-gray-300')}
-    onClick={() => onClick?.()}
+    className={cn(className, isDisabled ? 'border-gray-100 text-gray-300' : 'border-gray-200 text-gray-700 cursor-pointer hover:border-gray-300 hover:shadow-sm', 'flex items-center h-7 px-3 rounded-md border text-xs  font-medium')}
+    onClick={() => !isDisabled && onClick?.()}
   >
     {children}
   </div>
@@ -51,27 +57,10 @@ export const copyIcon = (
   </svg>
 )
 
-const moreLikeThisIcon = (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <g clipPath="url(#clip0_4138_1944)">
-      <path d="M2.62533 12.8337V9.91699M2.62533 4.08366V1.16699M1.16699 2.62533H4.08366M1.16699 11.3753H4.08366M7.58366 1.75033L6.57206 4.38049C6.40755 4.80821 6.32529 5.02207 6.19738 5.20196C6.08402 5.36139 5.94472 5.50069 5.78529 5.61405C5.6054 5.74196 5.39155 5.82421 4.96383 5.98872L2.33366 7.00033L4.96383 8.01193C5.39155 8.17644 5.60541 8.25869 5.78529 8.3866C5.94472 8.49996 6.08402 8.63926 6.19738 8.79869C6.32529 8.97858 6.40755 9.19244 6.57206 9.62016L7.58366 12.2503L8.59526 9.62015C8.75977 9.19244 8.84202 8.97858 8.96993 8.79869C9.0833 8.63926 9.22259 8.49996 9.38203 8.3866C9.56191 8.25869 9.77577 8.17644 10.2035 8.01193L12.8337 7.00033L10.2035 5.98872C9.77577 5.82421 9.56191 5.74196 9.38203 5.61405C9.22259 5.50069 9.0833 5.36139 8.96993 5.20196C8.84202 5.02207 8.75977 4.80821 8.59526 4.38049L7.58366 1.75033Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-    </g>
-    <defs>
-      <clipPath id="clip0_4138_1944">
-        <rect width="14" height="14" fill="white" />
-      </clipPath>
-    </defs>
-  </svg>
-)
-
-const saveIcon = (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M11.0837 12.25L7.00033 9.33333L2.91699 12.25V2.91667C2.91699 2.60725 3.03991 2.3105 3.2587 2.09171C3.47749 1.87292 3.77424 1.75 4.08366 1.75H9.91699C10.2264 1.75 10.5232 1.87292 10.7419 2.09171C10.9607 2.3105 11.0837 2.60725 11.0837 2.91667V12.25Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
-)
-
 const GenerationItem: FC<IGenerationItemProps> = ({
   className,
+  isError,
+  onRetry,
   content,
   messageId,
   isLoading,
@@ -162,7 +151,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [isLoading])
 
   return (
-    <div className={cn(className, isTop ? 'rounded-xl border border-gray-200  bg-white' : 'rounded-br-xl !mt-0')}
+    <div className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
       style={isTop
         ? {
           boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
@@ -186,98 +175,112 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className='flex'>
               <div className='grow w-0'>
-                <Markdown content={content} />
+                {isError
+                  ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                  : (
+                    <Markdown content={ content } />
+                  )}
+
               </div>
             </div>
-            {messageId && (
-              <div className='flex items-center justify-between mt-3'>
-                <div className='flex items-center'>
-                  <SimpleBtn
-                    className={cn(isMobile && '!px-1.5', 'space-x-1')}
-                    onClick={() => {
-                      copy(content)
-                      Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                    }}>
-                    {copyIcon}
-                    {!isMobile && <div>{t('common.operation.copy')}</div>}
-                  </SimpleBtn>
-                  {isInWebApp && (
-                    <>
+
+            <div className='flex items-center justify-between mt-3'>
+              <div className='flex items-center'>
+                <SimpleBtn
+                  isDisabled={isError || !messageId}
+                  className={cn(isMobile && '!px-1.5', 'space-x-1')}
+                  onClick={() => {
+                    copy(content)
+                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                  }}>
+                  <Clipboard className='w-3.5 h-3.5' />
+                  {!isMobile && <div>{t('common.operation.copy')}</div>}
+                </SimpleBtn>
+                {isInWebApp && (
+                  <>
+                    <SimpleBtn
+                      isDisabled={isError || !messageId}
+                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                      onClick={() => { onSave?.(messageId as string) }}
+                    >
+                      <Bookmark className='w-3.5 h-3.5' />
+                      {!isMobile && <div>{t('common.operation.save')}</div>}
+                    </SimpleBtn>
+                    {(moreLikeThis && depth < MAX_DEPTH) && (
                       <SimpleBtn
+                        isDisabled={isError || !messageId}
                         className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                        onClick={() => { onSave?.(messageId as string) }}
+                        onClick={handleMoreLikeThis}
                       >
-                        {saveIcon}
-                        {!isMobile && <div>{t('common.operation.save')}</div>}
+                        <Stars02 className='w-3.5 h-3.5' />
+                        {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
+                      </SimpleBtn>)}
+                    {isError && <SimpleBtn
+                      onClick={onRetry}
+                      className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
+                    >
+                      <RefreshCcw01 className='w-3.5 h-3.5' />
+                      {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
+                    </SimpleBtn>}
+                    {!isError && messageId && <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>}
+                    {!isError && messageId && !feedback?.rating && (
+                      <SimpleBtn className="!px-0">
+                        <>
+                          <div
+                            onClick={() => {
+                              onFeedback?.({
+                                rating: 'like',
+                              })
+                            }}
+                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+                            <HandThumbUpIcon width={16} height={16} />
+                          </div>
+                          <div
+                            onClick={() => {
+                              onFeedback?.({
+                                rating: 'dislike',
+                              })
+                            }}
+                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+                            <HandThumbDownIcon width={16} height={16} />
+                          </div>
+                        </>
                       </SimpleBtn>
-                      {(moreLikeThis && depth < MAX_DEPTH) && (
-                        <SimpleBtn
-                          className={cn(isMobile && '!px-1.5', 'ml-2 space-x-1')}
-                          onClick={handleMoreLikeThis}
-                        >
-                          {moreLikeThisIcon}
-                          {!isMobile && <div>{t('appDebug.feature.moreLikeThis.title')}</div>}
-                        </SimpleBtn>)}
-                      <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>
-                      {!feedback?.rating && (
-                        <SimpleBtn className="!px-0">
-                          <>
-                            <div
-                              onClick={() => {
-                                onFeedback?.({
-                                  rating: 'like',
-                                })
-                              }}
-                              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                              <HandThumbUpIcon width={16} height={16} />
-                            </div>
-                            <div
-                              onClick={() => {
-                                onFeedback?.({
-                                  rating: 'dislike',
-                                })
-                              }}
-                              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                              <HandThumbDownIcon width={16} height={16} />
-                            </div>
-                          </>
-                        </SimpleBtn>
-                      )}
-                      {feedback?.rating === 'like' && (
-                        <div
-                          onClick={() => {
-                            onFeedback?.({
-                              rating: null,
-                            })
-                          }}
-                          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
-                          <HandThumbUpIcon width={16} height={16} />
-                        </div>
-                      )}
-                      {feedback?.rating === 'dislike' && (
-                        <div
-                          onClick={() => {
-                            onFeedback?.({
-                              rating: null,
-                            })
-                          }}
-                          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
-                          <HandThumbDownIcon width={16} height={16} />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-                <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
+                    )}
+                    {!isError && messageId && feedback?.rating === 'like' && (
+                      <div
+                        onClick={() => {
+                          onFeedback?.({
+                            rating: null,
+                          })
+                        }}
+                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
+                        <HandThumbUpIcon width={16} height={16} />
+                      </div>
+                    )}
+                    {!isError && messageId && feedback?.rating === 'dislike' && (
+                      <div
+                        onClick={() => {
+                          onFeedback?.({
+                            rating: null,
+                          })
+                        }}
+                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
+                        <HandThumbDownIcon width={16} height={16} />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
+              <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
+            </div>
 
           </div>
         )}
 
       {((childMessageId || isQuerying) && depth < 3) && (
         <div className='pl-4'>
-          <GenerationItem {...childProps} />
+          <GenerationItem {...childProps as any} />
         </div>
       )}
 
