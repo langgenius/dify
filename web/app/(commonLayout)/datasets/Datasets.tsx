@@ -7,7 +7,7 @@ import NewDatasetCard from './NewDatasetCard'
 import DatasetCard from './DatasetCard'
 import type { DataSetListResponse } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
-import { useAppContext, useSelector } from '@/context/app-context'
+import { useAppContext } from '@/context/app-context'
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -15,11 +15,16 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
   return null
 }
 
-const Datasets = () => {
+type Props = {
+  containerRef: React.RefObject<HTMLDivElement>
+}
+
+const Datasets = ({
+  containerRef,
+}: Props) => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false })
   const loadingStateRef = useRef(false)
-  const pageContainerRef = useSelector(state => state.pageContainerRef)
   const anchorRef = useRef<HTMLAnchorElement>(null)
 
   useEffect(() => {
@@ -29,15 +34,15 @@ const Datasets = () => {
   useEffect(() => {
     const onScroll = debounce(() => {
       if (!loadingStateRef.current) {
-        const { scrollTop, clientHeight } = pageContainerRef.current!
+        const { scrollTop, clientHeight } = containerRef.current!
         const anchorOffset = anchorRef.current!.offsetTop
         if (anchorOffset - scrollTop - clientHeight < 100)
           setSize(size => size + 1)
       }
     }, 50)
 
-    pageContainerRef.current?.addEventListener('scroll', onScroll)
-    return () => pageContainerRef.current?.removeEventListener('scroll', onScroll)
+    containerRef.current?.addEventListener('scroll', onScroll)
+    return () => containerRef.current?.removeEventListener('scroll', onScroll)
   }, [])
 
   return (
