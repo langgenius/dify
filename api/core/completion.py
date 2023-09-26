@@ -150,7 +150,7 @@ class Completion:
         if app.mode != 'completion':
             return query
         
-        return inputs.get(app_model_config.dataset_query_variable)
+        return inputs.get(app_model_config.dataset_query_variable, "")
 
     @classmethod
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
