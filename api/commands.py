@@ -647,16 +647,16 @@ def update_app_model_configs(batch_size):
 
             pbar.update(len(data_batch))
 
-@click.command('migrate_default_input_to_context_var')
+@click.command('migrate_default_input_to_dataset_query_variable')
 @click.option("--batch-size", default=500, help="Number of records to migrate in each batch.")
-def migrate_default_input_to_context_var(batch_size):
+def migrate_default_input_to_dataset_query_variable(batch_size):
 
     click.secho("Starting...", fg='green')
 
     total_records = db.session.query(AppModelConfig) \
         .join(App, App.app_model_config_id == AppModelConfig.id) \
         .filter(App.mode == 'completion') \
-        .filter(AppModelConfig.user_input_form.like('%default_input%')) \
+        .filter(AppModelConfig.dataset_query_variable == None) \
         .count()
     
     if total_records == 0:
@@ -675,7 +675,7 @@ def migrate_default_input_to_context_var(batch_size):
             data_batch = db.session.query(AppModelConfig) \
                 .join(App, App.app_model_config_id == AppModelConfig.id) \
                 .filter(App.mode == 'completion') \
-                .filter(AppModelConfig.user_input_form.like('%default_input%')) \
+                .filter(AppModelConfig.dataset_query_variable == None) \
                 .order_by(App.created_at) \
                 .offset(offset).limit(limit).all()
 
@@ -688,28 +688,22 @@ def migrate_default_input_to_context_var(batch_size):
                 for data in data_batch:
                     config = AppModelConfig.to_dict(data)
 
-                    # check if dataset exists
                     tools = config["agent_mode"]["tools"]
                     dataset_exists = "dataset" in str(tools)
                     if not dataset_exists:
                         continue
 
-                    # check if is_context_var exists
                     user_input_form = config.get("user_input_form", [])
                     for form in user_input_form:
                         paragraph = form.get('paragraph')
                         if paragraph \
-                            and paragraph.get('variable') == 'query' \
-                            and 'is_context_var' not in paragraph:
-                                paragraph['is_context_var'] = True
-                                data.user_input_form = json.dumps(user_input_form)
+                            and paragraph.get('variable') == 'query':
+                                data.dataset_query_variable = 'query'
                                 break
                         
                         if paragraph \
-                            and paragraph.get('variable') == 'default_input' \
-                            and 'is_context_var' not in paragraph:
-                                paragraph['is_context_var'] = True
-                                data.user_input_form = json.dumps(user_input_form)
+                            and paragraph.get('variable') == 'default_input':
+                                data.dataset_query_variable = 'default_input'
                                 break
 
                 db.session.commit()
@@ -736,4 +730,4 @@ def register_commands(app):
     app.cli.add_command(update_qdrant_indexes)
     app.cli.add_command(update_app_model_configs)
     app.cli.add_command(normalization_collections)
-    app.cli.add_command(migrate_default_input_to_context_var)
+    app.cli.add_command(migrate_default_input_to_dataset_query_variable)
