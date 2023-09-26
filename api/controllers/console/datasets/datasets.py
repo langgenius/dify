@@ -1,6 +1,6 @@
 # -*- coding:utf-8 -*-
 import flask_restful
-from flask import request
+from flask import request, current_app
 from flask_login import current_user
 
 from controllers.console.apikey import api_key_list, api_key_fields
@@ -422,6 +422,17 @@ class DatasetApiKeyApi(Resource):
         return {'result': 'success'}, 204
 
 
+class DatasetApiBaseUrlApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return {
+            'api_base_url': (current_app.config['SERVICE_API_URL'] if current_app.config['SERVICE_API_URL']
+                             else request.host_url.rstrip('/')) + '/v1'
+        }
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
@@ -429,3 +440,4 @@ api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
 api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
+api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
