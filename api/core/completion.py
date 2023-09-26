@@ -108,7 +108,7 @@ class Completion:
                 retriever_from=retriever_from
             )
 
-            query_for_agent = cls.transfer_completion_app_userinputs_to_agent_query(app, app_model_config, query, inputs)
+            query_for_agent = cls.get_query_for_agent(app, app_model_config, query, inputs)
 
             # run agent executor
             agent_execute_result = None
@@ -146,18 +146,11 @@ class Completion:
             return
         
     @classmethod
-    def transfer_completion_app_userinputs_to_agent_query(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
+    def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
         if app.mode != 'completion':
             return query
         
-        user_input_form = app_model_config.user_input_form
-        
-        for input in json.loads(user_input_form):
-            for field in input.values():
-                if field.get("is_context_var", False):
-                    variable_name = field['variable']
-                    query = inputs[variable_name]
-        return query
+        return inputs.get(app_model_config.dataset_query_variable)
 
     @classmethod
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
