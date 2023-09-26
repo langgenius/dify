@@ -319,10 +319,12 @@ const StepTwo = ({
   }
 
   const createHandle = async () => {
+    if (isCreating)
+      return
+    setIsCreating(true)
     try {
       let res
       const params = getCreationParams()
-      setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
           body: params,
