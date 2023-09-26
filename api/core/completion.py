@@ -147,7 +147,7 @@ class Completion:
         
     @classmethod
     def transfer_completion_app_userinputs_to_agent_query(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
-        if  app.mode != 'completion':
+        if app.mode != 'completion':
             return query
         
         user_input_form = app_model_config.user_input_form

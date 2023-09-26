@@ -646,6 +646,82 @@ def update_app_model_configs(batch_size):
 
             pbar.update(len(data_batch))
 
+@click.command('migrate_default_input_to_context_var')
+@click.option("--batch-size", default=500, help="Number of records to migrate in each batch.")
+def migrate_default_input_to_context_var(batch_size):
+
+    click.secho("Starting...", fg='green')
+
+    total_records = db.session.query(AppModelConfig) \
+        .join(App, App.app_model_config_id == AppModelConfig.id) \
+        .filter(App.mode == 'completion') \
+        .filter(AppModelConfig.user_input_form.like('%default_input%')) \
+        .count()
+    
+    if total_records == 0:
+        click.secho("No data to migrate.", fg='green')
+        return
+
+    num_batches = (total_records + batch_size - 1) // batch_size
+    
+    with tqdm(total=total_records, desc="Migrating Data") as pbar:
+        for i in range(num_batches):
+            offset = i * batch_size
+            limit = min(batch_size, total_records - offset)
+
+            click.secho(f"Fetching batch {i + 1}/{num_batches} from source database...", fg='green')
+
+            data_batch = db.session.query(AppModelConfig) \
+                .join(App, App.app_model_config_id == AppModelConfig.id) \
+                .filter(App.mode == 'completion') \
+                .filter(AppModelConfig.user_input_form.like('%default_input%')) \
+                .order_by(App.created_at) \
+                .offset(offset).limit(limit).all()
+
+            if not data_batch:
+                click.secho("No more data to migrate.", fg='green')
+                break
+
+            try:
+                click.secho(f"Migrating {len(data_batch)} records...", fg='green')
+                for data in data_batch:
+                    config = AppModelConfig.to_dict(data)
+
+                    # check if dataset exists
+                    tools = config["agent_mode"]["tools"]
+                    dataset_exists = "dataset" in str(tools)
+                    if not dataset_exists:
+                        continue
+
+                    # check if is_context_var exists
+                    user_input_form = config.get("user_input_form", [])
+                    for form in user_input_form:
+                        paragraph = form.get('paragraph')
+                        if paragraph \
+                            and paragraph.get('variable') == 'query' \
+                            and 'is_context_var' not in paragraph:
+                                paragraph['is_context_var'] = True
+                                data.user_input_form = json.dumps(user_input_form)
+                                break
+                        
+                        if paragraph \
+                            and paragraph.get('variable') == 'default_input' \
+                            and 'is_context_var' not in paragraph:
+                                paragraph['is_context_var'] = True
+                                data.user_input_form = json.dumps(user_input_form)
+                                break
+
+                db.session.commit()
+
+            except Exception as e:
+                click.secho(f"Error while migrating data: {e}, app_id: {data.app_id}, app_model_config_id: {data.id}",
+                            fg='red')
+                continue
+            
+            click.secho(f"Successfully migrated batch {i + 1}/{num_batches}.", fg='green')
+
+            pbar.update(len(data_batch))
+
 
 def register_commands(app):
     app.cli.add_command(reset_password)
@@ -659,3 +735,4 @@ def register_commands(app):
     app.cli.add_command(update_qdrant_indexes)
     app.cli.add_command(update_app_model_configs)
     app.cli.add_command(normalization_collections)
+    app.cli.add_command(migrate_default_input_to_context_var)
