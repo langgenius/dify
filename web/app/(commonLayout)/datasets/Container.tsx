@@ -1,11 +1,13 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import useSWR from 'swr'
 import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSlider from '@/app/components/base/tab-slider'
+import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
 const Container = () => {
   const options = [
@@ -20,7 +22,7 @@ const Container = () => {
   ]
   const [activeTab, setActiveTab] = useState('dataset')
   const containerRef = useRef<HTMLDivElement>(null)
-  const apiBaseUrl = 'https://api.dify.dev/v1'
+  const { data } = useSWR(activeTab === 'dataset' ? null : '/datasets/api-base-info', fetchDatasetApiBaseUrl)
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
@@ -32,7 +34,7 @@ const Container = () => {
         />
         {
           activeTab === 'api' && (
-            <ApiServer apiBaseUrl={apiBaseUrl} />
+            <ApiServer apiBaseUrl={data?.api_base_url || ''} />
           )
         }
       </div>
@@ -46,7 +48,7 @@ const Container = () => {
       }
       {
         activeTab === 'api' && (
-          <Doc apiBaseUrl={apiBaseUrl} />
+          <Doc apiBaseUrl={data?.api_base_url || ''} />
         )
       }
     </div>

@@ -208,3 +208,7 @@ export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<st
 export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<CreateApiKeyResponse>(url, body)
 }
+
+export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
+  return get<{ api_base_url: string }>(url)
+}
