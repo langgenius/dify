@@ -20,6 +20,7 @@ const Container = () => {
   ]
   const [activeTab, setActiveTab] = useState('dataset')
   const containerRef = useRef<HTMLDivElement>(null)
+  const apiBaseUrl = 'https://api.dify.dev/v1'
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
@@ -31,7 +32,7 @@ const Container = () => {
         />
         {
           activeTab === 'api' && (
-            <ApiServer />
+            <ApiServer apiBaseUrl={apiBaseUrl} />
           )
         }
       </div>
@@ -45,7 +46,7 @@ const Container = () => {
       }
       {
         activeTab === 'api' && (
-          <Doc />
+          <Doc apiBaseUrl={apiBaseUrl} />
         )
       }
     </div>
