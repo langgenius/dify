@@ -99,8 +99,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 ? (
                   <div className="space-y-3 ">
                     {promptVariables.map(({ key, name, type, options, max_length, required }) => (
-                      <div key={key} className="flex justify-between">
-                        <div className="mr-1 pt-2 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
+                      <div key={key} className="xl:flex justify-between">
+                        <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-gray-900">{name || key}</div>
                         {type === 'select' && (
                           <Select
                             className='w-full'
