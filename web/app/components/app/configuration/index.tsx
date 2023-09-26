@@ -223,7 +223,7 @@ const Configuration: FC = () => {
     const data: BackendModelConfig = {
       pre_prompt: promptTemplate,
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
-      dataset_query_variable: contextVar,
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
