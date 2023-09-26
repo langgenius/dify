@@ -127,7 +127,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/documents/create_by_text'
+  url='/datasets/{dataset_id}/document/create_by_text'
   method='POST'
   title='Create a document from text'
   name='#create_by_text'
@@ -176,7 +176,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup 
       title="Request" 
       tag="POST" 
-      label="/datasets/{dataset_id}/documents/create_by_text"
+      label="/datasets/{dataset_id}/document/create_by_text"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
     >
     ```bash {{ title: 'cURL' }}
@@ -230,7 +230,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/documents/create_by_file'
+  url='/datasets/{dataset_id}/document/create_by_file'
   method='POST'
   title='Create documents from files'
   name='#create_by_file'
@@ -282,7 +282,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup 
       title="Request" 
       tag="POST" 
-      label="/datasets/{dataset_id}/documents/create_by_file"
+      label="/datasets/{dataset_id}/document/create_by_file"
       targetCode={`curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
