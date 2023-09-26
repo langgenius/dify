@@ -183,6 +183,7 @@ services:
     image: postgres:15-alpine
     restart: always
     environment:
+      PGUSER: postgres
       # The password for the default postgres user.
       POSTGRES_PASSWORD: difyai123456
       # The name of the default postgres database.
