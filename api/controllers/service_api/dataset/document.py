@@ -95,6 +95,9 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         parser.add_argument('name', type=str, required=False, nullable=True, location='json')
         parser.add_argument('text', type=str, required=False, nullable=True, location='json')
         parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -107,7 +110,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             raise ValueError('Dataset is not exist.')
 
         if args['text']:
-            upload_file = FileService.upload_text(args.get('text'), args.get('text_name'))
+            upload_file = FileService.upload_text(args.get('text'), args.get('name'))
             data_source = {
                 'type': 'upload_file',
                 'info_list': {
@@ -119,7 +122,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
             }
             args['data_source'] = data_source
         # validate args
-        args['original_document_id'] = document_id
+        args['original_document_id'] = str(document_id)
         DocumentService.document_create_args_validate(args)
 
         try:
@@ -213,6 +216,10 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         args = {}
         if 'data' in request.form:
             args = json.loads(request.form['data'])
+        if 'doc_form' not in args:
+            args['doc_form'] = 'text_model'
+        if 'doc_language' not in args:
+            args['doc_language'] = 'English'
 
         # get dataset info
         dataset_id = str(dataset_id)
@@ -243,7 +250,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             }
             args['data_source'] = data_source
         # validate args
-        args['original_document_id'] = document_id
+        args['original_document_id'] = str(document_id)
         DocumentService.document_create_args_validate(args)
 
         try:
