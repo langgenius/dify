@@ -21,29 +21,31 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col sticky>
     <CodeGroup title="Request" tag="POST" label="/datasets">
     ```bash {{ title: 'cURL' }}
-    curl --location --request 'https://api.dify.dev/v1/datasets' \
-      --header 'Authorization: Bearer {api_key}' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{"name":"dify"}' \
-      --compressed
+    curl --location --request POST 'https://api.dify.ai/v1/datasets' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "name": "emptydataset"
+    }'
     ```
     </CodeGroup>
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
     {
-      "id": "",
+      "id": "uuid",
       "name": "dify",
       "description": null,
       "provider": "vendor",
       "permission": "only_me",
       "data_source_type": null,
       "indexing_technique": null,
+      "app_count": 0,
       "document_count": 0,
       "word_count": 0,
-      "created_by": "",
-      "created_at": 1695312374,
-      "updated_by": "",
-      "updated_at": 1695312374,
+      "created_by": "uuid",
+      "created_at": 1695636173,
+      "updated_by": "uuid",
+      "updated_at": 1695636173,
       "embedding_model": null,
       "embedding_model_provider": null,
       "embedding_available": null
@@ -76,11 +78,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col sticky>
     <CodeGroup title="Request" tag="POST" label="/datasets">
     ```bash {{ title: 'cURL' }}
-    curl 'https://api.dify.ai/v1/datasets' \
-      --header 'Authorization: Bearer {api_key}' \
-      --header 'Content-Type: application/json' \
-      --data-raw '{"name":"dify"}' \
-      --compressed
+    curl --location --request GET 'https://api.dify.ai/v1/datasets?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -96,7 +95,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           "indexing_technique": "",
           "app_count": 2,
           "document_count": 10,
-          "word_count": 1200
+          "word_count": 1200,
           "created_by": "uuid",
           "created_at": "timestamp",
           "updated_by": "uuid",
@@ -124,7 +123,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文本创建新的文档的操作。
+    此接口基于已存在数据集，在此数据集的基础上通过文本创建新的文档。
 
     ### Path Params
     <Properties>
@@ -143,7 +142,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - high_quaility 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - high_quality 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
           - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
@@ -163,31 +162,18 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="GET">
+    <CodeGroup title="Request" tag="POST" label="/datasets/{dataset_id}/documents/create_by_text">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/<uuid:dataset_id>/document/create_by_text'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
+    curl --location --request POST 'https://api.dify.dev/v1/datasets/{dataset_id}/document/create_by_text' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "Dify",
-      "text": "Dify means Do it for you...",
-      "indexing_technique": "high_quality",
-      "process_rule": {
-        "rules": {
-          "pre_processing_rules": [{
-            "id": "remove_extra_spaces",
-            "enabled": true
-          }, {
-            "id": "remove_urls_emails",
-            "enabled": true
-          }],
-          "segmentation": {
-            "separator": "###",
-            "max_tokens": 500
-          }
-        },
-        "mode": "custom"
-      }
+        "name": "text",
+        "text": "text",
+        "indexing_technique": "high_quality",
+        "process_rule": {
+            "mode": "automatic"
+        }
     }'
     ```
     </CodeGroup>
@@ -199,13 +185,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "position": 1,
         "data_source_type": "upload_file",
         "data_source_info": {
-          "upload_file_id": ""
+            "upload_file_id": ""
         },
         "dataset_process_rule_id": "",
-        "name": "Dify.txt",
+        "name": "text.txt",
         "created_from": "api",
         "created_by": "",
-        "created_at": 1695308667,
+        "created_at": 1695690280,
         "tokens": 0,
         "indexing_status": "waiting",
         "error": null,
@@ -218,7 +204,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "hit_count": 0,
         "doc_form": "text_model"
       },
-      "batch": "20230921150427533684"
+      "batch": ""
     }
     ```
     </CodeGroup>
@@ -235,7 +221,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文件创建新的文档的操作。
+    此接口基于已存在数据集，在此数据集的基础上通过文件创建新的文档。
 
     ### Path Params
     <Properties>
@@ -258,7 +244,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - high_quaility 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - high_quality 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
           - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
@@ -385,30 +371,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="GET">
+    <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents/{document_id}/update_by_text">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_text'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
+    curl --location --request POST 'https://api.dify.dev/v1/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "Dify",
-      "text": "Dify means Do it for you...",
-      "process_rule": {
-        "rules": {
-          "pre_processing_rules": [{
-            "id": "remove_extra_spaces",
-            "enabled": true
-          }, {
-            "id": "remove_urls_emails",
-            "enabled": true
-          }],
-          "segmentation": {
-            "separator": "###",
-            "max_tokens": 500
-          }
-        },
-        "mode": "custom"
-      }
+        "name": "name",
+        "text": "text"
     }'
     ```
     </CodeGroup>
@@ -423,7 +393,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               "upload_file_id": ""
       },
       "dataset_process_rule_id": "",
-      "name": "Dify.txt",
+      "name": "name.txt",
       "created_from": "api",
       "created_by": "",
       "created_at": 1695308667,
@@ -557,8 +527,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/batch/{batch}/indexing-status'
   method='GET'
-  title='通过文件更新文档  '
-  name='#update_by_file'
+  title='获取文档嵌入状态（进度）'
+  name='#indexing_status'
 />
 <Row>
   <Col>
@@ -573,29 +543,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="GET">
+    <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/batch/{batch}/indexing-status">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_file'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-      "process_rule": {
-        "rules": {
-          "pre_processing_rules": [{
-            "id": "remove_extra_spaces",
-            "enabled": true
-          }, {
-            "id": "remove_urls_emails",
-            "enabled": true
-          }],
-          "segmentation": {
-            "separator": "###",
-            "max_tokens": 500
-          }
-        },
-        "mode": "custom"
-      }
-    }'
+    curl --location --request GET 'https://api.dify.dev/v1/datasets/{dataset_id}/documents/{batch}/indexing-status' \
+    --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -642,11 +593,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="GET">
+    <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents/{document_id}">
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
+    curl --location --request DELETE 'https://api.dify.dev/v1/datasets/{dataset_id}/documents/{document_id}' \
+    --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -690,29 +640,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="GET">
+    <CodeGroup title="Request" tag="GET" label="/datasets/{dataset_id}/documents">
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/update_by_file'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
-    --data-raw '{
-      "process_rule": {
-        "rules": {
-          "pre_processing_rules": [{
-            "id": "remove_extra_spaces",
-            "enabled": true
-          }, {
-            "id": "remove_urls_emails",
-            "enabled": true
-          }],
-          "segmentation": {
-            "separator": "###",
-            "max_tokens": 500
-          }
-        },
-        "mode": "custom"
-      }
-    }'
+    curl --location --request GET 'https://api.dify.dev/v1/datasets/{dataset_id}/documents' \
+    --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -720,14 +651,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     {
       "data": [
         {
-          "id": "1e87da99-00b3-4d43-8a6d-34cbb9f3a3f1",
+          "id": "",
           "position": 1,
           "data_source_type": "file_upload",
           "data_source_info": null,
           "dataset_process_rule_id": null,
           "name": "dify",
           "created_from": "",
-          "created_by": "52b6e9a1-fd0e-48a5-89e9-3b6518658fd2",
+          "created_by": "",
           "created_at": 1681623639,
           "tokens": 0,
           "indexing_status": "waiting",
@@ -779,17 +710,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup title="Request" tag="POST" label="/datasets">
+    <CodeGroup title="Request" tag="POST" label="/datasets/{dataset_id}/documents/{document_id}/segments">
     ```bash {{ title: 'cURL' }}
-    curl 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}/segment'
-    --header 'Authorization: Bearer {api_key}'
-    --header 'Content-Type: application/json'
-    --data-raw $'"segments":[
-    {"content":"Dify means Do it for you",
-    "keywords":["Dify","Do"]
-    }
-    ]' 
-    --compressed
+    curl --location --request POST 'https://api.dify.dev/v1/datasets/{dataset_id}/documents/{document_id}/segments' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "segments": [
+            {
+                "content": "1",
+                "answer": "1",
+                "keywords": ["a"]
+            }
+        ]
+    }'
     ```
     </CodeGroup>
     <CodeGroup title="Response">
@@ -799,12 +733,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "id": "",
         "position": 1,
         "document_id": "",
-        "content": "Dify means Do it for you!",
-        "answer": null,
+        "content": "1",
+        "answer": "1",
         "word_count": 25,
         "tokens": 0,
         "keywords": [
-            "Dify"
+            "a"
         ],
         "index_node_id": "",
         "index_node_hash": "",
