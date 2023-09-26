@@ -71,7 +71,7 @@ const VarPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         {options.length > 0
-          ? (<div className='w-[240px] p-1  border bg-white border-gray-200 rounded-lg shadow-lg'>
+          ? (<div className='w-[240px] max-h-[50vh] overflow-y-auto p-1  border bg-white border-gray-200 rounded-lg shadow-lg'>
             {options.map(({ name, value, type }, index) => (
               <div
                 key={index}

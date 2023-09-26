@@ -169,6 +169,19 @@ class QdrantVectorIndex(BaseVectorIndex):
             ],
         ))
 
+    def delete(self) -> None:
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        from qdrant_client.http import models
+        vector_store.del_texts(models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="group_id",
+                    match=models.MatchValue(value=self.dataset.id),
+                ),
+            ],
+        ))
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:

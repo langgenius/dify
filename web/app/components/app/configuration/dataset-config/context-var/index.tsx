@@ -25,7 +25,7 @@ const ContextVar: FC<Props> = (props) => {
           htmlContent={<div className='w-[180px]'>
             {t('appDebug.feature.dataSet.queryVariable.tip')}
           </div>}
-          selector='config-var-tooltip'
+          selector='context-var-tooltip'
         >
           <HelpCircle className='w-3.5 h-3.5 text-gray-400'/>
         </Tooltip>
