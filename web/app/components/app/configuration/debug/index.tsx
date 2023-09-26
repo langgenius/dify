@@ -321,10 +321,12 @@ const Debug: FC<IDebug> = ({
         id,
       },
     }))
+    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
       pre_prompt: modelConfig.configs.prompt_template,
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
