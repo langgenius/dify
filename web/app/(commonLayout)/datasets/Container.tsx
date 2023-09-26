@@ -22,7 +22,7 @@ const Container = () => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div ref={containerRef} className='grow h-0 flex flex-col bg-gray-100 overflow-y-auto'>
+    <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
       <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 h-14 bg-gray-100 z-10'>
         <TabSlider
           value={activeTab}
