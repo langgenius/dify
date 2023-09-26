@@ -351,6 +351,7 @@ const Debug: FC<IDebug> = ({
     }
 
     setCompletionRes('')
+    setMessageId('')
     const res: string[] = []
 
     setResponsingTrue()
