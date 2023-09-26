@@ -301,6 +301,7 @@ const Debug: FC<IDebug> = ({
   }, [controlClearChatMessage])
 
   const [completionRes, setCompletionRes] = useState('')
+  const [messageId, setMessageId] = useState<string | null>(null)
 
   const sendTextCompletion = async () => {
     if (isResponsing) {
@@ -354,9 +355,10 @@ const Debug: FC<IDebug> = ({
 
     setResponsingTrue()
     sendCompletionMessage(appId, data, {
-      onData: (data: string) => {
+      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         res.push(data)
         setCompletionRes(res.join(''))
+        setMessageId(messageId)
       },
       onCompleted() {
         setResponsingFalse()
@@ -425,6 +427,7 @@ const Debug: FC<IDebug> = ({
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
                 isInstalledApp={false}
+                messageId={messageId}
               />
             )}
           </div>
