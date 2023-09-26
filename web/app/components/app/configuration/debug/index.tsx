@@ -159,6 +159,7 @@ const Debug: FC<IDebug> = ({
     const postModelConfig: BackendModelConfig = {
       pre_prompt: modelConfig.configs.prompt_template,
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: '',
       opening_statement: introduction,
       more_like_this: {
         enabled: false,
