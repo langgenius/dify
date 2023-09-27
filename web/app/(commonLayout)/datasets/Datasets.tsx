@@ -17,7 +17,7 @@ const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
 
 const Datasets = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false })
+  const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchDatasets, { revalidateFirstPage: false, revalidateAll: true })
   const loadingStateRef = useRef(false)
   const pageContainerRef = useSelector(state => state.pageContainerRef)
   const anchorRef = useRef<HTMLAnchorElement>(null)

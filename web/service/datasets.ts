@@ -39,7 +39,7 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
-export const fetchDataDetail: Fetcher<DataSet, string> = (datasetId: string) => {
+export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) => {
   return get<DataSet>(`/datasets/${datasetId}`)
 }
 

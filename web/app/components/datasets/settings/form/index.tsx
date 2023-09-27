@@ -1,21 +1,23 @@
 'use client'
 import { useEffect, useState } from 'react'
 import type { Dispatch } from 'react'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useSWRConfig } from 'swr'
+import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { fetchDataDetail, updateDatasetSetting } from '@/service/datasets'
-import type { DataSet } from '@/models/datasets'
+import { updateDatasetSetting } from '@/service/datasets'
+import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import AccountSetting from '@/app/components/header/account-setting'
+import DatasetDetailContext from '@/context/dataset-detail'
 
 const rowClass = `
   flex justify-between py-4
@@ -32,16 +34,17 @@ const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, 
   }, [depend])
 }
 
-type Props = {
-  datasetId: string
+const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
+  if (!pageIndex || previousPageData.has_more)
+    return { url: 'datasets', params: { page: pageIndex + 1, limit: 30 } }
+  return null
 }
 
-const Form = ({
-  datasetId,
-}: Props) => {
+const Form = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { data: currentDataset, mutate: mutateDatasets } = useSWR(datasetId, fetchDataDetail)
+  const { mutate } = useSWRConfig()
+  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
@@ -67,7 +70,10 @@ const Form = ({
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      await mutateDatasets()
+      if (mutateDatasets) {
+        await mutateDatasets()
+        mutate(unstable_serialize(getKey))
+      }
     }
     catch (e) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
