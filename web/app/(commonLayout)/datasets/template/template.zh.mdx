@@ -780,13 +780,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 错误信息
-- document_indexing，文档索引失败
-- provider_not_initialize， Embedding 模型未配置
-- not_found，文档不存在
-- dataset_name_duplicate ，数据集名称重复
-- provider_quota_exceeded，模型额度超过限制
-- dataset_not_initialized，数据集还未初始化
-- unsupported_file_type，不支持的文件类型 
+- **document_indexing**: 文档索引失败
+- **provider_not_initialize**: Embedding 模型未配置
+- **not_found**,文档不存在
+- **dataset_name_duplicate**: 数据集名称重复
+- **provider_quota_exceeded**: 模型额度超过限制
+- **dataset_not_initialized**: 数据集还未初始化
+- **unsupported_file_type**: 不支持的文件类型 
   - 目前只支持：txt, markdown, md, pdf, html, htm, xlsx, docx, csv
-- too_many_files，文件数量过多，暂时只支持单一文件上传
-- file_too_large，文件太大，支持15M以下
+- **too_many_files**: 文件数量过多，暂时只支持单一文件上传
+- **file_too_large*: 文件太大，默认支持15M以下, 具体需要参考环境变量配置
