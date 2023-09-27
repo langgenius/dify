@@ -188,3 +188,7 @@ export const fetchDocumentsLimit: Fetcher<DocumentsLimitResponse, string> = (url
 export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
   return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
 }
+
+export const fetchNotionConnection: Fetcher<CommonResponse, string> = (url) => {
+  return get(url) as Promise<CommonResponse>
+}
