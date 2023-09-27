@@ -1,12 +1,13 @@
 import type { UserInputFormItem } from '@/types/app'
 import type { PromptVariable } from '@/models/debug'
 
-export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] | null) => {
+export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] | null, dataset_query_variable?: string) => {
   if (!useInputs)
     return []
   const promptVariables: PromptVariable[] = []
   useInputs.forEach((item: any) => {
     const isParagraph = !!item.paragraph
+
     const [type, content] = (() => {
       if (isParagraph)
         return ['paragraph', item.paragraph]
@@ -16,6 +17,8 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
 
       return ['select', item.select]
     })()
+    const is_context_var = dataset_query_variable === content.variable
+
     if (type === 'string' || type === 'paragraph') {
       promptVariables.push({
         key: content.variable,
@@ -24,6 +27,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         type,
         max_length: content.max_length,
         options: [],
+        is_context_var,
       })
     }
     else {
@@ -33,6 +37,7 @@ export const userInputsFormToPromptVariables = (useInputs: UserInputFormItem[] |
         required: content.required,
         type: 'select',
         options: content.options,
+        is_context_var,
       })
     }
   })

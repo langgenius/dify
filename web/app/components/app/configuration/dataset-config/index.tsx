@@ -10,8 +10,10 @@ import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
 import CardItem from './card-item'
 import SelectDataSet from './select-dataset'
+import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
 import type { DataSet } from '@/models/datasets'
+import { AppType } from '@/types/app'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -23,9 +25,12 @@ const Icon = (
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()
   const {
+    mode,
     dataSets: dataSet,
     setDataSets: setDataSet,
     setFormattingChanged,
+    modelConfig,
+    setModelConfig,
   } = useContext(ConfigContext)
   const selectedIds = dataSet.map(item => item.id)
 
@@ -60,6 +65,25 @@ const DatasetConfig: FC = () => {
     setFormattingChanged(true)
   }
 
+  const promptVariables = modelConfig.configs.prompt_variables
+  const promptVariablesToSelect = promptVariables.map(item => ({
+    name: item.name,
+    type: item.type,
+    value: item.key,
+  }))
+  const selectedContextVar = promptVariables?.find(item => item.is_context_var)
+  const handleSelectContextVar = (selectedValue: string) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_variables = modelConfig.configs.prompt_variables.map((item) => {
+        return ({
+          ...item,
+          is_context_var: item.key === selectedValue,
+        })
+      })
+    })
+    setModelConfig(newModelConfig)
+  }
+
   return (
     <FeaturePanel
       className='mt-3'
@@ -67,10 +91,11 @@ const DatasetConfig: FC = () => {
       title={t('appDebug.feature.dataSet.title')}
       headerRight={<OperationBtn type="add" onClick={showSelectDataSet} />}
       hasHeaderBottomBorder={!hasData}
+      noBodySpacing
     >
       {hasData
         ? (
-          <div className='flex flex-wrap justify-between'>
+          <div className='flex flex-wrap mt-1 px-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
                 className="mb-2"
@@ -82,8 +107,18 @@ const DatasetConfig: FC = () => {
           </div>
         )
         : (
-          <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
+          <div className='mt-1 px-3 pb-3'>
+            <div className='pt-2 pb-1 text-xs text-gray-500'>{t('appDebug.feature.dataSet.noData')}</div>
+          </div>
         )}
+
+      {mode === AppType.completion && dataSet.length > 0 && (
+        <ContextVar
+          value={selectedContextVar?.key}
+          options={promptVariablesToSelect}
+          onChange={handleSelectContextVar}
+        />
+      )}
 
       {isShowSelectDataSet && (
         <SelectDataSet

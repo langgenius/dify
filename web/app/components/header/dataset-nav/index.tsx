@@ -7,7 +7,7 @@ import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
-import { fetchDataDetail, fetchDatasets } from '@/service/datasets'
+import { fetchDatasetDetail, fetchDatasets } from '@/service/datasets'
 import { Database01 } from '@/app/components/base/icons/src/vender/line/development'
 import { Database02 } from '@/app/components/base/icons/src/vender/solid/development'
 import type { DataSetListResponse } from '@/models/datasets'
@@ -22,8 +22,15 @@ const DatasetNav = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { datasetId } = useParams()
-  const { data: currentDataset } = useSWR(datasetId || null, fetchDataDetail)
-  const { data: datasetsData, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: true })
+  const { data: currentDataset } = useSWR(
+    datasetId
+      ? {
+        url: 'fetchDatasetDetail',
+        datasetId,
+      }
+      : null,
+    apiParams => fetchDatasetDetail(apiParams.datasetId))
+  const { data: datasetsData, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: false, revalidateAll: true })
   const datasetItems = flatten(datasetsData?.map(datasetData => datasetData.data))
 
   const handleLoadmore = useCallback(() => {
