@@ -8,7 +8,7 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
+export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
 
@@ -41,7 +41,7 @@ export const updateAppSiteAccessToken: Fetcher<UpdateAppSiteCodeResponse, { url:
   return post<UpdateAppSiteCodeResponse>(url)
 }
 
-export const updateAppSiteConfig: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+export const updateAppSiteConfig = ({ url, body }: { url: string; body: Record<string, any> }) => {
   return post<AppDetailResponse>(url, { body })
 }
 
