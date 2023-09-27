@@ -10,6 +10,7 @@ import dayjs from 'dayjs'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
+import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
 import { AppType } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -23,7 +24,6 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
-
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -52,6 +52,7 @@ const Debug: FC<IDebug> = ({
     dataSets,
     modelConfig,
     completionParams,
+    hasSetContextVar,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -77,6 +78,7 @@ const Debug: FC<IDebug> = ({
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
+  const [isShowCannotQueryDataset, setShowCannotQueryDataset] = useState(false)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
@@ -157,6 +159,7 @@ const Debug: FC<IDebug> = ({
     const postModelConfig: BackendModelConfig = {
       pre_prompt: modelConfig.configs.prompt_template,
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: '',
       opening_statement: introduction,
       more_like_this: {
         enabled: false,
@@ -298,11 +301,17 @@ const Debug: FC<IDebug> = ({
   }, [controlClearChatMessage])
 
   const [completionRes, setCompletionRes] = useState('')
+  const [messageId, setMessageId] = useState<string | null>(null)
 
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
+    }
+
+    if (dataSets.length > 0 && !hasSetContextVar) {
+      setShowCannotQueryDataset(true)
+      return true
     }
 
     if (!checkCanSend())
@@ -314,10 +323,12 @@ const Debug: FC<IDebug> = ({
         id,
       },
     }))
+    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
       pre_prompt: modelConfig.configs.prompt_template,
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
@@ -340,13 +351,15 @@ const Debug: FC<IDebug> = ({
     }
 
     setCompletionRes('')
+    setMessageId('')
     const res: string[] = []
 
     setResponsingTrue()
     sendCompletionMessage(appId, data, {
-      onData: (data: string) => {
+      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         res.push(data)
         setCompletionRes(res.join(''))
+        setMessageId(messageId)
       },
       onCompleted() {
         setResponsingFalse()
@@ -415,6 +428,7 @@ const Debug: FC<IDebug> = ({
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
                 isInstalledApp={false}
+                messageId={messageId}
               />
             )}
           </div>
@@ -423,6 +437,11 @@ const Debug: FC<IDebug> = ({
           <FormattingChanged
             onConfirm={handleConfirm}
             onCancel={handleCancel}
+          />
+        )}
+        {isShowCannotQueryDataset && (
+          <CannotQueryDataset
+            onConfirm={() => setShowCannotQueryDataset(false)}
           />
         )}
       </div>

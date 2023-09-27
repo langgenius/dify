@@ -17,6 +17,7 @@ export type ConfirmCommonProps = {
   onConfirm?: () => void
   showOperate?: boolean
   showOperateCancel?: boolean
+  confirmBtnClassName?: string
   confirmText?: string
 }
 
@@ -29,6 +30,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
   onConfirm,
   showOperate = true,
   showOperateCancel = true,
+  confirmBtnClassName,
   confirmText,
 }) => {
   const { t } = useTranslation()
@@ -72,7 +74,7 @@ const ConfirmCommon: FC<ConfirmCommonProps> = ({
               }
               <Button
                 type='primary'
-                className=''
+                className={confirmBtnClassName || ''}
                 onClick={onConfirm}
               >
                 {confirmText || CONFIRM_MAP[type].confirmText}

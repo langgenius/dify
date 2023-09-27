@@ -31,7 +31,8 @@ class ModelConfigResource(Resource):
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_user.current_tenant_id,
             account=current_user,
-            config=request.json
+            config=request.json,
+            mode=app_model.mode
         )
 
         new_app_model_config = AppModelConfig(

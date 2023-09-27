@@ -11,31 +11,10 @@ from controllers.console import api
 from controllers.console.explore.wraps import InstalledAppResource
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
+from fields.installed_app_fields import installed_app_list_fields
 from libs.helper import TimestampField
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
-
-app_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'mode': fields.String,
-    'icon': fields.String,
-    'icon_background': fields.String
-}
-
-installed_app_fields = {
-    'id': fields.String,
-    'app': fields.Nested(app_fields),
-    'app_owner_tenant_id': fields.String,
-    'is_pinned': fields.Boolean,
-    'last_used_at': TimestampField,
-    'editable': fields.Boolean,
-    'uninstallable': fields.Boolean,
-}
-
-installed_app_list_fields = {
-    'installed_apps': fields.List(fields.Nested(installed_app_fields))
-}
 
 
 class InstalledAppsListApi(Resource):

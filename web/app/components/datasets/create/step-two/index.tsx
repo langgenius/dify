@@ -319,6 +319,9 @@ const StepTwo = ({
   }
 
   const createHandle = async () => {
+    if (isCreating)
+      return
+    setIsCreating(true)
     try {
       let res
       const params = getCreationParams()

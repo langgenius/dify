@@ -100,7 +100,8 @@ const Configuration: FC = () => {
   }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-
+  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+  const hasSetContextVar = !!contextVar
   const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
@@ -178,7 +179,7 @@ const Configuration: FC = () => {
           model_id: model.name,
           configs: {
             prompt_template: modelConfig.pre_prompt,
-            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form),
+            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form, modelConfig.dataset_query_variable),
           },
           opening_statement: modelConfig.opening_statement,
           more_like_this: modelConfig.more_like_this,
@@ -196,14 +197,20 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
-  const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const promptEmpty = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
+  const cannotPublish = promptEmpty || contextVarEmpty
   const saveAppConfig = async () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
-    if (cannotPublish) {
+    if (promptEmpty) {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      return
+    }
+    if (contextVarEmpty) {
+      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -217,6 +224,7 @@ const Configuration: FC = () => {
     const data: BackendModelConfig = {
       pre_prompt: promptTemplate,
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
@@ -298,6 +306,7 @@ const Configuration: FC = () => {
       setModelConfig,
       dataSets,
       setDataSets,
+      hasSetContextVar,
     }}
     >
       <>

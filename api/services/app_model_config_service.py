@@ -81,7 +81,7 @@ class AppModelConfigService:
         return filtered_cp
 
     @staticmethod
-    def validate_configuration(tenant_id: str, account: Account, config: dict) -> dict:
+    def validate_configuration(tenant_id: str, account: Account, config: dict, mode: str) -> dict:
         # opening_statement
         if 'opening_statement' not in config or not config["opening_statement"]:
             config["opening_statement"] = ""
@@ -335,6 +335,9 @@ class AppModelConfigService:
 
                 if not AppModelConfigService.is_dataset_exists(account, tool_item["id"]):
                     raise ValueError("Dataset ID does not exist, please check your permission.")
+        
+        # dataset_query_variable
+        AppModelConfigService.is_dataset_query_variable_valid(config, mode)
 
         # Filter out extra parameters
         filtered_config = {
@@ -351,8 +354,25 @@ class AppModelConfigService:
                 "completion_params": config["model"]["completion_params"]
             },
             "user_input_form": config["user_input_form"],
+            "dataset_query_variable": config.get('dataset_query_variable'),
             "pre_prompt": config["pre_prompt"],
             "agent_mode": config["agent_mode"]
         }
 
         return filtered_config
+    
+    @staticmethod
+    def is_dataset_query_variable_valid(config: dict, mode: str) -> None:
+        # Only check when mode is completion
+        if mode != 'completion':
+            return
+        
+        agent_mode = config.get("agent_mode", {})
+        tools = agent_mode.get("tools", [])
+        dataset_exists = "dataset" in str(tools)
+        
+        dataset_query_variable = config.get("dataset_query_variable")
+
+        if dataset_exists and not dataset_query_variable:
+            raise ValueError("Dataset query variable is required when dataset is exist")
+

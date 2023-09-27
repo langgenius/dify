@@ -36,6 +36,32 @@ class VectorService:
                 index.add_texts([document])
 
     @classmethod
+    def multi_create_segment_vector(cls, pre_segment_data_list: list, dataset: Dataset):
+        documents = []
+        for pre_segment_data in pre_segment_data_list:
+            segment = pre_segment_data['segment']
+            document = Document(
+                page_content=segment.content,
+                metadata={
+                    "doc_id": segment.index_node_id,
+                    "doc_hash": segment.index_node_hash,
+                    "document_id": segment.document_id,
+                    "dataset_id": segment.dataset_id,
+                }
+            )
+            documents.append(document)
+
+        # save vector index
+        index = IndexBuilder.get_index(dataset, 'high_quality')
+        if index:
+            index.add_texts(documents, duplicate_check=True)
+
+        # save keyword index
+        keyword_index = IndexBuilder.get_index(dataset, 'economy')
+        if keyword_index:
+            keyword_index.multi_create_segment_keywords(pre_segment_data_list)
+
+    @classmethod
     def update_segment_vector(cls, keywords: Optional[List[str]], segment: DocumentSegment, dataset: Dataset):
         # update segment index task
         vector_index = IndexBuilder.get_index(dataset, 'high_quality')
