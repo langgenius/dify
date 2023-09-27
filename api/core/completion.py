@@ -112,7 +112,7 @@ class Completion:
 
             # run agent executor
             agent_execute_result = None
-            if agent_executor:
+            if query_for_agent and agent_executor:
                 should_use_agent = agent_executor.should_use_agent(query_for_agent)
                 if should_use_agent:
                     agent_execute_result = agent_executor.run(query_for_agent)
