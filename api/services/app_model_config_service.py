@@ -354,7 +354,7 @@ class AppModelConfigService:
                 "completion_params": config["model"]["completion_params"]
             },
             "user_input_form": config["user_input_form"],
-            "dataset_query_variable": config["dataset_query_variable"],
+            "dataset_query_variable": config.get('dataset_query_variable'),
             "pre_prompt": config["pre_prompt"],
             "agent_mode": config["agent_mode"]
         }
