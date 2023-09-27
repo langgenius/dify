@@ -6,31 +6,17 @@ from werkzeug.exceptions import NotFound
 
 from controllers.console import api
 from controllers.console.universal_chat.wraps import UniversalChatResource
+from fields.conversation_fields import conversation_with_model_config_infinite_scroll_pagination_fields, \
+    conversation_with_model_config_fields
 from libs.helper import TimestampField, uuid_value
 from services.conversation_service import ConversationService
 from services.errors.conversation import LastConversationNotExistsError, ConversationNotExistsError
 from services.web_conversation_service import WebConversationService
 
-conversation_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'inputs': fields.Raw,
-    'status': fields.String,
-    'introduction': fields.String,
-    'created_at': TimestampField,
-    'model_config': fields.Raw,
-}
-
-conversation_infinite_scroll_pagination_fields = {
-    'limit': fields.Integer,
-    'has_more': fields.Boolean,
-    'data': fields.List(fields.Nested(conversation_fields))
-}
-
 
 class UniversalChatConversationListApi(UniversalChatResource):
 
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
+    @marshal_with(conversation_with_model_config_infinite_scroll_pagination_fields)
     def get(self, universal_app):
         app_model = universal_app
 
@@ -73,7 +59,7 @@ class UniversalChatConversationApi(UniversalChatResource):
 
 class UniversalChatConversationRenameApi(UniversalChatResource):
 
-    @marshal_with(conversation_fields)
+    @marshal_with(conversation_with_model_config_fields)
     def post(self, universal_app, c_id):
         app_model = universal_app
         conversation_id = str(c_id)

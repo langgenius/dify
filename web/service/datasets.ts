@@ -22,6 +22,10 @@ import type {
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import type {
+  ApikeysListResponse,
+  CreateApiKeyResponse,
+} from '@/models/app'
 
 // apis for documents in a dataset
 
@@ -191,4 +195,20 @@ export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, an
 
 export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+}
+
+export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<ApikeysListResponse>(url, params)
+}
+
+export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return del<CommonResponse>(url, params)
+}
+
+export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<CreateApiKeyResponse>(url, body)
+}
+
+export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
+  return get<{ api_base_url: string }>(url)
 }
