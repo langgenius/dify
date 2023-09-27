@@ -38,9 +38,9 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
 
-    if (type === 'success') {
+    if (type === 'success')
       mutate(detailParams)
-    }
+
     notify({
       type,
       message: t(`common.actionMsg.${message}`),
@@ -79,7 +79,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
     if (!err)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
 
-      handleCallbackResult(err)
+    handleCallbackResult(err)
   }
 
   const onGenerateCode = async () => {

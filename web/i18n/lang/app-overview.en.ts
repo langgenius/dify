@@ -48,7 +48,7 @@ const translation = {
           copyright: 'Copyright',
           copyRightPlaceholder: 'Enter the name of the author or organization',
           privacyPolicy: 'Privacy Policy',
-          privacyPolicyPlaceholder: 'Enter the privacy policy',
+          privacyPolicyPlaceholder: 'Enter the privacy policy link',
           privacyPolicyTip: 'Helps visitors understand the data the application collects, see Dify\'s <privacyPolicyLink>Privacy Policy</privacyPolicyLink>.',
         },
       },

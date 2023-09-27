@@ -50,6 +50,7 @@ type IDebugConfiguration = {
   // dataset config
   datasetConfigParams: DatasetConfigParams
   setDatasetConfigParams: (config: DatasetConfigParams) => void
+  hasSetContextVar: boolean
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -128,6 +129,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     score_threshold: 0.78,
   },
   setDatasetConfigParams: () => {},
+  hasSetContextVar: false,
 })
 
 export default DebugConfigurationContext

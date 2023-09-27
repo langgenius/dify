@@ -34,6 +34,7 @@ model_config_fields = {
     'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
     'model': fields.Raw(attribute='model_dict'),
     'user_input_form': fields.Raw(attribute='user_input_form_list'),
+    'dataset_query_variable': fields.String,
     'pre_prompt': fields.String,
     'agent_mode': fields.Raw(attribute='agent_mode_dict'),
 }
@@ -162,7 +163,8 @@ class AppListApi(Resource):
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=model_config_dict
+                config=model_config_dict,
+                mode=args['mode']
             )
 
             app = App(
