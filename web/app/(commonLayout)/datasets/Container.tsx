@@ -1,6 +1,7 @@
 'use client'
 
 import { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
@@ -10,14 +11,15 @@ import TabSlider from '@/app/components/base/tab-slider'
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
 const Container = () => {
+  const { t } = useTranslation()
   const options = [
     {
       value: 'dataset',
-      text: 'DATASETS',
+      text: t('dataset.datasets'),
     },
     {
       value: 'api',
-      text: 'API ACCESS',
+      text: t('dataset.datasetsApi'),
     },
   ]
   const [activeTab, setActiveTab] = useState('dataset')
