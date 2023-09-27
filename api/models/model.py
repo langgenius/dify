@@ -172,7 +172,7 @@ class AppModelConfig(db.Model):
             if model_config.get('sensitive_word_avoidance') else None
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
-        self.dataset_query_variable = model_config['dataset_query_variable']
+        self.dataset_query_variable = model_config.get('dataset_query_variable')
         self.pre_prompt = model_config['pre_prompt']
         self.agent_mode = json.dumps(model_config['agent_mode'])
         self.retriever_resource = json.dumps(model_config['retriever_resource']) \
