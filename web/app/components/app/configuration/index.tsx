@@ -18,7 +18,6 @@ import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
 import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import type { AppDetailResponse } from '@/models/app'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -26,6 +25,11 @@ import { fetchDatasets } from '@/service/datasets'
 import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType } from '@/types/app'
+
+type PublichConfig = {
+  modelConfig: ModelConfig
+  completionParams: CompletionParams
+}
 
 const Configuration: FC = () => {
   const { t } = useTranslation()
@@ -37,10 +41,7 @@ const Configuration: FC = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const [mode, setMode] = useState('')
-  const [publishedConfig, setPublishedConfig] = useState<{
-    modelConfig: ModelConfig
-    completionParams: CompletionParams
-  } | null>(null)
+  const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
   const [introduction, setIntroduction] = useState<string>('')
@@ -99,14 +100,15 @@ const Configuration: FC = () => {
   }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
-
-  const syncToPublishedConfig = (_publishedConfig: any) => {
+  const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
+  const hasSetContextVar = !!contextVar
+  const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
     setCompletionParams(_publishedConfig.completionParams)
     setDataSets(modelConfig.dataSets || [])
     // feature
-    setIntroduction(modelConfig.opening_statement)
+    setIntroduction(modelConfig.opening_statement!)
     setMoreLikeThisConfig(modelConfig.more_like_this || {
       enabled: false,
     })
@@ -143,7 +145,7 @@ const Configuration: FC = () => {
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
 
   useEffect(() => {
-    (fetchAppDetail({ url: '/apps', id: appId }) as any).then(async (res: AppDetailResponse) => {
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
       setMode(res.mode)
       const modelConfig = res.model_config
       const model = res.model_config.model
@@ -177,7 +179,7 @@ const Configuration: FC = () => {
           model_id: model.name,
           configs: {
             prompt_template: modelConfig.pre_prompt,
-            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form),
+            prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form, modelConfig.dataset_query_variable),
           },
           opening_statement: modelConfig.opening_statement,
           more_like_this: modelConfig.more_like_this,
@@ -195,14 +197,20 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
-  const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const promptEmpty = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
+  const cannotPublish = promptEmpty || contextVarEmpty
   const saveAppConfig = async () => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
 
-    if (cannotPublish) {
+    if (promptEmpty) {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      return
+    }
+    if (contextVarEmpty) {
+      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -216,6 +224,7 @@ const Configuration: FC = () => {
     const data: BackendModelConfig = {
       pre_prompt: promptTemplate,
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
       more_like_this: moreLikeThisConfig,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
@@ -250,7 +259,7 @@ const Configuration: FC = () => {
 
   const [showConfirm, setShowConfirm] = useState(false)
   const resetAppConfig = () => {
-    syncToPublishedConfig(publishedConfig)
+    syncToPublishedConfig(publishedConfig!)
     setShowConfirm(false)
   }
 
@@ -297,6 +306,7 @@ const Configuration: FC = () => {
       setModelConfig,
       dataSets,
       setDataSets,
+      hasSetContextVar,
     }}
     >
       <>

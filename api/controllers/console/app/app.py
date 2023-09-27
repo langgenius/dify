@@ -26,6 +26,36 @@ from extensions.ext_database import db
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
 
+model_config_fields = {
+    'opening_statement': fields.String,
+    'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
+    'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
+    'speech_to_text': fields.Raw(attribute='speech_to_text_dict'),
+    'retriever_resource': fields.Raw(attribute='retriever_resource_dict'),
+    'more_like_this': fields.Raw(attribute='more_like_this_dict'),
+    'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
+    'model': fields.Raw(attribute='model_dict'),
+    'user_input_form': fields.Raw(attribute='user_input_form_list'),
+    'dataset_query_variable': fields.String,
+    'pre_prompt': fields.String,
+    'agent_mode': fields.Raw(attribute='agent_mode_dict'),
+}
+
+app_detail_fields = {
+    'id': fields.String,
+    'name': fields.String,
+    'mode': fields.String,
+    'icon': fields.String,
+    'icon_background': fields.String,
+    'enable_site': fields.Boolean,
+    'enable_api': fields.Boolean,
+    'api_rpm': fields.Integer,
+    'api_rph': fields.Integer,
+    'is_demo': fields.Boolean,
+    'model_config': fields.Nested(model_config_fields, attribute='app_model_config'),
+    'created_at': TimestampField
+}
+
 
 def _get_app(app_id, tenant_id):
     app = db.session.query(App).filter(App.id == app_id, App.tenant_id == tenant_id).first()
@@ -106,7 +136,8 @@ class AppListApi(Resource):
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
                 account=current_user,
-                config=model_config_dict
+                config=model_config_dict,
+                mode=args['mode']
             )
 
             app = App(

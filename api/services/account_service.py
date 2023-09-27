@@ -4,11 +4,12 @@ import json
 import logging
 import secrets
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta
 from hashlib import sha256
 from typing import Optional
 
-from flask import session
+from werkzeug.exceptions import Forbidden, Unauthorized
+from flask import session, current_app
 from sqlalchemy import func
 
 from events.tenant_event import tenant_was_created
@@ -19,16 +20,82 @@ from services.errors.account import AccountLoginError, CurrentPasswordIncorrectE
 from libs.helper import get_remote_ip
 from libs.password import compare_password, hash_password
 from libs.rsa import generate_key_pair
+from libs.passport import PassportService
 from models.account import *
 from tasks.mail_invite_member_task import send_invite_member_mail_task
+
+def _create_tenant_for_account(account):
+    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+
+    TenantService.create_tenant_member(tenant, account, role='owner')
+    account.current_tenant = tenant
+
+    return tenant
 
 
 class AccountService:
 
     @staticmethod
-    def load_user(account_id: int) -> Account:
+    def load_user(user_id: str) -> Account:
         # todo: used by flask_login
-        pass
+        if '.' in user_id:
+            tenant_id, account_id = user_id.split('.')
+        else:
+            account_id = user_id
+
+        account = db.session.query(Account).filter(Account.id == account_id).first()
+
+        if account:
+            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+                raise Forbidden('Account is banned or closed.')
+
+            workspace_id = session.get('workspace_id')
+            if workspace_id:
+                tenant_account_join = db.session.query(TenantAccountJoin).filter(
+                    TenantAccountJoin.account_id == account.id,
+                    TenantAccountJoin.tenant_id == workspace_id
+                ).first()
+
+                if not tenant_account_join:
+                    tenant_account_join = db.session.query(TenantAccountJoin).filter(
+                        TenantAccountJoin.account_id == account.id).first()
+
+                    if tenant_account_join:
+                        account.current_tenant_id = tenant_account_join.tenant_id
+                    else:
+                        _create_tenant_for_account(account)
+                    session['workspace_id'] = account.current_tenant_id
+                else:
+                    account.current_tenant_id = workspace_id
+            else:
+                tenant_account_join = db.session.query(TenantAccountJoin).filter(
+                    TenantAccountJoin.account_id == account.id).first()
+                if tenant_account_join:
+                    account.current_tenant_id = tenant_account_join.tenant_id
+                else:
+                    _create_tenant_for_account(account)
+                session['workspace_id'] = account.current_tenant_id
+
+            current_time = datetime.utcnow()
+
+            # update last_active_at when last_active_at is more than 10 minutes ago
+            if current_time - account.last_active_at > timedelta(minutes=10):
+                account.last_active_at = current_time
+                db.session.commit()
+
+        return account
+    
+    @staticmethod
+    def get_account_jwt_token(account):
+        payload = {
+            "user_id": account.id,
+            "exp": datetime.utcnow() + timedelta(days=30),
+            "iss":  current_app.config['EDITION'],
+            "sub": 'Console API Passport',
+        }
+
+        token = PassportService().issue(payload)
+        return token
 
     @staticmethod
     def authenticate(email: str, password: str) -> Account:
