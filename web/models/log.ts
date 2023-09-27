@@ -29,6 +29,12 @@ export type CompletionParamsType = {
   frequency_penalty: number
 }
 
+export type LogModelConfig = {
+  name: string
+  provider: string
+  completion_params: CompletionParamsType
+}
+
 export type ModelConfigDetail = {
   introduction: string
   prompt_template: string
@@ -155,6 +161,7 @@ export type ChatConversationFullDetailResponse = Omit<CompletionConversationGene
     provider: string
     model_id: string
     configs: ModelConfigDetail
+    model: LogModelConfig
   }
 }
 

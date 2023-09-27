@@ -48,7 +48,7 @@ const translation = {
           copyright: '版权',
           copyRightPlaceholder: '请输入作者或组织名称',
           privacyPolicy: '隐私政策',
-          privacyPolicyPlaceholder: '请输入隐私政策',
+          privacyPolicyPlaceholder: '请输入隐私政策链接',
           privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
         },
       },
