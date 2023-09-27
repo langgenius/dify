@@ -246,10 +246,27 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
 
+    def multi_create_segment_keywords(self, pre_segment_data_list: list):
+        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table = self._get_dataset_keyword_table()
+        for pre_segment_data in pre_segment_data_list:
+            segment = pre_segment_data['segment']
+            if pre_segment_data['keywords']:
+                segment.keywords = pre_segment_data['keywords']
+                keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id,
+                                                                pre_segment_data['keywords'])
+            else:
+                keywords = keyword_table_handler.extract_keywords(segment.content,
+                                                                  self._config.max_keywords_per_chunk)
+                segment.keywords = list(keywords)
+                keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id, list(keywords))
+        self._save_dataset_keyword_table(keyword_table)
+
     def update_segment_keywords_index(self, node_id: str, keywords: List[str]):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
+
 
 class KeywordTableRetriever(BaseRetriever, BaseModel):
     index: KeywordTableIndex

@@ -172,7 +172,7 @@ class AppModelConfig(db.Model):
             if model_config.get('sensitive_word_avoidance') else None
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
-        self.dataset_query_variable = model_config['dataset_query_variable']
+        self.dataset_query_variable = model_config.get('dataset_query_variable')
         self.pre_prompt = model_config['pre_prompt']
         self.agent_mode = json.dumps(model_config['agent_mode'])
         self.retriever_resource = json.dumps(model_config['retriever_resource']) \
@@ -629,12 +629,13 @@ class ApiToken(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='api_token_pkey'),
         db.Index('api_token_app_id_type_idx', 'app_id', 'type'),
-        db.Index('api_token_token_idx', 'token', 'type')
+        db.Index('api_token_token_idx', 'token', 'type'),
+        db.Index('api_token_tenant_idx', 'tenant_id', 'type')
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=True)
-    dataset_id = db.Column(UUID, nullable=True)
+    tenant_id = db.Column(UUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
