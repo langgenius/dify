@@ -90,6 +90,7 @@ export type ModelConfig = {
   opening_statement: string
   pre_prompt: string
   user_input_form: UserInputFormItem[]
+  dataset_query_variable?: string
   more_like_this: {
     enabled: boolean
   }
