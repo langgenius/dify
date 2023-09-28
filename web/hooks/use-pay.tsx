@@ -137,13 +137,14 @@ export const CheckModal = () => {
   const [showPayStatusModal, setShowPayStatusModal] = useState(true)
   const anthropicConfirmInfo = useAnthropicCheckPay()
   const freeQuotaConfirmInfo = useCheckFreeQuota()
+  const notionConfirmInfo = useCheckNotion()
 
   const handleCancelShowPayStatusModal = useCallback(() => {
     setShowPayStatusModal(false)
     router.replace('/', { forceOptimisticNavigation: false })
   }, [router])
 
-  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo
+  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo || notionConfirmInfo
 
   if (!confirmInfo || !showPayStatusModal)
     return null
