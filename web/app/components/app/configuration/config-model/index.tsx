@@ -295,6 +295,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
                 isShowModelModeType
+                isShowAddModel
                 popClassName='right-0'
                 triggerIconSmall
                 value={{

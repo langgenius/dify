@@ -18,6 +18,8 @@ import ProviderName from '@/app/components/app/configuration/config-model/provid
 import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import { ModelModeType } from '@/types/app'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import AccountSetting from '@/app/components/header/account-setting'
 
 type Props = {
   value: {
@@ -26,6 +28,7 @@ type Props = {
   } | undefined
   modelType: ModelType
   isShowModelModeType?: boolean
+  isShowAddModel?: boolean
   supportAgentThought?: boolean
   onChange: (value: BackendModel) => void
   popClassName?: string
@@ -47,6 +50,7 @@ const ModelSelector: FC<Props> = ({
   value,
   modelType,
   isShowModelModeType,
+  isShowAddModel,
   supportAgentThought,
   onChange,
   popClassName,
@@ -105,6 +109,8 @@ const ModelSelector: FC<Props> = ({
     })
     return res
   })()
+
+  const [showSettingModal, setShowSettingModal] = useState(false)
 
   return (
     <div className=''>
@@ -233,10 +239,33 @@ const ModelSelector: FC<Props> = ({
               {(search && filteredModelList.length === 0) && (
                 <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound', { model: search })}</div>
               )}
+
+              {isShowAddModel && (
+                <div
+                  className='border-t flex items-center h-9 pl-3  text-xs text-[#155EEF] cursor-pointer'
+                  style={{
+                    borderColor: 'rgba(0, 0, 0, 0.05)',
+                  }}
+                  onClick={() => {
+                    setShowSettingModal(true)
+                  }}
+                >
+                  <CubeOutline className='w-4 h-4 mr-2' />
+                  <div>{t('common.model.addMoreModel')}</div>
+                </div>
+              )}
             </Popover.Panel>
           </Transition>
         )}
       </Popover>
+
+      {
+        showSettingModal && (
+          <AccountSetting activeTab="provider" onCancel={async () => {
+            setShowSettingModal(false)
+          }} />
+        )
+      }
     </div>
   )
 }

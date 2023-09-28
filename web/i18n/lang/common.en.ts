@@ -76,6 +76,7 @@ const translation = {
       Precise: 'Precise',
       Custom: 'Custom',
     },
+    addMoreModel: 'Go to settings to add more models',
   },
   menus: {
     status: 'beta',

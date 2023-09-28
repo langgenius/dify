@@ -69,32 +69,22 @@ const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max
           : (
             <>
               <div className="mr-4 w-[120px]">
-                <Slider value={max < 5 ? (value as number) * 10 : value as number} min={min < 0 ? min * 10 : min} max={max < 5 ? max * 10 : max} onChange={(value: number) => onChange(id, value / (max < 5 ? 10 : 1))} />
+                <Slider value={value * times} min={min * times} max={max * times} onChange={(value) => {
+                  onChange(id, value / times)
+                }} />
               </div>
               <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
-                const value = parseFloat(e.target.value)
-                if (value < min || value > max)
-                  return
+                let value = getFitPrecisionValue(isNaN(parseFloat(e.target.value)) ? min : parseFloat(e.target.value), precision)
+                if (value < min)
+                  value = min
 
+                if (value > max)
+                  value = max
                 onChange(id, value)
               }} />
             </>
           )
         }
-        <div className="mr-4 w-[120px]">
-          <Slider value={value * times} min={min * times} max={max * times} onChange={(value) => {
-            onChange(id, value / times)
-          }} />
-        </div>
-        <input type="number" min={min} max={max} step={step} className="block w-[64px] h-9 leading-9 rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600" value={value} onChange={(e) => {
-          let value = getFitPrecisionValue(isNaN(parseFloat(e.target.value)) ? min : parseFloat(e.target.value), precision)
-          if (value < min)
-            value = min
-
-          if (value > max)
-            value = max
-          onChange(id, value)
-        }} />
       </div>
     </div>
   )

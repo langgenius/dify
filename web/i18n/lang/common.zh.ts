@@ -76,6 +76,7 @@ const translation = {
       Precise: '精确',
       Custom: '自定义',
     },
+    addMoreModel: '添加更多模型',
   },
   menus: {
     status: 'beta',
