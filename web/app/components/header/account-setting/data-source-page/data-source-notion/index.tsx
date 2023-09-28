@@ -20,7 +20,7 @@ const DataSourceNotion = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
-  const { data, mutate } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
 
   const connected = !!workspaces.length
 
@@ -29,6 +29,13 @@ const DataSourceNotion = ({
       return
 
     setCanConnectNotion(true)
+  }
+
+  const handleAuthAgain = () => {
+    if (data?.data)
+      window.location.href = data.data
+    else
+      setCanConnectNotion(true)
   }
 
   useEffect(() => {
@@ -115,7 +122,7 @@ const DataSourceNotion = ({
                     }
                   </div>
                   <div className='mr-2 w-[1px] h-3 bg-gray-100' />
-                  <Operate workspace={workspace} onAuthAgain={() => mutate()} />
+                  <Operate workspace={workspace} onAuthAgain={handleAuthAgain} />
                 </div>
               ))
             }
