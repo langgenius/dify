@@ -189,6 +189,6 @@ export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reas
   return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
 }
 
-export const fetchNotionConnection: Fetcher<CommonResponse, string> = (url) => {
-  return get(url) as Promise<CommonResponse>
+export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) => {
+  return get(url) as Promise<{ data: string }>
 }

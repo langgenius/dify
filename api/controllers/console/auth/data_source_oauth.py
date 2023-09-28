@@ -45,10 +45,10 @@ class OAuthDataSource(Resource):
         if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
             internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
             oauth_provider.save_internal_access_token(internal_secret)
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success')
+            return { 'data': f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success' }
         else:
             auth_url = oauth_provider.get_authorization_url()
-            return redirect(auth_url)
+            return { 'data': auth_url }, 200
 
 
 

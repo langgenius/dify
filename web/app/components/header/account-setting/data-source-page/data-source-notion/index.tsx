@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/24/solid'
@@ -20,7 +20,7 @@ const DataSourceNotion = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
-  useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
 
   const connected = !!workspaces.length
 
@@ -30,6 +30,11 @@ const DataSourceNotion = ({
 
     setCanConnectNotion(true)
   }
+
+  useEffect(() => {
+    if (data?.data)
+      window.location.href = data.data
+  }, [data])
 
   return (
     <div className='mb-2 border-[0.5px] border-gray-200 bg-gray-50 rounded-xl'>
