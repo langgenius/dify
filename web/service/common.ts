@@ -192,3 +192,7 @@ export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reas
 export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) => {
   return get(url) as Promise<{ data: string }>
 }
+
+export const fetchDataSourceNotionBinding: Fetcher<{ result: string }, string> = (url) => {
+  return get(url) as Promise<{ result: string }>
+}

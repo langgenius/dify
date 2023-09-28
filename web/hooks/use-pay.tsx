@@ -7,7 +7,10 @@ import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
 import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import { fetchFreeQuotaVerify } from '@/service/common'
+import {
+  fetchDataSourceNotionBinding,
+  fetchFreeQuotaVerify,
+} from '@/service/common'
 import type { ConfirmCommonProps } from '@/app/components/base/confirm/common'
 import Confirm from '@/app/components/base/confirm/common'
 
@@ -90,6 +93,42 @@ export const useCheckFreeQuota = () => {
       desc: !data.flag ? data.reason : undefined,
     }
     : null
+}
+
+export const useCheckNotion = () => {
+  const router = useRouter()
+  const [confirm, setConfirm] = useState<ConfirmType | null>(null)
+  const [canBinding, setCanBinding] = useState(false)
+  const searchParams = useSearchParams()
+  const type = searchParams.get('type')
+  const notionCode = searchParams.get('code')
+  const notionError = searchParams.get('error')
+  const { data } = useSWR(
+    canBinding
+      ? `/oauth/data-source/binding/notion?code=${notionCode}`
+      : null,
+    fetchDataSourceNotionBinding,
+  )
+
+  useEffect(() => {
+    if (data)
+      router.replace('/', { forceOptimisticNavigation: false })
+  }, [data, router])
+  useEffect(() => {
+    if (type === 'notion') {
+      if (notionError) {
+        setConfirm({
+          type: 'danger',
+          title: notionError,
+        })
+      }
+      else if (notionCode) {
+        setCanBinding(true)
+      }
+    }
+  }, [type, notionCode, notionError])
+
+  return confirm
 }
 
 export const CheckModal = () => {

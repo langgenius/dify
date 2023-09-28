@@ -20,7 +20,7 @@ const DataSourceNotion = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const [canConnectNotion, setCanConnectNotion] = useState(false)
-  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
+  const { data, mutate } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
 
   const connected = !!workspaces.length
 
@@ -115,7 +115,7 @@ const DataSourceNotion = ({
                     }
                   </div>
                   <div className='mr-2 w-[1px] h-3 bg-gray-100' />
-                  <Operate workspace={workspace} />
+                  <Operate workspace={workspace} onAuthAgain={() => mutate()} />
                 </div>
               ))
             }

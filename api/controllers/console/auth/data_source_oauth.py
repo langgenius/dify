@@ -45,7 +45,7 @@ class OAuthDataSource(Resource):
         if current_app.config.get('NOTION_INTEGRATION_TYPE') == 'internal':
             internal_secret = current_app.config.get('NOTION_INTERNAL_SECRET')
             oauth_provider.save_internal_access_token(internal_secret)
-            return { 'data': f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success' }
+            return { 'data': '' }
         else:
             auth_url = oauth_provider.get_authorization_url()
             return { 'data': auth_url }, 200
@@ -62,6 +62,25 @@ class OAuthDataSourceCallback(Resource):
             return {'error': 'Invalid provider'}, 400
         if 'code' in request.args:
             code = request.args.get('code')
+
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&code={code}')
+        elif 'error' in request.args:
+            error = request.args.get('error')
+
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&error={error}')
+        else:
+            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?type=notion&error=Access denied')
+        
+
+class OAuthDataSourceBinding(Resource):
+    def get(self, provider: str):
+        OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
+        with current_app.app_context():
+            oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
+        if not oauth_provider:
+            return {'error': 'Invalid provider'}, 400
+        if 'code' in request.args:
+            code = request.args.get('code')
             try:
                 oauth_provider.get_access_token(code)
             except requests.exceptions.HTTPError as e:
@@ -69,12 +88,7 @@ class OAuthDataSourceCallback(Resource):
                     f"An error occurred during the OAuthCallback process with {provider}: {e.response.text}")
                 return {'error': 'OAuth data source process failed'}, 400
 
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=success')
-        elif 'error' in request.args:
-            error = request.args.get('error')
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source={error}')
-        else:
-            return redirect(f'{current_app.config.get("CONSOLE_WEB_URL")}?oauth_data_source=access_denied')
+            return {'result': 'success'}, 200
 
 
 class OAuthDataSourceSync(Resource):
@@ -101,4 +115,5 @@ class OAuthDataSourceSync(Resource):
 
 api.add_resource(OAuthDataSource, '/oauth/data-source/<string:provider>')
 api.add_resource(OAuthDataSourceCallback, '/oauth/data-source/callback/<string:provider>')
+api.add_resource(OAuthDataSourceBinding, '/oauth/data-source/binding/<string:provider>')
 api.add_resource(OAuthDataSourceSync, '/oauth/data-source/<string:provider>/<uuid:binding_id>/sync')
