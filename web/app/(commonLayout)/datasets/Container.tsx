@@ -1,27 +1,28 @@
 'use client'
 
+// Libraries
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
+
+// Components
 import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSlider from '@/app/components/base/tab-slider'
+
+// Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 
 const Container = () => {
   const { t } = useTranslation()
+
   const options = [
-    {
-      value: 'dataset',
-      text: t('dataset.datasets'),
-    },
-    {
-      value: 'api',
-      text: t('dataset.datasetsApi'),
-    },
+    { value: 'dataset', text: t('dataset.datasets') },
+    { value: 'api', text: t('dataset.datasetsApi') },
   ]
+
   const [activeTab, setActiveTab] = useState('dataset')
   const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useSWR(activeTab === 'dataset' ? null : '/datasets/api-base-info', fetchDatasetApiBaseUrl)
@@ -34,26 +35,21 @@ const Container = () => {
           onChange={newActiveTab => setActiveTab(newActiveTab)}
           options={options}
         />
-        {
-          activeTab === 'api' && (
-            <ApiServer apiBaseUrl={data?.api_base_url || ''} />
-          )
-        }
+        {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
       </div>
-      {
-        activeTab === 'dataset' && (
-          <div className=''>
-            <Datasets containerRef={containerRef}/>
+
+      {activeTab === 'dataset'
+        ? (
+          <>
+            <Datasets containerRef={containerRef} />
             <DatasetFooter />
-          </div>
+          </>
         )
-      }
-      {
-        activeTab === 'api' && (
-          <Doc apiBaseUrl={data?.api_base_url || ''} />
-        )
-      }
+        : (
+          activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />
+        )}
     </div>
+
   )
 }
 
