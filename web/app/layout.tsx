@@ -20,7 +20,7 @@ const LocaleLayout = ({
   return (
     <html lang={locale ?? 'en'} className="h-full">
       <body
-        className="h-full"
+        className="h-full select-auto"
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}
         data-pubic-api-prefix={process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX}
         data-public-edition={process.env.NEXT_PUBLIC_EDITION}
