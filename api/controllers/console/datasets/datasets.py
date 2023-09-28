@@ -398,6 +398,9 @@ class DatasetApiKeyApi(Resource):
         db.session.commit()
         return api_token, 200
 
+
+class DatasetApiDeleteApi(Resource):
+    resource_type = 'dataset'
     @setup_required
     @login_required
     @account_initialization_required
@@ -440,4 +443,5 @@ api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
 api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
+api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/api_key_id')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
