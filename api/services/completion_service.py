@@ -209,6 +209,8 @@ class CompletionService:
                 db.session.rollback()
                 logging.exception("Unknown Error in completion")
                 PubHandler.pub_error(user, generate_task_id, e)
+            finally:
+                db.session.close()
 
     @classmethod
     def countdown_and_close(cls, worker_thread, pubsub, user, generate_task_id) -> threading.Thread:
