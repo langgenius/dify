@@ -200,17 +200,14 @@ class CompletionService:
             except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
                     ModelCurrentlyNotSupportError) as e:
-                db.session.rollback()
                 PubHandler.pub_error(user, generate_task_id, e)
             except LLMAuthorizationError:
-                db.session.rollback()
                 PubHandler.pub_error(user, generate_task_id, LLMAuthorizationError('Incorrect API key provided'))
             except Exception as e:
-                db.session.rollback()
                 logging.exception("Unknown Error in completion")
                 PubHandler.pub_error(user, generate_task_id, e)
             finally:
-                db.session.close()
+                db.session.commit()
 
     @classmethod
     def countdown_and_close(cls, worker_thread, pubsub, user, generate_task_id) -> threading.Thread:
@@ -388,6 +385,8 @@ class CompletionService:
                     logging.exception(e)
                     raise
             finally:
+                db.session.commit()
+
                 try:
                     pubsub.unsubscribe(generate_channel)
                 except ConnectionError:
@@ -425,6 +424,8 @@ class CompletionService:
                         logging.exception(e)
                         raise
                 finally:
+                    db.session.commit()
+
                     try:
                         pubsub.unsubscribe(generate_channel)
                     except ConnectionError:
