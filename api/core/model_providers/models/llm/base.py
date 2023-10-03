@@ -132,8 +132,6 @@ class BaseLLM(BaseProviderModel):
         if self.deduct_quota:
             self.model_provider.check_quota_over_limit()
 
-        db.session.commit()
-
         if not callbacks:
             callbacks = self.callbacks
         else:

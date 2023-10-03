@@ -5,6 +5,7 @@ from typing import List, Optional, Any
 import openai
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult
+from openai import api_requestor
 
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.llms.chat_open_ai import EnhanceChatOpenAI
