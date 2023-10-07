@@ -10,6 +10,7 @@ import type {
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
+  IndexingEstimateParams,
   IndexingEstimateResponse,
   IndexingStatusBatchResponse,
   IndexingStatusResponse,
@@ -189,7 +190,7 @@ export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId
   return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
 }
 
-export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, any> = (body: any) => {
+export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, IndexingEstimateParams> = (body: IndexingEstimateParams) => {
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
