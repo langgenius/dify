@@ -8,7 +8,7 @@
 	// },
 	"dockerComposeFile": "docker-compose.yml",
 	"service": "api",
-	"workspaceFolder": "/workspace",
+	"workspaceFolder": "/workspace/dify",
 	"forwardPorts": [3000, 5000],
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {
@@ -36,8 +36,8 @@
 			]
 		}
 	},
-	"postStartCommand": "cd api && pip install -r requirements.txt",
-	"postCreateCommand": "cd web && npm install"
+	// "postStartCommand": "cd api && pip install -r requirements.txt",
+	// "postCreateCommand": "cd web && npm install"
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},

@@ -5,7 +5,7 @@ services:
       context: .
       dockerfile: Dockerfile
     volumes:
-      - .:/workspace:cached
+      - .:/workspace:dify
     working_dir: /workspace/dify
     ports:
       - "5001:5001"
