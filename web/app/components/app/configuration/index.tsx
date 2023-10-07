@@ -296,7 +296,7 @@ const Configuration: FC = () => {
   const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
   // const modelMode = 'chat'
   // can return to simple mode if switch to advanced mode and not published
-  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(false)
+  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = (mode: PromptMode) => {
     if (mode === PromptMode.advanced)
       setCanReturnToSimpleMode(true)
