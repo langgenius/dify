@@ -1,0 +1,15 @@
+.QrcodeIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.QrcodeIcon.show {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/*.copyIcon.copied {*/
+/*  background-image: url(~@/app/components/develop/secret-key/assets/copied.svg);*/
+/*}*/

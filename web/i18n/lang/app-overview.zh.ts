@@ -60,6 +60,7 @@ const translation = {
         scripts: '将以下代码嵌入到你的网站中',
         copied: '已复制',
         copy: '复制',
+        qrcode: '扫描二维码分享应用，点击可下载',
       },
       customize: {
         way: '方法',
