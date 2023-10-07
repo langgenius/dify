@@ -1,9 +1,7 @@
 version: '3'
 services:
   api:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: mcr.microsoft.com/devcontainers/python:3.10
     volumes:
       - .:/workspace:dify
     working_dir: /workspace/dify
