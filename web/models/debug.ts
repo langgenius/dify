@@ -5,6 +5,30 @@ export enum PromptMode {
   advanced = 'advanced',
 }
 
+export type ChatModelPromptConfig = {
+  context: {
+    hasSet: boolean
+  }
+  variables: PromptVariable[]
+}
+
+export type CompletionModelPromptConfig = {
+  context: {
+    hasSet: boolean
+  }
+  variables: PromptVariable[]
+  historyPrefix: {
+    hasSet: boolean
+    value: {
+      userPrefix: string
+      assistantPrefix: string
+    }
+  }
+  query: {
+    hasSet: boolean
+  }
+}
+
 export enum MessageType {
   system = 'system',
   user = 'user',

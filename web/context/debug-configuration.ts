@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { CitationConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 
@@ -17,6 +17,10 @@ type IDebugConfiguration = {
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   messageList: any[]
   setMessageList: (messageList: any[]) => void
+  chatModelPromptConfig: ChatModelPromptConfig
+  setChatModelPromptConfig: (config: ChatModelPromptConfig) => void
+  completionModelPromptConfig: CompletionModelPromptConfig
+  setCompletionModelPromptConfig: (config: CompletionModelPromptConfig) => void
   conversationId: string | null // after first chat send
   setConversationId: (conversationId: string | null) => void
   introduction: string
@@ -64,8 +68,32 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setPromptMode: () => { },
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
-  messageList: [],
+  messageList: [], // chat model prompt list
   setMessageList: () => { },
+  chatModelPromptConfig: {
+    context: {
+      hasSet: false,
+    },
+    variables: [],
+  },
+  setChatModelPromptConfig: () => {},
+  completionModelPromptConfig: {
+    context: {
+      hasSet: false,
+    },
+    variables: [],
+    historyPrefix: {
+      hasSet: false,
+      value: {
+        userPrefix: '',
+        assistantPrefix: '',
+      },
+    },
+    query: {
+      hasSet: false,
+    },
+  },
+  setCompletionModelPromptConfig: () => { },
   conversationId: '',
   setConversationId: () => { },
   introduction: '',
