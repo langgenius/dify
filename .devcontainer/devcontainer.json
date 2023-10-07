@@ -1,7 +1,7 @@
 // For format details, see https://aka.ms/devcontainer.json. For config options, see the
 // README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
 {
-	"name": "Anaconda (Python 3)",
+	"name": "Python 3.10",
 	"build": { 
 		"context": "..",
 		"dockerfile": "Dockerfile"
