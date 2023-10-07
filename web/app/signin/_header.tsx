@@ -8,6 +8,10 @@ import I18n from '@/context/i18n'
 
 const Header = () => {
   const { locale, setLocaleOnClient } = useContext(I18n)
+
+  if (localStorage?.getItem('console_token'))
+    localStorage.removeItem('console_token')
+
   return <div className='flex items-center justify-between p-6 w-full'>
     <div className={style.logo}></div>
     <Select

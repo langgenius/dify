@@ -23,14 +23,18 @@ class OpenAIModeration(BaseModeration):
 
         # 2000 text per chunk
         length = 2000
-        chunks = [text[i:i + length] for i in range(0, len(text), length)]
+        text_chunks = [text[i:i + length] for i in range(0, len(text), length)]
 
-        moderation_result = self._client.create(input=chunks,
-                                                api_key=credentials['openai_api_key'])
+        max_text_chunks = 32
+        chunks = [text_chunks[i:i + max_text_chunks] for i in range(0, len(text_chunks), max_text_chunks)]
 
-        for result in moderation_result.results:
-            if result['flagged'] is True:
-                return False
+        for text_chunk in chunks:
+            moderation_result = self._client.create(input=text_chunk,
+                                                    api_key=credentials['openai_api_key'])
+
+            for result in moderation_result.results:
+                if result['flagged'] is True:
+                    return False
 
         return True
 

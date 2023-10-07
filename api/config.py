@@ -10,9 +10,6 @@ from extensions.ext_redis import redis_client
 dotenv.load_dotenv()
 
 DEFAULTS = {
-    'COOKIE_HTTPONLY': 'True',
-    'COOKIE_SECURE': 'True',
-    'COOKIE_SAMESITE': 'None',
     'DB_USERNAME': 'postgres',
     'DB_PASSWORD': '',
     'DB_HOST': 'localhost',
@@ -22,10 +19,6 @@ DEFAULTS = {
     'REDIS_PORT': '6379',
     'REDIS_DB': '0',
     'REDIS_USE_SSL': 'False',
-    'SESSION_REDIS_HOST': 'localhost',
-    'SESSION_REDIS_PORT': '6379',
-    'SESSION_REDIS_DB': '2',
-    'SESSION_REDIS_USE_SSL': 'False',
     'OAUTH_REDIRECT_PATH': '/console/api/oauth/authorize',
     'OAUTH_REDIRECT_INDEX_PATH': '/',
     'CONSOLE_WEB_URL': 'https://cloud.dify.ai',
@@ -36,9 +29,6 @@ DEFAULTS = {
     'STORAGE_TYPE': 'local',
     'STORAGE_LOCAL_PATH': 'storage',
     'CHECK_UPDATE_URL': 'https://updates.dify.ai',
-    'SESSION_TYPE': 'sqlalchemy',
-    'SESSION_PERMANENT': 'True',
-    'SESSION_USE_SIGNER': 'True',
     'DEPLOY_ENV': 'PRODUCTION',
     'SQLALCHEMY_POOL_SIZE': 30,
     'SQLALCHEMY_POOL_RECYCLE': 3600,
@@ -102,7 +92,7 @@ class Config:
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
-        self.CURRENT_VERSION = "0.3.22"
+        self.CURRENT_VERSION = "0.3.24"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -115,20 +105,6 @@ class Config:
         # Alternatively you can set it with `SECRET_KEY` environment variable.
         self.SECRET_KEY = get_env('SECRET_KEY')
 
-        # cookie settings
-        self.REMEMBER_COOKIE_HTTPONLY = get_bool_env('COOKIE_HTTPONLY')
-        self.SESSION_COOKIE_HTTPONLY = get_bool_env('COOKIE_HTTPONLY')
-        self.REMEMBER_COOKIE_SAMESITE = get_env('COOKIE_SAMESITE')
-        self.SESSION_COOKIE_SAMESITE = get_env('COOKIE_SAMESITE')
-        self.REMEMBER_COOKIE_SECURE = get_bool_env('COOKIE_SECURE')
-        self.SESSION_COOKIE_SECURE = get_bool_env('COOKIE_SECURE')
-        self.PERMANENT_SESSION_LIFETIME = timedelta(days=7)
-
-        # session settings, only support sqlalchemy, redis
-        self.SESSION_TYPE = get_env('SESSION_TYPE')
-        self.SESSION_PERMANENT = get_bool_env('SESSION_PERMANENT')
-        self.SESSION_USE_SIGNER = get_bool_env('SESSION_USE_SIGNER')
-
         # redis settings
         self.REDIS_HOST = get_env('REDIS_HOST')
         self.REDIS_PORT = get_env('REDIS_PORT')
@@ -136,14 +112,6 @@ class Config:
         self.REDIS_PASSWORD = get_env('REDIS_PASSWORD')
         self.REDIS_DB = get_env('REDIS_DB')
         self.REDIS_USE_SSL = get_bool_env('REDIS_USE_SSL')
-
-        # session redis settings
-        self.SESSION_REDIS_HOST = get_env('SESSION_REDIS_HOST')
-        self.SESSION_REDIS_PORT = get_env('SESSION_REDIS_PORT')
-        self.SESSION_REDIS_USERNAME = get_env('SESSION_REDIS_USERNAME')
-        self.SESSION_REDIS_PASSWORD = get_env('SESSION_REDIS_PASSWORD')
-        self.SESSION_REDIS_DB = get_env('SESSION_REDIS_DB')
-        self.SESSION_REDIS_USE_SSL = get_bool_env('SESSION_REDIS_USE_SSL')
 
         # storage settings
         self.STORAGE_TYPE = get_env('STORAGE_TYPE')

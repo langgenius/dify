@@ -47,7 +47,10 @@ class HitTestingService:
             query,
             search_type='similarity_score_threshold',
             search_kwargs={
-                'k': 10
+                'k': 10,
+                'filter': {
+                    'group_id': [dataset.id]
+                }
             }
         )
         end = time.perf_counter()

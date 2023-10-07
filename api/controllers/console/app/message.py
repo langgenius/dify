@@ -17,6 +17,7 @@ from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.login.login import login_required
+from fields.conversation_fields import message_detail_fields
 from libs.helper import uuid_value, TimestampField
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
@@ -26,44 +27,6 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
-
-account_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'email': fields.String
-}
-
-feedback_fields = {
-    'rating': fields.String,
-    'content': fields.String,
-    'from_source': fields.String,
-    'from_end_user_id': fields.String,
-    'from_account': fields.Nested(account_fields, allow_null=True),
-}
-
-annotation_fields = {
-    'content': fields.String,
-    'account': fields.Nested(account_fields, allow_null=True),
-    'created_at': TimestampField
-}
-
-message_detail_fields = {
-    'id': fields.String,
-    'conversation_id': fields.String,
-    'inputs': fields.Raw,
-    'query': fields.String,
-    'message': fields.Raw,
-    'message_tokens': fields.Integer,
-    'answer': fields.String,
-    'answer_tokens': fields.Integer,
-    'provider_response_latency': fields.Float,
-    'from_source': fields.String,
-    'from_end_user_id': fields.String,
-    'from_account_id': fields.String,
-    'feedbacks': fields.List(fields.Nested(feedback_fields)),
-    'annotation': fields.Nested(annotation_fields, allow_null=True),
-    'created_at': TimestampField
-}
 
 
 class ChatMessageListApi(Resource):

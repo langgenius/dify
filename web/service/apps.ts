@@ -5,91 +5,91 @@ import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
 
 export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<AppListResponse>
+  return get<AppListResponse>(url, { params })
 }
 
-export const fetchAppDetail: Fetcher<AppDetailResponse, { url: string; id: string }> = ({ url, id }) => {
-  return get(`${url}/${id}`) as Promise<AppDetailResponse>
+export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
+  return get<AppDetailResponse>(`${url}/${id}`)
 }
 
 export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> = ({ url }) => {
-  return get(url) as Promise<AppTemplatesResponse>
+  return get<AppTemplatesResponse>(url)
 }
 
 export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; config?: ModelConfig }> = ({ name, icon, icon_background, mode, config }) => {
-  return post('apps', { body: { name, icon, icon_background, mode, model_config: config } }) as Promise<AppDetailResponse>
+  return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, model_config: config } })
 }
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {
-  return del(`apps/${appID}`) as Promise<CommonResponse>
+  return del<CommonResponse>(`apps/${appID}`)
 }
 
 export const updateAppSiteStatus: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<AppDetailResponse>
+  return post<AppDetailResponse>(url, { body })
 }
 
 export const updateAppApiStatus: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<AppDetailResponse>
+  return post<AppDetailResponse>(url, { body })
 }
 
 // path: /apps/{appId}/rate-limit
 export const updateAppRateLimit: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<AppDetailResponse>
+  return post<AppDetailResponse>(url, { body })
 }
 
 export const updateAppSiteAccessToken: Fetcher<UpdateAppSiteCodeResponse, { url: string }> = ({ url }) => {
-  return post(url) as Promise<UpdateAppSiteCodeResponse>
+  return post<UpdateAppSiteCodeResponse>(url)
 }
 
-export const updateAppSiteConfig: Fetcher<AppDetailResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<AppDetailResponse>
+export const updateAppSiteConfig = ({ url, body }: { url: string; body: Record<string, any> }) => {
+  return post<AppDetailResponse>(url, { body })
 }
 
 export const getAppDailyConversations: Fetcher<AppDailyConversationsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<AppDailyConversationsResponse>
+  return get<AppDailyConversationsResponse>(url, { params })
 }
 
 export const getAppStatistics: Fetcher<AppStatisticsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<AppStatisticsResponse>
+  return get<AppStatisticsResponse>(url, { params })
 }
 
 export const getAppDailyEndUsers: Fetcher<AppDailyEndUsersResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<AppDailyEndUsersResponse>
+  return get<AppDailyEndUsersResponse>(url, { params })
 }
 
 export const getAppTokenCosts: Fetcher<AppTokenCostsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, { params }) as Promise<AppTokenCostsResponse>
+  return get<AppTokenCostsResponse>(url, { params })
 }
 
 export const updateAppModelConfig: Fetcher<UpdateAppModelConfigResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<UpdateAppModelConfigResponse>
+  return post<UpdateAppModelConfigResponse>(url, { body })
 }
 
 // For temp testing
 export const fetchAppListNoMock: Fetcher<AppListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, params) as Promise<AppListResponse>
+  return get<AppListResponse>(url, params)
 }
 
 export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get(url, params) as Promise<ApikeysListResponse>
+  return get<ApikeysListResponse>(url, params)
 }
 
 export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return del(url, params) as Promise<CommonResponse>
+  return del<CommonResponse>(url, params)
 }
 
 export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, body) as Promise<CreateApiKeyResponse>
+  return post<CreateApiKeyResponse>(url, body)
 }
 
 export const validateOpenAIKey: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: { token: string } }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<ValidateOpenAIKeyResponse>
+  return post<ValidateOpenAIKeyResponse>(url, { body })
 }
 
 export const updateOpenAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: string; body: { token: string } }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<UpdateOpenAIKeyResponse>
+  return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
 export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { url: string; body: { prompt_template: string } }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<GenerationIntroductionResponse>
+  return post<GenerationIntroductionResponse>(url, { body })
 }

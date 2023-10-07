@@ -2,13 +2,8 @@ import enum
 import logging
 from typing import List, Dict, Optional, Any
 
-import openai
-from flask import current_app
 from langchain.callbacks.manager import CallbackManagerForChainRun
 from langchain.chains.base import Chain
-from openai import InvalidRequestError
-from openai.error import APIConnectionError, APIError, ServiceUnavailableError, Timeout, RateLimitError, \
-    AuthenticationError, OpenAIError
 from pydantic import BaseModel
 
 from core.model_providers.error import LLMBadRequestError
@@ -86,6 +81,12 @@ class SensitiveWordAvoidanceChain(Chain):
             result = self._check_moderation(text)
 
         if not result:
-            raise LLMBadRequestError(self.sensitive_word_avoidance_rule.canned_response)
+            raise SensitiveWordAvoidanceError(self.sensitive_word_avoidance_rule.canned_response)
 
         return {self.output_key: text}
+
+
+class SensitiveWordAvoidanceError(Exception):
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message

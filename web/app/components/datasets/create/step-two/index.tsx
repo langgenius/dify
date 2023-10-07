@@ -107,6 +107,7 @@ const StepTwo = ({
   const fileIndexingEstimate = (() => {
     return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
   })()
+  const [isCreating, setIsCreating] = useState(false)
 
   const scrollHandle = (e: Event) => {
     if ((e.target as HTMLDivElement).scrollTop > 0)
@@ -277,7 +278,7 @@ const StepTwo = ({
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
-          file_ids: files.map(file => file.id),
+          file_ids: files.map(file => file.id || '').filter(Boolean),
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
@@ -318,9 +319,13 @@ const StepTwo = ({
   }
 
   const createHandle = async () => {
+    if (isCreating)
+      return
+    setIsCreating(true)
     try {
       let res
       const params = getCreationParams()
+      setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
           body: params,
@@ -346,6 +351,9 @@ const StepTwo = ({
         type: 'error',
         message: `${err}`,
       })
+    }
+    finally {
+      setIsCreating(false)
     }
   }
 
@@ -487,8 +495,10 @@ const StepTwo = ({
                       <input
                         type="number"
                         className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={max}
-                        onChange={e => setMax(Number(e.target.value))}
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
+                        value={max}
+                        min={1}
+                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
                     </div>
                   </div>
@@ -497,7 +507,7 @@ const StepTwo = ({
                       <div className={s.label}>{t('datasetCreation.stepTwo.rules')}</div>
                       {rules.map(rule => (
                         <div key={rule.id} className={s.ruleItem}>
-                          <input id={rule.id} type="checkbox" defaultChecked={rule.enabled} onChange={() => ruleChangeHandle(rule.id)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
+                          <input id={rule.id} type="checkbox" checked={rule.enabled} onChange={() => ruleChangeHandle(rule.id)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
                           <label htmlFor={rule.id} className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
                         </div>
                       ))}
@@ -620,7 +630,7 @@ const StepTwo = ({
                   <>
                     <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.fileSource')}</div>
                     <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <span className={cn(s.fileIcon, files.length && s[files[0].extension])} />
+                      <span className={cn(s.fileIcon, files.length && s[files[0].extension || ''])} />
                       {getFileName(files[0].name || '')}
                       {files.length > 1 && (
                         <span className={s.sourceCount}>
@@ -674,12 +684,12 @@ const StepTwo = ({
                 <div className='flex items-center mt-8 py-2'>
                   <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.lastStep')}</Button>
                   <div className={s.divider} />
-                  <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>
               )
               : (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
+                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
                   <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
                 </div>
               )}

@@ -94,7 +94,7 @@ class ConversationMessageTask:
         if not self.conversation:
             self.is_new_conversation = True
             self.conversation = Conversation(
-                app_id=self.app_model_config.app_id,
+                app_id=self.app.id,
                 app_model_config_id=self.app_model_config.id,
                 model_provider=self.provider_name,
                 model_id=self.model_name,
@@ -112,10 +112,10 @@ class ConversationMessageTask:
             )
 
             db.session.add(self.conversation)
-            db.session.flush()
+            db.session.commit()
 
         self.message = Message(
-            app_id=self.app_model_config.app_id,
+            app_id=self.app.id,
             model_provider=self.provider_name,
             model_id=self.model_name,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
@@ -140,7 +140,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(self.message)
-        db.session.flush()
+        db.session.commit()
 
     def append_message_text(self, text: str):
         if text is not None:
@@ -191,12 +191,13 @@ class ConversationMessageTask:
         )
 
         db.session.add(message_chain)
-        db.session.flush()
+        db.session.commit()
 
         return message_chain
 
     def on_chain_end(self, message_chain: MessageChain, chain_result: ChainResult):
         message_chain.output = json.dumps(chain_result.completion)
+        db.session.commit()
 
         self._pub_handler.pub_chain(message_chain)
 
@@ -217,7 +218,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(message_agent_thought)
-        db.session.flush()
+        db.session.commit()
 
         self._pub_handler.pub_agent_thought(message_agent_thought)
 
@@ -249,7 +250,7 @@ class ConversationMessageTask:
         message_agent_thought.tokens = agent_loop.prompt_tokens + agent_loop.completion_tokens
         message_agent_thought.total_price = loop_total_price
         message_agent_thought.currency = agent_model_instance.get_currency()
-        db.session.flush()
+        db.session.commit()
 
     def on_dataset_query_end(self, dataset_query_obj: DatasetQueryObj):
         dataset_query = DatasetQuery(
@@ -262,6 +263,7 @@ class ConversationMessageTask:
         )
 
         db.session.add(dataset_query)
+        db.session.commit()
 
     def on_dataset_query_finish(self, resource: List):
         if resource and len(resource) > 0:
@@ -285,7 +287,7 @@ class ConversationMessageTask:
                     created_by=self.user.id
                 )
                 db.session.add(dataset_retriever_resource)
-                db.session.flush()
+                db.session.commit()
             self.retriever_resource = resource
 
     def message_end(self):

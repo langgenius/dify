@@ -63,7 +63,18 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self.conversation_message_task.append_message_text(response.generations[0][0].text)
             self.llm_message.completion = response.generations[0][0].text
 
-        self.llm_message.completion_tokens = self.model_instance.get_num_tokens([PromptMessage(content=self.llm_message.completion)])
+        if response.llm_output and 'token_usage' in response.llm_output:
+            if 'prompt_tokens' in response.llm_output['token_usage']:
+                self.llm_message.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
+
+            if 'completion_tokens' in response.llm_output['token_usage']:
+                self.llm_message.completion_tokens = response.llm_output['token_usage']['completion_tokens']
+            else:
+                self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
+                    [PromptMessage(content=self.llm_message.completion)])
+        else:
+            self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
+                [PromptMessage(content=self.llm_message.completion)])
 
         self.conversation_message_task.save_message(self.llm_message)
 

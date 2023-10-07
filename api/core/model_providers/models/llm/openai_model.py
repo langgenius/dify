@@ -5,6 +5,7 @@ from typing import List, Optional, Any
 import openai
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult
+from openai import api_requestor
 
 from core.model_providers.providers.base import BaseModelProvider
 from core.third_party.langchain.llms.chat_open_ai import EnhanceChatOpenAI
@@ -17,6 +18,7 @@ from core.model_providers.models.entity.model_params import ModelMode, ModelKwar
 from models.provider import ProviderType, ProviderQuotaType
 
 COMPLETION_MODELS = [
+    'gpt-3.5-turbo-instruct',  # 4,096 tokens
     'text-davinci-003',  # 4,097 tokens
 ]
 
@@ -31,6 +33,7 @@ MODEL_MAX_TOKENS = {
     'gpt-4': 8192,
     'gpt-4-32k': 32768,
     'gpt-3.5-turbo': 4096,
+    'gpt-3.5-turbo-instruct': 8192,
     'gpt-3.5-turbo-16k': 16384,
     'text-davinci-003': 4097,
 }

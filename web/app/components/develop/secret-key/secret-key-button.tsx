@@ -7,7 +7,7 @@ import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal
 
 type ISecretKeyButtonProps = {
   className?: string
-  appId: string
+  appId?: string
   iconCls?: string
   textCls?: string
 }

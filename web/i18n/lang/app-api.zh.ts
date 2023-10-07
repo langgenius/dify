@@ -12,7 +12,7 @@ const translation = {
   never: '从未',
   apiKeyModal: {
     apiSecretKey: 'API 密钥',
-    apiSecretKeyTips: '如果不想你的应用 API 被滥用，请保护好你的 API Key :) 最佳实践是避免在前端代码中明文引用。',
+    apiSecretKeyTips: '如果不想你的 API 被滥用，请保护好你的 API Key :) 最佳实践是避免在前端代码中明文引用。',
     createNewSecretKey: '创建密钥',
     secretKey: '密钥',
     created: '创建时间',
