@@ -105,7 +105,7 @@ const Configuration: FC = () => {
     dataSets: [],
   })
   const [datasetConfigParams, setDatasetConfigParams] = useState<DatasetConfigParams>({
-    top_k: 10,
+    top_k: 6,
     score_threshold: 0.78,
   })
 

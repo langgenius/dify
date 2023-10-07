@@ -22,16 +22,16 @@ const PARAMS_KEY = [
 const PARAMS = {
   top_k: {
     enabled: true,
-    default: 10,
+    default: 6,
     step: 1,
     min: 1,
-    max: 50,
+    max: 10,
   },
   score_threshold: {
     enabled: true,
     default: 0.78,
     step: 0.01,
-    min: 0.65,
+    min: 0,
     max: 1,
   },
 } as any

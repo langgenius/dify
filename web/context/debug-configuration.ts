@@ -125,7 +125,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   dataSets: [],
   setDataSets: () => { },
   datasetConfigParams: {
-    top_k: 10,
+    top_k: 6,
     score_threshold: 0.78,
   },
   setDatasetConfigParams: () => {},
