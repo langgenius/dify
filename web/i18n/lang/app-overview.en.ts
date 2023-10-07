@@ -60,7 +60,11 @@ const translation = {
         scripts: 'To add a chat app to the bottom right of your website add this code to your html.',
         copied: 'Copied',
         copy: 'Copy',
-        qrcode: 'Scan the QR code to share application, click to download',
+      },
+      qrcode: {
+        title: 'QR code to share',
+        scan: 'Scan Share Application',
+        download: 'Download QR Code',
       },
       customize: {
         way: 'way',

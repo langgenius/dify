@@ -12,7 +12,7 @@ type Props = {
   className?: string
 }
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded.qrcode'
+const prefixEmbedded = 'appOverview.overview.appInfo.qrcode.title'
 
 const ShareQRCode = ({ content, selectorId, className }: Props) => {
   const { t } = useTranslation()
@@ -44,7 +44,15 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
         onClick={onClickShow}
       >
         <div className={`w-full h-full ${QrcodeStyle.QrcodeIcon} ${isShow ? QrcodeStyle.show : ''}`} />
-        {isShow && <QRCode value={content} onClick={downloadQR} bgColor="white" className="QRCode" style={{ position: 'absolute' }}/>}
+        {isShow && <div className={QrcodeStyle.qrcodeform}>
+          <QRCode size={160} value={content} className={QrcodeStyle.qrcodeimage}/>
+          <div className={QrcodeStyle.text}>
+            <div className={`text-gray-500 ${QrcodeStyle.scan}`}>{t('appOverview.overview.appInfo.qrcode.scan')}</div>
+            <div className={`text-gray-500 ${QrcodeStyle.scan}`}>·</div>
+            <div className={QrcodeStyle.download} onClick={downloadQR}>{t('appOverview.overview.appInfo.qrcode.download')}</div>
+          </div>
+        </div>
+        }
       </div>
     </Tooltip>
   )
