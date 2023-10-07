@@ -169,7 +169,6 @@ function AppCard({
                 </div>
               </div>
               <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
-              {/* 应用分享二维码 */}
               {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} selectorId={randomString(8)} className={'hover:bg-gray-200'} />}
               <CopyFeedback
                 content={isApp ? appUrl : apiUrl}
