@@ -1,0 +1,13 @@
+version: '3'
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace/dify
+    ports:
+      - "5001:5001"
+      - "3000:3000"
+      

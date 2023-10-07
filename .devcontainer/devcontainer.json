@@ -2,12 +2,15 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
 {
 	"name": "Anaconda (Python 3)",
-	"build": { 
-		"context": "..",
-		"dockerfile": "Dockerfile"
-	},
+	// "build": { 
+	// 	"context": "..",
+	// 	"dockerfile": "Dockerfile"
+	// },
+	"dockerComposeFile": "docker-compose.yml",
+	"service": "api",
+	"workspaceFolder": "/workspace",
+	"forwardPorts": [3000, 5000],
 	"features": {
-		"ghcr.io/dhoeric/features/act:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
 			"nodeGypDependencies": true,
 			"version": "lts"
