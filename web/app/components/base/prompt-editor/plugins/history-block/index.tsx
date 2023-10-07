@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import { useEffect } from 'react'
 import {
   $getSelection,
@@ -12,7 +13,18 @@ import {
 
 export const INSERT_HISTORY_BLOCK_COMMAND = createCommand()
 
-const HistoryBlock = () => {
+export type RoleName = {
+  user: string
+  assistant: string
+}
+
+type HistoryBlockProps = {
+  roleName: RoleName
+}
+
+const HistoryBlock: FC<HistoryBlockProps> = ({
+  roleName,
+}) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -22,7 +34,7 @@ const HistoryBlock = () => {
     return editor.registerCommand(
       INSERT_HISTORY_BLOCK_COMMAND,
       () => {
-        const historyBlockNode = $createHistoryBlockNode()
+        const historyBlockNode = $createHistoryBlockNode(roleName)
         const selection = $getSelection()
 
         selection?.insertNodes([historyBlockNode])
@@ -31,7 +43,7 @@ const HistoryBlock = () => {
       },
       COMMAND_PRIORITY_EDITOR,
     )
-  }, [editor])
+  }, [editor, roleName])
 
   return null
 }

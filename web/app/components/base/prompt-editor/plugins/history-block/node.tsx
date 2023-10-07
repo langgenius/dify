@@ -1,14 +1,25 @@
-import type { LexicalNode } from 'lexical'
+import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import HistoryBlockComponent from './component'
+import type { RoleName } from './index'
+
+export type SerializedNode = SerializedLexicalNode & { roleName: RoleName }
 
 export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
+  __roleName: RoleName
+
   static getType(): string {
     return 'history-block'
   }
 
-  static clone(): HistoryBlockNode {
-    return new HistoryBlockNode()
+  static clone(node: HistoryBlockNode): HistoryBlockNode {
+    return new HistoryBlockNode(node.__roleName)
+  }
+
+  constructor(roleName: RoleName, key?: NodeKey) {
+    super(key)
+
+    this.__roleName = roleName
   }
 
   isIsolated(): boolean {
@@ -26,11 +37,31 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <HistoryBlockComponent nodeKey={this.getKey()} />
+    return <HistoryBlockComponent nodeKey={this.getKey()} roleName={this.getRoleName()} />
+  }
+
+  getRoleName(): RoleName {
+    const self = this.getLatest()
+
+    return self.__roleName
+  }
+
+  static importJSON(serializedNode: SerializedNode): HistoryBlockNode {
+    const node = $createHistoryBlockNode(serializedNode.roleName)
+
+    return node
+  }
+
+  exportJSON(): SerializedNode {
+    return {
+      type: 'history-block',
+      version: 1,
+      roleName: this.getRoleName(),
+    }
   }
 }
-export function $createHistoryBlockNode(): HistoryBlockNode {
-  return new HistoryBlockNode()
+export function $createHistoryBlockNode(roleName: RoleName): HistoryBlockNode {
+  return new HistoryBlockNode(roleName)
 }
 
 export function $isHistoryBlockNode(

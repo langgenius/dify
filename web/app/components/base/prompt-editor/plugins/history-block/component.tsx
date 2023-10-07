@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
+import type { RoleName } from './index'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import {
@@ -10,10 +11,15 @@ import {
 
 type HistoryBlockComponentProps = {
   nodeKey: string
+  roleName?: RoleName
 }
 
 const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   nodeKey,
+  roleName = {
+    user: 'Human',
+    assistant: 'Assistant',
+  },
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const [triggerRef, open, setOpen] = useTrigger()
@@ -48,8 +54,12 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>Example</div>
               <div className='flex items-center text-sm text-gray-700'>
-                <div className='mr-1 w-20 text-xs font-semibold'>Human</div>
+                <div className='mr-1 w-20 text-xs font-semibold'>{roleName.user}</div>
                 Hello
+              </div>
+              <div className='flex items-center text-sm text-gray-700'>
+                <div className='mr-1 w-20 text-xs font-semibold'>{roleName.assistant}</div>
+                Hello! How can I assist you today?
               </div>
             </div>
             <div className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'>

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
+import type { Dataset } from './index'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -10,10 +11,12 @@ import {
 
 type ContextBlockComponentProps = {
   nodeKey: string
+  datasets?: Dataset[]
 }
 
 const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   nodeKey,
+  datasets = [],
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const [triggerRef, open, setOpen] = useTrigger()
@@ -39,16 +42,20 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
           <div className={`
             flex items-center justify-center w-[18px] h-[18px] text-[11px] font-semibold rounded cursor-pointer
             ${open ? 'bg-[#6938EF] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
-          `}>2</div>
+          `}>{datasets.length}</div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 100 }}>
           <div className='w-[360px] bg-white rounded-xl shadow-lg'>
             <div className='p-4'>
-              <div className='mb-2 text-xs font-medium text-gray-500'>2 Datasets in Context</div>
-              <div className='flex items-center h-8'>
-                <div className='shrink-0 mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'></div>
-                <div className='text-sm text-gray-800 truncate' title=''>Understand 1000 years of coffee history in 3 minutes.</div>
-              </div>
+              <div className='mb-2 text-xs font-medium text-gray-500'>{datasets.length} Datasets in Context</div>
+              {
+                datasets.map(dataset => (
+                  <div key={dataset.id} className='flex items-center h-8'>
+                    <div className='shrink-0 mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'></div>
+                    <div className='text-sm text-gray-800 truncate' title=''>{dataset.name}</div>
+                  </div>
+                ))
+              }
               <div className='flex items-center h-8 text-[#155EEF] cursor-pointer'>
                 <div className='shrink-0 flex justify-center items-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-gray-100'>
                   <Plus className='w-[14px] h-[14px]' />

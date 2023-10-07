@@ -1,13 +1,14 @@
 'use client'
 
+import type { FC } from 'react'
 // import { $getRoot } from 'lexical'
-// import type { EditorState } from 'lexical'
+import type { EditorState } from 'lexical'
 import { TextNode } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
-// import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
 import TreeView from './plugins/tree-view'
 import Placeholder from './plugins/placeholder'
 import ComponentPicker from './plugins/component-picker'
@@ -24,6 +25,7 @@ import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
 
 export type PromptEditorProps = {
+  editable?: boolean
   contextBlock?: {
     enable: boolean
     selectable: boolean
@@ -50,7 +52,53 @@ export type PromptEditorProps = {
   }
 }
 
-const PromptEditor = () => {
+const PromptEditor: FC<PromptEditorProps> = ({
+  editable = true,
+}) => {
+  const initialEditorState = `{
+    "root": {
+        "children": [
+            {
+                "children": [
+                    {
+                        "detail": 0,
+                        "format": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "text": "a ",
+                        "type": "custom-text",
+                        "version": 1
+                    },
+                    {
+                        "type": "context-block",
+                        "version": 1,
+                        "datasets": [
+                            {
+                                "id": "1",
+                                "name": "1",
+                                "type": "file"
+                            }
+                        ]
+                    },
+                    {
+                        "type": "query-block",
+                        "version": 1
+                    }
+                ],
+                "direction": "ltr",
+                "format": "",
+                "indent": 0,
+                "type": "paragraph",
+                "version": 1
+            }
+        ],
+        "direction": "ltr",
+        "format": "",
+        "indent": 0,
+        "type": "root",
+        "version": 1
+    }
+}`
   const initialConfig = {
     namespace: 'prompt-editor',
     onError: (error: Error) => {
@@ -67,14 +115,15 @@ const PromptEditor = () => {
       QueryBlockNode,
       VariableValueBlockNode,
     ],
+    editorState: initialEditorState,
   }
 
-  // const handleEditorChange = (editorState: EditorState) => {
-  //   console.log(editorState.read(() => $getRoot().getTextContent()))
-  // }
+  const handleEditorChange = (editorState: EditorState) => {
+    console.log(editorState.toJSON())
+  }
 
   return (
-    <LexicalComposer initialConfig={initialConfig}>
+    <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className='relative'>
         <RichTextPlugin
           contentEditable={<ContentEditable className='outline-none text-sm text-gray-700 leading-6' />}
@@ -83,13 +132,16 @@ const PromptEditor = () => {
         />
         <ComponentPicker />
         <VariablePicker />
-        <ContextBlock />
+        <ContextBlock datasets={[]} />
         <VariableBlock />
-        <HistoryBlock />
+        <HistoryBlock roleName={{
+          user: 'master',
+          assistant: 'box',
+        }} />
         <QueryBlock />
         <VariableValueBlock />
         <TreeView />
-        {/* <OnChangePlugin onChange={handleEditorChange} /> */}
+        <OnChangePlugin onChange={handleEditorChange} />
       </div>
     </LexicalComposer>
   )

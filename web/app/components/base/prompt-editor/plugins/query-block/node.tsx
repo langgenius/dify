@@ -1,6 +1,8 @@
-import type { LexicalNode } from 'lexical'
+import type { LexicalNode, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
 import QueryBlockComponent from './component'
+
+export type SerializedNode = SerializedLexicalNode
 
 export class QueryBlockNode extends DecoratorNode<JSX.Element> {
   static getType(): string {
@@ -27,6 +29,19 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
 
   decorate(): JSX.Element {
     return <QueryBlockComponent nodeKey={this.getKey()} />
+  }
+
+  static importJSON(): QueryBlockNode {
+    const node = $createQueryBlockNode()
+
+    return node
+  }
+
+  exportJSON(): SerializedNode {
+    return {
+      type: 'query-block',
+      version: 1,
+    }
   }
 }
 export function $createQueryBlockNode(): QueryBlockNode {

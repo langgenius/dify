@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import { useEffect } from 'react'
 import {
   $getSelection,
@@ -13,7 +14,18 @@ import {
 
 export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand()
 
-const ContextBlock = () => {
+export type Dataset = {
+  id: string
+  name: string
+  type: string
+}
+
+type ContextBlockProps = {
+  datasets: Dataset[]
+}
+const ContextBlock: FC<ContextBlockProps> = ({
+  datasets,
+}) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
@@ -24,7 +36,7 @@ const ContextBlock = () => {
       editor.registerCommand(
         INSERT_CONTEXT_BLOCK_COMMAND,
         () => {
-          const contextBlockNode = $createContextBlockNode()
+          const contextBlockNode = $createContextBlockNode(datasets)
           const selection = $getSelection()
 
           selection?.insertNodes([contextBlockNode])
@@ -34,7 +46,7 @@ const ContextBlock = () => {
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor])
+  }, [editor, datasets])
 
   return null
 }
