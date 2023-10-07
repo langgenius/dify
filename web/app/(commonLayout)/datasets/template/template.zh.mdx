@@ -71,7 +71,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Path Query
+    ### Query
     <Properties>
       <Property name='page' type='string' key='page'>
         页码
@@ -136,7 +136,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     此接口基于已存在数据集，在此数据集的基础上通过文本创建新的文档
 
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -153,22 +153,22 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - high_quality 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
-          - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
+          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则
-          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
-          - rules (text) 自定义规则（自动模式下，该字段为空）
-            - pre_processing_rules (array[object]) 预处理规则
-              - id (string) 预处理规则的唯一标识符
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
                 - 枚举： 
-                  - remove_extra_spaces 替换连续空格、换行符、制表符
-                  - remove_urls_emails 删除 URL、电子邮件地址
-              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值
-            - segmentation (object) 分段规则
-              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - max_tokens 最大长度 (token) 默认为 1000
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -239,7 +239,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     此接口基于已存在数据集，在此数据集的基础上通过文件创建新的文档
 
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -252,30 +252,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         源文档 ID （选填）
           - 用于重新上传文档或修改文档清洗、分段配置，缺失的信息从源文档复制
           - 源文档不可为归档的文档
-          - 当传入 original_document_id 时，代表文档进行更新操作，process_rule 为可填项目，不填默认使用源文档的分段方式
-          - 未传入 original_document_id 时，代表文档进行新增操作，process_rule 为必填
+          - 当传入 <code>original_document_id</code> 时，代表文档进行更新操作，<code>process_rule</code> 为可填项目，不填默认使用源文档的分段方式
+          - 未传入 <code>original_document_id</code> 时，代表文档进行新增操作，<code>process_rule</code> 为必填
       </Property>
       <Property name='file' type='multipart/form-data' key='file'>
         需要上传的文件。
       </Property>
       <Property name='indexing_technique' type='string' key='indexing_technique'>
         索引方式
-          - high_quality 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
-          - economy 经济：使用 Keyword Table Index 的倒排索引进行构建
+          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则
-          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
-          - rules (text) 自定义规则（自动模式下，该字段为空） 
-            - pre_processing_rules (array[object]) 预处理规则
-              - id (string) 预处理规则的唯一标识符 
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
                 - 枚举： 
-                  - remove_extra_spaces 替换连续空格、换行符、制表符
-                  - remove_urls_emails 删除 URL、电子邮件地址
-              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
-            - segmentation (object) 分段规则
-              - separator 自定义分段标识符，目前仅允许设置一个分隔符，默认为 \n
-              - max_tokens 最大长度 (token) 默认为 1000
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -339,7 +339,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     此接口基于已存在数据集，在此数据集的基础上通过文本更新文档
 
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -359,17 +359,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则（选填）
-          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
-          - rules (text) 自定义规则（自动模式下，该字段为空） 
-            - pre_processing_rules (array[object]) 预处理规则
-              - id (string) 预处理规则的唯一标识符 
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
                 - 枚举： 
-                  - remove_extra_spaces 替换连续空格、换行符、制表符
-                  - remove_urls_emails 删除 URL、电子邮件地址
-              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值。
-            - segmentation (object) 分段规则
-              - separator 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
-              - max_tokens 最大长度 (token) 默认为 1000
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -436,7 +436,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col>
     此接口基于已存在数据集，在此数据集的基础上通过文件更新文档的操作。
 
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -456,17 +456,17 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
       <Property name='process_rule' type='object' key='process_rule'>
         处理规则（选填）
-          - mode (string) 清洗、分段模式 ，automatic 自动 / custom 自定义。
-          - rules (text) 自定义规则（自动模式下，该字段为空） 
-            - pre_processing_rules (array[object]) 预处理规则
-              - id (string) 预处理规则的唯一标识符 
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
                 - 枚举： 
-                  - remove_extra_spaces 替换连续空格、换行符、制表符
-                  - remove_urls_emails 删除 URL、电子邮件地址
-              - enabled (bool) 是否选中该规则，不传入文档 ID 时代表默认值
-            - segmentation (object) 分段规则
-              - separator 自定义分段标识符，目前仅允许设置一个分隔符，默认为 \n
-              - max_tokens 最大长度 (token) 默认为 1000
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
       </Property>
     </Properties>
   </Col>
@@ -528,7 +528,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -583,7 +583,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -625,14 +625,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
       </Property>
     </Properties>
 
-    ### Path Query
+    ### Query
     <Properties>
       <Property name='keyword' type='string' key='keyword'>
         搜索关键词，可选，目前仅搜索文档名称
@@ -700,7 +700,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    ### Path Params
+    ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
         数据集 ID
@@ -713,10 +713,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='segments' type='object list' key='segments'>
-        segments (object list) 分段内容
-          - content (text) 文本内容/问题内容，必填
-          - answer(text) 答案内容，非必填，如果数据集的模式为qa模式则传值
-          - keywords(list) 关键字，非必填
+        - <code>content</code> (text) 文本内容/问题内容，必填
+        - <code>answer</code> (text) 答案内容，非必填，如果数据集的模式为qa模式则传值
+        - <code>keywords</code> (list) 关键字，非必填
       </Property>
     </Properties>
   </Col>
@@ -779,14 +778,106 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 ---
 
-错误信息
-- **document_indexing**: 文档索引失败
-- **provider_not_initialize**: Embedding 模型未配置
-- **not_found**,文档不存在
-- **dataset_name_duplicate**: 数据集名称重复
-- **provider_quota_exceeded**: 模型额度超过限制
-- **dataset_not_initialized**: 数据集还未初始化
-- **unsupported_file_type**: 不支持的文件类型 
-  - 目前只支持：txt, markdown, md, pdf, html, htm, xlsx, docx, csv
-- **too_many_files**: 文件数量过多，暂时只支持单一文件上传
-- **file_too_large*: 文件太大，默认支持15M以下, 具体需要参考环境变量配置
+<Row>
+  <Col>
+    ### 错误信息
+    <Properties>
+      <Property name='code' type='string' key='code'>
+        返回的错误代码
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='status' type='number' key='status'>
+        返回的错误状态
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='message' type='string' key='message'>
+        返回的错误信息
+      </Property>
+    </Properties>
+  </Col>
+  <Col>
+    <CodeGroup title="Example">
+    ```json {{ title: 'Response' }}
+      {
+        "code": "no_file_uploaded",
+        "message": "Please upload your file.",
+        "status": 400
+      }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+<table className="max-w-auto border-collapse border border-slate-400" style={{ maxWidth: 'none', width: 'auto' }}>
+  <thead style={{ background: '#f9fafc' }}>
+    <tr>
+      <th class="p-2 border border-slate-300">code</th>
+      <th class="p-2 border border-slate-300">status</th>
+      <th class="p-2 border border-slate-300">message</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td class="p-2 border border-slate-300">no_file_uploaded</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">Please upload your file.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">too_many_files</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">Only one file is allowed.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">file_too_large</td>
+      <td class="p-2 border border-slate-300">413</td>
+      <td class="p-2 border border-slate-300">File size exceeded.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">unsupported_file_type</td>
+      <td class="p-2 border border-slate-300">415</td>
+      <td class="p-2 border border-slate-300">File type not allowed.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">high_quality_dataset_only</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">dataset_not_initialized</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">archived_document_immutable</td>
+      <td class="p-2 border border-slate-300">403</td>
+      <td class="p-2 border border-slate-300">The archived document is not editable.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">dataset_name_duplicate</td>
+      <td class="p-2 border border-slate-300">409</td>
+      <td class="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">invalid_action</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">Invalid action.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">document_already_finished</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">document_indexing</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
+    </tr>
+    <tr>
+      <td class="p-2 border border-slate-300">invalid_metadata</td>
+      <td class="p-2 border border-slate-300">400</td>
+      <td class="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
+    </tr>
+  </tbody>
+</table>
+<div class="pb-4" />

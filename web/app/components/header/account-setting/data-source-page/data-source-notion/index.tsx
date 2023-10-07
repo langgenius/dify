@@ -1,14 +1,15 @@
+import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
 import Indicator from '../../../indicator'
 import Operate from './operate'
 import s from './style.module.css'
 import NotionIcon from '@/app/components/base/notion-icon'
-import { apiPrefix } from '@/config'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
+import { fetchNotionConnection } from '@/service/common'
 
 type DataSourceNotionProps = {
   workspaces: TDataSourceNotion[]
@@ -18,8 +19,29 @@ const DataSourceNotion = ({
 }: DataSourceNotionProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
+  const [canConnectNotion, setCanConnectNotion] = useState(false)
+  const { data } = useSWR(canConnectNotion ? '/oauth/data-source/notion' : null, fetchNotionConnection)
 
   const connected = !!workspaces.length
+
+  const handleConnectNotion = () => {
+    if (!isCurrentWorkspaceManager)
+      return
+
+    setCanConnectNotion(true)
+  }
+
+  const handleAuthAgain = () => {
+    if (data?.data)
+      window.location.href = data.data
+    else
+      setCanConnectNotion(true)
+  }
+
+  useEffect(() => {
+    if (data?.data)
+      window.location.href = data.data
+  }, [data])
 
   return (
     <div className='mb-2 border-[0.5px] border-gray-200 bg-gray-50 rounded-xl'>
@@ -40,26 +62,28 @@ const DataSourceNotion = ({
         {
           connected
             ? (
-              <Link
+              <div
                 className={
                   `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
                   rounded-md text-xs font-medium text-gray-700
                   ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
                 }
-                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/'}>
+                onClick={handleConnectNotion}
+              >
                 {t('common.dataSource.connect')}
-              </Link>
+              </div>
             )
             : (
-              <Link
-                href={isCurrentWorkspaceManager ? `${apiPrefix}/oauth/data-source/notion` : '/' }
+              <div
                 className={
                   `flex items-center px-3 h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
                   ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-                }>
+                }
+                onClick={handleConnectNotion}
+              >
                 <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
                 {t('common.dataSource.notion.addWorkspace')}
-              </Link>
+              </div>
             )
         }
       </div>
@@ -98,7 +122,7 @@ const DataSourceNotion = ({
                     }
                   </div>
                   <div className='mr-2 w-[1px] h-3 bg-gray-100' />
-                  <Operate workspace={workspace} />
+                  <Operate workspace={workspace} onAuthAgain={handleAuthAgain} />
                 </div>
               ))
             }

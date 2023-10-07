@@ -52,3 +52,4 @@ pandas==1.5.3
 xinference==0.4.2
 safetensors==0.3.2
 zhipuai==1.0.7
+werkzeug==2.3.7

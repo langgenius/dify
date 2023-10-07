@@ -1,11 +1,9 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment } from 'react'
-import Link from 'next/link'
 import { useSWRConfig } from 'swr'
 import { EllipsisHorizontalIcon } from '@heroicons/react/24/solid'
 import { Menu, Transition } from '@headlessui/react'
-import { apiPrefix } from '@/config'
 import { syncDataSourceNotion, updateDataSourceNotionAction } from '@/service/common'
 import Toast from '@/app/components/base/toast'
 import type { DataSourceNotion } from '@/models/common'
@@ -15,9 +13,11 @@ import { Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 
 type OperateProps = {
   workspace: DataSourceNotion
+  onAuthAgain: () => void
 }
 export default function Operate({
   workspace,
+  onAuthAgain,
 }: OperateProps) {
   const itemClassName = `
     flex px-3 py-2 hover:bg-gray-50 text-sm text-gray-700
@@ -71,9 +71,10 @@ export default function Operate({
               >
                 <div className="px-1 py-1">
                   <Menu.Item>
-                    <Link
+                    <div
                       className={itemClassName}
-                      href={`${apiPrefix}/oauth/data-source/notion`}>
+                      onClick={onAuthAgain}
+                    >
                       <FilePlus02 className={itemIconClassName} />
                       <div>
                         <div className='leading-5'>{t('common.dataSource.notion.changeAuthorizedPages')}</div>
@@ -81,7 +82,7 @@ export default function Operate({
                           {workspace.source_info.total} {t('common.dataSource.notion.pagesAuthorized')}
                         </div>
                       </div>
-                    </Link>
+                    </div>
                   </Menu.Item>
                   <Menu.Item>
                     <div className={itemClassName} onClick={handleSync}>

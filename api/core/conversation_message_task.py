@@ -94,7 +94,7 @@ class ConversationMessageTask:
         if not self.conversation:
             self.is_new_conversation = True
             self.conversation = Conversation(
-                app_id=self.app_model_config.app_id,
+                app_id=self.app.id,
                 app_model_config_id=self.app_model_config.id,
                 model_provider=self.provider_name,
                 model_id=self.model_name,
@@ -115,7 +115,7 @@ class ConversationMessageTask:
             db.session.commit()
 
         self.message = Message(
-            app_id=self.app_model_config.app_id,
+            app_id=self.app.id,
             model_provider=self.provider_name,
             model_id=self.model_name,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,

@@ -61,13 +61,18 @@ class WenxinProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
+        model_max_tokens = {
+            'ernie-bot': 4800,
+            'ernie-bot-turbo': 11200,
+        }
+
         if model_name in ['ernie-bot', 'ernie-bot-turbo']:
             return ModelKwargsRules(
                 temperature=KwargRule[float](min=0.01, max=1, default=0.95, precision=2),
                 top_p=KwargRule[float](min=0.01, max=1, default=0.8, precision=2),
                 presence_penalty=KwargRule[float](enabled=False),
                 frequency_penalty=KwargRule[float](enabled=False),
-                max_tokens=KwargRule[int](enabled=False),
+                max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
             )
         else:
             return ModelKwargsRules(

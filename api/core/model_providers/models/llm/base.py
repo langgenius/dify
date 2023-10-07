@@ -1,6 +1,7 @@
 import json
 import os
 import re
+import time
 from abc import abstractmethod
 from typing import List, Optional, Any, Union, Tuple
 import decimal
@@ -19,6 +20,8 @@ from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import JinjaPromptTemplate
 from core.third_party.langchain.llms.fake import FakeLLM
 import logging
+
+from extensions.ext_database import db
 
 logger = logging.getLogger(__name__)
 
