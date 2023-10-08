@@ -1,5 +1,5 @@
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource, reqparse
 
 from controllers.console import api

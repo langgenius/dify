@@ -4,12 +4,9 @@ import services.dataset_service
 from controllers.service_api import api
 from controllers.service_api.dataset.error import DatasetNameDuplicateError
 from controllers.service_api.wraps import DatasetApiResource
-from core.login.login import current_user
+from libs.login import current_user
 from core.model_providers.models.entity.model_params import ModelType
-from extensions.ext_database import db
 from fields.dataset_fields import dataset_detail_fields
-from models.account import Account, TenantAccountJoin
-from models.dataset import Dataset
 from services.dataset_service import DatasetService
 from services.provider_service import ProviderService
 

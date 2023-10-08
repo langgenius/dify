@@ -1,11 +1,10 @@
 # -*- coding:utf-8 -*-
-import random
 from datetime import datetime
 from typing import List
 
 from flask import request, current_app
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse
 from sqlalchemy import desc, asc
 from werkzeug.exceptions import NotFound, Forbidden
@@ -25,7 +24,6 @@ from core.model_providers.model_factory import ModelFactory
 from extensions.ext_redis import redis_client
 from fields.document_fields import document_with_segments_fields, document_fields, \
     dataset_and_document_fields, document_status_fields
-from libs.helper import TimestampField
 from extensions.ext_database import db
 from models.dataset import DatasetProcessRule, Dataset
 from models.dataset import Document, DocumentSegment

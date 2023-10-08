@@ -2,8 +2,8 @@ from cachetools import TTLCache
 from flask import request, current_app
 
 import services
-from core.login.login import login_required
-from flask_restful import Resource, marshal_with, fields
+from libs.login import login_required
+from flask_restful import Resource, marshal_with
 
 from controllers.console import api
 from controllers.console.datasets.error import NoFileUploadedError, TooManyFilesError, FileTooLargeError, \

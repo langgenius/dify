@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from flask import current_app
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource, reqparse, marshal_with, abort, fields, marshal
 
 import services

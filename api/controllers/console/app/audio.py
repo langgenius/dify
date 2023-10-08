@@ -2,8 +2,8 @@
 import logging
 
 from flask import request
-from core.login.login import login_required
-from werkzeug.exceptions import InternalServerError, NotFound
+from libs.login import login_required
+from werkzeug.exceptions import InternalServerError
 
 import services
 from controllers.console import api
