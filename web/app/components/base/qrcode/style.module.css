@@ -45,6 +45,7 @@
   flex-direction: column;
   margin: 0 !important;
   margin-top: 4px !important;
+  margin-left: -75px !important;
   position: absolute;
   border-radius: 8px;
   background-color: #fff;
