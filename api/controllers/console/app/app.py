@@ -3,10 +3,9 @@ import json
 import logging
 from datetime import datetime
 
-import flask
 from flask_login import current_user
-from core.login.login import login_required
-from flask_restful import Resource, reqparse, fields, marshal_with, abort, inputs
+from libs.login import login_required
+from flask_restful import Resource, reqparse, marshal_with, abort, inputs
 from werkzeug.exceptions import Forbidden
 
 from constants.model_template import model_templates, demo_model_templates
@@ -17,11 +16,9 @@ from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.model_provider_factory import ModelProviderFactory
-from core.model_providers.models.entity.model_params import ModelType
 from events.app_event import app_was_created, app_was_deleted
 from fields.app_fields import app_pagination_fields, app_detail_fields, template_list_fields, \
     app_detail_fields_with_site
-from libs.helper import TimestampField
 from extensions.ext_database import db
 from models.model import App, AppModelConfig, Site
 from services.app_model_config_service import AppModelConfigService
