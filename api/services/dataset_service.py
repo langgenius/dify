@@ -1091,6 +1091,8 @@ class SegmentService:
                     segment.answer = args['answer']
                 if args['keywords']:
                     segment.keywords = args['keywords']
+                if args['enabled'] is not None:
+                    segment.enabled = args['enabled']
                 db.session.add(segment)
                 db.session.commit()
                 # update segment index task
