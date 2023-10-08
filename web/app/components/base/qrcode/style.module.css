@@ -4,6 +4,12 @@
   background-repeat: no-repeat;
 }
 
+.QrcodeIcon:hover {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
 .QrcodeIcon.show {
   background-image: url(~@/app/components/develop/secret-key/assets/qrcode-hover.svg);
   background-position: center;
@@ -38,6 +44,7 @@
   display: flex;
   flex-direction: column;
   margin: 0 !important;
+  margin-top: 4px !important;
   position: absolute;
   border-radius: 8px;
   background-color: #fff;
