@@ -13,7 +13,7 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
     return new QueryBlockNode()
   }
 
-  isIsolated(): boolean {
+  isInline(): boolean {
     return true
   }
 

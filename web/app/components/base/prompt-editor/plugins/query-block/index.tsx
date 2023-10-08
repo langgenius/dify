@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import {
-  $getSelection,
+  $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
@@ -23,9 +23,8 @@ const QueryBlock = () => {
       INSERT_QUERY_BLOCK_COMMAND,
       () => {
         const contextBlockNode = $createQueryBlockNode()
-        const selection = $getSelection()
 
-        selection?.insertNodes([contextBlockNode])
+        $insertNodes([contextBlockNode])
 
         return true
       },

@@ -67,40 +67,36 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
   )
 }
 
-const VariablePicker = () => {
+export type Option = {
+  value: string
+  name: string
+}
+
+type VariablePickerProps = {
+  items?: Option[]
+}
+const VariablePicker: FC<VariablePickerProps> = ({
+  items = [],
+}) => {
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
   })
 
-  const options = [
-    new VariablePickerOption('user', {
+  const options = items.map((item) => {
+    return new VariablePickerOption(item.value, {
       icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
       onSelect: () => {
-        editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{user}}')
+        editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${item.value}}}`)
       },
-    }),
-    new VariablePickerOption('name', {
-      icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {},
-    }),
-    new VariablePickerOption('gameTypeA', {
-      icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {},
-    }),
-    new VariablePickerOption('gameTypeB', {
-      icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {},
-    }),
-    new VariablePickerOption('lang', {
-      icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {},
-    }),
-  ]
+    })
+  })
 
   const newOption = new VariablePickerOption('New variable', {
     icon: <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />,
-    onSelect: () => {},
+    onSelect: () => {
+      editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{')
+    },
   })
 
   const onSelectOption = useCallback(
@@ -121,49 +117,57 @@ const VariablePicker = () => {
     [editor],
   )
 
+  const mergedOptions = [...options, newOption]
+
   return (
     <LexicalTypeaheadMenuPlugin
-      options={[...options, newOption]}
+      options={mergedOptions}
       onQueryChange={() => {}}
       onSelectOption={onSelectOption}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex },
       ) =>
-        (anchorElementRef.current && options.length)
+        (anchorElementRef.current && mergedOptions.length)
           ? ReactDOM.createPortal(
             <div className='mt-[25px] w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
-              <div className='p-1'>
-                {options.map((option, i: number) => (
-                  <VariablePickerMenuItem
-                    isSelected={selectedIndex === i}
-                    onClick={() => {
-                      setHighlightedIndex(i)
-                      selectOptionAndCleanUp(option)
-                    }}
-                    onMouseEnter={() => {
-                      setHighlightedIndex(i)
-                    }}
-                    key={option.key}
-                    option={option}
-                  />
-                ))}
-              </div>
-              <div className='h-[1px] bg-gray-100' />
+              {
+                !!items.length && (
+                  <>
+                    <div className='p-1'>
+                      {options.map((option, i: number) => (
+                        <VariablePickerMenuItem
+                          isSelected={selectedIndex === i}
+                          onClick={() => {
+                            setHighlightedIndex(i)
+                            selectOptionAndCleanUp(option)
+                          }}
+                          onMouseEnter={() => {
+                            setHighlightedIndex(i)
+                          }}
+                          key={option.key}
+                          option={option}
+                        />
+                      ))}
+                    </div>
+                    <div className='h-[1px] bg-gray-100' />
+                  </>
+                )
+              }
               <div className='p-1'>
                 <div
                   className={`
                     flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-                    ${selectedIndex === 5 && 'bg-primary-50'}
+                    ${selectedIndex === options.length && 'bg-primary-50'}
                   `}
                   ref={newOption.setRefElement}
                   tabIndex={-1}
                   onClick={() => {
-                    setHighlightedIndex(5)
+                    setHighlightedIndex(options.length)
                     selectOptionAndCleanUp(newOption)
                   }}
                   onMouseEnter={() => {
-                    setHighlightedIndex(5)
+                    setHighlightedIndex(options.length)
                   }}
                   key={newOption.key}
                 >

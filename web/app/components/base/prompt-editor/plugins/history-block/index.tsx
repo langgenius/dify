@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useEffect } from 'react'
 import {
-  $getSelection,
+  $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
@@ -35,9 +35,8 @@ const HistoryBlock: FC<HistoryBlockProps> = ({
       INSERT_HISTORY_BLOCK_COMMAND,
       () => {
         const historyBlockNode = $createHistoryBlockNode(roleName)
-        const selection = $getSelection()
 
-        selection?.insertNodes([historyBlockNode])
+        $insertNodes([historyBlockNode])
 
         return true
       },

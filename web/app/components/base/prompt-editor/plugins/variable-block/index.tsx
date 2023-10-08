@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import {
-  $getSelection,
+  $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   TextNode,
   createCommand,
@@ -20,9 +20,7 @@ const VariableBlock = () => {
         INSERT_VARIABLE_BLOCK_COMMAND,
         () => {
           const textNode = new TextNode('{')
-          const selection = $getSelection()
-
-          selection?.insertNodes([textNode])
+          $insertNodes([textNode])
 
           return true
         },
@@ -32,9 +30,7 @@ const VariableBlock = () => {
         INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
         (value: string) => {
           const textNode = new TextNode(value)
-          const selection = $getSelection()
-
-          selection?.insertNodes([textNode])
+          $insertNodes([textNode])
 
           return true
         },

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { useEffect } from 'react'
 import {
-  $getSelection,
+  $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
@@ -37,9 +37,8 @@ const ContextBlock: FC<ContextBlockProps> = ({
         INSERT_CONTEXT_BLOCK_COMMAND,
         () => {
           const contextBlockNode = $createContextBlockNode(datasets)
-          const selection = $getSelection()
 
-          selection?.insertNodes([contextBlockNode])
+          $insertNodes([contextBlockNode])
 
           return true
         },

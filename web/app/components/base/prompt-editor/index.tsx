@@ -1,6 +1,7 @@
 'use client'
 
-import type { FC } from 'react'
+import { type FC } from 'react'
+import { useRef } from 'react'
 // import { $getRoot } from 'lexical'
 import type { EditorState } from 'lexical'
 import { TextNode } from 'lexical'
@@ -55,6 +56,7 @@ export type PromptEditorProps = {
 const PromptEditor: FC<PromptEditorProps> = ({
   editable = true,
 }) => {
+  const editorStateRef = useRef<EditorState>()
   const initialEditorState = `{
     "root": {
         "children": [
@@ -82,6 +84,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
                     },
                     {
                         "type": "query-block",
+                        "version": 1
+                    },
+                    {
+                        "detail": 0,
+                        "format": 0,
+                        "mode": "normal",
+                        "style": "",
+                        "text": "{{user}}",
+                        "type": "variable-value-block",
                         "version": 1
                     }
                 ],
@@ -120,6 +131,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   const handleEditorChange = (editorState: EditorState) => {
     console.log(editorState.toJSON())
+    editorStateRef.current = editorState
   }
 
   return (
@@ -131,7 +143,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPicker />
-        <VariablePicker />
+        <VariablePicker items={[]} />
         <ContextBlock datasets={[]} />
         <VariableBlock />
         <HistoryBlock roleName={{

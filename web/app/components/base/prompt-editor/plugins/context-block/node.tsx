@@ -16,14 +16,14 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return new ContextBlockNode(node.__datasets)
   }
 
+  isInline(): boolean {
+    return true
+  }
+
   constructor(datasets: Dataset[], key?: NodeKey) {
     super(key)
 
     this.__datasets = datasets
-  }
-
-  isIsolated(): boolean {
-    return true
   }
 
   createDOM(): HTMLElement {

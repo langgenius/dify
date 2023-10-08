@@ -22,7 +22,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     this.__roleName = roleName
   }
 
-  isIsolated(): boolean {
+  isInline(): boolean {
     return true
   }
 

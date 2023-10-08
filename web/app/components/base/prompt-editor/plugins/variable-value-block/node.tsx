@@ -28,10 +28,24 @@ export class VariableValueBlockNode extends TextNode {
     return element
   }
 
+  static importJSON(serializedNode: SerializedTextNode): TextNode {
+    const node = $createVariableValueBlockNode(serializedNode.text)
+    node.setFormat(serializedNode.format)
+    node.setDetail(serializedNode.detail)
+    node.setMode(serializedNode.mode)
+    node.setStyle(serializedNode.style)
+    return node
+  }
+
   exportJSON(): SerializedTextNode {
     return {
-      ...super.exportJSON(),
-      type: 'variable-value',
+      detail: this.getDetail(),
+      format: this.getFormat(),
+      mode: this.getMode(),
+      style: this.getStyle(),
+      text: this.getTextContent(),
+      type: 'variable-value-block',
+      version: 1,
     }
   }
 
