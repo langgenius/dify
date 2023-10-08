@@ -61,6 +61,11 @@ const translation = {
         copied: '已复制',
         copy: '复制',
       },
+      qrcode: {
+        title: '二维码分享',
+        scan: '扫码分享应用',
+        download: '下载二维码',
+      },
       customize: {
         way: '方法',
         entry: '定制化',

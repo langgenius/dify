@@ -61,6 +61,11 @@ const translation = {
         copied: 'Copied',
         copy: 'Copy',
       },
+      qrcode: {
+        title: 'QR code to share',
+        scan: 'Scan Share Application',
+        download: 'Download QR Code',
+      },
       customize: {
         way: 'way',
         entry: 'Customize',
