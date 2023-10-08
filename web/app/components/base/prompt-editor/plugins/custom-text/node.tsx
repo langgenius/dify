@@ -46,3 +46,7 @@ export class CustomTextNode extends TextNode {
       (this.__type === 'text' || this.__type === 'custom-text') && this.__mode === 0)
   }
 }
+
+export function $createCustomTextNode(text: string): CustomTextNode {
+  return new CustomTextNode(text)
+}

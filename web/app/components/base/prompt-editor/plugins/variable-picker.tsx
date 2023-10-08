@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import ReactDOM from 'react-dom'
 import { useTranslation } from 'react-i18next'
-import { $createTextNode, $insertNodes, type TextNode } from 'lexical'
+import { $insertNodes, type TextNode } from 'lexical'
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
@@ -10,6 +10,7 @@ import {
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from './variable-block'
+import { $createCustomTextNode } from './custom-text/node'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 
 class VariablePickerOption extends MenuOption {
@@ -130,8 +131,8 @@ const VariablePicker: FC<VariablePickerProps> = ({
     icon: <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />,
     onSelect: () => {
       editor.update(() => {
-        const prefixNode = $createTextNode('{{')
-        const suffixNode = $createTextNode('}}')
+        const prefixNode = $createCustomTextNode('{{')
+        const suffixNode = $createCustomTextNode('}}')
         $insertNodes([prefixNode, suffixNode])
         prefixNode.select()
       })

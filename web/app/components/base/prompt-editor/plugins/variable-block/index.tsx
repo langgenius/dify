@@ -2,11 +2,11 @@ import { useEffect } from 'react'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
-  TextNode,
   createCommand,
 } from 'lexical'
 import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { CustomTextNode } from '../custom-text/node'
 
 export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand()
 export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand()
@@ -19,7 +19,7 @@ const VariableBlock = () => {
       editor.registerCommand(
         INSERT_VARIABLE_BLOCK_COMMAND,
         () => {
-          const textNode = new TextNode('{')
+          const textNode = new CustomTextNode('{')
           $insertNodes([textNode])
 
           return true
@@ -29,7 +29,7 @@ const VariableBlock = () => {
       editor.registerCommand(
         INSERT_VARIABLE_VALUE_BLOCK_COMMAND,
         (value: string) => {
-          const textNode = new TextNode(value)
+          const textNode = new CustomTextNode(value)
           $insertNodes([textNode])
 
           return true
