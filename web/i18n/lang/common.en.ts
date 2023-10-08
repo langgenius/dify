@@ -356,6 +356,47 @@ const translation = {
       hitScore: 'Hit Score:',
     },
   },
+  promptEditor: {
+    placeholder: 'Write your prompt here, type ‘{{variable_name}}’ to insert variable',
+    context: {
+      item: {
+        title: 'Context',
+        desc: 'Insert context template',
+      },
+      modal: {
+        title: '{{num}} Datasets in Context',
+        add: 'Add Context ',
+        footer: 'You can manage contexts in the Context section below.',
+      },
+    },
+    history: {
+      item: {
+        title: 'Conversation History',
+        desc: 'Insert historical message template',
+      },
+      modal: {
+        title: 'EXAMPLE',
+        user: 'Hello',
+        assistant: 'Hello! How can I assist you today?',
+        edit: 'Edit Conversation Role Names',
+      },
+    },
+    variable: {
+      item: {
+        title: 'Variables',
+        desc: 'Insert variable template',
+      },
+      modal: {
+        add: 'New variable',
+      },
+    },
+    query: {
+      item: {
+        title: 'Query',
+        desc: 'Insert user query template',
+      },
+    },
+  },
 }
 
 export default translation

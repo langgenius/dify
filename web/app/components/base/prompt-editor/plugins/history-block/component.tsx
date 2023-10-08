@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import type { RoleName } from './index'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
@@ -21,6 +22,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
     assistant: 'Assistant',
   },
 }) => {
+  const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
   const [triggerRef, open, setOpen] = useTrigger()
 
@@ -31,7 +33,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
       ${isSelected && '!border-[#F670C7]'}
     `} ref={ref}>
       <MessageClockCircle className='mr-1 w-[14px] h-[14px]' />
-      <div className='mr-1 text-xs font-medium'>Conversation History</div>
+      <div className='mr-1 text-xs font-medium'>{t('common.promptEditor.history.item.title')}</div>
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
@@ -52,18 +54,18 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
         <PortalToFollowElemContent style={{ zIndex: 100 }}>
           <div className='w-[360px] bg-white rounded-xl shadow-lg'>
             <div className='p-4'>
-              <div className='mb-2 text-xs font-medium text-gray-500'>Example</div>
+              <div className='mb-2 text-xs font-medium text-gray-500'>{t('common.promptEditor.history.modal.title')}</div>
               <div className='flex items-center text-sm text-gray-700'>
                 <div className='mr-1 w-20 text-xs font-semibold'>{roleName.user}</div>
-                Hello
+                {t('common.promptEditor.history.modal.user')}
               </div>
               <div className='flex items-center text-sm text-gray-700'>
                 <div className='mr-1 w-20 text-xs font-semibold'>{roleName.assistant}</div>
-                Hello! How can I assist you today?
+                {t('common.promptEditor.history.modal.assistant')}
               </div>
             </div>
             <div className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'>
-              Edit Conversation Role Names
+              {t('common.promptEditor.history.modal.edit')}
             </div>
           </div>
         </PortalToFollowElemContent>

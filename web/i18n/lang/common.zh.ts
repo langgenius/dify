@@ -356,6 +356,47 @@ const translation = {
       hitScore: '命中得分：',
     },
   },
+  promptEditor: {
+    placeholder: '在这里写下你的提示，输入‘{{variable_name}}’来插入变量',
+    context: {
+      item: {
+        title: '上下文',
+        desc: '插入上下文模板',
+      },
+      modal: {
+        title: '有 {{num}} 个数据集在上下文中',
+        add: '添加上下文',
+        footer: '您可以在下面的“上下文”部分中管理上下文。',
+      },
+    },
+    history: {
+      item: {
+        title: '会话历史',
+        desc: '插入历史消息模板',
+      },
+      modal: {
+        title: '示例',
+        user: '你好',
+        assistant: '你好！今天我能为您提供什么帮助？',
+        edit: '编辑对话角色名称',
+      },
+    },
+    variable: {
+      item: {
+        title: '变量',
+        desc: '插入变量模板',
+      },
+      modal: {
+        add: '添加新变量',
+      },
+    },
+    query: {
+      item: {
+        title: '查询内容',
+        desc: '插入用户查询模板',
+      },
+    },
+  },
 }
 
 export default translation

@@ -1,7 +1,8 @@
 import type { FC } from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import ReactDOM from 'react-dom'
-import type { TextNode } from 'lexical'
+import { useTranslation } from 'react-i18next'
+import { $createTextNode, $insertNodes, type TextNode } from 'lexical'
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
@@ -41,13 +42,31 @@ type VariablePickerMenuItemProps = {
   onClick: () => void
   onMouseEnter: () => void
   option: VariablePickerOption
+  queryString: string | null
 }
 const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
   isSelected,
   onClick,
   onMouseEnter,
   option,
+  queryString,
 }) => {
+  const title = option.title
+  let before = title
+  let middle = ''
+  let after = ''
+
+  if (queryString) {
+    const regex = new RegExp(queryString, 'i')
+    const match = regex.exec(option.title)
+
+    if (match) {
+      before = title.substring(0, match.index)
+      middle = match[0]
+      after = title.substring(match.index + match[0].length)
+    }
+  }
+
   return (
     <div
       key={option.key}
@@ -62,7 +81,11 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
       <div className='mr-2'>
         {option.icon}
       </div>
-      <div className='text-[13px] text-gray-900'>{option.title}</div>
+      <div className='text-[13px] text-gray-900'>
+        {before}
+        <span className='text-[#2970FF]'>{middle}</span>
+        {after}
+      </div>
     </div>
   )
 }
@@ -78,24 +101,40 @@ type VariablePickerProps = {
 const VariablePicker: FC<VariablePickerProps> = ({
   items = [],
 }) => {
+  const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('{', {
     minLength: 0,
+    maxLength: 6,
   })
+  const [queryString, setQueryString] = useState<string | null>(null)
 
-  const options = items.map((item) => {
-    return new VariablePickerOption(item.value, {
-      icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
-      onSelect: () => {
-        editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${item.value}}}`)
-      },
+  const options = useMemo(() => {
+    const baseOptions = items.map((item) => {
+      return new VariablePickerOption(item.value, {
+        icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
+        onSelect: () => {
+          editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${item.value}}}`)
+        },
+      })
     })
-  })
+    if (!queryString)
+      return baseOptions
 
-  const newOption = new VariablePickerOption('New variable', {
+    const regex = new RegExp(queryString, 'i')
+
+    return baseOptions.filter(option => regex.test(option.title) || option.keywords.some(keyword => regex.test(keyword)))
+  }, [editor, queryString, items])
+
+  const newOption = new VariablePickerOption(t('common.promptEditor.variable.modal.add'), {
     icon: <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />,
     onSelect: () => {
-      editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, '{{')
+      editor.update(() => {
+        const prefixNode = $createTextNode('{{')
+        const suffixNode = $createTextNode('}}')
+        $insertNodes([prefixNode, suffixNode])
+        prefixNode.select()
+      })
     },
   })
 
@@ -122,7 +161,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
   return (
     <LexicalTypeaheadMenuPlugin
       options={mergedOptions}
-      onQueryChange={() => {}}
+      onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       menuRenderFn={(
         anchorElementRef,
@@ -132,7 +171,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
           ? ReactDOM.createPortal(
             <div className='mt-[25px] w-[240px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
               {
-                !!items.length && (
+                !!options.length && (
                   <>
                     <div className='p-1'>
                       {options.map((option, i: number) => (
@@ -147,6 +186,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
                           }}
                           key={option.key}
                           option={option}
+                          queryString={queryString}
                         />
                       ))}
                     </div>

@@ -112,8 +112,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
 }`
   const initialConfig = {
     namespace: 'prompt-editor',
-    onError: (error: Error) => {
-      throw error
+    theme: {
+      paragraph: 'h-6',
     },
     nodes: [
       CustomTextNode,
@@ -127,6 +127,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
       VariableValueBlockNode,
     ],
     editorState: initialEditorState,
+    onError: (error: Error) => {
+      throw error
+    },
   }
 
   const handleEditorChange = (editorState: EditorState) => {
@@ -143,7 +146,20 @@ const PromptEditor: FC<PromptEditorProps> = ({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPicker />
-        <VariablePicker items={[]} />
+        <VariablePicker items={[
+          {
+            value: 'user',
+            name: 'user',
+          },
+          {
+            value: 'user2',
+            name: 'user2',
+          },
+          {
+            value: 'person',
+            name: 'person',
+          },
+        ]} />
         <ContextBlock datasets={[]} />
         <VariableBlock />
         <HistoryBlock roleName={{

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import ReactDOM from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import type { TextNode } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
@@ -80,35 +81,36 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
 }
 
 const ComponentPicker = () => {
+  const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0,
   })
 
   const options = [
-    new ComponentPickerOption('Context', {
-      desc: 'Description text here',
+    new ComponentPickerOption(t('common.promptEditor.context.item.title'), {
+      desc: t('common.promptEditor.context.item.desc'),
       icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
       onSelect: () => {
         editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
       },
     }),
-    new ComponentPickerOption('Variables', {
-      desc: 'Description text here',
+    new ComponentPickerOption(t('common.promptEditor.variable.item.title'), {
+      desc: t('common.promptEditor.variable.item.desc'),
       icon: <Variable className='w-4 h-4 text-[#2970FF]' />,
       onSelect: () => {
         editor.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
       },
     }),
-    new ComponentPickerOption('Conversation History', {
-      desc: 'Insert historical message template',
+    new ComponentPickerOption(t('common.promptEditor.history.item.title'), {
+      desc: t('common.promptEditor.history.item.desc'),
       icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
       onSelect: () => {
         editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
       },
     }),
-    new ComponentPickerOption('Query', {
-      desc: 'Insert user query template',
+    new ComponentPickerOption(t('common.promptEditor.query.item.title'), {
+      desc: t('common.promptEditor.query.item.desc'),
       icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
       onSelect: () => {
         editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)

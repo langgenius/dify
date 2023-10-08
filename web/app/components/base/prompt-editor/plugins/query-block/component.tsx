@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 
@@ -9,6 +10,7 @@ type QueryBlockComponentProps = {
 const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
   nodeKey,
 }) => {
+  const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey)
 
   return (
@@ -21,7 +23,7 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
     >
       <UserEdit02 className='mr-1 w-[14px] h-[14px] text-[#FD853A]' />
       <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'{{'}</div>
-      <div className='text-xs font-medium text-[#EC4A0A]'>query</div>
+      <div className='text-xs font-medium text-[#EC4A0A]'>{t('common.promptEditor.query.item.title')}</div>
       <div className='text-xs font-medium text-[#EC4A0A] opacity-60'>{'}}'}</div>
     </div>
   )
