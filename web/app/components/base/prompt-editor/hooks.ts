@@ -7,6 +7,7 @@ import {
 import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type {
   Klass,
+  LexicalCommand,
   LexicalEditor,
   LexicalNode,
   TextNode,
@@ -29,25 +30,48 @@ import {
 import { useLexicalNodeSelection } from '@lexical/react/useLexicalNodeSelection'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { CustomTextNode } from './plugins/custom-text/node'
+import { $isContextBlockNode } from './plugins/context-block/node'
+import { DELETE_CONTEXT_BLOCK_COMMAND } from './plugins/context-block'
+import { $isHistoryBlockNode } from './plugins/history-block/node'
+import { DELETE_HISTORY_BLOCK_COMMAND } from './plugins/history-block'
+import { $isQueryBlockNode } from './plugins/query-block/node'
+import { DELETE_QUERY_BLOCK_COMMAND } from './plugins/query-block'
 
-export type UseSelectOrDeleteHanlder = (nodeKey: string) => [RefObject<HTMLDivElement>, boolean]
-export const useSelectOrDelete: UseSelectOrDeleteHanlder = (nodeKey: string) => {
+export type UseSelectOrDeleteHanlder = (nodeKey: string, command?: LexicalCommand<undefined>) => [RefObject<HTMLDivElement>, boolean]
+export const useSelectOrDelete: UseSelectOrDeleteHanlder = (nodeKey: string, command?: LexicalCommand<undefined>) => {
   const ref = useRef<HTMLDivElement>(null)
   const [editor] = useLexicalComposerContext()
   const [isSelected, setSelected, clearSelection] = useLexicalNodeSelection(nodeKey)
 
-  const onDelete = useCallback(
+  const handleDelete = useCallback(
     (event: KeyboardEvent) => {
-      if (isSelected && $isNodeSelection($getSelection())) {
+      const selection = $getSelection()
+      const nodes = selection?.getNodes()
+      if (
+        !isSelected
+        && nodes?.length === 1
+        && (
+          ($isContextBlockNode(nodes[0]) && command === DELETE_CONTEXT_BLOCK_COMMAND)
+          || ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND)
+          || ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND)
+        )
+      )
+        editor.dispatchCommand(command, undefined)
+
+      if (isSelected && $isNodeSelection(selection)) {
         event.preventDefault()
         const node = $getNodeByKey(nodeKey)
-        if ($isDecoratorNode(node))
+        if ($isDecoratorNode(node)) {
+          if (command)
+            editor.dispatchCommand(command, undefined)
+
           node.remove()
+        }
       }
 
       return false
     },
-    [isSelected, nodeKey],
+    [isSelected, nodeKey, command, editor],
   )
 
   const handleSelect = useCallback((e: MouseEvent) => {
@@ -71,16 +95,16 @@ export const useSelectOrDelete: UseSelectOrDeleteHanlder = (nodeKey: string) => 
     return mergeRegister(
       editor.registerCommand(
         KEY_DELETE_COMMAND,
-        onDelete,
+        handleDelete,
         COMMAND_PRIORITY_LOW,
       ),
       editor.registerCommand(
         KEY_BACKSPACE_COMMAND,
-        onDelete,
+        handleDelete,
         COMMAND_PRIORITY_LOW,
       ),
     )
-  }, [editor, clearSelection, onDelete])
+  }, [editor, clearSelection, handleDelete])
 
   return [ref, isSelected]
 }

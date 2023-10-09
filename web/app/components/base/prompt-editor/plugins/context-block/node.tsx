@@ -59,6 +59,10 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
       datasets: this.getDatasets(),
     }
   }
+
+  getTextContent(): string {
+    return '{{#context#}}'
+  }
 }
 export function $createContextBlockNode(datasets: Dataset[]): ContextBlockNode {
   return new ContextBlockNode(datasets)
@@ -66,6 +70,6 @@ export function $createContextBlockNode(datasets: Dataset[]): ContextBlockNode {
 
 export function $isContextBlockNode(
   node: ContextBlockNode | LexicalNode | null | undefined,
-): node is ContextBlockNode {
+): boolean {
   return node instanceof ContextBlockNode
 }

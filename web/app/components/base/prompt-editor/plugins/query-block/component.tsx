@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete } from '../../hooks'
+import { DELETE_QUERY_BLOCK_COMMAND } from './index'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
 
 type QueryBlockComponentProps = {
@@ -11,7 +12,7 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
   nodeKey,
 }) => {
   const { t } = useTranslation()
-  const [ref, isSelected] = useSelectOrDelete(nodeKey)
+  const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_QUERY_BLOCK_COMMAND)
 
   return (
     <div

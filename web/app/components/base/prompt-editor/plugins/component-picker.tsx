@@ -25,6 +25,7 @@ class ComponentPickerOption extends MenuOption {
   keyboardShortcut?: string
   desc: string
   onSelect: (queryString: string) => void
+  disabled?: boolean
 
   constructor(
     title: string,
@@ -34,6 +35,7 @@ class ComponentPickerOption extends MenuOption {
       keyboardShortcut?: string
       desc: string
       onSelect: (queryString: string) => void
+      disabled?: boolean
     },
   ) {
     super(title)
@@ -43,6 +45,7 @@ class ComponentPickerOption extends MenuOption {
     this.keyboardShortcut = options.keyboardShortcut
     this.desc = options.desc
     this.onSelect = options.onSelect.bind(this)
+    this.disabled = options.disabled
   }
 }
 
@@ -62,8 +65,9 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
     <div
       key={option.key}
       className={`
-        flex items-center px-3 py-1.5 rounded-lg hover:bg-gray-50 cursor-pointer
-        ${isSelected && '!bg-gray-50'}
+        flex items-center px-3 py-1.5 rounded-lg 
+        ${isSelected && !option.disabled && '!bg-gray-50'}
+        ${option.disabled ? 'cursor-not-allowed opacity-30' : 'hover:bg-gray-50 cursor-pointer'}
       `}
       tabIndex={-1}
       ref={option.setRefElement}
@@ -80,7 +84,16 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
   )
 }
 
-const ComponentPicker = () => {
+type ComponentPickerProps = {
+  contextDisabled?: boolean
+  historyDisabled?: boolean
+  queryDisabled?: boolean
+}
+const ComponentPicker: FC<ComponentPickerProps> = ({
+  contextDisabled,
+  historyDisabled,
+  queryDisabled,
+}) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
@@ -92,8 +105,11 @@ const ComponentPicker = () => {
       desc: t('common.promptEditor.context.item.desc'),
       icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
       onSelect: () => {
+        if (contextDisabled)
+          return
         editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
       },
+      disabled: contextDisabled,
     }),
     new ComponentPickerOption(t('common.promptEditor.variable.item.title'), {
       desc: t('common.promptEditor.variable.item.desc'),
@@ -106,15 +122,21 @@ const ComponentPicker = () => {
       desc: t('common.promptEditor.history.item.desc'),
       icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
       onSelect: () => {
+        if (historyDisabled)
+          return
         editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
       },
+      disabled: historyDisabled,
     }),
     new ComponentPickerOption(t('common.promptEditor.query.item.title'), {
       desc: t('common.promptEditor.query.item.desc'),
       icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
       onSelect: () => {
+        if (queryDisabled)
+          return
         editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)
       },
+      disabled: queryDisabled,
     }),
   ]
 
@@ -152,10 +174,14 @@ const ComponentPicker = () => {
                 <ComponentPickerMenuItem
                   isSelected={selectedIndex === i}
                   onClick={() => {
+                    if (option.disabled)
+                      return
                     setHighlightedIndex(i)
                     selectOptionAndCleanUp(option)
                   }}
                   onMouseEnter={() => {
+                    if (option.disabled)
+                      return
                     setHighlightedIndex(i)
                   }}
                   key={option.key}

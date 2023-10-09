@@ -1,9 +1,11 @@
+import type { FC } from 'react'
 import { useEffect } from 'react'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import {
   $createQueryBlockNode,
@@ -11,26 +13,48 @@ import {
 } from './node'
 
 export const INSERT_QUERY_BLOCK_COMMAND = createCommand()
+export const DELETE_QUERY_BLOCK_COMMAND = createCommand()
 
-const QueryBlock = () => {
+type QueryBlockProps = {
+  onInsert?: () => void
+  onDelete?: () => void
+}
+const QueryBlock: FC<QueryBlockProps> = ({
+  onInsert,
+  onDelete,
+}) => {
   const [editor] = useLexicalComposerContext()
 
   useEffect(() => {
     if (!editor.hasNodes([QueryBlockNode]))
       throw new Error('QueryBlockPlugin: QueryBlock not registered on editor')
 
-    return editor.registerCommand(
-      INSERT_QUERY_BLOCK_COMMAND,
-      () => {
-        const contextBlockNode = $createQueryBlockNode()
+    return mergeRegister(
+      editor.registerCommand(
+        INSERT_QUERY_BLOCK_COMMAND,
+        () => {
+          const contextBlockNode = $createQueryBlockNode()
 
-        $insertNodes([contextBlockNode])
+          $insertNodes([contextBlockNode])
+          if (onInsert)
+            onInsert()
 
-        return true
-      },
-      COMMAND_PRIORITY_EDITOR,
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        DELETE_QUERY_BLOCK_COMMAND,
+        () => {
+          if (onDelete)
+            onDelete()
+
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
     )
-  }, [editor])
+  }, [editor, onInsert, onDelete])
 
   return null
 }

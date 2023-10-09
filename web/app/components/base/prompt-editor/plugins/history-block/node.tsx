@@ -59,6 +59,10 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
       roleName: this.getRoleName(),
     }
   }
+
+  getTextContent(): string {
+    return '{{#histories#}}'
+  }
 }
 export function $createHistoryBlockNode(roleName: RoleName): HistoryBlockNode {
   return new HistoryBlockNode(roleName)

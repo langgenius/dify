@@ -2,9 +2,11 @@
 
 import { type FC } from 'react'
 import { useRef } from 'react'
-// import { $getRoot } from 'lexical'
 import type { EditorState } from 'lexical'
-import { TextNode } from 'lexical'
+import {
+  $getRoot,
+  TextNode,
+} from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
@@ -24,96 +26,71 @@ import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
+import type { Dataset } from './plugins/context-block'
+import type { RoleName } from './plugins/history-block'
+import type { Option } from './plugins/variable-picker'
 
 export type PromptEditorProps = {
   editable?: boolean
+  onChange?: (text: string) => void
   contextBlock?: {
-    enable: boolean
-    selectable: boolean
-    addedContext: []
+    selectable?: boolean
+    datasets: Dataset[]
+    onInsert?: () => void
+    onDelete?: () => void
     onAddContext: () => void
   }
   variableBlock?: {
-    enable: boolean
-    selectable: boolean
-    variables: []
+    selectable?: boolean
+    variables: Option[]
     onAddVariable: () => void
   }
   historyBlock?: {
-    enable: boolean
-    selectable: boolean
-    history: {
-      user: string
-      assistant: string
-    }
+    selectable?: boolean
+    history: RoleName
+    onInsert?: () => void
+    onDelete?: () => void
+    onEditRole: () => void
   }
   queryBlock?: {
-    enable: boolean
-    selectable: boolean
+    selectable?: boolean
+    onInsert?: () => void
+    onDelete?: () => void
   }
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
   editable = true,
+  onChange,
+  contextBlock = {
+    selectable: true,
+    datasets: [],
+    onInsert: () => {},
+    onDelete: () => {},
+  },
+  historyBlock = {
+    selectable: true,
+    history: {
+      user: 'Human',
+      assistant: 'Assistant',
+    },
+    onInsert: () => {},
+    onDelete: () => {},
+  },
+  variableBlock = {
+    variables: [],
+  },
+  queryBlock = {
+    selectable: true,
+    onInsert: () => {},
+    onDelete: () => {},
+  },
 }) => {
   const editorStateRef = useRef<EditorState>()
-  const initialEditorState = `{
-    "root": {
-        "children": [
-            {
-                "children": [
-                    {
-                        "detail": 0,
-                        "format": 0,
-                        "mode": "normal",
-                        "style": "",
-                        "text": "a ",
-                        "type": "custom-text",
-                        "version": 1
-                    },
-                    {
-                        "type": "context-block",
-                        "version": 1,
-                        "datasets": [
-                            {
-                                "id": "1",
-                                "name": "1",
-                                "type": "file"
-                            }
-                        ]
-                    },
-                    {
-                        "type": "query-block",
-                        "version": 1
-                    },
-                    {
-                        "detail": 0,
-                        "format": 0,
-                        "mode": "normal",
-                        "style": "",
-                        "text": "{{user}}",
-                        "type": "variable-value-block",
-                        "version": 1
-                    }
-                ],
-                "direction": "ltr",
-                "format": "",
-                "indent": 0,
-                "type": "paragraph",
-                "version": 1
-            }
-        ],
-        "direction": "ltr",
-        "format": "",
-        "indent": 0,
-        "type": "root",
-        "version": 1
-    }
-}`
   const initialConfig = {
     namespace: 'prompt-editor',
     theme: {
-      paragraph: 'h-6',
+      paragraph: 'leading-6',
     },
     nodes: [
       CustomTextNode,
@@ -126,15 +103,15 @@ const PromptEditor: FC<PromptEditorProps> = ({
       QueryBlockNode,
       VariableValueBlockNode,
     ],
-    editorState: initialEditorState,
     onError: (error: Error) => {
       throw error
     },
   }
 
   const handleEditorChange = (editorState: EditorState) => {
-    console.log(editorState.toJSON())
     editorStateRef.current = editorState
+    if (onChange)
+      onChange(editorState.read(() => $getRoot().getTextContent()))
   }
 
   return (
@@ -145,31 +122,30 @@ const PromptEditor: FC<PromptEditorProps> = ({
           placeholder={<Placeholder />}
           ErrorBoundary={LexicalErrorBoundary}
         />
-        <ComponentPicker />
-        <VariablePicker items={[
-          {
-            value: 'user',
-            name: 'user',
-          },
-          {
-            value: 'user2',
-            name: 'user2',
-          },
-          {
-            value: 'person',
-            name: 'person',
-          },
-        ]} />
-        <ContextBlock datasets={[]} />
+        <ComponentPicker
+          contextDisabled={!contextBlock.selectable}
+          historyDisabled={!historyBlock.selectable}
+          queryDisabled={!queryBlock.selectable}
+        />
+        <VariablePicker items={variableBlock.variables} />
+        <ContextBlock
+          datasets={contextBlock.datasets}
+          onInsert={contextBlock.onInsert}
+          onDelete={contextBlock.onDelete}
+        />
         <VariableBlock />
-        <HistoryBlock roleName={{
-          user: 'master',
-          assistant: 'box',
-        }} />
-        <QueryBlock />
+        <HistoryBlock
+          roleName={historyBlock.history}
+          onInsert={historyBlock.onInsert}
+          onDelete={historyBlock.onDelete}
+        />
+        <QueryBlock
+          onInsert={queryBlock.onInsert}
+          onDelete={queryBlock.onDelete}
+        />
         <VariableValueBlock />
-        <TreeView />
         <OnChangePlugin onChange={handleEditorChange} />
+        <TreeView />
       </div>
     </LexicalComposer>
   )

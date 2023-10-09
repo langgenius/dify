@@ -43,6 +43,10 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
       version: 1,
     }
   }
+
+  getTextContent(): string {
+    return '{{#query#}}'
+  }
 }
 export function $createQueryBlockNode(): QueryBlockNode {
   return new QueryBlockNode()

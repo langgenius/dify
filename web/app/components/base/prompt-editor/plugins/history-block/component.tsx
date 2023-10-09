@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import type { RoleName } from './index'
+import { DELETE_HISTORY_BLOCK_COMMAND } from './index'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import {
@@ -23,7 +24,7 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   },
 }) => {
   const { t } = useTranslation()
-  const [ref, isSelected] = useSelectOrDelete(nodeKey)
+  const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
 
   return (

@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
 import type { Dataset } from './index'
+import { DELETE_CONTEXT_BLOCK_COMMAND } from './index'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -20,7 +21,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   datasets = [],
 }) => {
   const { t } = useTranslation()
-  const [ref, isSelected] = useSelectOrDelete(nodeKey)
+  const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
 
   return (

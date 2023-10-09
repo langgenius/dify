@@ -1,22 +1,12 @@
 import {
   useCallback,
   useEffect,
-  useState,
 } from 'react'
 import type { TextNode } from 'lexical'
-import {
-  $getSelection,
-  $isRangeSelection,
-  COMMAND_PRIORITY_EDITOR,
-  SELECTION_CHANGE_COMMAND,
-} from 'lexical'
-import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { useLexicalTextEntity } from '../../hooks'
-import { getSelectedNode } from '../../utils'
 import {
   $createVariableValueBlockNode,
-  $isVariableValueNodeBlock,
   VariableValueBlockNode,
 } from './node'
 import { getHashtagRegexString } from './utils'
@@ -25,7 +15,6 @@ const REGEX = new RegExp(getHashtagRegexString(), 'i')
 
 const VariableValueBlock = () => {
   const [editor] = useLexicalComposerContext()
-  const [focusing, setFocusing] = useState(false)
 
   useEffect(() => {
     if (!editor.hasNodes([VariableValueBlockNode]))
@@ -50,28 +39,6 @@ const VariableValueBlock = () => {
       start: startOffset,
     }
   }, [])
-
-  useEffect(() => {
-    return mergeRegister(
-      editor.registerCommand(
-        SELECTION_CHANGE_COMMAND,
-        () => {
-          const selection = $getSelection()
-
-          if ($isRangeSelection(selection)) {
-            const node = getSelectedNode(selection)
-
-            if ($isVariableValueNodeBlock(node))
-              setFocusing(true)
-            else
-              setFocusing(false)
-          }
-          return false
-        },
-        COMMAND_PRIORITY_EDITOR,
-      ),
-    )
-  }, [editor])
 
   useLexicalTextEntity<VariableValueBlockNode>(
     getVariableValueMatch,

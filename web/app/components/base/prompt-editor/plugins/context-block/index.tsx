@@ -13,6 +13,7 @@ import {
 } from './node'
 
 export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand()
+export const DELETE_CONTEXT_BLOCK_COMMAND = createCommand()
 
 export type Dataset = {
   id: string
@@ -22,9 +23,13 @@ export type Dataset = {
 
 type ContextBlockProps = {
   datasets: Dataset[]
+  onInsert?: () => void
+  onDelete?: () => void
 }
 const ContextBlock: FC<ContextBlockProps> = ({
   datasets,
+  onInsert,
+  onDelete,
 }) => {
   const [editor] = useLexicalComposerContext()
 
@@ -40,12 +45,25 @@ const ContextBlock: FC<ContextBlockProps> = ({
 
           $insertNodes([contextBlockNode])
 
+          if (onInsert)
+            onInsert()
+
+          return true
+        },
+        COMMAND_PRIORITY_EDITOR,
+      ),
+      editor.registerCommand(
+        DELETE_CONTEXT_BLOCK_COMMAND,
+        () => {
+          if (onDelete)
+            onDelete()
+
           return true
         },
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, datasets])
+  }, [editor, datasets, onInsert, onDelete])
 
   return null
 }
