@@ -119,6 +119,7 @@ export type ModelConfig = {
     provider: string
     /** Model name, e.g, gpt-3.5.turbo */
     name: string
+    mode: ModelModeType
     /** Default Completion call parameters */
     completion_params: {
       /** Maximum number of tokens in the answer message returned by Completion */

@@ -109,9 +109,6 @@ const Configuration: FC = () => {
     score_threshold: 0.78,
   })
 
-  // TODO: for test. It will get from backend.
-  const [modelModeType, setModelModeType] = useState(ModelModeType.chat)
-
   const setModelConfig = (newModelConfig: ModelConfig) => {
     doSetModelConfig(newModelConfig)
   }
@@ -120,10 +117,21 @@ const Configuration: FC = () => {
     const newModelConfig = produce(modelConfig, (draft: any) => {
       draft.provider = provider
       draft.model_id = modelId
+      // TODO: use from real
+      draft.mode = ModelModeType.chat
     })
+
     setModelConfig(newModelConfig)
   }
 
+  const modelModeType = modelConfig.mode
+  // TODO: remove it after API Ok
+  const setModelModeType = (mode: ModelModeType) => {
+    const newModelConfig = produce(modelConfig, (draft: any) => {
+      draft.mode = mode
+    })
+    setModelConfig(newModelConfig)
+  }
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
@@ -175,6 +183,7 @@ const Configuration: FC = () => {
   const setPromptMode = (mode: PromptMode) => {
     if (mode === PromptMode.advanced)
       setCanReturnToSimpleMode(true)
+      // TODO: Migrate prompts. Call API
 
     doSetPromptMode(mode)
   }
@@ -279,6 +288,7 @@ const Configuration: FC = () => {
       model: {
         provider: modelConfig.provider,
         name: modelId,
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
     }

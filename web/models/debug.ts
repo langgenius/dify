@@ -1,3 +1,4 @@
+import type { ModelModeType } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -78,6 +79,7 @@ export type RetrieverResourceConfig = MoreLikeThisConfig
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
+  mode: ModelModeType
   configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
