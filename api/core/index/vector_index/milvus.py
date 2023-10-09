@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Iterable, List, Optional, Tuple, Union
+from typing import Any, Iterable, List, Optional, Tuple, Union, Sequence
 from uuid import uuid4
 
 import numpy as np
@@ -138,11 +138,13 @@ class Milvus(VectorStore):
         self.consistency_level = consistency_level
 
         # In order for a collection to be compatible, pk needs to be auto'id and int
-        self._primary_field = "pk"
-        # In order for compatiblility, the text field will need to be called "text"
-        self._text_field = "text"
+        self._primary_field = "id"
+        # In order for compatibility, the text field will need to be called "text"
+        self._text_field = "page_content"
         # In order for compatibility, the vector field needs to be called "vector"
-        self._vector_field = "vector"
+        self._vector_field = "vectors"
+        # In order for compatibility, the metadata field will need to be called "metadata"
+        self._metadata_field = "metadata"
         self.fields: list[str] = []
         # Create the connection to the server
         if connection_args is None:
@@ -246,23 +248,25 @@ class Milvus(VectorStore):
         dim = len(embeddings[0])
         fields = []
         # Determine metadata schema
+        # if metadatas:
+        #     # Create FieldSchema for each entry in metadata.
+        #     for key, value in metadatas[0].items():
+        #         # Infer the corresponding datatype of the metadata
+        #         dtype = infer_dtype_bydata(value)
+        #         # Datatype isn't compatible
+        #         if dtype == DataType.UNKNOWN or dtype == DataType.NONE:
+        #             logger.error(
+        #                 "Failure to create collection, unrecognized dtype for key: %s",
+        #                 key,
+        #             )
+        #             raise ValueError(f"Unrecognized datatype for {key}.")
+        #         # Dataype is a string/varchar equivalent
+        #         elif dtype == DataType.VARCHAR:
+        #             fields.append(FieldSchema(key, DataType.VARCHAR, max_length=65_535))
+        #         else:
+        #             fields.append(FieldSchema(key, dtype))
         if metadatas:
-            # Create FieldSchema for each entry in metadata.
-            for key, value in metadatas[0].items():
-                # Infer the corresponding datatype of the metadata
-                dtype = infer_dtype_bydata(value)
-                # Datatype isn't compatible
-                if dtype == DataType.UNKNOWN or dtype == DataType.NONE:
-                    logger.error(
-                        "Failure to create collection, unrecognized dtype for key: %s",
-                        key,
-                    )
-                    raise ValueError(f"Unrecognized datatype for {key}.")
-                # Dataype is a string/varchar equivalent
-                elif dtype == DataType.VARCHAR:
-                    fields.append(FieldSchema(key, DataType.VARCHAR, max_length=65_535))
-                else:
-                    fields.append(FieldSchema(key, dtype))
+            fields.append(FieldSchema(self._metadata_field, DataType.JSON, max_length=65_535))
 
         # Create the text field
         fields.append(
@@ -326,7 +330,7 @@ class Milvus(VectorStore):
                 # If no index params, use a default HNSW based one
                 if self.index_params is None:
                     self.index_params = {
-                        "metric_type": "L2",
+                        "metric_type": "IP",
                         "index_type": "HNSW",
                         "params": {"M": 8, "efConstruction": 64},
                     }
@@ -337,7 +341,7 @@ class Milvus(VectorStore):
                         index_params=self.index_params,
                         using=self.alias,
                     )
-                    self.col.delete()
+
                 # If default did not work, most likely on Zilliz Cloud
                 except MilvusException:
                     # Use AUTOINDEX based index
@@ -438,11 +442,14 @@ class Milvus(VectorStore):
         }
 
         # Collect the metadata into the insert dict.
+        # if metadatas is not None:
+        #     for d in metadatas:
+        #         for key, value in d.items():
+        #             if key in self.fields:
+        #                 insert_dict.setdefault(key, []).append(value)
         if metadatas is not None:
             for d in metadatas:
-                for key, value in d.items():
-                    if key in self.fields:
-                        insert_dict.setdefault(key, []).append(value)
+                insert_dict.setdefault(self._metadata_field, []).append(d)
 
         # Total insert count
         vectors: list = insert_dict[self._vector_field]
@@ -572,6 +579,28 @@ class Milvus(VectorStore):
         )
         return res
 
+    def _similarity_search_with_relevance_scores(
+        self,
+        query: str,
+        k: int = 4,
+        **kwargs: Any,
+    ) -> List[Tuple[Document, float]]:
+        """Return docs and relevance scores in the range [0, 1].
+
+        0 is dissimilar, 1 is most similar.
+
+        Args:
+            query: input text
+            k: Number of Documents to return. Defaults to 4.
+            **kwargs: kwargs to be passed to similarity search. Should include:
+                score_threshold: Optional, a floating point value between 0 to 1 to
+                    filter the resulting set of retrieved docs
+
+        Returns:
+            List of Tuples of (doc, similarity_score)
+        """
+        return self.similarity_search_with_score(query, k, **kwargs)
+
     def similarity_search_with_score_by_vector(
         self,
         embedding: List[float],
@@ -626,7 +655,7 @@ class Milvus(VectorStore):
         ret = []
         for result in res[0]:
             meta = {x: result.entity.get(x) for x in output_fields}
-            doc = Document(page_content=meta.pop(self._text_field), metadata=meta)
+            doc = Document(page_content=meta.pop(self._text_field), metadata=meta.get('metadata'))
             pair = (doc, result.score)
             ret.append(pair)
 
@@ -784,6 +813,8 @@ class Milvus(VectorStore):
         index_params: Optional[dict] = None,
         search_params: Optional[dict] = None,
         drop_old: bool = False,
+        batch_size: int = 100,
+        ids: Optional[Sequence[str]] = None,
         **kwargs: Any,
     ) -> Milvus:
         """Create a Milvus collection, indexes it with HNSW, and insert data.
@@ -805,6 +836,10 @@ class Milvus(VectorStore):
                 Defaults to None.
             drop_old (Optional[bool], optional): Whether to drop the collection with
                 that name if it exists. Defaults to False.
+            batch_size:
+                How many vectors upload per-request.
+                Default: 100
+            ids: Optional[Sequence[str]] = None,
 
         Returns:
             Milvus: Milvus Vector Store
@@ -819,5 +854,5 @@ class Milvus(VectorStore):
             drop_old=drop_old,
             **kwargs,
         )
-        vector_db.add_texts(texts=texts, metadatas=metadatas)
+        vector_db.add_texts(texts=texts, metadatas=metadatas, batch_size=batch_size)
         return vector_db

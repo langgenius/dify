@@ -167,6 +167,12 @@ class Config:
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
 
+        # milvus setting
+        self.MILVUS_URL = get_env('MILVUS_URL')
+        self.MILVUS_USER = get_env('MILVUS_USER')
+        self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
+
+
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
             'CONSOLE_CORS_ALLOW_ORIGINS', self.CONSOLE_WEB_URL)
