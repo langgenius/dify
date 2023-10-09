@@ -89,7 +89,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://dify.cvte.com/v1/datasets?page=1&limit=20' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
@@ -180,7 +180,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/document/create_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/v1/datasets/{dataset_id}/document/create_by_text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -287,7 +287,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/document/create_by_file' \
+    curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -381,7 +381,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -478,7 +478,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/{document_id}/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/document/{document_id}/create_by_file' \
+    curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/{document_id}/create_by_file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -546,7 +546,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents/{batch}/indexing-status' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -601,7 +601,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents/{document_id}' \
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -653,7 +653,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -727,7 +727,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"segments": [{"content": "1","answer": "1","keywords": ["a"]}]}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents/{document_id}/segments' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -814,7 +814,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://dify.cvte.com/v1/datasets/{dataset_id}/documents/{document_id}/segments' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json'
     ```
@@ -882,7 +882,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE 'https://dify.cvte.com/v1/datasets/{dataset_id}/segments/{segment_id}' \
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json'
     ```
@@ -935,7 +935,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://dify.cvte.com/v1/datasets/{dataset_id}/segments/{segment_id}' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/segments/{segment_id}' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
