@@ -2,7 +2,11 @@
 
 import { type FC } from 'react'
 import { useRef } from 'react'
-import type { EditorState } from 'lexical'
+import type {
+  EditorState,
+  SerializedEditorState,
+  SerializedLexicalNode,
+} from 'lexical'
 import {
   $getRoot,
   TextNode,
@@ -31,8 +35,9 @@ import type { RoleName } from './plugins/history-block'
 import type { Option } from './plugins/variable-picker'
 
 export type PromptEditorProps = {
+  value?: EditorState
   editable?: boolean
-  onChange?: (text: string) => void
+  onChange?: (text: string, ast: SerializedEditorState<SerializedLexicalNode>) => void
   contextBlock?: {
     selectable?: boolean
     datasets: Dataset[]
@@ -60,6 +65,7 @@ export type PromptEditorProps = {
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
+  value,
   editable = true,
   onChange,
   contextBlock = {
@@ -89,9 +95,6 @@ const PromptEditor: FC<PromptEditorProps> = ({
   const editorStateRef = useRef<EditorState>()
   const initialConfig = {
     namespace: 'prompt-editor',
-    theme: {
-      paragraph: 'leading-6',
-    },
     nodes: [
       CustomTextNode,
       {
@@ -103,6 +106,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       QueryBlockNode,
       VariableValueBlockNode,
     ],
+    editorState: value,
     onError: (error: Error) => {
       throw error
     },
@@ -111,7 +115,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   const handleEditorChange = (editorState: EditorState) => {
     editorStateRef.current = editorState
     if (onChange)
-      onChange(editorState.read(() => $getRoot().getTextContent()))
+      onChange(editorState.read(() => $getRoot().getTextContent()), editorState.toJSON())
   }
 
   return (
