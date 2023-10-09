@@ -18,6 +18,7 @@ export enum AppType {
 export enum ModelModeType {
   'chat' = 'chat',
   'completion' = 'completion',
+  'unset' = '',
 }
 
 export type VariableInput = {

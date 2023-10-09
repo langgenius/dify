@@ -93,6 +93,7 @@ const Configuration: FC = () => {
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
     provider: ProviderEnum.openai,
     model_id: 'gpt-3.5-turbo',
+    mode: ModelModeType.unset,
     configs: {
       prompt_template: '',
       prompt_variables: [] as PromptVariable[],
@@ -226,6 +227,7 @@ const Configuration: FC = () => {
         modelConfig: {
           provider: model.provider,
           model_id: model.name,
+          mode: model.mode,
           configs: {
             prompt_template: modelConfig.pre_prompt,
             prompt_variables: userInputsFormToPromptVariables(modelConfig.user_input_form, modelConfig.dataset_query_variable),
@@ -332,7 +334,6 @@ const Configuration: FC = () => {
       isTrailFinished,
       mode,
       modelModeType,
-      setModelModeType,
       setPromptMode,
       promptMode,
       canReturnToSimpleMode,

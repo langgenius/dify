@@ -10,7 +10,6 @@ type IDebugConfiguration = {
   isTrailFinished: boolean
   mode: string
   modelModeType: ModelModeType
-  setModelModeType: (modelModeType: ModelModeType) => void
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
   canReturnToSimpleMode: boolean
@@ -63,7 +62,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   isTrailFinished: false,
   mode: '',
   modelModeType: ModelModeType.chat,
-  setModelModeType: () => { },
   promptMode: PromptMode.simple,
   setPromptMode: () => { },
   canReturnToSimpleMode: false,
