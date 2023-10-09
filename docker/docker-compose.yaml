@@ -85,9 +85,9 @@ services:
       # The Weaviate API key.
       WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
       # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
-      QDRANT_URL: 'https://your-qdrant-cluster-url.qdrant.tech/'
+      QDRANT_URL: http://qdrant:6333
       # The Qdrant API key.
-      QDRANT_API_KEY: 'ak-difyai'
+      QDRANT_API_KEY: difyai123456
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -103,10 +103,12 @@ services:
     depends_on:
       - db
       - redis
-      - weaviate
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+#    uncomment to expose dify-api port to host
+#    ports:
+#      - "5001:5001"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -143,10 +145,16 @@ services:
       # The type of storage to use for storing user files. Supported values are `local` and `s3`, Default: `local`
       STORAGE_TYPE: local
       STORAGE_LOCAL_PATH: storage
-      # The Vector store configurations.
+      # The type of vector store to use. Supported values are `weaviate`, `qdrant`.
       VECTOR_STORE: weaviate
+      # The Weaviate endpoint URL. Only available when VECTOR_STORE is `weaviate`.
       WEAVIATE_ENDPOINT: http://weaviate:8080
+      # The Weaviate API key.
       WEAVIATE_API_KEY: WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih
+      # The Qdrant endpoint URL. Only available when VECTOR_STORE is `qdrant`.
+      QDRANT_URL: http://qdrant:6333
+      # The Qdrant API key.
+      QDRANT_API_KEY: difyai123456
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -156,7 +164,6 @@ services:
     depends_on:
       - db
       - redis
-      - weaviate
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
@@ -177,6 +184,9 @@ services:
       APP_API_URL: ''
       # The DSN for Sentry error reporting. If not set, Sentry error reporting will be disabled.
       SENTRY_DSN: ''
+#    uncomment to expose dify-web port to host
+#    ports:
+#      - "3000:3000"
 
   # The postgres database.
   db:
@@ -211,6 +221,9 @@ services:
     command: redis-server --requirepass difyai123456
     healthcheck:
       test: ["CMD", "redis-cli","ping"]
+#    uncomment to expose redis port to host
+#    ports:
+#      - "6379:6379"
 
   # The Weaviate vector store.
   weaviate:
@@ -232,6 +245,24 @@ services:
       AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
       AUTHORIZATION_ADMINLIST_ENABLED: 'true'
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
+#    uncomment to expose weaviate port to host
+#    ports:
+#      - "8080:8080"
+
+  # Qdrant vector store.
+#  uncomment to use qdrant as vector store.
+#  (if uncommented, you need to comment out the weaviate service above,
+#  and set VECTOR_STORE to qdrant in the api & worker service.)
+#  qdrant:
+#    image: qdrant/qdrant:latest
+#    restart: always
+#    volumes:
+#      - ./volumes/qdrant:/qdrant/storage
+#    environment:
+#      QDRANT__API_KEY: 'difyai123456'
+##    uncomment to expose qdrant port to host
+##    ports:
+##      - "6333:6333"
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
