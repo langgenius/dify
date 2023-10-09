@@ -168,11 +168,26 @@ const Configuration: FC = () => {
   const hasSetAPIKEY = hasSetCustomAPIKEY || !isTrailFinished
 
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
+  const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
+  // const modelMode = 'chat'
+  // can return to simple mode if switch to advanced mode and not published
+  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
+  const setPromptMode = (mode: PromptMode) => {
+    if (mode === PromptMode.advanced)
+      setCanReturnToSimpleMode(true)
+
+    doSetPromptMode(mode)
+  }
 
   useEffect(() => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
       setMode(res.mode)
       const modelConfig = res.model_config
+      const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
+      doSetPromptMode(promptMode)
+      if (promptMode === PromptMode.advanced)
+        setCanReturnToSimpleMode(false)
+
       const model = res.model_config.model
 
       let datasets: any = null
@@ -247,7 +262,9 @@ const Configuration: FC = () => {
 
     // new model config data struct
     const data: BackendModelConfig = {
-      pre_prompt: promptTemplate,
+      // Simple Mode prompt
+      pre_prompt: promptMode !== PromptMode.advanced ? promptTemplate : '',
+      prompt_type: promptMode,
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
       dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
@@ -280,7 +297,6 @@ const Configuration: FC = () => {
       completionParams,
     })
     notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setCanReturnToSimpleMode(false)
   }
 
@@ -293,16 +309,6 @@ const Configuration: FC = () => {
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
-  const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
-  // const modelMode = 'chat'
-  // can return to simple mode if switch to advanced mode and not published
-  const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
-  const setPromptMode = (mode: PromptMode) => {
-    if (mode === PromptMode.advanced)
-      setCanReturnToSimpleMode(true)
-
-    doSetPromptMode(mode)
-  }
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
       <Loading type='area' />
