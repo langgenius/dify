@@ -50,7 +50,7 @@ export type PromptEditorProps = {
   variableBlock?: {
     selectable?: boolean
     variables: Option[]
-    onAddVariable: () => void
+    onAddVariable: (key: string) => void
   }
   historyBlock?: {
     show?: boolean

@@ -5,6 +5,7 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import type { PromptRole } from '@/models/debug'
@@ -37,11 +38,23 @@ const AdvancedPromptInput: FC<Props> = ({
 
   const {
     hasSetBlockStatus,
+    modelConfig,
+    setModelConfig,
     // completionModelPromptConfig
   } = useContext(ConfigContext)
 
   const [isCopied, setIsCopied] = React.useState(false)
-
+  const handleAddVar = (key: string) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.configs.prompt_variables.push({
+        key,
+        name: key,
+        type: 'string',
+        required: true,
+      })
+    })
+    setModelConfig(newModelConfig)
+  }
   return (
     <div className={`${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
@@ -82,17 +95,21 @@ const AdvancedPromptInput: FC<Props> = ({
         </div>
         <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
           <PromptEditor
-            // value={value}
+            value={value}
             contextBlock={{
               selectable: !hasSetBlockStatus.context,
               datasets: [],
               onAddContext: () => {},
             }}
             variableBlock={{
-              variables: [],
-              onAddVariable: () => {},
+              variables: modelConfig.configs.prompt_variables.map(item => ({
+                name: item.name,
+                value: item.key,
+              })),
+              onAddVariable: handleAddVar,
             }}
             historyBlock={{
+              show: !isChatMode,
               selectable: !hasSetBlockStatus.history,
               history: {
                 user: 'aaaa',
@@ -101,6 +118,7 @@ const AdvancedPromptInput: FC<Props> = ({
               onEditRole: () => {},
             }}
             queryBlock={{
+              show: !isChatMode,
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={onChange}
