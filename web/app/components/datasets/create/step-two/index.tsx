@@ -1,4 +1,3 @@
-/* eslint-disable no-mixed-operators */
 'use client'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +10,7 @@ import { groupBy } from 'lodash-es'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
-import type { CreateDocumentReq, CustomFile, FullDocumentDetail, FileIndexingEstimateResponse as IndexingEstimateResponse, NotionInfo, PreProcessingRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -33,13 +32,14 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 
+type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   hasSetAPIKEY: boolean
   onSetting: () => void
   datasetId?: string
-  indexingType?: string
+  indexingType?: ValueOf<IndexingType>
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
@@ -89,24 +89,27 @@ const StepTwo = ({
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
-  const [indexType, setIndexType] = useState<IndexingType>(
-    indexingType
-      || hasSetAPIKEY
+  const [indexType, setIndexType] = useState<ValueOf<IndexingType>>(
+    (indexingType
+      || hasSetAPIKEY)
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
   )
   const [docForm, setDocForm] = useState<DocForm | string>(
-    datasetId && documentDetail ? documentDetail.doc_form : DocForm.TEXT,
+    (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
   const [docLanguage, setDocLanguage] = useState<string>(locale === 'en' ? 'English' : 'Chinese')
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
-  const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
-  const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<IndexingEstimateResponse | null>(null)
+  const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
+  const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
+  const [estimateTokes, setEstimateTokes] = useState<Pick<IndexingEstimateResponse, 'tokens' | 'total_price'> | null>(null)
+
   const fileIndexingEstimate = (() => {
     return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
   })()
+  const [isCreating, setIsCreating] = useState(false)
 
   const scrollHandle = (e: Event) => {
     if ((e.target as HTMLDivElement).scrollTop > 0)
@@ -152,7 +155,7 @@ const StepTwo = ({
   }
   const resetRules = () => {
     if (defaultConfig) {
-      setSegmentIdentifier(defaultConfig.segmentation.separator === '\n' ? '\\n' : defaultConfig.segmentation.separator || '\\n')
+      setSegmentIdentifier((defaultConfig.segmentation.separator === '\n' ? '\\n' : defaultConfig.segmentation.separator) || '\\n')
       setMax(defaultConfig.segmentation.max_tokens)
       setRules(defaultConfig.pre_processing_rules)
     }
@@ -160,12 +163,14 @@ const StepTwo = ({
 
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm))
-    if (segmentationType === SegmentType.CUSTOM)
+    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm)!)
+    if (segmentationType === SegmentType.CUSTOM) {
       setCustomFileIndexingEstimate(res)
-
-    else
+    }
+    else {
       setAutomaticFileIndexingEstimate(res)
+      indexType === IndexingType.QUALIFIED && setEstimateTokes({ tokens: res.tokens, total_price: res.total_price })
+    }
   }
 
   const confirmChangeCustomConfig = () => {
@@ -178,8 +183,8 @@ const StepTwo = ({
   const getIndexing_technique = () => indexingType || indexType
 
   const getProcessRule = () => {
-    const processRule: any = {
-      rules: {}, // api will check this. It will be removed after api refactored.
+    const processRule: ProcessRule = {
+      rules: {} as any, // api will check this. It will be removed after api refactored.
       mode: segmentationType,
     }
     if (segmentationType === SegmentType.CUSTOM) {
@@ -219,37 +224,35 @@ const StepTwo = ({
     }) as NotionInfo[]
   }
 
-  const getFileIndexingEstimateParams = (docForm: DocForm) => {
-    let params
+  const getFileIndexingEstimateParams = (docForm: DocForm): IndexingEstimateParams | undefined => {
     if (dataSourceType === DataSourceType.FILE) {
-      params = {
+      return {
         info_list: {
           data_source_type: dataSourceType,
           file_info_list: {
-            file_ids: files.map(file => file.id),
+            file_ids: files.map(file => file.id) as string[],
           },
         },
-        indexing_technique: getIndexing_technique(),
+        indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
-        dataset_id: datasetId,
+        dataset_id: datasetId as string,
       }
     }
     if (dataSourceType === DataSourceType.NOTION) {
-      params = {
+      return {
         info_list: {
           data_source_type: dataSourceType,
           notion_info_list: getNotionInfo(),
         },
-        indexing_technique: getIndexing_technique(),
+        indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
-        dataset_id: datasetId,
+        dataset_id: datasetId as string,
       }
     }
-    return params
   }
 
   const getCreationParams = () => {
@@ -277,7 +280,7 @@ const StepTwo = ({
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
-          file_ids: files.map(file => file.id),
+          file_ids: files.map(file => file.id || '').filter(Boolean),
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
@@ -290,7 +293,7 @@ const StepTwo = ({
     try {
       const res = await fetchDefaultProcessRule({ url: '/datasets/process-rule' })
       const separator = res.rules.segmentation.separator
-      setSegmentIdentifier(separator === '\n' ? '\\n' : separator || '\\n')
+      setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
       setMax(res.rules.segmentation.max_tokens)
       setRules(res.rules.pre_processing_rules)
       setDefaultConfig(res.rules)
@@ -305,7 +308,7 @@ const StepTwo = ({
       const rules = documentDetail.dataset_process_rule.rules
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
-      setSegmentIdentifier(separator === '\n' ? '\\n' : separator || '\\n')
+      setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
       setMax(max)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
@@ -318,14 +321,18 @@ const StepTwo = ({
   }
 
   const createHandle = async () => {
+    if (isCreating)
+      return
+    setIsCreating(true)
     try {
       let res
       const params = getCreationParams()
+      setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
           body: params,
         })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType)
+        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
       }
       else {
@@ -333,7 +340,7 @@ const StepTwo = ({
           datasetId,
           body: params,
         })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType)
+        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
       }
       if (mutateDatasetRes)
@@ -346,6 +353,9 @@ const StepTwo = ({
         type: 'error',
         message: `${err}`,
       })
+    }
+    finally {
+      setIsCreating(false)
     }
   }
 
@@ -541,9 +551,9 @@ const StepTwo = ({
                     <div className={s.tip}>{t('datasetCreation.stepTwo.qualifiedTip')}</div>
                     <div className='pb-0.5 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.emstimateCost')}</div>
                     {
-                      fileIndexingEstimate
+                      estimateTokes
                         ? (
-                          <div className='text-xs font-medium text-gray-800'>{formatNumber(fileIndexingEstimate.tokens)} tokens(<span className='text-yellow-500'>${formatNumber(fileIndexingEstimate.total_price)}</span>)</div>
+                          <div className='text-xs font-medium text-gray-800'>{formatNumber(estimateTokes.tokens)} tokens(<span className='text-yellow-500'>${formatNumber(estimateTokes.total_price)}</span>)</div>
                         )
                         : (
                           <div className={s.calculating}>{t('datasetCreation.stepTwo.calculating')}</div>
@@ -622,7 +632,7 @@ const StepTwo = ({
                   <>
                     <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.fileSource')}</div>
                     <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <span className={cn(s.fileIcon, files.length && s[files[0].extension])} />
+                      <span className={cn(s.fileIcon, files.length && s[files[0].extension || ''])} />
                       {getFileName(files[0].name || '')}
                       {files.length > 1 && (
                         <span className={s.sourceCount}>
@@ -676,12 +686,12 @@ const StepTwo = ({
                 <div className='flex items-center mt-8 py-2'>
                   <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.lastStep')}</Button>
                   <div className={s.divider} />
-                  <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>
               )
               : (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
+                  <Button loading={isCreating} type='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
                   <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
                 </div>
               )}

@@ -37,6 +37,7 @@ type IDebugConfiguration = {
   setModelConfig: (modelConfig: ModelConfig) => void
   dataSets: DataSet[]
   setDataSets: (dataSet: DataSet[]) => void
+  hasSetContextVar: boolean
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -102,6 +103,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setModelConfig: () => { },
   dataSets: [],
   setDataSets: () => { },
+  hasSetContextVar: false,
 })
 
 export default DebugConfigurationContext

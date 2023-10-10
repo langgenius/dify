@@ -12,7 +12,16 @@ import SecretKeyGenerateModal from './secret-key-generate'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { createApikey, delApikey, fetchApiKeysList } from '@/service/apps'
+import {
+  createApikey as createAppApikey,
+  delApikey as delAppApikey,
+  fetchApiKeysList as fetchAppApiKeysList,
+} from '@/service/apps'
+import {
+  createApikey as createDatasetApikey,
+  delApikey as delDatasetApikey,
+  fetchApiKeysList as fetchDatasetApiKeysList,
+} from '@/service/datasets'
 import type { CreateApiKeyResponse } from '@/models/app'
 import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
@@ -22,7 +31,7 @@ import { useAppContext } from '@/context/app-context'
 
 type ISecretKeyModalProps = {
   isShow: boolean
-  appId: string
+  appId?: string
   onClose: () => void
 }
 
@@ -37,7 +46,10 @@ const SecretKeyModal = ({
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
   const { mutate } = useSWRConfig()
-  const commonParams = { url: `/apps/${appId}/api-keys`, params: {} }
+  const commonParams = appId
+    ? { url: `/apps/${appId}/api-keys`, params: {} }
+    : { url: '/datasets/api-keys', params: {} }
+  const fetchApiKeysList = appId ? fetchAppApiKeysList : fetchDatasetApiKeysList
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
 
   const [delKeyID, setDelKeyId] = useState('')
@@ -64,12 +76,20 @@ const SecretKeyModal = ({
     if (!delKeyID)
       return
 
-    await delApikey({ url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} })
+    const delApikey = appId ? delAppApikey : delDatasetApikey
+    const params = appId
+      ? { url: `/apps/${appId}/api-keys/${delKeyID}`, params: {} }
+      : { url: `/datasets/api-keys/${delKeyID}`, params: {} }
+    await delApikey(params)
     mutate(commonParams)
   }
 
   const onCreate = async () => {
-    const res = await createApikey({ url: `/apps/${appId}/api-keys`, body: {} })
+    const params = appId
+      ? { url: `/apps/${appId}/api-keys`, body: {} }
+      : { url: '/datasets/api-keys', body: {} }
+    const createApikey = appId ? createAppApikey : createDatasetApikey
+    const res = await createApikey(params)
     setVisible(true)
     setNewKey(res)
     mutate(commonParams)

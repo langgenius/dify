@@ -10,6 +10,7 @@ import type {
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
+  IndexingEstimateParams,
   IndexingEstimateResponse,
   IndexingStatusBatchResponse,
   IndexingStatusResponse,
@@ -22,6 +23,10 @@ import type {
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import type {
+  ApikeysListResponse,
+  CreateApiKeyResponse,
+} from '@/models/app'
 
 // apis for documents in a dataset
 
@@ -39,7 +44,7 @@ export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
 
 export type MetadataType = 'all' | 'only' | 'without'
 
-export const fetchDataDetail: Fetcher<DataSet, string> = (datasetId: string) => {
+export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) => {
   return get<DataSet>(`/datasets/${datasetId}`)
 }
 
@@ -185,10 +190,26 @@ export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId
   return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
 }
 
-export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, any> = (body: any) => {
+export const fetchFileIndexingEstimate: Fetcher<FileIndexingEstimateResponse, IndexingEstimateParams> = (body: IndexingEstimateParams) => {
   return post<FileIndexingEstimateResponse>('/datasets/indexing-estimate', { body })
 }
 
 export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID: string; pageID: string; pageType: string }> = ({ workspaceID, pageID, pageType }) => {
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
+}
+
+export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<ApikeysListResponse>(url, params)
+}
+
+export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return del<CommonResponse>(url, params)
+}
+
+export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post<CreateApiKeyResponse>(url, body)
+}
+
+export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
+  return get<{ api_base_url: string }>(url)
 }

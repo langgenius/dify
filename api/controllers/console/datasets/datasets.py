@@ -1,8 +1,11 @@
 # -*- coding:utf-8 -*-
-from flask import request
+import flask_restful
+from flask import request, current_app
 from flask_login import current_user
-from core.login.login import login_required
-from flask_restful import Resource, reqparse, fields, marshal, marshal_with
+
+from controllers.console.apikey import api_key_list, api_key_fields
+from libs.login import login_required
+from flask_restful import Resource, reqparse, marshal, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
 import services
 from controllers.console import api
@@ -12,44 +15,15 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.model_params import ModelType
-from libs.helper import TimestampField
+from fields.app_fields import related_app_list
+from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
+from fields.document_fields import document_status_fields
 from extensions.ext_database import db
 from models.dataset import DocumentSegment, Document
-from models.model import UploadFile
+from models.model import UploadFile, ApiToken
 from services.dataset_service import DatasetService, DocumentService
 from services.provider_service import ProviderService
-
-dataset_detail_fields = {
-    'id': fields.String,
-    'name': fields.String,
-    'description': fields.String,
-    'provider': fields.String,
-    'permission': fields.String,
-    'data_source_type': fields.String,
-    'indexing_technique': fields.String,
-    'app_count': fields.Integer,
-    'document_count': fields.Integer,
-    'word_count': fields.Integer,
-    'created_by': fields.String,
-    'created_at': TimestampField,
-    'updated_by': fields.String,
-    'updated_at': TimestampField,
-    'embedding_model': fields.String,
-    'embedding_model_provider': fields.String,
-    'embedding_available': fields.Boolean
-}
-
-dataset_query_detail_fields = {
-    "id": fields.String,
-    "content": fields.String,
-    "source": fields.String,
-    "source_app_id": fields.String,
-    "created_by_role": fields.String,
-    "created_by": fields.String,
-    "created_at": TimestampField
-}
 
 
 def _validate_name(name):
@@ -82,7 +56,8 @@ class DatasetListApi(Resource):
 
         # check embedding setting
         provider_service = ProviderService()
-        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
+                                                                 ModelType.EMBEDDINGS.value)
         # if len(valid_model_list) == 0:
         #     raise ProviderNotInitializeError(
         #         f"No Embedding Model available. Please configure a valid provider "
@@ -157,7 +132,8 @@ class DatasetApi(Resource):
         # check embedding setting
         provider_service = ProviderService()
         # get valid model list
-        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id, ModelType.EMBEDDINGS.value)
+        valid_model_list = provider_service.get_valid_model_list(current_user.current_tenant_id,
+                                                                 ModelType.EMBEDDINGS.value)
         model_names = []
         for valid_model in valid_model_list:
             model_names.append(f"{valid_model['model_name']}:{valid_model['model_provider']['provider_name']}")
@@ -271,7 +247,8 @@ class DatasetIndexingEstimateApi(Resource):
         parser.add_argument('indexing_technique', type=str, required=True, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('dataset_id', type=str, required=False, nullable=False, location='json')
-        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
@@ -320,18 +297,6 @@ class DatasetIndexingEstimateApi(Resource):
 
 
 class DatasetRelatedAppListApi(Resource):
-    app_detail_kernel_fields = {
-        'id': fields.String,
-        'name': fields.String,
-        'mode': fields.String,
-        'icon': fields.String,
-        'icon_background': fields.String,
-    }
-
-    related_app_list = {
-        'data': fields.List(fields.Nested(app_detail_kernel_fields)),
-        'total': fields.Integer,
-    }
 
     @setup_required
     @login_required
@@ -363,24 +328,6 @@ class DatasetRelatedAppListApi(Resource):
 
 
 class DatasetIndexingStatusApi(Resource):
-    document_status_fields = {
-        'id': fields.String,
-        'indexing_status': fields.String,
-        'processing_started_at': TimestampField,
-        'parsing_completed_at': TimestampField,
-        'cleaning_completed_at': TimestampField,
-        'splitting_completed_at': TimestampField,
-        'completed_at': TimestampField,
-        'paused_at': TimestampField,
-        'error': fields.String,
-        'stopped_at': TimestampField,
-        'completed_segments': fields.Integer,
-        'total_segments': fields.Integer,
-    }
-
-    document_status_fields_list = {
-        'data': fields.List(fields.Nested(document_status_fields))
-    }
 
     @setup_required
     @login_required
@@ -400,11 +347,93 @@ class DatasetIndexingStatusApi(Resource):
                                                           DocumentSegment.status != 're_segment').count()
             document.completed_segments = completed_segments
             document.total_segments = total_segments
-            documents_status.append(marshal(document, self.document_status_fields))
+            documents_status.append(marshal(document, document_status_fields))
         data = {
             'data': documents_status
         }
         return data
+
+
+class DatasetApiKeyApi(Resource):
+    max_keys = 10
+    token_prefix = 'dataset-'
+    resource_type = 'dataset'
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(api_key_list)
+    def get(self):
+        keys = db.session.query(ApiToken). \
+            filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id). \
+            all()
+        return {"items": keys}
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(api_key_fields)
+    def post(self):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        current_key_count = db.session.query(ApiToken). \
+            filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id). \
+            count()
+
+        if current_key_count >= self.max_keys:
+            flask_restful.abort(
+                400,
+                message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
+                code='max_keys_exceeded'
+            )
+
+        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        api_token = ApiToken()
+        api_token.tenant_id = current_user.current_tenant_id
+        api_token.token = key
+        api_token.type = self.resource_type
+        db.session.add(api_token)
+        db.session.commit()
+        return api_token, 200
+
+
+class DatasetApiDeleteApi(Resource):
+    resource_type = 'dataset'
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, api_key_id):
+        api_key_id = str(api_key_id)
+
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        key = db.session.query(ApiToken). \
+            filter(ApiToken.tenant_id == current_user.current_tenant_id, ApiToken.type == self.resource_type,
+                   ApiToken.id == api_key_id). \
+            first()
+
+        if key is None:
+            flask_restful.abort(404, message='API key not found')
+
+        db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
+        db.session.commit()
+
+        return {'result': 'success'}, 204
+
+
+class DatasetApiBaseUrlApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return {
+            'api_base_url': (current_app.config['SERVICE_API_URL'] if current_app.config['SERVICE_API_URL']
+                             else request.host_url.rstrip('/')) + '/v1'
+        }
 
 
 api.add_resource(DatasetListApi, '/datasets')
@@ -413,3 +442,6 @@ api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
 api.add_resource(DatasetIndexingEstimateApi, '/datasets/indexing-estimate')
 api.add_resource(DatasetRelatedAppListApi, '/datasets/<uuid:dataset_id>/related-apps')
 api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing-status')
+api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
+api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
+api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')

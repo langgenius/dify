@@ -3,7 +3,7 @@ import uuid
 from datetime import datetime
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, reqparse, fields, marshal
+from flask_restful import Resource, reqparse, marshal
 from werkzeug.exceptions import NotFound, Forbidden
 
 import services
@@ -14,47 +14,17 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
-from core.login.login import login_required
+from libs.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from fields.segment_fields import segment_fields
 from models.dataset import DocumentSegment
 
-from libs.helper import TimestampField
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 import pandas as pd
-
-segment_fields = {
-    'id': fields.String,
-    'position': fields.Integer,
-    'document_id': fields.String,
-    'content': fields.String,
-    'answer': fields.String,
-    'word_count': fields.Integer,
-    'tokens': fields.Integer,
-    'keywords': fields.List(fields.String),
-    'index_node_id': fields.String,
-    'index_node_hash': fields.String,
-    'hit_count': fields.Integer,
-    'enabled': fields.Boolean,
-    'disabled_at': TimestampField,
-    'disabled_by': fields.String,
-    'status': fields.String,
-    'created_by': fields.String,
-    'created_at': TimestampField,
-    'indexing_at': TimestampField,
-    'completed_at': TimestampField,
-    'error': fields.String,
-    'stopped_at': TimestampField
-}
-
-segment_list_response = {
-    'data': fields.List(fields.Nested(segment_fields)),
-    'has_more': fields.Boolean,
-    'limit': fields.Integer
-}
 
 
 class DatasetDocumentSegmentListApi(Resource):

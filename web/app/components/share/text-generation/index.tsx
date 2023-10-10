@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
-import { useBoolean, useClickAway, useGetState } from 'ahooks'
+import { useBoolean, useClickAway } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import TabHeader from '../../base/tab-header'
 import Button from '../../base/button'
 import { checkOrSetAccessToken } from '../utils'
+import { AlertCircle } from '../../base/icons/src/vender/solid/alertsAndFeedback'
 import s from './style.module.css'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
@@ -25,12 +26,12 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
-
-const PARALLEL_LIMIT = 5
+const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
   completed = 'completed',
+  failed = 'failed',
 }
 
 type TaskParam = {
@@ -99,15 +100,41 @@ const TextGeneration: FC<IMainProps> = ({
     showResSidebar()
   }
 
-  const [allTaskList, setAllTaskList, getLatestTaskList] = useGetState<Task[]>([])
+  const [controlRetry, setControlRetry] = useState(0)
+  const handleRetryAllFailedTask = () => {
+    setControlRetry(Date.now())
+  }
+  const [allTaskList, doSetAllTaskList] = useState<Task[]>([])
+  const allTaskListRef = useRef<Task[]>([])
+  const getLatestTaskList = () => allTaskListRef.current
+  const setAllTaskList = (taskList: Task[]) => {
+    doSetAllTaskList(taskList)
+    allTaskListRef.current = taskList
+  }
   const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
   const noPendingTask = pendingTaskList.length === 0
   const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
+  const [currGroupNum, doSetCurrGroupNum] = useState(0)
+  const currGroupNumRef = useRef(0)
+  const setCurrGroupNum = (num: number) => {
+    doSetCurrGroupNum(num)
+    currGroupNumRef.current = num
+  }
+  const getCurrGroupNum = () => {
+    return currGroupNumRef.current
+  }
+  const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
+  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
   const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
-  const [batchCompletionRes, setBatchCompletionRes, getBatchCompletionRes] = useGetState<Record<string, string>>({})
+  const allTaskRuned = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
+  const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
+  const batchCompletionResRef = useRef<Record<string, string>>({})
+  const setBatchCompletionRes = (res: Record<string, string>) => {
+    doSetBatchCompletionRes(res)
+    batchCompletionResRef.current = res
+  }
+  const getBatchCompletionRes = () => batchCompletionResRef.current
   const exportRes = allTaskList.map((task) => {
-    if (allTaskList.length > 0 && !allTaskFinished)
-      return {}
     const batchCompletionResLatest = getBatchCompletionRes()
     const res: Record<string, string> = {}
     const { inputs } = task.params
@@ -123,7 +150,6 @@ const TextGeneration: FC<IMainProps> = ({
       return false
     }
     const headerData = data[0]
-    const varLen = promptConfig?.prompt_variables.length || 0
     let isMapVarName = true
     promptConfig?.prompt_variables.forEach((item, index) => {
       if (!isMapVarName)
@@ -234,7 +260,7 @@ const TextGeneration: FC<IMainProps> = ({
       }
       return {
         id: i + 1,
-        status: i < PARALLEL_LIMIT ? TaskStatus.running : TaskStatus.pending,
+        status: i < GROUP_SIZE ? TaskStatus.running : TaskStatus.pending,
         params: {
           inputs,
         },
@@ -248,20 +274,28 @@ const TextGeneration: FC<IMainProps> = ({
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     showResSidebar()
   }
-  const handleCompleted = (completionRes: string, taskId?: number) => {
+  const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
     const allTasklistLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()
     const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
-    const nextPendingTaskId = pendingTaskList[0]?.id
-    // console.log(`start: ${allTasklistLatest.map(item => item.status).join(',')}`)
+    const hadRunedTaskNum = 1 + allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
+    const needToAddNextGroupTask = (getCurrGroupNum() !== hadRunedTaskNum) && pendingTaskList.length > 0 && (hadRunedTaskNum % GROUP_SIZE === 0 || (allTasklistLatest.length - hadRunedTaskNum < GROUP_SIZE))
+    // avoid add many task at the same time
+    if (needToAddNextGroupTask)
+      setCurrGroupNum(hadRunedTaskNum)
+    // console.group()
+    // console.log(`[#${taskId}]: ${isSuccess ? 'success' : 'fail'}.currGroupNum: ${getCurrGroupNum()}.hadRunedTaskNum: ${hadRunedTaskNum}, needToAddNextGroupTask: ${needToAddNextGroupTask}`)
+    // console.log([...allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).map(item => item.id), taskId].sort((a: any, b: any) => a - b).join(','))
+    // console.groupEnd()
+    const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
     const newAllTaskList = allTasklistLatest.map((item) => {
       if (item.id === taskId) {
         return {
           ...item,
-          status: TaskStatus.completed,
+          status: isSuccess ? TaskStatus.completed : TaskStatus.failed,
         }
       }
-      if (item.id === nextPendingTaskId) {
+      if (needToAddNextGroupTask && nextPendingTaskIds.includes(item.id)) {
         return {
           ...item,
           status: TaskStatus.running,
@@ -269,7 +303,6 @@ const TextGeneration: FC<IMainProps> = ({
       }
       return item
     })
-    // console.log(`end: ${newAllTaskList.map(item => item.status).join(',')}`)
     setAllTaskList(newAllTaskList)
     if (taskId) {
       setBatchCompletionRes({
@@ -333,10 +366,12 @@ const TextGeneration: FC<IMainProps> = ({
     isMobile={isMobile}
     isInstalledApp={!!isInstalledApp}
     installedAppInfo={installedAppInfo}
+    isError={task?.status === TaskStatus.failed}
     promptConfig={promptConfig}
     moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
     inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
     controlSend={controlSend}
+    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
     controlStopResponding={controlStopResponding}
     onShowRes={showResSidebar}
     handleSaveMessage={handleSaveMessage}
@@ -365,7 +400,19 @@ const TextGeneration: FC<IMainProps> = ({
             <div className='text-lg text-gray-800 font-semibold'>{t('share.generation.title')}</div>
           </div>
           <div className='flex items-center space-x-2'>
-            {allTaskList.length > 0 && allTaskFinished && (
+            {allFailedTaskList.length > 0 && (
+              <div className='flex items-center'>
+                <AlertCircle className='w-4 h-4 text-[#D92D20]' />
+                <div className='ml-1 text-[#D92D20]'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+                <Button
+                  type='primary'
+                  className='ml-2 !h-8 !px-3'
+                  onClick={handleRetryAllFailedTask}
+                >{t('share.generation.batchFailed.retry')}</Button>
+                <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+              </div>
+            )}
+            {allSuccessTaskList.length > 0 && (
               <ResDownload
                 isMobile={isMobile}
                 values={exportRes}
@@ -394,8 +441,12 @@ const TextGeneration: FC<IMainProps> = ({
     </div>
   )
 
-  if (!appId || !siteInfo || !promptConfig)
-    return <Loading type='app' />
+  if (!appId || !siteInfo || !promptConfig) {
+    return (
+      <div className='flex items-center h-screen'>
+        <Loading type='app' />
+      </div>)
+  }
 
   return (
     <>
@@ -466,6 +517,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunBatch
                 vars={promptConfig.prompt_variables}
                 onSend={handleRunBatch}
+                isAllFinished={allTaskRuned}
               />
             </div>
 

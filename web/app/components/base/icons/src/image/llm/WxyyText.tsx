@@ -10,4 +10,6 @@ const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTM
   ref,
 ) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />)
 
+Icon.displayName = 'WxyyText'
+
 export default Icon

@@ -2,10 +2,10 @@ import datetime
 import json
 
 from cachetools import TTLCache
-from flask import request, current_app
+from flask import request
 from flask_login import current_user
-from core.login.login import login_required
-from flask_restful import Resource, marshal_with, fields, reqparse, marshal
+from libs.login import login_required
+from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import NotFound
 
 from controllers.console import api
@@ -14,7 +14,7 @@ from controllers.console.wraps import account_initialization_required
 from core.data_loader.loader.notion import NotionLoader
 from core.indexing_runner import IndexingRunner
 from extensions.ext_database import db
-from libs.helper import TimestampField
+from fields.data_source_fields import integrate_notion_info_list_fields, integrate_list_fields
 from models.dataset import Document
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
@@ -24,37 +24,6 @@ cache = TTLCache(maxsize=None, ttl=30)
 
 
 class DataSourceApi(Resource):
-    integrate_icon_fields = {
-        'type': fields.String,
-        'url': fields.String,
-        'emoji': fields.String
-    }
-    integrate_page_fields = {
-        'page_name': fields.String,
-        'page_id': fields.String,
-        'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
-        'parent_id': fields.String,
-        'type': fields.String
-    }
-    integrate_workspace_fields = {
-        'workspace_name': fields.String,
-        'workspace_id': fields.String,
-        'workspace_icon': fields.String,
-        'pages': fields.List(fields.Nested(integrate_page_fields)),
-        'total': fields.Integer
-    }
-    integrate_fields = {
-        'id': fields.String,
-        'provider': fields.String,
-        'created_at': TimestampField,
-        'is_bound': fields.Boolean,
-        'disabled': fields.Boolean,
-        'link': fields.String,
-        'source_info': fields.Nested(integrate_workspace_fields)
-    }
-    integrate_list_fields = {
-        'data': fields.List(fields.Nested(integrate_fields)),
-    }
 
     @setup_required
     @login_required
@@ -131,28 +100,6 @@ class DataSourceApi(Resource):
 
 
 class DataSourceNotionListApi(Resource):
-    integrate_icon_fields = {
-        'type': fields.String,
-        'url': fields.String,
-        'emoji': fields.String
-    }
-    integrate_page_fields = {
-        'page_name': fields.String,
-        'page_id': fields.String,
-        'page_icon': fields.Nested(integrate_icon_fields, allow_null=True),
-        'is_bound': fields.Boolean,
-        'parent_id': fields.String,
-        'type': fields.String
-    }
-    integrate_workspace_fields = {
-        'workspace_name': fields.String,
-        'workspace_id': fields.String,
-        'workspace_icon': fields.String,
-        'pages': fields.List(fields.Nested(integrate_page_fields))
-    }
-    integrate_notion_info_list_fields = {
-        'notion_info': fields.List(fields.Nested(integrate_workspace_fields)),
-    }
 
     @setup_required
     @login_required

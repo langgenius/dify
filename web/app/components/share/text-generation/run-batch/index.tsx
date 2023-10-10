@@ -5,18 +5,21 @@ import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import CSVReader from './csv-reader'
 import CSVDownload from './csv-download'
 import Button from '@/app/components/base/button'
-
+import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void
+  isAllFinished: boolean
 }
 
 const RunBatch: FC<IRunBatchProps> = ({
   vars,
   onSend,
+  isAllFinished,
 }) => {
   const { t } = useTranslation()
 
@@ -31,6 +34,7 @@ const RunBatch: FC<IRunBatchProps> = ({
   const handleSend = () => {
     onSend(csvData)
   }
+  const Icon = isAllFinished ? PlayIcon : Loading02
   return (
     <div className='pt-4'>
       <CSVReader onParsed={handleParsed} />
@@ -41,9 +45,9 @@ const RunBatch: FC<IRunBatchProps> = ({
           type="primary"
           className='mt-4 !h-8 !pl-3 !pr-4'
           onClick={handleSend}
-          disabled={!isParsed}
+          disabled={!isParsed || !isAllFinished}
         >
-          <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />
+          <Icon className={cn(!isAllFinished && 'animate-spin', 'shrink-0 w-4 h-4 mr-1')} aria-hidden="true" />
           <span className='uppercase text-[13px]'>{t('share.generation.run')}</span>
         </Button>
       </div>
