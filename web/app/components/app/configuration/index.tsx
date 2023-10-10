@@ -187,10 +187,12 @@ const Configuration: FC = () => {
     setCompletionPromptConfig,
     currentAdvancedPrompt,
     setCurrentAdvancedPrompt,
+    hasSetBlockStatus,
     setConversationHistoriesRole,
   } = useAdvancedPromptConfig({
     promptMode,
     modelModeType,
+    prePrompt: modelConfig.configs.prompt_template,
   })
 
   useEffect(() => {
@@ -355,6 +357,7 @@ const Configuration: FC = () => {
       setCanReturnToSimpleMode,
       currentAdvancedPrompt,
       setCurrentAdvancedPrompt,
+      hasSetBlockStatus,
       conversationId,
       introduction,
       setIntroduction,

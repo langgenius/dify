@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { BlockStatus, ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 
@@ -21,6 +21,7 @@ type IDebugConfiguration = {
   setChatModelPromptConfig: (config: ChatModelPromptConfig) => void
   completionModelPromptConfig: CompletionModelPromptConfig
   setCompletionModelPromptConfig: (config: CompletionModelPromptConfig) => void
+  hasSetBlockStatus: BlockStatus
   conversationId: string | null // after first chat send
   setConversationId: (conversationId: string | null) => void
   introduction: string
@@ -94,6 +95,11 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     },
   },
   setCompletionModelPromptConfig: () => { },
+  hasSetBlockStatus: {
+    context: false,
+    history: false,
+    query: false,
+  },
   conversationId: '',
   setConversationId: () => { },
   introduction: '',

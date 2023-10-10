@@ -11,7 +11,6 @@ import type { PromptItem, PromptVariable } from '@/models/debug'
 import { type AppType, ModelModeType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
-
 export type IPromptProps = {
   mode: AppType
   promptTemplate: string

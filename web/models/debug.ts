@@ -48,6 +48,12 @@ export type CompletionModelPromptConfig = {
   }
 }
 
+export type BlockStatus = {
+  context: boolean
+  history: boolean
+  query: boolean
+}
+
 export enum PromptRole {
   system = 'system',
   user = 'user',

@@ -4,12 +4,15 @@ import React from 'react'
 import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import type { PromptRole } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Tooltip from '@/app/components/base/tooltip'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import ConfigContext from '@/context/debug-configuration'
 
 type Props = {
   type: PromptRole
@@ -32,7 +35,13 @@ const AdvancedPromptInput: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
+  const {
+    hasSetBlockStatus,
+    // completionModelPromptConfig
+  } = useContext(ConfigContext)
+
   const [isCopied, setIsCopied] = React.useState(false)
+
   return (
     <div className={`${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
@@ -72,7 +81,30 @@ const AdvancedPromptInput: FC<Props> = ({
           </div>
         </div>
         <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
-          <textarea value={value} onChange={e => onChange(e.target.value)}></textarea>
+          <PromptEditor
+            // value={value}
+            contextBlock={{
+              selectable: !hasSetBlockStatus.context,
+              datasets: [],
+              onAddContext: () => {},
+            }}
+            variableBlock={{
+              variables: [],
+              onAddVariable: () => {},
+            }}
+            historyBlock={{
+              selectable: !hasSetBlockStatus.history,
+              history: {
+                user: 'aaaa',
+                assistant: 'Assistant',
+              },
+              onEditRole: () => {},
+            }}
+            queryBlock={{
+              selectable: !hasSetBlockStatus.query,
+            }}
+            onChange={onChange}
+          />
         </div>
         <div className='pl-4 pb-2 flex'>
           <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
