@@ -75,6 +75,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   contextBlock = {
     selectable: true,
     datasets: [],
+    onAddContext: () => {},
     onInsert: () => {},
     onDelete: () => {},
   },
@@ -140,11 +141,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <VariablePicker items={variableBlock.variables} />
         <ContextBlock
           datasets={contextBlock.datasets}
+          onAddContext={contextBlock.onAddContext}
           onInsert={contextBlock.onInsert}
           onDelete={contextBlock.onDelete}
         />
         <ContextBlockReplacementBlock
           datasets={contextBlock.datasets}
+          onAddContext={contextBlock.onAddContext}
           onInsert={contextBlock.onInsert}
         />
         <VariableBlock />

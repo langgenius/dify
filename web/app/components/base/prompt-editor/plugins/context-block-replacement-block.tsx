@@ -17,6 +17,7 @@ const REGEX = new RegExp(CONTEXT_PLACEHOLDER_TEXT)
 
 const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
   datasets,
+  onAddContext,
   onInsert,
 }) => {
   const [editor] = useLexicalComposerContext()
@@ -29,8 +30,8 @@ const ContextBlockReplacementBlock: FC<ContextBlockProps> = ({
   const createContextBlockNode = useCallback((): ContextBlockNode => {
     if (onInsert)
       onInsert()
-    return $applyNodeReplacement($createContextBlockNode(datasets))
-  }, [datasets, onInsert])
+    return $applyNodeReplacement($createContextBlockNode(datasets, onAddContext))
+  }, [datasets, onAddContext, onInsert])
 
   const getVariableValueMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

@@ -23,11 +23,13 @@ export type Dataset = {
 
 export type ContextBlockProps = {
   datasets: Dataset[]
+  onAddContext: () => void
   onInsert?: () => void
   onDelete?: () => void
 }
 const ContextBlock: FC<ContextBlockProps> = ({
   datasets,
+  onAddContext,
   onInsert,
   onDelete,
 }) => {
@@ -41,7 +43,7 @@ const ContextBlock: FC<ContextBlockProps> = ({
       editor.registerCommand(
         INSERT_CONTEXT_BLOCK_COMMAND,
         () => {
-          const contextBlockNode = $createContextBlockNode(datasets)
+          const contextBlockNode = $createContextBlockNode(datasets, onAddContext)
 
           $insertNodes([contextBlockNode])
 
@@ -63,7 +65,7 @@ const ContextBlock: FC<ContextBlockProps> = ({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, datasets, onInsert, onDelete])
+  }, [editor, datasets, onAddContext, onInsert, onDelete])
 
   return null
 }
