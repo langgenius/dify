@@ -57,6 +57,31 @@ const config: ProviderConfig = {
     ],
     fields: [
       {
+        type: 'radio',
+        key: 'model_type',
+        required: true,
+        label: {
+          'en': 'Model Type',
+          'zh-Hans': '模型类型',
+        },
+        options: [
+          {
+            key: 'text-generation',
+            label: {
+              'en': 'Text Generation',
+              'zh-Hans': '文本生成',
+            },
+          },
+          {
+            key: 'embeddings',
+            label: {
+              'en': 'Embeddings',
+              'zh-Hans': 'Embeddings',
+            },
+          },
+        ],
+      },
+      {
         type: 'text',
         key: 'model_name',
         required: true,
