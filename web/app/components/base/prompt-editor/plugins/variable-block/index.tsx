@@ -8,8 +8,8 @@ import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { CustomTextNode } from '../custom-text/node'
 
-export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand()
-export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand()
+export const INSERT_VARIABLE_BLOCK_COMMAND = createCommand('INSERT_VARIABLE_BLOCK_COMMAND')
+export const INSERT_VARIABLE_VALUE_BLOCK_COMMAND = createCommand('INSERT_VARIABLE_VALUE_BLOCK_COMMAND')
 
 const VariableBlock = () => {
   const [editor] = useLexicalComposerContext()

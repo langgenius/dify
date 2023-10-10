@@ -12,10 +12,10 @@ import {
   QueryBlockNode,
 } from './node'
 
-export const INSERT_QUERY_BLOCK_COMMAND = createCommand()
-export const DELETE_QUERY_BLOCK_COMMAND = createCommand()
+export const INSERT_QUERY_BLOCK_COMMAND = createCommand('INSERT_QUERY_BLOCK_COMMAND')
+export const DELETE_QUERY_BLOCK_COMMAND = createCommand('DELETE_QUERY_BLOCK_COMMAND')
 
-type QueryBlockProps = {
+export type QueryBlockProps = {
   onInsert?: () => void
   onDelete?: () => void
 }

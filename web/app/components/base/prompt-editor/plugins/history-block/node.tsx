@@ -22,6 +22,8 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     this.__roleName = roleName
   }
 
+  setFormat() {}
+
   isInline(): boolean {
     return true
   }

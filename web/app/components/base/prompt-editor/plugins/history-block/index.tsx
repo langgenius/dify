@@ -12,15 +12,15 @@ import {
   HistoryBlockNode,
 } from './node'
 
-export const INSERT_HISTORY_BLOCK_COMMAND = createCommand()
-export const DELETE_HISTORY_BLOCK_COMMAND = createCommand()
+export const INSERT_HISTORY_BLOCK_COMMAND = createCommand('INSERT_HISTORY_BLOCK_COMMAND')
+export const DELETE_HISTORY_BLOCK_COMMAND = createCommand('DELETE_HISTORY_BLOCK_COMMAND')
 
 export type RoleName = {
   user: string
   assistant: string
 }
 
-type HistoryBlockProps = {
+export type HistoryBlockProps = {
   roleName: RoleName
   onInsert?: () => void
   onDelete?: () => void

@@ -12,8 +12,8 @@ import {
   ContextBlockNode,
 } from './node'
 
-export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand()
-export const DELETE_CONTEXT_BLOCK_COMMAND = createCommand()
+export const INSERT_CONTEXT_BLOCK_COMMAND = createCommand('INSERT_CONTEXT_BLOCK_COMMAND')
+export const DELETE_CONTEXT_BLOCK_COMMAND = createCommand('DELETE_CONTEXT_BLOCK_COMMAND')
 
 export type Dataset = {
   id: string
@@ -21,7 +21,7 @@ export type Dataset = {
   type: string
 }
 
-type ContextBlockProps = {
+export type ContextBlockProps = {
   datasets: Dataset[]
   onInsert?: () => void
   onDelete?: () => void
