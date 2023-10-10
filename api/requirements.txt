@@ -49,7 +49,7 @@ huggingface_hub~=0.16.4
 transformers~=4.31.0
 stripe~=5.5.0
 pandas==1.5.3
-xinference==0.4.2
+xinference==0.5.2
 safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug==2.3.7
