@@ -31,6 +31,7 @@ import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
+import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type { Option } from './plugins/variable-picker'
@@ -106,7 +107,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       QueryBlockNode,
       VariableValueBlockNode,
     ],
-    editorState: value,
+    editorState: value ? textToEditorState(value as string) : null,
     onError: (error: Error) => {
       throw error
     },
