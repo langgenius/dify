@@ -34,40 +34,28 @@ class AppModelConfigService:
         # max_tokens
         if 'max_tokens' not in cp:
             cp["max_tokens"] = 512
-        #
-        # if not isinstance(cp["max_tokens"], int) or cp["max_tokens"] <= 0 or cp["max_tokens"] > \
-        #         llm_constant.max_context_token_length[model_name]:
-        #     raise ValueError(
-        #         "max_tokens must be an integer greater than 0 "
-        #         "and not exceeding the maximum value of the corresponding model")
-        #
+
         # temperature
         if 'temperature' not in cp:
             cp["temperature"] = 1
-        #
-        # if not isinstance(cp["temperature"], (float, int)) or cp["temperature"] < 0 or cp["temperature"] > 2:
-        #     raise ValueError("temperature must be a float between 0 and 2")
-        #
+
         # top_p
         if 'top_p' not in cp:
             cp["top_p"] = 1
 
-        # if not isinstance(cp["top_p"], (float, int)) or cp["top_p"] < 0 or cp["top_p"] > 2:
-        #     raise ValueError("top_p must be a float between 0 and 2")
-        #
         # presence_penalty
         if 'presence_penalty' not in cp:
             cp["presence_penalty"] = 0
 
-        # if not isinstance(cp["presence_penalty"], (float, int)) or cp["presence_penalty"] < -2 or cp["presence_penalty"] > 2:
-        #     raise ValueError("presence_penalty must be a float between -2 and 2")
-        #
         # presence_penalty
         if 'frequency_penalty' not in cp:
             cp["frequency_penalty"] = 0
 
-        # if not isinstance(cp["frequency_penalty"], (float, int)) or cp["frequency_penalty"] < -2 or cp["frequency_penalty"] > 2:
-        #     raise ValueError("frequency_penalty must be a float between -2 and 2")
+        # stop
+        if 'stop' not in cp:
+            cp["stop"] = []
+        elif not isinstance(cp["stop"], list):
+            raise ValueError("stop in model.completion_params must be of list type")
 
         # Filter out extra parameters
         filtered_cp = {
@@ -75,7 +63,8 @@ class AppModelConfigService:
             "temperature": cp["temperature"],
             "top_p": cp["top_p"],
             "presence_penalty": cp["presence_penalty"],
-            "frequency_penalty": cp["frequency_penalty"]
+            "frequency_penalty": cp["frequency_penalty"],
+            "stop": cp["stop"]
         }
 
         return filtered_cp
