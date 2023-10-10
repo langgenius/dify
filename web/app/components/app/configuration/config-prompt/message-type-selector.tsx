@@ -3,14 +3,14 @@ import type { FC } from 'react'
 import React from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
 import cn from 'classnames'
-import { MessageType } from '@/models/debug'
+import { PromptRole } from '@/models/debug'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 type Props = {
-  value: MessageType
-  onChange: (value: MessageType) => void
+  value: PromptRole
+  onChange: (value: PromptRole) => void
 }
 
-const allTypes = [MessageType.system, MessageType.user, MessageType.assistant]
+const allTypes = [PromptRole.system, PromptRole.user, PromptRole.assistant]
 const MessageTypeSelector: FC<Props> = ({
   value,
   onChange,

@@ -10,7 +10,8 @@ import cn from 'classnames'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
-import { type CompletionParams, type DatasetConfigParams, type Inputs, type ModelConfig, type MoreLikeThisConfig, type PromptConfig, PromptMode, type PromptVariable } from '@/models/debug'
+import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
+import type { CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -27,8 +28,7 @@ import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
-import { MessageType } from '@/models/debug'
-
+import { PromptMode } from '@/models/debug'
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: CompletionParams
@@ -47,21 +47,7 @@ const Configuration: FC = () => {
   const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
-  // advanced mode prompts
-  const [messageList, setMessageList] = React.useState<any[]>([
-    {
-      type: MessageType.system,
-      message: 'You are a friendly assistant',
-    },
-    {
-      type: MessageType.user,
-      message: 'Hello',
-    },
-    {
-      type: MessageType.assistant,
-      message: '...',
-    },
-  ])
+
   const [introduction, setIntroduction] = useState<string>('')
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
   const [prevPromptConfig, setPrevPromptConfig] = useState<PromptConfig>({
@@ -133,6 +119,7 @@ const Configuration: FC = () => {
     })
     setModelConfig(newModelConfig)
   }
+
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
@@ -188,6 +175,17 @@ const Configuration: FC = () => {
 
     doSetPromptMode(mode)
   }
+
+  const {
+    chatPromptConfig,
+    completionPromptConfig,
+    currentAdvancedPrompt,
+    setCurrentAdvancedPrompt,
+    setConversationHistoriesRole,
+  } = useAdvancedPromptConfig({
+    promptMode,
+    modelModeType,
+  })
 
   useEffect(() => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
@@ -338,8 +336,8 @@ const Configuration: FC = () => {
       promptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
-      messageList,
-      setMessageList,
+      currentAdvancedPrompt,
+      setCurrentAdvancedPrompt,
       conversationId,
       introduction,
       setIntroduction,

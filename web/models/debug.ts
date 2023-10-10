@@ -6,6 +6,24 @@ export enum PromptMode {
   advanced = 'advanced',
 }
 
+export type PromptItem = {
+  role?: PromptRole
+  text: string
+}
+
+export type ChatPromptConfig = {
+  prompt: PromptItem[]
+}
+
+export type ConversationHistoriesRole = {
+  user_prefix: string
+  assistant_prefix: string
+}
+export type CompletionPromptConfig = {
+  prompt: PromptItem
+  conversation_histories_role: ConversationHistoriesRole
+}
+
 export type ChatModelPromptConfig = {
   context: {
     hasSet: boolean
@@ -30,7 +48,7 @@ export type CompletionModelPromptConfig = {
   }
 }
 
-export enum MessageType {
+export enum PromptRole {
   system = 'system',
   user = 'user',
   assistant = 'assistant',

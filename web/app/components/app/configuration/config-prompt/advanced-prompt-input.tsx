@@ -6,16 +6,17 @@ import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
-import type { MessageType } from '@/models/debug'
+import type { PromptRole } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
-  type: MessageType
+  type: PromptRole
   isChatMode: boolean
-  message: string
-  onTypeChange: (value: MessageType) => void
+  value: string
+  onTypeChange: (value: PromptRole) => void
+  onChange: (value: string) => void
   canDelete: boolean
   onDelete: () => void
 }
@@ -23,7 +24,8 @@ type Props = {
 const AdvancedPromptInput: FC<Props> = ({
   type,
   isChatMode,
-  message,
+  value,
+  onChange,
   onTypeChange,
   canDelete,
   onDelete,
@@ -59,7 +61,7 @@ const AdvancedPromptInput: FC<Props> = ({
             {!isCopied
               ? (
                 <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
-                  copy(message)
+                  copy(value)
                   setIsCopied(true)
                 }} />
               )
@@ -70,10 +72,10 @@ const AdvancedPromptInput: FC<Props> = ({
           </div>
         </div>
         <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
-          {message}
+          <textarea value={value} onChange={e => onChange(e.target.value)}></textarea>
         </div>
         <div className='pl-4 pb-2 flex'>
-          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{message.length}</div>
+          <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
         </div>
       </div>
     </div>

@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 
@@ -14,8 +14,8 @@ type IDebugConfiguration = {
   setPromptMode: (promptMode: PromptMode) => void
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
-  messageList: any[]
-  setMessageList: (messageList: any[]) => void
+  currentAdvancedPrompt: PromptItem | PromptItem[]
+  setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[]) => void
   chatModelPromptConfig: ChatModelPromptConfig
   setChatModelPromptConfig: (config: ChatModelPromptConfig) => void
   completionModelPromptConfig: CompletionModelPromptConfig
@@ -66,14 +66,14 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setPromptMode: () => { },
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
-  messageList: [], // chat model prompt list
-  setMessageList: () => { },
   chatModelPromptConfig: {
     context: {
       hasSet: false,
     },
     variables: [],
   },
+  currentAdvancedPrompt: [],
+  setCurrentAdvancedPrompt: () => { },
   setChatModelPromptConfig: () => {},
   completionModelPromptConfig: {
     context: {
@@ -136,6 +136,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   modelConfig: {
     provider: 'OPENAI', // 'OPENAI'
     model_id: 'gpt-3.5-turbo', // 'gpt-3.5-turbo'
+    mode: ModelModeType.unset,
     configs: {
       prompt_template: '',
       prompt_variables: [],

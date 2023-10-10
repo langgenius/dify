@@ -6,8 +6,8 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import SimplePromptInput from './simple-prompt-input'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
-import { MessageType, PromptMode } from '@/models/debug'
-import type { PromptVariable } from '@/models/debug'
+import { PromptMode, PromptRole } from '@/models/debug'
+import type { PromptItem, PromptVariable } from '@/models/debug'
 import { type AppType, ModelModeType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
@@ -32,32 +32,57 @@ const Prompt: FC<IPromptProps> = ({
   const { t } = useTranslation()
 
   const {
-    messageList = [],
-    setMessageList,
+    currentAdvancedPrompt,
+    setCurrentAdvancedPrompt,
     modelModeType,
   } = useContext(ConfigContext)
 
-  const handleMessageTypeChange = (index: number, type: string) => {
-    const newMessageList = produce(messageList, (draft) => {
-      draft[index].type = type
+  const handleMessageTypeChange = (index: number, role: PromptRole) => {
+    const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
+      draft[index].role = role
     })
-    setMessageList(newMessageList)
+    setCurrentAdvancedPrompt(newPrompt)
+  }
+
+  const handleValueChange = (value: string, index?: number) => {
+    if (modelModeType === ModelModeType.chat) {
+      const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
+        draft[index as number].text = value
+      })
+      setCurrentAdvancedPrompt(newPrompt)
+    }
+    else {
+      const prompt = currentAdvancedPrompt as PromptItem
+      setCurrentAdvancedPrompt({
+        ...prompt,
+        text: value,
+      })
+    }
   }
 
   const handleAddMessage = () => {
-    const lastMessageType = messageList[messageList.length - 1].type
-    const appendMessage = {
-      type: lastMessageType === MessageType.user ? MessageType.assistant : MessageType.user,
-      message: '',
+    const currentAdvancedPromptList = currentAdvancedPrompt as PromptItem[]
+    if (currentAdvancedPromptList.length === 0) {
+      setCurrentAdvancedPrompt([{
+        role: PromptRole.system,
+        text: '',
+      }])
+      return
     }
-    setMessageList([...messageList, appendMessage])
+    const lastMessageType = currentAdvancedPromptList[currentAdvancedPromptList.length - 1].role
+    const appendMessage = {
+      role: lastMessageType === PromptRole.user ? PromptRole.assistant : PromptRole.user,
+      text: '',
+    }
+    setCurrentAdvancedPrompt([...currentAdvancedPromptList, appendMessage])
   }
 
-  const handleMessageDelete = (index: number) => {
-    const newMessageList = produce(messageList, (draft) => {
+  const handlePromptDelete = (index: number) => {
+    const currentAdvancedPromptList = currentAdvancedPrompt as PromptItem[]
+    const newPrompt = produce(currentAdvancedPromptList, (draft) => {
       draft.splice(index, 1)
     })
-    setMessageList(newMessageList)
+    setCurrentAdvancedPrompt(newPrompt)
   }
 
   if (promptMode === PromptMode.simple) {
@@ -76,26 +101,28 @@ const Prompt: FC<IPromptProps> = ({
       <div className='space-y-3'>
         {modelModeType === ModelModeType.chat
           ? (
-            messageList.map((item, index) => (
+            (currentAdvancedPrompt as PromptItem[]).map((item, index) => (
               <AdvancedMessageInput
                 key={index}
                 isChatMode
-                type={item.type}
-                message={item.message}
+                type={item.role as PromptRole}
+                value={item.text}
                 onTypeChange={type => handleMessageTypeChange(index, type)}
-                canDelete={messageList.length > 1}
-                onDelete={() => handleMessageDelete(index)}
+                canDelete={(currentAdvancedPrompt as PromptItem[]).length > 1}
+                onDelete={() => handlePromptDelete(index)}
+                onChange={value => handleValueChange(value, index)}
               />
             ))
           )
           : (
             <AdvancedMessageInput
-              type={messageList[0].type}
+              type={(currentAdvancedPrompt as PromptItem).role as PromptRole}
               isChatMode={false}
-              message={messageList[0].message}
+              value={(currentAdvancedPrompt as PromptItem).text}
               onTypeChange={type => handleMessageTypeChange(0, type)}
               canDelete={false}
-              onDelete={() => handleMessageDelete(0)}
+              onDelete={() => handlePromptDelete(0)}
+              onChange={value => handleValueChange(value)}
             />
           )}
 
