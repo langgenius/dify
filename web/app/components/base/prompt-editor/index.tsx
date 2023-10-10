@@ -1,6 +1,7 @@
 'use client'
 
-import { type FC } from 'react'
+import type { FC } from 'react'
+import { useEffect } from 'react'
 import type {
   EditorState,
 } from 'lexical'
@@ -69,6 +70,11 @@ export type PromptEditorProps = {
   }
 }
 
+// eslint-disable-next-line import/no-mutable-exports
+export let latestDatasets: Dataset[] = []
+// eslint-disable-next-line import/no-mutable-exports
+export let latestHistory: RoleName = { user: '', assistant: '' }
+
 const PromptEditor: FC<PromptEditorProps> = ({
   value,
   editable = true,
@@ -85,8 +91,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
     show: true,
     selectable: true,
     history: {
-      user: 'Human',
-      assistant: 'Assistant',
+      user: '',
+      assistant: '',
     },
     onEditRole: () => {},
     onInsert: () => {},
@@ -125,6 +131,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
     if (onChange)
       onChange(editorState.read(() => $getRoot().getTextContent()))
   }
+
+  useEffect(() => {
+    latestDatasets = contextBlock.datasets
+  }, [contextBlock.datasets])
+  useEffect(() => {
+    latestHistory = historyBlock.history
+  }, [historyBlock.history])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
