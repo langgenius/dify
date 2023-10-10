@@ -18,7 +18,6 @@ from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
-from models.dataset import DocumentSegment, Dataset, Document
 from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
 
 
@@ -160,14 +159,29 @@ class Completion:
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
                       fake_response: Optional[str]):
         # get llm prompt
-        prompt_messages, stop_words = model_instance.get_prompt(
-            mode=mode,
-            pre_prompt=app_model_config.pre_prompt,
-            inputs=inputs,
-            query=query,
-            context=agent_execute_result.output if agent_execute_result else None,
-            memory=memory
-        )
+        if app_model_config.prompt_type == 'simple':
+            prompt_messages, stop_words = model_instance.get_prompt(
+                mode=mode,
+                pre_prompt=app_model_config.pre_prompt,
+                inputs=inputs,
+                query=query,
+                context=agent_execute_result.output if agent_execute_result else None,
+                memory=memory
+            )
+        else:
+            # TODO use advanced prompt
+            prompt_messages, _ = model_instance.get_prompt(
+                mode=mode,
+                pre_prompt=app_model_config.pre_prompt,
+                inputs=inputs,
+                query=query,
+                context=agent_execute_result.output if agent_execute_result else None,
+                memory=memory
+            )
+
+            model_config = app_model_config.model_dict
+            completion_params = model_config.get("completion_params", {})
+            stop_words = completion_params.get("stop", [])
 
         cls.recale_llm_max_tokens(
             model_instance=model_instance,
