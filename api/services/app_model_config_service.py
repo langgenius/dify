@@ -339,11 +339,8 @@ class AppModelConfigService:
         # dataset_query_variable
         AppModelConfigService.is_dataset_query_variable_valid(config, mode)
 
-        # prompt_type
-        if config['prompt_type'] not in ['simple', 'advanced']:
-            raise ValueError("prompt_type must be in ['simple', 'advanced']")
-
-        AppModelConfigService.is_advanced_prompt_valid(config, mode)
+        # advanced prompt validation
+        AppModelConfigService.is_advanced_prompt_valid(config)
 
         # Filter out extra parameters
         filtered_config = {
@@ -388,9 +385,35 @@ class AppModelConfigService:
         
 
     @staticmethod
-    def is_advanced_prompt_valid(config: dict, mode: str) -> None:
-        if config.get('prompt_type') != 'advanced':
-            return
+    def is_advanced_prompt_valid(config: dict) -> None:
+        # prompt_type
+        if 'prompt_type' not in config or not config["prompt_type"]:
+            config["prompt_type"] = "simple"
+
+        if config['prompt_type'] not in ['simple', 'advanced']:
+            raise ValueError("prompt_type must be in ['simple', 'advanced']")
         
-        if not config.get('chat_prompt_config') and not config.get('completion_prompt_config'):
-            raise ValueError("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced")
+        # chat_prompt_config
+        if 'chat_prompt_config' not in config or not config["chat_prompt_config"]:
+            config["chat_prompt_config"] = {}
+
+        if not isinstance(config["chat_prompt_config"], dict):
+            raise ValueError("chat_prompt_config must be of object type")
+
+        # completion_prompt_config
+        if 'completion_prompt_config' not in config or not config["completion_prompt_config"]:
+            config["completion_prompt_config"] = {}
+
+        if not isinstance(config["completion_prompt_config"], dict):
+            raise ValueError("completion_prompt_config must be of object type")
+        
+        # dataset_configs
+        if 'dataset_configs' not in config or not config["dataset_configs"]:
+            config["dataset_configs"] = {"top_k": 2, "score_threshold": {"enable": False}}
+
+        if not isinstance(config["dataset_configs"], dict):
+            raise ValueError("dataset_configs must be of object type")
+
+        if config['prompt_type'] == 'advanced':
+            if not config['chat_prompt_config'] and not config['completion_prompt_config']:
+                raise ValueError("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced")
