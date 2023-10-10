@@ -12,7 +12,7 @@ import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
-import type { CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import type { CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -95,10 +95,16 @@ const Configuration: FC = () => {
     retriever_resource: null,
     dataSets: [],
   })
-
-  const [datasetConfigParams, setDatasetConfigParams] = useState<DatasetConfigParams>({
-    top_k: 6,
-    score_threshold: 0.78,
+  // TODO dataset_configs
+  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+    top_k: {
+      enable: false,
+      value: 2,
+    },
+    score_threshold: {
+      enable: false,
+      value: 0.7,
+    },
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -414,8 +420,8 @@ const Configuration: FC = () => {
       showSelectDataSet,
       dataSets,
       setDataSets,
-      datasetConfigParams,
-      setDatasetConfigParams,
+      datasetConfigs,
+      setDatasetConfigs,
       hasSetContextVar,
     }}
     >

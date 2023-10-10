@@ -1,6 +1,9 @@
 .slider {
     position: relative;
 }
+.slider.disabled {
+    opacity: 0.6;
+}
 
 .slider-thumb {
     width: 18px;

@@ -213,9 +213,9 @@ const translation = {
   datasetConfig: {
     params: '参数设置',
     top_k: 'Top K',
-    top_kTip: '分数最高的该数值个数的分段将被采用',
+    top_kTip: '用于筛选与用户问题相似度最高的文本片段。系统同时会根据选用模型上下文窗口大小动态调整分段数量。',
     score_threshold: 'Score 阈值',
-    score_thresholdTip: '分数大于该数值的分段将被采用',
+    score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
   },
 }
 

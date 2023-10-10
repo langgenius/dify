@@ -112,10 +112,11 @@ export type ModelConfig = {
   retriever_resource: RetrieverResourceConfig | null
   dataSets: any[]
 }
-export type DatasetConfigParams = {
-  top_k: number
-  score_threshold: number
+export type DatasetConfigItem = {
+  enable: boolean
+  value: number
 }
+export type DatasetConfigs = Record<string, DatasetConfigItem>
 
 export type DebugRequestBody = {
   inputs: Inputs

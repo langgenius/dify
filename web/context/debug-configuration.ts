@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { BlockStatus, ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigParams, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { BlockStatus, ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 
@@ -54,8 +54,8 @@ type IDebugConfiguration = {
   setDataSets: (dataSet: DataSet[]) => void
   showSelectDataSet: () => void
   // dataset config
-  datasetConfigParams: DatasetConfigParams
-  setDatasetConfigParams: (config: DatasetConfigParams) => void
+  datasetConfigs: DatasetConfigs
+  setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
 }
 
@@ -161,11 +161,17 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   dataSets: [],
   showSelectDataSet: () => { },
   setDataSets: () => { },
-  datasetConfigParams: {
-    top_k: 6,
-    score_threshold: 0.78,
+  datasetConfigs: {
+    top_k: {
+      enable: false,
+      value: 2,
+    },
+    score_threshold: {
+      enable: false,
+      value: 0.7,
+    },
   },
-  setDatasetConfigParams: () => {},
+  setDatasetConfigs: () => {},
   hasSetContextVar: false,
 })
 

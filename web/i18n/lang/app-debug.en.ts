@@ -223,9 +223,9 @@ const translation = {
   datasetConfig: {
     params: 'Params',
     top_k: 'Top K',
-    top_kTip: 'The number of segments with high score will be take',
+    top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
     score_threshold: 'Score Threshold',
-    score_thresholdTip: 'Segments with scores greater than this value will be take',
+    score_thresholdTip: 'Used to set the similarity threshold for segment filtering.',
   },
 }
 
