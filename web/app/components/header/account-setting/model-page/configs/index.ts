@@ -12,6 +12,7 @@ import xinference from './xinference'
 import openllm from './openllm'
 import localai from './localai'
 import zhipuai from './zhipuai'
+import baichuan from './baichuan'
 
 export default {
   openai,
@@ -28,4 +29,5 @@ export default {
   openllm,
   localai,
   zhipuai,
+  baichuan,
 }
