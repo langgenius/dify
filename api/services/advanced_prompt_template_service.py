@@ -10,7 +10,7 @@ class AdvancedPromptTemplateService:
         model_mode = args['model_mode']
         model_name = args['model_name']
 
-        if model_name == 'baichuan':
+        if 'baichuan' in model_name:
             return AdvancedPromptTemplateService.get_baichuan_prompt(app_mode, model_mode)
         else:
             return AdvancedPromptTemplateService.get_common_prompt(app_mode, model_mode)
