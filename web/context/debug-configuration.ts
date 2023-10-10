@@ -52,6 +52,7 @@ type IDebugConfiguration = {
   setModelConfig: (modelConfig: ModelConfig) => void
   dataSets: DataSet[]
   setDataSets: (dataSet: DataSet[]) => void
+  showSelectDataSet: () => void
   // dataset config
   datasetConfigParams: DatasetConfigParams
   setDatasetConfigParams: (config: DatasetConfigParams) => void
@@ -158,6 +159,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setModelConfig: () => { },
   dataSets: [],
+  showSelectDataSet: () => { },
   setDataSets: () => { },
   datasetConfigParams: {
     top_k: 6,

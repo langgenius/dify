@@ -40,7 +40,8 @@ const AdvancedPromptInput: FC<Props> = ({
     hasSetBlockStatus,
     modelConfig,
     setModelConfig,
-    // completionModelPromptConfig
+    dataSets,
+    showSelectDataSet,
   } = useContext(ConfigContext)
 
   const [isCopied, setIsCopied] = React.useState(false)
@@ -55,6 +56,7 @@ const AdvancedPromptInput: FC<Props> = ({
     })
     setModelConfig(newModelConfig)
   }
+
   return (
     <div className={`${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
@@ -98,8 +100,12 @@ const AdvancedPromptInput: FC<Props> = ({
             value={value}
             contextBlock={{
               selectable: !hasSetBlockStatus.context,
-              datasets: [],
-              onAddContext: () => {},
+              datasets: dataSets.map(item => ({
+                id: item.id,
+                name: item.name,
+                type: item.data_source_type,
+              })),
+              onAddContext: showSelectDataSet,
             }}
             variableBlock={{
               variables: modelConfig.configs.prompt_variables.map(item => ({

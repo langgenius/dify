@@ -7,7 +7,7 @@ import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
-import { clone } from 'lodash-es'
+import { clone, isEqual } from 'lodash-es'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
@@ -31,6 +31,7 @@ import { AppType, ModelModeType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -94,6 +95,7 @@ const Configuration: FC = () => {
     retriever_resource: null,
     dataSets: [],
   })
+
   const [datasetConfigParams, setDatasetConfigParams] = useState<DatasetConfigParams>({
     top_k: 6,
     score_threshold: 0.78,
@@ -126,6 +128,33 @@ const Configuration: FC = () => {
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
   const hasSetContextVar = !!contextVar
+  const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
+  const selectedIds = dataSets.map(item => item.id)
+  const handleSelect = (data: DataSet[]) => {
+    if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
+      hideSelectDataSet()
+      return
+    }
+
+    setFormattingChanged(true)
+    if (data.find(item => !item.name)) { // has not loaded selected dataset
+      const newSelected = produce(data, (draft) => {
+        data.forEach((item, index) => {
+          if (!item.name) { // not fetched database
+            const newItem = dataSets.find(i => i.id === item.id)
+            if (newItem)
+              draft[index] = newItem
+          }
+        })
+      })
+      setDataSets(newSelected)
+    }
+    else {
+      setDataSets(data)
+    }
+    hideSelectDataSet()
+  }
+
   const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
@@ -169,8 +198,6 @@ const Configuration: FC = () => {
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
   const isAdvancedMode = promptMode === PromptMode.advanced
-  // const modelMode = 'chat'
-  // can return to simple mode if switch to advanced mode and not published
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = (mode: PromptMode) => {
     if (mode === PromptMode.advanced)
@@ -384,6 +411,7 @@ const Configuration: FC = () => {
       setCompletionParams,
       modelConfig,
       setModelConfig,
+      showSelectDataSet,
       dataSets,
       setDataSets,
       datasetConfigParams,
@@ -487,6 +515,15 @@ const Configuration: FC = () => {
         {isShowSetAPIKey && <AccountSetting activeTab="provider" onCancel={async () => {
           hideSetAPIkey()
         }} />}
+
+        {isShowSelectDataSet && (
+          <SelectDataSet
+            isShow={isShowSelectDataSet}
+            onClose={hideSelectDataSet}
+            selectedIds={selectedIds}
+            onSelect={handleSelect}
+          />
+        )}
       </>
     </ConfigContext.Provider>
   )
