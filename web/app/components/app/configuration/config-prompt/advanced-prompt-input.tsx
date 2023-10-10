@@ -5,16 +5,16 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+import { useBoolean } from 'ahooks'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
+import EditHistoryModal from './conversation-histroy/edit-modal'
 import type { PromptRole } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
-
 type Props = {
   type: PromptRole
   isChatMode: boolean
@@ -39,23 +39,27 @@ const AdvancedPromptInput: FC<Props> = ({
   const {
     hasSetBlockStatus,
     modelConfig,
-    setModelConfig,
+    conversationHistoriesRole,
+    setConversationHistoriesRole,
+    // setModelConfig,
     dataSets,
     showSelectDataSet,
   } = useContext(ConfigContext)
 
   const [isCopied, setIsCopied] = React.useState(false)
-  const handleAddVar = (key: string) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
-      draft.configs.prompt_variables.push({
-        key,
-        name: key,
-        type: 'string',
-        required: true,
-      })
-    })
-    setModelConfig(newModelConfig)
-  }
+  // const handleAddVar = (key: string) => {
+  //   const newModelConfig = produce(modelConfig, (draft) => {
+  //     draft.configs.prompt_variables.push({
+  //       key,
+  //       name: key,
+  //       type: 'string',
+  //       required: true,
+  //     })
+  //   })
+  //   setModelConfig(newModelConfig)
+  // }
+
+  const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
 
   return (
     <div className={`${s.gradientBorder}`}>
@@ -112,16 +116,15 @@ const AdvancedPromptInput: FC<Props> = ({
                 name: item.name,
                 value: item.key,
               })),
-              onAddVariable: handleAddVar,
             }}
             historyBlock={{
               show: !isChatMode,
               selectable: !hasSetBlockStatus.history,
               history: {
-                user: 'aaaa',
-                assistant: 'Assistant',
+                user: conversationHistoriesRole.user_prefix,
+                assistant: conversationHistoriesRole.assistant_prefix,
               },
-              onEditRole: () => {},
+              onEditRole: showHistoryModal,
             }}
             queryBlock={{
               show: !isChatMode,
@@ -134,6 +137,19 @@ const AdvancedPromptInput: FC<Props> = ({
           <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
         </div>
       </div>
+      {isShowHistoryModal && (
+        <EditHistoryModal
+          isShow={isShowHistoryModal}
+          saveLoading={false}
+          onClose={hideHistoryModal}
+          data={conversationHistoriesRole}
+          onSave={(data) => {
+            setConversationHistoriesRole(data)
+            hideHistoryModal()
+          }}
+        />
+      )}
+
     </div>
   )
 }

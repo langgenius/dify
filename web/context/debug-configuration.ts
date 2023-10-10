@@ -1,6 +1,6 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { BlockStatus, ChatModelPromptConfig, CitationConfig, CompletionModelPromptConfig, CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { BlockStatus, CitationConfig, CompletionParams, ConversationHistoriesRole, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 
@@ -17,10 +17,8 @@ type IDebugConfiguration = {
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   currentAdvancedPrompt: PromptItem | PromptItem[]
   setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[]) => void
-  chatModelPromptConfig: ChatModelPromptConfig
-  setChatModelPromptConfig: (config: ChatModelPromptConfig) => void
-  completionModelPromptConfig: CompletionModelPromptConfig
-  setCompletionModelPromptConfig: (config: CompletionModelPromptConfig) => void
+  conversationHistoriesRole: ConversationHistoriesRole
+  setConversationHistoriesRole: (conversationHistoriesRole: ConversationHistoriesRole) => void
   hasSetBlockStatus: BlockStatus
   conversationId: string | null // after first chat send
   setConversationId: (conversationId: string | null) => void
@@ -70,32 +68,13 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   isAdvancedMode: false,
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
-  chatModelPromptConfig: {
-    context: {
-      hasSet: false,
-    },
-    variables: [],
-  },
   currentAdvancedPrompt: [],
-  setCurrentAdvancedPrompt: () => { },
-  setChatModelPromptConfig: () => {},
-  completionModelPromptConfig: {
-    context: {
-      hasSet: false,
-    },
-    variables: [],
-    historyPrefix: {
-      hasSet: false,
-      value: {
-        userPrefix: '',
-        assistantPrefix: '',
-      },
-    },
-    query: {
-      hasSet: false,
-    },
+  conversationHistoriesRole: {
+    user_prefix: 'user',
+    assistant_prefix: 'assistant',
   },
-  setCompletionModelPromptConfig: () => { },
+  setConversationHistoriesRole: () => { },
+  setCurrentAdvancedPrompt: () => { },
   hasSetBlockStatus: {
     context: false,
     history: false,
@@ -162,10 +141,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   showSelectDataSet: () => { },
   setDataSets: () => { },
   datasetConfigs: {
-    top_k: {
-      enable: false,
-      value: 2,
-    },
+    top_k: 2,
     score_threshold: {
       enable: false,
       value: 0.7,

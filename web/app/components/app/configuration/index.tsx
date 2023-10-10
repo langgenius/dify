@@ -390,6 +390,8 @@ const Configuration: FC = () => {
       setCanReturnToSimpleMode,
       currentAdvancedPrompt,
       setCurrentAdvancedPrompt,
+      conversationHistoriesRole: completionPromptConfig.conversation_histories_role,
+      setConversationHistoriesRole,
       hasSetBlockStatus,
       conversationId,
       introduction,

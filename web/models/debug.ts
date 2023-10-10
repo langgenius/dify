@@ -24,30 +24,6 @@ export type CompletionPromptConfig = {
   conversation_histories_role: ConversationHistoriesRole
 }
 
-export type ChatModelPromptConfig = {
-  context: {
-    hasSet: boolean
-  }
-  variables: PromptVariable[]
-}
-
-export type CompletionModelPromptConfig = {
-  context: {
-    hasSet: boolean
-  }
-  variables: PromptVariable[]
-  historyPrefix: {
-    hasSet: boolean
-    value: {
-      userPrefix: string
-      assistantPrefix: string
-    }
-  }
-  query: {
-    hasSet: boolean
-  }
-}
-
 export type BlockStatus = {
   context: boolean
   history: boolean
