@@ -27,7 +27,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -82,14 +82,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://api.dify.ai/v1/datasets?page=1&limit=20' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \
     --header 'Authorization: Bearer {api_key}'
     ```
     </CodeGroup>
@@ -162,7 +162,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
-                - 枚举： 
+                - 枚举：
                   - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
                   - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
@@ -173,14 +173,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets/{dataset_id}/document/create_by_text"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/create_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -269,7 +269,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
-                - 枚举： 
+                - 枚举：
                   - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
                   - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
@@ -280,14 +280,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets/{dataset_id}/document/create_by_file"
       targetCode={`curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/create_by_file' \
+    curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -363,7 +363,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
-                - 枚举： 
+                - 枚举：
                   - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
                   - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
@@ -374,14 +374,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets/{dataset_id}/documents/{document_id}/update_by_text"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -460,7 +460,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
             - <code>pre_processing_rules</code> (array[object]) 预处理规则
               - <code>id</code> (string) 预处理规则的唯一标识符
-                - 枚举： 
+                - 枚举：
                   - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
                   - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
               - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
@@ -471,14 +471,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets/{dataset_id}/documents/{document_id}/update_by_file"
       targetCode={`curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/{document_id}/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location POST 'https://api.dify.ai/v1/datasets/{dataset_id}/document/{document_id}/create_by_file' \
+    curl --location POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/{document_id}/create_by_file' \
     --header 'Authorization: Bearer {api_key}' \
     --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
     --form 'file=@"/path/to/file"'
@@ -539,14 +539,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="GET" 
+    <CodeGroup
+      title="Request"
+      tag="GET"
       label="/datasets/{dataset_id}/batch/{batch}/indexing-status"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{batch}/indexing-status' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -555,7 +555,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     {
       "data":[{
         "id": "",
-        "indexing_status": "indexing", 
+        "indexing_status": "indexing",
         "processing_started_at": 1681623462.0,
         "parsing_completed_at": 1681623462.0,
         "cleaning_completed_at": 1681623462.0,
@@ -594,14 +594,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="DELETE" 
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
       label="/datasets/{dataset_id}/documents/{document_id}"
       targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request DELETE 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}' \
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -646,14 +646,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="GET" 
+    <CodeGroup
+      title="Request"
+      tag="GET"
       label="/datasets/{dataset_id}/documents"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://api.dify.ai/v1/datasets/{dataset_id}/documents' \
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \
     --header 'Authorization: Bearer {api_key}' \
     ```
     </CodeGroup>
@@ -720,14 +720,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </Properties>
   </Col>
   <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
+    <CodeGroup
+      title="Request"
+      tag="POST"
       label="/datasets/{dataset_id}/documents/{document_id}/segments"
       targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"segments": [{"content": "1","answer": "1","keywords": ["a"]}]}'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://api.dify.ai/v1/datasets/{dataset_id}/documents/{document_id}/segments' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -738,6 +738,213 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           "keywords": ["a"]
         }
       ]
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "1",
+        "answer": "1",
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "a"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments'
+  method='GET'
+  title='查询文档分段'
+  name='#get_segment'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+     ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选
+      </Property>
+      <Property name='status' type='string' key='status'>
+        搜索状态，completed
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "1",
+        "answer": "1",
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "a"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/segments/{segment_id}'
+  method='DELETE'
+  title='删除文档分段'
+  name='#delete_segment'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        文档分段ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/segments/{segment_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/segments/{segment_id}'
+  method='POST'
+  title='更新文档分段'
+  name='#update_segment'
+/>
+<Row>
+  <Col>
+    ### POST
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        数据集 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        文档分段ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segments' type='object list' key='segments'>
+        - <code>content</code> (text) 文本内容/问题内容，必填
+        - <code>answer</code> (text) 答案内容，非必填，如果数据集的模式为qa模式则传值
+        - <code>keywords</code> (list) 关键字，非必填
+        - <code>enabled</code> (bool) false/true，非必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/segments/{segment_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{\"segments\": {\"content\": \"1\",\"answer\": \"1\", \"keywords\": [\"a\"], \"enabled\": false}}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "segments": {
+          "content": "1",
+          "answer": "1",
+          "keywords": ["a"],
+          "enabled": false
+      }
     }'
     ```
     </CodeGroup>
