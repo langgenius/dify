@@ -17,7 +17,7 @@ import ModelName, { supportI18nModelName } from '@/app/components/app/configurat
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
-import { ModelModeType } from '@/types/app'
+import type { ModelModeType } from '@/types/app'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import AccountSetting from '@/app/components/header/account-setting'
 
@@ -41,6 +41,7 @@ type ModelOption = {
   value: string
   providerName: ProviderEnum
   modelDisplayName: string
+  model_mode: ModelModeType
 } | {
   type: 'provider'
   value: ProviderEnum
@@ -98,12 +99,13 @@ const ModelSelector: FC<Props> = ({
         value: providerName,
       })
       const models = filteredModelList.filter(m => m.model_provider.provider_name === providerName)
-      models.forEach(({ model_name, model_display_name }) => {
+      models.forEach(({ model_name, model_display_name, model_mode }) => {
         res.push({
           type: 'model',
           providerName,
           value: model_name,
           modelDisplayName: model_display_name,
+          model_mode,
         })
       })
     })
@@ -131,7 +133,7 @@ const ModelSelector: FC<Props> = ({
                         <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
                           <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
                           {isShowModelModeType && (
-                            <ModelModeTypeLabel className='ml-2' type={ModelModeType.chat} />
+                            <ModelModeTypeLabel className='ml-2' type={currModel?.model_mode as ModelModeType} />
                           )}
                         </div>
                       </>
@@ -225,7 +227,7 @@ const ModelSelector: FC<Props> = ({
                         <div className='mr-2 grow flex items-center text-left text-sm text-gray-900 truncate'>
                           <ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} />
                           {isShowModelModeType && (
-                            <ModelModeTypeLabel className={`${s.modelModeLabel} ml-2`} type={ModelModeType.completion} />
+                            <ModelModeTypeLabel className={`${s.modelModeLabel} ml-2`} type={model.model_mode} />
                           )}
                         </div>
                         { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='shrink-0 w-4 h-4 text-primary-600' /> }

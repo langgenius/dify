@@ -336,7 +336,7 @@ const Configuration: FC = () => {
       model: {
         provider: modelConfig.provider,
         name: modelId,
-        mode: modelConfig.mode,
+        mode: modelConfig.mode || ModelModeType.completion, // TODO: Test
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
@@ -470,6 +470,7 @@ const Configuration: FC = () => {
             <div className='flex items-center'>
               {/* Model and Parameters */}
               <ConfigModel
+                isAdvancedMode={isAdvancedMode}
                 mode={mode}
                 provider={modelConfig.provider as ProviderEnum}
                 completionParams={completionParams}

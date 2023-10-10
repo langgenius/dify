@@ -27,8 +27,9 @@ import Loading from '@/app/components/base/loading'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
-import { ModelModeType } from '@/types/app'
+import type { ModelModeType } from '@/types/app'
 export type IConfigModelProps = {
+  isAdvancedMode: boolean
   mode: string
   modelId: string
   provider: ProviderEnum
@@ -39,6 +40,7 @@ export type IConfigModelProps = {
 }
 
 const ConfigModel: FC<IConfigModelProps> = ({
+  isAdvancedMode,
   modelId,
   provider,
   setModelId,
@@ -270,7 +272,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         <div className='text-[13px] text-gray-900 font-medium'>
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
-        <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+        {isAdvancedMode && <ModelModeTypeLabel type={currModel?.model_mode as ModelModeType} isHighlight />}
         {disabled ? <InformationCircleIcon className='w-4 h-4 text-[#F79009]' /> : <SlidersH className='w-4 h-4 text-indigo-600' />}
       </div>
       {isShowConfig && (
@@ -294,7 +296,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
-                isShowModelModeType
+                isShowModelModeType={isAdvancedMode}
                 isShowAddModel
                 popClassName='right-0'
                 triggerIconSmall
