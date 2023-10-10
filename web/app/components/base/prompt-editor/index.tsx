@@ -53,6 +53,7 @@ export type PromptEditorProps = {
     onAddVariable: () => void
   }
   historyBlock?: {
+    show?: boolean
     selectable?: boolean
     history: RoleName
     onInsert?: () => void
@@ -60,6 +61,7 @@ export type PromptEditorProps = {
     onEditRole: () => void
   }
   queryBlock?: {
+    show?: boolean
     selectable?: boolean
     onInsert?: () => void
     onDelete?: () => void
@@ -77,6 +79,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     onDelete: () => {},
   },
   historyBlock = {
+    show: true,
     selectable: true,
     history: {
       user: 'Human',
@@ -89,6 +92,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     variables: [],
   },
   queryBlock = {
+    show: true,
     selectable: true,
     onInsert: () => {},
     onDelete: () => {},
@@ -129,7 +133,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
         <ComponentPicker
           contextDisabled={!contextBlock.selectable}
           historyDisabled={!historyBlock.selectable}
+          historyShow={historyBlock.show}
           queryDisabled={!queryBlock.selectable}
+          queryShow={queryBlock.show}
         />
         <VariablePicker items={variableBlock.variables} />
         <ContextBlock
@@ -142,20 +148,32 @@ const PromptEditor: FC<PromptEditorProps> = ({
           onInsert={contextBlock.onInsert}
         />
         <VariableBlock />
-        <HistoryBlock
-          roleName={historyBlock.history}
-          onInsert={historyBlock.onInsert}
-          onDelete={historyBlock.onDelete}
-        />
-        <HistoryBlockReplacementBlock
-          roleName={historyBlock.history}
-          onInsert={historyBlock.onInsert}
-        />
-        <QueryBlock
-          onInsert={queryBlock.onInsert}
-          onDelete={queryBlock.onDelete}
-        />
-        <QueryBlockReplacementBlock />
+        {
+          historyBlock.show && (
+            <>
+              <HistoryBlock
+                roleName={historyBlock.history}
+                onInsert={historyBlock.onInsert}
+                onDelete={historyBlock.onDelete}
+              />
+              <HistoryBlockReplacementBlock
+                roleName={historyBlock.history}
+                onInsert={historyBlock.onInsert}
+              />
+            </>
+          )
+        }
+        {
+          queryBlock.show && (
+            <>
+              <QueryBlock
+                onInsert={queryBlock.onInsert}
+                onDelete={queryBlock.onDelete}
+              />
+              <QueryBlockReplacementBlock />
+            </>
+          )
+        }
         <VariableValueBlock />
         <OnChangePlugin onChange={handleEditorChange} />
         {/* <TreeView /> */}

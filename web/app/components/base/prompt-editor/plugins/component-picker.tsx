@@ -88,11 +88,15 @@ type ComponentPickerProps = {
   contextDisabled?: boolean
   historyDisabled?: boolean
   queryDisabled?: boolean
+  historyShow?: boolean
+  queryShow?: boolean
 }
 const ComponentPicker: FC<ComponentPickerProps> = ({
   contextDisabled,
   historyDisabled,
   queryDisabled,
+  historyShow,
+  queryShow,
 }) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -118,26 +122,34 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
         editor.dispatchCommand(INSERT_VARIABLE_BLOCK_COMMAND, undefined)
       },
     }),
-    new ComponentPickerOption(t('common.promptEditor.history.item.title'), {
-      desc: t('common.promptEditor.history.item.desc'),
-      icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
-      onSelect: () => {
-        if (historyDisabled)
-          return
-        editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
-      },
-      disabled: historyDisabled,
-    }),
-    new ComponentPickerOption(t('common.promptEditor.query.item.title'), {
-      desc: t('common.promptEditor.query.item.desc'),
-      icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
-      onSelect: () => {
-        if (queryDisabled)
-          return
-        editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)
-      },
-      disabled: queryDisabled,
-    }),
+    ...historyShow
+      ? [
+        new ComponentPickerOption(t('common.promptEditor.history.item.title'), {
+          desc: t('common.promptEditor.history.item.desc'),
+          icon: <MessageClockCircle className='w-4 h-4 text-[#DD2590]' />,
+          onSelect: () => {
+            if (historyDisabled)
+              return
+            editor.dispatchCommand(INSERT_HISTORY_BLOCK_COMMAND, undefined)
+          },
+          disabled: historyDisabled,
+        }),
+      ]
+      : [],
+    ...queryShow
+      ? [
+        new ComponentPickerOption(t('common.promptEditor.query.item.title'), {
+          desc: t('common.promptEditor.query.item.desc'),
+          icon: <UserEdit02 className='w-4 h-4 text-[#FD853A]' />,
+          onSelect: () => {
+            if (queryDisabled)
+              return
+            editor.dispatchCommand(INSERT_QUERY_BLOCK_COMMAND, undefined)
+          },
+          disabled: queryDisabled,
+        }),
+      ]
+      : [],
   ]
 
   const onSelectOption = useCallback(
