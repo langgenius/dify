@@ -200,6 +200,10 @@ class AppModelConfigService:
         model_ids = [m['id'] for m in model_list]
         if config["model"]["name"] not in model_ids:
             raise ValueError("model.name must be in the specified model list")
+        
+        # model.mode
+        if 'mode' not in config['model'] or not config['model']["mode"]:
+            config['model']["mode"] = ""
 
         # model.completion_params
         if 'completion_params' not in config["model"]:
@@ -343,6 +347,7 @@ class AppModelConfigService:
             "model": {
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],
+                "mode": config['model']["mode"],
                 "completion_params": config["model"]["completion_params"]
             },
             "user_input_form": config["user_input_form"],
@@ -406,3 +411,6 @@ class AppModelConfigService:
         if config['prompt_type'] == 'advanced':
             if not config['chat_prompt_config'] and not config['completion_prompt_config']:
                 raise ValueError("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced")
+            
+            if config['model']["mode"] not in ['chat', 'completion']:
+                raise ValueError("model.mode must be in ['chat', 'completion'] when prompt_type is advanced")
