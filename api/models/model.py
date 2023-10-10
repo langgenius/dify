@@ -93,6 +93,10 @@ class AppModelConfig(db.Model):
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
     retriever_resource = db.Column(db.Text)
+    prompt_type = db.Column(db.String(255), nullable=False, default='simple')
+    chat_prompt_config = db.Column(db.Text)
+    completion_prompt_config = db.Column(db.Text)
+    dataset_configs = db.Column(db.Text)
 
     @property
     def app(self):

@@ -4,7 +4,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
-from api.services.advanced_prompt_template_service import AdvancedPromptTemplateService
+from services.advanced_prompt_template_service import AdvancedPromptTemplateService
 
 class AdvancedPromptTemplateList(Resource):
     
