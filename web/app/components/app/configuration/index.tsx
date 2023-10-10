@@ -12,6 +12,7 @@ import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
+import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type { CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
@@ -158,6 +159,8 @@ const Configuration: FC = () => {
     hideSelectDataSet()
   }
 
+  const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
+
   const syncToPublishedConfig = (_publishedConfig: PublichConfig) => {
     const modelConfig = _publishedConfig.modelConfig
     setModelConfig(_publishedConfig.modelConfig)
@@ -234,8 +237,8 @@ const Configuration: FC = () => {
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
       doSetPromptMode(promptMode)
       if (promptMode === PromptMode.advanced) {
-        setChatPromptConfig(modelConfig.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG))
-        setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
+        setChatPromptConfig(modelConfig.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG) as any)
+        setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG) as any)
         setCanReturnToSimpleMode(false)
       }
 
@@ -391,6 +394,7 @@ const Configuration: FC = () => {
       currentAdvancedPrompt,
       setCurrentAdvancedPrompt,
       conversationHistoriesRole: completionPromptConfig.conversation_histories_role,
+      showHistoryModal,
       setConversationHistoriesRole,
       hasSetBlockStatus,
       conversationId,
@@ -530,6 +534,19 @@ const Configuration: FC = () => {
             onClose={hideSelectDataSet}
             selectedIds={selectedIds}
             onSelect={handleSelect}
+          />
+        )}
+
+        {isShowHistoryModal && (
+          <EditHistoryModal
+            isShow={isShowHistoryModal}
+            saveLoading={false}
+            onClose={hideHistoryModal}
+            data={completionPromptConfig.conversation_histories_role}
+            onSave={(data) => {
+              setConversationHistoriesRole(data)
+              hideHistoryModal()
+            }}
           />
         )}
       </>

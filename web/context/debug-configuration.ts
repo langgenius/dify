@@ -17,6 +17,7 @@ type IDebugConfiguration = {
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   currentAdvancedPrompt: PromptItem | PromptItem[]
   setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[]) => void
+  showHistoryModal: () => void
   conversationHistoriesRole: ConversationHistoriesRole
   setConversationHistoriesRole: (conversationHistoriesRole: ConversationHistoriesRole) => void
   hasSetBlockStatus: BlockStatus
@@ -69,6 +70,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
   currentAdvancedPrompt: [],
+  showHistoryModal: () => { },
   conversationHistoriesRole: {
     user_prefix: 'user',
     assistant_prefix: 'assistant',

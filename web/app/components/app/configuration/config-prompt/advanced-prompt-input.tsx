@@ -5,10 +5,8 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useBoolean } from 'ahooks'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
-import EditHistoryModal from './conversation-histroy/edit-modal'
 import type { PromptRole } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
@@ -40,8 +38,7 @@ const AdvancedPromptInput: FC<Props> = ({
     hasSetBlockStatus,
     modelConfig,
     conversationHistoriesRole,
-    setConversationHistoriesRole,
-    // setModelConfig,
+    showHistoryModal,
     dataSets,
     showSelectDataSet,
   } = useContext(ConfigContext)
@@ -58,8 +55,6 @@ const AdvancedPromptInput: FC<Props> = ({
   //   })
   //   setModelConfig(newModelConfig)
   // }
-
-  const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
 
   return (
     <div className={`${s.gradientBorder}`}>
@@ -137,19 +132,6 @@ const AdvancedPromptInput: FC<Props> = ({
           <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
         </div>
       </div>
-      {isShowHistoryModal && (
-        <EditHistoryModal
-          isShow={isShowHistoryModal}
-          saveLoading={false}
-          onClose={hideHistoryModal}
-          data={conversationHistoriesRole}
-          onSave={(data) => {
-            setConversationHistoriesRole(data)
-            hideHistoryModal()
-          }}
-        />
-      )}
-
     </div>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef, useState } from 'react'
+import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useScroll } from 'ahooks'
@@ -12,13 +12,12 @@ import HistoryPanel from '../config-prompt/conversation-histroy/history-panel'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
-import EditHistoryPrefixModal from '@/app/components/app/configuration/config-prompt/conversation-histroy/edit-modal'
 import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/advanced-mode-waring'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { PromptVariable } from '@/models/debug'
-import { AppType, ModelModeType } from '@/types/app'
+import { AppType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 const Config: FC = () => {
   const {
@@ -26,6 +25,8 @@ const Config: FC = () => {
     modelModeType,
     isAdvancedMode,
     canReturnToSimpleMode,
+    hasSetBlockStatus,
+    showHistoryModal,
     introduction,
     setIntroduction,
     modelConfig,
@@ -114,11 +115,6 @@ const Config: FC = () => {
     return value
   })()
 
-  const [isShowEditHistoryPrefixModal, { setTrue: showEditHistoryPrefixModal, setFalse: hideEditHistoryPrefixModal }] = useBoolean(false)
-  const [historyPrefix, setHistoryPrefix] = useState({
-    user: 'Human',
-    assistant: 'Assistant',
-  })
   return (
     <>
       <div
@@ -158,24 +154,11 @@ const Config: FC = () => {
 
         {/* Dataset */}
         <DatasetConfig />
-
-        {isChatApp && modelModeType === ModelModeType.completion && (
+        {/* && modelModeType === ModelModeType.completion */}
+        {isChatApp && (
           <HistoryPanel
-            showWarning={false}
-            onShowEditModal={showEditHistoryPrefixModal}
-          />
-        )}
-
-        {isShowEditHistoryPrefixModal && (
-          <EditHistoryPrefixModal
-            isShow={isShowEditHistoryPrefixModal}
-            onClose={hideEditHistoryPrefixModal}
-            data={historyPrefix}
-            onSave={(data) => {
-              setHistoryPrefix(data)
-              hideEditHistoryPrefixModal()
-            }}
-            saveLoading={false}
+            showWarning={!hasSetBlockStatus.history}
+            onShowEditModal={showHistoryModal}
           />
         )}
 
