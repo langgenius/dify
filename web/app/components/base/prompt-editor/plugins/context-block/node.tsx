@@ -45,7 +45,7 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
       <ContextBlockComponent
         nodeKey={this.getKey()}
         datasets={this.getDatasets()}
-        onAddContext={this.getOnAddContext}
+        onAddContext={this.getOnAddContext()}
       />
     )
   }
