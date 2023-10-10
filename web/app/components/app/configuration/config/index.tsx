@@ -17,7 +17,6 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import { PromptMode } from '@/models/debug'
 import type { PromptVariable } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
@@ -25,7 +24,7 @@ const Config: FC = () => {
   const {
     mode,
     modelModeType,
-    promptMode,
+    isAdvancedMode,
     canReturnToSimpleMode,
     introduction,
     setIntroduction,
@@ -128,7 +127,7 @@ const Config: FC = () => {
       >
         <AddFeatureBtn toBottomHeight={toBottomHeight} onClick={showChooseFeatureTrue} />
         {
-          (promptMode === PromptMode.advanced && canReturnToSimpleMode) && (
+          (isAdvancedMode && canReturnToSimpleMode) && (
             <AdvancedModeWaring />
           )
         }
@@ -146,7 +145,6 @@ const Config: FC = () => {
         {/* Template */}
         <ConfigPrompt
           mode={mode as AppType}
-          promptMode={promptMode}
           promptTemplate={promptTemplate}
           promptVariables={promptVariables}
           onChange={handlePromptChange}

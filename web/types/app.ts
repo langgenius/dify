@@ -1,4 +1,4 @@
-import type { PromptMode } from '@/models/debug.ts'
+import type { ChatPromptConfig, CompletionPromptConfig, PromptMode } from '@/models/debug.ts'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -97,6 +97,8 @@ export type ModelConfig = {
   opening_statement: string
   pre_prompt: string
   prompt_type: PromptMode
+  chat_prompt_config?: ChatPromptConfig
+  completion_prompt_config?: CompletionPromptConfig
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {

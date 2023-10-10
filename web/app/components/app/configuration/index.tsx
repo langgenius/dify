@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
+import { clone } from 'lodash-es'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
@@ -29,6 +30,8 @@ import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+
 type PublichConfig = {
   modelConfig: ModelConfig
   completionParams: CompletionParams
@@ -165,6 +168,7 @@ const Configuration: FC = () => {
 
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
+  const isAdvancedMode = promptMode === PromptMode.advanced
   // const modelMode = 'chat'
   // can return to simple mode if switch to advanced mode and not published
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
@@ -178,7 +182,9 @@ const Configuration: FC = () => {
 
   const {
     chatPromptConfig,
+    setChatPromptConfig,
     completionPromptConfig,
+    setCompletionPromptConfig,
     currentAdvancedPrompt,
     setCurrentAdvancedPrompt,
     setConversationHistoriesRole,
@@ -191,10 +197,15 @@ const Configuration: FC = () => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
       setMode(res.mode)
       const modelConfig = res.model_config
+      // TODO: mock advanced
+      // const promptMode = PromptMode.advanced
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
       doSetPromptMode(promptMode)
-      if (promptMode === PromptMode.advanced)
+      if (promptMode === PromptMode.advanced) {
+        setChatPromptConfig(modelConfig.chat_prompt_config || clone(DEFAULT_CHAT_PROMPT_CONFIG))
+        setCompletionPromptConfig(modelConfig.completion_prompt_config || clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
         setCanReturnToSimpleMode(false)
+      }
 
       const model = res.model_config.model
 
@@ -293,6 +304,11 @@ const Configuration: FC = () => {
       },
     }
 
+    if (isAdvancedMode) {
+      data.chat_prompt_config = chatPromptConfig
+      data.completion_prompt_config = completionPromptConfig
+    }
+
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body: data })
     const newModelConfig = produce(modelConfig, (draft: any) => {
       draft.opening_statement = introduction
@@ -332,8 +348,9 @@ const Configuration: FC = () => {
       isTrailFinished,
       mode,
       modelModeType,
-      setPromptMode,
       promptMode,
+      isAdvancedMode,
+      setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
       currentAdvancedPrompt,
@@ -378,7 +395,7 @@ const Configuration: FC = () => {
               <div className='italic text-base font-bold text-gray-900 leading-[18px]'>{t('appDebug.pageTitle.line1')}</div>
               <div className='flex items-center h-6 space-x-1 text-xs'>
                 <div className='text-gray-500 font-medium italic'>{t('appDebug.pageTitle.line2')}</div>
-                {promptMode === PromptMode.simple && (
+                {!isAdvancedMode && (
                   <div
                     onClick={() => setPromptMode(PromptMode.advanced)}
                     className={'cursor-pointer text-indigo-600'}
@@ -386,7 +403,7 @@ const Configuration: FC = () => {
                     {t('appDebug.promptMode.simple')}
                   </div>
                 )}
-                {promptMode === PromptMode.advanced && (
+                {isAdvancedMode && (
                   <div className='flex items-center space-x-2'>
                     <div className={`${s.advancedPromptMode} cursor-pointer text-indigo-600`}>{t('appDebug.promptMode.advanced')}</div>
                     {canReturnToSimpleMode && (

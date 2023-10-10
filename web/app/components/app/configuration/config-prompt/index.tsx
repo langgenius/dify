@@ -6,14 +6,13 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import SimplePromptInput from './simple-prompt-input'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
-import { PromptMode, PromptRole } from '@/models/debug'
+import { PromptRole } from '@/models/debug'
 import type { PromptItem, PromptVariable } from '@/models/debug'
 import { type AppType, ModelModeType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 export type IPromptProps = {
-  promptMode?: PromptMode
   mode: AppType
   promptTemplate: string
   promptVariables: PromptVariable[]
@@ -23,7 +22,6 @@ export type IPromptProps = {
 
 const Prompt: FC<IPromptProps> = ({
   mode,
-  promptMode = PromptMode.simple,
   promptTemplate,
   promptVariables,
   readonly = false,
@@ -32,6 +30,7 @@ const Prompt: FC<IPromptProps> = ({
   const { t } = useTranslation()
 
   const {
+    isAdvancedMode,
     currentAdvancedPrompt,
     setCurrentAdvancedPrompt,
     modelModeType,
@@ -85,7 +84,7 @@ const Prompt: FC<IPromptProps> = ({
     setCurrentAdvancedPrompt(newPrompt)
   }
 
-  if (promptMode === PromptMode.simple) {
+  if (!isAdvancedMode) {
     return (
       <SimplePromptInput
         mode={mode}

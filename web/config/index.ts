@@ -91,6 +91,20 @@ export const TONE_LIST = [
   },
 ]
 
+export const DEFAULT_CHAT_PROMPT_CONFIG = {
+  prompt: [],
+}
+
+export const DEFAULT_COMPLETION_PROMPT_CONFIG = {
+  prompt: {
+    text: '',
+  },
+  conversation_histories_role: {
+    user_prefix: '',
+    assistant_prefix: '',
+  },
+}
+
 export const getMaxToken = (modelId: string) => {
   return (modelId === 'gpt-4' || modelId === 'gpt-3.5-turbo-16k') ? 8000 : 4000
 }

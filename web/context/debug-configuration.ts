@@ -12,6 +12,7 @@ type IDebugConfiguration = {
   modelModeType: ModelModeType
   promptMode: PromptMode
   setPromptMode: (promptMode: PromptMode) => void
+  isAdvancedMode: boolean
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
   currentAdvancedPrompt: PromptItem | PromptItem[]
@@ -64,6 +65,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   modelModeType: ModelModeType.chat,
   promptMode: PromptMode.simple,
   setPromptMode: () => { },
+  isAdvancedMode: false,
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
   chatModelPromptConfig: {

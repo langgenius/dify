@@ -1,28 +1,21 @@
 import { useState } from 'react'
+import { clone } from 'lodash-es'
 import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { ModelModeType } from '@/types/app'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type Param = {
   promptMode: PromptMode
   modelModeType: ModelModeType
 }
+
 const useAdvancedPromptConfig = ({
   promptMode,
   modelModeType,
 }: Param) => {
-  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>({
-    prompt: [],
-  })
-  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>({
-    prompt: {
-      text: '',
-    },
-    conversation_histories_role: {
-      user_prefix: '',
-      assistant_prefix: '',
-    },
-  })
+  const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(clone(DEFAULT_CHAT_PROMPT_CONFIG))
+  const [completionPromptConfig, setCompletionPromptConfig] = useState<CompletionPromptConfig>(clone(DEFAULT_COMPLETION_PROMPT_CONFIG))
 
   const currentAdvancedPrompt = (() => {
     if (promptMode === PromptMode.simple)
@@ -57,7 +50,9 @@ const useAdvancedPromptConfig = ({
   }
   return {
     chatPromptConfig,
+    setChatPromptConfig,
     completionPromptConfig,
+    setCompletionPromptConfig,
     currentAdvancedPrompt,
     setCurrentAdvancedPrompt,
     setConversationHistoriesRole,
