@@ -339,6 +339,12 @@ class AppModelConfigService:
         # dataset_query_variable
         AppModelConfigService.is_dataset_query_variable_valid(config, mode)
 
+        # prompt_type
+        if config['prompt_type'] not in ['simple', 'advanced']:
+            raise ValueError("prompt_type must be in ['simple', 'advanced']")
+
+        AppModelConfigService.is_advanced_prompt_valid(config, mode)
+
         # Filter out extra parameters
         filtered_config = {
             "opening_statement": config["opening_statement"],
@@ -356,7 +362,11 @@ class AppModelConfigService:
             "user_input_form": config["user_input_form"],
             "dataset_query_variable": config.get('dataset_query_variable'),
             "pre_prompt": config["pre_prompt"],
-            "agent_mode": config["agent_mode"]
+            "agent_mode": config["agent_mode"],
+            "prompt_type": config["prompt_type"],
+            "chat_prompt_config": config["chat_prompt_config"],
+            "completion_prompt_config": config["completion_prompt_config"],
+            "dataset_configs": config["dataset_configs"]
         }
 
         return filtered_config
@@ -375,4 +385,12 @@ class AppModelConfigService:
 
         if dataset_exists and not dataset_query_variable:
             raise ValueError("Dataset query variable is required when dataset is exist")
+        
 
+    @staticmethod
+    def is_advanced_prompt_valid(config: dict, mode: str) -> None:
+        if config.get('prompt_type') != 'advanced':
+            return
+        
+        if not config.get('chat_prompt_config') and not config.get('completion_prompt_config'):
+            raise ValueError("chat_prompt_config or completion_prompt_config is required when prompt_type is advanced")

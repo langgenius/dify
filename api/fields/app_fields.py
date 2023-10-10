@@ -28,6 +28,10 @@ model_config_fields = {
     'dataset_query_variable': fields.String,
     'pre_prompt': fields.String,
     'agent_mode': fields.Raw(attribute='agent_mode_dict'),
+    'prompt_type': fields.String,
+    'chat_prompt_config': fields.Raw(attribute='chat_prompt_config_dict'),
+    'completion_prompt_config': fields.Raw(attribute='completion_prompt_config_dict'),
+    'dataset_configs': fields.Raw(attribute='dataset_configs_dict')
 }
 
 app_detail_fields = {

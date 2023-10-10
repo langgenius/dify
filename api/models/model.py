@@ -223,7 +223,10 @@ class AppModelConfig(db.Model):
             user_input_form=self.user_input_form,
             dataset_query_variable=self.dataset_query_variable,
             pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode
+            agent_mode=self.agent_mode,
+            chat_prompt_config=self.chat_prompt_config,
+            completion_prompt_config=self.completion_prompt_config,
+            dataset_configs=self.dataset_configs
         )
 
         return new_app_model_config
