@@ -31,6 +31,7 @@ import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
 import { CustomTextNode } from './plugins/custom-text/node'
+import OnBlurBlock from './plugins/on-blur-block'
 import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
@@ -40,6 +41,7 @@ export type PromptEditorProps = {
   value?: InitialEditorStateType
   editable?: boolean
   onChange?: (text: string) => void
+  onBlur?: () => void
   contextBlock?: {
     selectable?: boolean
     datasets: Dataset[]
@@ -50,7 +52,6 @@ export type PromptEditorProps = {
   variableBlock?: {
     selectable?: boolean
     variables: Option[]
-    onAddVariable: (key: string) => void
   }
   historyBlock?: {
     show?: boolean
@@ -72,6 +73,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   value,
   editable = true,
   onChange,
+  onBlur,
   contextBlock = {
     selectable: true,
     datasets: [],
@@ -86,6 +88,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       user: 'Human',
       assistant: 'Assistant',
     },
+    onEditRole: () => {},
     onInsert: () => {},
     onDelete: () => {},
   },
@@ -156,11 +159,13 @@ const PromptEditor: FC<PromptEditorProps> = ({
             <>
               <HistoryBlock
                 roleName={historyBlock.history}
+                onEditRole={historyBlock.onEditRole}
                 onInsert={historyBlock.onInsert}
                 onDelete={historyBlock.onDelete}
               />
               <HistoryBlockReplacementBlock
                 roleName={historyBlock.history}
+                onEditRole={historyBlock.onEditRole}
                 onInsert={historyBlock.onInsert}
               />
             </>
@@ -179,6 +184,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
         }
         <VariableValueBlock />
         <OnChangePlugin onChange={handleEditorChange} />
+        <OnBlurBlock onBlur={onBlur} />
         {/* <TreeView /> */}
       </div>
     </LexicalComposer>

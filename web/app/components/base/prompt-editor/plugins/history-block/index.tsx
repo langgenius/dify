@@ -22,12 +22,14 @@ export type RoleName = {
 
 export type HistoryBlockProps = {
   roleName: RoleName
+  onEditRole: () => void
   onInsert?: () => void
   onDelete?: () => void
 }
 
 const HistoryBlock: FC<HistoryBlockProps> = ({
   roleName,
+  onEditRole,
   onInsert,
   onDelete,
 }) => {
@@ -41,7 +43,7 @@ const HistoryBlock: FC<HistoryBlockProps> = ({
       editor.registerCommand(
         INSERT_HISTORY_BLOCK_COMMAND,
         () => {
-          const historyBlockNode = $createHistoryBlockNode(roleName)
+          const historyBlockNode = $createHistoryBlockNode(roleName, onEditRole)
 
           $insertNodes([historyBlockNode])
 
@@ -63,7 +65,7 @@ const HistoryBlock: FC<HistoryBlockProps> = ({
         COMMAND_PRIORITY_EDITOR,
       ),
     )
-  }, [editor, roleName, onInsert, onDelete])
+  }, [editor, roleName, onEditRole, onInsert, onDelete])
 
   return null
 }

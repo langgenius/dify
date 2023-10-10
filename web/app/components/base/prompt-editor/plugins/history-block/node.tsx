@@ -3,23 +3,25 @@ import { DecoratorNode } from 'lexical'
 import HistoryBlockComponent from './component'
 import type { RoleName } from './index'
 
-export type SerializedNode = SerializedLexicalNode & { roleName: RoleName }
+export type SerializedNode = SerializedLexicalNode & { roleName: RoleName; onEditRole: () => void }
 
 export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   __roleName: RoleName
+  __onEditRole: () => void
 
   static getType(): string {
     return 'history-block'
   }
 
   static clone(node: HistoryBlockNode): HistoryBlockNode {
-    return new HistoryBlockNode(node.__roleName)
+    return new HistoryBlockNode(node.__roleName, node.__onEditRole)
   }
 
-  constructor(roleName: RoleName, key?: NodeKey) {
+  constructor(roleName: RoleName, onEditRole: () => void, key?: NodeKey) {
     super(key)
 
     this.__roleName = roleName
+    this.__onEditRole = onEditRole
   }
 
   setFormat() {}
@@ -39,7 +41,13 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   decorate(): JSX.Element {
-    return <HistoryBlockComponent nodeKey={this.getKey()} roleName={this.getRoleName()} />
+    return (
+      <HistoryBlockComponent
+        nodeKey={this.getKey()}
+        roleName={this.getRoleName()}
+        onEditRole={this.getOnEditRole()}
+      />
+    )
   }
 
   getRoleName(): RoleName {
@@ -48,8 +56,14 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     return self.__roleName
   }
 
+  getOnEditRole(): () => void {
+    const self = this.getLatest()
+
+    return self.__onEditRole
+  }
+
   static importJSON(serializedNode: SerializedNode): HistoryBlockNode {
-    const node = $createHistoryBlockNode(serializedNode.roleName)
+    const node = $createHistoryBlockNode(serializedNode.roleName, serializedNode.onEditRole)
 
     return node
   }
@@ -59,6 +73,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
       type: 'history-block',
       version: 1,
       roleName: this.getRoleName(),
+      onEditRole: this.getOnEditRole,
     }
   }
 
@@ -66,8 +81,8 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     return '{{#histories#}}'
   }
 }
-export function $createHistoryBlockNode(roleName: RoleName): HistoryBlockNode {
-  return new HistoryBlockNode(roleName)
+export function $createHistoryBlockNode(roleName: RoleName, onEditRole: () => void): HistoryBlockNode {
+  return new HistoryBlockNode(roleName, onEditRole)
 }
 
 export function $isHistoryBlockNode(

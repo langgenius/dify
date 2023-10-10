@@ -17,6 +17,7 @@ const REGEX = new RegExp(HISTORY_PLACEHOLDER_TEXT)
 
 const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
   roleName,
+  onEditRole,
   onInsert,
 }) => {
   const [editor] = useLexicalComposerContext()
@@ -29,8 +30,8 @@ const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
   const createHistoryBlockNode = useCallback((): HistoryBlockNode => {
     if (onInsert)
       onInsert()
-    return $applyNodeReplacement($createHistoryBlockNode(roleName))
-  }, [roleName, onInsert])
+    return $applyNodeReplacement($createHistoryBlockNode(roleName, onEditRole))
+  }, [roleName, onEditRole, onInsert])
 
   const getVariableValueMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)

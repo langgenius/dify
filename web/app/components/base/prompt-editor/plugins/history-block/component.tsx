@@ -13,11 +13,13 @@ import {
 
 type HistoryBlockComponentProps = {
   nodeKey: string
+  onEditRole: () => void
   roleName?: RoleName
 }
 
 const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   nodeKey,
+  onEditRole,
   roleName = {
     user: 'Human',
     assistant: 'Assistant',
@@ -65,7 +67,10 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
                 {t('common.promptEditor.history.modal.assistant')}
               </div>
             </div>
-            <div className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'>
+            <div
+              className='px-4 py-3 text-xs text-[#155EEF] border-t border-black/5 rounded-b-xl cursor-pointer'
+              onClick={onEditRole}
+            >
               {t('common.promptEditor.history.modal.edit')}
             </div>
           </div>
