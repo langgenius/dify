@@ -12,7 +12,7 @@ from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.azure_openai_embedding import AzureOpenAIEmbedding, \
     AZURE_OPENAI_API_VERSION
-from core.model_providers.models.entity.model_params import ModelType, ModelKwargsRules, KwargRule
+from core.model_providers.models.entity.model_params import ModelType, ModelKwargsRules, KwargRule, ModelMode
 from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.llm.azure_openai_model import AzureOpenAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
@@ -61,6 +61,10 @@ class AzureOpenAIProvider(BaseModelProvider):
                 }
 
                 credentials = json.loads(provider_model.encrypted_config)
+
+                if provider_model.model_type == ModelType.TEXT_GENERATION.value:
+                    model_dict['mode'] = self._get_text_generation_model_mode(credentials['base_model_name'])
+
                 if credentials['base_model_name'] in [
                     'gpt-4',
                     'gpt-4-32k',
@@ -77,12 +81,19 @@ class AzureOpenAIProvider(BaseModelProvider):
 
         return model_list
 
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        if model_name == 'text-davinci-003':
+            return ModelMode.COMPLETION.value
+        else:
+            return ModelMode.CHAT.value
+
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         if model_type == ModelType.TEXT_GENERATION:
             models = [
                 {
                     'id': 'gpt-3.5-turbo',
                     'name': 'gpt-3.5-turbo',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -90,6 +101,7 @@ class AzureOpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-3.5-turbo-16k',
                     'name': 'gpt-3.5-turbo-16k',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -97,6 +109,7 @@ class AzureOpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-4',
                     'name': 'gpt-4',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -104,6 +117,7 @@ class AzureOpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-4-32k',
                     'name': 'gpt-4-32k',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -111,6 +125,7 @@ class AzureOpenAIProvider(BaseModelProvider):
                 {
                     'id': 'text-davinci-003',
                     'name': 'text-davinci-003',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
 

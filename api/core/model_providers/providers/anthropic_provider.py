@@ -9,7 +9,7 @@ from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelMode
 from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.llm.anthropic_model import AnthropicModel
 from core.model_providers.models.llm.base import ModelType
@@ -34,10 +34,12 @@ class AnthropicProvider(BaseModelProvider):
                 {
                     'id': 'claude-instant-1',
                     'name': 'claude-instant-1',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'claude-2',
                     'name': 'claude-2',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -45,6 +47,9 @@ class AnthropicProvider(BaseModelProvider):
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

@@ -4,7 +4,7 @@ from typing import Type
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.tongyi_model import TongyiModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.tongyi_llm import EnhanceTongyi
@@ -26,14 +26,19 @@ class TongyiProvider(BaseModelProvider):
                 {
                     'id': 'qwen-v1',
                     'name': 'qwen-v1',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'qwen-plus-v1',
                     'name': 'qwen-plus-v1',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
