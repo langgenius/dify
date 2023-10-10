@@ -53,9 +53,11 @@ class VectorIndex:
             return MilvusVectorIndex(
                 dataset=dataset,
                 config=MilvusConfig(
-                    endpoint=config.get('MILVUS_URL'),
+                    host=config.get('MILVUS_HOST'),
+                    port=config.get('MILVUS_PORT'),
                     user=config.get('MILVUS_USER'),
-                    password=config.get('MILVUS_PASSWORD')
+                    password=config.get('MILVUS_PASSWORD'),
+                    secure=config.get('MILVUS_SECURE'),
                 ),
                 embeddings=embeddings
             )

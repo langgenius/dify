@@ -167,6 +167,8 @@ class Milvus(VectorStore):
         self._init()
 
     @property
+
+
     def embeddings(self) -> Embeddings:
         return self.embedding_func
 

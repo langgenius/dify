@@ -14,15 +14,21 @@ from models.dataset import Dataset, DatasetCollectionBinding
 
 
 class MilvusConfig(BaseModel):
-    endpoint: str
+    host: str
+    port: int
     user: str
     password: str
+    secure: bool
     batch_size: int = 100
 
     @root_validator()
     def validate_config(cls, values: dict) -> dict:
-        if not values['endpoint']:
-            raise ValueError("config MILVUS_ENDPOINT is required")
+        if not values['host']:
+            raise ValueError("config MILVUS_HOST is required")
+        if not values['port']:
+            raise ValueError("config MILVUS_PORT is required")
+        if not values['secure']:
+            raise ValueError("config MILVUS_SECURE is required")
         if not values['user']:
             raise ValueError("config MILVUS_USER is required")
         if not values['password']:
@@ -31,9 +37,11 @@ class MilvusConfig(BaseModel):
 
     def to_milvus_params(self):
         return {
-            'uri': self.endpoint,
+            'host': self.host,
+            'port': self.port,
             'user': self.user,
-            'password': self.password
+            'password': self.password,
+            'secure': self.secure
         }
 
 
@@ -68,7 +76,7 @@ class MilvusVectorIndex(BaseVectorIndex):
         index_params = {
             'metric_type': 'IP',
             'index_type': "HNSW",
-            'params': {"ef": 10}
+            'params':  {"M": 8, "efConstruction": 64}
         }
         self._vector_store = MilvusVectorStore.from_documents(
             texts,
