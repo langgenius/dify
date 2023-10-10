@@ -53,3 +53,4 @@ xinference==0.5.2
 safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug==2.3.7
+pymilvus==2.3.0
