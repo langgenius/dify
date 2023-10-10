@@ -8,15 +8,15 @@ import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
-import BlockInput from '@/app/components/base/block-input'
 import type { PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
 import { getNewVar } from '@/utils/var'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
-import type { AutomaticRes } from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import type { AutomaticRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import PromptEditor from '@/app/components/base/prompt-editor'
 
 import ConfigContext from '@/context/debug-configuration'
 
@@ -38,9 +38,12 @@ const Prompt: FC<ISimplePromptInput> = ({
   const { t } = useTranslation()
   const {
     modelConfig,
+    dataSets,
     setModelConfig,
     setPrevPromptConfig,
     setIntroduction,
+    hasSetBlockStatus,
+    showSelectDataSet,
   } = useContext(ConfigContext)
   const promptVariablesObj = (() => {
     const obj: Record<string, boolean> = {}
@@ -107,14 +110,43 @@ const Prompt: FC<ISimplePromptInput> = ({
           </div>
           <AutomaticBtn onClick={showAutomaticTrue}/>
         </div>
-
-        <BlockInput
-          readonly={readonly}
-          value={promptTemplate}
-          onConfirm={(value: string, vars: string[]) => {
-            handleChange(value, vars)
-          }}
-        />
+        <div className='px-4 py-2 min-h-[228px] max-h-[156px] overflow-y-auto bg-white rounded-xl text-sm text-gray-700'>
+          <PromptEditor
+            value={promptTemplate}
+            contextBlock={{
+              selectable: !hasSetBlockStatus.context,
+              datasets: dataSets.map(item => ({
+                id: item.id,
+                name: item.name,
+                type: item.data_source_type,
+              })),
+              onAddContext: showSelectDataSet,
+            }}
+            variableBlock={{
+              variables: modelConfig.configs.prompt_variables.map(item => ({
+                name: item.name,
+                value: item.key,
+              })),
+              onAddVariable: () => {},
+            }}
+            historyBlock={{
+              show: false,
+              selectable: false,
+              history: {
+                user: '',
+                assistant: '',
+              },
+              onEditRole: () => {},
+            }}
+            queryBlock={{
+              show: false,
+              selectable: !hasSetBlockStatus.query,
+            }}
+            onChange={(value) => {
+              onChange?.(value, [])
+            }}
+          />
+        </div>
       </div>
 
       {isShowConfirmAddVar && (

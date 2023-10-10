@@ -91,7 +91,8 @@ const Prompt: FC<IPromptProps> = ({
         promptVariables={promptVariables}
         readonly={readonly}
         onChange={onChange}
-      />)
+      />
+    )
   }
 
   return (
