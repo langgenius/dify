@@ -116,7 +116,10 @@ export type DatasetConfigItem = {
   enable: boolean
   value: number
 }
-export type DatasetConfigs = Record<string, DatasetConfigItem>
+export type DatasetConfigs = {
+  top_k: number
+  score_threshold: DatasetConfigItem
+}
 
 export type DebugRequestBody = {
   inputs: Inputs

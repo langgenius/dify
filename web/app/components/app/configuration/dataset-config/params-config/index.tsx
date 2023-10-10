@@ -53,13 +53,15 @@ const ParamItem: FC<IParamItemProps> = ({ id, name, tip, step = 0.1, min = 0, ma
     <div>
       <div className="flex items-center justify-between">
         <div className="flex items-center">
-          <Switch
-            size='md'
-            defaultValue={enable}
-            onChange={async (val) => {
-              onSwitchChange(id, val)
-            }}
-          />
+          {id === 'score_threshold' && (
+            <Switch
+              size='md'
+              defaultValue={enable}
+              onChange={async (val) => {
+                onSwitchChange(id, val)
+              }}
+            />
+          )}
           <span className="mx-1 text-gray-800 text-[13px] leading-[18px] font-medium">{name}</span>
           <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
             <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
@@ -105,22 +107,32 @@ const ParamsConfig: FC = () => {
     let notOutRangeValue = parseFloat(value.toFixed(2))
     notOutRangeValue = Math.max(PARAMS[key].min, notOutRangeValue)
     notOutRangeValue = Math.min(PARAMS[key].max, notOutRangeValue)
-
-    setDatasetConfigs({
-      ...datasetConfigs,
-      [key]: {
-        enable: datasetConfigs[key].enable,
-        value: notOutRangeValue,
-      },
-    })
+    if (key === 'top_k') {
+      setDatasetConfigs({
+        ...datasetConfigs,
+        top_k: notOutRangeValue,
+      })
+    }
+    else if (key === 'score_threshold') {
+      setDatasetConfigs({
+        ...datasetConfigs,
+        [key]: {
+          enable: datasetConfigs.score_threshold.enable,
+          value: notOutRangeValue,
+        },
+      })
+    }
   }
 
   const handleSwitch = (key: string, enable: boolean) => {
+    if (key === 'top_k')
+      return
+
     setDatasetConfigs({
       ...datasetConfigs,
       [key]: {
         enable,
-        value: datasetConfigs[key].value,
+        value: (datasetConfigs as any)[key].value,
       },
     })
   }
@@ -145,8 +157,8 @@ const ParamsConfig: FC = () => {
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
         <div className='w-[240px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
           {PARAMS_KEY.map((key: string) => {
-            const currentValue = datasetConfigs[key].value
-            const currentEnableState = datasetConfigs[key].enable
+            const currentValue = key === 'top_k' ? datasetConfigs[key] : (datasetConfigs as any)[key].value
+            const currentEnableState = key === 'top_k' ? true : (datasetConfigs as any)[key].enable
             return (
               <ParamItem
                 key={key}

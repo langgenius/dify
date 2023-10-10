@@ -95,12 +95,9 @@ const Configuration: FC = () => {
     retriever_resource: null,
     dataSets: [],
   })
-  // TODO dataset_configs
+
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
-    top_k: {
-      enable: false,
-      value: 2,
-    },
+    top_k: 2,
     score_threshold: {
       enable: false,
       value: 0.7,
@@ -320,6 +317,8 @@ const Configuration: FC = () => {
       // Simple Mode prompt
       pre_prompt: promptMode !== PromptMode.advanced ? promptTemplate : '',
       prompt_type: promptMode,
+      chat_prompt_config: {},
+      completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
       dataset_query_variable: contextVar || '',
       opening_statement: introduction || '',
@@ -337,6 +336,7 @@ const Configuration: FC = () => {
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
+      dataset_configs: datasetConfigs,
     }
 
     if (isAdvancedMode) {
