@@ -44,6 +44,7 @@ import {
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export type PromptEditorProps = {
+  className?: string
   value?: InitialEditorStateType
   editable?: boolean
   onChange?: (text: string) => void
@@ -76,6 +77,7 @@ export type PromptEditorProps = {
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
+  className,
   value,
   editable = true,
   onChange,
@@ -151,7 +153,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className='relative'>
         <RichTextPlugin
-          contentEditable={<ContentEditable className='outline-none text-sm text-gray-700 leading-6' />}
+          contentEditable={<ContentEditable className={`${className} outline-none text-sm text-gray-700 leading-6`} />}
           placeholder={<Placeholder />}
           ErrorBoundary={LexicalErrorBoundary}
         />
