@@ -186,7 +186,17 @@ const Chat: FC<IChatProps> = ({
               isShowCitationHitInfo={isShowCitationHitInfo}
             />
           }
-          return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />
+          return (
+            <Question
+              key={item.id}
+              id={item.id}
+              content={item.content}
+              more={item.more}
+              useCurrentUserAvatar={useCurrentUserAvatar}
+              displayScene={displayScene ?? 'web'}
+              item={item}
+            />
+          )
         })}
       </div>
       {

@@ -13,7 +13,6 @@ import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import { createContext, useContext } from 'use-context-selector'
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import s from './style.module.css'
@@ -74,13 +73,17 @@ const PARAM_MAP = {
 }
 
 // Format interface data for easy display
-const getFormattedChatList = (messages: ChatMessage[]) => {
+const getFormattedChatList = (messages: ChatMessage[], isTextGeneration?: boolean) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
+      log: {
+        isTextGeneration: !!isTextGeneration,
+        items: item.message as any,
+      },
     })
 
     newChatList.push({
@@ -105,7 +108,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
 const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
 type IDetailPanel<T> = {
-  detail: T
+  detail: any
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
 }
@@ -156,7 +159,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
   const isChatMode = appDetail?.mode === 'chat'
 
-  const targetTone = TONE_LIST.find((item) => {
+  const targetTone = TONE_LIST.find((item: any) => {
     let res = true
     validatedParams.forEach((param) => {
       res = item.config?.[param] === detail.model_config?.configs?.completion_params?.[param]
@@ -166,7 +169,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
   const modelName = (detail.model_config as any).model.name
   const provideName = (detail.model_config as any).model.provider as any
-  const varList = (detail.model_config as any).user_input_form.map((item) => {
+  const varList = (detail.model_config as any).user_input_form.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {
       label: itemContent.label,
@@ -182,7 +185,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       </div>
       <div className='mr-2 bg-gray-50 py-1.5 px-2.5 rounded-lg flex items-center text-[13px]'>
         <ModelIcon
-          className={classNames('mr-1.5', 'w-5 h-5')}
+          className={cn('mr-1.5', 'w-5 h-5')}
           modelId={detail.model_config.model.name}
           providerName={detail.model_config.model.provider}
         />
@@ -235,7 +238,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
-          chatList={getFormattedChatList([detail.message])}
+          chatList={getFormattedChatList([detail.message], true)}
           isHideSendInput={true}
           onFeedback={onFeedback}
           onSubmitAnnotation={onSubmitAnnotation}
@@ -406,7 +409,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
         selector={`highlight-${randomString(16)}`}
       >
-        <div className={classNames(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -437,7 +440,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </tr>
         </thead>
         <tbody className="text-gray-500">
-          {logs.data.map((log) => {
+          {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id
             const leftValue = get(log, isChatMode ? 'summary' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')

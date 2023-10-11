@@ -18,7 +18,6 @@ import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import { asyncRunSafe } from '@/utils'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import type { IAppCardProps } from '@/app/components/app/overview/appCard'
-import PromptEditor from '@/app/components/base/prompt-editor'
 
 export type ICardViewProps = {
   appId: string
@@ -95,7 +94,6 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
 
   return (
     <div className="min-w-max grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6">
-      <PromptEditor onBlur={() => console.log('blur')} />
       <AppCard
         appInfo={response}
         cardType="webapp"

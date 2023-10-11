@@ -1,22 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
 import s from '../style.module.css'
-import type { IChatItem } from '../type'
+import type { DisplayScene, IChatItem } from '../type'
+import Log from '../log'
 import MoreInfo from '../more-info'
 import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 
-type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'>
+type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
+  displayScene: DisplayScene
+  item: IChatItem
+}
 
-const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, displayScene, item }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
+  const ref = useRef(null)
+
   return (
-    <div className='flex items-start justify-end' key={id}>
+    <div className='flex items-start justify-end' key={id} ref={ref}>
       <div className={s.questionWrapWrap}>
-        <div className={`${s.question} relative text-sm text-gray-900`}>
+        <div className={`${s.question} group relative text-sm text-gray-900`}>
+          {
+            displayScene !== 'web' && (
+              <Log log={item.log!} containerRef={ref} />
+            )
+          }
           <div
             className={'mr-2 py-3 px-4 bg-blue-500 rounded-tl-2xl rounded-b-2xl'}
           >

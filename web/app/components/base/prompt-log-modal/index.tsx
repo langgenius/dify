@@ -4,10 +4,17 @@ import CopyFeedback from '@/app/components/base/copy-feedback'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type PromptLogModalProps = {
+  log: {
+    items: { role: string; text: string }[]
+    isTextGeneration: boolean
+  }
   width: number
+  onCancel: () => void
 }
 const PromptLogModal: FC<PromptLogModalProps> = ({
+  log,
   width,
+  onCancel,
 }) => {
   return (
     <div
@@ -16,15 +23,24 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
       <div className='flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
         <div className='text-base font-semibold text-gray-900'>PROMPT LOG</div>
         <div className='flex items-center'>
-          <CopyFeedback className='w-6 h-6' content='' selectorId='' />
-          <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />
-          <div className='flex justify-center items-center w-6 h-6 cursor-pointer'>
+          {
+            log.isTextGeneration && (
+              <>
+                <CopyFeedback className='w-6 h-6' content='' selectorId='' />
+                <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />
+              </>
+            )
+          }
+          <div
+            onClick={onCancel}
+            className='flex justify-center items-center w-6 h-6 cursor-pointer'
+          >
             <XClose className='w-4 h-4 text-gray-500' />
           </div>
         </div>
       </div>
       <div className='p-2'>
-        <Card />
+        <Card log={log} />
       </div>
     </div>
   )
