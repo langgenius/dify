@@ -92,7 +92,7 @@ class Config:
         self.CONSOLE_URL = get_env('CONSOLE_URL')
         self.API_URL = get_env('API_URL')
         self.APP_URL = get_env('APP_URL')
-        self.CURRENT_VERSION = "0.3.25"
+        self.CURRENT_VERSION = "0.3.26"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -134,6 +134,14 @@ class Config:
         # qdrant settings
         self.QDRANT_URL = get_env('QDRANT_URL')
         self.QDRANT_API_KEY = get_env('QDRANT_API_KEY')
+
+        # milvus setting
+        self.MILVUS_HOST = get_env('MILVUS_HOST')
+        self.MILVUS_PORT = get_env('MILVUS_PORT')
+        self.MILVUS_USER = get_env('MILVUS_USER')
+        self.MILVUS_PASSWORD = get_env('MILVUS_PASSWORD')
+        self.MILVUS_SECURE = get_env('MILVUS_SECURE')
+
 
         # cors settings
         self.CONSOLE_CORS_ALLOW_ORIGINS = get_cors_allow_origins(
