@@ -165,7 +165,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </div>
         {showEmojiPicker && <EmojiPicker
           onSelect={(icon, icon_background) => {
-            console.log(icon, icon_background)
             setEmoji({ icon, icon_background })
             setShowEmojiPicker(false)
           }}

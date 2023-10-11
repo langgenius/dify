@@ -112,7 +112,6 @@ const useAdvancedPromptConfig = ({
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt)
         })
-        console.log(newPromptConfig.prompt.text)
         setCompletionPromptConfig(newPromptConfig)
       }
       return

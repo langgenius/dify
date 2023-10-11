@@ -73,7 +73,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           delete newItem.max_length
           delete newItem.options
         }
-        console.log(newItem)
         return newItem
       }
 
