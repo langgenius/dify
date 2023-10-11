@@ -2,7 +2,7 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
-from langchain.llms import Minimax
+from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
@@ -10,6 +10,7 @@ from core.model_providers.models.embedding.minimax_embedding import MinimaxEmbed
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
 from core.model_providers.models.llm.minimax_model import MinimaxModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
+from core.third_party.langchain.llms.minimax_llm import MinimaxChatLLM
 from models.provider import ProviderType, ProviderQuotaType
 
 
@@ -98,14 +99,14 @@ class MinimaxProvider(BaseModelProvider):
                 'minimax_api_key': credentials['minimax_api_key'],
             }
 
-            llm = Minimax(
+            llm = MinimaxChatLLM(
                 model='abab5.5-chat',
                 max_tokens=10,
                 temperature=0.01,
                 **credential_kwargs
             )
 
-            llm("ping")
+            llm([HumanMessage(content='ping')])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
