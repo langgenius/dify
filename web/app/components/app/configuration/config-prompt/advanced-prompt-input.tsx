@@ -116,8 +116,8 @@ const AdvancedPromptInput: FC<Props> = ({
               show: !isChatMode,
               selectable: !hasSetBlockStatus.history,
               history: {
-                user: conversationHistoriesRole.user_prefix,
-                assistant: conversationHistoriesRole.assistant_prefix,
+                user: conversationHistoriesRole?.user_prefix,
+                assistant: conversationHistoriesRole?.assistant_prefix,
               },
               onEditRole: showHistoryModal,
             }}
