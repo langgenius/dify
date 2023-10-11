@@ -13,7 +13,8 @@ from langchain.schema import LLMResult, SystemMessage, AIMessage, HumanMessage, 
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, DifyStdOutCallbackHandler
 from core.helper import moderation
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages
+from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages, \
+    to_lc_messages
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
 from core.model_providers.providers.base import BaseModelProvider
 from core.prompt.prompt_builder import PromptBuilder
@@ -446,16 +447,7 @@ class BaseLLM(BaseProviderModel):
             if len(messages) == 0:
                 return []
 
-            chat_messages = []
-            for message in messages:
-                if message.type == MessageType.HUMAN:
-                    chat_messages.append(HumanMessage(content=message.content))
-                elif message.type == MessageType.ASSISTANT:
-                    chat_messages.append(AIMessage(content=message.content))
-                elif message.type == MessageType.SYSTEM:
-                    chat_messages.append(SystemMessage(content=message.content))
-
-            return chat_messages
+            return to_lc_messages(messages)
 
     def _to_model_kwargs_input(self, model_rules: ModelKwargsRules, model_kwargs: ModelKwargs) -> dict:
         """

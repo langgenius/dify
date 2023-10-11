@@ -218,7 +218,12 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
-        model = model_instance.name
+        if model_instance.model_provider.provider_name == 'azure_openai':
+            model = model_instance.base_model_name
+            model = model.replace("gpt-35", "gpt-3.5")
+        else:
+            model = model_instance.base_model_name
+
         tiktoken_ = _import_tiktoken()
         try:
             encoding = tiktoken_.encoding_for_model(model)
