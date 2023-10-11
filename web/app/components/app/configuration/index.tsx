@@ -109,20 +109,6 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
 
-  const setModel = ({
-    id: modelId,
-    provider,
-    mode,
-  }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
-      draft.provider = provider
-      draft.model_id = modelId
-      draft.mode = mode
-    })
-
-    setModelConfig(newModelConfig)
-  }
-
   const modelModeType = modelConfig.mode
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
@@ -231,6 +217,24 @@ const Configuration: FC = () => {
       setCanReturnToSimpleMode(false)
     },
   })
+
+  const setModel = async ({
+    id: modelId,
+    provider,
+    mode,
+  }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
+    if (isAdvancedMode && mode === ModelModeType.completion) {
+      if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
+        await migrateToDefaultPrompt(true)
+    }
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.provider = provider
+      draft.model_id = modelId
+      draft.mode = mode
+    })
+
+    setModelConfig(newModelConfig)
+  }
 
   useEffect(() => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {

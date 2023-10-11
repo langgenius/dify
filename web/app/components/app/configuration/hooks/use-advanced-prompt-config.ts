@@ -127,7 +127,14 @@ const useAdvancedPromptConfig = ({
         mode: ModelModeType.completion,
         modelName,
       })
-      setCompletionPromptConfig(completion_prompt_config)
+      const newPromptConfig = produce(completion_prompt_config, (draft) => {
+        if (!draft.prompt.text)
+          draft.prompt.text = completion_prompt_config.prompt.text
+
+        if (!draft.conversation_histories_role.assistant_prefix || !draft.conversation_histories_role.user_prefix)
+          draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
+      })
+      setCompletionPromptConfig(newPromptConfig)
     }
   }
 
