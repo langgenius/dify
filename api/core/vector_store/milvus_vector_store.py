@@ -1,4 +1,4 @@
-from langchain.vectorstores import  Milvus
+from core.index.vector_index.milvus import Milvus
 
 
 class MilvusVectorStore(Milvus):
@@ -6,33 +6,41 @@ class MilvusVectorStore(Milvus):
         if not where_filter:
             raise ValueError('where_filter must not be empty')
 
-        self._client.batch.delete_objects(
-            class_name=self._index_name,
-            where=where_filter,
-            output='minimal'
-        )
+        self.col.delete(where_filter.get('filter'))
 
     def del_text(self, uuid: str) -> None:
-        self._client.data_object.delete(
-            uuid,
-            class_name=self._index_name
-        )
+        expr = f"id == {uuid}"
+        self.col.delete(expr)
 
     def text_exists(self, uuid: str) -> bool:
-        result = self._client.query.get(self._index_name).with_additional(["id"]).with_where({
-            "path": ["doc_id"],
-            "operator": "Equal",
-            "valueText": uuid,
-        }).with_limit(1).do()
+        result = self.col.query(
+            expr=f'metadata["doc_id"] == "{uuid}"',
+            output_fields=["id"]
+        )
 
-        if "errors" in result:
-            raise ValueError(f"Error during query: {result['errors']}")
+        return len(result) > 0
 
-        entries = result["data"]["Get"][self._index_name]
-        if len(entries) == 0:
-            return False
+    def get_ids_by_document_id(self, document_id: str):
+        result = self.col.query(
+            expr=f'metadata["document_id"] == "{document_id}"',
+            output_fields=["id"]
+        )
+        if result:
+            return [item["id"] for item in result]
+        else:
+            return None
 
-        return True
+    def get_ids_by_doc_ids(self, doc_ids: list):
+        result = self.col.query(
+            expr=f'metadata["doc_id"] in {doc_ids}',
+            output_fields=["id"]
+        )
+        if result:
+            return [item["id"] for item in result]
+        else:
+            return None
 
     def delete(self):
-        self._client.schema.delete_class(self._index_name)
+        from pymilvus import utility
+        utility.drop_collection(self.collection_name, None, self.alias)
+

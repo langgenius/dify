@@ -7,10 +7,9 @@ from flask_login import user_logged_in
 from flask_restful import Resource
 from werkzeug.exceptions import NotFound, Unauthorized
 
-from core.login.login import _get_user
+from libs.login import _get_user
 from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, Account
-from models.dataset import Dataset
 from models.model import ApiToken, App
 
 

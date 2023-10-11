@@ -5,7 +5,7 @@ from typing import Generator, Union
 
 import flask_login
 from flask import Response, stream_with_context
-from core.login.login import login_required
+from libs.login import login_required
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

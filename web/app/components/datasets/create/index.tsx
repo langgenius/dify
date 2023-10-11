@@ -127,7 +127,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={!!embeddingsDefaultModel}
           onSetting={showSetAPIKey}
-          indexingType={detail?.indexing_technique || ''}
+          indexingType={detail?.indexing_technique}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}

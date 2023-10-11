@@ -4,8 +4,8 @@ from flask import request, current_app
 from flask_login import current_user
 
 from controllers.console.apikey import api_key_list, api_key_fields
-from core.login.login import login_required
-from flask_restful import Resource, reqparse, fields, marshal, marshal_with
+from libs.login import login_required
+from flask_restful import Resource, reqparse, marshal, marshal_with
 from werkzeug.exceptions import NotFound, Forbidden
 import services
 from controllers.console import api

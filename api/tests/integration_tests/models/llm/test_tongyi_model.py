@@ -44,7 +44,7 @@ def decrypt_side_effect(tenant_id, encrypted_api_key):
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
 def test_get_num_tokens(mock_decrypt):
-    model = get_mock_model('qwen-v1')
+    model = get_mock_model('qwen-turbo')
     rst = model.get_num_tokens([
         PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
     ])
@@ -55,7 +55,7 @@ def test_get_num_tokens(mock_decrypt):
 def test_run(mock_decrypt, mocker):
     mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
 
-    model = get_mock_model('qwen-v1')
+    model = get_mock_model('qwen-turbo')
     rst = model.run(
         [PromptMessage(content='Human: Are you Human? you MUST only answer `y` or `n`? \nAssistant: ')],
         stop=['\nHuman:'],

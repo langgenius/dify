@@ -1,8 +1,6 @@
-import datetime
 import json
-import uuid
 
-from flask import current_app, request
+from flask import request
 from flask_restful import reqparse, marshal
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
@@ -13,13 +11,11 @@ from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
     NoFileUploadedError, TooManyFilesError
 from controllers.service_api.wraps import DatasetApiResource
-from core.login.login import current_user
+from libs.login import current_user
 from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
-from extensions.ext_storage import storage
 from fields.document_fields import document_fields, document_status_fields
 from models.dataset import Dataset, Document, DocumentSegment
-from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.file_service import FileService
 

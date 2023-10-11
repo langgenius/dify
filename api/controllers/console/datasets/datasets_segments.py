@@ -14,13 +14,12 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
-from core.login.login import login_required
+from libs.login import login_required
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
 from models.dataset import DocumentSegment
 
-from libs.helper import TimestampField
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task

@@ -1,0 +1,15 @@
+{
+    "support_provider_types": [
+        "custom"
+    ],
+    "system_config": null,
+    "model_flexibility": "fixed",
+    "price_config": {
+        "baichuan2-53b": {
+            "prompt": "0.01",
+            "completion": "0.01",
+            "unit": "0.001",
+            "currency": "RMB"
+        }
+    }
+}

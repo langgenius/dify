@@ -59,25 +59,25 @@ const config: ProviderConfig = {
     fields: [
       {
         type: 'radio',
-        key: 'model_mode',
+        key: 'model_type',
         required: true,
         label: {
-          'en': 'Model Mode',
-          'zh-Hans': '模型模式',
+          'en': 'Model Type',
+          'zh-Hans': '模型类型',
         },
         options: [
           {
-            key: 'chat',
+            key: 'text-generation',
             label: {
-              'en': 'Chat',
-              'zh-Hans': '对话',
+              'en': 'Text Generation',
+              'zh-Hans': '文本生成',
             },
           },
           {
-            key: 'complete',
+            key: 'embeddings',
             label: {
-              'en': 'Complete',
-              'zh-Hans': '文本',
+              'en': 'Embeddings',
+              'zh-Hans': 'Embeddings',
             },
           },
         ],
