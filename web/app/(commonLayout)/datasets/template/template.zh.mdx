@@ -2,127 +2,23 @@ import { CodeGroup } from '@/app/components/develop/code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
 
 # 数据集 API
-<br/>
-<br/>
-<Heading
-  url='/datasets'
-  method='POST'
-  title='创建空数据集'
-  name='#create_empty_dataset'
-/>
-<Row>
-  <Col>
-    ### Request Body
-    <Properties>
-      <Property name='name' type='string' key='name'>
-        数据集名称
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-    <CodeGroup 
-      title="Request" 
-      tag="POST" 
-      label="/datasets"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-      "name": "name"
-    }'
-    ```
-    </CodeGroup>
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "id": "",
-      "name": "name",
-      "description": null,
-      "provider": "vendor",
-      "permission": "only_me",
-      "data_source_type": null,
-      "indexing_technique": null,
-      "app_count": 0,
-      "document_count": 0,
-      "word_count": 0,
-      "created_by": "",
-      "created_at": 1695636173,
-      "updated_by": "",
-      "updated_at": 1695636173,
-      "embedding_model": null,
-      "embedding_model_provider": null,
-      "embedding_available": null
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
 
----
+<div>
+  ### 鉴权
 
-<Heading
-  url='/datasets'
-  method='GET'
-  title='数据集列表'
-  name='#dataset_list'
-/>
-<Row>
-  <Col>
-    ### Query
-    <Properties>
-      <Property name='page' type='string' key='page'>
-        页码
-      </Property>
-      <Property name='limit' type='string' key='limit'>
-        返回条数，默认 20，范围 1-100
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-    <CodeGroup
-      title="Request"
-      tag="POST"
-      label="/datasets"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
-    >
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \
-    --header 'Authorization: Bearer {api_key}'
+  Dify Service API 使用 `API-Key` 进行鉴权。
+
+  建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
+
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
     ```
-    </CodeGroup>
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "data": [
-        {
-          "id": "",
-          "name": "数据集名称",
-          "description": "描述信息",
-          "permission": "only_me",
-          "data_source_type": "upload_file",
-          "indexing_technique": "",
-          "app_count": 2,
-          "document_count": 10,
-          "word_count": 1200,
-          "created_by": "",
-          "created_at": "",
-          "updated_by": "",
-          "updated_at": ""
-        },
-        ...
-      ],
-      "has_more": true,
-      "limit": 20,
-      "total": 50,
-      "page": 1
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
+  </CodeGroup>
+</div>
 
 ---
 
@@ -321,6 +217,128 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "doc_form": "text_model"
       },
       "batch": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets'
+  method='POST'
+  title='创建空数据集'
+  name='#create_empty_dataset'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        数据集名称
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup 
+      title="Request" 
+      tag="POST" 
+      label="/datasets"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "name": "name"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "",
+      "name": "name",
+      "description": null,
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "",
+      "created_at": 1695636173,
+      "updated_by": "",
+      "updated_at": 1695636173,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": null
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets'
+  method='GET'
+  title='数据集列表'
+  name='#dataset_list'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+        页码
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，默认 20，范围 1-100
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "",
+          "name": "数据集名称",
+          "description": "描述信息",
+          "permission": "only_me",
+          "data_source_type": "upload_file",
+          "indexing_technique": "",
+          "app_count": 2,
+          "document_count": 10,
+          "word_count": 1200,
+          "created_by": "",
+          "created_at": "",
+          "updated_by": "",
+          "updated_at": ""
+        },
+        ...
+      ],
+      "has_more": true,
+      "limit": 20,
+      "total": 50,
+      "page": 1
     }
     ```
     </CodeGroup>
