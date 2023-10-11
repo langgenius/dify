@@ -4,14 +4,16 @@ import {
   useEffect,
 } from 'react'
 import { $applyNodeReplacement } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { useLexicalTextEntity } from '../hooks'
+import { decoratorTransform } from '../utils'
 import { HISTORY_PLACEHOLDER_TEXT } from '../constants'
 import {
   $createHistoryBlockNode,
   HistoryBlockNode,
 } from './history-block/node'
 import type { HistoryBlockProps } from './history-block/index'
+import { CustomTextNode } from './custom-text/node'
 
 const REGEX = new RegExp(HISTORY_PLACEHOLDER_TEXT)
 
@@ -33,7 +35,7 @@ const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
     return $applyNodeReplacement($createHistoryBlockNode(roleName, onEditRole))
   }, [roleName, onEditRole, onInsert])
 
-  const getVariableValueMatch = useCallback((text: string) => {
+  const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
     if (matchArr === null)
@@ -47,11 +49,11 @@ const HistoryBlockReplacementBlock: FC<HistoryBlockProps> = ({
     }
   }, [])
 
-  useLexicalTextEntity<any>(
-    getVariableValueMatch,
-    HistoryBlockNode,
-    createHistoryBlockNode,
-  )
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createHistoryBlockNode)),
+    )
+  }, [])
 
   return null
 }

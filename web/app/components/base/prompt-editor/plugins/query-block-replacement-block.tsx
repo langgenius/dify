@@ -4,14 +4,16 @@ import {
   useEffect,
 } from 'react'
 import { $applyNodeReplacement } from 'lexical'
+import { mergeRegister } from '@lexical/utils'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { useLexicalTextEntity } from '../hooks'
+import { decoratorTransform } from '../utils'
 import { QUERY_PLACEHOLDER_TEXT } from '../constants'
 import {
   $createQueryBlockNode,
   QueryBlockNode,
 } from './query-block/node'
 import type { QueryBlockProps } from './query-block/index'
+import { CustomTextNode } from './custom-text/node'
 
 const REGEX = new RegExp(QUERY_PLACEHOLDER_TEXT)
 
@@ -31,7 +33,7 @@ const QueryBlockReplacementBlock: FC<QueryBlockProps> = ({
     return $applyNodeReplacement($createQueryBlockNode())
   }, [onInsert])
 
-  const getVariableValueMatch = useCallback((text: string) => {
+  const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
 
     if (matchArr === null)
@@ -45,11 +47,11 @@ const QueryBlockReplacementBlock: FC<QueryBlockProps> = ({
     }
   }, [])
 
-  useLexicalTextEntity<any>(
-    getVariableValueMatch,
-    QueryBlockNode,
-    createQueryBlockNode,
-  )
+  useEffect(() => {
+    return mergeRegister(
+      editor.registerNodeTransform(CustomTextNode, textNode => decoratorTransform(textNode, getMatch, createQueryBlockNode)),
+    )
+  }, [])
 
   return null
 }
