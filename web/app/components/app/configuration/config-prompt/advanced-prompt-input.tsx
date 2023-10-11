@@ -5,14 +5,19 @@ import copy from 'copy-to-clipboard'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { useBoolean } from 'ahooks'
+import produce from 'immer'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
-import type { PromptRole } from '@/models/debug'
+import ConfirmAddVar from './confirm-add-var'
+import type { PromptRole, PromptVariable } from '@/models/debug'
 import { HelpCircle, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Clipboard, ClipboardCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
+import { getNewVar, getVars } from '@/utils/var'
+
 type Props = {
   type: PromptRole
   isChatMode: boolean
@@ -21,6 +26,7 @@ type Props = {
   onChange: (value: string) => void
   canDelete: boolean
   onDelete: () => void
+  promptVariables: PromptVariable[]
 }
 
 const AdvancedPromptInput: FC<Props> = ({
@@ -31,12 +37,14 @@ const AdvancedPromptInput: FC<Props> = ({
   onTypeChange,
   canDelete,
   onDelete,
+  promptVariables,
 }) => {
   const { t } = useTranslation()
 
   const {
     hasSetBlockStatus,
     modelConfig,
+    setModelConfig,
     conversationHistoriesRole,
     showHistoryModal,
     dataSets,
@@ -44,20 +52,39 @@ const AdvancedPromptInput: FC<Props> = ({
   } = useContext(ConfigContext)
 
   const [isCopied, setIsCopied] = React.useState(false)
-  // const handleAddVar = (key: string) => {
-  //   const newModelConfig = produce(modelConfig, (draft) => {
-  //     draft.configs.prompt_variables.push({
-  //       key,
-  //       name: key,
-  //       type: 'string',
-  //       required: true,
-  //     })
-  //   })
-  //   setModelConfig(newModelConfig)
-  // }
+
+  const promptVariablesObj = (() => {
+    const obj: Record<string, boolean> = {}
+    promptVariables.forEach((item) => {
+      obj[item.key] = true
+    })
+    return obj
+  })()
+  const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
+  const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
+  const handleBlur = () => {
+    const keys = getVars(value)
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj)).map(key => getNewVar(key))
+    if (newPromptVariables.length > 0) {
+      setNewPromptVariables(newPromptVariables)
+      showConfirmAddVar()
+    }
+  }
+
+  const handleAutoAdd = (isAdd: boolean) => {
+    return () => {
+      if (isAdd) {
+        const newModelConfig = produce(modelConfig, (draft) => {
+          draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...newPromptVariables]
+        })
+        setModelConfig(newModelConfig)
+      }
+      hideConfirmAddVar()
+    }
+  }
 
   return (
-    <div className={`${s.gradientBorder}`}>
+    <div className={`relative ${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
         <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
           {isChatMode
@@ -126,12 +153,22 @@ const AdvancedPromptInput: FC<Props> = ({
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={onChange}
+            onBlur={handleBlur}
           />
         </div>
         <div className='pl-4 pb-2 flex'>
           <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
         </div>
       </div>
+
+      {isShowConfirmAddVar && (
+        <ConfirmAddVar
+          varNameArr={newPromptVariables.map(v => v.name)}
+          onConfrim={handleAutoAdd(true)}
+          onCancel={handleAutoAdd(false)}
+          onHide={hideConfirmAddVar}
+        />
+      )}
     </div>
   )
 }

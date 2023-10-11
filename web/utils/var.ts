@@ -1,4 +1,5 @@
 import { MAX_VAR_KEY_LENGHT, VAR_ITEM_TEMPLATE, getMaxVarNameLength } from '@/config'
+import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
 
 export const getNewVar = (key: string) => {
@@ -48,7 +49,9 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
 
 const varRegex = /\{\{([^}]+)\}\}/g
 export const getVars = (value: string) => {
-  const keys = value.match(varRegex)?.map((item) => {
+  const keys = value.match(varRegex)?.filter((item) => {
+    return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
+  }).map((item) => {
     return item.replace('{{', '').replace('}}', '')
   }) || []
   const keyObj: Record<string, boolean> = {}

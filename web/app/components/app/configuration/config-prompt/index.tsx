@@ -110,6 +110,7 @@ const Prompt: FC<IPromptProps> = ({
                 canDelete={(currentAdvancedPrompt as PromptItem[]).length > 1}
                 onDelete={() => handlePromptDelete(index)}
                 onChange={value => handleValueChange(value, index)}
+                promptVariables={promptVariables}
               />
             ))
           )
@@ -122,6 +123,7 @@ const Prompt: FC<IPromptProps> = ({
               canDelete={false}
               onDelete={() => handlePromptDelete(0)}
               onChange={value => handleValueChange(value)}
+              promptVariables={promptVariables}
             />
           )
         }
