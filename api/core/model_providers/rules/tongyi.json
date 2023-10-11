@@ -3,5 +3,19 @@
         "custom"
     ],
     "system_config": null,
-    "model_flexibility": "fixed"
+    "model_flexibility": "fixed",
+    "price_config": {
+        "qwen-turbo": {
+            "prompt": "0.012",
+            "completion": "0.012",
+            "unit": "0.001",
+            "currency": "RMB"
+        },
+        "qwen-plus": {
+            "prompt": "0.14",
+            "completion": "0.14",
+            "unit": "0.001",
+            "currency": "RMB"
+        }
+    }
 }
