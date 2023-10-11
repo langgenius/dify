@@ -130,16 +130,24 @@ const useAdvancedPromptConfig = ({
 
       if (toModelModeType === ModelModeType.completion) {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
-          if (!draft.prompt.text)
-            draft.prompt.text = completion_prompt_config.prompt.text
+          if (!completionPromptConfig.prompt.text)
+            draft.prompt.text = completion_prompt_config.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt)
 
-          if (appMode === AppType.chat && (!draft.conversation_histories_role.assistant_prefix || !draft.conversation_histories_role.user_prefix))
+          if (appMode === AppType.chat && (!completionPromptConfig.conversation_histories_role.assistant_prefix || !draft.conversation_histories_role.user_prefix))
             draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
         })
         setCompletionPromptConfig(newPromptConfig)
       }
       else {
-        setChatPromptConfig(chat_prompt_config)
+        const newPromptConfig = produce(chat_prompt_config, (draft) => {
+          draft.prompt = draft.prompt.map((p) => {
+            return {
+              ...p,
+              text: p.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt),
+            }
+          })
+        })
+        setChatPromptConfig(newPromptConfig)
       }
     }
   }
