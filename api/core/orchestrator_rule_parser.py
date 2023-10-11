@@ -1,7 +1,6 @@
 import math
 from typing import Optional
 
-from flask import current_app
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
@@ -27,7 +26,6 @@ from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
-from models.provider import ProviderType
 
 
 class OrchestratorRuleParser:
@@ -77,7 +75,7 @@ class OrchestratorRuleParser:
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
             if agent_model_instance.model_mode != ModelMode.CHAT \
                     or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
-                if planning_strategy in [PlanningStrategy.FUNCTION_CALL, PlanningStrategy.MULTI_FUNCTION_CALL]:
+                if planning_strategy == PlanningStrategy.FUNCTION_CALL:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
                     planning_strategy = PlanningStrategy.REACT_ROUTER
@@ -207,7 +205,10 @@ class OrchestratorRuleParser:
                 tool = self.to_current_datetime_tool()
 
             if tool:
-                tool.callbacks.extend(callbacks)
+                if tool.callbacks is not None:
+                    tool.callbacks.extend(callbacks)
+                else:
+                    tool.callbacks = callbacks
                 tools.append(tool)
 
         return tools
@@ -269,10 +270,9 @@ class OrchestratorRuleParser:
             summary_model_instance = None
 
         tool = WebReaderTool(
-            llm=summary_model_instance.client if summary_model_instance else None,
+            model_instance=summary_model_instance if summary_model_instance else None,
             max_chunk_length=4000,
-            continue_reading=True,
-            callbacks=[DifyStdOutCallbackHandler()]
+            continue_reading=True
         )
 
         return tool
@@ -290,16 +290,13 @@ class OrchestratorRuleParser:
                         "is not up to date. "
                         "Input should be a search query.",
             func=OptimizedSerpAPIWrapper(**func_kwargs).run,
-            args_schema=OptimizedSerpAPIInput,
-            callbacks=[DifyStdOutCallbackHandler()]
+            args_schema=OptimizedSerpAPIInput
         )
 
         return tool
 
     def to_current_datetime_tool(self) -> Optional[BaseTool]:
-        tool = DatetimeTool(
-            callbacks=[DifyStdOutCallbackHandler()]
-        )
+        tool = DatetimeTool()
 
         return tool
 
@@ -310,8 +307,7 @@ class OrchestratorRuleParser:
         return WikipediaQueryRun(
             name="wikipedia",
             api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
-            args_schema=WikipediaInput,
-            callbacks=[DifyStdOutCallbackHandler()]
+            args_schema=WikipediaInput
         )
 
     @classmethod
