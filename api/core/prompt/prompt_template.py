@@ -1,8 +1,18 @@
 import re
-from typing import Any
+
+REGEX = re.compile(r"\{\{([a-zA-Z0-9_]{1,16}|#histories#|#query#|#context#)\}\}")
 
 
 class PromptTemplateParser:
+    """
+    Rules:
+
+    1. Template variables must be enclosed in `{{}}`.
+    2. The template variable Key can only be: letters + numbers + underscore, with a maximum length of 16 characters.
+    3. The template variable Key cannot contain new lines or spaces, and must comply with rule 2.
+    4. In addition to the above, 3 types of special template variable Keys are accepted:
+       `{{#histories#}}` `{{#query#}}` `{{#context#}}`. No other `{{##}}` template variables are allowed.
+    """
 
     def __init__(self, template: str):
         self.template = template
@@ -10,8 +20,7 @@ class PromptTemplateParser:
 
     def extract(self) -> list:
         # Regular expression to match the template rules
-        regex = re.compile(r"\{\{([a-zA-Z0-9_]{1,16}|#histories#|#query#|#context#)\}\}")
-        return re.findall(regex, self.template)
+        return re.findall(REGEX, self.template)
 
     def format(self, inputs: dict, remove_template_variables: bool = True) -> str:
         def replacer(match):
@@ -22,8 +31,8 @@ class PromptTemplateParser:
                 return PromptTemplateParser.remove_template_variables(value)
             return value
 
-        return re.sub(r"\{\{([a-zA-Z0-9_]{1,16}|#histories#|#query#|#context#)\}\}", replacer, self.template)
+        return re.sub(REGEX, replacer, self.template)
 
     @classmethod
     def remove_template_variables(cls, text: str):
-        return re.sub(r"\{\{([a-zA-Z0-9_]{1,16}|#histories#|#query#|#context#)\}\}", r'{\1}', text)
+        return re.sub(REGEX, r'{\1}', text)

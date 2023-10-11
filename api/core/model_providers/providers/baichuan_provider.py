@@ -31,6 +31,7 @@ class BaichuanProvider(BaseModelProvider):
                 {
                     'id': 'baichuan2-53b',
                     'name': 'Baichuan2-53B',
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
