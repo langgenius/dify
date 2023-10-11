@@ -10,7 +10,6 @@ import {
   TextNode,
 } from 'lexical'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import type { InitialEditorStateType } from '@lexical/react/LexicalComposer'
 import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary'
@@ -45,7 +44,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export type PromptEditorProps = {
   className?: string
-  value?: InitialEditorStateType
+  value?: string
   editable?: boolean
   onChange?: (text: string) => void
   onBlur?: () => void
@@ -132,7 +131,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   const handleEditorChange = (editorState: EditorState) => {
     const text = editorState.read(() => $getRoot().getTextContent())
-    if (onChange && value !== text)
+
+    if (onChange && value?.replaceAll('\n', '') !== text.replaceAll('\n', ''))
       onChange(text)
   }
 
