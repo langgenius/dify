@@ -317,7 +317,7 @@ const Configuration: FC = () => {
     // new model config data struct
     const data: BackendModelConfig = {
       // Simple Mode prompt
-      pre_prompt: promptMode !== PromptMode.advanced ? promptTemplate : '',
+      pre_prompt: !isAdvancedMode ? promptTemplate : '',
       prompt_type: promptMode,
       chat_prompt_config: {},
       completion_prompt_config: {},
@@ -335,7 +335,7 @@ const Configuration: FC = () => {
       model: {
         provider: modelConfig.provider,
         name: modelId,
-        mode: modelConfig.mode || ModelModeType.completion, // TODO: Test
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
@@ -390,6 +390,8 @@ const Configuration: FC = () => {
       setPromptMode,
       canReturnToSimpleMode,
       setCanReturnToSimpleMode,
+      chatPromptConfig,
+      completionPromptConfig,
       currentAdvancedPrompt,
       setCurrentAdvancedPrompt,
       conversationHistoriesRole: completionPromptConfig.conversation_histories_role,

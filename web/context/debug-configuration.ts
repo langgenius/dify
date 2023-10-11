@@ -1,8 +1,9 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { BlockStatus, CitationConfig, CompletionParams, ConversationHistoriesRole, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { BlockStatus, ChatPromptConfig, CitationConfig, CompletionParams, CompletionPromptConfig, ConversationHistoriesRole, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
+import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type IDebugConfiguration = {
   appId: string
@@ -15,6 +16,8 @@ type IDebugConfiguration = {
   isAdvancedMode: boolean
   canReturnToSimpleMode: boolean
   setCanReturnToSimpleMode: (canReturnToSimpleMode: boolean) => void
+  chatPromptConfig: ChatPromptConfig
+  completionPromptConfig: CompletionPromptConfig
   currentAdvancedPrompt: PromptItem | PromptItem[]
   setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[]) => void
   showHistoryModal: () => void
@@ -69,6 +72,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   isAdvancedMode: false,
   canReturnToSimpleMode: false,
   setCanReturnToSimpleMode: () => { },
+  chatPromptConfig: DEFAULT_CHAT_PROMPT_CONFIG,
+  completionPromptConfig: DEFAULT_COMPLETION_PROMPT_CONFIG,
   currentAdvancedPrompt: [],
   showHistoryModal: () => { },
   conversationHistoriesRole: {

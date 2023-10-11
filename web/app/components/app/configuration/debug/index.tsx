@@ -37,6 +37,10 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    isAdvancedMode,
+    promptMode,
+    chatPromptConfig,
+    completionPromptConfig,
     introduction,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
@@ -53,6 +57,7 @@ const Debug: FC<IDebug> = ({
     modelConfig,
     completionParams,
     hasSetContextVar,
+    datasetConfigs,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -155,11 +160,15 @@ const Debug: FC<IDebug> = ({
         id,
       },
     }))
+    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
-      pre_prompt: modelConfig.configs.prompt_template,
+      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+      prompt_type: promptMode,
+      chat_prompt_config: {},
+      completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
-      dataset_query_variable: '',
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction,
       more_like_this: {
         enabled: false,
@@ -174,8 +183,15 @@ const Debug: FC<IDebug> = ({
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
+      dataset_configs: datasetConfigs,
+    }
+
+    if (isAdvancedMode) {
+      postModelConfig.chat_prompt_config = chatPromptConfig
+      postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
     const data = {
@@ -326,7 +342,10 @@ const Debug: FC<IDebug> = ({
     const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
-      pre_prompt: modelConfig.configs.prompt_template,
+      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+      prompt_type: promptMode,
+      chat_prompt_config: {},
+      completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       dataset_query_variable: contextVar || '',
       opening_statement: introduction,
@@ -341,8 +360,15 @@ const Debug: FC<IDebug> = ({
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
+      dataset_configs: datasetConfigs,
+    }
+
+    if (isAdvancedMode) {
+      postModelConfig.chat_prompt_config = chatPromptConfig
+      postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
     const data = {
@@ -429,6 +455,8 @@ const Debug: FC<IDebug> = ({
                 isLoading={!completionRes && isResponsing}
                 isInstalledApp={false}
                 messageId={messageId}
+                isError={false}
+                onRetry={() => { }}
               />
             )}
           </div>

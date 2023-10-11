@@ -220,7 +220,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   }, [completionParams])
 
   const handleParamChange = (key: string, value: number | string[]) => {
-    if (key === 'stop_sequences') {
+    if (key === 'stop') {
       console.log('value:', value)
       onCompletionParamsChange({
         ...completionParams,
@@ -369,7 +369,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className={cn(hasEnableParams && 'mt-4', 'space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
               {allParams[provider]?.[modelId]
                 ? (
-                  currSupportParams.concat(['stop_sequences']).map(key => (<ParamItem
+                  currSupportParams.concat(['stop']).map(key => (<ParamItem
                     key={key}
                     id={key}
                     name={t(`common.model.params.${key}`)}
@@ -377,7 +377,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
                     {...currParams[key] as any}
                     value={(completionParams as any)[key] as any}
                     onChange={handleParamChange}
-                    inputType={key === 'stop_sequences' ? 'inputTag' : 'slider'}
+                    inputType={key === 'stop' ? 'inputTag' : 'slider'}
                   />))
                 )
                 : (
