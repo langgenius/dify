@@ -17,13 +17,13 @@ import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { PromptVariable } from '@/models/debug'
-import { AppType } from '@/types/app'
+import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 const Config: FC = () => {
   const {
     mode,
-    modelModeType,
     isAdvancedMode,
+    modelModeType,
     canReturnToSimpleMode,
     hasSetBlockStatus,
     showHistoryModal,
@@ -154,8 +154,9 @@ const Config: FC = () => {
 
         {/* Dataset */}
         <DatasetConfig />
-        {/* && modelModeType === ModelModeType.completion */}
-        {isChatApp && (
+
+        {/* Chat History */}
+        {isAdvancedMode && isChatApp && modelModeType === ModelModeType.completion && (
           <HistoryPanel
             showWarning={!hasSetBlockStatus.history}
             onShowEditModal={showHistoryModal}
