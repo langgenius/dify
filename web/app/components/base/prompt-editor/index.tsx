@@ -129,8 +129,9 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   const handleEditorChange = (editorState: EditorState) => {
-    if (onChange)
-      onChange(editorState.read(() => $getRoot().getTextContent()))
+    const text = editorState.read(() => $getRoot().getTextContent())
+    if (onChange && value !== text)
+      onChange(text)
   }
 
   useEffect(() => {

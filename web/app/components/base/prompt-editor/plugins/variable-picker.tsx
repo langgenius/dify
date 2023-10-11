@@ -6,9 +6,9 @@ import { $insertNodes, type TextNode } from 'lexical'
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
-  useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { useBasicTypeaheadTriggerMatch } from '../hooks'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from './variable-block'
 import { $createCustomTextNode } from './custom-text/node'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'

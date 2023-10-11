@@ -7,8 +7,8 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   LexicalTypeaheadMenuPlugin,
   MenuOption,
-  useBasicTypeaheadTriggerMatch,
 } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { useBasicTypeaheadTriggerMatch } from '../hooks'
 import { INSERT_CONTEXT_BLOCK_COMMAND } from './context-block'
 import { INSERT_VARIABLE_BLOCK_COMMAND } from './variable-block'
 import { INSERT_HISTORY_BLOCK_COMMAND } from './history-block'

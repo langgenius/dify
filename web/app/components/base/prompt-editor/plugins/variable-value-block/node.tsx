@@ -52,10 +52,6 @@ export class VariableValueBlockNode extends TextNode {
   canInsertTextBefore(): boolean {
     return false
   }
-
-  isTextEntity(): true {
-    return true
-  }
 }
 
 export function $createVariableValueBlockNode(text = ''): VariableValueBlockNode {
