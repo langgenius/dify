@@ -476,7 +476,8 @@ const Configuration: FC = () => {
               <div className='italic text-base font-bold text-gray-900 leading-[18px]'>{t('appDebug.pageTitle.line1')}</div>
               <div className='flex items-center h-6 space-x-1 text-xs'>
                 <div className='text-gray-500 font-medium italic'>{t('appDebug.pageTitle.line2')}</div>
-                {!isAdvancedMode && (
+                {/* modelModeType missing can not load template */}
+                {(!isAdvancedMode && modelModeType) && (
                   <div
                     onClick={() => setPromptMode(PromptMode.advanced)}
                     className={'cursor-pointer text-indigo-600'}
