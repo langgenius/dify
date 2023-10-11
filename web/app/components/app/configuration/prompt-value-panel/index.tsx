@@ -26,7 +26,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onSend,
 }) => {
   const { t } = useTranslation()
-  const { modelConfig, inputs, setInputs, mode } = useContext(ConfigContext)
+  const { modelConfig, inputs, setInputs, mode, isAdvancedMode, completionPromptConfig } = useContext(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -40,7 +40,16 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     return obj
   })()
 
-  const canNotRun = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const canNotRun = (() => {
+    if (mode !== AppType.completion)
+      return true
+
+    if (isAdvancedMode)
+      return !completionPromptConfig.prompt.text
+
+    else
+      return !modelConfig.configs.prompt_template
+  })()
   const renderRunButton = () => {
     return (
       <Button
