@@ -1,6 +1,8 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
+import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
 import type { Dataset } from './index'
 import { DELETE_CONTEXT_BLOCK_COMMAND } from './index'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
@@ -10,21 +12,27 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type ContextBlockComponentProps = {
   nodeKey: string
-  datasets?: Dataset[]
   onAddContext: () => void
 }
 
 const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   nodeKey,
-  datasets = [],
   onAddContext,
 }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [datasets, setDatasets] = useState<Dataset[]>([])
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === UPDATE_DATASETS_EVENT_EMITTER)
+      setDatasets(v.payload)
+  })
 
   return (
     <div className={`

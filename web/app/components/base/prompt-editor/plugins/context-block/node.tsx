@@ -1,6 +1,5 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
-import { latestDatasets } from '../../index'
 import ContextBlockComponent from './component'
 import type { Dataset } from './index'
 
@@ -38,9 +37,6 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   updateDOM(): false {
-    if (latestDatasets !== this.getDatasets())
-      this.setDatasets(latestDatasets)
-
     return false
   }
 
@@ -48,7 +44,6 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return (
       <ContextBlockComponent
         nodeKey={this.getKey()}
-        datasets={this.getDatasets()}
         onAddContext={this.getOnAddContext()}
       />
     )
@@ -58,12 +53,6 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     const self = this.getLatest()
 
     return self.__datasets
-  }
-
-  setDatasets(datasets: Dataset[]): void {
-    const self = this.getWritable()
-
-    self.__datasets = datasets
   }
 
   getOnAddContext(): () => void {

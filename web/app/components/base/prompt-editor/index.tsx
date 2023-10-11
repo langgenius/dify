@@ -37,6 +37,11 @@ import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
 import type { Option } from './plugins/variable-picker'
+import {
+  UPDATE_DATASETS_EVENT_EMITTER,
+  UPDATE_HISTORY_EVENT_EMITTER,
+} from './constants'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 export type PromptEditorProps = {
   value?: InitialEditorStateType
@@ -69,11 +74,6 @@ export type PromptEditorProps = {
     onDelete?: () => void
   }
 }
-
-// eslint-disable-next-line import/no-mutable-exports
-export let latestDatasets: Dataset[] = []
-// eslint-disable-next-line import/no-mutable-exports
-export let latestHistory: RoleName = { user: '', assistant: '' }
 
 const PromptEditor: FC<PromptEditorProps> = ({
   value,
@@ -108,6 +108,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     onDelete: () => {},
   },
 }) => {
+  const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
     namespace: 'prompt-editor',
     nodes: [
@@ -133,11 +134,17 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   useEffect(() => {
-    latestDatasets = contextBlock.datasets
-  }, [contextBlock.datasets])
+    eventEmitter?.emit({
+      type: UPDATE_DATASETS_EVENT_EMITTER,
+      payload: contextBlock.datasets,
+    } as any)
+  }, [eventEmitter, contextBlock.datasets])
   useEffect(() => {
-    latestHistory = historyBlock.history
-  }, [historyBlock.history])
+    eventEmitter?.emit({
+      type: UPDATE_HISTORY_EVENT_EMITTER,
+      payload: historyBlock.history,
+    } as any)
+  }, [eventEmitter, historyBlock.history])
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>

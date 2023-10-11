@@ -1,6 +1,5 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
 import { DecoratorNode } from 'lexical'
-import { latestHistory } from '../../index'
 import HistoryBlockComponent from './component'
 import type { RoleName } from './index'
 
@@ -38,9 +37,6 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
   }
 
   updateDOM(): false {
-    if (latestHistory !== this.getRoleName())
-      this.setRoleName(latestHistory)
-
     return false
   }
 
@@ -48,7 +44,6 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     return (
       <HistoryBlockComponent
         nodeKey={this.getKey()}
-        roleName={this.getRoleName()}
         onEditRole={this.getOnEditRole()}
       />
     )
@@ -58,12 +53,6 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     const self = this.getLatest()
 
     return self.__roleName
-  }
-
-  setRoleName(roleName: RoleName): void {
-    const self = this.getWritable()
-
-    self.__roleName = roleName
   }
 
   getOnEditRole(): () => void {

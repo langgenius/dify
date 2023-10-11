@@ -1,6 +1,8 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelectOrDelete, useTrigger } from '../../hooks'
+import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
 import type { RoleName } from './index'
 import { DELETE_HISTORY_BLOCK_COMMAND } from './index'
 import { DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
@@ -10,24 +12,27 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type HistoryBlockComponentProps = {
   nodeKey: string
   onEditRole: () => void
-  roleName?: RoleName
 }
 
 const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   nodeKey,
   onEditRole,
-  roleName = {
-    user: 'Human',
-    assistant: 'Assistant',
-  },
 }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [roleName, setRoleName] = useState<RoleName>()
+
+  eventEmitter?.useSubscription((v: any) => {
+    if (v?.type === UPDATE_HISTORY_EVENT_EMITTER)
+      setRoleName(v.payload)
+  })
 
   return (
     <div className={`
@@ -59,11 +64,11 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>{t('common.promptEditor.history.modal.title')}</div>
               <div className='flex items-center text-sm text-gray-700'>
-                <div className='mr-1 w-20 text-xs font-semibold'>{roleName.user}</div>
+                <div className='mr-1 w-20 text-xs font-semibold'>{roleName?.user}</div>
                 {t('common.promptEditor.history.modal.user')}
               </div>
               <div className='flex items-center text-sm text-gray-700'>
-                <div className='mr-1 w-20 text-xs font-semibold'>{roleName.assistant}</div>
+                <div className='mr-1 w-20 text-xs font-semibold'>{roleName?.assistant}</div>
                 {t('common.promptEditor.history.modal.assistant')}
               </div>
             </div>
