@@ -221,16 +221,34 @@ const Configuration: FC = () => {
   const setModel = async ({
     id: modelId,
     provider,
-    mode,
+    mode: modeMode,
   }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
-    if (isAdvancedMode && mode === ModelModeType.completion) {
-      if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
-        await migrateToDefaultPrompt(true)
+    if (isAdvancedMode) {
+      const appMode = mode
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      const published = await handlePublish(true)
+      if (!published)
+        return
+
+      if (modeMode === ModelModeType.completion) {
+        if (appMode === AppType.chat) {
+          if (!completionPromptConfig.prompt.text || !completionPromptConfig.conversation_histories_role.assistant_prefix || !completionPromptConfig.conversation_histories_role.user_prefix)
+            await migrateToDefaultPrompt(true, ModelModeType.completion)
+        }
+        else {
+          if (!completionPromptConfig.prompt.text)
+            await migrateToDefaultPrompt(true, ModelModeType.completion)
+        }
+      }
+      if (modeMode === ModelModeType.chat) {
+        if (chatPromptConfig.prompt.length === 0)
+          await migrateToDefaultPrompt(true, ModelModeType.chat)
+      }
     }
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.provider = provider
       draft.model_id = modelId
-      draft.mode = mode
+      draft.mode = modeMode
     })
 
     setModelConfig(newModelConfig)
@@ -298,10 +316,19 @@ const Configuration: FC = () => {
     })
   }, [appId])
 
-  const cannotPublish = mode === AppType.completion && !modelConfig.configs.prompt_template
-  const promptEmpty = mode === AppType.completion && !modelConfig.configs.prompt_template
+  const promptEmpty = (() => {
+    if (mode === AppType.chat)
+      return false
+
+    if (isAdvancedMode)
+      return !completionPromptConfig.prompt.text
+
+    else
+      return !modelConfig.configs.prompt_template
+  })()
+  const cannotPublish = promptEmpty
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const handlePublish = async () => {
+  const handlePublish = async (isSilence?: boolean) => {
     const modelId = modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
@@ -366,8 +393,11 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    if (!isSilence)
+      notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+
     setCanReturnToSimpleMode(false)
+    return true
   }
 
   const [showConfirm, setShowConfirm] = useState(false)
@@ -487,7 +517,7 @@ const Configuration: FC = () => {
               />
               <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
-              <Button type='primary' onClick={handlePublish} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
+              <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
             </div>
           </div>
           <div className='flex grow h-[200px]'>
