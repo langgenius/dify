@@ -29,7 +29,7 @@ const MessageTypeSelector: FC<Props> = ({
         <ChevronSelectorVertical className='w-3 h-3 ' />
       </div>
       {showOption && (
-        <div className='absolute top-[30px] p-1 border border-gray-200 shadow-lg rounded-lg bg-white'>
+        <div className='absolute z-10 top-[30px] p-1 border border-gray-200 shadow-lg rounded-lg bg-white'>
           {allTypes.map(type => (
             <div
               key={type}
