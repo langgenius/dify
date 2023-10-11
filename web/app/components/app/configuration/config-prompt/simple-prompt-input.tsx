@@ -110,6 +110,7 @@ const Prompt: FC<ISimplePromptInput> = ({
         </div>
         <div className='px-4 py-2 min-h-[228px] max-h-[156px] overflow-y-auto bg-white rounded-xl text-sm text-gray-700'>
           <PromptEditor
+            className='min-h-[210px]'
             value={promptTemplate}
             contextBlock={{
               selectable: !hasSetBlockStatus.context,

@@ -123,6 +123,7 @@ const AdvancedPromptInput: FC<Props> = ({
         </div>
         <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
           <PromptEditor
+            className='min-h-[102px]'
             value={value}
             contextBlock={{
               selectable: !hasSetBlockStatus.context,
