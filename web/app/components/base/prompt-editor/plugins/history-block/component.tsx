@@ -16,22 +16,24 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type HistoryBlockComponentProps = {
   nodeKey: string
+  roleName?: RoleName
   onEditRole: () => void
 }
 
 const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
   nodeKey,
+  roleName = { user: '', assistant: '' },
   onEditRole,
 }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HISTORY_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
   const { eventEmitter } = useEventEmitterContextContext()
-  const [roleName, setRoleName] = useState<RoleName>()
+  const [localRoleName, setLocalRoleName] = useState<RoleName>(roleName)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === UPDATE_HISTORY_EVENT_EMITTER)
-      setRoleName(v.payload)
+      setLocalRoleName(v.payload)
   })
 
   return (
@@ -64,11 +66,11 @@ const HistoryBlockComponent: FC<HistoryBlockComponentProps> = ({
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>{t('common.promptEditor.history.modal.title')}</div>
               <div className='flex items-center text-sm text-gray-700'>
-                <div className='mr-1 w-20 text-xs font-semibold'>{roleName?.user}</div>
+                <div className='mr-1 w-20 text-xs font-semibold'>{localRoleName?.user}</div>
                 {t('common.promptEditor.history.modal.user')}
               </div>
               <div className='flex items-center text-sm text-gray-700'>
-                <div className='mr-1 w-20 text-xs font-semibold'>{roleName?.assistant}</div>
+                <div className='mr-1 w-20 text-xs font-semibold'>{localRoleName?.assistant}</div>
                 {t('common.promptEditor.history.modal.assistant')}
               </div>
             </div>

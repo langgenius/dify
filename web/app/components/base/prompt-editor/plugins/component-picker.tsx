@@ -107,6 +107,7 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   const [editor] = useLexicalComposerContext()
   const checkForTriggerMatch = useBasicTypeaheadTriggerMatch('/', {
     minLength: 0,
+    maxLength: 0,
   })
 
   const options = [

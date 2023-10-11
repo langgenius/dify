@@ -16,22 +16,24 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type ContextBlockComponentProps = {
   nodeKey: string
+  datasets?: Dataset[]
   onAddContext: () => void
 }
 
 const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
   nodeKey,
+  datasets = [],
   onAddContext,
 }) => {
   const { t } = useTranslation()
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_CONTEXT_BLOCK_COMMAND)
   const [triggerRef, open, setOpen] = useTrigger()
   const { eventEmitter } = useEventEmitterContextContext()
-  const [datasets, setDatasets] = useState<Dataset[]>([])
+  const [localDatasets, setLocalDatasets] = useState<Dataset[]>(datasets)
 
   eventEmitter?.useSubscription((v: any) => {
     if (v?.type === UPDATE_DATASETS_EVENT_EMITTER)
-      setDatasets(v.payload)
+      setLocalDatasets(v.payload)
   })
 
   return (
@@ -55,17 +57,17 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
           <div className={`
             flex items-center justify-center w-[18px] h-[18px] text-[11px] font-semibold rounded cursor-pointer
             ${open ? 'bg-[#6938EF] text-white' : 'bg-white/50 group-hover:bg-white group-hover:shadow-xs'}
-          `}>{datasets.length}</div>
+          `}>{localDatasets.length}</div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 100 }}>
           <div className='w-[360px] bg-white rounded-xl shadow-lg'>
             <div className='p-4'>
               <div className='mb-2 text-xs font-medium text-gray-500'>
-                {t('common.promptEditor.context.modal.title', { num: datasets.length })}
+                {t('common.promptEditor.context.modal.title', { num: localDatasets.length })}
               </div>
               <div className='max-h-[270px] overflow-y-auto'>
                 {
-                  datasets.map(dataset => (
+                  localDatasets.map(dataset => (
                     <div key={dataset.id} className='flex items-center h-8'>
                       <div className='flex items-center justify-center shrink-0 mr-2 w-6 h-6 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#EAECF5]'>
                         <Folder className='w-4 h-4 text-[#444CE7]' />

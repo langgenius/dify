@@ -44,6 +44,7 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     return (
       <HistoryBlockComponent
         nodeKey={this.getKey()}
+        roleName={this.getRoleName()}
         onEditRole={this.getOnEditRole()}
       />
     )
