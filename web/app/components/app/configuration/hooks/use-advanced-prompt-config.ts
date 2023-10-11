@@ -14,6 +14,7 @@ type Param = {
   modelName: string
   promptMode: PromptMode
   prePrompt: string
+  onUserChangedPrompt: () => void
 }
 
 const useAdvancedPromptConfig = ({
@@ -22,6 +23,7 @@ const useAdvancedPromptConfig = ({
   modelName,
   promptMode,
   prePrompt,
+  onUserChangedPrompt,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
   const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(clone(DEFAULT_CHAT_PROMPT_CONFIG))
@@ -34,7 +36,7 @@ const useAdvancedPromptConfig = ({
     return (modelModeType === ModelModeType.chat) ? chatPromptConfig.prompt : completionPromptConfig.prompt
   })()
 
-  const setCurrentAdvancedPrompt = (prompt: PromptItem | PromptItem[]) => {
+  const setCurrentAdvancedPrompt = (prompt: PromptItem | PromptItem[], isUserChanged?: boolean) => {
     if (!isAdvancedPrompt)
       return
 
@@ -50,6 +52,8 @@ const useAdvancedPromptConfig = ({
         prompt: prompt as PromptItem,
       })
     }
+    if (isUserChanged)
+      onUserChangedPrompt()
   }
 
   const setConversationHistoriesRole = (conversationHistoriesRole: ConversationHistoriesRole) => {

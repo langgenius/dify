@@ -19,7 +19,7 @@ type IDebugConfiguration = {
   chatPromptConfig: ChatPromptConfig
   completionPromptConfig: CompletionPromptConfig
   currentAdvancedPrompt: PromptItem | PromptItem[]
-  setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[]) => void
+  setCurrentAdvancedPrompt: (prompt: PromptItem | PromptItem[], isUserChanged?: boolean) => void
   showHistoryModal: () => void
   conversationHistoriesRole: ConversationHistoriesRole
   setConversationHistoriesRole: (conversationHistoriesRole: ConversationHistoriesRole) => void

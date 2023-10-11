@@ -227,6 +227,9 @@ const Configuration: FC = () => {
     promptMode,
     modelModeType,
     prePrompt: modelConfig.configs.prompt_template,
+    onUserChangedPrompt: () => {
+      setCanReturnToSimpleMode(false)
+    },
   })
 
   useEffect(() => {

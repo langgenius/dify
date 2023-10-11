@@ -47,14 +47,14 @@ const Prompt: FC<IPromptProps> = ({
       const newPrompt = produce(currentAdvancedPrompt as PromptItem[], (draft) => {
         draft[index as number].text = value
       })
-      setCurrentAdvancedPrompt(newPrompt)
+      setCurrentAdvancedPrompt(newPrompt, true)
     }
     else {
       const prompt = currentAdvancedPrompt as PromptItem
       setCurrentAdvancedPrompt({
         ...prompt,
         text: value,
-      })
+      }, true)
     }
   }
 
