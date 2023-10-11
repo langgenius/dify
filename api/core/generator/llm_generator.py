@@ -10,7 +10,7 @@ from core.model_providers.models.entity.model_params import ModelKwargs
 from core.prompt.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 
 from core.prompt.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
-from core.prompt.prompt_template import JinjaPromptTemplate, OutLinePromptTemplate
+from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, CONVERSATION_SUMMARY_PROMPT, INTRODUCTION_GENERATE_PROMPT, \
     GENERATOR_QA_PROMPT
 
@@ -56,7 +56,7 @@ class LLMGenerator:
         )
 
         prompt = CONVERSATION_SUMMARY_PROMPT
-        prompt_with_empty_context = prompt.format(context='')
+        prompt_with_empty_context = prompt.format({"context": ''})
         prompt_tokens = model_instance.get_num_tokens([PromptMessage(content=prompt_with_empty_context)])
         max_context_token_length = model_instance.model_rules.max_tokens.max
         max_context_token_length = max_context_token_length if max_context_token_length else 1500
@@ -84,7 +84,7 @@ class LLMGenerator:
         if not context:
             return '[message too long, no summary]'
 
-        prompt = prompt.format(context=context)
+        prompt = prompt.format({"context": context})
         prompts = [PromptMessage(content=prompt)]
         response = model_instance.run(prompts)
         answer = response.content
@@ -93,7 +93,7 @@ class LLMGenerator:
     @classmethod
     def generate_introduction(cls, tenant_id: str, pre_prompt: str):
         prompt = INTRODUCTION_GENERATE_PROMPT
-        prompt = prompt.format(prompt=pre_prompt)
+        prompt = prompt.format({"prompt": pre_prompt})
 
         model_instance = ModelFactory.get_text_generation_model(
             tenant_id=tenant_id
@@ -109,13 +109,14 @@ class LLMGenerator:
         output_parser = SuggestedQuestionsAfterAnswerOutputParser()
         format_instructions = output_parser.get_format_instructions()
 
-        prompt = JinjaPromptTemplate(
-            template="{{histories}}\n{{format_instructions}}\nquestions:\n",
-            input_variables=["histories"],
-            partial_variables={"format_instructions": format_instructions}
+        prompt_template = PromptTemplateParser(
+            template="{{histories}}\n{{format_instructions}}\nquestions:\n"
         )
 
-        _input = prompt.format_prompt(histories=histories)
+        prompt = prompt_template.format({
+            "histories": histories,
+            "format_instructions": format_instructions
+        })
 
         try:
             model_instance = ModelFactory.get_text_generation_model(
@@ -128,10 +129,10 @@ class LLMGenerator:
         except ProviderTokenNotInitError:
             return []
 
-        prompts = [PromptMessage(content=_input.to_string())]
+        prompt_messages = [PromptMessage(content=prompt)]
 
         try:
-            output = model_instance.run(prompts)
+            output = model_instance.run(prompt_messages)
             questions = output_parser.parse(output.content)
         except LLMError:
             questions = []
@@ -145,19 +146,21 @@ class LLMGenerator:
     def generate_rule_config(cls, tenant_id: str, audiences: str, hoping_to_solve: str) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
-        prompt = OutLinePromptTemplate(
-            template=output_parser.get_format_instructions(),
-            input_variables=["audiences", "hoping_to_solve"],
-            partial_variables={
-                "variable": '{variable}',
-                "lanA": '{lanA}',
-                "lanB": '{lanB}',
-                "topic": '{topic}'
-            },
-            validate_template=False
+        prompt_template = PromptTemplateParser(
+            template=output_parser.get_format_instructions()
         )
 
-        _input = prompt.format_prompt(audiences=audiences, hoping_to_solve=hoping_to_solve)
+        prompt = prompt_template.format(
+            inputs={
+                "audiences": audiences,
+                "hoping_to_solve": hoping_to_solve,
+                "variable": "{{variable}}",
+                "lanA": "{{lanA}}",
+                "lanB": "{{lanB}}",
+                "topic": "{{topic}}"
+            },
+            remove_template_variables=False
+        )
 
         model_instance = ModelFactory.get_text_generation_model(
             tenant_id=tenant_id,
@@ -167,10 +170,10 @@ class LLMGenerator:
             )
         )
 
-        prompts = [PromptMessage(content=_input.to_string())]
+        prompt_messages = [PromptMessage(content=prompt)]
 
         try:
-            output = model_instance.run(prompts)
+            output = model_instance.run(prompt_messages)
             rule_config = output_parser.parse(output.content)
         except LLMError as e:
             raise e

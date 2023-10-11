@@ -17,7 +17,7 @@ from core.model_providers.models.entity.message import PromptMessage, MessageTyp
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
 from core.model_providers.providers.base import BaseModelProvider
 from core.prompt.prompt_builder import PromptBuilder
-from core.prompt.prompt_template import JinjaPromptTemplate
+from core.prompt.prompt_template import PromptTemplateParser
 from core.third_party.langchain.llms.fake import FakeLLM
 import logging
 
@@ -337,17 +337,17 @@ class BaseLLM(BaseProviderModel):
                              memory: Optional[BaseChatMemory]) -> Tuple[str, Optional[list]]:
         context_prompt_content = ''
         if context and 'context_prompt' in prompt_rules:
-            prompt_template = JinjaPromptTemplate.from_template(template=prompt_rules['context_prompt'])
+            prompt_template = PromptTemplateParser(template=prompt_rules['context_prompt'])
             context_prompt_content = prompt_template.format(
-                context=context
+                {'context': context}
             )
 
         pre_prompt_content = ''
         if pre_prompt:
-            prompt_template = JinjaPromptTemplate.from_template(template=pre_prompt)
-            prompt_inputs = {k: inputs[k] for k in prompt_template.input_variables if k in inputs}
+            prompt_template = PromptTemplateParser(template=pre_prompt)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
             pre_prompt_content = prompt_template.format(
-                **prompt_inputs
+                prompt_inputs
             )
 
         prompt = ''
@@ -380,10 +380,8 @@ class BaseLLM(BaseProviderModel):
             memory.ai_prefix = prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
 
             histories = self._get_history_messages_from_memory(memory, rest_tokens)
-            prompt_template = JinjaPromptTemplate.from_template(template=prompt_rules['histories_prompt'])
-            histories_prompt_content = prompt_template.format(
-                histories=histories
-            )
+            prompt_template = PromptTemplateParser(template=prompt_rules['histories_prompt'])
+            histories_prompt_content = prompt_template.format({'histories': histories})
 
             prompt = ''
             for order in prompt_rules['system_prompt_orders']:
@@ -394,10 +392,8 @@ class BaseLLM(BaseProviderModel):
                 elif order == 'histories_prompt':
                     prompt += histories_prompt_content
 
-        prompt_template = JinjaPromptTemplate.from_template(template=query_prompt)
-        query_prompt_content = prompt_template.format(
-            query=query
-        )
+        prompt_template = PromptTemplateParser(template=query_prompt)
+        query_prompt_content = prompt_template.format({'query': query})
 
         prompt += query_prompt_content
 

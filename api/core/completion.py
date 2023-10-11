@@ -17,6 +17,7 @@ from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_builder import PromptBuilder
+from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
 from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
 
@@ -29,7 +30,7 @@ class Completion:
         """
         errors: ProviderTokenNotInitError
         """
-        query = PromptBuilder.process_template(query)
+        query = PromptTemplateParser.remove_template_variables(query)
 
         memory = None
         if conversation:
@@ -304,7 +305,10 @@ class Completion:
         original_completion = message.answer.strip()
 
         prompt = MORE_LIKE_THIS_GENERATE_PROMPT
-        prompt = prompt.format(prompt=old_prompt_messages[0].content, original_completion=original_completion)
+        prompt = prompt.format({
+            "prompt": PromptTemplateParser.remove_template_variables(pre_prompt),
+            "original_completion": original_completion
+        })
 
         prompt_messages = [PromptMessage(content=prompt)]
 

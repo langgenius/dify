@@ -10,7 +10,7 @@ from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import to_prompt_messages, MessageType
 from core.model_providers.models.llm.base import BaseLLM
 from core.prompt.prompt_builder import PromptBuilder
-from core.prompt.prompt_template import JinjaPromptTemplate
+from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -74,10 +74,10 @@ class ConversationMessageTask:
         if self.mode == 'chat':
             introduction = self.app_model_config.opening_statement
             if introduction:
-                prompt_template = JinjaPromptTemplate.from_template(template=introduction)
-                prompt_inputs = {k: self.inputs[k] for k in prompt_template.input_variables if k in self.inputs}
+                prompt_template = PromptTemplateParser(template=introduction)
+                prompt_inputs = {k: self.inputs[k] for k in prompt_template.variable_keys if k in self.inputs}
                 try:
-                    introduction = prompt_template.format(**prompt_inputs)
+                    introduction = prompt_template.format(prompt_inputs)
                 except KeyError:
                     pass
 
@@ -163,7 +163,7 @@ class ConversationMessageTask:
         self.message.message_tokens = message_tokens
         self.message.message_unit_price = message_unit_price
         self.message.message_price_unit = message_price_unit
-        self.message.answer = PromptBuilder.process_template(
+        self.message.answer = PromptTemplateParser.remove_template_variables(
             llm_message.completion.strip()) if llm_message.completion else ''
         self.message.answer_tokens = answer_tokens
         self.message.answer_unit_price = answer_unit_price

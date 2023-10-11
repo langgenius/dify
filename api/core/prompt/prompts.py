@@ -157,10 +157,10 @@ and fill in variables, with a welcome sentence, and keep TLDR.
 ```
 
 << MY INTENDED AUDIENCES >>
-{audiences}
+{{audiences}}
 
 << HOPING TO SOLVE >>
-{hoping_to_solve}
+{{hoping_to_solve}}
 
 << OUTPUT >>
 """
