@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
+import PromptLog from '@/app/components/app/chat/log'
 import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import type { Feedbacktype } from '@/app/components/app/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-import { Clipboard } from '@/app/components/base/icons/src/vender/line/files'
+import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/files'
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -78,7 +79,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 }) => {
   const { t } = useTranslation()
   const isTop = depth === 1
-
+  const ref = useRef(null)
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const hasChild = !!childMessageId
@@ -150,8 +151,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
+  console.log(isInWebApp, isInstalledApp)
+
   return (
-    <div className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
+    <div ref={ref} className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
       style={isTop
         ? {
           boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)',
@@ -186,6 +189,28 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
             <div className='flex items-center justify-between mt-3'>
               <div className='flex items-center'>
+                {
+                  !isInWebApp && !isInstalledApp && (
+                    <PromptLog
+                      log={{ isTextGeneration: true, items: [{ role: 'user', text: 'xxx' }] }}
+                      containerRef={ref}
+                    >
+                      {
+                        showModal => (
+                          <SimpleBtn
+                            isDisabled={isError || !messageId}
+                            className={cn(isMobile && '!px-1.5', 'space-x-1')}
+                            onClick={() => {
+                              showModal(true)
+                            }}>
+                            <File02 className='w-3.5 h-3.5' />
+                            {!isMobile && <div>{t('common.operation.copy')}</div>}
+                          </SimpleBtn>
+                        )
+                      }
+                    </PromptLog>
+                  )
+                }
                 <SimpleBtn
                   isDisabled={isError || !messageId}
                   className={cn(isMobile && '!px-1.5', 'space-x-1')}
