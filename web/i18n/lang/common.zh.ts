@@ -396,6 +396,7 @@ const translation = {
         desc: '插入用户查询模板',
       },
     },
+    existed: 'Prompt 中已存在',
   },
 }
 

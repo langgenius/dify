@@ -396,6 +396,7 @@ const translation = {
         desc: 'Insert user query template',
       },
     },
+    existed: 'Already exists in the prompt',
   },
 }
 

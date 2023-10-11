@@ -61,6 +61,8 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
   onMouseEnter,
   option,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <div
       key={option.key}
@@ -76,8 +78,11 @@ const ComponentPickerMenuItem: FC<ComponentPickerMenuItemProps> = ({
       <div className='flex items-center justify-center mr-2 w-8 h-8 rounded-lg border border-gray-100'>
         {option.icon}
       </div>
-      <div>
-        <div className='text-sm text-gray-900'>{option.title}</div>
+      <div className='grow'>
+        <div className='flex items-center justify-between h-5 text-sm text-gray-900'>
+          {option.title}
+          <span className='text-xs text-gray-400'>{option.disabled && t('common.promptEditor.existed')}</span>
+        </div>
         <div className='text-xs text-gray-500'>{option.desc}</div>
       </div>
     </div>
