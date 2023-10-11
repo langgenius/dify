@@ -109,25 +109,21 @@ const Configuration: FC = () => {
     doSetModelConfig(newModelConfig)
   }
 
-  const setModelId = (modelId: string, provider: ProviderEnum) => {
-    const newModelConfig = produce(modelConfig, (draft: any) => {
+  const setModel = ({
+    id: modelId,
+    provider,
+    mode,
+  }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
       draft.provider = provider
       draft.model_id = modelId
-      // TODO: use from real
-      draft.mode = ModelModeType.chat
+      draft.mode = mode
     })
 
     setModelConfig(newModelConfig)
   }
 
   const modelModeType = modelConfig.mode
-  // TODO: remove it after API Ok
-  const setModelModeType = (mode: ModelModeType) => {
-    const newModelConfig = produce(modelConfig, (draft: any) => {
-      draft.mode = mode
-    })
-    setModelConfig(newModelConfig)
-  }
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
@@ -458,10 +454,6 @@ const Configuration: FC = () => {
                         <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
                       </div>
                     )}
-                    {/* For Test */}
-                    <div className='ml-2'>ModelMode:{modelModeType} <button onClick={() => {
-                      setModelModeType(modelModeType === ModelModeType.chat ? ModelModeType.completion : ModelModeType.chat)
-                    }}>Toggle</button></div>
                   </div>
                 )}
               </div>
@@ -475,7 +467,7 @@ const Configuration: FC = () => {
                 provider={modelConfig.provider as ProviderEnum}
                 completionParams={completionParams}
                 modelId={modelConfig.model_id}
-                setModelId={setModelId}
+                setModel={setModel}
                 onCompletionParamsChange={(newParams: CompletionParams) => {
                   setCompletionParams(newParams)
                 }}

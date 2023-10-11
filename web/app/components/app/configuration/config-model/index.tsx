@@ -33,7 +33,7 @@ export type IConfigModelProps = {
   mode: string
   modelId: string
   provider: ProviderEnum
-  setModelId: (id: string, provider: ProviderEnum) => void
+  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType }) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -43,7 +43,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   isAdvancedMode,
   modelId,
   provider,
-  setModelId,
+  setModel,
   completionParams,
   onCompletionParamsChange,
   disabled,
@@ -119,11 +119,15 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return adjustedValue
   }
 
-  const handleSelectModel = (id: string, nextProvider = ProviderEnum.openai) => {
+  const handleSelectModel = ({ id, provider: nextProvider, mode }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
     return async () => {
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
-      setModelId(id, nextProvider)
+      setModel({
+        id,
+        provider: nextProvider || ProviderEnum.openai,
+        mode,
+      })
 
       await ensureModelParamLoaded(nextProvider, id)
 
@@ -306,7 +310,11 @@ const ConfigModel: FC<IConfigModelProps> = ({
                 }}
                 modelType={ModelType.textGeneration}
                 onChange={(model) => {
-                  handleSelectModel(model.model_name, model.model_provider.provider_name as ProviderEnum)()
+                  handleSelectModel({
+                    id: model.model_name,
+                    provider: model.model_provider.provider_name as ProviderEnum,
+                    mode: model.model_mode,
+                  })()
                 }}
               />
             </div>
