@@ -11,13 +11,12 @@ import s from './style.module.css'
 import type { PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
-import { getNewVar } from '@/utils/var'
+import { getNewVar, getVars } from '@/utils/var'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import type { AutomaticRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
-
 import ConfigContext from '@/context/debug-configuration'
 
 export type ISimplePromptInput = {
@@ -58,7 +57,6 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
 
   const handleChange = (newTemplates: string, keys: string[]) => {
-    // const hasRemovedKeysInput = promptVariables.filter(input => keys.includes(input.key))
     const newPromptVariables = keys.filter(key => !(key in promptVariablesObj)).map(key => getNewVar(key))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
@@ -142,7 +140,10 @@ const Prompt: FC<ISimplePromptInput> = ({
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={(value) => {
-              onChange?.(value, [])
+              handleChange?.(value, [])
+            }}
+            onBlur={() => {
+              handleChange(promptTemplate, getVars(promptTemplate))
             }}
           />
         </div>

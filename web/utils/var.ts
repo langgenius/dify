@@ -45,3 +45,21 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
   })
   return { isValid, errorKey, errorMessageKey }
 }
+
+const varRegex = /\{\{([^}]+)\}\}/g
+export const getVars = (value: string) => {
+  const keys = value.match(varRegex)?.map((item) => {
+    return item.replace('{{', '').replace('}}', '')
+  }) || []
+  const keyObj: Record<string, boolean> = {}
+  // remove duplicate keys
+  const res: string[] = []
+  keys.forEach((key) => {
+    if (keyObj[key])
+      return
+
+    keyObj[key] = true
+    res.push(key)
+  })
+  return res
+}

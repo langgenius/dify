@@ -47,6 +47,7 @@ const Config: FC = () => {
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
+  // simple mode
   const handlePromptChange = (newTemplate: string, newVariables: PromptVariable[]) => {
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_template = newTemplate
