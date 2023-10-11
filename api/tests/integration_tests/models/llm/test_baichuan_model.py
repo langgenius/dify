@@ -48,7 +48,7 @@ def test_chat_get_num_tokens(mock_decrypt):
     model = get_mock_model('baichuan2-53b')
     rst = model.get_num_tokens([
         PromptMessage(type=MessageType.SYSTEM, content='you are a kindness Assistant.'),
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst > 0
 
@@ -59,7 +59,7 @@ def test_chat_run(mock_decrypt, mocker):
 
     model = get_mock_model('baichuan2-53b')
     messages = [
-        PromptMessage(type=MessageType.HUMAN, content='Are you Human? you MUST only answer `y` or `n`?')
+        PromptMessage(type=MessageType.USER, content='Are you Human? you MUST only answer `y` or `n`?')
     ]
     rst = model.run(
         messages,
@@ -73,7 +73,7 @@ def test_chat_stream_run(mock_decrypt, mocker):
 
     model = get_mock_model('baichuan2-53b', streaming=True)
     messages = [
-        PromptMessage(type=MessageType.HUMAN, content='Are you Human? you MUST only answer `y` or `n`?')
+        PromptMessage(type=MessageType.USER, content='Are you Human? you MUST only answer `y` or `n`?')
     ]
     rst = model.run(
         messages

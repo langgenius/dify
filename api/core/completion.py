@@ -170,10 +170,9 @@ class Completion:
                 memory=memory
             )
         else:
-            # TODO use advanced prompt
-            prompt_messages, _ = model_instance.get_prompt(
-                mode=mode,
-                pre_prompt=app_model_config.pre_prompt,
+            prompt_messages = model_instance.get_advanced_prompt(
+                app_mode=mode,
+                app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
                 context=agent_execute_result.output if agent_execute_result else None,

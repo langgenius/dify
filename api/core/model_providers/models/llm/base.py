@@ -227,7 +227,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return:
         """
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
+        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
             unit_price = self.price_config['prompt']
         else:
             unit_price = self.price_config['completion']
@@ -245,7 +245,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return: decimal.Decimal('0.0001')
         """
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
+        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
             unit_price = self.price_config['prompt']
         else:
             unit_price = self.price_config['completion']
@@ -260,7 +260,7 @@ class BaseLLM(BaseProviderModel):
         :param message_type:
         :return: decimal.Decimal('0.000001')
         """
-        if message_type == MessageType.HUMAN or message_type == MessageType.SYSTEM:
+        if message_type == MessageType.USER or message_type == MessageType.SYSTEM:
             price_unit = self.price_config['unit']
         else:
             price_unit = self.price_config['unit']
@@ -324,6 +324,73 @@ class BaseLLM(BaseProviderModel):
         prompt_rules = self._read_prompt_rules_from_file(self.prompt_file_name(mode))
         prompt, stops = self._get_prompt_and_stop(prompt_rules, pre_prompt, inputs, query, context, memory)
         return [PromptMessage(content=prompt)], stops
+    
+    def get_advanced_prompt(self, app_mode: str,
+                   app_model_config: str, inputs: dict,
+                   query: str,
+                   context: Optional[str],
+                   memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
+        
+        model_mode = app_model_config.model_dict['mode']
+        conversation_histories_role =  {
+            "user_prefix": "user",
+            "assistant_prefix": "assistant"
+        }
+
+        prompt_list = []
+        prompt_messages = []
+
+        if app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
+            prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
+            prompt_list = [{
+                'role': MessageType.USER.value,
+                'text': prompt_text
+            }]
+            conversation_histories_role = app_model_config.completion_prompt_config_dict['conversation_histories_role']
+        elif app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
+            prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+        elif app_mode == 'completion' and model_mode == ModelMode.CHAT.value:
+            prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+        elif app_mode == 'completion' and model_mode == ModelMode.COMPLETION.value:
+            prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
+            prompt_list = [{
+                'role': MessageType.USER.value,
+                'text': prompt_text
+            }]
+        else:
+            raise Exception("app_mode or model_mode not support")
+        
+        for prompt_item in prompt_list:
+            prompt = prompt_item['text']
+
+            # todo: key word validation
+
+            prompt_template = PromptTemplateParser(template=prompt)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+
+            if context:
+                prompt_inputs['#context#'] = context
+
+            if memory:
+                memory.human_prefix = conversation_histories_role['user_prefix']
+                memory.ai_prefix = conversation_histories_role['assistant_prefix']
+                histories = self._get_history_messages_from_memory(memory, 2000)
+                prompt_inputs['#histories#'] = histories
+                
+            if query:
+                prompt_inputs['#query#'] = query
+
+            prompt = prompt_template.format(
+                prompt_inputs
+            )
+
+            prompt = re.sub(r'<\|.*?\|>', '', prompt)
+            
+            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
+
+            print(f'advanced prompt: {prompt}')
+        
+        return prompt_messages
 
     def prompt_file_name(self, mode: str) -> str:
         if mode == 'completion':
@@ -399,6 +466,8 @@ class BaseLLM(BaseProviderModel):
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
 
+        print(f'simple prompt: {prompt}')
+
         stops = prompt_rules.get('stops')
         if stops is not None and len(stops) == 0:
             stops = None
@@ -440,7 +509,7 @@ class BaseLLM(BaseProviderModel):
 
             chat_messages = []
             for message in messages:
-                if message.type == MessageType.HUMAN:
+                if message.type == MessageType.USER:
                     chat_messages.append(HumanMessage(content=message.content))
                 elif message.type == MessageType.ASSISTANT:
                     chat_messages.append(AIMessage(content=message.content))

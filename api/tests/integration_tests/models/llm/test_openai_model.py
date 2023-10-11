@@ -52,7 +52,7 @@ def test_chat_get_num_tokens(mock_decrypt):
     openai_model = get_mock_openai_model('gpt-3.5-turbo')
     rst = openai_model.get_num_tokens([
         PromptMessage(type=MessageType.SYSTEM, content='you are a kindness Assistant.'),
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 22
 

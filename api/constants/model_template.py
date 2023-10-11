@@ -31,6 +31,7 @@ model_templates = {
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo-instruct",
+                "mode": "completion",
                 "completion_params": {
                     "max_tokens": 512,
                     "temperature": 1,
@@ -81,6 +82,7 @@ model_templates = {
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo",
+                "mode": "chat",
                 "completion_params": {
                     "max_tokens": 512,
                     "temperature": 1,

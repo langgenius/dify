@@ -150,12 +150,12 @@ class ConversationMessageTask:
         message_tokens = llm_message.prompt_tokens
         answer_tokens = llm_message.completion_tokens
 
-        message_unit_price = self.model_instance.get_tokens_unit_price(MessageType.HUMAN)
-        message_price_unit = self.model_instance.get_price_unit(MessageType.HUMAN)
+        message_unit_price = self.model_instance.get_tokens_unit_price(MessageType.USER)
+        message_price_unit = self.model_instance.get_price_unit(MessageType.USER)
         answer_unit_price = self.model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
         answer_price_unit = self.model_instance.get_price_unit(MessageType.ASSISTANT)
 
-        message_total_price = self.model_instance.calc_tokens_price(message_tokens, MessageType.HUMAN)
+        message_total_price = self.model_instance.calc_tokens_price(message_tokens, MessageType.USER)
         answer_total_price = self.model_instance.calc_tokens_price(answer_tokens, MessageType.ASSISTANT)
         total_price = message_total_price + answer_total_price
 
@@ -226,15 +226,15 @@ class ConversationMessageTask:
 
     def on_agent_end(self, message_agent_thought: MessageAgentThought, agent_model_instance: BaseLLM,
                      agent_loop: AgentLoop):
-        agent_message_unit_price = agent_model_instance.get_tokens_unit_price(MessageType.HUMAN)
-        agent_message_price_unit = agent_model_instance.get_price_unit(MessageType.HUMAN)
+        agent_message_unit_price = agent_model_instance.get_tokens_unit_price(MessageType.USER)
+        agent_message_price_unit = agent_model_instance.get_price_unit(MessageType.USER)
         agent_answer_unit_price = agent_model_instance.get_tokens_unit_price(MessageType.ASSISTANT)
         agent_answer_price_unit = agent_model_instance.get_price_unit(MessageType.ASSISTANT)
 
         loop_message_tokens = agent_loop.prompt_tokens
         loop_answer_tokens = agent_loop.completion_tokens
 
-        loop_message_total_price = agent_model_instance.calc_tokens_price(loop_message_tokens, MessageType.HUMAN)
+        loop_message_total_price = agent_model_instance.calc_tokens_price(loop_message_tokens, MessageType.USER)
         loop_answer_total_price = agent_model_instance.calc_tokens_price(loop_answer_tokens, MessageType.ASSISTANT)
         loop_total_price = loop_message_total_price + loop_answer_total_price
 

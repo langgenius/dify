@@ -71,7 +71,7 @@ def test_hosted_inference_api_get_num_tokens(mock_decrypt, mock_model_info, mock
         mocker
     )
     rst = model.get_num_tokens([
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 5
 
@@ -88,7 +88,7 @@ def test_inference_endpoints_get_num_tokens(mock_decrypt, mock_model_info, mocke
         mocker
     )
     rst = model.get_num_tokens([
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 5
 

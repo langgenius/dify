@@ -12,20 +12,20 @@ class LLMRunResult(BaseModel):
 
 
 class MessageType(enum.Enum):
-    HUMAN = 'human'
+    USER = 'user'
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
 
 
 class PromptMessage(BaseModel):
-    type: MessageType = MessageType.HUMAN
+    type: MessageType = MessageType.USER
     content: str = ''
 
 
 def to_lc_messages(messages: list[PromptMessage]):
     lc_messages = []
     for message in messages:
-        if message.type == MessageType.HUMAN:
+        if message.type == MessageType.USER:
             lc_messages.append(HumanMessage(content=message.content))
         elif message.type == MessageType.ASSISTANT:
             lc_messages.append(AIMessage(content=message.content))
@@ -39,7 +39,7 @@ def to_prompt_messages(messages: list[BaseMessage]):
     prompt_messages = []
     for message in messages:
         if isinstance(message, HumanMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.HUMAN))
+            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
         elif isinstance(message, AIMessage):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.ASSISTANT))
         elif isinstance(message, SystemMessage):
