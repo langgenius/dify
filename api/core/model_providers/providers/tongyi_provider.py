@@ -24,12 +24,12 @@ class TongyiProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'qwen-v1',
-                    'name': 'qwen-v1',
+                    'id': 'qwen-turbo',
+                    'name': 'qwen-turbo',
                 },
                 {
-                    'id': 'qwen-plus-v1',
-                    'name': 'qwen-plus-v1',
+                    'id': 'qwen-plus',
+                    'name': 'qwen-plus',
                 }
             ]
         else:
@@ -58,16 +58,16 @@ class TongyiProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
-            'qwen-v1': 1500,
-            'qwen-plus-v1': 6500
+            'qwen-turbo': 6000,
+            'qwen-plus': 6000
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule[float](enabled=False),
-            top_p=KwargRule[float](min=0, max=1, default=0.8, precision=2),
+            temperature=KwargRule[float](min=0.01, max=1, default=1, precision=2),
+            top_p=KwargRule[float](min=0.01, max=0.99, default=0.5, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name), default=1024, precision=0),
+            max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
         )
 
     @classmethod
@@ -84,7 +84,7 @@ class TongyiProvider(BaseModelProvider):
             }
 
             llm = EnhanceTongyi(
-                model_name='qwen-v1',
+                model_name='qwen-turbo',
                 max_retries=1,
                 **credential_kwargs
             )
