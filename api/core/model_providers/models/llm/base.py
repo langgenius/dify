@@ -157,8 +157,11 @@ class BaseLLM(BaseProviderModel):
             except Exception as ex:
                 raise self.handle_exceptions(ex)
 
+        function_call = None
         if isinstance(result.generations[0][0], ChatGeneration):
             completion_content = result.generations[0][0].message.content
+            if 'function_call' in result.generations[0][0].message.additional_kwargs:
+                function_call = result.generations[0][0].message.additional_kwargs.get('function_call')
         else:
             completion_content = result.generations[0][0].text
 
@@ -191,7 +194,8 @@ class BaseLLM(BaseProviderModel):
         return LLMRunResult(
             content=completion_content,
             prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens
+            completion_tokens=completion_tokens,
+            function_call=function_call
         )
 
     @abstractmethod

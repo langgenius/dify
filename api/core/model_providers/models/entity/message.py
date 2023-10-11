@@ -1,6 +1,6 @@
 import enum
 
-from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage
+from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage, FunctionMessage
 from pydantic import BaseModel
 
 
@@ -9,6 +9,7 @@ class LLMRunResult(BaseModel):
     prompt_tokens: int
     completion_tokens: int
     source: list = None
+    function_call: dict = None
 
 
 class MessageType(enum.Enum):
@@ -44,6 +45,8 @@ def to_prompt_messages(messages: list[BaseMessage]):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.ASSISTANT))
         elif isinstance(message, SystemMessage):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.SYSTEM))
+        elif isinstance(message, FunctionMessage):
+            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.HUMAN))
     return prompt_messages
 
 
