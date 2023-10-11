@@ -202,9 +202,11 @@ const Configuration: FC = () => {
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = (mode: PromptMode) => {
-    if (mode === PromptMode.advanced)
+    if (mode === PromptMode.advanced) {
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
-      // TODO: Migrate prompts. Call API
+    }
 
     doSetPromptMode(mode)
   }
@@ -218,7 +220,10 @@ const Configuration: FC = () => {
     setCurrentAdvancedPrompt,
     hasSetBlockStatus,
     setConversationHistoriesRole,
+    migrateToDefaultPrompt,
   } = useAdvancedPromptConfig({
+    appMode: mode,
+    modelName: modelConfig.model_id,
     promptMode,
     modelModeType,
     prePrompt: modelConfig.configs.prompt_template,
@@ -228,8 +233,6 @@ const Configuration: FC = () => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
       setMode(res.mode)
       const modelConfig = res.model_config
-      // TODO: mock advanced
-      // const promptMode = PromptMode.advanced
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
       doSetPromptMode(promptMode)
       if (promptMode === PromptMode.advanced) {
