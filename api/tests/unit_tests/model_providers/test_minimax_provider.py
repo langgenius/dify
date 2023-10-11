@@ -2,6 +2,8 @@ import pytest
 from unittest.mock import patch
 import json
 
+from langchain.schema import ChatResult, ChatGeneration, AIMessage
+
 from core.model_providers.providers.base import CredentialsValidateFailedError
 from core.model_providers.providers.minimax_provider import MinimaxProvider
 from models.provider import ProviderType, Provider
@@ -24,7 +26,8 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 
 def test_is_provider_credentials_valid_or_raise_valid(mocker):
-    mocker.patch('langchain.llms.minimax.Minimax._call', return_value='abc')
+    mocker.patch('core.third_party.langchain.llms.minimax_llm.MinimaxChatLLM._generate',
+                 return_value=ChatResult(generations=[ChatGeneration(message=AIMessage(content='abc'))]))
 
     MODEL_PROVIDER_CLASS.is_provider_credentials_valid_or_raise(VALIDATE_CREDENTIAL)
 

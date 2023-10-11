@@ -18,7 +18,6 @@ class TongyiModel(BaseLLM):
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        del provider_model_kwargs['max_tokens']
         return EnhanceTongyi(
             model_name=self.name,
             max_retries=1,
@@ -58,7 +57,6 @@ class TongyiModel(BaseLLM):
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
-        del provider_model_kwargs['max_tokens']
         for k, v in provider_model_kwargs.items():
             if hasattr(self.client, k):
                 setattr(self.client, k, v)

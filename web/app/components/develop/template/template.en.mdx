@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 For high-quality text generation, such as articles, summaries, and translations, use the completion-messages API with user input. Text generation relies on the model parameters and prompt templates set in Dify Prompt Engineering.
 
+<div>
+  ### Authentication
+
+  Service API of Dify authenticates using an `API-Key`.
+
+  It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
+
+  All API requests should include your `API-Key` in the **`Authorization`** HTTP Header, as shown below:
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/completion-messages'
   method='POST'

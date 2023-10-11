@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 For versatile conversational apps using a Q&A format, call the chat-messages API to initiate dialogue. Maintain ongoing conversations by passing the returned conversation_id. Response parameters and templates depend on LangGenius Prompt Eng. settings. **[Before you start, READ This !! What is a Bearer Token](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
 
+<div>
+  ### Authentication
+
+  Service API of Dify authenticates using an `API-Key`.
+
+  It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
+
+  All API requests should include your `API-Key` in the **`Authorization`** HTTP Header, as shown below:
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/chat-messages'
   method='POST'
