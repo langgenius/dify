@@ -68,7 +68,7 @@ const translation = {
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}} 的 80%。',
       stop_sequences: '停止序列 stop_sequences',
       stop_sequencesTip: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
-      stop_sequencesPlaceholder: '请输入序列',
+      stop_sequencesPlaceholder: '输入序列并按 Tab 键',
     },
     tone: {
       Creative: '创意',

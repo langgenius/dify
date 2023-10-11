@@ -372,8 +372,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
                   currSupportParams.concat(['stop']).map(key => (<ParamItem
                     key={key}
                     id={key}
-                    name={t(`common.model.params.${key}`)}
-                    tip={t(`common.model.params.${key}Tip`)}
+                    name={t(`common.model.params.${key === 'stop' ? 'stop_sequences' : key}`)}
+                    tip={t(`common.model.params.${key === 'stop' ? 'stop_sequences' : key}Tip`)}
                     {...currParams[key] as any}
                     value={(completionParams as any)[key] as any}
                     onChange={handleParamChange}

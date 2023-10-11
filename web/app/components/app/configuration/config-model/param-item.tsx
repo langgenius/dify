@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import TagInput from '@/app/components/base/tag-input'
@@ -31,6 +32,8 @@ export type IParamIteProps = {
 
 const TIMES_TEMPLATE = '1000000000000'
 const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max, precision, value, inputType, onChange }) => {
+  const { t } = useTranslation()
+
   const getToIntTimes = (num: number) => {
     if (precision)
       return parseInt(TIMES_TEMPLATE.slice(0, precision + 1), 10)
@@ -57,7 +60,7 @@ const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max
             </svg>
           </Tooltip>
         </div>
-        {inputType === 'inputTag' && <div className="text-gray-400 text-xs font-normal">Enter sequence and press Tab</div>}
+        {inputType === 'inputTag' && <div className="text-gray-400 text-xs font-normal">{t('common.model.params.stop_sequencesPlaceholder')}</div>}
       </div>
       <div className="flex items-center">
         {inputType === 'inputTag'
