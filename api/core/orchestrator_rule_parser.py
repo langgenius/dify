@@ -37,12 +37,13 @@ class OrchestratorRuleParser:
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
                           rest_tokens: int, chain_callback: MainChainGatherCallbackHandler,
-                          return_resource: bool = False, retriever_from: str = 'dev') -> Optional[AgentExecutor]:
+                          retriever_from: str = 'dev') -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
 
         agent_mode_config = self.app_model_config.agent_mode_dict
         model_dict = self.app_model_config.model_dict
+        return_resource = self.app_model_config.retriever_resource_dict.get('enabled', False)
 
         chain = None
         if agent_mode_config and agent_mode_config.get('enabled'):
