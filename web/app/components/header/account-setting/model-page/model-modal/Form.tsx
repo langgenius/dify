@@ -108,6 +108,15 @@ const Form: FC<FormProps> = ({
       )
         extraValue.task_type = 'text-generation'
 
+      if (
+        (
+          (k === 'model_type' && v === 'chat' && value.huggingfacehub_api_type === 'inference_endpoints')
+          || (k === 'huggingfacehub_api_type' && v === 'inference_endpoints' && value.model_type === 'chat')
+        )
+        && modelModal?.key === ProviderEnum.huggingface_hub
+      )
+        extraValue.task_type = 'question-answer'
+
       handleMultiFormChange({ ...value, [k]: v, ...extraValue }, k)
     }
   }
