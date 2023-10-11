@@ -18,7 +18,7 @@ class MilvusConfig(BaseModel):
     port: int
     user: str
     password: str
-    secure: bool
+    secure: bool = False
     batch_size: int = 100
 
     @root_validator()
@@ -27,8 +27,6 @@ class MilvusConfig(BaseModel):
             raise ValueError("config MILVUS_HOST is required")
         if not values['port']:
             raise ValueError("config MILVUS_PORT is required")
-        if not values['secure']:
-            raise ValueError("config MILVUS_SECURE is required")
         if not values['user']:
             raise ValueError("config MILVUS_USER is required")
         if not values['password']:
