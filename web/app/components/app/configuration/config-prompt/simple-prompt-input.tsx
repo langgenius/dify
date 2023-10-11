@@ -127,7 +127,6 @@ const Prompt: FC<ISimplePromptInput> = ({
                 name: item.name,
                 value: item.key,
               })),
-              onAddVariable: () => {},
             }}
             historyBlock={{
               show: false,

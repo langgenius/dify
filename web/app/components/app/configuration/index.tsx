@@ -201,10 +201,10 @@ const Configuration: FC = () => {
   const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
-  const setPromptMode = (mode: PromptMode) => {
+  const setPromptMode = async (mode: PromptMode) => {
     if (mode === PromptMode.advanced) {
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      migrateToDefaultPrompt()
+      await migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
     }
 
