@@ -166,7 +166,9 @@ const translation = {
     keyAlreadyExists: '变量:{{key}} 已存在',
   },
   otherError: {
-    promptNoBeEmpty: '前缀提示词不能为空',
+    promptNoBeEmpty: '提示词不能为空',
+    historyNoBeEmpty: '提示词中必须设置对话历史',
+    queryNoBeEmpty: '提示词中必须设置查询内容',
   },
   variableConig: {
     modalTitle: '变量设置',

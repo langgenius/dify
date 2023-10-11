@@ -326,7 +326,22 @@ const Configuration: FC = () => {
     else
       return !modelConfig.configs.prompt_template
   })()
-  const cannotPublish = promptEmpty
+  const cannotPublish = (() => {
+    if (mode === AppType.chat) {
+      if (!isAdvancedMode)
+        return false
+
+      if (modelModeType === ModelModeType.completion) {
+        if (!hasSetBlockStatus.history || !hasSetBlockStatus.query)
+          return true
+
+        return false
+      }
+
+      return false
+    }
+    else { return promptEmpty }
+  })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
   const handlePublish = async (isSilence?: boolean) => {
     const modelId = modelConfig.model_id
@@ -336,6 +351,16 @@ const Configuration: FC = () => {
     if (promptEmpty) {
       notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
       return
+    }
+    if (isAdvancedMode && mode === AppType.chat && modelModeType === ModelModeType.completion) {
+      if (!hasSetBlockStatus.history) {
+        notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+        return
+      }
+      if (!hasSetBlockStatus.query) {
+        notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+        return
+      }
     }
     if (contextVarEmpty) {
       notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })

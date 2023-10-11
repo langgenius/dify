@@ -11,7 +11,7 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
-import { AppType } from '@/types/app'
+import { AppType, ModelModeType } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -37,6 +37,8 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    modelModeType,
+    hasSetBlockStatus,
     isAdvancedMode,
     promptMode,
     chatPromptConfig,
@@ -125,6 +127,18 @@ const Debug: FC<IDebug> = ({
   }
 
   const checkCanSend = () => {
+    if (isAdvancedMode && mode === AppType.chat) {
+      if (modelModeType === ModelModeType.completion) {
+        if (!hasSetBlockStatus.history) {
+          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+          return false
+        }
+        if (!hasSetBlockStatus.query) {
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          return false
+        }
+      }
+    }
     let hasEmptyInput = ''
     const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required }) => {
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)

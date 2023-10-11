@@ -170,7 +170,9 @@ const translation = {
     keyAlreadyExists: 'Variable key: :{{key}} already exists',
   },
   otherError: {
-    promptNoBeEmpty: 'Prefix prompt can not be empty',
+    promptNoBeEmpty: 'Prompt can not be empty',
+    historyNoBeEmpty: 'Conversation history must be set in the prompt',
+    queryNoBeEmpty: 'Query must be set in the prompt',
   },
   variableConig: {
     modalTitle: 'Field settings',
