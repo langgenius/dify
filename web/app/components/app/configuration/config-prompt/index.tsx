@@ -113,18 +113,20 @@ const Prompt: FC<IPromptProps> = ({
               />
             ))
           )
-          : (
-            <AdvancedMessageInput
-              type={(currentAdvancedPrompt as PromptItem).role as PromptRole}
-              isChatMode={false}
-              value={(currentAdvancedPrompt as PromptItem).text}
-              onTypeChange={type => handleMessageTypeChange(0, type)}
-              canDelete={false}
-              onDelete={() => handlePromptDelete(0)}
-              onChange={value => handleValueChange(value)}
-            />
-          )}
-
+          : (currentAdvancedPrompt as PromptItem).text
+            ? (
+              <AdvancedMessageInput
+                type={(currentAdvancedPrompt as PromptItem).role as PromptRole}
+                isChatMode={false}
+                value={(currentAdvancedPrompt as PromptItem).text}
+                onTypeChange={type => handleMessageTypeChange(0, type)}
+                canDelete={false}
+                onDelete={() => handlePromptDelete(0)}
+                onChange={value => handleValueChange(value)}
+              />
+            )
+            : null
+        }
       </div>
       {modelModeType === ModelModeType.chat && (
         <div
