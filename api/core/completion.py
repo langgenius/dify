@@ -190,7 +190,7 @@ class Completion:
 
         response = model_instance.run(
             messages=prompt_messages,
-            stop=stop_words,
+            stop=stop_words if stop_words else None,
             callbacks=[LLMCallbackHandler(model_instance, conversation_message_task)],
             fake_response=fake_response
         )
