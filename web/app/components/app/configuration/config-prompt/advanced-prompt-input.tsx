@@ -64,6 +64,11 @@ const AdvancedPromptInput: FC<Props> = ({
   })()
   const [newPromptVariables, setNewPromptVariables] = React.useState<PromptVariable[]>(promptVariables)
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
+  const handlePromptChange = (newValue: string) => {
+    if (value === newValue)
+      return
+    onChange(newValue)
+  }
   const handleBlur = () => {
     const keys = getVars(value)
     const newPromptVariables = keys.filter(key => !(key in promptVariablesObj)).map(key => getNewVar(key))
@@ -157,7 +162,7 @@ const AdvancedPromptInput: FC<Props> = ({
               show: !isChatMode && isChatApp,
               selectable: !hasSetBlockStatus.query,
             }}
-            onChange={onChange}
+            onChange={handlePromptChange}
             onBlur={handleBlur}
           />
         </div>
