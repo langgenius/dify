@@ -17,6 +17,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
+import { AppType } from '@/types/app'
 
 type Props = {
   type: PromptRole
@@ -42,6 +43,7 @@ const AdvancedPromptInput: FC<Props> = ({
   const { t } = useTranslation()
 
   const {
+    mode,
     hasSetBlockStatus,
     modelConfig,
     setModelConfig,
@@ -50,7 +52,7 @@ const AdvancedPromptInput: FC<Props> = ({
     dataSets,
     showSelectDataSet,
   } = useContext(ConfigContext)
-
+  const isChatApp = mode === AppType.chat
   const [isCopied, setIsCopied] = React.useState(false)
 
   const promptVariablesObj = (() => {
@@ -143,7 +145,7 @@ const AdvancedPromptInput: FC<Props> = ({
               })),
             }}
             historyBlock={{
-              show: !isChatMode,
+              show: !isChatMode && isChatApp,
               selectable: !hasSetBlockStatus.history,
               history: {
                 user: conversationHistoriesRole?.user_prefix,
@@ -152,7 +154,7 @@ const AdvancedPromptInput: FC<Props> = ({
               onEditRole: showHistoryModal,
             }}
             queryBlock={{
-              show: true,
+              show: isChatApp,
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={onChange}
