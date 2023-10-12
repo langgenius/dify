@@ -75,7 +75,7 @@ const useAdvancedPromptConfig = ({
       return {
         context: !!chatPromptConfig.prompt.find(p => checkHasContextBlock(p.text)),
         history: false,
-        query: false,
+        query: !!chatPromptConfig.prompt.find(p => checkHasQueryBlock(p.text)),
       }
     }
     else {

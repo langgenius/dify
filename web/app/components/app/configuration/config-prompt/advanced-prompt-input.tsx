@@ -150,7 +150,7 @@ const AdvancedPromptInput: FC<Props> = ({
               onEditRole: showHistoryModal,
             }}
             queryBlock={{
-              show: !isChatMode,
+              show: true,
               selectable: !hasSetBlockStatus.query,
             }}
             onChange={onChange}
