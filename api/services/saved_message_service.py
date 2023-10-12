@@ -41,6 +41,7 @@ class SavedMessageService:
 
         message = MessageService.get_message(
             app_model=app_model,
+            user=user,
             message_id=message_id
         )
 
