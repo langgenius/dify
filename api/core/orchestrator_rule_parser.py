@@ -256,7 +256,7 @@ class OrchestratorRuleParser:
 
         return tool
 
-    def to_web_reader_tool(self, agent_model_instance: BaseLLM, **kwargs) -> Optional[BaseTool]:
+    def to_web_reader_tool(self, tool_config: dict, agent_model_instance: BaseLLM, **kwargs) -> Optional[BaseTool]:
         """
         A tool for reading web pages
 
@@ -284,7 +284,7 @@ class OrchestratorRuleParser:
 
         return tool
 
-    def to_google_search_tool(self, **kwargs) -> Optional[BaseTool]:
+    def to_google_search_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
         tool_provider = SerpAPIToolProvider(tenant_id=self.tenant_id)
         func_kwargs = tool_provider.credentials_to_func_kwargs()
         if not func_kwargs:
@@ -302,12 +302,12 @@ class OrchestratorRuleParser:
 
         return tool
 
-    def to_current_datetime_tool(self, **kwargs) -> Optional[BaseTool]:
+    def to_current_datetime_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
         tool = DatetimeTool()
 
         return tool
 
-    def to_wikipedia_tool(self, **kwargs) -> Optional[BaseTool]:
+    def to_wikipedia_tool(self, tool_config: dict, **kwargs) -> Optional[BaseTool]:
         class WikipediaInput(BaseModel):
             query: str = Field(..., description="search query.")
 

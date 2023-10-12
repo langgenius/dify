@@ -58,7 +58,7 @@ def to_prompt_messages(messages: list[BaseMessage]):
         elif isinstance(message, SystemMessage):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.SYSTEM))
         elif isinstance(message, FunctionMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.HUMAN))
+            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
     return prompt_messages
 
 
