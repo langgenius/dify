@@ -269,7 +269,7 @@ class CompletionService:
         app_model_config = message.app_model_config
         model_dict = app_model_config.model_dict
         completion_params = model_dict.get('completion_params')
-        completion_params['temperature'] = 1
+        completion_params['temperature'] = 0.9
         model_dict['completion_params'] = completion_params
         app_model_config.model = json.dumps(model_dict)
 
