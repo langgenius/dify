@@ -6,7 +6,7 @@ from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.localai_embedding import LocalAIEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargsRules, ModelType, KwargRule
+from core.model_providers.models.entity.model_params import ModelKwargsRules, ModelType, KwargRule, ModelMode
 from core.model_providers.models.llm.localai_model import LocalAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
@@ -26,6 +26,13 @@ class LocalAIProvider(BaseModelProvider):
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        credentials = self.get_model_credentials(model_name, ModelType.TEXT_GENERATION)
+        if credentials['completion_type'] == 'chat_completion':
+            return ModelMode.CHAT.value
+        else:
+            return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.zhipuai_embedding import ZhipuAIEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.zhipuai_model import ZhipuAIModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.zhipuai_llm import ZhipuAIChatLLM
@@ -29,18 +29,22 @@ class ZhipuAIProvider(BaseModelProvider):
                 {
                     'id': 'chatglm_pro',
                     'name': 'chatglm_pro',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'chatglm_std',
                     'name': 'chatglm_std',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'chatglm_lite',
                     'name': 'chatglm_lite',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'chatglm_lite_32k',
                     'name': 'chatglm_lite_32k',
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         elif model_type == ModelType.EMBEDDINGS:
@@ -52,6 +56,9 @@ class ZhipuAIProvider(BaseModelProvider):
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

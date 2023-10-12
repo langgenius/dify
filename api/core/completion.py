@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Optional, List, Union
 
@@ -16,10 +15,8 @@ from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
-from core.prompt.prompt_builder import PromptBuilder
-from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
-from models.dataset import DocumentSegment, Dataset, Document
-from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
+from core.prompt.prompt_template import PromptTemplateParser
+from models.model import App, AppModelConfig, Account, Conversation, EndUser
 
 
 class Completion:
@@ -30,7 +27,7 @@ class Completion:
         """
         errors: ProviderTokenNotInitError
         """
-        query = PromptBuilder.process_template(query)
+        query = PromptTemplateParser.remove_template_variables(query)
 
         memory = None
         if conversation:
@@ -160,14 +157,28 @@ class Completion:
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
                       fake_response: Optional[str]):
         # get llm prompt
-        prompt_messages, stop_words = model_instance.get_prompt(
-            mode=mode,
-            pre_prompt=app_model_config.pre_prompt,
-            inputs=inputs,
-            query=query,
-            context=agent_execute_result.output if agent_execute_result else None,
-            memory=memory
-        )
+        if app_model_config.prompt_type == 'simple':
+            prompt_messages, stop_words = model_instance.get_prompt(
+                mode=mode,
+                pre_prompt=app_model_config.pre_prompt,
+                inputs=inputs,
+                query=query,
+                context=agent_execute_result.output if agent_execute_result else None,
+                memory=memory
+            )
+        else:
+            prompt_messages = model_instance.get_advanced_prompt(
+                app_mode=mode,
+                app_model_config=app_model_config,
+                inputs=inputs,
+                query=query,
+                context=agent_execute_result.output if agent_execute_result else None,
+                memory=memory
+            )
+
+            model_config = app_model_config.model_dict
+            completion_params = model_config.get("completion_params", {})
+            stop_words = completion_params.get("stop", [])
 
         cls.recale_llm_max_tokens(
             model_instance=model_instance,
@@ -176,7 +187,7 @@ class Completion:
 
         response = model_instance.run(
             messages=prompt_messages,
-            stop=stop_words,
+            stop=stop_words if stop_words else None,
             callbacks=[LLMCallbackHandler(model_instance, conversation_message_task)],
             fake_response=fake_response
         )
@@ -266,52 +277,3 @@ class Completion:
             model_kwargs = model_instance.get_model_kwargs()
             model_kwargs.max_tokens = max_tokens
             model_instance.set_model_kwargs(model_kwargs)
-
-    @classmethod
-    def generate_more_like_this(cls, task_id: str, app: App, message: Message, pre_prompt: str,
-                                app_model_config: AppModelConfig, user: Account, streaming: bool):
-
-        final_model_instance = ModelFactory.get_text_generation_model_from_model_config(
-            tenant_id=app.tenant_id,
-            model_config=app_model_config.model_dict,
-            streaming=streaming
-        )
-
-        # get llm prompt
-        old_prompt_messages, _ = final_model_instance.get_prompt(
-            mode='completion',
-            pre_prompt=pre_prompt,
-            inputs=message.inputs,
-            query=message.query,
-            context=None,
-            memory=None
-        )
-
-        original_completion = message.answer.strip()
-
-        prompt = MORE_LIKE_THIS_GENERATE_PROMPT
-        prompt = prompt.format(prompt=old_prompt_messages[0].content, original_completion=original_completion)
-
-        prompt_messages = [PromptMessage(content=prompt)]
-
-        conversation_message_task = ConversationMessageTask(
-            task_id=task_id,
-            app=app,
-            app_model_config=app_model_config,
-            user=user,
-            inputs=message.inputs,
-            query=message.query,
-            is_override=True if message.override_model_configs else False,
-            streaming=streaming,
-            model_instance=final_model_instance
-        )
-
-        cls.recale_llm_max_tokens(
-            model_instance=final_model_instance,
-            prompt_messages=prompt_messages
-        )
-
-        final_model_instance.run(
-            messages=prompt_messages,
-            callbacks=[LLMCallbackHandler(final_model_instance, conversation_message_task)]
-        )

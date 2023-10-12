@@ -31,6 +31,7 @@ model_templates = {
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo-instruct",
+                "mode": "completion",
                 "completion_params": {
                     "max_tokens": 512,
                     "temperature": 1,
@@ -81,6 +82,7 @@ model_templates = {
             'model': json.dumps({
                 "provider": "openai",
                 "name": "gpt-3.5-turbo",
+                "mode": "chat",
                 "completion_params": {
                     "max_tokens": 512,
                     "temperature": 1,
@@ -137,10 +139,11 @@ demo_model_templates = {
                 },
                 opening_statement='',
                 suggested_questions=None,
-                pre_prompt="Please translate the following text into {{target_language}}:\n",
+                pre_prompt="Please translate the following text into {{target_language}}:\n{{query}}\ntranslate:",
                 model=json.dumps({
                     "provider": "openai",
                     "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
                     "completion_params": {
                         "max_tokens": 1000,
                         "temperature": 0,
@@ -168,6 +171,13 @@ demo_model_templates = {
                                 'Korean',
                                 'Italian',
                             ]
+                        }
+                    },{
+                        "paragraph": {
+                            "label": "Query",
+                            "variable": "query",
+                            "required": True,
+                            "default": ""
                         }
                     }
                 ])
@@ -200,6 +210,7 @@ demo_model_templates = {
                 model=json.dumps({
                     "provider": "openai",
                     "name": "gpt-3.5-turbo",
+                    "mode": "chat",
                     "completion_params": {
                         "max_tokens": 300,
                         "temperature": 0.8,
@@ -255,10 +266,11 @@ demo_model_templates = {
                 },
                 opening_statement='',
                 suggested_questions=None,
-                pre_prompt="请将以下文本翻译为{{target_language}}:\n",
+                pre_prompt="请将以下文本翻译为{{target_language}}:\n{{query}}\n翻译:",
                 model=json.dumps({
                     "provider": "openai",
                     "name": "gpt-3.5-turbo-instruct",
+                    "mode": "completion",
                     "completion_params": {
                         "max_tokens": 1000,
                         "temperature": 0,
@@ -286,6 +298,13 @@ demo_model_templates = {
                                 "韩语",
                                 "意大利语",
                             ]
+                        }
+                    },{
+                        "paragraph": {
+                            "label": "文本内容",
+                            "variable": "query",
+                            "required": True,
+                            "default": ""
                         }
                     }
                 ])
@@ -318,6 +337,7 @@ demo_model_templates = {
                 model=json.dumps({
                     "provider": "openai",
                     "name": "gpt-3.5-turbo",
+                    "mode": "chat",
                     "completion_params": {
                         "max_tokens": 300,
                         "temperature": 0.8,

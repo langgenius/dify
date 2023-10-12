@@ -244,7 +244,8 @@ class CompletionService:
 
     @classmethod
     def generate_more_like_this(cls, app_model: App, user: Union[Account | EndUser],
-                                message_id: str, streaming: bool = True) -> Union[dict | Generator]:
+                                message_id: str, streaming: bool = True,
+                                retriever_from: str = 'dev') -> Union[dict | Generator]:
         if not user:
             raise ValueError('user cannot be None')
 
@@ -266,14 +267,11 @@ class CompletionService:
             raise MoreLikeThisDisabledError()
 
         app_model_config = message.app_model_config
-
-        if message.override_model_configs:
-            override_model_configs = json.loads(message.override_model_configs)
-            pre_prompt = override_model_configs.get("pre_prompt", '')
-        elif app_model_config:
-            pre_prompt = app_model_config.pre_prompt
-        else:
-            raise AppModelConfigBrokenError()
+        model_dict = app_model_config.model_dict
+        completion_params = model_dict.get('completion_params')
+        completion_params['temperature'] = 0.9
+        model_dict['completion_params'] = completion_params
+        app_model_config.model = json.dumps(model_dict)
 
         generate_task_id = str(uuid.uuid4())
 
@@ -282,57 +280,27 @@ class CompletionService:
 
         user = cls.get_real_user_instead_of_proxy_obj(user)
 
-        generate_worker_thread = threading.Thread(target=cls.generate_more_like_this_worker, kwargs={
+        generate_worker_thread = threading.Thread(target=cls.generate_worker, kwargs={
             'flask_app': current_app._get_current_object(),
             'generate_task_id': generate_task_id,
             'detached_app_model': app_model,
             'app_model_config': app_model_config,
-            'detached_message': message,
-            'pre_prompt': pre_prompt,
+            'query': message.query,
+            'inputs': message.inputs,
             'detached_user': user,
-            'streaming': streaming
+            'detached_conversation': None,
+            'streaming': streaming,
+            'is_model_config_override': True,
+            'retriever_from': retriever_from
         })
 
         generate_worker_thread.start()
 
-        cls.countdown_and_close(current_app._get_current_object(), generate_worker_thread, pubsub, user, generate_task_id)
+        # wait for 10 minutes to close the thread
+        cls.countdown_and_close(current_app._get_current_object(), generate_worker_thread, pubsub, user,
+                                generate_task_id)
 
         return cls.compact_response(pubsub, streaming)
-
-    @classmethod
-    def generate_more_like_this_worker(cls, flask_app: Flask, generate_task_id: str, detached_app_model: App,
-                                       app_model_config: AppModelConfig, detached_message: Message, pre_prompt: str,
-                                       detached_user: Union[Account, EndUser], streaming: bool):
-        with flask_app.app_context():
-            # fixed the state of the model object when it detached from the original session
-            user = db.session.merge(detached_user)
-            app_model = db.session.merge(detached_app_model)
-            message = db.session.merge(detached_message)
-
-            try:
-                # run
-                Completion.generate_more_like_this(
-                    task_id=generate_task_id,
-                    app=app_model,
-                    user=user,
-                    message=message,
-                    pre_prompt=pre_prompt,
-                    app_model_config=app_model_config,
-                    streaming=streaming
-                )
-            except ConversationTaskStoppedException:
-                pass
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
-                    ModelCurrentlyNotSupportError) as e:
-                PubHandler.pub_error(user, generate_task_id, e)
-            except LLMAuthorizationError:
-                PubHandler.pub_error(user, generate_task_id, LLMAuthorizationError('Incorrect API key provided'))
-            except Exception as e:
-                logging.exception("Unknown Error in completion")
-                PubHandler.pub_error(user, generate_task_id, e)
-            finally:
-                db.session.commit()
 
     @classmethod
     def get_cleaned_inputs(cls, user_inputs: dict, app_model_config: AppModelConfig):

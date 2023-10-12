@@ -115,7 +115,7 @@ class MessageMoreLikeThisApi(WebApiResource):
         streaming = args['response_mode'] == 'streaming'
 
         try:
-            response = CompletionService.generate_more_like_this(app_model, end_user, message_id, streaming)
+            response = CompletionService.generate_more_like_this(app_model, end_user, message_id, streaming, 'web_app')
             return compact_response(response)
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")

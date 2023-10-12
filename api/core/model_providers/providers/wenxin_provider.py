@@ -4,7 +4,7 @@ from typing import Type
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.wenxin_model import WenxinModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.wenxin import Wenxin
@@ -26,18 +26,24 @@ class WenxinProvider(BaseModelProvider):
                 {
                     'id': 'ernie-bot',
                     'name': 'ERNIE-Bot',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'ernie-bot-turbo',
                     'name': 'ERNIE-Bot-turbo',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'bloomz-7b',
                     'name': 'BLOOMZ-7B',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

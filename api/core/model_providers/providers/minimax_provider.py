@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.minimax_embedding import MinimaxEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.minimax_model import MinimaxModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.minimax_llm import MinimaxChatLLM
@@ -29,10 +29,12 @@ class MinimaxProvider(BaseModelProvider):
                 {
                     'id': 'abab5.5-chat',
                     'name': 'abab5.5-chat',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'abab5-chat',
                     'name': 'abab5-chat',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
         elif model_type == ModelType.EMBEDDINGS:
@@ -44,6 +46,9 @@ class MinimaxProvider(BaseModelProvider):
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

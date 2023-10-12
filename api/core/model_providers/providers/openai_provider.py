@@ -13,8 +13,8 @@ from core.model_providers.models.entity.provider import ModelFeature
 from core.model_providers.models.speech2text.openai_whisper import OpenAIWhisper
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.embedding.openai_embedding import OpenAIEmbedding
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
-from core.model_providers.models.llm.openai_model import OpenAIModel
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
+from core.model_providers.models.llm.openai_model import OpenAIModel, COMPLETION_MODELS
 from core.model_providers.models.moderation.openai_moderation import OpenAIModeration
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.model_providers.providers.hosted import hosted_model_providers
@@ -36,6 +36,7 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-3.5-turbo',
                     'name': 'gpt-3.5-turbo',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -43,10 +44,12 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-3.5-turbo-instruct',
                     'name': 'GPT-3.5-Turbo-Instruct',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'gpt-3.5-turbo-16k',
                     'name': 'gpt-3.5-turbo-16k',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -54,6 +57,7 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-4',
                     'name': 'gpt-4',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -61,6 +65,7 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'gpt-4-32k',
                     'name': 'gpt-4-32k',
+                    'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
@@ -68,6 +73,7 @@ class OpenAIProvider(BaseModelProvider):
                 {
                     'id': 'text-davinci-003',
                     'name': 'text-davinci-003',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
 
@@ -99,6 +105,12 @@ class OpenAIProvider(BaseModelProvider):
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        if model_name in COMPLETION_MODELS:
+            return ModelMode.COMPLETION.value
+        else:
+            return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
