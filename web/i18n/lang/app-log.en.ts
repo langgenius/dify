@@ -8,7 +8,7 @@ const translation = {
       endUser: 'End User',
       input: 'Input',
       output: 'Output',
-      summary: 'Summary',
+      summary: 'Title',
       messageCount: 'Message Count',
       userRate: 'User Rate',
       adminRate: 'Op. Rate',

@@ -473,6 +473,7 @@ const Debug: FC<IDebug> = ({
                 className="mt-2"
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
+                isResponsing={isResponsing}
                 isInstalledApp={false}
                 messageId={messageId}
                 isError={false}

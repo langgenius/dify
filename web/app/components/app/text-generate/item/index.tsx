@@ -28,6 +28,7 @@ export type IGenerationItemProps = {
   messageId?: string | null
   conversationId?: string
   isLoading?: boolean
+  isResponsing?: boolean
   isInWebApp?: boolean
   moreLikeThis?: boolean
   depth?: number
@@ -68,6 +69,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   content,
   messageId,
   isLoading,
+  isResponsing,
   moreLikeThis,
   isInWebApp = false,
   feedback,
@@ -202,7 +204,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div className='flex items-center justify-between mt-3'>
               <div className='flex items-center'>
                 {
-                  !isInWebApp && !isInstalledApp && (
+                  !isInWebApp && !isInstalledApp && !isResponsing && (
                     <PromptLog
                       log={promptLog}
                       containerRef={ref}

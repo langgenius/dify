@@ -8,7 +8,7 @@ const translation = {
       endUser: '用户',
       input: '输入',
       output: '输出',
-      summary: '摘要',
+      summary: '标题',
       messageCount: '消息数',
       userRate: '用户反馈',
       adminRate: '管理员反馈',
