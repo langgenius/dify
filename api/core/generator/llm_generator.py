@@ -11,8 +11,7 @@ from core.prompt.output_parser.rule_config_generator import RuleConfigGeneratorO
 
 from core.prompt.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
 from core.prompt.prompt_template import PromptTemplateParser
-from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, CONVERSATION_SUMMARY_PROMPT, INTRODUCTION_GENERATE_PROMPT, \
-    GENERATOR_QA_PROMPT
+from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, GENERATOR_QA_PROMPT
 
 
 class LLMGenerator:
@@ -42,20 +41,6 @@ class LLMGenerator:
         result_dict = json.loads(answer)
         answer = result_dict['Your Output']
 
-        return answer.strip()
-
-    @classmethod
-    def generate_introduction(cls, tenant_id: str, pre_prompt: str):
-        prompt = INTRODUCTION_GENERATE_PROMPT
-        prompt = prompt.format({"prompt": pre_prompt})
-
-        model_instance = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id
-        )
-
-        prompts = [PromptMessage(content=prompt)]
-        response = model_instance.run(prompts)
-        answer = response.content
         return answer.strip()
 
     @classmethod

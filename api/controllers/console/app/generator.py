@@ -12,35 +12,6 @@ from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededE
     LLMAPIUnavailableError, LLMRateLimitError, LLMAuthorizationError, ModelCurrentlyNotSupportError
 
 
-class IntroductionGenerateApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument('prompt_template', type=str, required=True, location='json')
-        args = parser.parse_args()
-
-        account = current_user
-
-        try:
-            answer = LLMGenerator.generate_introduction(
-                account.current_tenant_id,
-                args['prompt_template']
-            )
-        except ProviderTokenNotInitError as ex:
-            raise ProviderNotInitializeError(ex.description)
-        except QuotaExceededError:
-            raise ProviderQuotaExceededError()
-        except ModelCurrentlyNotSupportError:
-            raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
-            raise CompletionRequestError(str(e))
-
-        return {'introduction': answer}
-
-
 class RuleGenerateApi(Resource):
     @setup_required
     @login_required
@@ -72,5 +43,4 @@ class RuleGenerateApi(Resource):
         return rules
 
 
-api.add_resource(IntroductionGenerateApi, '/introduction-generate')
 api.add_resource(RuleGenerateApi, '/rule-generate')
