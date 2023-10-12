@@ -15,6 +15,7 @@ type Param = {
   promptMode: PromptMode
   prePrompt: string
   onUserChangedPrompt: () => void
+  hasSetDataSet: boolean
 }
 
 const useAdvancedPromptConfig = ({
@@ -24,6 +25,7 @@ const useAdvancedPromptConfig = ({
   promptMode,
   prePrompt,
   onUserChangedPrompt,
+  hasSetDataSet,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
   const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(clone(DEFAULT_CHAT_PROMPT_CONFIG))
@@ -100,6 +102,7 @@ const useAdvancedPromptConfig = ({
         appMode,
         mode,
         modelName,
+        hasSetDataSet,
       })
       if (modelModeType === ModelModeType.chat) {
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
@@ -127,6 +130,7 @@ const useAdvancedPromptConfig = ({
         appMode,
         mode: toModelModeType as ModelModeType,
         modelName,
+        hasSetDataSet,
       })
 
       if (toModelModeType === ModelModeType.completion) {

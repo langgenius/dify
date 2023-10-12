@@ -226,6 +226,7 @@ const Configuration: FC = () => {
     promptMode,
     modelModeType,
     prePrompt: modelConfig.configs.prompt_template,
+    hasSetDataSet: dataSets.length > 0,
     onUserChangedPrompt: () => {
       setCanReturnToSimpleMode(false)
     },
