@@ -107,6 +107,8 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
                 if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
                     tool_inputs['query'] = kwargs['input']
                     agent_decision.tool_input = tool_inputs
+            else:
+                agent_decision.return_values['output'] = ''
             return agent_decision
         except OutputParserException:
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
