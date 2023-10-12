@@ -358,7 +358,7 @@ const translation = {
     },
   },
   promptEditor: {
-    placeholder: '在这里写下你的提示，输入‘{{variable_name}}’来插入变量',
+    placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',
     context: {
       item: {
         title: '上下文',
