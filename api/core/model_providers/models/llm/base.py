@@ -334,37 +334,41 @@ class BaseLLM(BaseProviderModel):
         model_mode = app_model_config.model_dict['mode']
         conversation_histories_role = {}
 
-        prompt_list = []
+        raw_prompt_list = []
         prompt_messages = []
 
         if app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
             prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
-            prompt_list = [{
+            raw_prompt_list = [{
                 'role': MessageType.USER.value,
                 'text': prompt_text
             }]
             conversation_histories_role = app_model_config.completion_prompt_config_dict['conversation_histories_role']
         elif app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
-            prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+            raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
         elif app_mode == 'completion' and model_mode == ModelMode.CHAT.value:
-            prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+            raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
         elif app_mode == 'completion' and model_mode == ModelMode.COMPLETION.value:
             prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
-            prompt_list = [{
+            raw_prompt_list = [{
                 'role': MessageType.USER.value,
                 'text': prompt_text
             }]
         else:
             raise Exception("app_mode or model_mode not support")
         
-        for prompt_item in prompt_list:
+        for prompt_item in raw_prompt_list:
             prompt = prompt_item['text']
 
+            # set prompt template variables
             prompt_template = PromptTemplateParser(template=prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
             if context:
                 prompt_inputs['#context#'] = context
+
+            if query:
+                prompt_inputs['#query#'] = query
 
             if memory and app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
                 memory.human_prefix = conversation_histories_role['user_prefix']
@@ -372,9 +376,6 @@ class BaseLLM(BaseProviderModel):
                 histories = self._get_history_messages_from_memory(memory, 2000)
                 prompt_inputs['#histories#'] = histories
                 
-            if query:
-                prompt_inputs['#query#'] = query
-
             prompt = prompt_template.format(
                 prompt_inputs
             )
@@ -382,6 +383,15 @@ class BaseLLM(BaseProviderModel):
             prompt = re.sub(r'<\|.*?\|>', '', prompt)
             
             prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
+
+        if memory and app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
+            memory.human_prefix = MessageType.USER.value
+            memory.ai_prefix = MessageType.ASSISTANT.value
+            histories = self._get_history_messages_list_from_memory(memory, 2000)
+            prompt_messages.extend(histories)
+
+        if app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
+            prompt_messages.append(PromptMessage(type = MessageType.USER ,content=query))
         
         return prompt_messages
 
@@ -483,6 +493,16 @@ class BaseLLM(BaseProviderModel):
         memory_key = memory.memory_variables[0]
         external_context = memory.load_memory_variables({})
         return external_context[memory_key]
+    
+    def _get_history_messages_list_from_memory(self, memory: BaseChatMemory,
+                                          max_token_limit: int) -> List[PromptMessage]:
+        """Get memory messages."""
+        memory.max_token_limit = max_token_limit
+        memory.return_messages = True
+        memory_key = memory.memory_variables[0]
+        external_context = memory.load_memory_variables({})
+        memory.return_messages = False
+        return to_prompt_messages(external_context[memory_key])
 
     def _get_prompt_from_messages(self, messages: List[PromptMessage],
                                   model_mode: Optional[ModelMode] = None) -> Union[str | List[BaseMessage]]:
