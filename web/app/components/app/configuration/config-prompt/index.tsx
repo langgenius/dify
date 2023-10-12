@@ -11,6 +11,7 @@ import type { PromptItem, PromptVariable } from '@/models/debug'
 import { type AppType, ModelModeType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
+import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
 export type IPromptProps = {
   mode: AppType
   promptTemplate: string
@@ -128,7 +129,7 @@ const Prompt: FC<IPromptProps> = ({
           )
         }
       </div>
-      {modelModeType === ModelModeType.chat && (
+      {(modelModeType === ModelModeType.chat && (currentAdvancedPrompt as PromptItem[]).length < MAX_PROMPT_MESSAGE_LENGTH) && (
         <div
           onClick={handleAddMessage}
           className='mt-3 flex items-center h-8 justify-center bg-gray-50 rounded-lg cursor-pointer text-[13px] font-medium text-gray-700 space-x-2'>

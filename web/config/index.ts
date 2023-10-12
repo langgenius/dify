@@ -128,6 +128,8 @@ export const getMaxVarNameLength = (value: string) => {
 
 export const MAX_VAR_KEY_LENGHT = 30
 
+export const MAX_PROMPT_MESSAGE_LENGTH = 10
+
 export const VAR_ITEM_TEMPLATE = {
   key: '',
   name: '',
