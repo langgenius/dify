@@ -244,7 +244,8 @@ class CompletionService:
 
     @classmethod
     def generate_more_like_this(cls, app_model: App, user: Union[Account | EndUser],
-                                message_id: str, streaming: bool = True) -> Union[dict | Generator]:
+                                message_id: str, streaming: bool = True,
+                                retriever_from: str = 'dev') -> Union[dict | Generator]:
         if not user:
             raise ValueError('user cannot be None')
 
@@ -290,7 +291,7 @@ class CompletionService:
             'detached_conversation': None,
             'streaming': streaming,
             'is_model_config_override': True,
-            'retriever_from': 'web_app'
+            'retriever_from': retriever_from
         })
 
         generate_worker_thread.start()
