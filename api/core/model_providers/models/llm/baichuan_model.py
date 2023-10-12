@@ -1,26 +1,21 @@
-import decimal
-from functools import wraps
 from typing import List, Optional, Any
 
 from langchain.callbacks.manager import Callbacks
 from langchain.schema import LLMResult
-from requests import HTTPError
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
-from core.model_providers.models.entity.message import PromptMessage, MessageType
+from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
-from core.third_party.langchain.llms.tongyi_llm import EnhanceTongyi
+from core.third_party.langchain.llms.baichuan_llm import BaichuanChatLLM
 
 
-class TongyiModel(BaseLLM):
-    model_mode: ModelMode = ModelMode.COMPLETION
+class BaichuanModel(BaseLLM):
+    model_mode: ModelMode = ModelMode.CHAT
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        return EnhanceTongyi(
-            model_name=self.name,
-            max_retries=1,
+        return BaichuanChatLLM(
             streaming=self.streaming,
             callbacks=self.callbacks,
             **self.credentials,
@@ -42,6 +37,12 @@ class TongyiModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         return self._client.generate([prompts], stop, callbacks)
 
+    def prompt_file_name(self, mode: str) -> str:
+        if mode == 'completion':
+            return 'baichuan_completion'
+        else:
+            return 'baichuan_chat'
+
     def get_num_tokens(self, messages: List[PromptMessage]) -> int:
         """
         get num tokens of prompt messages.
@@ -50,10 +51,7 @@ class TongyiModel(BaseLLM):
         :return:
         """
         prompts = self._get_prompt_from_messages(messages)
-        return max(self._client.get_num_tokens(prompts), 0)
-
-    def get_currency(self):
-        return 'RMB'
+        return max(self._client.get_num_tokens_from_messages(prompts), 0)
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
@@ -62,10 +60,7 @@ class TongyiModel(BaseLLM):
                 setattr(self.client, k, v)
 
     def handle_exceptions(self, ex: Exception) -> Exception:
-        if isinstance(ex, (ValueError, HTTPError)):
-            return LLMBadRequestError(f"Tongyi: {str(ex)}")
-        else:
-            return ex
+        return LLMBadRequestError(f"Baichuan: {str(ex)}")
 
     @property
     def support_streaming(self):

@@ -1,3 +1,4 @@
+export { default as BaichuanTextCn } from './BaichuanTextCn'
 export { default as MinimaxText } from './MinimaxText'
 export { default as Minimax } from './Minimax'
 export { default as TongyiTextCn } from './TongyiTextCn'

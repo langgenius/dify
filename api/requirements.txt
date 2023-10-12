@@ -44,12 +44,13 @@ readabilipy==0.2.0
 google-search-results==2.4.2
 replicate~=0.9.0
 websocket-client~=1.6.1
-dashscope~=1.5.0
+dashscope~=1.11.0
 huggingface_hub~=0.16.4
 transformers~=4.31.0
 stripe~=5.5.0
 pandas==1.5.3
-xinference==0.4.2
+xinference==0.5.2
 safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug==2.3.7
+pymilvus==2.3.0

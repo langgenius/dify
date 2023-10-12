@@ -1,4 +1,5 @@
 import logging
+import random
 
 import openai
 
@@ -16,19 +17,20 @@ def check_moderation(model_provider: BaseModelProvider, text: str) -> bool:
             length = 2000
             text_chunks = [text[i:i + length] for i in range(0, len(text), length)]
 
-            max_text_chunks = 32
-            chunks = [text_chunks[i:i + max_text_chunks] for i in range(0, len(text_chunks), max_text_chunks)]
+            if len(text_chunks) == 0:
+                return True
 
-            for text_chunk in chunks:
-                try:
-                    moderation_result = openai.Moderation.create(input=text_chunk,
-                                                                 api_key=hosted_model_providers.openai.api_key)
-                except Exception as ex:
-                    logging.exception(ex)
-                    raise LLMBadRequestError('Rate limit exceeded, please try again later.')
+            text_chunk = random.choice(text_chunks)
 
-                for result in moderation_result.results:
-                    if result['flagged'] is True:
-                        return False
+            try:
+                moderation_result = openai.Moderation.create(input=text_chunk,
+                                                             api_key=hosted_model_providers.openai.api_key)
+            except Exception as ex:
+                logging.exception(ex)
+                raise LLMBadRequestError('Rate limit exceeded, please try again later.')
+
+            for result in moderation_result.results:
+                if result['flagged'] is True:
+                    return False
 
     return True

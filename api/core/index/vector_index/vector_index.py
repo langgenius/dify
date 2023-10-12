@@ -47,6 +47,20 @@ class VectorIndex:
                 ),
                 embeddings=embeddings
             )
+        elif vector_type == "milvus":
+            from core.index.vector_index.milvus_vector_index import MilvusVectorIndex, MilvusConfig
+
+            return MilvusVectorIndex(
+                dataset=dataset,
+                config=MilvusConfig(
+                    host=config.get('MILVUS_HOST'),
+                    port=config.get('MILVUS_PORT'),
+                    user=config.get('MILVUS_USER'),
+                    password=config.get('MILVUS_PASSWORD'),
+                    secure=config.get('MILVUS_SECURE'),
+                ),
+                embeddings=embeddings
+            )
         else:
             raise ValueError(f"Vector store {config.get('VECTOR_STORE')} is not supported.")
 

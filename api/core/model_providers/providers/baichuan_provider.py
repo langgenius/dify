@@ -2,34 +2,32 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+from langchain.schema import HumanMessage
+
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
-from core.model_providers.models.llm.tongyi_model import TongyiModel
+from core.model_providers.models.llm.baichuan_model import BaichuanModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
-from core.third_party.langchain.llms.tongyi_llm import EnhanceTongyi
+from core.third_party.langchain.llms.baichuan_llm import BaichuanChatLLM
 from models.provider import ProviderType
 
 
-class TongyiProvider(BaseModelProvider):
+class BaichuanProvider(BaseModelProvider):
 
     @property
     def provider_name(self):
         """
         Returns the name of a provider.
         """
-        return 'tongyi'
+        return 'baichuan'
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'qwen-turbo',
-                    'name': 'qwen-turbo',
-                },
-                {
-                    'id': 'qwen-plus',
-                    'name': 'qwen-plus',
+                    'id': 'baichuan2-53b',
+                    'name': 'Baichuan2-53B',
                 }
             ]
         else:
@@ -43,7 +41,7 @@ class TongyiProvider(BaseModelProvider):
         :return:
         """
         if model_type == ModelType.TEXT_GENERATION:
-            model_class = TongyiModel
+            model_class = BaichuanModel
         else:
             raise NotImplementedError
 
@@ -57,17 +55,12 @@ class TongyiProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
-        model_max_tokens = {
-            'qwen-turbo': 6000,
-            'qwen-plus': 6000
-        }
-
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0.01, max=1, default=1, precision=2),
-            top_p=KwargRule[float](min=0.01, max=0.99, default=0.5, precision=2),
+            temperature=KwargRule[float](min=0, max=1, default=0.3, precision=2),
+            top_p=KwargRule[float](min=0, max=0.99, default=0.85, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
+            max_tokens=KwargRule[int](enabled=False),
         )
 
     @classmethod
@@ -75,27 +68,31 @@ class TongyiProvider(BaseModelProvider):
         """
         Validates the given credentials.
         """
-        if 'dashscope_api_key' not in credentials:
-            raise CredentialsValidateFailedError('Dashscope API Key must be provided.')
+        if 'api_key' not in credentials:
+            raise CredentialsValidateFailedError('Baichuan api_key must be provided.')
+
+        if 'secret_key' not in credentials:
+            raise CredentialsValidateFailedError('Baichuan secret_key must be provided.')
 
         try:
             credential_kwargs = {
-                'dashscope_api_key': credentials['dashscope_api_key']
+                'api_key': credentials['api_key'],
+                'secret_key': credentials['secret_key'],
             }
 
-            llm = EnhanceTongyi(
-                model_name='qwen-turbo',
-                max_retries=1,
+            llm = BaichuanChatLLM(
+                temperature=0,
                 **credential_kwargs
             )
 
-            llm("ping")
+            llm([HumanMessage(content='ping')])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
     @classmethod
     def encrypt_provider_credentials(cls, tenant_id: str, credentials: dict) -> dict:
-        credentials['dashscope_api_key'] = encrypter.encrypt_token(tenant_id, credentials['dashscope_api_key'])
+        credentials['api_key'] = encrypter.encrypt_token(tenant_id, credentials['api_key'])
+        credentials['secret_key'] = encrypter.encrypt_token(tenant_id, credentials['secret_key'])
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
@@ -104,21 +101,34 @@ class TongyiProvider(BaseModelProvider):
                 credentials = json.loads(self.provider.encrypted_config)
             except JSONDecodeError:
                 credentials = {
-                    'dashscope_api_key': None
+                    'api_key': None,
+                    'secret_key': None,
                 }
 
-            if credentials['dashscope_api_key']:
-                credentials['dashscope_api_key'] = encrypter.decrypt_token(
+            if credentials['api_key']:
+                credentials['api_key'] = encrypter.decrypt_token(
                     self.provider.tenant_id,
-                    credentials['dashscope_api_key']
+                    credentials['api_key']
                 )
 
                 if obfuscated:
-                    credentials['dashscope_api_key'] = encrypter.obfuscated_token(credentials['dashscope_api_key'])
+                    credentials['api_key'] = encrypter.obfuscated_token(credentials['api_key'])
+
+            if credentials['secret_key']:
+                credentials['secret_key'] = encrypter.decrypt_token(
+                    self.provider.tenant_id,
+                    credentials['secret_key']
+                )
+
+                if obfuscated:
+                    credentials['secret_key'] = encrypter.obfuscated_token(credentials['secret_key'])
 
             return credentials
+        else:
+            return {}
 
-        return {}
+    def should_deduct_quota(self):
+        return True
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):
