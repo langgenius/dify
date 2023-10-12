@@ -80,17 +80,6 @@ INTRODUCTION_GENERATE_PROMPT = (
     "but focus on building a relationship with the user:\n"
 )
 
-MORE_LIKE_THIS_GENERATE_PROMPT = (
-    "-----\n"
-    "{original_completion}\n"
-    "-----\n\n"
-    "Please use the above content as a sample for generating the result, "
-    "and include key information points related to the original sample in the result. "
-    "Try to rephrase this information in different ways and predict according to the rules below.\n\n"
-    "-----\n"
-    "{prompt}\n"
-)
-
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"

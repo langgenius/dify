@@ -1,4 +1,3 @@
-import json
 import logging
 from typing import Optional, List, Union
 
@@ -16,10 +15,8 @@ from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
-from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import PromptTemplateParser
-from core.prompt.prompts import MORE_LIKE_THIS_GENERATE_PROMPT
-from models.model import App, AppModelConfig, Account, Conversation, Message, EndUser
+from models.model import App, AppModelConfig, Account, Conversation, EndUser
 
 
 class Completion:
@@ -280,55 +277,3 @@ class Completion:
             model_kwargs = model_instance.get_model_kwargs()
             model_kwargs.max_tokens = max_tokens
             model_instance.set_model_kwargs(model_kwargs)
-
-    @classmethod
-    def generate_more_like_this(cls, task_id: str, app: App, message: Message, pre_prompt: str,
-                                app_model_config: AppModelConfig, user: Account, streaming: bool):
-
-        final_model_instance = ModelFactory.get_text_generation_model_from_model_config(
-            tenant_id=app.tenant_id,
-            model_config=app_model_config.model_dict,
-            streaming=streaming
-        )
-
-        # get llm prompt
-        old_prompt_messages, _ = final_model_instance.get_prompt(
-            mode='completion',
-            pre_prompt=pre_prompt,
-            inputs=message.inputs,
-            query=message.query,
-            context=None,
-            memory=None
-        )
-
-        original_completion = message.answer.strip()
-
-        prompt = MORE_LIKE_THIS_GENERATE_PROMPT
-        prompt = prompt.format({
-            "prompt": PromptTemplateParser.remove_template_variables(pre_prompt),
-            "original_completion": original_completion
-        })
-
-        prompt_messages = [PromptMessage(content=prompt)]
-
-        conversation_message_task = ConversationMessageTask(
-            task_id=task_id,
-            app=app,
-            app_model_config=app_model_config,
-            user=user,
-            inputs=message.inputs,
-            query=message.query,
-            is_override=True if message.override_model_configs else False,
-            streaming=streaming,
-            model_instance=final_model_instance
-        )
-
-        cls.recale_llm_max_tokens(
-            model_instance=final_model_instance,
-            prompt_messages=prompt_messages
-        )
-
-        final_model_instance.run(
-            messages=prompt_messages,
-            callbacks=[LLMCallbackHandler(final_model_instance, conversation_message_task)]
-        )
