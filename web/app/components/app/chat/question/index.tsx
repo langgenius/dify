@@ -3,18 +3,18 @@ import type { FC } from 'react'
 import React, { useRef } from 'react'
 import { useContext } from 'use-context-selector'
 import s from '../style.module.css'
-import type { DisplayScene, IChatItem } from '../type'
+import type { IChatItem } from '../type'
 import Log from '../log'
 import MoreInfo from '../more-info'
 import AppContext from '@/context/app-context'
 import { Markdown } from '@/app/components/base/markdown'
 
 type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
-  displayScene: DisplayScene
+  isShowPromptLog?: boolean
   item: IChatItem
 }
 
-const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, displayScene, item }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
   const ref = useRef(null)
@@ -24,7 +24,7 @@ const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar,
       <div className={s.questionWrapWrap}>
         <div className={`${s.question} group relative text-sm text-gray-900`}>
           {
-            displayScene !== 'web' && (
+            isShowPromptLog && (
               <Log log={item.log!} containerRef={ref} />
             )
           }

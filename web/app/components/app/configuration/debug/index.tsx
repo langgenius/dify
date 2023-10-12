@@ -284,6 +284,14 @@ const Debug: FC<IDebug> = ({
           setChatList(produce(getChatList(), (draft) => {
             const index = draft.findIndex(item => item.id === responseItem.id)
             if (index !== -1) {
+              const requestion = draft[index - 1]
+              draft[index - 1] = {
+                ...requestion,
+                log: {
+                  isTextGeneration: false,
+                  items: newResponseItem.message,
+                },
+              }
               draft[index] = {
                 ...draft[index],
                 more: {
@@ -453,6 +461,7 @@ const Debug: FC<IDebug> = ({
                   isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
+                  isShowPromptLog
                 />
               </div>
             </div>

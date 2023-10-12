@@ -53,6 +53,7 @@ export type IChatProps = {
   isShowConfigElem?: boolean
   dataSets?: DataSet[]
   isShowCitationHitInfo?: boolean
+  isShowPromptLog?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -81,6 +82,7 @@ const Chat: FC<IChatProps> = ({
   isShowConfigElem,
   dataSets,
   isShowCitationHitInfo,
+  isShowPromptLog,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -193,8 +195,8 @@ const Chat: FC<IChatProps> = ({
               content={item.content}
               more={item.more}
               useCurrentUserAvatar={useCurrentUserAvatar}
-              displayScene={displayScene ?? 'web'}
               item={item}
+              isShowPromptLog={isShowPromptLog}
             />
           )
         })}

@@ -238,6 +238,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           onFeedback={onFeedback}
           onSubmitAnnotation={onSubmitAnnotation}
           displayScene='console'
+          isShowPromptLog
         />
       </div>
       : items.length < 8
@@ -248,6 +249,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             onFeedback={onFeedback}
             onSubmitAnnotation={onSubmitAnnotation}
             displayScene='console'
+            isShowPromptLog
           />
         </div>
         : <div
@@ -287,6 +289,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               onFeedback={onFeedback}
               onSubmitAnnotation={onSubmitAnnotation}
               displayScene='console'
+              isShowPromptLog
             />
           </InfiniteScroll>
         </div>
