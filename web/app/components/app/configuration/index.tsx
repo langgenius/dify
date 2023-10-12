@@ -238,10 +238,6 @@ const Configuration: FC = () => {
   }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
     if (isAdvancedMode) {
       const appMode = mode
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      const published = await handlePublish(true)
-      if (!published)
-        return
 
       if (modeMode === ModelModeType.completion) {
         if (appMode === AppType.chat) {
