@@ -385,9 +385,6 @@ class DocumentService:
 
     @staticmethod
     def delete_document(document):
-        if document.indexing_status in ["parsing", "cleaning", "splitting", "indexing"]:
-            raise DocumentIndexingError()
-
         # trigger document_was_deleted signal
         document_was_deleted.send(document.id, dataset_id=document.dataset_id)
 

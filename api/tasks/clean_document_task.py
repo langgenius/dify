@@ -31,22 +31,24 @@ def clean_document_task(document_id: str, dataset_id: str):
         kw_index = IndexBuilder.get_index(dataset, 'economy')
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-        index_node_ids = [segment.index_node_id for segment in segments]
+        # check segment is exist
+        if segments:
+            index_node_ids = [segment.index_node_id for segment in segments]
 
-        # delete from vector index
-        if vector_index:
-            vector_index.delete_by_document_id(document_id)
+            # delete from vector index
+            if vector_index:
+                vector_index.delete_by_document_id(document_id)
 
-        # delete from keyword index
-        if index_node_ids:
-            kw_index.delete_by_ids(index_node_ids)
+            # delete from keyword index
+            if index_node_ids:
+                kw_index.delete_by_ids(index_node_ids)
 
-        for segment in segments:
-            db.session.delete(segment)
+            for segment in segments:
+                db.session.delete(segment)
 
-        db.session.commit()
-        end_at = time.perf_counter()
-        logging.info(
-            click.style('Cleaned document when document deleted: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
+            db.session.commit()
+            end_at = time.perf_counter()
+            logging.info(
+                click.style('Cleaned document when document deleted: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))
     except Exception:
         logging.exception("Cleaned document when document deleted failed")
