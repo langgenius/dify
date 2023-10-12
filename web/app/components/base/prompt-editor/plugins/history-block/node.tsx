@@ -24,8 +24,6 @@ export class HistoryBlockNode extends DecoratorNode<JSX.Element> {
     this.__onEditRole = onEditRole
   }
 
-  setFormat() {}
-
   isInline(): boolean {
     return true
   }

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import Card from './card'
-import CopyFeedback from '@/app/components/base/copy-feedback'
+import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type PromptLogModalProps = {
@@ -26,7 +26,7 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
           {
             log.isTextGeneration && (
               <>
-                <CopyFeedback className='w-6 h-6' content='' selectorId='' />
+                <CopyFeedbackNew className='w-6 h-6' content={log.items?.[0].text} />
                 <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />
               </>
             )

@@ -13,8 +13,6 @@ export class QueryBlockNode extends DecoratorNode<JSX.Element> {
     return new QueryBlockNode()
   }
 
-  setFormat() {}
-
   isInline(): boolean {
     return true
   }

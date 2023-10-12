@@ -17,8 +17,6 @@ export class ContextBlockNode extends DecoratorNode<JSX.Element> {
     return new ContextBlockNode(node.__datasets, node.__onAddContext)
   }
 
-  setFormat() {}
-
   isInline(): boolean {
     return true
   }
