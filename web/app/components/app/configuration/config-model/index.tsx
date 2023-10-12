@@ -60,6 +60,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const hasEnableParams = currParams && Object.keys(currParams).some(key => currParams[key].enabled)
   const allSupportParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty', 'max_tokens']
   const currSupportParams = currParams ? allSupportParams.filter(key => currParams[key].enabled) : allSupportParams
+  if (isAdvancedMode)
+    currSupportParams.push('stop')
 
   useEffect(() => {
     (async () => {
@@ -367,9 +369,9 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
             {/* Params */}
             <div className={cn(hasEnableParams && 'mt-4', 'space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
-              {allParams[provider]?.[modelId]
+              {(allParams[provider]?.[modelId])
                 ? (
-                  currSupportParams.concat(['stop']).map(key => (<ParamItem
+                  currSupportParams.map(key => (<ParamItem
                     key={key}
                     id={key}
                     name={t(`common.model.params.${key === 'stop' ? 'stop_sequences' : key}`)}
