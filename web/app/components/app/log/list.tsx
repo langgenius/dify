@@ -115,7 +115,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
-
+  const [varValues, setVarValues] = useState<Record<string, string>>({})
   const fetchData = async () => {
     try {
       if (!hasMore)
@@ -131,6 +131,10 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
+      if (messageRes.data.length > 0) {
+        const varValues = messageRes.data[0].inputs
+        setVarValues(varValues)
+      }
       const newItems = [...getFormattedChatList(messageRes.data), ...items]
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
@@ -169,8 +173,8 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const varList = (detail.model_config as any).user_input_form.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {
-      label: itemContent.label,
-      value: 'Value ...', // wait for api
+      label: itemContent.variable,
+      value: varValues[itemContent.variable],
     }
   })
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
