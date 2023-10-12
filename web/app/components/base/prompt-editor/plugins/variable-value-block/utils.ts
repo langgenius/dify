@@ -188,7 +188,7 @@ function getHashtagRegexStringChars(): Readonly<{
 
   // An alpha char is a unicode chars including unicode marks or
   // letter or char in otherChars range
-  const alpha = unicodeLetters + unicodeAccents + otherChars
+  const alpha = unicodeLetters
 
   // A numeric character is any with the number digit property, or
   // underscore. These characters can be included in hashtags, but a hashtag
@@ -225,12 +225,7 @@ export function getHashtagRegexString(): string {
     })`
     + `(${
       hashLeftCharList
-    })(${
-      hashtagAlphanumeric
-    }*${
-      hashtagAlpha
-    }${hashtagAlphanumeric
-    }*`
+    })([a-zA-Z_][a-zA-Z0-9_]{0,29}`
     + `)(${
       hashRightCharList
     })(${
