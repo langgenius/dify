@@ -9,14 +9,14 @@ import {
   InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { SparklesIcon } from '@heroicons/react/24/solid'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import { createContext, useContext } from 'use-context-selector'
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import s from './style.module.css'
+import VarPanel from './var-panel'
 import { randomString } from '@/utils'
 import { EditIconSolid } from '@/app/components/app/chat/icon-component'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/app/chat/type'
@@ -32,6 +32,8 @@ import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversa
 import { TONE_LIST } from '@/config'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
+import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
+import { ModelModeType } from '@/types/app'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -78,6 +80,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
+      log: item.message as any,
     })
 
     newChatList.push({
@@ -102,7 +105,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
 const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
 type IDetailPanel<T> = {
-  detail: T
+  detail: any
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
 }
@@ -112,7 +115,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
-
+  const [varValues, setVarValues] = useState<Record<string, string>>({})
   const fetchData = async () => {
     try {
       if (!hasMore)
@@ -128,6 +131,10 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
+      if (messageRes.data.length > 0) {
+        const varValues = messageRes.data[0].inputs
+        setVarValues(varValues)
+      }
       const newItems = [...getFormattedChatList(messageRes.data), ...items]
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
@@ -153,7 +160,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
   const isChatMode = appDetail?.mode === 'chat'
 
-  const targetTone = TONE_LIST.find((item) => {
+  const targetTone = TONE_LIST.find((item: any) => {
     let res = true
     validatedParams.forEach((param) => {
       res = item.config?.[param] === detail.model_config?.configs?.completion_params?.[param]
@@ -161,53 +168,81 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     return res
   })?.name ?? 'custom'
 
+  const modelName = (detail.model_config as any).model.name
+  const provideName = (detail.model_config as any).model.provider as any
+  const varList = (detail.model_config as any).user_input_form.map((item: any) => {
+    const itemContent = item[Object.keys(item)[0]]
+    return {
+      label: itemContent.variable,
+      value: varValues[itemContent.variable],
+    }
+  })
+
+  const getParamValue = (param: string) => {
+    const value = detail?.model_config.model?.completion_params?.[param] || '-'
+    if (param === 'stop') {
+      if (!value || value.length === 0)
+        return '-'
+
+      return value.join(',')
+    }
+
+    return value
+  }
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
-      <div className='flex-1'>
-        <span className='text-gray-500 text-[10px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</span>
-        <div className='text-gray-800 text-sm'>{isChatMode ? detail.id : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
+      <div>
+        <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+        <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
       </div>
-      <div className='mr-2 bg-gray-50 py-1.5 px-2.5 rounded-lg flex items-center text-[13px]'>
-        <ModelIcon
-          className={classNames('mr-1.5', 'w-5 h-5')}
-          modelId={detail.model_config.model.name}
-          providerName={detail.model_config.model.provider}
-        />
-        <ModelName modelId={detail.model_config.model.name} modelDisplayName={detail.model_config.model.name} />
-      </div>
-      <Popover
-        position='br'
-        className='!w-[280px]'
-        btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
-        btnElement={<>
-          <span className='text-[13px]'>{targetTone}</span>
-          <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
-        </>}
-        htmlContent={<div className='w-[280px]'>
-          <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
-            <span>Tone of responses</span>
-            <div>{targetTone}</div>
+      <div className='flex items-center'>
+        <div
+          className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
+        >
+          <ModelIcon
+            className='!w-5 !h-5'
+            modelId={modelName}
+            providerName={provideName}
+          />
+          <div className='text-[13px] text-gray-900 font-medium'>
+            <ModelName modelId={modelName} modelDisplayName={modelName} />
           </div>
-          {['temperature', 'top_p', 'presence_penalty', 'max_tokens'].map((param: string, index: number) => {
-            return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
-              <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-              <span className='text-gray-800 font-medium text-xs'>{detail?.model_config.model?.completion_params?.[param] || '-'}</span>
+          <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+        </div>
+        <Popover
+          position='br'
+          className='!w-[280px]'
+          btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
+          btnElement={<>
+            <span className='text-[13px]'>{targetTone}</span>
+            <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+          </>}
+          htmlContent={<div className='w-[280px]'>
+            <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
+              <span>Tone of responses</span>
+              <div>{targetTone}</div>
             </div>
-          })}
-        </div>}
-      />
-      <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
-        <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+            {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
+              return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
+                <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
+                <span className='text-gray-800 font-medium text-xs'>{getParamValue(param)}</span>
+              </div>
+            })}
+          </div>}
+        />
+        <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
+          <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+        </div>
       </div>
+
     </div>
     {/* Panel Body */}
-    <div className='bg-gray-50 border border-gray-100 px-4 py-3 mx-6 my-4 rounded-lg'>
-      <div className='text-gray-500 text-xs flex items-center'>
-        <SparklesIcon className='h-3 w-3 mr-1' />{isChatMode ? t('appLog.detail.promptTemplateBeforeChat') : t('appLog.detail.promptTemplate')}
+    {varList.length > 0 && (
+      <div className='px-6 pt-4 pb-2'>
+        <VarPanel varList={varList} />
       </div>
-      <div className='text-gray-700 font-medium text-sm mt-2'>{detail.model_config?.pre_prompt || emptyText}</div>
-    </div>
+    )}
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
@@ -216,6 +251,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           onFeedback={onFeedback}
           onSubmitAnnotation={onSubmitAnnotation}
           displayScene='console'
+          isShowPromptLog
         />
       </div>
       : items.length < 8
@@ -226,6 +262,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             onFeedback={onFeedback}
             onSubmitAnnotation={onSubmitAnnotation}
             displayScene='console'
+            isShowPromptLog
           />
         </div>
         : <div
@@ -265,6 +302,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               onFeedback={onFeedback}
               onSubmitAnnotation={onSubmitAnnotation}
               displayScene='console'
+              isShowPromptLog
             />
           </InfiniteScroll>
         </div>
@@ -382,7 +420,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
         selector={`highlight-${randomString(16)}`}
       >
-        <div className={classNames(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -413,9 +451,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           </tr>
         </thead>
         <tbody className="text-gray-500">
-          {logs.data.map((log) => {
+          {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id
-            const leftValue = get(log, isChatMode ? 'summary' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
+            const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}

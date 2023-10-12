@@ -94,6 +94,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isShow={isShow}
       onClose={onClose}
       className='w-[400px]'
+      wrapperClassName='!z-[101]'
       title={t('appDebug.feature.dataSet.selectTitle')}
     >
       {!loaded && (

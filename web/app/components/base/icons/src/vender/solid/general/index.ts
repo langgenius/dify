@@ -1,5 +1,6 @@
 export { default as CheckCircle } from './CheckCircle'
 export { default as CheckDone01 } from './CheckDone01'
 export { default as Download02 } from './Download02'
+export { default as MessageClockCircle } from './MessageClockCircle'
 export { default as Target04 } from './Target04'
 export { default as XCircle } from './XCircle'

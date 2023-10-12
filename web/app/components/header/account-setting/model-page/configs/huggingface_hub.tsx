@@ -121,6 +121,13 @@ const config: ProviderConfig = {
               'zh-Hans': '文本生成',
             },
           },
+          // {
+          //   key: 'chat',
+          //   label: {
+          //     'en': 'Chat',
+          //     'zh-Hans': '聊天',
+          //   },
+          // },
           {
             key: 'embeddings',
             label: {
@@ -217,22 +224,33 @@ const config: ProviderConfig = {
           'en': 'Task',
           'zh-Hans': 'Task',
         },
-        options: [
-          {
-            key: 'text2text-generation',
-            label: {
-              'en': 'Text-to-Text Generation',
-              'zh-Hans': 'Text-to-Text Generation',
+        options: (value?: FormValue) => {
+          if (value?.model_type === 'chat') {
+            return [{
+              key: 'question-answer',
+              label: {
+                'en': '问答',
+                'zh-Hans': 'Question Answer',
+              },
+            }]
+          }
+          return [
+            {
+              key: 'text2text-generation',
+              label: {
+                'en': 'Text-to-Text Generation',
+                'zh-Hans': 'Text-to-Text Generation',
+              },
             },
-          },
-          {
-            key: 'text-generation',
-            label: {
-              'en': 'Text Generation',
-              'zh-Hans': 'Text Generation',
+            {
+              key: 'text-generation',
+              label: {
+                'en': 'Text Generation',
+                'zh-Hans': 'Text Generation',
+              },
             },
-          },
-        ],
+          ]
+        },
       },
       {
         hidden: (value?: FormValue) => !(value?.huggingfacehub_api_type === 'inference_endpoints' && value?.model_type === 'embeddings'),

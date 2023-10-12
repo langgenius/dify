@@ -66,6 +66,7 @@ export type IChatItem = {
   annotation?: Annotation
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
+  log?: { role: string; text: string }[]
 }
 
 export type MessageEnd = {

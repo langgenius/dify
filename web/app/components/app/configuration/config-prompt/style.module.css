@@ -13,3 +13,11 @@
   padding: 2px;
   box-sizing: border-box;
 }
+
+.optionWrap {
+  display: none;
+}
+
+.boxHeader:hover .optionWrap {
+  display: flex;
+}

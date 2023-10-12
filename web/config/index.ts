@@ -91,6 +91,20 @@ export const TONE_LIST = [
   },
 ]
 
+export const DEFAULT_CHAT_PROMPT_CONFIG = {
+  prompt: [],
+}
+
+export const DEFAULT_COMPLETION_PROMPT_CONFIG = {
+  prompt: {
+    text: '',
+  },
+  conversation_histories_role: {
+    user_prefix: '',
+    assistant_prefix: '',
+  },
+}
+
 export const getMaxToken = (modelId: string) => {
   return (modelId === 'gpt-4' || modelId === 'gpt-3.5-turbo-16k') ? 8000 : 4000
 }
@@ -104,7 +118,7 @@ export const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/m
 export const emailRegex = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/m
 const MAX_ZN_VAR_NAME_LENGHT = 8
-const MAX_EN_VAR_VALUE_LENGHT = 16
+const MAX_EN_VAR_VALUE_LENGHT = 30
 export const getMaxVarNameLength = (value: string) => {
   if (zhRegex.test(value))
     return MAX_ZN_VAR_NAME_LENGHT
@@ -112,7 +126,9 @@ export const getMaxVarNameLength = (value: string) => {
   return MAX_EN_VAR_VALUE_LENGHT
 }
 
-export const MAX_VAR_KEY_LENGHT = 16
+export const MAX_VAR_KEY_LENGHT = 30
+
+export const MAX_PROMPT_MESSAGE_LENGTH = 10
 
 export const VAR_ITEM_TEMPLATE = {
   key: '',

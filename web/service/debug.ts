@@ -1,5 +1,7 @@
 import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd } from './base'
 import { get, post, ssePost } from './base'
+import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
+import type { ModelModeType } from '@/types/app'
 
 export type AutomaticRes = {
   prompt: string
@@ -63,4 +65,27 @@ export const fetchModelParams = (providerName: string, modelId: string) => {
       model_name: modelId,
     },
   })
+}
+
+export const fetchPromptTemplate = ({
+  appMode,
+  mode,
+  modelName,
+  hasSetDataSet,
+}: { appMode: string; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
+  return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig }>>('/app/prompt-templates', {
+    params: {
+      app_mode: appMode,
+      model_mode: mode,
+      model_name: modelName,
+      has_context: hasSetDataSet,
+    },
+  })
+}
+
+export const fetchTextGenerationMessge = ({
+  appId,
+  messageId,
+}: { appId: string; messageId: string }) => {
+  return get<Promise<{ message: [] }>>(`/apps/${appId}/messages/${messageId}`)
 }

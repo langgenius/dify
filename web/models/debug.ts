@@ -1,4 +1,40 @@
+import type { ModelModeType } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
+
+export enum PromptMode {
+  simple = 'simple',
+  advanced = 'advanced',
+}
+
+export type PromptItem = {
+  role?: PromptRole
+  text: string
+}
+
+export type ChatPromptConfig = {
+  prompt: PromptItem[]
+}
+
+export type ConversationHistoriesRole = {
+  user_prefix: string
+  assistant_prefix: string
+}
+export type CompletionPromptConfig = {
+  prompt: PromptItem
+  conversation_histories_role: ConversationHistoriesRole
+}
+
+export type BlockStatus = {
+  context: boolean
+  history: boolean
+  query: boolean
+}
+
+export enum PromptRole {
+  system = 'system',
+  user = 'user',
+  assistant = 'assistant',
+}
 
 export type PromptVariable = {
   key: string
@@ -17,6 +53,7 @@ export type CompletionParams = {
   top_p: number
   presence_penalty: number
   frequency_penalty: number
+  stop?: string[]
 }
 
 export type ModelId = 'gpt-3.5-turbo' | 'text-davinci-003'
@@ -42,6 +79,7 @@ export type RetrieverResourceConfig = MoreLikeThisConfig
 export type ModelConfig = {
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
+  mode: ModelModeType
   configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
@@ -49,6 +87,14 @@ export type ModelConfig = {
   speech_to_text: SpeechToTextConfig | null
   retriever_resource: RetrieverResourceConfig | null
   dataSets: any[]
+}
+export type DatasetConfigItem = {
+  enable: boolean
+  value: number
+}
+export type DatasetConfigs = {
+  top_k: number
+  score_threshold: DatasetConfigItem
 }
 
 export type DebugRequestBody = {

@@ -73,7 +73,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           delete newItem.max_length
           delete newItem.options
         }
-        console.log(newItem)
         return newItem
       }
 
@@ -175,8 +174,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             <Tooltip htmlContent={<div className='w-[180px]'>
               {t('appDebug.variableTip')}
             </div>} selector='config-var-tooltip'>
-              <HelpCircle className='w-3.5 h-3.5 text-gray-400'/>
-
+              <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
             </Tooltip>
           )}
         </div>

@@ -1,6 +1,6 @@
 import { MAX_VAR_KEY_LENGHT, VAR_ITEM_TEMPLATE, getMaxVarNameLength } from '@/config'
+import { CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'
 const otherAllowedRegex = /^[a-zA-Z0-9_]+$/
-
 export const getNewVar = (key: string) => {
   return {
     ...VAR_ITEM_TEMPLATE,
@@ -44,4 +44,24 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
     }
   })
   return { isValid, errorKey, errorMessageKey }
+}
+
+const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
+export const getVars = (value: string) => {
+  const keys = value.match(varRegex)?.filter((item) => {
+    return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
+  }).map((item) => {
+    return item.replace('{{', '').replace('}}', '')
+  }).filter(key => key.length <= MAX_VAR_KEY_LENGHT) || []
+  const keyObj: Record<string, boolean> = {}
+  // remove duplicate keys
+  const res: string[] = []
+  keys.forEach((key) => {
+    if (keyObj[key])
+      return
+
+    keyObj[key] = true
+    res.push(key)
+  })
+  return res
 }
