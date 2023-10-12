@@ -366,15 +366,15 @@ const Configuration: FC = () => {
       return
     }
     if (isAdvancedMode && mode === AppType.chat) {
-      if (!hasSetBlockStatus.history) {
-        if (modelModeType === ModelModeType.completion) {
+      if (modelModeType === ModelModeType.completion) {
+        if (!hasSetBlockStatus.history) {
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
           return
         }
-      }
-      if (!hasSetBlockStatus.query) {
-        notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
-        return
+        if (!hasSetBlockStatus.query) {
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          return
+        }
       }
     }
     if (contextVarEmpty) {

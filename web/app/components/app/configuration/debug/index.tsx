@@ -133,10 +133,10 @@ const Debug: FC<IDebug> = ({
           notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
           return false
         }
-      }
-      if (!hasSetBlockStatus.query) {
-        notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
-        return false
+        if (!hasSetBlockStatus.query) {
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          return false
+        }
       }
     }
     let hasEmptyInput = ''
