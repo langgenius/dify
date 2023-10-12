@@ -181,6 +181,19 @@ const Configuration: FC = () => {
       return quota_used === quota_limit
     })
 
+  // Fill old app data missing model mode.
+  useEffect(() => {
+    if (hasFetchedDetail && !modelModeType) {
+      const mode = textGenerationModelList.find(({ model_name }) => model_name === modelConfig.model_id)?.model_mode
+      if (mode) {
+        const newModelConfig = produce(modelConfig, (draft) => {
+          draft.mode = mode
+        })
+        setModelConfig(newModelConfig)
+      }
+    }
+  }, [textGenerationModelList, hasFetchedDetail])
+
   const hasSetAPIKEY = hasSetCustomAPIKEY || !isTrailFinished
 
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
