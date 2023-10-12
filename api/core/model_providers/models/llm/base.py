@@ -332,10 +332,7 @@ class BaseLLM(BaseProviderModel):
                    memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
         
         model_mode = app_model_config.model_dict['mode']
-        conversation_histories_role =  {
-            "user_prefix": "user",
-            "assistant_prefix": "assistant"
-        }
+        conversation_histories_role = {}
 
         prompt_list = []
         prompt_messages = []
@@ -363,15 +360,13 @@ class BaseLLM(BaseProviderModel):
         for prompt_item in prompt_list:
             prompt = prompt_item['text']
 
-            # todo: key word validation
-
             prompt_template = PromptTemplateParser(template=prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
             if context:
                 prompt_inputs['#context#'] = context
 
-            if memory:
+            if memory and app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
                 memory.human_prefix = conversation_histories_role['user_prefix']
                 memory.ai_prefix = conversation_histories_role['assistant_prefix']
                 histories = self._get_history_messages_from_memory(memory, 2000)
@@ -387,8 +382,6 @@ class BaseLLM(BaseProviderModel):
             prompt = re.sub(r'<\|.*?\|>', '', prompt)
             
             prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
-
-            print(f'advanced prompt: {prompt}')
         
         return prompt_messages
 
@@ -465,8 +458,6 @@ class BaseLLM(BaseProviderModel):
         prompt += query_prompt_content
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
-
-        print(f'simple prompt: {prompt}')
 
         stops = prompt_rules.get('stops')
         if stops is not None and len(stops) == 0:

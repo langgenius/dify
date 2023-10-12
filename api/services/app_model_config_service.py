@@ -3,7 +3,7 @@ import uuid
 
 from core.agent.agent_executor import PlanningStrategy
 from core.model_providers.model_provider_factory import ModelProviderFactory
-from core.model_providers.models.entity.model_params import ModelType
+from core.model_providers.models.entity.model_params import ModelType, ModelMode
 from models.account import Account
 from services.dataset_service import DatasetService
 
@@ -333,7 +333,7 @@ class AppModelConfigService:
         AppModelConfigService.is_dataset_query_variable_valid(config, mode)
 
         # advanced prompt validation
-        AppModelConfigService.is_advanced_prompt_valid(config)
+        AppModelConfigService.is_advanced_prompt_valid(config, mode)
 
         # Filter out extra parameters
         filtered_config = {
@@ -379,7 +379,7 @@ class AppModelConfigService:
         
 
     @staticmethod
-    def is_advanced_prompt_valid(config: dict) -> None:
+    def is_advanced_prompt_valid(config: dict, app_mode: str) -> None:
         # prompt_type
         if 'prompt_type' not in config or not config["prompt_type"]:
             config["prompt_type"] = "simple"
@@ -414,3 +414,13 @@ class AppModelConfigService:
             
             if config['model']["mode"] not in ['chat', 'completion']:
                 raise ValueError("model.mode must be in ['chat', 'completion'] when prompt_type is advanced")
+            
+            if app_mode == 'chat' and config['model']["mode"] == ModelMode.COMPLETION.value:
+                user_prefix = config['completion_prompt_config']['conversation_histories_role']['user_prefix']
+                assistant_prefix = config['completion_prompt_config']['conversation_histories_role']['assistant_prefix']
+
+                if not user_prefix:
+                    config['completion_prompt_config']['conversation_histories_role']['user_prefix'] = 'Human'
+
+                if not assistant_prefix:
+                    config['completion_prompt_config']['conversation_histories_role']['assistant_prefix'] = 'Assistant'
