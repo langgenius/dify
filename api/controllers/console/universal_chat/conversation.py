@@ -48,7 +48,7 @@ class UniversalChatConversationApi(UniversalChatResource):
         conversation_id = str(c_id)
 
         try:
-            ConversationService.delete(app_model, conversation_id, current_user)
+            ConversationService.delete(app_model, conversation_id)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

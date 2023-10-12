@@ -64,7 +64,7 @@ class ConversationService:
     @classmethod
     def rename(cls, app_model: App, conversation_id: str,
                user: Optional[Union[Account | EndUser]], name: str):
-        conversation = cls.get_conversation(app_model, conversation_id, user)
+        conversation = cls.get_conversation(app_model, conversation_id)
 
         conversation.name = name
         db.session.commit()
@@ -72,14 +72,11 @@ class ConversationService:
         return conversation
 
     @classmethod
-    def get_conversation(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
+    def get_conversation(cls, app_model: App, conversation_id: str):
         conversation = db.session.query(Conversation) \
             .filter(
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
-            Conversation.from_source == ('api' if isinstance(user, EndUser) else 'console'),
-            Conversation.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Conversation.from_account_id == (user.id if isinstance(user, Account) else None),
             Conversation.is_deleted == False
         ).first()
 
@@ -90,7 +87,7 @@ class ConversationService:
 
     @classmethod
     def delete(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
-        conversation = cls.get_conversation(app_model, conversation_id, user)
+        conversation = cls.get_conversation(app_model, conversation_id)
 
         conversation.is_deleted = True
         db.session.commit()

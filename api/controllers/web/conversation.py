@@ -49,7 +49,7 @@ class ConversationApi(WebApiResource):
 
         conversation_id = str(c_id)
         try:
-            ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         WebConversationService.unpin(app_model, conversation_id, end_user)

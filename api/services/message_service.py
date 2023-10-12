@@ -26,7 +26,6 @@ class MessageService:
 
         conversation = ConversationService.get_conversation(
             app_model=app_model,
-            user=user,
             conversation_id=conversation_id
         )
 
@@ -79,7 +78,6 @@ class MessageService:
         if conversation_id is not None:
             conversation = ConversationService.get_conversation(
                 app_model=app_model,
-                user=user,
                 conversation_id=conversation_id
             )
 
@@ -126,7 +124,6 @@ class MessageService:
 
         message = cls.get_message(
             app_model=app_model,
-            user=user,
             message_id=message_id
         )
 
@@ -155,13 +152,10 @@ class MessageService:
         return feedback
 
     @classmethod
-    def get_message(cls, app_model: App, user: Optional[Union[Account | EndUser]], message_id: str):
+    def get_message(cls, app_model: App, message_id: str):
         message = db.session.query(Message).filter(
             Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ('api' if isinstance(user, EndUser) else 'console'),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
+            Message.app_id == app_model.id
         ).first()
 
         if not message:
@@ -170,21 +164,16 @@ class MessageService:
         return message
 
     @classmethod
-    def get_suggested_questions_after_answer(cls, app_model: App, user: Optional[Union[Account | EndUser]],
-                                             message_id: str, check_enabled: bool = True) -> List[Message]:
-        if not user:
-            raise ValueError('user cannot be None')
-
+    def get_suggested_questions_after_answer(cls, app_model: App, message_id: str,
+                                             check_enabled: bool = True) -> List[Message]:
         message = cls.get_message(
             app_model=app_model,
-            user=user,
             message_id=message_id
         )
 
         conversation = ConversationService.get_conversation(
             app_model=app_model,
             conversation_id=message.conversation_id,
-            user=user
         )
 
         if not conversation:

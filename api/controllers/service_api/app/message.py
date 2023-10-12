@@ -96,5 +96,23 @@ class MessageFeedbackApi(AppApiResource):
         return {'result': 'success'}
 
 
+class MessageSuggestedApi(AppApiResource):
+    def get(self, app_model, end_user, message_id):
+        message_id = str(message_id)
+        if app_model.mode != 'chat':
+            raise NotChatAppError()
+
+        try:
+            questions = MessageService.get_suggested_questions_after_answer(
+                app_model=app_model,
+                message_id=message_id
+            )
+        except services.errors.message.MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+
+        return {'result': 'success', 'data': questions}
+
+
 api.add_resource(MessageListApi, '/messages')
 api.add_resource(MessageFeedbackApi, '/messages/<uuid:message_id>/feedbacks')
+api.add_resource(MessageSuggestedApi, '/messages/<uuid:message_id>/suggested')

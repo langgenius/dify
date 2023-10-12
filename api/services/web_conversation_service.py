@@ -50,7 +50,6 @@ class WebConversationService:
         conversation = ConversationService.get_conversation(
             app_model=app_model,
             conversation_id=conversation_id,
-            user=user
         )
 
         pinned_conversation = PinnedConversation(
