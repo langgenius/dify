@@ -196,7 +196,8 @@ class AppModelConfig(db.Model):
             user_input_form=self.user_input_form,
             dataset_query_variable=self.dataset_query_variable,
             pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode
+            agent_mode=self.agent_mode,
+            retriever_resource=self.retriever_resource
         )
 
         return new_app_model_config

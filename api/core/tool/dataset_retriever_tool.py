@@ -30,7 +30,7 @@ class DatasetRetrieverTool(BaseTool):
     dataset_id: str
     k: int = 3
     conversation_message_task: ConversationMessageTask
-    return_resource: str
+    return_resource: bool
     retriever_from: str
 
     @classmethod

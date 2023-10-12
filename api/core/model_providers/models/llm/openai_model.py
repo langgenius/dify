@@ -106,7 +106,21 @@ class OpenAIModel(BaseLLM):
             raise ModelCurrentlyNotSupportError("Dify Hosted OpenAI GPT-4 currently not support.")
 
         prompts = self._get_prompt_from_messages(messages)
-        return self._client.generate([prompts], stop, callbacks)
+
+        generate_kwargs = {
+            'stop': stop,
+            'callbacks': callbacks
+        }
+
+        if isinstance(prompts, str):
+            generate_kwargs['prompts'] = [prompts]
+        else:
+            generate_kwargs['messages'] = [prompts]
+
+        if 'functions' in kwargs:
+            generate_kwargs['functions'] = kwargs['functions']
+
+        return self._client.generate(**generate_kwargs)
 
     def get_num_tokens(self, messages: List[PromptMessage]) -> int:
         """
