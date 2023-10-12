@@ -83,6 +83,8 @@ const AdvancedPromptInput: FC<Props> = ({
     }
   }
 
+  const editorHeight = isChatMode ? 'h-[200px]' : 'h-[508px]'
+
   return (
     <div className={`relative ${s.gradientBorder}`}>
       <div className='rounded-xl bg-white'>
@@ -121,9 +123,9 @@ const AdvancedPromptInput: FC<Props> = ({
 
           </div>
         </div>
-        <div className='px-4 min-h-[102px] max-h-[156px] overflow-y-auto text-sm text-gray-700'>
+        <div className={cn(editorHeight, 'px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700')}>
           <PromptEditor
-            className='min-h-[102px]'
+            className={editorHeight}
             value={value}
             contextBlock={{
               selectable: !hasSetBlockStatus.context,
