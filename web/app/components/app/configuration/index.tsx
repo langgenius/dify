@@ -523,7 +523,7 @@ const Configuration: FC = () => {
                 )}
                 {isAdvancedMode && (
                   <div className='flex items-center space-x-2'>
-                    <div className={`${s.advancedPromptMode} cursor-pointer text-indigo-600`}>{t('appDebug.promptMode.advanced')}</div>
+                    <div className={`${s.advancedPromptMode} italic text-indigo-600`}>{t('appDebug.promptMode.advanced')}</div>
                     {canReturnToSimpleMode && (
                       <div
                         onClick={() => setPromptMode(PromptMode.simple)}
