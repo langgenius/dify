@@ -176,58 +176,53 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       value: 'Value ...', // wait for api
     }
   })
-  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
+  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col justify-between overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
-      <div className='flex-1'>
-        <span className='text-gray-500 text-[10px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</span>
-        <div className='text-gray-800 text-sm'>{isChatMode ? detail.id : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
+      <div>
+        <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+        <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
       </div>
-      <div className='mr-2 bg-gray-50 py-1.5 px-2.5 rounded-lg flex items-center text-[13px]'>
-        <ModelIcon
-          className={cn('mr-1.5', 'w-5 h-5')}
-          modelId={detail.model_config.model.name}
-          providerName={detail.model_config.model.provider}
-        />
-        <ModelName modelId={detail.model_config.model.name} modelDisplayName={detail.model_config.model.name} />
-      </div>
-      <div
-        className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
-      >
-        <ModelIcon
-          className='!w-5 !h-5'
-          modelId={modelName}
-          providerName={provideName}
-        />
-        <div className='text-[13px] text-gray-900 font-medium'>
-          <ModelName modelId={modelName} modelDisplayName={modelName} />
-        </div>
-        <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
-      </div>
-      <Popover
-        position='br'
-        className='!w-[280px]'
-        btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
-        btnElement={<>
-          <span className='text-[13px]'>{targetTone}</span>
-          <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
-        </>}
-        htmlContent={<div className='w-[280px]'>
-          <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
-            <span>Tone of responses</span>
-            <div>{targetTone}</div>
+      <div className='flex items-center'>
+        <div
+          className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
+        >
+          <ModelIcon
+            className='!w-5 !h-5'
+            modelId={modelName}
+            providerName={provideName}
+          />
+          <div className='text-[13px] text-gray-900 font-medium'>
+            <ModelName modelId={modelName} modelDisplayName={modelName} />
           </div>
-          {['temperature', 'top_p', 'presence_penalty', 'max_tokens'].map((param: string, index: number) => {
-            return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
-              <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-              <span className='text-gray-800 font-medium text-xs'>{detail?.model_config.model?.completion_params?.[param] || '-'}</span>
+          <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+        </div>
+        <Popover
+          position='br'
+          className='!w-[280px]'
+          btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
+          btnElement={<>
+            <span className='text-[13px]'>{targetTone}</span>
+            <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+          </>}
+          htmlContent={<div className='w-[280px]'>
+            <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
+              <span>Tone of responses</span>
+              <div>{targetTone}</div>
             </div>
-          })}
-        </div>}
-      />
-      <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
-        <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+            {['temperature', 'top_p', 'presence_penalty', 'max_tokens'].map((param: string, index: number) => {
+              return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
+                <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
+                <span className='text-gray-800 font-medium text-xs'>{detail?.model_config.model?.completion_params?.[param] || '-'}</span>
+              </div>
+            })}
+          </div>}
+        />
+        <div className='w-6 h-6 rounded-lg flex items-center justify-center hover:cursor-pointer hover:bg-gray-100'>
+          <XMarkIcon className='w-4 h-4 text-gray-500' onClick={onClose} />
+        </div>
       </div>
+
     </div>
     {/* Panel Body */}
     {varList.length > 0 && (
