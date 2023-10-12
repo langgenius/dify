@@ -11,6 +11,7 @@ from flask import current_app, Flask
 from flask_login import current_user
 from langchain.schema import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter, TextSplitter
+from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
@@ -79,6 +80,8 @@ class IndexingRunner:
                 dataset_document.error = str(e.description)
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
+            except ObjectDeletedError:
+                logging.warning('Document deleted, document id: {}'.format(dataset_document.id))
             except Exception as e:
                 logging.exception("consume document failed")
                 dataset_document.indexing_status = 'error'
@@ -276,7 +279,8 @@ class IndexingRunner:
             )
             if len(preview_texts) > 0:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
+                                                             doc_language)
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,
@@ -372,7 +376,8 @@ class IndexingRunner:
             )
             if len(preview_texts) > 0:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0], doc_language)
+                response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
+                                                             doc_language)
                 document_qa_list = self.format_split_text(response)
                 return {
                     "total_segments": total_segments * 20,
@@ -582,7 +587,6 @@ class IndexingRunner:
 
             all_qa_documents.extend(format_documents)
 
-
     def _split_to_documents_for_estimate(self, text_docs: List[Document], splitter: TextSplitter,
                                          processing_rule: DatasetProcessRule) -> List[Document]:
         """
@@ -734,6 +738,9 @@ class IndexingRunner:
         count = DatasetDocument.query.filter_by(id=document_id, is_paused=True).count()
         if count > 0:
             raise DocumentIsPausedException()
+        document = DatasetDocument.query.filter_by(id=document_id).first()
+        if not document:
+            raise DocumentIsDeletedPausedException()
 
         update_params = {
             DatasetDocument.indexing_status: after_indexing_status
@@ -780,4 +787,8 @@ class IndexingRunner:
 
 
 class DocumentIsPausedException(Exception):
+    pass
+
+
+class DocumentIsDeletedPausedException(Exception):
     pass

@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 可用于大部分场景的对话型应用，采用一问一答模式与用户持续对话。要开始一个对话请调用 chat-messages 接口，通过继续传入返回的 conversation_id 可持续保持该会话。**[开始前请阅读 !! 什么是 Bearer Token ？](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
 
+<div>
+  ### 鉴权
+
+  Dify Service API 使用 `API-Key` 进行鉴权。
+
+  建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
+
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/chat-messages'
   method='POST'

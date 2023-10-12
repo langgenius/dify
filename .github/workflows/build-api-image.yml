@@ -31,7 +31,7 @@ jobs:
       with:
         images: langgenius/dify-api
         tags: |
-          type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
           type=ref,event=branch
           type=sha,enable=true,priority=100,prefix=,suffix=,format=long
           type=semver,pattern={{major}}.{{minor}}.{{patch}}

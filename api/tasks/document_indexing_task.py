@@ -30,13 +30,11 @@ def document_indexing_task(dataset_id: str, document_ids: list):
             Document.dataset_id == dataset_id
         ).first()
 
-        if not document:
-            raise NotFound('Document not found')
-
-        document.indexing_status = 'parsing'
-        document.processing_started_at = datetime.datetime.utcnow()
-        documents.append(document)
-        db.session.add(document)
+        if document:
+            document.indexing_status = 'parsing'
+            document.processing_started_at = datetime.datetime.utcnow()
+            documents.append(document)
+            db.session.add(document)
     db.session.commit()
 
     try:
