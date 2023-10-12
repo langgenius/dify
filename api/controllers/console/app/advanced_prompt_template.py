@@ -16,7 +16,7 @@ class AdvancedPromptTemplateList(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('app_mode', type=str, required=True, location='args')
         parser.add_argument('model_mode', type=str, required=True, location='args')
-        parser.add_argument('has_context', type=str, required=False, default=True, location='args')
+        parser.add_argument('has_context', type=str, required=False, default='true', location='args')
         parser.add_argument('model_name', type=str, required=True, location='args')
         args = parser.parse_args()
 

@@ -30,14 +30,14 @@ class AdvancedPromptTemplateService:
                 return self.get_chat_prompt(copy.deepcopy(COMPLETION_APP_CHAT_PROMPT_CONFIG), has_context, CONTEXT)
             
     def get_completion_prompt(self, prompt_template: str, has_context: bool, context: str) -> dict:
-        if has_context:
+        if has_context == 'true':
             prompt_template['completion_prompt_config']['prompt']['text'] = context + prompt_template['completion_prompt_config']['prompt']['text']
         
         return prompt_template
 
 
     def get_chat_prompt(self, prompt_template: str, has_context: bool, context: str) -> dict:
-        if has_context:
+        if has_context == 'true':
             prompt_template['chat_prompt_config']['prompt'][0]['text'] = context + prompt_template['chat_prompt_config']['prompt'][0]['text']
         
         return prompt_template
