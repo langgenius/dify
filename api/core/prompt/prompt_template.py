@@ -1,6 +1,6 @@
 import re
 
-REGEX = re.compile(r"\{\{([a-zA-Z0-9_]{1,16}|#histories#|#query#|#context#)\}\}")
+REGEX = re.compile(r"\{\{([a-zA-Z0-9_]{1,30}|#histories#|#query#|#context#)\}\}")
 
 
 class PromptTemplateParser:
