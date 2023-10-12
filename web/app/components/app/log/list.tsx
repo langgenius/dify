@@ -187,7 +187,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       return value.join(',')
     }
 
-    return false
+    return value
   }
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
