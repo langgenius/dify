@@ -197,12 +197,12 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         showModal => (
                           <SimpleBtn
                             isDisabled={isError || !messageId}
-                            className={cn(isMobile && '!px-1.5', 'space-x-1')}
+                            className={cn(isMobile && '!px-1.5', 'space-x-1 mr-2')}
                             onClick={() => {
                               showModal(true)
                             }}>
                             <File02 className='w-3.5 h-3.5' />
-                            {!isMobile && <div>{t('common.operation.copy')}</div>}
+                            {!isMobile && <div>{t('common.operation.log')}</div>}
                           </SimpleBtn>
                         )
                       }

@@ -29,6 +29,7 @@ const translation = {
     getForFree: '免费获取',
     reload: '刷新',
     ok: '好的',
+    log: '日志',
   },
   placeholder: {
     input: '请输入',

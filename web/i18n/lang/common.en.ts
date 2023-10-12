@@ -29,6 +29,7 @@ const translation = {
     getForFree: 'Get for free',
     reload: 'Reload',
     ok: 'OK',
+    log: 'Log',
   },
   placeholder: {
     input: 'Please enter',
