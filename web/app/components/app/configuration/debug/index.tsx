@@ -287,10 +287,7 @@ const Debug: FC<IDebug> = ({
               const requestion = draft[index - 1]
               draft[index - 1] = {
                 ...requestion,
-                log: {
-                  isTextGeneration: false,
-                  items: newResponseItem.message,
-                },
+                log: newResponseItem.message,
               }
               draft[index] = {
                 ...draft[index],

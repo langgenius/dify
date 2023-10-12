@@ -6,10 +6,7 @@ import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type PromptLogModalProps = {
-  log: {
-    items: { role: string; text: string }[]
-    isTextGeneration: boolean
-  }
+  log: { role: string; text: string }[]
   width: number
   onCancel: () => void
 }
@@ -40,9 +37,9 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
         <div className='text-base font-semibold text-gray-900'>PROMPT LOG</div>
         <div className='flex items-center'>
           {
-            log.isTextGeneration && (
+            log.length === 1 && (
               <>
-                <CopyFeedbackNew className='w-6 h-6' content={log.items?.[0].text} />
+                <CopyFeedbackNew className='w-6 h-6' content={log[0].text} />
                 <div className='mx-2.5 w-[1px] h-[14px] bg-gray-200' />
               </>
             )

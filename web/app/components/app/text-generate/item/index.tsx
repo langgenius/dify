@@ -18,7 +18,7 @@ import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/f
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { fetchCompletionConversations } from '@/service/log'
+import { fetchTextGenerationMessge } from '@/service/debug'
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
@@ -26,6 +26,7 @@ export type IGenerationItemProps = {
   onRetry: () => void
   content: string
   messageId?: string | null
+  conversationId?: string
   isLoading?: boolean
   isInWebApp?: boolean
   moreLikeThis?: boolean
@@ -89,7 +90,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
-  const [promptLog, setPromptLog] = useState('')
+  const [promptLog, setPromptLog] = useState<{ role: string; text: string }[]>([])
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
@@ -156,14 +157,11 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [isLoading])
 
   const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
-    const data = await fetchCompletionConversations({
-      url: `/apps/${params.appId}/completion-conversations`,
-      params: {
-        page: 1,
-        limit: 1,
-      } as any,
+    const data = await fetchTextGenerationMessge({
+      appId: params.appId,
+      messageId: messageId!,
     })
-    setPromptLog(data.data[0]?.message.message || '')
+    setPromptLog(data.message as any || [])
     setModal(true)
   }
 
@@ -206,7 +204,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {
                   !isInWebApp && !isInstalledApp && (
                     <PromptLog
-                      log={{ isTextGeneration: true, items: [{ role: 'user', text: promptLog }] }}
+                      log={promptLog}
                       containerRef={ref}
                     >
                       {

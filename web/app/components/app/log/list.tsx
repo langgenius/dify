@@ -73,17 +73,14 @@ const PARAM_MAP = {
 }
 
 // Format interface data for easy display
-const getFormattedChatList = (messages: ChatMessage[], isTextGeneration?: boolean) => {
+const getFormattedChatList = (messages: ChatMessage[]) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
-      log: {
-        isTextGeneration: !!isTextGeneration,
-        items: item.message as any,
-      },
+      log: item.message as any,
     })
 
     newChatList.push({
@@ -233,7 +230,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
-          chatList={getFormattedChatList([detail.message], true)}
+          chatList={getFormattedChatList([detail.message])}
           isHideSendInput={true}
           onFeedback={onFeedback}
           onSubmitAnnotation={onSubmitAnnotation}

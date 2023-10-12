@@ -2,10 +2,7 @@ import type { FC } from 'react'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 
 type CardProps = {
-  log: {
-    items: { role: string; text: string }[]
-    isTextGeneration: boolean
-  }
+  log: { role: string; text: string }[]
 }
 const Card: FC<CardProps> = ({
   log,
@@ -13,19 +10,19 @@ const Card: FC<CardProps> = ({
   return (
     <>
       {
-        log.isTextGeneration && (
+        log.length === 1 && (
           <div className='px-4 py-2'>
             <div className='whitespace-pre-line text-gray-700'>
-              {log.items[0].text}
+              {log[0].text}
             </div>
           </div>
         )
       }
       {
-        !log.isTextGeneration && (
+        log.length > 1 && (
           <div>
             {
-              log.items.map((item, index) => (
+              log.map((item, index) => (
                 <div key={index} className='group/card mb-2 px-4 pt-2 pb-4 rounded-xl hover:bg-gray-50 last-of-type:mb-0'>
                   <div className='flex justify-between items-center h-8'>
                     <div className='font-semibold text-[#2D31A6]'>{item.role.toUpperCase()}</div>

@@ -80,3 +80,10 @@ export const fetchPromptTemplate = ({
     },
   })
 }
+
+export const fetchTextGenerationMessge = ({
+  appId,
+  messageId,
+}: { appId: string; messageId: string }) => {
+  return get<Promise<{ message: [] }>>(`/apps/${appId}/messages/${messageId}`)
+}

@@ -121,6 +121,7 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
               return
             }
             if (bufferObj.event === 'message') {
+              console.log(bufferObj, '3')
               // can not use format here. Because message is splited.
               onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
                 conversationId: bufferObj.conversation_id,

@@ -12,10 +12,7 @@ export type LogData = {
 
 type LogProps = {
   containerRef: RefObject<HTMLElement>
-  log: {
-    items: LogData[]
-    isTextGeneration: boolean
-  }
+  log: LogData[]
   children?: (v: Dispatch<SetStateAction<boolean>>) => ReactNode
 }
 const Log: FC<LogProps> = ({
