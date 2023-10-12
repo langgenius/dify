@@ -164,7 +164,7 @@ const translation = {
   },
   varKeyError: {
     canNoBeEmpty: 'Variable key can not be empty',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 16 characters',
+    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
     notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
     notStartWithNumber: 'Variable key: {{key}} can not start with a number',
     keyAlreadyExists: 'Variable key: :{{key}} already exists',
