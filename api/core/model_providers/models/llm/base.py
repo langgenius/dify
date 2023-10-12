@@ -364,17 +364,26 @@ class BaseLLM(BaseProviderModel):
             prompt_template = PromptTemplateParser(template=prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
-            if context:
-                prompt_inputs['#context#'] = context
+            if '#context#' in prompt:
+                if context:
+                    prompt_inputs['#context#'] = context
+                else:
+                    prompt_inputs['#context#'] = ''
 
-            if query:
-                prompt_inputs['#query#'] = query
+            if '#query#' in prompt:
+                if query:
+                    prompt_inputs['#query#'] = query
+                else:
+                    prompt_inputs['#query#'] = ''
 
-            if memory and app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
-                memory.human_prefix = conversation_histories_role['user_prefix']
-                memory.ai_prefix = conversation_histories_role['assistant_prefix']
-                histories = self._get_history_messages_from_memory(memory, 2000)
-                prompt_inputs['#histories#'] = histories
+            if '#histories#' in prompt:
+                if memory and app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
+                    memory.human_prefix = conversation_histories_role['user_prefix']
+                    memory.ai_prefix = conversation_histories_role['assistant_prefix']
+                    histories = self._get_history_messages_from_memory(memory, 2000)
+                    prompt_inputs['#histories#'] = histories
+                else:
+                    prompt_inputs['#histories#'] = ''
                 
             prompt = prompt_template.format(
                 prompt_inputs
