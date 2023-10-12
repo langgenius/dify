@@ -177,6 +177,18 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       value: varValues[itemContent.variable],
     }
   })
+
+  const getParamValue = (param: string) => {
+    const value = detail?.model_config.model?.completion_params?.[param] || '-'
+    if (param === 'stop') {
+      if (!value || value.length === 0)
+        return '-'
+
+      return value.join(',')
+    }
+
+    return false
+  }
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
@@ -211,10 +223,10 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               <span>Tone of responses</span>
               <div>{targetTone}</div>
             </div>
-            {['temperature', 'top_p', 'presence_penalty', 'max_tokens'].map((param: string, index: number) => {
+            {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
               return <div className='flex justify-between py-2 px-4 bg-gray-50' key={index}>
                 <span className='text-xs text-gray-700'>{PARAM_MAP[param as keyof typeof PARAM_MAP]}</span>
-                <span className='text-gray-800 font-medium text-xs'>{detail?.model_config.model?.completion_params?.[param] || '-'}</span>
+                <span className='text-gray-800 font-medium text-xs'>{getParamValue(param)}</span>
               </div>
             })}
           </div>}
