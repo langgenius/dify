@@ -176,7 +176,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       value: 'Value ...', // wait for api
     }
   })
-  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col justify-between overflow-auto'>
+  return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
       <div>
