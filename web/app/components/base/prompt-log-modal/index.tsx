@@ -1,4 +1,6 @@
 import type { FC } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useClickAway } from 'ahooks'
 import Card from './card'
 import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -16,10 +18,24 @@ const PromptLogModal: FC<PromptLogModalProps> = ({
   width,
   onCancel,
 }) => {
+  const ref = useRef(null)
+  const [mounted, setMounted] = useState(false)
+
+  useClickAway(() => {
+    if (mounted)
+      onCancel()
+  }, ref)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   return (
     <div
       className='fixed top-16 left-2 bottom-2 flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
-      style={{ width }}>
+      style={{ width }}
+      ref={ref}
+    >
       <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
         <div className='text-base font-semibold text-gray-900'>PROMPT LOG</div>
         <div className='flex items-center'>

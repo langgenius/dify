@@ -1,9 +1,10 @@
 'use client'
-import type { FC } from 'react'
+import type { Dispatch, FC, SetStateAction } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import copy from 'copy-to-clipboard'
+import { useParams } from 'next/navigation'
 import { HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import { useBoolean } from 'ahooks'
 import { HashtagIcon } from '@heroicons/react/24/solid'
@@ -17,6 +18,7 @@ import { Clipboard, File02 } from '@/app/components/base/icons/src/vender/line/f
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import { fetchCompletionConversations } from '@/service/log'
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
@@ -78,6 +80,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
 }) => {
   const { t } = useTranslation()
+  const params = useParams()
   const isTop = depth === 1
   const ref = useRef(null)
   const [completionRes, setCompletionRes] = useState('')
@@ -86,6 +89,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
+  const [promptLog, setPromptLog] = useState('')
 
   const handleFeedback = async (childFeedback: Feedbacktype) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
@@ -151,6 +155,18 @@ const GenerationItem: FC<IGenerationItemProps> = ({
       setChildMessageId(null)
   }, [isLoading])
 
+  const handleOpenLogModal = async (setModal: Dispatch<SetStateAction<boolean>>) => {
+    const data = await fetchCompletionConversations({
+      url: `/apps/${params.appId}/completion-conversations`,
+      params: {
+        page: 1,
+        limit: 1,
+      } as any,
+    })
+    setPromptLog(data.data[0]?.message.message || '')
+    setModal(true)
+  }
+
   return (
     <div ref={ref} className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
       style={isTop
@@ -190,7 +206,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {
                   !isInWebApp && !isInstalledApp && (
                     <PromptLog
-                      log={{ isTextGeneration: true, items: [{ role: 'user', text: 'xxx' }] }}
+                      log={{ isTextGeneration: true, items: [{ role: 'user', text: promptLog }] }}
                       containerRef={ref}
                     >
                       {
@@ -198,9 +214,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           <SimpleBtn
                             isDisabled={isError || !messageId}
                             className={cn(isMobile && '!px-1.5', 'space-x-1 mr-2')}
-                            onClick={() => {
-                              showModal(true)
-                            }}>
+                            onClick={() => handleOpenLogModal(showModal)}>
                             <File02 className='w-3.5 h-3.5' />
                             {!isMobile && <div>{t('common.operation.log')}</div>}
                           </SimpleBtn>

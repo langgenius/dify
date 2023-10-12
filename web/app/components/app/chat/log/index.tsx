@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type LogData = {
   role: string
@@ -24,23 +24,12 @@ const Log: FC<LogProps> = ({
   log,
 }) => {
   const { t } = useTranslation()
-  const { eventEmitter } = useEventEmitterContextContext()
   const [showModal, setShowModal] = useState(false)
   const [width, setWidth] = useState(0)
 
   const adjustModalWidth = () => {
     if (containerRef.current)
       setWidth(document.body.clientWidth - (containerRef.current?.clientWidth + 56 + 16))
-  }
-
-  eventEmitter?.useSubscription((v) => {
-    if (v === 'prompt-log-modal-close')
-      setShowModal(false)
-  })
-
-  const handleOpenPromptLogModal = () => {
-    eventEmitter?.emit('prompt-log-modal-close')
-    setShowModal(true)
   }
 
   useEffect(() => {
@@ -53,17 +42,19 @@ const Log: FC<LogProps> = ({
         children
           ? children(setShowModal)
           : (
-            <div className={`
-              hidden absolute -left-[14px] -top-[14px] group-hover:block w-7 h-7
-              p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-md cursor-pointer
-            `}>
-              <div
-                className='flex items-center justify-center rounded-md w-full h-full hover:bg-gray-100'
-                onClick={handleOpenPromptLogModal}
-              >
-                <File02 className='w-4 h-4 text-gray-500' />
+            <Tooltip selector='prompt-log-modal-trigger' content={t('common.operation.log') || ''}>
+              <div className={`
+                hidden absolute -left-[14px] -top-[14px] group-hover:block w-7 h-7
+                p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-md cursor-pointer
+              `}>
+                <div
+                  className='flex items-center justify-center rounded-md w-full h-full hover:bg-gray-100'
+                  onClick={() => setShowModal(true)}
+                >
+                  <File02 className='w-4 h-4 text-gray-500' />
+                </div>
               </div>
-            </div>
+            </Tooltip>
           )
       }
       {
