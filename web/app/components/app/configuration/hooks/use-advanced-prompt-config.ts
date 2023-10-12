@@ -94,6 +94,7 @@ const useAdvancedPromptConfig = ({
   */
   const migrateToDefaultPrompt = async (isMigrateToCompetition?: boolean, toModelModeType?: ModelModeType) => {
     const mode = modelModeType
+    const toReplacePrePrompt = prePrompt || ''
     if (!isAdvancedPrompt) {
       const { chat_prompt_config, completion_prompt_config } = await fetchPromptTemplate({
         appMode,
@@ -105,7 +106,7 @@ const useAdvancedPromptConfig = ({
           draft.prompt = draft.prompt.map((p) => {
             return {
               ...p,
-              text: p.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt),
+              text: p.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt),
             }
           })
         })
@@ -114,7 +115,7 @@ const useAdvancedPromptConfig = ({
 
       else {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
-          draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt)
+          draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
         })
         setCompletionPromptConfig(newPromptConfig)
       }
@@ -131,7 +132,7 @@ const useAdvancedPromptConfig = ({
       if (toModelModeType === ModelModeType.completion) {
         const newPromptConfig = produce(completion_prompt_config, (draft) => {
           if (!completionPromptConfig.prompt.text)
-            draft.prompt.text = completion_prompt_config.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt)
+            draft.prompt.text = completion_prompt_config.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
 
           if (appMode === AppType.chat && (!completionPromptConfig.conversation_histories_role.assistant_prefix || !draft.conversation_histories_role.user_prefix))
             draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
@@ -143,7 +144,7 @@ const useAdvancedPromptConfig = ({
           draft.prompt = draft.prompt.map((p) => {
             return {
               ...p,
-              text: p.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, prePrompt),
+              text: p.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt),
             }
           })
         })
