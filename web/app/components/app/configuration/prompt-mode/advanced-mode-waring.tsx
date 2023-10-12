@@ -15,13 +15,13 @@ const AdvancedModeWarning: FC = () => {
         <div className='text-xs leading-[18px] '>
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
           {/* TODO: Doc link */}
-          <a
+          {/* <a
             className='font-medium text-[#155EEF]'
             href='https://docs.dify.ai/getting-started/readme'
             target='_blank'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}
-          </a>
+          </a> */}
         </div>
 
         <div
