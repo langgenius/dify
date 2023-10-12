@@ -45,52 +45,6 @@ class LLMGenerator:
         return answer.strip()
 
     @classmethod
-    def generate_conversation_summary(cls, tenant_id: str, messages):
-        max_tokens = 200
-
-        model_instance = ModelFactory.get_text_generation_model(
-            tenant_id=tenant_id,
-            model_kwargs=ModelKwargs(
-                max_tokens=max_tokens
-            )
-        )
-
-        prompt = CONVERSATION_SUMMARY_PROMPT
-        prompt_with_empty_context = prompt.format({"context": ''})
-        prompt_tokens = model_instance.get_num_tokens([PromptMessage(content=prompt_with_empty_context)])
-        max_context_token_length = model_instance.model_rules.max_tokens.max
-        max_context_token_length = max_context_token_length if max_context_token_length else 1500
-        rest_tokens = max_context_token_length - prompt_tokens - max_tokens - 1
-
-        context = ''
-        for message in messages:
-            if not message.answer:
-                continue
-
-            if len(message.query) > 2000:
-                query = message.query[:300] + "...[TRUNCATED]..." + message.query[-300:]
-            else:
-                query = message.query
-
-            if len(message.answer) > 2000:
-                answer = message.answer[:300] + "...[TRUNCATED]..." + message.answer[-300:]
-            else:
-                answer = message.answer
-
-            message_qa_text = "\n\nHuman:" + query + "\n\nAssistant:" + answer
-            if rest_tokens - model_instance.get_num_tokens([PromptMessage(content=context + message_qa_text)]) > 0:
-                context += message_qa_text
-
-        if not context:
-            return '[message too long, no summary]'
-
-        prompt = prompt.format({"context": context})
-        prompts = [PromptMessage(content=prompt)]
-        response = model_instance.run(prompts)
-        answer = response.content
-        return answer.strip()
-
-    @classmethod
     def generate_introduction(cls, tenant_id: str, pre_prompt: str):
         prompt = INTRODUCTION_GENERATE_PROMPT
         prompt = prompt.format({"prompt": pre_prompt})

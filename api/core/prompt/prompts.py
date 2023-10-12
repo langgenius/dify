@@ -66,7 +66,7 @@ CONVERSATION_SUMMARY_PROMPT = (
     "If the following conversation communicating in English, you should only return an English summary.\n"
     "If the following conversation communicating in Chinese, you should only return a Chinese summary.\n"
     "[Conversation Start]\n"
-    "{context}\n"
+    "{{context}}\n"
     "[Conversation End]\n\n"
     "summary:"
 )
