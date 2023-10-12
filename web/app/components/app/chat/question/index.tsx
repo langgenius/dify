@@ -12,19 +12,20 @@ import { Markdown } from '@/app/components/base/markdown'
 type IQuestionProps = Pick<IChatItem, 'id' | 'content' | 'more' | 'useCurrentUserAvatar'> & {
   isShowPromptLog?: boolean
   item: IChatItem
+  isResponsing?: boolean
 }
 
-const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item }) => {
+const Question: FC<IQuestionProps> = ({ id, content, more, useCurrentUserAvatar, isShowPromptLog, item, isResponsing }) => {
   const { userProfile } = useContext(AppContext)
   const userName = userProfile?.name
   const ref = useRef(null)
 
   return (
-    <div className='flex items-start justify-end' key={id} ref={ref}>
+    <div className={`flex items-start justify-end ${isShowPromptLog && 'first-of-type:pt-[14px]'}`} key={id} ref={ref}>
       <div className={s.questionWrapWrap}>
         <div className={`${s.question} group relative text-sm text-gray-900`}>
           {
-            isShowPromptLog && (
+            isShowPromptLog && !isResponsing && (
               <Log log={item.log!} containerRef={ref} />
             )
           }

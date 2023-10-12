@@ -1,5 +1,6 @@
 import type { Dispatch, FC, ReactNode, RefObject, SetStateAction } from 'react'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
@@ -22,6 +23,7 @@ const Log: FC<LogProps> = ({
   children,
   log,
 }) => {
+  const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const [showModal, setShowModal] = useState(false)
   const [width, setWidth] = useState(0)

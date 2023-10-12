@@ -197,6 +197,7 @@ const Chat: FC<IChatProps> = ({
               useCurrentUserAvatar={useCurrentUserAvatar}
               item={item}
               isShowPromptLog={isShowPromptLog}
+              isResponsing={isResponsing}
             />
           )
         })}
