@@ -131,9 +131,8 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   const handleEditorChange = (editorState: EditorState) => {
     const text = editorState.read(() => $getRoot().getTextContent())
-
-    if (onChange && value?.replaceAll('\n', '') !== text.replaceAll('\n', ''))
-      onChange(text)
+    if (onChange)
+      onChange(text.replaceAll('\n\n', '\n'))
   }
 
   useEffect(() => {
