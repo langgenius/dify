@@ -13,7 +13,8 @@ from langchain.schema import LLMResult, SystemMessage, AIMessage, HumanMessage, 
 from core.callback_handler.std_out_callback_handler import DifyStreamingStdOutCallbackHandler, DifyStdOutCallbackHandler
 from core.helper import moderation
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages
+from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages, \
+    to_lc_messages
 from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
 from core.model_providers.providers.base import BaseModelProvider
 from core.prompt.prompt_builder import PromptBuilder
@@ -157,8 +158,11 @@ class BaseLLM(BaseProviderModel):
             except Exception as ex:
                 raise self.handle_exceptions(ex)
 
+        function_call = None
         if isinstance(result.generations[0][0], ChatGeneration):
             completion_content = result.generations[0][0].message.content
+            if 'function_call' in result.generations[0][0].message.additional_kwargs:
+                function_call = result.generations[0][0].message.additional_kwargs.get('function_call')
         else:
             completion_content = result.generations[0][0].text
 
@@ -191,7 +195,8 @@ class BaseLLM(BaseProviderModel):
         return LLMRunResult(
             content=completion_content,
             prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens
+            completion_tokens=completion_tokens,
+            function_call=function_call
         )
 
     @abstractmethod
@@ -324,13 +329,13 @@ class BaseLLM(BaseProviderModel):
         prompt_rules = self._read_prompt_rules_from_file(self.prompt_file_name(mode))
         prompt, stops = self._get_prompt_and_stop(prompt_rules, pre_prompt, inputs, query, context, memory)
         return [PromptMessage(content=prompt)], stops
-    
+
     def get_advanced_prompt(self, app_mode: str,
                    app_model_config: str, inputs: dict,
                    query: str,
                    context: Optional[str],
                    memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
-        
+
         model_mode = app_model_config.model_dict['mode']
         conversation_histories_role = {}
 
@@ -356,7 +361,7 @@ class BaseLLM(BaseProviderModel):
             }]
         else:
             raise Exception("app_mode or model_mode not support")
-        
+
         for prompt_item in raw_prompt_list:
             prompt = prompt_item['text']
 
@@ -384,13 +389,13 @@ class BaseLLM(BaseProviderModel):
                     prompt_inputs['#histories#'] = histories
                 else:
                     prompt_inputs['#histories#'] = ''
-                
+
             prompt = prompt_template.format(
                 prompt_inputs
             )
 
             prompt = re.sub(r'<\|.*?\|>', '', prompt)
-            
+
             prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
 
         if memory and app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
@@ -401,7 +406,7 @@ class BaseLLM(BaseProviderModel):
 
         if app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
             prompt_messages.append(PromptMessage(type = MessageType.USER ,content=query))
-        
+
         return prompt_messages
 
     def prompt_file_name(self, mode: str) -> str:
@@ -502,7 +507,7 @@ class BaseLLM(BaseProviderModel):
         memory_key = memory.memory_variables[0]
         external_context = memory.load_memory_variables({})
         return external_context[memory_key]
-    
+
     def _get_history_messages_list_from_memory(self, memory: BaseChatMemory,
                                           max_token_limit: int) -> List[PromptMessage]:
         """Get memory messages."""
@@ -527,16 +532,7 @@ class BaseLLM(BaseProviderModel):
             if len(messages) == 0:
                 return []
 
-            chat_messages = []
-            for message in messages:
-                if message.type == MessageType.USER:
-                    chat_messages.append(HumanMessage(content=message.content))
-                elif message.type == MessageType.ASSISTANT:
-                    chat_messages.append(AIMessage(content=message.content))
-                elif message.type == MessageType.SYSTEM:
-                    chat_messages.append(SystemMessage(content=message.content))
-
-            return chat_messages
+            return to_lc_messages(messages)
 
     def _to_model_kwargs_input(self, model_rules: ModelKwargsRules, model_kwargs: ModelKwargs) -> dict:
         """

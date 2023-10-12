@@ -31,7 +31,7 @@ class DatasetRetrieverTool(BaseTool):
     top_k: int = 2
     score_threshold: Optional[float] = None
     conversation_message_task: ConversationMessageTask
-    return_resource: str
+    return_resource: bool
     retriever_from: str
 
     @classmethod

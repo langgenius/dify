@@ -4,7 +4,6 @@ from typing import List, Tuple, Any, Union, Sequence, Optional, cast
 from langchain import BasePromptTemplate
 from langchain.agents import StructuredChatAgent, AgentOutputParser, Agent
 from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
-from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
@@ -12,6 +11,7 @@ from langchain.schema import AgentAction, AgentFinish, OutputParserException
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
+from core.chain.llm_chain import LLMChain
 from core.model_providers.models.llm.base import BaseLLM
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
@@ -49,7 +49,6 @@ Action:
 
 
 class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
-    model_instance: BaseLLM
     dataset_tools: Sequence[BaseTool]
 
     class Config:
@@ -98,7 +97,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
         try:
             full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
         except Exception as e:
-            new_exception = self.model_instance.handle_exceptions(e)
+            new_exception = self.llm_chain.model_instance.handle_exceptions(e)
             raise new_exception
 
         try:
@@ -108,6 +107,8 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
                 if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
                     tool_inputs['query'] = kwargs['input']
                     agent_decision.tool_input = tool_inputs
+            else:
+                agent_decision.return_values['output'] = ''
             return agent_decision
         except OutputParserException:
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
@@ -145,7 +146,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
     @classmethod
     def from_llm_and_tools(
             cls,
-            llm: BaseLanguageModel,
+            model_instance: BaseLLM,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             output_parser: Optional[AgentOutputParser] = None,
@@ -157,17 +158,28 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             memory_prompts: Optional[List[BasePromptTemplate]] = None,
             **kwargs: Any,
     ) -> Agent:
-        return super().from_llm_and_tools(
-            llm=llm,
-            tools=tools,
-            callback_manager=callback_manager,
-            output_parser=output_parser,
+        """Construct an agent from an LLM and tools."""
+        cls._validate_tools(tools)
+        prompt = cls.create_prompt(
+            tools,
             prefix=prefix,
             suffix=suffix,
             human_message_template=human_message_template,
             format_instructions=format_instructions,
             input_variables=input_variables,
             memory_prompts=memory_prompts,
+        )
+        llm_chain = LLMChain(
+            model_instance=model_instance,
+            prompt=prompt,
+            callback_manager=callback_manager,
+        )
+        tool_names = [tool.name for tool in tools]
+        _output_parser = output_parser
+        return cls(
+            llm_chain=llm_chain,
+            allowed_tools=tool_names,
+            output_parser=_output_parser,
             dataset_tools=tools,
             **kwargs,
         )
