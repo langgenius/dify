@@ -17,7 +17,7 @@ CHAT_APP_CHAT_PROMPT_CONFIG = {
             "text": "Use the following context as your learned knowledge, inside <context></context> XML tags.\n\n<context>\n{{#context#}}\n</context>\n\nWhen answer to user:\n- If you don't know, just say that you don't know.\n- If you don't know when you are not sure, ask for clarification.\nAvoid mentioning that you obtained the information from the context.\nAnd answer according to the language of the user's question.\n{{#pre_prompt#}}"
         },{
             "role": "user",
-            "text": "{{#query#}}"
+            "text": ""
         }]
     }
 }
@@ -58,7 +58,7 @@ BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = {
             "text": "用户在与一个客观的助手对话。助手会尊重找到的材料，给出全面专业的解释，但不会过度演绎。同时回答中不会暴露引用的材料：\n\n```\n{{#context#}}\n```\n\n{{#pre_prompt#}}"
         },{
             "role": "user",
-            "text": "{{#query#}}"
+            "text": ""
         }]
     }
 }
