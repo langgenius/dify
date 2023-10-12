@@ -330,11 +330,15 @@ const Configuration: FC = () => {
     if (mode === AppType.chat)
       return false
 
-    if (isAdvancedMode)
-      return !completionPromptConfig.prompt.text
+    if (isAdvancedMode) {
+      if (modelModeType === ModelModeType.chat)
+        return chatPromptConfig.prompt.every(({ text }) => !text)
 
-    else
-      return !modelConfig.configs.prompt_template
+      else
+        return !completionPromptConfig.prompt.text
+    }
+
+    else { return !modelConfig.configs.prompt_template }
   })()
   const cannotPublish = (() => {
     if (mode === AppType.chat) {

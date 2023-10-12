@@ -8,7 +8,7 @@ import {
 } from '@heroicons/react/24/solid'
 import ConfigContext from '@/context/debug-configuration'
 import type { PromptVariable } from '@/models/debug'
-import { AppType } from '@/types/app'
+import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
@@ -25,7 +25,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onSend,
 }) => {
   const { t } = useTranslation()
-  const { modelConfig, inputs, setInputs, mode, isAdvancedMode, completionPromptConfig } = useContext(ConfigContext)
+  const { modelModeType, modelConfig, inputs, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -43,11 +43,13 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
     if (mode !== AppType.completion)
       return true
 
-    if (isAdvancedMode)
+    if (isAdvancedMode) {
+      if (modelModeType === ModelModeType.chat)
+        return chatPromptConfig.prompt.every(({ text }) => !text)
       return !completionPromptConfig.prompt.text
+    }
 
-    else
-      return !modelConfig.configs.prompt_template
+    else { return !modelConfig.configs.prompt_template }
   })()
   const renderRunButton = () => {
     return (
