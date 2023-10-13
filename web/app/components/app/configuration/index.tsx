@@ -513,10 +513,9 @@ const Configuration: FC = () => {
       <>
         <div className="flex flex-col h-full">
           <div className='flex items-center justify-between px-6 shrink-0 h-14'>
-            <div>
-              <div className='italic text-base font-bold text-gray-900 leading-[18px]'>{t('appDebug.pageTitle.line1')}</div>
-              <div className='flex items-center h-6 space-x-1 text-xs'>
-                <div className='text-gray-500 font-medium italic'>{t('appDebug.pageTitle.line2')}</div>
+            <div className='flex items-end'>
+              <div className={s.promptTitle}></div>
+              <div className='flex items-center h-[18px] space-x-1 text-xs'>
                 {/* modelModeType missing can not load template */}
                 {(!isAdvancedMode && modelModeType) && (
                   <div
