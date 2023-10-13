@@ -33,6 +33,7 @@ import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
+import I18n from '@/context/i18n'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -449,6 +450,7 @@ const Configuration: FC = () => {
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
   const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
+  const { locale } = useContext(I18n)
 
   if (isLoading) {
     return <div className='flex h-full items-center justify-center'>
@@ -515,7 +517,7 @@ const Configuration: FC = () => {
           <div className='flex items-center justify-between px-6 shrink-0 h-14'>
             <div className='flex items-end'>
               <div className={s.promptTitle}></div>
-              <div className='flex items-center h-[18px] space-x-1 text-xs'>
+              <div className='flex items-center h-[14px] space-x-1 text-xs'>
                 {/* modelModeType missing can not load template */}
                 {(!isAdvancedMode && modelModeType) && (
                   <div
@@ -527,7 +529,7 @@ const Configuration: FC = () => {
                 )}
                 {isAdvancedMode && (
                   <div className='flex items-center space-x-2'>
-                    <div className={`${s.advancedPromptMode} italic text-indigo-600`}>{t('appDebug.promptMode.advanced')}</div>
+                    <div className={cn(locale === 'en' && 'italic', `${s.advancedPromptMode}  text-indigo-600`)}>{t('appDebug.promptMode.advanced')}</div>
                     {canReturnToSimpleMode && (
                       <div
                         onClick={() => setPromptMode(PromptMode.simple)}
