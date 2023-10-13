@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { clone } from 'lodash-es'
 import produce from 'immer'
-import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
+import type { ChatPromptConfig, CompletionParams, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
 import { PromptMode } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -16,6 +16,9 @@ type Param = {
   prePrompt: string
   onUserChangedPrompt: () => void
   hasSetDataSet: boolean
+  completionParams: CompletionParams
+  setCompletionParams: (params: CompletionParams) => void
+  setStop: (stop: string[]) => void
 }
 
 const useAdvancedPromptConfig = ({
@@ -26,6 +29,9 @@ const useAdvancedPromptConfig = ({
   prePrompt,
   onUserChangedPrompt,
   hasSetDataSet,
+  completionParams,
+  setCompletionParams,
+  setStop,
 }: Param) => {
   const isAdvancedPrompt = promptMode === PromptMode.advanced
   const [chatPromptConfig, setChatPromptConfig] = useState<ChatPromptConfig>(clone(DEFAULT_CHAT_PROMPT_CONFIG))
@@ -98,7 +104,7 @@ const useAdvancedPromptConfig = ({
     const mode = modelModeType
     const toReplacePrePrompt = prePrompt || ''
     if (!isAdvancedPrompt) {
-      const { chat_prompt_config, completion_prompt_config } = await fetchPromptTemplate({
+      const { chat_prompt_config, completion_prompt_config, stop } = await fetchPromptTemplate({
         appMode,
         mode,
         modelName,
@@ -121,12 +127,16 @@ const useAdvancedPromptConfig = ({
           draft.prompt.text = draft.prompt.text.replace(PRE_PROMPT_PLACEHOLDER_TEXT, toReplacePrePrompt)
         })
         setCompletionPromptConfig(newPromptConfig)
+        setCompletionParams({
+          ...completionParams,
+          stop,
+        })
       }
       return
     }
 
     if (isMigrateToCompetition) {
-      const { completion_prompt_config, chat_prompt_config } = await fetchPromptTemplate({
+      const { completion_prompt_config, chat_prompt_config, stop } = await fetchPromptTemplate({
         appMode,
         mode: toModelModeType as ModelModeType,
         modelName,
@@ -145,6 +155,13 @@ const useAdvancedPromptConfig = ({
             draft.conversation_histories_role = completionPromptConfig.conversation_histories_role
         })
         setCompletionPromptConfig(newPromptConfig)
+        if (!completionParams.stop || completionParams.stop.length === 0) {
+          setCompletionParams({
+            ...completionParams,
+            stop,
+          })
+        }
+        setStop(stop) // switch mode's params is async. It may override the stop value.
       }
       else {
         const newPromptConfig = produce(chat_prompt_config, (draft) => {
