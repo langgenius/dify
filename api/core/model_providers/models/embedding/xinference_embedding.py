@@ -1,8 +1,7 @@
-from core.third_party.langchain.embeddings.xinference_embedding import XinferenceEmbedding as XinferenceEmbeddings
-
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import BaseModelProvider
 from core.model_providers.models.embedding.base import BaseEmbedding
+from core.third_party.langchain.embeddings.xinference_embedding import XinferenceEmbeddings
 
 
 class XinferenceEmbedding(BaseEmbedding):
