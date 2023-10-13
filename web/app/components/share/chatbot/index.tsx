@@ -4,11 +4,9 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
-import logoUrl from '../../../../public/logo/logo-embeded-chat-header.png'
 import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
@@ -28,6 +26,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -490,11 +489,7 @@ const Main: FC<IMainProps> = ({
   }
 
   const difyIcon = (
-    <Image
-      src={logoUrl}
-      className='w-auto h-6'
-      alt='logo'
-    />
+    <LogoHeader />
   )
 
   if (appUnavailable)

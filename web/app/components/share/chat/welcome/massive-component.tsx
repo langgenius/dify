@@ -3,14 +3,13 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
 import {
   PencilIcon,
 } from '@heroicons/react/24/solid'
-import logoUrl from '../../../../../public/logo/logo-site.png'
 import s from './style.module.css'
 import type { SiteInfo } from '@/models/share'
 import Button from '@/app/components/base/button'
+import LogoSite from '@/app/components/base/logo/logo-site'
 
 export const AppInfo: FC<{ siteInfo: SiteInfo }> = ({ siteInfo }) => {
   return (
@@ -71,9 +70,5 @@ export const EditBtn = ({ className, onClick }: { className?: string; onClick: (
 }
 
 export const FootLogo = () => (
-  <Image
-    src={logoUrl}
-    className='w-auto h-5'
-    alt='logo'
-  />
+  <LogoSite className='!h-5' />
 )

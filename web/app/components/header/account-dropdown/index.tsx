@@ -105,7 +105,7 @@ export default function AppSelector() {
                       </Link>
                     </Menu.Item>
                     {
-                      process.env.NEXT_PUBLIC_SITE_ABOUT !== 'hide' && (
+                      document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                         <Menu.Item>
                           <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
                             <div>{t('common.userProfile.about')}</div>
