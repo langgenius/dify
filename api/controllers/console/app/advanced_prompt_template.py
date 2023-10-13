@@ -20,7 +20,6 @@ class AdvancedPromptTemplateList(Resource):
         parser.add_argument('model_name', type=str, required=True, location='args')
         args = parser.parse_args()
 
-        service = AdvancedPromptTemplateService()
-        return service.get_prompt(args)
+        return AdvancedPromptTemplateService.get_prompt(args)
 
 api.add_resource(AdvancedPromptTemplateList, '/app/prompt-templates')
