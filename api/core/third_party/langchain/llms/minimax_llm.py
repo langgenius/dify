@@ -211,6 +211,16 @@ class MinimaxChatLLM(BaseChatModel):
 
                 token = token.lstrip("data:").strip()
                 data = json.loads(token)
+
+                if "base_resp" in data and data["base_resp"]["status_code"] > 0:
+                    raise ValueError(
+                        f"API {data['base_resp']['status_code']}"
+                        f" error: {data['base_resp']['status_msg']}"
+                    )
+
+                if not data['choices']:
+                    continue
+
                 content = data['choices'][0]['delta']
 
                 chunk_kwargs = {
