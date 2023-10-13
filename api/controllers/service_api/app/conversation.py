@@ -54,6 +54,7 @@ class ConversationDetailApi(AppApiResource):
             raise NotFound("Conversation Not Exists.")
         return {"result": "success"}, 204
 
+
 class ConversationRenameApi(AppApiResource):
 
     @marshal_with(simple_conversation_fields)
