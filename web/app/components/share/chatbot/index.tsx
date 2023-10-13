@@ -4,9 +4,11 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import Image from 'next/image'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
+import logoUrl from '../../../../public/logo/logo-embeded-chat-header.png'
 import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
@@ -488,7 +490,11 @@ const Main: FC<IMainProps> = ({
   }
 
   const difyIcon = (
-    <div className={s.difyHeader}></div>
+    <Image
+      src={logoUrl}
+      className='w-auto h-6'
+      alt='logo'
+    />
   )
 
   if (appUnavailable)
@@ -567,7 +573,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
-                    answerIconClassName={s.difyIcon}
+                    answerIconClassName={s.answerIcon}
                   />
                 </div>
               </div>)
