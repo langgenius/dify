@@ -11,7 +11,8 @@ CHAT_APP_COMPLETION_PROMPT_CONFIG = {
             "user_prefix": "Human",
             "assistant_prefix": "Assistant"
         }
-    }
+    },
+    "stop": ["Human:"]
 }
 
 CHAT_APP_CHAT_PROMPT_CONFIG = { 
@@ -37,7 +38,8 @@ COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
         "prompt": {
             "text": "{{#pre_prompt#}}"
         }
-    }
+    },
+    "stop": ["Human:"]
 }
 
 BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
@@ -49,7 +51,8 @@ BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
             "user_prefix": "用户",
             "assistant_prefix": "助手"
         }
-    }
+    },
+    "stop": ["用户:"]
 }
 
 BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = { 
@@ -75,5 +78,6 @@ BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
         "prompt": {
             "text": "{{#pre_prompt#}}"
         }
-    }
+    },
+    "stop": ["用户:"]
 }
