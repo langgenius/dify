@@ -1,6 +1,8 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
+import logoUrl from '../../../public/logo/logo-site.png'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
@@ -8,7 +10,6 @@ import EnvNav from './env-nav'
 import ExploreNav from './explore-nav'
 import GithubStar from './github-star'
 import PluginNav from './plugin-nav'
-import s from './index.module.css'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 
@@ -24,9 +25,12 @@ const Header = () => {
     <>
       <div className='flex items-center'>
         <Link href="/apps" className='flex items-center mr-4'>
-          <div className={s.logo} />
+          <Image
+            src={logoUrl}
+            className='w-auto h-10'
+            alt='logo'
+          />
         </Link>
-        {/* @ts-expect-error Async Server Component */}
         <GithubStar />
       </div>
       <div className='flex items-center'>
