@@ -56,6 +56,9 @@ class AppModelConfigService:
             cp["stop"] = []
         elif not isinstance(cp["stop"], list):
             raise ValueError("stop in model.completion_params must be of list type")
+        
+        if len(cp["stop"]) > 4:
+            raise ValueError("stop sequences must be less than 4")
 
         # Filter out extra parameters
         filtered_cp = {
