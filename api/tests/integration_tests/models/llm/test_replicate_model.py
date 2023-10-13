@@ -58,7 +58,7 @@ def decrypt_side_effect(tenant_id, encrypted_api_key):
 def test_get_num_tokens(mock_decrypt, mocker):
     model = get_mock_model('a16z-infra/llama-2-13b-chat', '2a7f981751ec7fdf87b5b91ad4db53683a98082e9ff7bfd12c8cd5ea85980a52', mocker)
     rst = model.get_num_tokens([
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 7
 

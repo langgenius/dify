@@ -29,6 +29,7 @@ const translation = {
     getForFree: '免费获取',
     reload: '刷新',
     ok: '好的',
+    log: '日志',
   },
   placeholder: {
     input: '请输入',
@@ -66,6 +67,9 @@ const translation = {
         '用于限制回复的最大长度，以 token 为单位。\n较大的值可能会限制给提示词、聊天记录和数据集留出的空间。\n建议将其设置在三分之二以下。',
       maxTokenSettingTip: '您设置的最大 tokens 数较大，可能会导致 prompt、用户问题、数据集内容没有 token 空间进行处理，建议设置到 2/3 以下。',
       setToCurrentModelMaxTokenTip: '最大令牌数更新为当前模型最大的令牌数 {{maxToken}} 的 80%。',
+      stop_sequences: '停止序列 stop_sequences',
+      stop_sequencesTip: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
+      stop_sequencesPlaceholder: '输入序列并按 Tab 键',
     },
     tone: {
       Creative: '创意',
@@ -73,6 +77,7 @@ const translation = {
       Precise: '精确',
       Custom: '自定义',
     },
+    addMoreModel: '添加更多模型',
   },
   menus: {
     status: 'beta',
@@ -351,6 +356,48 @@ const translation = {
       vectorHash: '向量哈希：',
       hitScore: '命中得分：',
     },
+  },
+  promptEditor: {
+    placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',
+    context: {
+      item: {
+        title: '上下文',
+        desc: '插入上下文模板',
+      },
+      modal: {
+        title: '有 {{num}} 个数据集在上下文中',
+        add: '添加上下文',
+        footer: '您可以在下面的“上下文”部分中管理上下文。',
+      },
+    },
+    history: {
+      item: {
+        title: '会话历史',
+        desc: '插入历史消息模板',
+      },
+      modal: {
+        title: '示例',
+        user: '你好',
+        assistant: '你好！今天我能为您提供什么帮助？',
+        edit: '编辑对话角色名称',
+      },
+    },
+    variable: {
+      item: {
+        title: '变量',
+        desc: '插入变量模板',
+      },
+      modal: {
+        add: '添加新变量',
+      },
+    },
+    query: {
+      item: {
+        title: '查询内容',
+        desc: '插入用户查询模板',
+      },
+    },
+    existed: 'Prompt 中已存在',
   },
 }
 

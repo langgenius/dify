@@ -29,6 +29,7 @@ const translation = {
     getForFree: 'Get for free',
     reload: 'Reload',
     ok: 'OK',
+    log: 'Log',
   },
   placeholder: {
     input: 'Please enter',
@@ -66,6 +67,9 @@ const translation = {
         'Used to limit the maximum length of the reply, in tokens. \nLarger values may limit the space left for prompt words, chat logs, and data sets. \nIt is recommended to set it below two-thirds.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
       setToCurrentModelMaxTokenTip: 'Max token is updated to the 80% maximum token of the current model {{maxToken}}.',
+      stop_sequences: 'Stop sequences',
+      stop_sequencesTip: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+      stop_sequencesPlaceholder: 'Enter sequence and press Tab',
     },
     tone: {
       Creative: 'Creative',
@@ -73,6 +77,7 @@ const translation = {
       Precise: 'Precise',
       Custom: 'Custom',
     },
+    addMoreModel: 'Go to settings to add more models',
   },
   menus: {
     status: 'beta',
@@ -351,6 +356,48 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Hit Score:',
     },
+  },
+  promptEditor: {
+    placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
+    context: {
+      item: {
+        title: 'Context',
+        desc: 'Insert context template',
+      },
+      modal: {
+        title: '{{num}} Datasets in Context',
+        add: 'Add Context ',
+        footer: 'You can manage contexts in the Context section below.',
+      },
+    },
+    history: {
+      item: {
+        title: 'Conversation History',
+        desc: 'Insert historical message template',
+      },
+      modal: {
+        title: 'EXAMPLE',
+        user: 'Hello',
+        assistant: 'Hello! How can I assist you today?',
+        edit: 'Edit Conversation Role Names',
+      },
+    },
+    variable: {
+      item: {
+        title: 'Variables',
+        desc: 'Insert variable template',
+      },
+      modal: {
+        add: 'New variable',
+      },
+    },
+    query: {
+      item: {
+        title: 'Query',
+        desc: 'Insert user query template',
+      },
+    },
+    existed: 'Already exists in the prompt',
   },
 }
 

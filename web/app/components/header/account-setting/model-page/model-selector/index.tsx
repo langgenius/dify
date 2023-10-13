@@ -4,6 +4,7 @@ import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
 import cn from 'classnames'
+import s from './style.module.css'
 import type { BackendModel, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -15,6 +16,10 @@ import ModelIcon from '@/app/components/app/configuration/config-model/model-ico
 import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
+import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
+import type { ModelModeType } from '@/types/app'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import AccountSetting from '@/app/components/header/account-setting'
 
 type Props = {
   value: {
@@ -22,6 +27,8 @@ type Props = {
     modelName: string
   } | undefined
   modelType: ModelType
+  isShowModelModeType?: boolean
+  isShowAddModel?: boolean
   supportAgentThought?: boolean
   onChange: (value: BackendModel) => void
   popClassName?: string
@@ -34,6 +41,7 @@ type ModelOption = {
   value: string
   providerName: ProviderEnum
   modelDisplayName: string
+  model_mode: ModelModeType
 } | {
   type: 'provider'
   value: ProviderEnum
@@ -42,6 +50,8 @@ type ModelOption = {
 const ModelSelector: FC<Props> = ({
   value,
   modelType,
+  isShowModelModeType,
+  isShowAddModel,
   supportAgentThought,
   onChange,
   popClassName,
@@ -89,17 +99,20 @@ const ModelSelector: FC<Props> = ({
         value: providerName,
       })
       const models = filteredModelList.filter(m => m.model_provider.provider_name === providerName)
-      models.forEach(({ model_name, model_display_name }) => {
+      models.forEach(({ model_name, model_display_name, model_mode }) => {
         res.push({
           type: 'model',
           providerName,
           value: model_name,
           modelDisplayName: model_display_name,
+          model_mode,
         })
       })
     })
     return res
   })()
+
+  const [showSettingModal, setShowSettingModal] = useState(false)
 
   return (
     <div className=''>
@@ -117,7 +130,12 @@ const ModelSelector: FC<Props> = ({
                           modelId={value.modelName}
                           providerName={value.providerName}
                         />
-                        <div className='mr-1.5 grow text-left text-sm text-gray-900 truncate'><ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} /></div>
+                        <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
+                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
+                          {isShowModelModeType && (
+                            <ModelModeTypeLabel className='ml-2' type={currModel?.model_mode as ModelModeType} />
+                          )}
+                        </div>
                       </>
                     )
                     : (
@@ -148,7 +166,7 @@ const ModelSelector: FC<Props> = ({
             leaveFrom='opacity-100'
             leaveTo='opacity-0'
           >
-            <Popover.Panel className={cn(popClassName, 'absolute top-10 p-1 min-w-[232px] max-w-[260px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
+            <Popover.Panel className={cn(popClassName, isShowModelModeType ? 'max-w-[312px]' : 'max-w-[260px]', 'absolute top-10 p-1 min-w-[232px] max-h-[366px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg overflow-auto z-10')}>
               <div className='px-2 pt-2 pb-1'>
                 <div className='flex items-center px-2 h-8 bg-gray-100 rounded-lg'>
                   <div className='mr-1.5 p-[1px]'><SearchLg className='w-[14px] h-[14px] text-gray-400' /></div>
@@ -189,7 +207,7 @@ const ModelSelector: FC<Props> = ({
                     return (
                       <Popover.Button
                         key={`${model.providerName}-${model.value}`}
-                        className={`
+                        className={`${s.optionItem}
                         flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50
                         ${!readonly ? 'cursor-pointer' : 'cursor-auto'}
                         ${(value?.providerName === model.providerName && value?.modelName === model.value) && 'bg-gray-50'}
@@ -206,7 +224,12 @@ const ModelSelector: FC<Props> = ({
                           modelId={model.value}
                           providerName={model.providerName}
                         />
-                        <div className='grow text-left text-sm text-gray-900 truncate'><ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} /></div>
+                        <div className='mr-2 grow flex items-center text-left text-sm text-gray-900 truncate'>
+                          <ModelName modelId={model.value} modelDisplayName={model.modelDisplayName} />
+                          {isShowModelModeType && (
+                            <ModelModeTypeLabel className={`${s.modelModeLabel} ml-2`} type={model.model_mode} />
+                          )}
+                        </div>
                         { (value?.providerName === model.providerName && value?.modelName === model.value) && <Check className='shrink-0 w-4 h-4 text-primary-600' /> }
                       </Popover.Button>
                     )
@@ -218,10 +241,33 @@ const ModelSelector: FC<Props> = ({
               {(search && filteredModelList.length === 0) && (
                 <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound', { model: search })}</div>
               )}
+
+              {isShowAddModel && (
+                <div
+                  className='border-t flex items-center h-9 pl-3  text-xs text-[#155EEF] cursor-pointer'
+                  style={{
+                    borderColor: 'rgba(0, 0, 0, 0.05)',
+                  }}
+                  onClick={() => {
+                    setShowSettingModal(true)
+                  }}
+                >
+                  <CubeOutline className='w-4 h-4 mr-2' />
+                  <div>{t('common.model.addMoreModel')}</div>
+                </div>
+              )}
             </Popover.Panel>
           </Transition>
         )}
       </Popover>
+
+      {
+        showSettingModal && (
+          <AccountSetting activeTab="provider" onCancel={async () => {
+            setShowSettingModal(false)
+          }} />
+        )
+      }
     </div>
   )
 }

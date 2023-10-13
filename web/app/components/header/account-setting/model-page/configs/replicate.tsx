@@ -61,6 +61,13 @@ const config: ProviderConfig = {
               'zh-Hans': '文本生成',
             },
           },
+          // {
+          //   key: 'chat',
+          //   label: {
+          //     'en': 'Chat',
+          //     'zh-Hans': '聊天',
+          //   },
+          // },
           {
             key: 'embeddings',
             label: {

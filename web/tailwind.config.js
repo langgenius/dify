@@ -51,7 +51,9 @@ module.exports = {
         indigo: {
           25: '#F5F8FF',
           100: '#E0EAFF',
+          400: '#8098F9',
           600: '#444CE7',
+          800: '#2D31A6',
         },
       },
       screens: {

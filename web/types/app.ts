@@ -1,3 +1,4 @@
+import type { ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -12,6 +13,12 @@ export enum ProviderType {
 export enum AppType {
   'chat' = 'chat',
   'completion' = 'completion',
+}
+
+export enum ModelModeType {
+  'chat' = 'chat',
+  'completion' = 'completion',
+  'unset' = '',
 }
 
 export type VariableInput = {
@@ -89,6 +96,9 @@ export type ToolItem = {
 export type ModelConfig = {
   opening_statement: string
   pre_prompt: string
+  prompt_type: PromptMode
+  chat_prompt_config: ChatPromptConfig | {}
+  completion_prompt_config: CompletionPromptConfig | {}
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
@@ -112,6 +122,7 @@ export type ModelConfig = {
     provider: string
     /** Model name, e.g, gpt-3.5.turbo */
     name: string
+    mode: ModelModeType
     /** Default Completion call parameters */
     completion_params: {
       /** Maximum number of tokens in the answer message returned by Completion */
@@ -159,6 +170,7 @@ export type ModelConfig = {
       frequency_penalty: number
     }
   }
+  dataset_configs: DatasetConfigs
 }
 
 export const LanguagesSupported = ['zh-Hans', 'en-US'] as const

@@ -61,36 +61,6 @@ User Input: yo, 你今天咋样？
 User Input: 
 """
 
-CONVERSATION_SUMMARY_PROMPT = (
-    "Please generate a short summary of the following conversation.\n"
-    "If the following conversation communicating in English, you should only return an English summary.\n"
-    "If the following conversation communicating in Chinese, you should only return a Chinese summary.\n"
-    "[Conversation Start]\n"
-    "{context}\n"
-    "[Conversation End]\n\n"
-    "summary:"
-)
-
-INTRODUCTION_GENERATE_PROMPT = (
-    "I am designing a product for users to interact with an AI through dialogue. "
-    "The Prompt given to the AI before the conversation is:\n\n"
-    "```\n{prompt}\n```\n\n"
-    "Please generate a brief introduction of no more than 50 words that greets the user, based on this Prompt. "
-    "Do not reveal the developer's motivation or deep logic behind the Prompt, "
-    "but focus on building a relationship with the user:\n"
-)
-
-MORE_LIKE_THIS_GENERATE_PROMPT = (
-    "-----\n"
-    "{original_completion}\n"
-    "-----\n\n"
-    "Please use the above content as a sample for generating the result, "
-    "and include key information points related to the original sample in the result. "
-    "Try to rephrase this information in different ways and predict according to the rules below.\n\n"
-    "-----\n"
-    "{prompt}\n"
-)
-
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"
@@ -157,10 +127,10 @@ and fill in variables, with a welcome sentence, and keep TLDR.
 ```
 
 << MY INTENDED AUDIENCES >>
-{audiences}
+{{audiences}}
 
 << HOPING TO SOLVE >>
-{hoping_to_solve}
+{{hoping_to_solve}}
 
 << OUTPUT >>
 """

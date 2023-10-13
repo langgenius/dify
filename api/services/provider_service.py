@@ -482,6 +482,9 @@ class ProviderService:
                     'features': []
                 }
 
+                if 'mode' in model:
+                    valid_model_dict['model_mode'] = model['mode']
+
                 if 'features' in model:
                     valid_model_dict['features'] = model['features']
 

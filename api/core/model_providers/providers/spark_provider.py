@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.spark_model import SparkModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.spark import ChatSpark
@@ -30,14 +30,19 @@ class SparkProvider(BaseModelProvider):
                 {
                     'id': 'spark',
                     'name': 'Spark V1.5',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'spark-v2',
                     'name': 'Spark V2.0',
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

@@ -93,6 +93,10 @@ class AppModelConfig(db.Model):
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
     retriever_resource = db.Column(db.Text)
+    prompt_type = db.Column(db.String(255), nullable=False, default='simple')
+    chat_prompt_config = db.Column(db.Text)
+    completion_prompt_config = db.Column(db.Text)
+    dataset_configs = db.Column(db.Text)
 
     @property
     def app(self):
@@ -139,6 +143,18 @@ class AppModelConfig(db.Model):
     def agent_mode_dict(self) -> dict:
         return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
 
+    @property
+    def chat_prompt_config_dict(self) -> dict:
+        return json.loads(self.chat_prompt_config) if self.chat_prompt_config else {}
+
+    @property
+    def completion_prompt_config_dict(self) -> dict:
+        return json.loads(self.completion_prompt_config) if self.completion_prompt_config else {}
+
+    @property
+    def dataset_configs_dict(self) -> dict:
+        return json.loads(self.dataset_configs) if self.dataset_configs else {"top_k": 2, "score_threshold": {"enable": False}}
+
     def to_dict(self) -> dict:
         return {
             "provider": "",
@@ -155,7 +171,11 @@ class AppModelConfig(db.Model):
             "user_input_form": self.user_input_form_list,
             "dataset_query_variable": self.dataset_query_variable,
             "pre_prompt": self.pre_prompt,
-            "agent_mode": self.agent_mode_dict
+            "agent_mode": self.agent_mode_dict,
+            "prompt_type": self.prompt_type,
+            "chat_prompt_config": self.chat_prompt_config_dict,
+            "completion_prompt_config": self.completion_prompt_config_dict,
+            "dataset_configs": self.dataset_configs_dict
         }
 
     def from_model_config_dict(self, model_config: dict):
@@ -177,6 +197,13 @@ class AppModelConfig(db.Model):
         self.agent_mode = json.dumps(model_config['agent_mode'])
         self.retriever_resource = json.dumps(model_config['retriever_resource']) \
             if model_config.get('retriever_resource') else None
+        self.prompt_type = model_config.get('prompt_type', 'simple')
+        self.chat_prompt_config = json.dumps(model_config.get('chat_prompt_config')) \
+            if model_config.get('chat_prompt_config') else None
+        self.completion_prompt_config = json.dumps(model_config.get('completion_prompt_config')) \
+            if model_config.get('completion_prompt_config') else None
+        self.dataset_configs = json.dumps(model_config.get('dataset_configs')) \
+            if model_config.get('dataset_configs') else None
         return self
 
     def copy(self):
@@ -197,7 +224,11 @@ class AppModelConfig(db.Model):
             dataset_query_variable=self.dataset_query_variable,
             pre_prompt=self.pre_prompt,
             agent_mode=self.agent_mode,
-            retriever_resource=self.retriever_resource
+            retriever_resource=self.retriever_resource,
+            prompt_type=self.prompt_type,
+            chat_prompt_config=self.chat_prompt_config,
+            completion_prompt_config=self.completion_prompt_config,
+            dataset_configs=self.dataset_configs
         )
 
         return new_app_model_config

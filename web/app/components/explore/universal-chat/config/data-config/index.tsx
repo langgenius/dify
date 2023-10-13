@@ -72,7 +72,6 @@ const DatasetConfig: FC<Props> = ({
                 config={item}
                 onRemove={onRemove}
                 readonly={readonly}
-                // TODO: readonly remove btn
               />
             ))}
           </div>

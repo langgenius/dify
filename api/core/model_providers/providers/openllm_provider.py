@@ -3,7 +3,7 @@ from typing import Type
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.openllm_embedding import OpenLLMEmbedding
-from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType
+from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType, ModelMode
 from core.model_providers.models.llm.openllm_model import OpenLLMModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
@@ -23,6 +23,9 @@ class OpenLLMProvider(BaseModelProvider):
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """

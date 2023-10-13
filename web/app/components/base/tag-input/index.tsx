@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import {} from 'use-context-selector'
+import { } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import AutosizeInput from 'react-18-input-autosize'
+import cn from 'classnames'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
 import { useToastContext } from '@/app/components/base/toast'
 
@@ -11,6 +12,7 @@ type TagInputProps = {
   onChange: (items: string[]) => void
   disableRemove?: boolean
   disableAdd?: boolean
+  customizedConfirmKey?: 'Enter' | 'Tab'
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -18,11 +20,15 @@ const TagInput: FC<TagInputProps> = ({
   onChange,
   disableAdd,
   disableRemove,
+  customizedConfirmKey = 'Enter',
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const [value, setValue] = useState('')
   const [focused, setFocused] = useState(false)
+
+  const isSpecialMode = customizedConfirmKey === 'Tab'
+
   const handleRemove = (index: number) => {
     const copyItems = [...items]
     copyItems.splice(index, 1)
@@ -31,7 +37,13 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter') {
+    if (isSpecialMode && e.key === 'Enter')
+      setValue(`${value}↵`)
+
+    if (e.key === customizedConfirmKey) {
+      if (isSpecialMode)
+        e.preventDefault()
+
       const valueTrimed = value.trim()
       if (!valueTrimed || (items.find(item => item === valueTrimed)))
         return
@@ -52,12 +64,12 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   return (
-    <div className='flex flex-wrap'>
+    <div className={cn('flex flex-wrap', isSpecialMode ? 'bg-gray-100 min-w-[200px] rounded-lg pb-1 pl-1' : '')}>
       {
         items.map((item, index) => (
           <div
             key={item}
-            className='flex items-center mr-1 mt-1 px-2 py-1 text-sm text-gray-700 rounded-lg border border-gray-200'>
+            className={cn('flex items-center mr-1 mt-1 px-2 py-1 text-sm text-gray-700 border border-gray-200', isSpecialMode ? 'bg-white rounded-md' : 'rounded-lg')}>
             {item}
             {
               !disableRemove && (
@@ -73,7 +85,7 @@ const TagInput: FC<TagInputProps> = ({
       {
         !disableAdd && (
           <AutosizeInput
-            inputClassName='outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400'
+            inputClassName={cn('outline-none appearance-none placeholder:text-gray-300 caret-primary-600 hover:placeholder:text-gray-400', isSpecialMode ? 'bg-transparent' : '')}
             className={`
               mt-1 py-1 rounded-lg border border-transparent text-sm max-w-[300px] overflow-hidden
               ${focused && 'px-2 border !border-dashed !border-gray-200'}
@@ -81,9 +93,11 @@ const TagInput: FC<TagInputProps> = ({
             onFocus={() => setFocused(true)}
             onBlur={handleBlur}
             value={value}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setValue(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => {
+              setValue(e.target.value)
+            }}
             onKeyDown={handleKeyDown}
-            placeholder={t('datasetDocuments.segment.addKeyWord')}
+            placeholder={t(isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord')}
           />
         )
       }

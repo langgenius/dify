@@ -1,6 +1,9 @@
 .slider {
     position: relative;
 }
+.slider.disabled {
+    opacity: 0.6;
+}
 
 .slider-thumb {
     width: 18px;
@@ -19,7 +22,7 @@
 }
 
 .slider-track {
-    background-color: #9CA3AF;
+    background-color: #528BFF;
     height: 2px;
 }
 

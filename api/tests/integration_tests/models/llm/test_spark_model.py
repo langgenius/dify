@@ -52,7 +52,7 @@ def decrypt_side_effect(tenant_id, encrypted_api_key):
 def test_get_num_tokens(mock_decrypt):
     model = get_mock_model('spark')
     rst = model.get_num_tokens([
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 6
 

@@ -13,13 +13,13 @@ class LLMRunResult(BaseModel):
 
 
 class MessageType(enum.Enum):
-    HUMAN = 'human'
+    USER = 'user'
     ASSISTANT = 'assistant'
     SYSTEM = 'system'
 
 
 class PromptMessage(BaseModel):
-    type: MessageType = MessageType.HUMAN
+    type: MessageType = MessageType.USER
     content: str = ''
     function_call: dict = None
 
@@ -27,7 +27,7 @@ class PromptMessage(BaseModel):
 def to_lc_messages(messages: list[PromptMessage]):
     lc_messages = []
     for message in messages:
-        if message.type == MessageType.HUMAN:
+        if message.type == MessageType.USER:
             lc_messages.append(HumanMessage(content=message.content))
         elif message.type == MessageType.ASSISTANT:
             additional_kwargs = {}
@@ -44,7 +44,7 @@ def to_prompt_messages(messages: list[BaseMessage]):
     prompt_messages = []
     for message in messages:
         if isinstance(message, HumanMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.HUMAN))
+            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
         elif isinstance(message, AIMessage):
             message_kwargs = {
                 'content': message.content,
@@ -58,7 +58,7 @@ def to_prompt_messages(messages: list[BaseMessage]):
         elif isinstance(message, SystemMessage):
             prompt_messages.append(PromptMessage(content=message.content, type=MessageType.SYSTEM))
         elif isinstance(message, FunctionMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.HUMAN))
+            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
     return prompt_messages
 
 
