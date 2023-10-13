@@ -104,15 +104,19 @@ export default function AppSelector() {
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
                     </Menu.Item>
-                    <Menu.Item>
-                      <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
-                        <div>{t('common.userProfile.about')}</div>
-                        <div className='flex items-center'>
-                          <div className='mr-2 text-xs font-normal text-gray-500'>{langeniusVersionInfo.current_version}</div>
-                          <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
-                        </div>
-                      </div>
-                    </Menu.Item>
+                    {
+                      document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
+                        <Menu.Item>
+                          <div className={classNames(itemClassName, 'justify-between')} onClick={() => setAboutVisible(true)}>
+                            <div>{t('common.userProfile.about')}</div>
+                            <div className='flex items-center'>
+                              <div className='mr-2 text-xs font-normal text-gray-500'>{langeniusVersionInfo.current_version}</div>
+                              <Indicator color={langeniusVersionInfo.current_version === langeniusVersionInfo.latest_version ? 'green' : 'orange'} />
+                            </div>
+                          </div>
+                        </Menu.Item>
+                      )
+                    }
                   </div>
                   <Menu.Item>
                     <div className='p-1' onClick={() => handleLogout()}>
