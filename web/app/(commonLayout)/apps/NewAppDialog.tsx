@@ -122,7 +122,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''}/>
       </div>
 
-      <div className='h-[247px]'>
+      <div className='h-[247px] overflow-y-auto'>
         <div className={style.newItemCaption}>
           <h3 className='inline'>{t('app.newApp.captionAppType')}</h3>
           {isWithTemplate && (
