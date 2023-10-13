@@ -224,6 +224,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const handleParamChange = (key: string, value: number | string[]) => {
     if (value === undefined)
       return
+    if ((completionParams as any)[key] === value)
+      return
 
     if (key === 'stop') {
       onCompletionParamsChange({

@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
 import produce from 'immer'
-import { useBoolean } from 'ahooks'
+import { useBoolean, useGetState } from 'ahooks'
 import cn from 'classnames'
 import { clone, isEqual } from 'lodash-es'
 import Button from '../../base/button'
@@ -75,13 +75,26 @@ const Configuration: FC = () => {
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
-  const [completionParams, setCompletionParams] = useState<CompletionParams>({
+  const [completionParams, doSetCompletionParams] = useState<CompletionParams>({
     max_tokens: 16,
     temperature: 1, // 0-2
     top_p: 1,
     presence_penalty: 1, // -2-2
     frequency_penalty: 1, // -2-2
+    stop: [],
   })
+  const [tempStop, setTempStop, getTempStop] = useGetState<string[]>([])
+  const setCompletionParams = (value: CompletionParams) => {
+    const params = { ...value }
+
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
+      params.stop = getTempStop()
+      setTempStop([])
+    }
+    doSetCompletionParams(params)
+  }
+
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
     provider: ProviderEnum.openai,
     model_id: 'gpt-3.5-turbo',
@@ -111,6 +124,10 @@ const Configuration: FC = () => {
   }
 
   const modelModeType = modelConfig.mode
+  const modeModeTypeRef = useRef(modelModeType)
+  useEffect(() => {
+    modeModeTypeRef.current = modelModeType
+  }, [modelModeType])
 
   const [dataSets, setDataSets] = useState<DataSet[]>([])
   const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
@@ -198,7 +215,7 @@ const Configuration: FC = () => {
   const hasSetAPIKEY = hasSetCustomAPIKEY || !isTrailFinished
 
   const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
-  const [promptMode, doSetPromptMode] = useState(PromptMode.advanced)
+  const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
@@ -231,6 +248,9 @@ const Configuration: FC = () => {
     onUserChangedPrompt: () => {
       setCanReturnToSimpleMode(false)
     },
+    completionParams,
+    setCompletionParams,
+    setStop: setTempStop,
   })
 
   const setModel = async ({
