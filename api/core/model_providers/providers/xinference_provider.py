@@ -2,7 +2,6 @@ import json
 from typing import Type
 
 import requests
-from langchain.embeddings import XinferenceEmbeddings
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
@@ -11,6 +10,7 @@ from core.model_providers.models.llm.xinference_model import XinferenceModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
 from core.model_providers.models.base import BaseProviderModel
+from core.third_party.langchain.embeddings.xinference_embedding import XinferenceEmbeddings
 from core.third_party.langchain.llms.xinference_llm import XinferenceLLM
 from models.provider import ProviderType
 

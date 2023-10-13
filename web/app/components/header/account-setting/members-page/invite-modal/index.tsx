@@ -62,8 +62,8 @@ const InviteModal = ({
   }, [role, emails, notify, onCancel, onSend, t])
 
   return (
-    <div className={s.wrap}>
-      <Modal overflowVisible isShow onClose={() => {}} className={s.modal}>
+    <div className={cn(s.wrap)}>
+      <Modal overflowVisible isShow onClose={() => {}} className={cn(s.modal)} wrapperClassName='z-20'>
         <div className='flex justify-between mb-2'>
           <div className='text-xl font-semibold text-gray-900'>{t('common.members.inviteTeamMember')}</div>
           <XMarkIcon className='w-4 h-4 cursor-pointer' onClick={onCancel} />
