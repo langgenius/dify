@@ -181,14 +181,15 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const getParamValue = (param: string) => {
     const value = detail?.model_config.model?.completion_params?.[param] || '-'
     if (param === 'stop') {
-      if (!value || value.length === 0)
+      if (Array.isArray(value))
+        return value.join(',')
+      else
         return '-'
-
-      return value.join(',')
     }
 
     return value
   }
+
   return (<div className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
     {/* Panel Header */}
     <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
