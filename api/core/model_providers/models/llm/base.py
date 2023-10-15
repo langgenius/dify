@@ -15,7 +15,7 @@ from core.helper import moderation
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.message import PromptMessage, MessageType, LLMRunResult, to_prompt_messages, \
     to_lc_messages
-from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules
+from core.model_providers.models.entity.model_params import ModelType, ModelKwargs, ModelMode, ModelKwargsRules, AppMode
 from core.model_providers.providers.base import BaseModelProvider
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import PromptTemplateParser
@@ -330,83 +330,191 @@ class BaseLLM(BaseProviderModel):
         prompt, stops = self._get_prompt_and_stop(prompt_rules, pre_prompt, inputs, query, context, memory)
         return [PromptMessage(content=prompt)], stops
 
-    def get_advanced_prompt(self, app_mode: str,
-                   app_model_config: str, inputs: dict,
-                   query: str,
-                   context: Optional[str],
-                   memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
-
+    def get_advanced_prompt(self, 
+            app_mode: str,
+            app_model_config: str, 
+            inputs: dict,
+            query: str,
+            context: Optional[str],
+            memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
+        
         model_mode = app_model_config.model_dict['mode']
-        conversation_histories_role = {}
 
-        raw_prompt_list = []
+        app_mode_enum = AppMode(app_mode)
+        model_mode_enum = ModelMode(model_mode)
+
         prompt_messages = []
 
-        if app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
-            prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
-            raw_prompt_list = [{
-                'role': MessageType.USER.value,
-                'text': prompt_text
-            }]
-            conversation_histories_role = app_model_config.completion_prompt_config_dict['conversation_histories_role']
-        elif app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
-            raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
-        elif app_mode == 'completion' and model_mode == ModelMode.CHAT.value:
-            raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
-        elif app_mode == 'completion' and model_mode == ModelMode.COMPLETION.value:
-            prompt_text = app_model_config.completion_prompt_config_dict['prompt']['text']
-            raw_prompt_list = [{
-                'role': MessageType.USER.value,
-                'text': prompt_text
-            }]
-        else:
-            raise Exception("app_mode or model_mode not support")
+        if app_mode_enum == AppMode.CHAT:
+            if model_mode_enum == ModelMode.COMPLETION:
+                prompt_messages = self._get_chat_app_completion_model_prompt_messages(app_model_config, inputs, query, context, memory)
+            elif model_mode_enum == ModelMode.CHAT:
+                prompt_messages =  self._get_chat_app_chat_model_prompt_messages(app_model_config, inputs, query, context, memory)
+        elif app_mode_enum == AppMode.COMPLETION:
+            if model_mode_enum == ModelMode.CHAT:
+                prompt_messages =  self._get_completion_app_chat_model_prompt_messages(app_model_config, inputs, context)
+            elif model_mode_enum == ModelMode.COMPLETION:
+                prompt_messages =  self._get_completion_app_completion_model_prompt_messages(app_model_config, inputs, context)
+            
+        return prompt_messages
 
-        for prompt_item in raw_prompt_list:
-            prompt = prompt_item['text']
+    def _set_context_variable(self, context, prompt_template, prompt_inputs):
+        if '#context#' in prompt_template.variable_keys:
+            if context:
+                prompt_inputs['#context#'] = context    
+            else:
+                prompt_inputs['#context#'] = ''
 
-            # set prompt template variables
-            prompt_template = PromptTemplateParser(template=prompt)
-            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+    def _set_query_variable(self, query, prompt_template, prompt_inputs):
+        if '#query#' in prompt_template.variable_keys:
+            if query:
+                prompt_inputs['#query#'] = query
+            else:
+                prompt_inputs['#query#'] = ''
 
-            if '#context#' in prompt:
-                if context:
-                    prompt_inputs['#context#'] = context
-                else:
-                    prompt_inputs['#context#'] = ''
+    def _set_histories_variable(self, memory, raw_prompt, conversation_histories_role, prompt_template, prompt_inputs):
+        if '#histories#' in prompt_template.variable_keys:
+            if memory:
+                tmp_human_message = PromptBuilder.to_human_message(
+                    prompt_content=raw_prompt,
+                    inputs={ '#histories#': '', **prompt_inputs }
+                )
 
-            if '#query#' in prompt:
-                if query:
-                    prompt_inputs['#query#'] = query
-                else:
-                    prompt_inputs['#query#'] = ''
+                rest_tokens = self._calculate_rest_token(tmp_human_message)
+                
+                memory.human_prefix = conversation_histories_role['user_prefix']
+                memory.ai_prefix = conversation_histories_role['assistant_prefix']
+                histories = self._get_history_messages_from_memory(memory, rest_tokens)
+                prompt_inputs['#histories#'] = histories
+            else:
+                prompt_inputs['#histories#'] = ''
 
-            if '#histories#' in prompt:
-                if memory and app_mode == 'chat' and model_mode == ModelMode.COMPLETION.value:
-                    memory.human_prefix = conversation_histories_role['user_prefix']
-                    memory.ai_prefix = conversation_histories_role['assistant_prefix']
-                    histories = self._get_history_messages_from_memory(memory, 2000)
-                    prompt_inputs['#histories#'] = histories
-                else:
-                    prompt_inputs['#histories#'] = ''
+    def _append_chat_histories(self, memory, prompt_messages):
+        if memory:
+            rest_tokens = self._calculate_rest_token(prompt_messages)
 
-            prompt = prompt_template.format(
-                prompt_inputs
-            )
-
-            prompt = re.sub(r'<\|.*?\|>', '', prompt)
-
-            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
-
-        if memory and app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
             memory.human_prefix = MessageType.USER.value
             memory.ai_prefix = MessageType.ASSISTANT.value
-            histories = self._get_history_messages_list_from_memory(memory, 2000)
+            histories = self._get_history_messages_list_from_memory(memory, rest_tokens)
             prompt_messages.extend(histories)
 
-        if app_mode == 'chat' and model_mode == ModelMode.CHAT.value:
-            prompt_messages.append(PromptMessage(type = MessageType.USER ,content=query))
+    def _calculate_rest_token(self, prompt_messages):
+        rest_tokens = 2000
 
+        if self.model_rules.max_tokens.max:
+            curr_message_tokens = self.get_num_tokens(to_prompt_messages(prompt_messages))
+            max_tokens = self.model_kwargs.max_tokens
+            rest_tokens = self.model_rules.max_tokens.max - max_tokens - curr_message_tokens
+            rest_tokens = max(rest_tokens, 0)
+
+        return rest_tokens
+
+    def _format_prompt(self, prompt_template, prompt_inputs):
+        prompt = prompt_template.format(
+            prompt_inputs
+        )
+
+        prompt = re.sub(r'<\|.*?\|>', '', prompt)
+        return prompt
+
+    def _get_chat_app_completion_model_prompt_messages(self,
+            app_model_config: str,
+            inputs: dict,
+            query: str,
+            context: Optional[str],
+            memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
+        
+        raw_prompt = app_model_config.completion_prompt_config_dict['prompt']['text']
+        conversation_histories_role = app_model_config.completion_prompt_config_dict['conversation_histories_role']
+
+        prompt_messages = []
+        prompt = ''
+        
+        prompt_template = PromptTemplateParser(template=raw_prompt)
+        prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+
+        self._set_context_variable(context, prompt_template, prompt_inputs)
+
+        self._set_query_variable(query, prompt_template, prompt_inputs)
+
+        self._set_histories_variable(memory, raw_prompt, conversation_histories_role, prompt_template, prompt_inputs)
+
+        prompt = self._format_prompt(prompt_template, prompt_inputs)
+
+        prompt_messages.append(PromptMessage(type = MessageType(MessageType.USER) ,content=prompt))
+
+        return prompt_messages
+
+    def _get_chat_app_chat_model_prompt_messages(self,
+            app_model_config: str,
+            inputs: dict,
+            query: str,
+            context: Optional[str],
+            memory: Optional[BaseChatMemory]) -> List[PromptMessage]:
+        raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+
+        prompt_messages = []
+
+        for prompt_item in raw_prompt_list:
+            raw_prompt = prompt_item['text']
+            prompt = ''
+
+            prompt_template = PromptTemplateParser(template=raw_prompt)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+
+            self._set_context_variable(context, prompt_template, prompt_inputs)
+
+            prompt = self._format_prompt(prompt_template, prompt_inputs)
+
+            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
+        
+        self._append_chat_histories(memory, prompt_messages)
+
+        prompt_messages.append(PromptMessage(type = MessageType.USER ,content=query))
+
+        return prompt_messages
+
+    def _get_completion_app_completion_model_prompt_messages(self,
+                   app_model_config: str,
+                   inputs: dict,
+                   context: Optional[str]) -> List[PromptMessage]:
+        raw_prompt = app_model_config.completion_prompt_config_dict['prompt']['text']
+
+        prompt_messages = []
+        prompt = ''
+        
+        prompt_template = PromptTemplateParser(template=raw_prompt)
+        prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+
+        self._set_context_variable(context, prompt_template, prompt_inputs)
+
+        prompt = self._format_prompt(prompt_template, prompt_inputs)
+
+        prompt_messages.append(PromptMessage(type = MessageType(MessageType.USER) ,content=prompt))
+
+        return prompt_messages
+
+    def _get_completion_app_chat_model_prompt_messages(self,
+                   app_model_config: str,
+                   inputs: dict,
+                   context: Optional[str]) -> List[PromptMessage]:
+        raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
+
+        prompt_messages = []
+
+        for prompt_item in raw_prompt_list:
+            raw_prompt = prompt_item['text']
+            prompt = ''
+
+            prompt_template = PromptTemplateParser(template=raw_prompt)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+
+            self._set_context_variable(context, prompt_template, prompt_inputs)
+
+            prompt = self._format_prompt(prompt_template, prompt_inputs)
+
+            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
+        
         return prompt_messages
 
     def prompt_file_name(self, mode: str) -> str:
@@ -452,13 +560,7 @@ class BaseLLM(BaseProviderModel):
                 }
             )
 
-            if self.model_rules.max_tokens.max:
-                curr_message_tokens = self.get_num_tokens(to_prompt_messages([tmp_human_message]))
-                max_tokens = self.model_kwargs.max_tokens
-                rest_tokens = self.model_rules.max_tokens.max - max_tokens - curr_message_tokens
-                rest_tokens = max(rest_tokens, 0)
-            else:
-                rest_tokens = 2000
+            rest_tokens = self._calculate_rest_token(tmp_human_message)
 
             memory.human_prefix = prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human'
             memory.ai_prefix = prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'

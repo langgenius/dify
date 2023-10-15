@@ -4,6 +4,10 @@ from typing import Optional, TypeVar, Generic
 from langchain.load.serializable import Serializable
 from pydantic import BaseModel
 
+class AppMode(enum.Enum):
+    COMPLETION = 'completion'
+    CHAT = 'chat'
+
 
 class ModelMode(enum.Enum):
     COMPLETION = 'completion'
