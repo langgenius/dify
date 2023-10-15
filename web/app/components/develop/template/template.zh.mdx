@@ -169,55 +169,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
-  url='/messages/{message_id}/suggested'
-  method='GET'
-  title='消息下一步问题建议'
-  name='#suggested'
-/>
-<Row>
-  <Col>
-    获取针对当前问题的下一步问题建议
-
-    ### Path Params
-
-    <Properties>
-      <Property name='message_id' type='string' key='message_id'>
-        消息 ID
-      </Property>
-    </Properties>
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --header 'Content-Type: application/json' \
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "result": "success",
-      "data": [
-            "a",
-            "b",
-            "c"
-        ]
-      ]
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
   url='/parameters'
   method='GET'
   title='获取应用配置信息'
