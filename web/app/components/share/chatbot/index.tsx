@@ -27,6 +27,7 @@ import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
+import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -568,7 +569,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
-                    answerIconClassName={s.answerIcon}
+                    answerIcon={<LogoAvatar className='relative shrink-0' />}
                   />
                 </div>
               </div>)

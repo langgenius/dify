@@ -1,5 +1,4 @@
 import type { FC } from 'react'
-import Image from 'next/image'
 
 type LogoEmbededChatAvatarProps = {
   className?: string
@@ -8,9 +7,9 @@ const LogoEmbededChatAvatar: FC<LogoEmbededChatAvatarProps> = ({
   className,
 }) => {
   return (
-    <Image
+    <img
       src='/logo/logo-embeded-chat-avatar.png'
-      className={`w-10 h-10 ${className}`}
+      className={`block w-10 h-10 ${className}`}
       alt='logo'
     />
   )
