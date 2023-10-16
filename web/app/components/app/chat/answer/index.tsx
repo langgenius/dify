@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -44,7 +44,7 @@ export type IAnswerProps = {
   onSubmitAnnotation?: SubmitAnnotationFunc
   displayScene: DisplayScene
   isResponsing?: boolean
-  answerIconClassName?: string
+  answerIcon?: ReactNode
   thoughts?: ThoughtItem[]
   citation?: CitationItem[]
   isThinking?: boolean
@@ -53,7 +53,7 @@ export type IAnswerProps = {
   isShowCitationHitInfo?: boolean
 }
 // The component needs to maintain its own state to control whether to display input component
-const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts, citation, isThinking, dataSets, isShowCitation, isShowCitationHitInfo = false }) => {
+const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIcon, thoughts, citation, isThinking, dataSets, isShowCitation, isShowCitationHitInfo = false }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -168,13 +168,17 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   return (
     <div key={id}>
       <div className='flex items-start'>
-        <div className={`${s.answerIcon} ${answerIconClassName} w-10 h-10 shrink-0`}>
-          {isResponsing
-            && <div className={s.typeingIcon}>
-              <LoadingAnim type='avatar' />
+        {
+          answerIcon || (
+            <div className={`${s.answerIcon} w-10 h-10 shrink-0`}>
+              {isResponsing
+                && <div className={s.typeingIcon}>
+                  <LoadingAnim type='avatar' />
+                </div>
+              }
             </div>
-          }
-        </div>
+          )
+        }
         <div className={cn(s.answerWrapWrap, 'chat-answer-container')}>
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
