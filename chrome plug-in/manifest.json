@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "Dify Chatbot",
+  "version": "1.0",
+  "description": "This is a chrome extension to inject a dify chatbot on pages",
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"]
+    }
+  ],
+  "permissions": ["webRequest", "storage"],
+  "action": {
+      "default_popup": "options.html",
+      "default_icon": {
+        "16": "favicon.png"
+      }
+  }
+}
