@@ -108,6 +108,48 @@ const translation = {
         assistantPrefix: 'Assistant prefix',
       },
     },
+    toolbox: {
+      title: 'TOOLBOX',
+    },
+    moderation: {
+      title: 'Content moderation',
+      description: 'Content moderation',
+      modal: {
+        title: 'Content moderation settings',
+        provider: {
+          title: 'Provider',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation requires an OpenAI API key configured in the ',
+            suffix: '.',
+          },
+          keywords: 'Keywords',
+          custom: 'Custom API',
+        },
+        keywords: {
+          tip: 'One per line, separated by line breaks. Up to 100 characters per line.',
+          placeholder: 'One per line, separated by line breaks',
+        },
+        apiEndpoint: {
+          title: 'API Endpoint',
+          link: 'How to develop your own sensitive content filtering API？',
+        },
+        apiKey: {
+          title: 'API-Key',
+          regenerate: 'Regenerate',
+        },
+        input: {
+          title: 'Moderate INPUT Content',
+          preset: 'Preset replies',
+          placeholder: 'Preset replies content here',
+          apiTip: 'Preset replies are returned by API',
+        },
+        output: {
+          title: 'Moderate OUTPUT Content',
+        },
+        condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
+      },
+    },
   },
   automatic: {
     title: 'Automated application orchestration',

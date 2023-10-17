@@ -108,6 +108,48 @@ const translation = {
         assistantPrefix: '助手前缀',
       },
     },
+    toolbox: {
+      title: '工具箱',
+    },
+    moderation: {
+      title: '内容审核',
+      description: '内容审核',
+      modal: {
+        title: '内容审核设置',
+        provider: {
+          title: '提供者',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation 需要在',
+            suffix: '中配置 OpenAI API 密钥。',
+          },
+          keywords: '关键词',
+          custom: '自定义 API',
+        },
+        keywords: {
+          tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
+          placeholder: '每行一个，用换行符分隔',
+        },
+        apiEndpoint: {
+          title: 'API Endpoint',
+          link: '如何开发自己的敏感内容过滤 API ？',
+        },
+        apiKey: {
+          title: 'API-Key',
+          regenerate: '重新生成',
+        },
+        input: {
+          title: '审核输入内容',
+          preset: '预设回复',
+          placeholder: '这里预设回复内容',
+          apiTip: '预设回复通过 API 返回',
+        },
+        output: {
+          title: '审核输出内容',
+        },
+        condition: '审核输入内容和审核输出内容至少启用一项',
+      },
+    },
   },
   automatic: {
     title: '自动编排',

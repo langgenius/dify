@@ -188,11 +188,7 @@ const Config: FC = () => {
         )}
 
         {/* Toolbox */}
-        {
-          hasToolbox && (
-            <Toolbox searchToolConfig={false} sensitiveWordAvoidanceConifg={false} />
-          )
-        }
+        <Toolbox showModerationSettings />
       </div>
     </>
   )
