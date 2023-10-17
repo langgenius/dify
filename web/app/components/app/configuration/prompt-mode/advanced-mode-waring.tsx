@@ -19,7 +19,7 @@ const AdvancedModeWarning: FC = () => {
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
           <a
             className='font-medium text-[#155EEF]'
-            href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/advanced/model-configuration`}
+            href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans/' : ''}advanced/prompt-engineering`}
             target='_blank'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}

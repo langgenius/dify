@@ -43,7 +43,7 @@ const HistoryPanel: FC<Props> = ({
     >
       {showWarning && (
         <div className='flex justify-between py-2 px-3 rounded-b-xl bg-[#FFFAEB] text-xs text-gray-700'>
-          <div>{t('appDebug.feature.conversationHistory.tip')} <a href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/advanced/prompt-engineering`} target='_blank' className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}</a></div>
+          <div>{t('appDebug.feature.conversationHistory.tip')} <a href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans/' : ''}advanced/prompt-engineering`} target='_blank' className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}</a></div>
         </div>
       )}
     </Panel>
