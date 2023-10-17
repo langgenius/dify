@@ -133,10 +133,12 @@ const translation = {
         apiEndpoint: {
           title: 'API Endpoint',
           link: 'How to develop your own sensitive content filtering API？',
+          placeholder: 'Please enter API Endpoint',
         },
         apiKey: {
           title: 'API-Key',
           regenerate: 'Regenerate',
+          placeholder: 'Please enter API KEY',
         },
         input: {
           title: 'Moderate INPUT Content',

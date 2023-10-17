@@ -1,7 +1,9 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Switch from '@/app/components/base/switch'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 
 type SettingsModalProps = {
@@ -12,6 +14,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const [activeProviderKey, setActiveProviderKey] = useState('keywords')
   const providers = [
     {
       key: 'openai',
@@ -30,8 +33,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
   return (
     <Modal
       isShow
-      onClose={onCancel}
-      className='!p-8 !max-w-none !w-[640px]'
+      onClose={() => {}}
+      className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-[#1D2939]'>
         {t('appDebug.feature.moderation.modal.title')}
@@ -45,60 +48,124 @@ const SettingsModal: FC<SettingsModalProps> = ({
             providers.map(provider => (
               <div
                 key={provider.key}
-                className='flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25'>
-                <div className='mr-2 w-4 h-4 rounded-full border border-gray-300' />
+                className={`
+                  flex items-center px-3 py-2 rounded-lg text-sm text-gray-900 cursor-pointer
+                  ${activeProviderKey === provider.key ? 'bg-white border-[1.5px] border-primary-400 shadow-sm' : 'border border-gray-100 bg-gray-25'}
+                `}
+                onClick={() => setActiveProviderKey(provider.key)}
+              >
+                <div className={`
+                  mr-2 w-4 h-4 rounded-full border 
+                  ${activeProviderKey === provider.key ? 'border-[5px] border-primary-600' : 'border border-gray-300'}`} />
                 {provider.name}
               </div>
             ))
           }
         </div>
       </div>
+      {
+        activeProviderKey === 'keywords' && (
+          <div className='py-2'>
+            <div className='mb-1 text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
+            <div className='mb-2 text-xs text-gray-500'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
+            <div className='px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
+              <textarea
+                className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
+                placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''}
+              />
+            </div>
+          </div>
+        )
+      }
+      {
+        activeProviderKey === 'custom' && (
+          <>
+            <div className='py-2'>
+              <div className='flex items-center justify-between h-9'>
+                <div className='text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.apiEndpoint.title')}</div>
+                <a
+                  href={'/'}
+                  className='flex items-center text-xs text-gray-500'
+                >
+                  <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
+                  {t('appDebug.feature.moderation.modal.apiEndpoint.link')}
+                </a>
+              </div>
+              <input
+                className='block px-3 py-2 w-full h-9 bg-gray-100 text-sm rounded-lg outline-none appearance-none'
+                placeholder={t('appDebug.feature.moderation.modal.apiEndpoint.placeholder') || ''}
+              />
+            </div>
+            <div className='py-2'>
+              <div className='leading-9 text-sm font-medium text-gray-900'>
+                {t('appDebug.feature.moderation.modal.apiKey.title')}
+              </div>
+              <div className='flex items-center'>
+                <input
+                  className='grow mr-2 px-3 py-2 h-9 rounded-lg bg-gray-100 text-sm appearance-none outline-none'
+                  placeholder={t('appDebug.feature.moderation.modal.apiKey.placeholder') || ''}
+                />
+                <Button
+                  className='text-sm font-medium'
+                >
+                  {t('appDebug.feature.moderation.modal.apiKey.regenerate')}
+                </Button>
+              </div>
+            </div>
+          </>
+        )
+      }
+      <div className='my-3 h-[1px] bg-gradient-to-r from-[#F3F4F6]'></div>
       <div className='py-2'>
-        <div className='mb-1 text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
-        <div className='mb-2 text-xs text-gray-500'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
-        <div className='px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
-          <textarea placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''} />
+        <div className='rounded-lg bg-gray-50 border border-gray-200'>
+          <div className='flex items-center justify-between px-3 h-10 text-sm font-medium text-gray-900 rounded-lg'>
+            {t('appDebug.feature.moderation.modal.input.title')}
+            <Switch
+              size='l'
+              onChange={() => {}}
+            />
+          </div>
+          {
+            activeProviderKey !== 'custom' && (
+              <div className='px-3 pt-1 pb-3 bg-white rounded-lg'>
+                <div className='leading-8 text-[13px] font-medium text-gray-700'>{t('appDebug.feature.moderation.modal.input.preset')}</div>
+                <div className='relative px-3 py-2 h-20 rounded-lg bg-gray-100'>
+                  <textarea
+                    className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
+                    placeholder={t('appDebug.feature.moderation.modal.input.placeholder') || ''}
+                  />
+                </div>
+              </div>
+            )
+          }
         </div>
       </div>
       <div className='py-2'>
-        <div className='flex items-center justify-between h-9'>
-          <div className='text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.apiEndpoint.title')}</div>
-          <a
-            href={'/'}
-            className='flex items-center text-xs text-gray-500'
-          >
-            <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
-            {t('appDebug.feature.moderation.modal.apiEndpoint.link')}
-          </a>
-        </div>
-        <input className='px-3 py-2 h-9 bg-gray-100 rounded-lg' />
-      </div>
-      <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
-          {t('appDebug.feature.moderation.modal.apiKey.title')}
-        </div>
-        <div className='flex items-center'>
-          <input className='grow mr-2 rounded-lg bg-gray-100' />
-          <Button>{t('appDebug.feature.moderation.modal.apiKey.regenerate')}</Button>
-        </div>
-      </div>
-      <div className='h-[1px] bg-gray-200'></div>
-      <div className='my-2 rounded-lg border border-gray-200'>
-        <div>{t('appDebug.feature.moderation.modal.input.title')}</div>
-        <div>
-          <div>{t('appDebug.feature.moderation.modal.input.preset')}</div>
-          <div>
-            <textarea placeholder={t('appDebug.feature.moderation.modal.input.placeholder') || ''} />
+        <div className='rounded-lg bg-gray-50 border border-gray-200'>
+          <div className='flex items-center justify-between px-3 h-10 text-sm font-medium text-gray-900 rounded-lg'>
+            {t('appDebug.feature.moderation.modal.output.title')}
+            <Switch
+              size='l'
+              onChange={() => {}}
+            />
           </div>
         </div>
       </div>
-      <div className='py-2'>
-        <div>{t('appDebug.feature.moderation.modal.output.title')}</div>
-      </div>
-      <div>{t('appDebug.feature.moderation.modal.condition')}</div>
-      <div>
-        <Button>{t('common.operation.cancel')}</Button>
-        <Button>{t('common.operation.save')}</Button>
+      <div className='mt-1 mb-8 text-xs font-medium text-gray-500'>{t('appDebug.feature.moderation.modal.condition')}</div>
+      <div className='flex items-center justify-end'>
+        <Button
+          onClick={onCancel}
+          className='mr-2 text-sm font-medium'
+        >
+          {t('common.operation.cancel')}
+        </Button>
+        <Button
+          type='primary'
+          className='text-sm font-medium'
+          onClick={() => {}}
+        >
+          {t('common.operation.save')}
+        </Button>
       </div>
     </Modal>
   )

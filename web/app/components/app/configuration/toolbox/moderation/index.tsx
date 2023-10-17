@@ -10,15 +10,13 @@ const Moderation = () => {
 
   return (
     <>
-      <div className='flex items-center px-3 h-12 bg-gray-50 rounded-xl'>
+      <div className='flex items-center px-3 py-2 bg-gray-50 rounded-xl'>
         <div className='flex items-center justify-center mr-1 w-6 h-6'>
           <FileSearch02 className='shrink-0 w-4 h-4 text-[#039855]' />
         </div>
-        <div className='grow text-gray-800 font-semibold'>{t('appDebug.feature.moderation.title')}</div>
-        <div className='shrink-0 flex items-center text-xs text-gray-500'>
-          <div>OpenAI Moderation</div>
-          <div className='mx-1'>·</div>
-          <div>INPUT Content Enabled</div>
+        <div className='shrink-0 mr-2 whitespace-nowrap text-sm text-gray-800 font-semibold'>{t('appDebug.feature.moderation.title')}</div>
+        <div className='grow flex items-center text-xs text-gray-500'>
+          OpenAI Moderation · INPUT Content Enabled
         </div>
         <div className='shrink-0 ml-4 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
         <div

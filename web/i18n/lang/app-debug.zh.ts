@@ -117,7 +117,7 @@ const translation = {
       modal: {
         title: '内容审核设置',
         provider: {
-          title: '提供者',
+          title: '类别',
           openai: 'OpenAI Moderation',
           openaiTip: {
             prefix: 'OpenAI Moderation 需要在',
@@ -133,10 +133,12 @@ const translation = {
         apiEndpoint: {
           title: 'API Endpoint',
           link: '如何开发自己的敏感内容过滤 API ？',
+          placeholder: '请输入 API Endpoint',
         },
         apiKey: {
           title: 'API-Key',
           regenerate: '重新生成',
+          placeholder: '请输入 API KEY',
         },
         input: {
           title: '审核输入内容',
