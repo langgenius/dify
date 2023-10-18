@@ -10,10 +10,16 @@
     }
   ],
   "permissions": ["webRequest", "storage"],
+  "icons": {
+    "128": "images/128.png"
+  },
   "action": {
       "default_popup": "options.html",
       "default_icon": {
-        "16": "favicon.png"
+        "16": "images/128.png",
+        "32": "images/128.png",
+        "48": "images/128.png",
+        "128": "images/128.png"
       }
   }
 }
