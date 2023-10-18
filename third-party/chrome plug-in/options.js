@@ -15,8 +15,20 @@ document.getElementById('save-button').addEventListener('click', function() {
   });
 });
 
-// 在页面加载时从chrome.storage中加载参数
+// Load parameters from chrome.storage when the page loads
 chrome.storage.sync.get(['baseUrl', 'token'], function(result) {
-  document.getElementById('base-url').value = result.baseUrl;
-  document.getElementById('token').value = result.token;
+  const baseUrlInput = document.getElementById('base-url');
+  const tokenInput = document.getElementById('token');
+
+  if (result.baseUrl) {
+    baseUrlInput.value = result.baseUrl;
+  } else {
+    baseUrlInput.placeholder = 'Dify Domain Url';
+  }
+
+  if (result.token) {
+    tokenInput.value = result.token;
+  } else {
+    tokenInput.placeholder = 'Application Embedded Token';
+  }
 });

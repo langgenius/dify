@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Dify Chatbot",
-  "version": "1.0",
+  "version": "1.1",
   "description": "This is a chrome extension to inject a dify chatbot on pages",
   "content_scripts": [
     {

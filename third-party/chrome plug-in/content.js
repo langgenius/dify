@@ -56,17 +56,10 @@ async function embedChatbot() {
     iframe.src = `${baseUrl}/chat/${difyChatbotConfig.token}`
     iframe.style.cssText = 'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 6.7rem; right: 1rem; width: 30rem; height: 48rem; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;'
     document.body.appendChild(iframe);
-
-    // 计算更新入口位置，避免被遮挡
-    // const targetButton = document.getElementById('dify-chatbot-bubble-button');
-    // targetButton.style.right =
-    //   handleRemToPx(iframe.style.width) +
-    //   handleRemToPx(iframe.style.right) +
-    //   8 + "px";
   }
 
   /**
-   * rem转换为px
+   * rem to px
    * @param {*} rem ：30rem
    */
   function handleRemToPx(rem) {
@@ -74,7 +67,7 @@ async function embedChatbot() {
     let pxValue = 0;
     try {
       const regex = /\d+/;
-      // 提取数字部分，并转换为数字类型
+      // extract the numeric part and convert it to a numeric type
       const remValue = parseInt(regex.exec(rem)[0], 10);
       const rootFontSize = parseFloat(
         window.getComputedStyle(document.documentElement).fontSize
@@ -87,39 +80,39 @@ async function embedChatbot() {
   }
 
   /**
-   * 支持元素拖动
-   * @param {*} targetButton 入口元素
+   * support element drag
+   * @param {*} targetButton entry element
    */
   function handleElementDrag(targetButton) {
-    // 定义变量来保存鼠标位置
+    // define a variable to hold the mouse position
     let mouseX = 0,
       mouseY = 0,
       offsetX = 0,
       offsetY = 0;
 
-    // 监听鼠标按下事件，获取鼠标位置和元素位置
+    // Listen for mouse press events, get mouse position and element position
     targetButton.addEventListener("mousedown", function (event) {
-      // 计算鼠标位置
+      // calculate mouse position
       mouseX = event.clientX;
       mouseY = event.clientY;
 
-      // 计算元素位置
+      // calculate element position
       const rect = targetButton.getBoundingClientRect();
       offsetX = mouseX - rect.left;
       offsetY = mouseY - rect.top;
 
-      // 监听鼠标移动事件
+      // listen for mouse movement events
       document.addEventListener("mousemove", onMouseMove);
     });
 
-    // 监听鼠标抬起事件，停止监听鼠标移动事件
+    // listen for mouse lift events and stop listening for mouse move events
     document.addEventListener("mouseup", function () {
       document.removeEventListener("mousemove", onMouseMove);
     });
 
-    // 鼠标移动事件处理程序，更新元素位置
+    // the mouse moves the event handler to update the element position
     function onMouseMove(event) {
-      // 计算元素位置
+      // calculate element position
       let newX = event.clientX - offsetX,
         newY = event.clientY - offsetY;
 
@@ -130,11 +123,11 @@ async function embedChatbot() {
       const maxX = viewportWidth - targetButton.offsetWidth,
         maxY = viewportHeight - targetButton.offsetHeight;
 
-      // 应用限制
+      // application limitation
       newX = Math.max(12, Math.min(newX, maxX));
       newY = Math.max(12, Math.min(newY, maxY));
 
-      // 更新元素位置
+      // update element position
       targetButton.style.left = newX + "px";
       targetButton.style.top = newY + "px";
     }
@@ -171,7 +164,7 @@ async function embedChatbot() {
       }
     });
   } else {
-    // 浮动图标添加任意拖拽
+    // add any drag and drop to the floating icon
     handleElementDrag(targetButton);
   }
 }
