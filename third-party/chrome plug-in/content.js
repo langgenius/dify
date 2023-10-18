@@ -11,7 +11,7 @@ document.body.onload = embedChatbot;
 async function embedChatbot() {
   const difyChatbotConfig = window.difyChatbotConfig;
   if (!difyChatbotConfig || !difyChatbotConfig.token) {
-    console.error('difyChatbotConfig is empty or token is not provided');
+    console.warn('difyChatbotConfig is empty or token is not provided');
     return;
   }
   const baseUrl = difyChatbotConfig.baseUrl
