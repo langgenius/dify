@@ -76,7 +76,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             agent_decision = self.real_plan(intermediate_steps, callbacks, **kwargs)
             if isinstance(agent_decision, AgentAction):
                 tool_inputs = agent_decision.tool_input
-                if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
+                if isinstance(tool_inputs, dict) and 'query' in tool_inputs and 'chat_history' not in kwargs:
                     tool_inputs['query'] = kwargs['input']
                     agent_decision.tool_input = tool_inputs
             else:
