@@ -1,7 +1,8 @@
 
 import copy
 
-from core.model_providers.models.entity.model_params import AppMode, ModelMode
+from core.model_providers.models.entity.model_params import ModelMode
+from core.prompt.prompt_transform import AppMode
 from core.prompt.advanced_prompt_templates import CHAT_APP_COMPLETION_PROMPT_CONFIG, CHAT_APP_CHAT_PROMPT_CONFIG, COMPLETION_APP_CHAT_PROMPT_CONFIG, COMPLETION_APP_COMPLETION_PROMPT_CONFIG, \
     BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG, BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG, BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG, BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG, CONTEXT, BAICHUAN_CONTEXT
 
@@ -14,7 +15,7 @@ class AdvancedPromptTemplateService:
         model_name = args['model_name']
         has_context = args['has_context']
 
-        if 'baichuan' in model_name:
+        if 'baichuan' in model_name.lower():
             return cls.get_baichuan_prompt(app_mode, model_mode, has_context)
         else:
             return cls.get_common_prompt(app_mode, model_mode, has_context)
