@@ -98,7 +98,7 @@ services:
       # The milvus password.
       MILVUS_PASSWORD: Milvus
       # The milvus tls switch.
-      MILVUS_SECURE: false
+      MILVUS_SECURE: 'false'
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -176,7 +176,7 @@ services:
       # The milvus password.
       MILVUS_PASSWORD: Milvus
       # The milvus tls switch.
-      MILVUS_SECURE: false
+      MILVUS_SECURE: 'false'
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
