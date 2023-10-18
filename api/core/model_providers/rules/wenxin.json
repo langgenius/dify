@@ -5,6 +5,12 @@
     "system_config": null,
     "model_flexibility": "fixed",
     "price_config": {
+        "ernie-bot-4": {
+            "prompt": "0",
+            "completion": "0",
+            "unit": "0.001",
+            "currency": "RMB"
+        },
         "ernie-bot": {
             "prompt": "0.012",
             "completion": "0.012",
