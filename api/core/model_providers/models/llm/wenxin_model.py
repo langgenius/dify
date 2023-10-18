@@ -6,17 +6,16 @@ from langchain.schema import LLMResult
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.llm.base import BaseLLM
-from core.model_providers.models.entity.message import PromptMessage, MessageType
+from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.entity.model_params import ModelMode, ModelKwargs
 from core.third_party.langchain.llms.wenxin import Wenxin
 
 
 class WenxinModel(BaseLLM):
-    model_mode: ModelMode = ModelMode.COMPLETION
+    model_mode: ModelMode = ModelMode.CHAT
 
     def _init_client(self) -> Any:
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, self.model_kwargs)
-        # TODO load price_config from configs(db)
         return Wenxin(
             model=self.name,
             streaming=self.streaming,
@@ -38,7 +37,13 @@ class WenxinModel(BaseLLM):
         :return:
         """
         prompts = self._get_prompt_from_messages(messages)
-        return self._client.generate([prompts], stop, callbacks)
+
+        generate_kwargs = {'stop': stop, 'callbacks': callbacks, 'messages': [prompts]}
+
+        if 'functions' in kwargs:
+            generate_kwargs['functions'] = kwargs['functions']
+
+        return self._client.generate(**generate_kwargs)
 
     def get_num_tokens(self, messages: List[PromptMessage]) -> int:
         """
@@ -48,7 +53,7 @@ class WenxinModel(BaseLLM):
         :return:
         """
         prompts = self._get_prompt_from_messages(messages)
-        return max(self._client.get_num_tokens(prompts), 0)
+        return max(self._client.get_num_tokens_from_messages(prompts), 0)
 
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         provider_model_kwargs = self._to_model_kwargs_input(self.model_rules, model_kwargs)
@@ -58,3 +63,7 @@ class WenxinModel(BaseLLM):
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"Wenxin: {str(ex)}")
+
+    @property
+    def support_streaming(self):
+        return True
