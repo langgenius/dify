@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from core.prompt.prompt_transform import AppMode
 from core.agent.agent_executor import PlanningStrategy
 from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType, ModelMode
@@ -418,7 +419,7 @@ class AppModelConfigService:
             if config['model']["mode"] not in ['chat', 'completion']:
                 raise ValueError("model.mode must be in ['chat', 'completion'] when prompt_type is advanced")
             
-            if app_mode == 'chat' and config['model']["mode"] == ModelMode.COMPLETION.value:
+            if app_mode == AppMode.CHAT.value and config['model']["mode"] == ModelMode.COMPLETION.value:
                 user_prefix = config['completion_prompt_config']['conversation_histories_role']['user_prefix']
                 assistant_prefix = config['completion_prompt_config']['conversation_histories_role']['assistant_prefix']
 
@@ -427,3 +428,10 @@ class AppModelConfigService:
 
                 if not assistant_prefix:
                     config['completion_prompt_config']['conversation_histories_role']['assistant_prefix'] = 'Assistant'
+
+
+            if config['model']["mode"] == ModelMode.CHAT.value:
+                prompt_list = config['chat_prompt_config']['prompt']
+
+                if len(prompt_list) > 10:
+                    raise ValueError("prompt messages must be less than 10")

@@ -16,6 +16,7 @@ from core.model_providers.models.entity.message import PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
+from core.prompt.prompt_transform import PromptTransform
 from models.model import App, AppModelConfig, Account, Conversation, EndUser
 
 
@@ -156,24 +157,28 @@ class Completion:
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
                       fake_response: Optional[str]):
+        prompt_transform = PromptTransform()
+
         # get llm prompt
         if app_model_config.prompt_type == 'simple':
-            prompt_messages, stop_words = model_instance.get_prompt(
+            prompt_messages, stop_words = prompt_transform.get_prompt(
                 mode=mode,
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
                 context=agent_execute_result.output if agent_execute_result else None,
-                memory=memory
+                memory=memory,
+                model_instance=model_instance
             )
         else:
-            prompt_messages = model_instance.get_advanced_prompt(
+            prompt_messages = prompt_transform.get_advanced_prompt(
                 app_mode=mode,
                 app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
                 context=agent_execute_result.output if agent_execute_result else None,
-                memory=memory
+                memory=memory,
+                model_instance=model_instance
             )
 
             model_config = app_model_config.model_dict
@@ -238,15 +243,30 @@ class Completion:
         if max_tokens is None:
             max_tokens = 0
 
+        prompt_transform = PromptTransform()
+        prompt_messages = []
+
         # get prompt without memory and context
-        prompt_messages, _ = model_instance.get_prompt(
-            mode=mode,
-            pre_prompt=app_model_config.pre_prompt,
-            inputs=inputs,
-            query=query,
-            context=None,
-            memory=None
-        )
+        if app_model_config.prompt_type == 'simple':
+            prompt_messages, _ = prompt_transform.get_prompt(
+                mode=mode,
+                pre_prompt=app_model_config.pre_prompt,
+                inputs=inputs,
+                query=query,
+                context=None,
+                memory=None,
+                model_instance=model_instance
+            )
+        else:
+            prompt_messages = prompt_transform.get_advanced_prompt(
+                app_mode=mode,
+                app_model_config=app_model_config,
+                inputs=inputs,
+                query=query,
+                context=None,
+                memory=None,
+                model_instance=model_instance
+            )
 
         prompt_tokens = model_instance.get_num_tokens(prompt_messages)
         rest_tokens = model_limited_tokens - max_tokens - prompt_tokens
