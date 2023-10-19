@@ -160,6 +160,7 @@ const AdvancedPromptInput: FC<Props> = ({
             className={editorHeight}
             value={value}
             contextBlock={{
+              show: true,
               selectable: !hasSetBlockStatus.context,
               datasets: dataSets.map(item => ({
                 id: item.id,
