@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
@@ -20,6 +21,7 @@ const Item: FC<ItemProps> = ({
   config,
 }) => {
   const { t } = useTranslation()
+  const [showSettingsModal, setShowSettingsModal] = useState(false)
 
   return (
     <div className='group relative flex items-center mb-1 last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
@@ -51,13 +53,26 @@ const Item: FC<ItemProps> = ({
         }
       </div>
       <div className='hidden group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
-        <div className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'>
+        <div
+          className='flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'
+          onClick={() => setShowSettingsModal(true)}
+        >
           <Settings01 className='w-4 h-4 text-gray-500' />
         </div>
-        <div className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'>
+        <div
+          className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
+        >
           <Trash03 className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
         </div>
       </div>
+      {
+        showSettingsModal && (
+          <SettingsModal
+            currentDataset={config}
+            onCancel={() => setShowSettingsModal(false)}
+          />
+        )
+      }
     </div>
   )
 }
