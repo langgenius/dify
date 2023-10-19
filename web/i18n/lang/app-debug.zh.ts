@@ -4,12 +4,12 @@ const translation = {
     line2: '编排',
   },
   promptMode: {
-    simple: '切换到高级模式以编辑完整的提示词',
-    advanced: '高级模式',
-    switchBack: '返回简单模式',
+    simple: '切换到专家模式以编辑完整的提示词',
+    advanced: '专家模式',
+    switchBack: '返回简易模式',
     advancedWarning: {
-      title: '您已切换到高级模式，一旦修改提示词，将无法返回简单模式。',
-      description: '在高级模式下，您可以编辑完整的提示词。',
+      title: '您已切换到专家模式，一旦修改提示词，将无法返回简易模式。',
+      description: '在专家模式下，您可以编辑完整的提示词。',
       learnMore: '了解更多',
       ok: '确定',
     },
