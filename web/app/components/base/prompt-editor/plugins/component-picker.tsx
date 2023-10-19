@@ -93,6 +93,7 @@ type ComponentPickerProps = {
   contextDisabled?: boolean
   historyDisabled?: boolean
   queryDisabled?: boolean
+  contextShow?: boolean
   historyShow?: boolean
   queryShow?: boolean
 }
@@ -100,6 +101,7 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   contextDisabled,
   historyDisabled,
   queryDisabled,
+  contextShow,
   historyShow,
   queryShow,
 }) => {
@@ -111,16 +113,20 @@ const ComponentPicker: FC<ComponentPickerProps> = ({
   })
 
   const options = [
-    new ComponentPickerOption(t('common.promptEditor.context.item.title'), {
-      desc: t('common.promptEditor.context.item.desc'),
-      icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
-      onSelect: () => {
-        if (contextDisabled)
-          return
-        editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
-      },
-      disabled: contextDisabled,
-    }),
+    ...contextShow
+      ? [
+        new ComponentPickerOption(t('common.promptEditor.context.item.title'), {
+          desc: t('common.promptEditor.context.item.desc'),
+          icon: <File05 className='w-4 h-4 text-[#6938EF]' />,
+          onSelect: () => {
+            if (contextDisabled)
+              return
+            editor.dispatchCommand(INSERT_CONTEXT_BLOCK_COMMAND, undefined)
+          },
+          disabled: contextDisabled,
+        }),
+      ]
+      : [],
     new ComponentPickerOption(t('common.promptEditor.variable.item.title'), {
       desc: t('common.promptEditor.variable.item.desc'),
       icon: <Variable className='w-4 h-4 text-[#2970FF]' />,
