@@ -250,7 +250,7 @@ class OpenAIProvider(BaseModelProvider):
 
     def should_deduct_quota(self):
         if hosted_model_providers.openai \
-                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > 0:
+                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > -1:
             return True
 
         return False
