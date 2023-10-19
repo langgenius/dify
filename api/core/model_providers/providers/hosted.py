@@ -11,7 +11,7 @@ class HostedOpenAI(BaseModel):
     api_organization: str = None
     api_key: str
     quota_limit: int = 0
-    """Quota limit for the openai hosted model. 0 means unlimited."""
+    """Quota limit for the openai hosted model. -1 means unlimited."""
     paid_enabled: bool = False
     paid_stripe_price_id: str = None
     paid_increase_quota: int = 1
@@ -21,14 +21,14 @@ class HostedAzureOpenAI(BaseModel):
     api_base: str
     api_key: str
     quota_limit: int = 0
-    """Quota limit for the azure openai hosted model. 0 means unlimited."""
+    """Quota limit for the azure openai hosted model. -1 means unlimited."""
 
 
 class HostedAnthropic(BaseModel):
     api_base: str = None
     api_key: str
     quota_limit: int = 0
-    """Quota limit for the anthropic hosted model. 0 means unlimited."""
+    """Quota limit for the anthropic hosted model. -1 means unlimited."""
     paid_enabled: bool = False
     paid_stripe_price_id: str = None
     paid_increase_quota: int = 1000000
