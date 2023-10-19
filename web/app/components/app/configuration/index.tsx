@@ -342,7 +342,7 @@ const Configuration: FC = () => {
       }
       syncToPublishedConfig(config)
       setPublishedConfig(config)
-
+      setDatasetConfigs(modelConfig.dataset_configs)
       setHasFetchedDetail(true)
     })
   }, [appId])
