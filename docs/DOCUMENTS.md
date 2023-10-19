@@ -25,7 +25,7 @@ style: |
 ====================
 
 *Jack Jianfeng Xia*
-*11 Oct 2023*
+*17 Oct 2023*
 HSUHK ITSC ADT
 ![bg left 100%](./docBotAI.png)
 
@@ -116,6 +116,10 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 
 ---
 
-## Python Libraries
+## Applications - Quiz Generator
 
+- use large language models to generate multiple-choice quizzes about educational material. 
+- use these quizzes to help students actively engage with what they're learning. 
+- Currently working on the demonstration, will be done in this week.
 
+![bg right 100%](./AI_Quiz.png)
