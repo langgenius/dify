@@ -135,19 +135,6 @@ class ProviderService:
                         provider_parameter_dict[key]['quota_limit'] = provider.quota_limit
                         provider_parameter_dict[key]['last_used'] = int(provider.last_used.timestamp()) \
                             if provider.last_used else None
-                    else:
-                        provider_parameter_dict[key] = {
-                            "provider_name": model_provider_name,
-                            "provider_type": ProviderType.SYSTEM.value,
-                            "config": None,
-                            "is_valid": provider.is_valid,
-                            "quota_type": quota_type,
-                            "quota_unit": model_provider_rule['system_config']['quota_unit'],  # need update
-                            "quota_limit": provider.quota_limit,
-                            "quota_used": provider.quota_used,
-                            "last_used": int(provider.last_used.timestamp()) \
-                            if provider.last_used else None
-                        }
                 elif provider.provider_type == ProviderType.CUSTOM.value \
                         and ProviderType.CUSTOM.value in provider_parameter_dict:
                     # if custom

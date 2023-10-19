@@ -5,7 +5,8 @@
     ],
     "system_config": {
         "supported_quota_types": [
-            "paid"
+            "paid",
+            "trial"
         ],
         "quota_unit": "tokens",
         "quota_limit": 0
