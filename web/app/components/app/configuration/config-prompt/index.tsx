@@ -34,6 +34,8 @@ const Prompt: FC<IPromptProps> = ({
     currentAdvancedPrompt,
     setCurrentAdvancedPrompt,
     modelModeType,
+    dataSets,
+    hasSetBlockStatus,
   } = useContext(ConfigContext)
 
   const handleMessageTypeChange = (index: number, role: PromptRole) => {
@@ -84,7 +86,7 @@ const Prompt: FC<IPromptProps> = ({
     setCurrentAdvancedPrompt(newPrompt)
   }
 
-  const isContextMissing = true
+  const isContextMissing = dataSets.length > 0 && !hasSetBlockStatus.context
   const [isHideContextMissTip, setIsHideContextMissTip] = React.useState(false)
 
   if (!isAdvancedMode) {
