@@ -1,8 +1,8 @@
 ---
 marp: true
 theme: base-theme
-header: 'HSUHK ChatGPT Project - Jack Jianfeng Xia @ ADT'
-footer: ''
+header: "HSUHK ChatGPT Project - Jack Jianfeng Xia @ ADT"
+footer: ""
 style: |
   section {
     background-color: #FFF;
@@ -17,21 +17,18 @@ style: |
     padding: 10px;
     border-radius: 10px;
   }
-
 ---
 
 # ChatGPT Applications
 
 ====================
 
-*Jack Jianfeng Xia*
-*17 Oct 2023*
+_Jack Jianfeng Xia_
+_17 Oct 2023_
 HSUHK ITSC ADT
 ![bg left 100%](./docBotAI.png)
 
 ---
-
-
 
 ## Introduction
 
@@ -40,9 +37,10 @@ HSUHK ITSC ADT
 - How do I prevent ChatGPT from babbling nonsense with users?
 
 ### ChatGPT for your Documentation
-1. ChatGPT need: 
-   - Learn (Prepare) the Knowledge (Dataset) 
-2. Then, ChatGPT will: 
+
+1. ChatGPT need:
+   - Learn (Prepare) the Knowledge (Dataset)
+2. Then, ChatGPT will:
    - Find information from your docs, and give the answer
 
 ---
@@ -50,6 +48,7 @@ HSUHK ITSC ADT
 ## Requirements - Support portal (REG, ITSC, SAO, HRO, etc.)
 
 AI assistant to solve HSU Administrative & Support related questions for Officers and Students
+
 - To allow staff create an ChatBot for the department or programme
 - To allow staff update the documentation and set prompt
 - To allow staff add a chat app to the bottom right of the office website
@@ -59,6 +58,7 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 ---
 
 ## Technology we need
+
 1. Azure OpenAI Service
 2. Embedding Model: Azure OpenAI Text-Embedding-Ada-002
 3. Vector Databases: Long-Term Memory for ChatGPT
@@ -70,8 +70,9 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 ---
 
 ## Prepare the Dataset for ChatGPT
-1. Prepare your documentation: 
-   - Clean up and organize docs 
+
+1. Prepare your documentation:
+   - Clean up and organize docs
    - Chunk it into Paragraphs
 2. Help ChatGPT to understand:
    - Turning words into Numbers
@@ -87,7 +88,7 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 ## Chat with your documentation
 
 1. Start a conversation, get keywords for searching
-2. Searching with content in the vector Dataset 
+2. Searching with content in the vector Dataset
 3. Get best results and convert vector to text
 4. Prompt with search results from the vector Dataset
 5. Send the prompt to the ChatGPT and get the answer
@@ -96,30 +97,48 @@ AI assistant to solve HSU Administrative & Support related questions for Officer
 
 ---
 
-## Vector Database 
+## Vector Database
 
-|Database|Pros|Cons|
-|---|---|---|
-|Weaviate|Supports semantic search and knowledge graphs. Automatically extracts entities and relationships from text data.|Require additional effort for setup and configuration|
-|Pinecone|Efficiently stores, indexes, and searches high-dimensional vectors. Real-time searching. |Cloud-based (potential cost implications)|
-|Chroma|Fast and scalable vector database. Popular for research and experimentation.|Requires more dev and maintenance effort|
+| Database | Pros                                                                                                             | Cons                                                  |
+| -------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Weaviate | Supports semantic search and knowledge graphs. Automatically extracts entities and relationships from text data. | Require additional effort for setup and configuration |
+| Pinecone | Efficiently stores, indexes, and searches high-dimensional vectors. Real-time searching.                         | Cloud-based (potential cost implications)             |
+| Chroma   | Fast and scalable vector database. Popular for research and experimentation.                                     | Requires more dev and maintenance effort              |
+
 ---
 
-## Weaviate 
+## Weaviate
 
-  - semantic search,
-  - similarity search,
-  - automated data harmonization,
-  - anomaly detection,
-  - data classification
-
+- semantic search,
+- similarity search,
+- automated data harmonization,
+- anomaly detection,
+- data classification
 
 ---
 
 ## Applications - Quiz Generator
 
-- use large language models to generate multiple-choice quizzes about educational material. 
-- use these quizzes to help students actively engage with what they're learning. 
+- use large language models to generate multiple-choice quizzes about educational material.
+- use these quizzes to help students actively engage with what they're learning.
 - Currently working on the demonstration, will be done in this week.
 
 ![bg right 100%](./AI_Quiz.png)
+
+---
+
+## Version 1: Quiz Generator by topics, number_of_questions, number_of_answers
+
+- Prompt: Create an exam of multiple choice questions with {number_of_questions} questions and {number_of_answers} of possible answers in each question. Put the correct answer in bold (surrounded by \*\*) in its original spot. The exam should be about {topics}. Only generate the questions and answers, not the exam itself.
+- Process ChatGPT 3.5 response from text to array
+- Build Web Application using Streamlit Framework (Python)
+
+---
+
+## Version 2: Quiz Generator by Context - To Do
+
+- Need ChatGPT 4, ChatGPT 3.5 is not good enough
+- Need to chunk context for documents, and Long term memory
+- Prompt based on chunked context and generate Questions one by one
+- Will try FlowiseAI, which is an effortless way to experiment and prototype flows
+- Product may use Flask (Python) and React (Typescript) with MariaDB and Redis
