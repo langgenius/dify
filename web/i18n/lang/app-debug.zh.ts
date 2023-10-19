@@ -16,6 +16,7 @@ const translation = {
     operation: {
       addMessage: '添加消息',
     },
+    contextMissing: '上下文内容块缺失，提示词的有效性可能不好。',
   },
   operation: {
     applyConfig: '发布',

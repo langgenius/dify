@@ -84,6 +84,9 @@ const Prompt: FC<IPromptProps> = ({
     setCurrentAdvancedPrompt(newPrompt)
   }
 
+  const isContextMissing = true
+  const [isHideContextMissTip, setIsHideContextMissTip] = React.useState(false)
+
   if (!isAdvancedMode) {
     return (
       <SimplePromptInput
@@ -112,6 +115,8 @@ const Prompt: FC<IPromptProps> = ({
                 onDelete={() => handlePromptDelete(index)}
                 onChange={value => handleValueChange(value, index)}
                 promptVariables={promptVariables}
+                isContextMissing={isContextMissing && !isHideContextMissTip}
+                onHideContextMissingTip={() => setIsHideContextMissTip(true)}
               />
             ))
           )
@@ -125,6 +130,8 @@ const Prompt: FC<IPromptProps> = ({
               onDelete={() => handlePromptDelete(0)}
               onChange={value => handleValueChange(value)}
               promptVariables={promptVariables}
+              isContextMissing={isContextMissing && !isHideContextMissTip}
+              onHideContextMissingTip={() => setIsHideContextMissTip(true)}
             />
           )
         }
