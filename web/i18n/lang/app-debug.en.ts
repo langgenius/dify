@@ -96,6 +96,28 @@ const translation = {
         deleteContextVarTitle: 'Delete variable “{{varName}}”?',
         deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
       },
+      modal: {
+        title: 'Add external data source',
+        name: {
+          title: 'Name',
+          placeholder: 'Please enter the data source name',
+        },
+        description: {
+          title: 'Description',
+          placeholder: 'Describe what is in this dataset. A detailed description allows AI to access the content of the data set in a timely manner. If empty, Dify will use the default hit strategy.',
+          link: 'Learn how to write a good description',
+        },
+        apiEndpoint: {
+          title: 'API Endpoint',
+          link: 'How to develop your own data source API？',
+          placeholder: 'Please enter API Endpoint',
+        },
+        apiKey: {
+          title: 'API-Key',
+          regenerate: 'Regenerate',
+          placeholder: 'Please enter API KEY',
+        },
+      },
     },
     conversationHistory: {
       title: 'Conversation History',

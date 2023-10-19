@@ -6,7 +6,7 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item'
+import CardItem from './card-item/item'
 import ParamsConfig from './params-config'
 import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
@@ -30,7 +30,6 @@ const DatasetConfig: FC = () => {
     setModelConfig,
     showSelectDataSet,
   } = useContext(ConfigContext)
-  const selectedIds = dataSet.map(item => item.id)
 
   const hasData = dataSet.length > 0
 
@@ -77,7 +76,6 @@ const DatasetConfig: FC = () => {
           <div className='flex flex-wrap mt-1 px-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
-                className="mb-2"
                 key={item.id}
                 config={item}
                 onRemove={onRemove}
