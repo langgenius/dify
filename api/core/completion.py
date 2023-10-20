@@ -24,7 +24,8 @@ class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
                  user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
-                 is_override: bool = False, retriever_from: str = 'dev'):
+                 is_override: bool = False, retriever_from: str = 'dev',
+                 auto_generate_name: bool = True):
         """
         errors: ProviderTokenNotInitError
         """
@@ -58,7 +59,8 @@ class Completion:
             inputs=inputs,
             query=query,
             streaming=streaming,
-            model_instance=final_model_instance
+            model_instance=final_model_instance,
+            auto_generate_name=auto_generate_name
         )
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
