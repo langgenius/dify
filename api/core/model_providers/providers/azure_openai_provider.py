@@ -329,7 +329,7 @@ class AzureOpenAIProvider(BaseModelProvider):
 
     def should_deduct_quota(self):
         if hosted_model_providers.azure_openai \
-                and hosted_model_providers.azure_openai.quota_limit and hosted_model_providers.azure_openai.quota_limit > 0:
+                and hosted_model_providers.azure_openai.quota_limit and hosted_model_providers.azure_openai.quota_limit > -1:
             return True
 
         return False

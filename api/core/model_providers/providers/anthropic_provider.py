@@ -172,7 +172,7 @@ class AnthropicProvider(BaseModelProvider):
 
     def should_deduct_quota(self):
         if hosted_model_providers.anthropic and \
-                hosted_model_providers.anthropic.quota_limit and hosted_model_providers.anthropic.quota_limit > 0:
+                hosted_model_providers.anthropic.quota_limit and hosted_model_providers.anthropic.quota_limit > -1:
             return True
 
         return False
