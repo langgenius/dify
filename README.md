@@ -37,7 +37,6 @@ https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e19
 
 
 We provide the following free resources for registered Dify cloud users (sign up at [dify.ai](https://dify.ai)):
-* 600,000 free Claude model tokens to build Claude-powered apps
 * 200 free OpenAI queries to build OpenAI-based apps
 
   
