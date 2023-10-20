@@ -136,7 +136,7 @@ const translation = {
     owner: '所有者',
     admin: '管理员',
     adminTip: '能够建立应用程序和管理团队设置',
-    normal: '正常人',
+    normal: '成员',
     normalTip: '只能使用应用程序，不能建立应用程序',
     inviteTeamMember: '添加团队成员',
     inviteTeamMemberTip: '对方在登录后可以访问你的团队数据。',
