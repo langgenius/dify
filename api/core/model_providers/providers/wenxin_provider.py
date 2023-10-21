@@ -2,6 +2,8 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+from langchain.schema import HumanMessage
+
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
@@ -24,19 +26,24 @@ class WenxinProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
+                    'id': 'ernie-bot-4',
+                    'name': 'ERNIE-Bot-4',
+                    'mode': ModelMode.CHAT.value,
+                },
+                {
                     'id': 'ernie-bot',
                     'name': 'ERNIE-Bot',
-                    'mode': ModelMode.COMPLETION.value,
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'ernie-bot-turbo',
                     'name': 'ERNIE-Bot-turbo',
-                    'mode': ModelMode.COMPLETION.value,
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'bloomz-7b',
                     'name': 'BLOOMZ-7B',
-                    'mode': ModelMode.COMPLETION.value,
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
@@ -68,11 +75,12 @@ class WenxinProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
+            'ernie-bot-4': 4800,
             'ernie-bot': 4800,
             'ernie-bot-turbo': 11200,
         }
 
-        if model_name in ['ernie-bot', 'ernie-bot-turbo']:
+        if model_name in ['ernie-bot-4', 'ernie-bot', 'ernie-bot-turbo']:
             return ModelKwargsRules(
                 temperature=KwargRule[float](min=0.01, max=1, default=0.95, precision=2),
                 top_p=KwargRule[float](min=0.01, max=1, default=0.8, precision=2),
@@ -111,7 +119,7 @@ class WenxinProvider(BaseModelProvider):
                 **credential_kwargs
             )
 
-            llm("ping")
+            llm([HumanMessage(content='ping')])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 

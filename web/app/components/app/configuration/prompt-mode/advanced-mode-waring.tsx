@@ -2,9 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import I18n from '@/context/i18n'
 
 const AdvancedModeWarning: FC = () => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
   const [show, setShow] = React.useState(true)
   if (!show)
     return null
@@ -14,14 +17,13 @@ const AdvancedModeWarning: FC = () => {
       <div className='flex justify-between items-center'>
         <div className='text-xs leading-[18px] '>
           <span className='text-gray-700'>{t('appDebug.promptMode.advancedWarning.description')}</span>
-          {/* TODO: Doc link */}
-          {/* <a
+          <a
             className='font-medium text-[#155EEF]'
-            href='https://docs.dify.ai/getting-started/readme'
+            href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans/' : ''}advanced/prompt-engineering`}
             target='_blank'
           >
             {t('appDebug.promptMode.advancedWarning.learnMore')}
-          </a> */}
+          </a>
         </div>
 
         <div
