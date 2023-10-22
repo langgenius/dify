@@ -19,7 +19,7 @@ services:
       # different from api or web app domain.
       # example: http://cloud.dify.ai
       CONSOLE_API_URL: ''
-      # The URL for Service API endpoints，refers to the base URL of the current API service if api domain is
+      # The URL for Service API endpoints, refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
       SERVICE_API_URL: ''
