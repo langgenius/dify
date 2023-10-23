@@ -36,7 +36,6 @@ https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e19
 
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
-* 60 万 Tokens Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
 * 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
 * 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
 * 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用
