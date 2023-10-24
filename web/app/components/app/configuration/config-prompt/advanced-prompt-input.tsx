@@ -18,6 +18,7 @@ import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
 import { AppType } from '@/types/app'
+import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
 type Props = {
   type: PromptRole
@@ -28,6 +29,8 @@ type Props = {
   canDelete: boolean
   onDelete: () => void
   promptVariables: PromptVariable[]
+  isContextMissing: boolean
+  onHideContextMissingTip: () => void
 }
 
 const AdvancedPromptInput: FC<Props> = ({
@@ -39,6 +42,8 @@ const AdvancedPromptInput: FC<Props> = ({
   canDelete,
   onDelete,
   promptVariables,
+  isContextMissing,
+  onHideContextMissingTip,
 }) => {
   const { t } = useTranslation()
 
@@ -91,50 +96,71 @@ const AdvancedPromptInput: FC<Props> = ({
   }
 
   const editorHeight = isChatMode ? 'h-[200px]' : 'h-[508px]'
-
+  const contextMissing = (
+    <div
+      className='flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl'
+      style={{
+        background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
+      }}
+    >
+      <div className='flex items-center pr-2' >
+        <AlertCircle className='mr-1 w-4 h-4 text-[#F79009]'/>
+        <div className='leading-[18px] text-[13px] font-medium text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
+      </div>
+      <div
+        className='flex items-center h-6 px-2 rounded-md bg-[#fff] border border-gray-200 shadow-xs text-xs font-medium text-primary-600 cursor-pointer'
+        onClick={onHideContextMissingTip}
+      >{t('common.operation.ok')}</div>
+    </div>
+  )
   return (
-    <div className={`relative ${s.gradientBorder}`}>
+    <div className={`relative ${!isContextMissing ? s.gradientBorder : s.warningBorder}`}>
       <div className='rounded-xl bg-white'>
-        <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
-          {isChatMode
-            ? (
-              <MessageTypeSelector value={type} onChange={onTypeChange} />
-            )
-            : (
-              <div className='flex items-center space-x-1'>
+        {isContextMissing
+          ? contextMissing
+          : (
+            <div className={cn(s.boxHeader, 'flex justify-between items-center h-11 pt-2 pr-3 pb-1 pl-4 rounded-tl-xl rounded-tr-xl bg-white hover:shadow-xs')}>
+              {isChatMode
+                ? (
+                  <MessageTypeSelector value={type} onChange={onTypeChange} />
+                )
+                : (
+                  <div className='flex items-center space-x-1'>
 
-                <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
-                </div>
-                <Tooltip
-                  htmlContent={<div className='w-[180px]'>
-                    {t('appDebug.promptTip')}
-                  </div>}
-                  selector='config-prompt-tooltip'>
-                  <HelpCircle className='w-[14px] h-[14px] text-indigo-400' />
-                </Tooltip>
-              </div>)}
-          <div className={cn(s.optionWrap, 'items-center space-x-1')}>
-            {canDelete && (
-              <Trash03 onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
-            )}
-            {!isCopied
-              ? (
-                <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
-                  copy(value)
-                  setIsCopied(true)
-                }} />
-              )
-              : (
-                <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
-              )}
+                    <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
+                    </div>
+                    <Tooltip
+                      htmlContent={<div className='w-[180px]'>
+                        {t('appDebug.promptTip')}
+                      </div>}
+                      selector='config-prompt-tooltip'>
+                      <HelpCircle className='w-[14px] h-[14px] text-indigo-400' />
+                    </Tooltip>
+                  </div>)}
+              <div className={cn(s.optionWrap, 'items-center space-x-1')}>
+                {canDelete && (
+                  <Trash03 onClick={onDelete} className='h-6 w-6 p-1 text-gray-500 cursor-pointer' />
+                )}
+                {!isCopied
+                  ? (
+                    <Clipboard className='h-6 w-6 p-1 text-gray-500 cursor-pointer' onClick={() => {
+                      copy(value)
+                      setIsCopied(true)
+                    }} />
+                  )
+                  : (
+                    <ClipboardCheck className='h-6 w-6 p-1 text-gray-500' />
+                  )}
+              </div>
+            </div>
+          )}
 
-          </div>
-        </div>
         <div className={cn(editorHeight, 'px-4 min-h-[102px] overflow-y-auto text-sm text-gray-700')}>
           <PromptEditor
             className={editorHeight}
             value={value}
             contextBlock={{
+              show: true,
               selectable: !hasSetBlockStatus.context,
               datasets: dataSets.map(item => ({
                 id: item.id,

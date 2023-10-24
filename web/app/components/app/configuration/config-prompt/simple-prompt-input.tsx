@@ -113,6 +113,7 @@ const Prompt: FC<ISimplePromptInput> = ({
             className='min-h-[210px]'
             value={promptTemplate}
             contextBlock={{
+              show: false,
               selectable: !hasSetBlockStatus.context,
               datasets: dataSets.map(item => ({
                 id: item.id,

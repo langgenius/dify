@@ -16,6 +16,7 @@ const translation = {
     operation: {
       addMessage: 'Add Message',
     },
+    contextMissing: 'Context component missed, the effectiveness of the prompt may not be good.',
   },
   operation: {
     applyConfig: 'Publish',
