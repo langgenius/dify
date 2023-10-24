@@ -120,6 +120,35 @@ const translation = {
         },
       },
     },
+    tools: {
+      title: 'Tools',
+      toolsInUse: '{{count}} tools in use',
+      modal: {
+        title: 'Add external tool',
+        toolType: {
+          title: 'Tool Type',
+          placeholder: 'WebHook',
+        },
+        name: {
+          title: 'Name',
+          placeholder: 'Name',
+        },
+        variableName: {
+          title: 'Variable Name',
+          placeholder: 'Variable Name',
+        },
+        apiEndpoint: {
+          title: 'API Endpoint',
+          link: '如何开发自己的数据源 API ？',
+          placeholder: '请输入 API Endpoint',
+        },
+        apiKey: {
+          title: 'API-Key',
+          regenerate: '重新生成',
+          placeholder: '请输入 API KEY',
+        },
+      },
+    },
     conversationHistory: {
       title: 'Conversation History',
       description: 'Set prefix names for conversation roles',
