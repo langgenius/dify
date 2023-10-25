@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
-import { t } from 'i18next'
 import CryptoJS from 'crypto-js'
 
 let mermaidAPI: any
@@ -105,7 +104,6 @@ const Flowchart = React.forwardRef((props: {
             {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
           </div>
       }
-      <button onClick={handleReRender}>{t('appApi.merMaind.rerender')}</button>
     </div>
   )
 })
