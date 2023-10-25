@@ -43,6 +43,7 @@ const Prompt: FC<ISimplePromptInput> = ({
     setIntroduction,
     hasSetBlockStatus,
     showSelectDataSet,
+    showAddExternalToolModal,
   } = useContext(ConfigContext)
   const promptVariablesObj = (() => {
     const obj: Record<string, boolean> = {}
@@ -127,6 +128,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                 name: item.name,
                 value: item.key,
               })),
+              onAddExternalTool: showAddExternalToolModal,
             }}
             historyBlock={{
               show: false,

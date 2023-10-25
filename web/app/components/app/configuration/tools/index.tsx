@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import AddModal from './add-modal'
+import { useContext } from 'use-context-selector'
+import ConfigContext from '@/context/debug-configuration'
 import Switch from '@/app/components/base/switch'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
@@ -14,8 +15,8 @@ import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const Tools = () => {
   const { t } = useTranslation()
+  const { showAddExternalToolModal } = useContext(ConfigContext)
   const [expanded, setExpanded] = useState(true)
-  const [showModal, setShowModal] = useState(false)
 
   const items = [
     {
@@ -61,7 +62,7 @@ const Tools = () => {
         }
         <div
           className='flex items-center h-7 px-3 text-xs font-medium text-gray-700 cursor-pointer'
-          onClick={() => setShowModal(true)}
+          onClick={showAddExternalToolModal}
         >
           <Plus className='mr-[5px] w-3.5 h-3.5 ' />
           {t('common.operation.add')}
@@ -100,11 +101,6 @@ const Tools = () => {
               ))
             }
           </div>
-        )
-      }
-      {
-        showModal && (
-          <AddModal onCancel={() => setShowModal(false)} />
         )
       }
     </div>

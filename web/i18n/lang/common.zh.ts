@@ -384,11 +384,12 @@ const translation = {
     },
     variable: {
       item: {
-        title: '变量',
-        desc: '插入变量模板',
+        title: '变量 & 外部工具',
+        desc: '插入变量和外部工具',
       },
       modal: {
         add: '添加新变量',
+        addTool: '添加工具',
       },
     },
     query: {

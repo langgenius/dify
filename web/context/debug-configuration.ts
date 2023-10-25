@@ -59,6 +59,7 @@ type IDebugConfiguration = {
   datasetConfigs: DatasetConfigs
   setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
+  showAddExternalToolModal: () => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -156,6 +157,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setDatasetConfigs: () => {},
   hasSetContextVar: false,
+  showAddExternalToolModal: () => {},
 })
 
 export default DebugConfigurationContext

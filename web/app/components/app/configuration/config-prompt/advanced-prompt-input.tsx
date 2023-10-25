@@ -56,6 +56,7 @@ const AdvancedPromptInput: FC<Props> = ({
     showHistoryModal,
     dataSets,
     showSelectDataSet,
+    showAddExternalToolModal,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
   const [isCopied, setIsCopied] = React.useState(false)
@@ -174,6 +175,7 @@ const AdvancedPromptInput: FC<Props> = ({
                 name: item.name,
                 value: item.key,
               })),
+              onAddExternalTool: showAddExternalToolModal,
             }}
             historyBlock={{
               show: !isChatMode && isChatApp,

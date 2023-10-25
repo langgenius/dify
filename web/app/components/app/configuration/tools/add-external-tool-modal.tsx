@@ -7,14 +7,14 @@ import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 
-type AddModalProps = {
+type AddExternalToolModalProps = {
   onCancel: () => void
 }
 type Emoji = {
   icon: string
   icon_background: string
 }
-const AddModal: FC<AddModalProps> = ({
+const AddExternalToolModal: FC<AddExternalToolModalProps> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -130,4 +130,4 @@ const AddModal: FC<AddModalProps> = ({
   )
 }
 
-export default AddModal
+export default AddExternalToolModal

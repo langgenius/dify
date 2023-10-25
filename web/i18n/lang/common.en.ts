@@ -384,11 +384,12 @@ const translation = {
     },
     variable: {
       item: {
-        title: 'Variables',
-        desc: 'Insert variable template',
+        title: 'Variables & External Tools',
+        desc: 'Insert Variables & External Tools',
       },
       modal: {
         add: 'New variable',
+        addTool: 'New tool',
       },
     },
     query: {

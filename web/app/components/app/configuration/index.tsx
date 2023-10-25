@@ -13,6 +13,7 @@ import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
+import AddExternalToolModal from './tools/add-external-tool-modal'
 import type { CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
@@ -181,6 +182,8 @@ const Configuration: FC = () => {
       enabled: false,
     })
   }
+
+  const [isShowAddExternalToolModal, { setTrue: showAddExternalToolModal, setFalse: hideAddExternalToolModal }] = useBoolean(false)
 
   const { textGenerationModelList } = useProviderContext()
   const hasSetCustomAPIKEY = !!textGenerationModelList?.find(({ model_provider: provider }) => {
@@ -530,6 +533,7 @@ const Configuration: FC = () => {
       datasetConfigs,
       setDatasetConfigs,
       hasSetContextVar,
+      showAddExternalToolModal,
     }}
     >
       <>
@@ -647,6 +651,14 @@ const Configuration: FC = () => {
             }}
           />
         )}
+
+        {
+          isShowAddExternalToolModal && (
+            <AddExternalToolModal
+              onCancel={hideAddExternalToolModal}
+            />
+          )
+        }
       </>
     </ConfigContext.Provider>
   )
