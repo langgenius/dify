@@ -97,34 +97,12 @@ const translation = {
         deleteContextVarTitle: 'Delete variable “{{varName}}”?',
         deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
       },
-      modal: {
-        title: 'Add external data source',
-        name: {
-          title: 'Name',
-          placeholder: 'Please enter the data source name',
-        },
-        description: {
-          title: 'Description',
-          placeholder: 'Describe what is in this dataset. A detailed description allows AI to access the content of the data set in a timely manner. If empty, Dify will use the default hit strategy.',
-          link: 'Learn how to write a good description',
-        },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: 'How to develop your own data source API？',
-          placeholder: 'Please enter API Endpoint',
-        },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: 'Regenerate',
-          placeholder: 'Please enter API KEY',
-        },
-      },
     },
     tools: {
       title: 'Tools',
       toolsInUse: '{{count}} tools in use',
       modal: {
-        title: 'Add external tool',
+        title: 'Add tool',
         toolType: {
           title: 'Tool Type',
           placeholder: 'WebHook',
@@ -136,16 +114,6 @@ const translation = {
         variableName: {
           title: 'Variable Name',
           placeholder: 'Variable Name',
-        },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: '如何开发自己的数据源 API ？',
-          placeholder: '请输入 API Endpoint',
-        },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: '重新生成',
-          placeholder: '请输入 API KEY',
         },
       },
     },

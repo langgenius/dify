@@ -97,34 +97,12 @@ const translation = {
         deleteContextVarTitle: '删除变量“{{varName}}”？',
         deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
-      modal: {
-        title: '添加外部数据源',
-        name: {
-          title: '名称',
-          placeholder: '请输入数据源名称',
-        },
-        description: {
-          title: '描述',
-          placeholder: '描述该数据集中的内容。详细的描述可以让 AI 更易访问数据集的内容。如果为空，Dify 将使用默认的命中策略。',
-          link: '了解如何写出好的描述',
-        },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: '如何开发自己的数据源 API ？',
-          placeholder: '请输入 API Endpoint',
-        },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: '重新生成',
-          placeholder: '请输入 API KEY',
-        },
-      },
     },
     tools: {
       title: 'Tools',
       toolsInUse: '{{count}} tools in use',
       modal: {
-        title: 'Add external tool',
+        title: 'Add tool',
         toolType: {
           title: 'Tool Type',
           placeholder: 'WebHook',
@@ -136,16 +114,6 @@ const translation = {
         variableName: {
           title: 'Variable Name',
           placeholder: 'Variable Name',
-        },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: '如何开发自己的数据源 API ？',
-          placeholder: '请输入 API Endpoint',
-        },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: '重新生成',
-          placeholder: '请输入 API KEY',
         },
       },
     },

@@ -108,6 +108,7 @@ const translation = {
     provider: 'Model Provider',
     dataSource: 'Data Source',
     plugin: 'Plugins',
+    apiBasedExtension: 'API-based Extension',
   },
   account: {
     avatar: 'Avatar',
@@ -297,6 +298,32 @@ const translation = {
       apiKey: 'API Key',
       apiKeyPlaceholder: 'Enter your API key',
       keyFrom: 'Get your SerpAPI key from SerpAPI Account Page',
+    },
+  },
+  apiBasedExtension: {
+    title: 'API-based Extension Description text here.',
+    link: 'Learn how to develop your own API-based Extension.',
+    add: 'Add API-based Extension',
+    selector: {
+      title: 'API-based Extension',
+      placeholder: 'Please select API-based extension',
+    },
+    modal: {
+      title: 'Add API-based Extension',
+      editTitle: 'Edit API-based Extension',
+      name: {
+        title: 'Name',
+        placeholder: 'Please enter the name',
+      },
+      apiEndpoint: {
+        title: 'API Endpoint',
+        placeholder: 'Please enter the API endpoint',
+      },
+      apiKey: {
+        title: 'API-key',
+        placeholder: 'Please enter the API-key',
+        regenerate: 'Regenerate',
+      },
     },
   },
   about: {

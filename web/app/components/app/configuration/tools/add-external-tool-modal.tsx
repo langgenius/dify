@@ -67,35 +67,16 @@ const AddExternalToolModal: FC<AddExternalToolModalProps> = ({
       </div>
       <div className='py-2'>
         <div className='flex justify-between items-center h-9 text-sm font-medium text-gray-900'>
-          {t('appDebug.feature.tools.modal.apiEndpoint.title')}
+          {t('common.apiBasedExtension.selector.title')}
           <a
             href={'/'}
             className='flex items-center text-xs text-gray-500'
           >
             <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
-            {t('appDebug.feature.tools.modal.apiEndpoint.link')}
+            {t('common.apiBasedExtension.link')}
           </a>
         </div>
-        <input
-          className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
-          placeholder={t('appDebug.feature.tools.modal.apiEndpoint.placeholder') || ''}
-        />
-      </div>
-      <div className='py-2'>
-        <div className='leading-9 text-sm font-medium text-gray-900'>
-          {t('appDebug.feature.tools.modal.apiKey.title')}
-        </div>
-        <div className='flex items-center'>
-          <input
-            className='grow mr-2 px-3 py-2 h-9 rounded-lg bg-gray-100 text-sm appearance-none outline-none'
-            placeholder={t('appDebug.feature.tools.modal.apiKey.placeholder') || ''}
-          />
-          <Button
-            className='text-sm font-medium'
-          >
-            {t('appDebug.feature.tools.modal.apiKey.regenerate')}
-          </Button>
-        </div>
+        <div>select</div>
       </div>
       <div className='flex items-center justify-end mt-6'>
         <Button

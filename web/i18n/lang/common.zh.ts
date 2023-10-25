@@ -108,6 +108,7 @@ const translation = {
     provider: '模型供应商',
     dataSource: '数据来源',
     plugin: '插件',
+    apiBasedExtension: '基于 API 的扩展',
   },
   account: {
     avatar: '头像',
@@ -297,6 +298,28 @@ const translation = {
       apiKey: 'API Key',
       apiKeyPlaceholder: '输入你的 API 密钥',
       keyFrom: '从 SerpAPI 帐户页面获取您的 SerpAPI 密钥',
+    },
+  },
+  apiBasedExtension: {
+    title: 'API-based Extension Description text here.',
+    link: '了解如何开发您自己的基于 API 的扩展。',
+    add: '新增基于 API 的扩展',
+    modal: {
+      title: 'Add API-based Extension',
+      editTitle: 'Edit API-based Extension',
+      name: {
+        title: 'Name',
+        placeholder: 'Please enter the name',
+      },
+      apiEndpoint: {
+        title: 'API Endpoint',
+        placeholder: 'Please enter the API endpoint',
+      },
+      apiKey: {
+        title: 'API-key',
+        placeholder: 'Please enter the API-key',
+        regenerate: 'Regenerate',
+      },
     },
   },
   about: {

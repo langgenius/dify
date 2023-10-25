@@ -7,6 +7,7 @@ import HeaderWrapper from '@/app/components/header/HeaderWrapper'
 import Header from '@/app/components/header'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
+import { ApiBasedExtensionContextProvider } from '@/context/api-based-extension-context'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -16,10 +17,12 @@ const Layout = ({ children }: { children: ReactNode }) => {
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
-              <HeaderWrapper>
-                <Header />
-              </HeaderWrapper>
-              {children}
+              <ApiBasedExtensionContextProvider>
+                <HeaderWrapper>
+                  <Header />
+                </HeaderWrapper>
+                {children}
+              </ApiBasedExtensionContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
         </AppContextProvider>
