@@ -89,7 +89,7 @@ export default function AppSelector() {
                   </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
-                      <div className={itemClassName} onClick={() => setShowAccountSettingModal('account')}>
+                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({})}>
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>

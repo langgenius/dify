@@ -7,8 +7,13 @@ import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import type { ApiBasedExtensionData } from '@/app/components/header/account-setting/api-based-extension-page/modal'
 
+export type AccountSettingState = {
+  activeTab?: string
+  onCancelCallback?: () => void
+}
+
 const ModalContext = createContext<{
-  setShowAccountSettingModal: Dispatch<SetStateAction<string | undefined>>
+  setShowAccountSettingModal: Dispatch<SetStateAction<AccountSettingState | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ApiBasedExtensionData | null>>
 }>({
   setShowAccountSettingModal: () => {},
@@ -23,8 +28,15 @@ type ModalContextProviderProps = {
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {
-  const [showAccountSettingModal, setShowAccountSettingModal] = useState<string | undefined>()
+  const [showAccountSettingModal, setShowAccountSettingModal] = useState<AccountSettingState | null>(null)
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ApiBasedExtensionData | null>(null)
+
+  const handleCancelAccountSettingModal = () => {
+    setShowAccountSettingModal(null)
+
+    if (showAccountSettingModal?.onCancelCallback)
+      showAccountSettingModal?.onCancelCallback()
+  }
 
   return (
     <ModalContext.Provider value={{
@@ -36,8 +48,8 @@ export const ModalContextProvider = ({
         {
           !!showAccountSettingModal && (
             <AccountSetting
-              activeTab={showAccountSettingModal}
-              onCancel={() => setShowAccountSettingModal(undefined)}
+              activeTab={showAccountSettingModal.activeTab}
+              onCancel={handleCancelAccountSettingModal}
             />
           )
         }
