@@ -5,6 +5,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 
 type AddExternalToolModalProps = {
@@ -76,7 +77,7 @@ const AddExternalToolModal: FC<AddExternalToolModalProps> = ({
             {t('common.apiBasedExtension.link')}
           </a>
         </div>
-        <div>select</div>
+        <ApiBasedExtensionSelector />
       </div>
       <div className='flex items-center justify-end mt-6'>
         <Button

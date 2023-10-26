@@ -45,7 +45,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         />
       </div>
       <div className='py-2'>
-        <div className='flex justify-between items-center text-sm font-medium text-gray-900'>
+        <div className='flex justify-between items-center h-9 text-sm font-medium text-gray-900'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
             href={'/'}

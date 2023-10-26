@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import Item from './item'
 import Empty from './empty'
-import { useApiBasedExtensionContext } from '@/context/api-based-extension-context'
+import { useModalContext } from '@/context/modal-context'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 const ApiBasedExtensionPage = () => {
   const { t } = useTranslation()
-  const { setShowApiBasedExtensionModal } = useApiBasedExtensionContext()
+  const { setShowApiBasedExtensionModal } = useModalContext()
 
   return (
     <div>
