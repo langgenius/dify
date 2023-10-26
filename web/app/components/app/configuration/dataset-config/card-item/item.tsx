@@ -15,26 +15,34 @@ type ItemProps = {
   config: DataSet
   onRemove: (id: string) => void
   readonly?: boolean
+  onSave: (newDataset: DataSet) => void
 }
 
 const Item: FC<ItemProps> = ({
   config,
+  onSave,
+  onRemove,
 }) => {
   const { t } = useTranslation()
   const [showSettingsModal, setShowSettingsModal] = useState(false)
+
+  const handleSave = (newDataset: DataSet) => {
+    onSave(newDataset)
+    setShowSettingsModal(false)
+  }
 
   return (
     <div className='group relative flex items-center mb-1 last-of-type:mb-0  pl-2.5 py-2 pr-3 w-full bg-white rounded-lg border-[0.5px] border-gray-200 shadow-xs'>
       {
         config.data_source_type === DataSourceType.FILE && (
-          <div className='flex items-center justify-center mr-2 w-6 h-6 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
+          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
             <Folder className='w-4 h-4 text-[#444CE7]' />
           </div>
         )
       }
       {
         config.data_source_type === DataSourceType.NOTION && (
-          <div className='flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'>
+          <div className='shrink-0 flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-[#EAECF5]'>
             <FileIcon type='notion' className='w-4 h-4' />
           </div>
         )
@@ -46,11 +54,11 @@ const Item: FC<ItemProps> = ({
             {formatNumber(config.word_count)} {t('appDebug.feature.dataSet.words')} · {formatNumber(config.document_count)} {t('appDebug.feature.dataSet.textBlocks')}
           </div>
         </div>
-        {
+        {/* {
           config.description && (
             <div className='text-xs text-gray-500'>{config.description}</div>
           )
-        }
+        } */}
       </div>
       <div className='hidden group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>
         <div
@@ -61,6 +69,7 @@ const Item: FC<ItemProps> = ({
         </div>
         <div
           className='group/action flex items-center justify-center w-6 h-6 hover:bg-[#FEE4E2] rounded-md cursor-pointer'
+          onClick={() => onRemove(config.id)}
         >
           <Trash03 className='w-4 h-4 text-gray-500 group-hover/action:text-[#D92D20]' />
         </div>
@@ -70,6 +79,7 @@ const Item: FC<ItemProps> = ({
           <SettingsModal
             currentDataset={config}
             onCancel={() => setShowSettingsModal(false)}
+            onSave={handleSave}
           />
         )
       }
