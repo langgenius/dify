@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Switch from '@/app/components/base/switch'
@@ -79,40 +80,19 @@ const SettingsModal: FC<SettingsModalProps> = ({
       }
       {
         activeProviderKey === 'custom' && (
-          <>
-            <div className='py-2'>
-              <div className='flex items-center justify-between h-9'>
-                <div className='text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.apiEndpoint.title')}</div>
-                <a
-                  href={'/'}
-                  className='flex items-center text-xs text-gray-500'
-                >
-                  <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
-                  {t('appDebug.feature.moderation.modal.apiEndpoint.link')}
-                </a>
-              </div>
-              <input
-                className='block px-3 py-2 w-full h-9 bg-gray-100 text-sm rounded-lg outline-none appearance-none'
-                placeholder={t('appDebug.feature.moderation.modal.apiEndpoint.placeholder') || ''}
-              />
+          <div className='py-2'>
+            <div className='flex items-center justify-between h-9'>
+              <div className='text-sm font-medium text-gray-900'>{t('common.apiBasedExtension.selector.title')}</div>
+              <a
+                href={'/'}
+                className='flex items-center text-xs text-gray-500'
+              >
+                <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
+                {t('common.apiBasedExtension.link')}
+              </a>
             </div>
-            <div className='py-2'>
-              <div className='leading-9 text-sm font-medium text-gray-900'>
-                {t('appDebug.feature.moderation.modal.apiKey.title')}
-              </div>
-              <div className='flex items-center'>
-                <input
-                  className='grow mr-2 px-3 py-2 h-9 rounded-lg bg-gray-100 text-sm appearance-none outline-none'
-                  placeholder={t('appDebug.feature.moderation.modal.apiKey.placeholder') || ''}
-                />
-                <Button
-                  className='text-sm font-medium'
-                >
-                  {t('appDebug.feature.moderation.modal.apiKey.regenerate')}
-                </Button>
-              </div>
-            </div>
-          </>
+            <ApiBasedExtensionSelector />
+          </div>
         )
       }
       <div className='my-3 h-[1px] bg-gradient-to-r from-[#F3F4F6]'></div>

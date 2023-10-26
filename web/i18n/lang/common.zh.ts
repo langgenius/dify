@@ -304,6 +304,11 @@ const translation = {
     title: 'API-based Extension Description text here.',
     link: '了解如何开发您自己的基于 API 的扩展。',
     add: '新增基于 API 的扩展',
+    selector: {
+      title: 'API-based Extension',
+      placeholder: 'Please select API-based extension',
+      manage: 'Manage Webhook APIs',
+    },
     modal: {
       title: 'Add API-based Extension',
       editTitle: 'Edit API-based Extension',
