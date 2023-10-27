@@ -98,6 +98,25 @@ const translation = {
         deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
       },
     },
+    tools: {
+      title: 'Tools',
+      toolsInUse: '{{count}} tools in use',
+      modal: {
+        title: 'Add tool',
+        toolType: {
+          title: 'Tool Type',
+          placeholder: 'WebHook',
+        },
+        name: {
+          title: 'Name',
+          placeholder: 'Name',
+        },
+        variableName: {
+          title: 'Variable Name',
+          placeholder: 'Variable Name',
+        },
+      },
+    },
     conversationHistory: {
       title: 'Conversation History',
       description: 'Set prefix names for conversation roles',
@@ -107,6 +126,45 @@ const translation = {
         title: 'Edit Conversation Role Names',
         userPrefix: 'User prefix',
         assistantPrefix: 'Assistant prefix',
+      },
+    },
+    toolbox: {
+      title: 'TOOLBOX',
+    },
+    moderation: {
+      title: 'Content moderation',
+      description: 'Content moderation',
+      inputEnabled: 'INPUT Content Enabled',
+      outputEnabled: 'OUTPUT Content Enabled',
+      modal: {
+        title: 'Content moderation settings',
+        provider: {
+          title: 'Provider',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation requires an OpenAI API key configured in the ',
+            suffix: '.',
+          },
+          keywords: 'Keywords',
+        },
+        keywords: {
+          tip: 'One per line, separated by line breaks. Up to 100 characters per line.',
+          placeholder: 'One per line, separated by line breaks',
+          errorMessage: 'Keywords cannot be empty',
+          line: 'Line',
+        },
+        apiBased: {
+          errorMessage: 'Please add API-based Extension',
+        },
+        content: {
+          input: 'Moderate INPUT Content',
+          output: 'Moderate OUTPUT Content',
+          preset: 'Preset replies',
+          placeholder: 'Preset replies content here',
+          condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
+          fromApi: 'Preset replies are returned by API',
+          errorMessage: 'Preset replies cannot be empty',
+        },
       },
     },
   },

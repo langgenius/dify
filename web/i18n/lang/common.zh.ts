@@ -30,6 +30,7 @@ const translation = {
     reload: '刷新',
     ok: '好的',
     log: '日志',
+    learnMore: '了解更多',
   },
   placeholder: {
     input: '请输入',
@@ -108,6 +109,7 @@ const translation = {
     provider: '模型供应商',
     dataSource: '数据来源',
     plugin: '插件',
+    apiBasedExtension: '基于 API 的扩展',
   },
   account: {
     avatar: '头像',
@@ -299,6 +301,33 @@ const translation = {
       keyFrom: '从 SerpAPI 帐户页面获取您的 SerpAPI 密钥',
     },
   },
+  apiBasedExtension: {
+    title: 'API-based Extension Description text here.',
+    link: '了解如何开发您自己的基于 API 的扩展。',
+    add: '新增基于 API 的扩展',
+    selector: {
+      title: '基于 API 的扩展',
+      placeholder: '请选择基于 API 的扩展',
+      manage: 'Manage Webhook APIs',
+    },
+    modal: {
+      title: '新增基于 API 的扩展',
+      editTitle: '编辑基于 API 的扩展',
+      name: {
+        title: 'Name',
+        placeholder: 'Please enter the name',
+      },
+      apiEndpoint: {
+        title: 'API Endpoint',
+        placeholder: 'Please enter the API endpoint',
+      },
+      apiKey: {
+        title: 'API-key',
+        placeholder: 'Please enter the API-key',
+        regenerate: 'Regenerate',
+      },
+    },
+  },
   about: {
     changeLog: '更新日志',
     updateNow: '现在更新',
@@ -384,11 +413,12 @@ const translation = {
     },
     variable: {
       item: {
-        title: '变量',
-        desc: '插入变量模板',
+        title: '变量 & 外部工具',
+        desc: '插入变量和外部工具',
       },
       modal: {
         add: '添加新变量',
+        addTool: '添加工具',
       },
     },
     query: {

@@ -11,6 +11,8 @@ function useFeature({
   setSpeechToText,
   citation,
   setCitation,
+  moderation,
+  setModeration,
 }: {
   introduction: string
   setIntroduction: (introduction: string) => void
@@ -22,6 +24,8 @@ function useFeature({
   setSpeechToText: (speechToText: boolean) => void
   citation: boolean
   setCitation: (citation: boolean) => void
+  moderation: boolean
+  setModeration: (moderation: boolean) => void
 }) {
   const [tempshowOpeningStatement, setTempShowOpeningStatement] = React.useState(!!introduction)
   useEffect(() => {
@@ -41,6 +45,7 @@ function useFeature({
     suggestedQuestionsAfterAnswer,
     speechToText,
     citation,
+    moderation,
   }
   const handleFeatureChange = (key: string, value: boolean) => {
     switch (key) {
@@ -61,6 +66,9 @@ function useFeature({
         break
       case 'citation':
         setCitation(value)
+        break
+      case 'moderation':
+        setModeration(value)
     }
   }
   return {

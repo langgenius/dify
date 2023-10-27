@@ -30,6 +30,7 @@ const translation = {
     reload: 'Reload',
     ok: 'OK',
     log: 'Log',
+    learnMore: 'Learn More',
   },
   placeholder: {
     input: 'Please enter',
@@ -108,6 +109,7 @@ const translation = {
     provider: 'Model Provider',
     dataSource: 'Data Source',
     plugin: 'Plugins',
+    apiBasedExtension: 'API-based Extension',
   },
   account: {
     avatar: 'Avatar',
@@ -299,6 +301,33 @@ const translation = {
       keyFrom: 'Get your SerpAPI key from SerpAPI Account Page',
     },
   },
+  apiBasedExtension: {
+    title: 'API-based Extension Description text here.',
+    link: 'Learn how to develop your own API-based Extension.',
+    add: 'Add API-based Extension',
+    selector: {
+      title: 'API-based Extension',
+      placeholder: 'Please select API-based extension',
+      manage: 'Manage Webhook APIs',
+    },
+    modal: {
+      title: 'Add API-based Extension',
+      editTitle: 'Edit API-based Extension',
+      name: {
+        title: 'Name',
+        placeholder: 'Please enter the name',
+      },
+      apiEndpoint: {
+        title: 'API Endpoint',
+        placeholder: 'Please enter the API endpoint',
+      },
+      apiKey: {
+        title: 'API-key',
+        placeholder: 'Please enter the API-key',
+        regenerate: 'Regenerate',
+      },
+    },
+  },
   about: {
     changeLog: 'Changlog',
     updateNow: 'Update now',
@@ -384,11 +413,12 @@ const translation = {
     },
     variable: {
       item: {
-        title: 'Variables',
-        desc: 'Insert variable template',
+        title: 'Variables & External Tools',
+        desc: 'Insert Variables & External Tools',
       },
       modal: {
         add: 'New variable',
+        addTool: 'New tool',
       },
     },
     query: {

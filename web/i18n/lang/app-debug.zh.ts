@@ -98,6 +98,25 @@ const translation = {
         deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
     },
+    tools: {
+      title: 'Tools',
+      toolsInUse: '{{count}} tools in use',
+      modal: {
+        title: 'Add tool',
+        toolType: {
+          title: 'Tool Type',
+          placeholder: 'WebHook',
+        },
+        name: {
+          title: 'Name',
+          placeholder: 'Name',
+        },
+        variableName: {
+          title: 'Variable Name',
+          placeholder: 'Variable Name',
+        },
+      },
+    },
     conversationHistory: {
       title: '对话历史',
       description: '设置对话角色的前缀名称',
@@ -107,6 +126,45 @@ const translation = {
         title: '编辑对话角色名称',
         userPrefix: '用户前缀',
         assistantPrefix: '助手前缀',
+      },
+    },
+    toolbox: {
+      title: '工具箱',
+    },
+    moderation: {
+      title: '内容审核',
+      description: '内容审核',
+      inputEnabled: '审核输入内容已启用',
+      outputEnabled: '审核输出内容已启用',
+      modal: {
+        title: '内容审核设置',
+        provider: {
+          title: '类别',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation 需要在',
+            suffix: '中配置 OpenAI API 密钥。',
+          },
+          keywords: '关键词',
+        },
+        keywords: {
+          tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
+          placeholder: '每行一个，用换行符分隔',
+          errorMessage: '关键词不能为空',
+          line: '行',
+        },
+        apiBased: {
+          errorMessage: '请添加基于 API 的扩展',
+        },
+        content: {
+          input: '审核输入内容',
+          output: '审核输出内容',
+          preset: '预设回复',
+          placeholder: '这里预设回复内容',
+          condition: '审核输入内容和审核输出内容至少启用一项',
+          fromApi: '预设回复通过 API 返回',
+          errorMessage: '预设回复不能为空',
+        },
       },
     },
   },
