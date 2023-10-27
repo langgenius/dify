@@ -109,7 +109,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
       <div className="grow bg-white">
         {step === 1 && <StepOne
           hasConnection={hasConnection}
-          onSetting={() => setShowAccountSettingModal({ activeTab: 'data-source' })}
+          onSetting={() => setShowAccountSettingModal({ payload: 'data-source' })}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
           dataSourceTypeDisable={!!detail?.data_source_type}
@@ -123,7 +123,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         />}
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={!!embeddingsDefaultModel}
-          onSetting={() => setShowAccountSettingModal({ activeTab: 'provider' })}
+          onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
           indexingType={detail?.indexing_technique}
           datasetId={datasetId}
           dataSourceType={dataSourceType}

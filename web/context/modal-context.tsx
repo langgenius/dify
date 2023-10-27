@@ -6,24 +6,19 @@ import { createContext, useContext } from 'use-context-selector'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
-import type { ApiBasedExtensionData } from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import type { ModerationConfig } from '@/models/debug'
+import type { ApiBasedExtension } from '@/models/common'
 
-export type AccountSettingState = {
-  activeTab?: string
+export type ModalState<T> = {
+  payload: T
   onCancelCallback?: () => void
-}
-
-export type ModerationSettingModalState = {
-  moderationConfig: ModerationConfig
-  onCancelCallback?: () => void
-  onSaveCallback: (newModerationConfig: ModerationConfig) => void
+  onSaveCallback?: (newPayload: T) => void
 }
 
 const ModalContext = createContext<{
-  setShowAccountSettingModal: Dispatch<SetStateAction<AccountSettingState | null>>
-  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ApiBasedExtensionData | null>>
-  setShowModerationSettingModal: Dispatch<SetStateAction<ModerationSettingModalState | null>>
+  setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
+  setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
+  setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
 }>({
   setShowAccountSettingModal: () => {},
   setShowApiBasedExtensionModal: () => {},
@@ -38,9 +33,9 @@ type ModalContextProviderProps = {
 export const ModalContextProvider = ({
   children,
 }: ModalContextProviderProps) => {
-  const [showAccountSettingModal, setShowAccountSettingModal] = useState<AccountSettingState | null>(null)
-  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ApiBasedExtensionData | null>(null)
-  const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModerationSettingModalState | null>(null)
+  const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(null)
+  const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
+  const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
 
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
@@ -56,7 +51,14 @@ export const ModalContextProvider = ({
       showModerationSettingModal.onCancelCallback()
   }
 
-  const handleSaveModerationSetting = (newModerationConfig: ModerationConfig) => {
+  const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
+    if (showApiBasedExtensionModal?.onSaveCallback)
+      showApiBasedExtensionModal.onSaveCallback(newApiBasedExtension)
+
+    setShowApiBasedExtensionModal(null)
+  }
+
+  const handleSaveModeration = (newModerationConfig: ModerationConfig) => {
     if (showModerationSettingModal?.onSaveCallback)
       showModerationSettingModal.onSaveCallback(newModerationConfig)
 
@@ -74,7 +76,7 @@ export const ModalContextProvider = ({
         {
           !!showAccountSettingModal && (
             <AccountSetting
-              activeTab={showAccountSettingModal.activeTab}
+              activeTab={showAccountSettingModal.payload}
               onCancel={handleCancelAccountSettingModal}
             />
           )
@@ -82,17 +84,18 @@ export const ModalContextProvider = ({
         {
           !!showApiBasedExtensionModal && (
             <ApiBasedExtensionModal
-              data={showApiBasedExtensionModal}
+              data={showApiBasedExtensionModal.payload}
               onCancel={() => setShowApiBasedExtensionModal(null)}
+              onSave={handleSaveApiBasedExtension}
             />
           )
         }
         {
           !!showModerationSettingModal && (
             <ModerationSettingModal
-              data={showModerationSettingModal.moderationConfig}
+              data={showModerationSettingModal.payload}
               onCancel={handleCancelModerationSettingModal}
-              onSave={handleSaveModerationSetting}
+              onSave={handleSaveModeration}
             />
           )
         }

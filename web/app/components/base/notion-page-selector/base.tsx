@@ -111,7 +111,7 @@ const NotionPageSelector = ({
                 <div className='mx-1 w-[1px] h-3 bg-gray-200' />
                 <div
                   className={cn(s['setting-icon'], 'w-6 h-6 cursor-pointer')}
-                  onClick={() => setShowAccountSettingModal({ activeTab: 'data-source', onCancelCallback: mutate })}
+                  onClick={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })}
                 />
                 <div className='grow' />
                 <SearchInput
@@ -134,7 +134,7 @@ const NotionPageSelector = ({
             </>
           )
           : (
-            <NotionConnector onSetting={() => setShowAccountSettingModal({ activeTab: 'data-source', onCancelCallback: mutate })} />
+            <NotionConnector onSetting={() => setShowAccountSettingModal({ payload: 'data-source', onCancelCallback: mutate })} />
           )
       }
     </div>

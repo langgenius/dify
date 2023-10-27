@@ -247,7 +247,7 @@ const ModelSelector: FC<Props> = ({
                   style={{
                     borderColor: 'rgba(0, 0, 0, 0.05)',
                   }}
-                  onClick={() => setShowAccountSettingModal({ activeTab: 'provider' })}
+                  onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
                 >
                   <CubeOutline className='w-4 h-4 mr-2' />
                   <div>{t('common.model.addMoreModel')}</div>
