@@ -43,7 +43,7 @@ const LikedItem: FC<{ type?: 'plugin' | 'app'; appStatus?: boolean; detail: Rela
   return (
     <Link className={s.itemWrapper} href={`/app/${detail?.id}/overview`}>
       <div className={s.iconWrapper}>
-        <AppIcon size='tiny' />
+        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background}/>
         {type === 'app' && (
           <div className={s.statusPoint}>
             <Indicator color={appStatus ? 'green' : 'gray'} />
