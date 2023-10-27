@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -11,6 +12,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
+import { fetchApiBasedExtensionList } from '@/service/common'
 
 const ApiBasedExtensionSelector = () => {
   const { t } = useTranslation()
@@ -19,6 +21,10 @@ const ApiBasedExtensionSelector = () => {
     setShowAccountSettingModal,
     setShowApiBasedExtensionModal,
   } = useModalContext()
+  const { data } = useSWR(
+    '/api-based-extension',
+    fetchApiBasedExtensionList,
+  )
 
   return (
     <PortalToFollowElem
@@ -45,21 +51,27 @@ const ApiBasedExtensionSelector = () => {
               <div className='text-xs font-medium text-gray-500'>
                 {t('common.apiBasedExtension.selector.title')}
               </div>
-              <div className='flex items-center text-xs text-primary-600' onClick={() => setShowAccountSettingModal({ activeTab: 'api-based-extension' })}>
+              <div className='flex items-center text-xs text-primary-600' onClick={() => setShowAccountSettingModal({ payload: 'api-based-extension' })}>
                 {t('common.apiBasedExtension.selector.manage')}
                 <ArrowUpRight className='ml-0.5 w-3 h-3' />
               </div>
             </div>
-            <div className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'>
-              <div className='text-sm text-gray-900'>User Registration Event API</div>
-              <div className='text-xs text-gray-500'>https://api.example.com/webhooks/user-registration</div>
-            </div>
+            {
+              data?.map(item => (
+                <div
+                  key={item.id}
+                  className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'>
+                  <div className='text-sm text-gray-900'>{item.name}</div>
+                  <div className='text-xs text-gray-500'>{item.api_endpoint}</div>
+                </div>
+              ))
+            }
           </div>
           <div className='h-[1px] bg-gray-100' />
           <div className='p-1'>
             <div
               className='flex items-center px-3 h-8 text-sm text-primary-600 cursor-pointer'
-              onClick={() => setShowApiBasedExtensionModal({})}
+              onClick={() => setShowApiBasedExtensionModal({ payload: {} })}
             >
               <Plus className='mr-2 w-4 h-4' />
               {t('common.operation.add')}

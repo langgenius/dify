@@ -167,7 +167,7 @@ const Form = () => {
             </div>
             <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
               {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ activeTab: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
             </div>
           </div>
         </div>

@@ -1,8 +1,11 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
+import type { ApiBasedExtension } from '@/models/common'
+import { addApiBasedExtension } from '@/service/common'
 
 export type ApiBasedExtensionData = {
   name?: string
@@ -11,14 +14,29 @@ export type ApiBasedExtensionData = {
 }
 
 type ApiBasedExtensionModalProps = {
-  data: ApiBasedExtensionData
+  data: ApiBasedExtension
   onCancel: () => void
+  onSave?: (newData: ApiBasedExtension) => void
 }
 const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   data,
   onCancel,
+  onSave,
 }) => {
   const { t } = useTranslation()
+  const [localeData, setLocaleData] = useState(data)
+  const handleDataChange = (type: string, value: string) => {
+    setLocaleData({ ...localeData, [type]: value })
+  }
+  const handleSave = async () => {
+    const res = await addApiBasedExtension({
+      url: '/api-based-extension',
+      body: localeData,
+    })
+
+    if (onSave)
+      onSave(res)
+  }
 
   return (
     <Modal
@@ -39,7 +57,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           {t('common.apiBasedExtension.modal.name.title')}
         </div>
         <input
-          value={data.name}
+          value={localeData.name || ''}
+          onChange={e => handleDataChange('name', e.target.value)}
           className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
           placeholder={t('common.apiBasedExtension.modal.name.placeholder') || ''}
         />
@@ -56,7 +75,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           </a>
         </div>
         <input
-          value={data.apiEndpoint}
+          value={localeData.api_endpoint || ''}
+          onChange={e => handleDataChange('api_endpoint', e.target.value)}
           className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
           placeholder={t('common.apiBasedExtension.modal.apiEndpoint.placeholder') || ''}
         />
@@ -67,7 +87,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         </div>
         <div className='flex items-center'>
           <input
-            value={data.apiKey}
+            value={localeData.api_key || ''}
+            onChange={e => handleDataChange('api_key', e.target.value)}
             className='block grow mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
             placeholder={t('common.apiBasedExtension.modal.apiKey.placeholder') || ''}
           />
@@ -88,7 +109,8 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <Button
           type='primary'
           className='text-sm font-medium'
-          onClick={() => {}}
+          disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key}
+          onClick={handleSave}
         >
           {t('common.operation.save')}
         </Button>

@@ -15,7 +15,7 @@ const Moderation = () => {
 
   const handleOpenModerationSettingModal = () => {
     setShowModerationSettingModal({
-      moderationConfig,
+      payload: moderationConfig,
       onSaveCallback: setModerationConfig,
     })
   }

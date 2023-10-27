@@ -89,12 +89,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
     }
 
-    if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response) {
+    if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response && localeData.type !== 'api_based') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }
 
-    if (localeData.configs.outputs_configs?.enabled && !localeData.configs.outputs_configs.preset_response) {
+    if (localeData.configs.outputs_configs?.enabled && !localeData.configs.outputs_configs.preset_response && localeData.type !== 'api_based') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }

@@ -92,7 +92,7 @@ export type Provider = {
     is_valid: boolean
     is_enabled: boolean
     last_used: string
-    token?: ProviderTokenType[Name]
+    token?: string | ProviderAzureToken | ProviderAnthropicToken
   }
 }[ProviderName]
 
@@ -195,4 +195,11 @@ export type InvitationResult = {
 
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
+}
+
+export type ApiBasedExtension = {
+  id?: string
+  name?: string
+  api_endpoint?: string
+  api_key?: string
 }

@@ -55,7 +55,7 @@ const Plugins: FC<IPluginsProps> = ({
       res.more = (
         <div className='border-t border-[#FEF0C7] flex items-center h-[34px] pl-2 bg-[#FFFAEB] text-gray-700 text-xs '>
           <span className='whitespace-pre'>{t('explore.universalChat.plugins.google_search.more.left')}</span>
-          <span className='cursor-pointer text-[#155EEF]' onClick={() => setShowAccountSettingModal({ activeTab: 'plugin', onCancelCallback: async () => await checkSerpApiKey() })}>{t('explore.universalChat.plugins.google_search.more.link')}</span>
+          <span className='cursor-pointer text-[#155EEF]' onClick={() => setShowAccountSettingModal({ payload: 'plugin', onCancelCallback: async () => await checkSerpApiKey() })}>{t('explore.universalChat.plugins.google_search.more.link')}</span>
           <span className='whitespace-pre'>{t('explore.universalChat.plugins.google_search.more.right')}</span>
         </div>
       )

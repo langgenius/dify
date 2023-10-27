@@ -610,7 +610,7 @@ const Configuration: FC = () => {
               <Config />
             </div>
             <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={() => setShowAccountSettingModal({ activeTab: 'provider' })} />
+              <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={() => setShowAccountSettingModal({ payload: 'provider' })} />
             </div>
           </div>
         </div>
@@ -631,7 +631,7 @@ const Configuration: FC = () => {
             isShow={showUseGPT4Confirm}
             onClose={() => setShowUseGPT4Confirm(false)}
             onConfirm={() => {
-              setShowAccountSettingModal({ activeTab: 'provider' })
+              setShowAccountSettingModal({ payload: 'provider' })
               setShowUseGPT4Confirm(false)
             }}
             onCancel={() => setShowUseGPT4Confirm(false)}
