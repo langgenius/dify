@@ -7,6 +7,7 @@ from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType, ModelMode
 from models.account import Account
 from services.dataset_service import DatasetService
+from core.moderation.base import BaseModeration
 
 
 SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
@@ -152,33 +153,6 @@ class AppModelConfigService:
 
         if not isinstance(config["more_like_this"]["enabled"], bool):
             raise ValueError("enabled in more_like_this must be of boolean type")
-
-        # sensitive_word_avoidance
-        if 'sensitive_word_avoidance' not in config or not config["sensitive_word_avoidance"]:
-            config["sensitive_word_avoidance"] = {
-                "enabled": False
-            }
-
-        if not isinstance(config["sensitive_word_avoidance"], dict):
-            raise ValueError("sensitive_word_avoidance must be of dict type")
-
-        if "enabled" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["enabled"]:
-            config["sensitive_word_avoidance"]["enabled"] = False
-
-        if not isinstance(config["sensitive_word_avoidance"]["enabled"], bool):
-            raise ValueError("enabled in sensitive_word_avoidance must be of boolean type")
-
-        if "words" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["words"]:
-            config["sensitive_word_avoidance"]["words"] = ""
-
-        if not isinstance(config["sensitive_word_avoidance"]["words"], str):
-            raise ValueError("words in sensitive_word_avoidance must be of string type")
-
-        if "canned_response" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["canned_response"]:
-            config["sensitive_word_avoidance"]["canned_response"] = ""
-
-        if not isinstance(config["sensitive_word_avoidance"]["canned_response"], str):
-            raise ValueError("canned_response in sensitive_word_avoidance must be of string type")
 
         # model
         if 'model' not in config:
@@ -339,6 +313,9 @@ class AppModelConfigService:
         # advanced prompt validation
         AppModelConfigService.is_advanced_prompt_valid(config, mode)
 
+        # moderation validation
+        AppModelConfigService.is_moderation_valid(config)
+
         # Filter out extra parameters
         filtered_config = {
             "opening_statement": config["opening_statement"],
@@ -365,6 +342,27 @@ class AppModelConfigService:
         }
 
         return filtered_config
+
+    @staticmethod
+    def is_moderation_valid(config):
+        if 'sensitive_word_avoidance' not in config or not config["sensitive_word_avoidance"]:
+            config["sensitive_word_avoidance"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["sensitive_word_avoidance"], dict):
+            raise ValueError("sensitive_word_avoidance must be of dict type")
+
+        if "enabled" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["enabled"]:
+            config["sensitive_word_avoidance"]["enabled"] = False
+
+        if not config["sensitive_word_avoidance"]["enabled"]:
+            return
+        
+        if "type" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["type"]:
+            raise ValueError("sensitive_word_avoidance.type is required")
+
+        BaseModeration.create_instance(type).validate_config(config["sensitive_word_avoidance"]["configs"])
     
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:

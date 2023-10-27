@@ -341,6 +341,8 @@ const Main: FC<IMainProps> = ({
         app_id: installedAppInfo?.id,
         site: {
           title: installedAppInfo?.app.name,
+          icon: installedAppInfo?.app.icon,
+          icon_background: installedAppInfo?.app.icon_background,
           prompt_public: false,
           copyright: '',
         },
