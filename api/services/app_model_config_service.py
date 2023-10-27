@@ -361,8 +361,11 @@ class AppModelConfigService:
         
         if "type" not in config["sensitive_word_avoidance"] or not config["sensitive_word_avoidance"]["type"]:
             raise ValueError("sensitive_word_avoidance.type is required")
+        
+        type = config["sensitive_word_avoidance"]["type"]
+        config = config["sensitive_word_avoidance"]["configs"]
 
-        BaseModeration.create_instance(type).validate_config(config["sensitive_word_avoidance"]["configs"])
+        BaseModeration.create_instance(type).validate_config(config)
     
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:
