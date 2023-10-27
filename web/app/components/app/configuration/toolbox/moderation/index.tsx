@@ -1,12 +1,24 @@
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import SettingsModal from './settings-modal'
+import { useContext } from 'use-context-selector'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import { useModalContext } from '@/context/modal-context'
+import ConfigContext from '@/context/debug-configuration'
 
 const Moderation = () => {
   const { t } = useTranslation()
-  const [showSettings, setShowSettings] = useState(false)
+  const { setShowModerationSettingModal } = useModalContext()
+  const {
+    moderationConfig,
+    setModerationConfig,
+  } = useContext(ConfigContext)
+
+  const handleOpenModerationSettingModal = () => {
+    setShowModerationSettingModal({
+      moderationConfig,
+      onSaveCallback: setModerationConfig,
+    })
+  }
 
   return (
     <>
@@ -24,19 +36,12 @@ const Moderation = () => {
             shrink-0 flex items-center px-3 h-7 cursor-pointer rounded-md
             text-xs text-gray-700 font-medium hover:bg-gray-200
           `}
-          onClick={() => setShowSettings(true)}
+          onClick={handleOpenModerationSettingModal}
         >
           <Settings01 className='mr-[5px] w-3.5 h-3.5' />
           {t('common.operation.settings')}
         </div>
       </div>
-      {
-        showSettings && (
-          <SettingsModal
-            onCancel={() => setShowSettings(false)}
-          />
-        )
-      }
     </>
   )
 }

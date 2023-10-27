@@ -73,6 +73,20 @@ export type SpeechToTextConfig = MoreLikeThisConfig
 
 export type CitationConfig = MoreLikeThisConfig
 
+export type ModerationContentConfig = {
+  enabled: boolean
+  preset_response: string
+}
+export type ModerationConfig = MoreLikeThisConfig & {
+  type?: string
+  configs?: {
+    keywords?: string
+    api_based_extension_id?: string
+    inputs_configs?: ModerationContentConfig
+    outputs_configs?: ModerationContentConfig
+  }
+}
+
 export type RetrieverResourceConfig = MoreLikeThisConfig
 
 // frontend use. Not the same as backend
@@ -86,6 +100,7 @@ export type ModelConfig = {
   suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
   speech_to_text: SpeechToTextConfig | null
   retriever_resource: RetrieverResourceConfig | null
+  sensitive_word_avoidance: ModerationConfig | null
   dataSets: any[]
 }
 export type DatasetConfigItem = {

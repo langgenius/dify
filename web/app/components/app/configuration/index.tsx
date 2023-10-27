@@ -14,7 +14,16 @@ import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import AddExternalToolModal from './tools/add-external-tool-modal'
-import type { CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import type {
+  CompletionParams,
+  DatasetConfigs,
+  Inputs,
+  ModelConfig,
+  ModerationConfig,
+  MoreLikeThisConfig,
+  PromptConfig,
+  PromptVariable,
+} from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -73,6 +82,9 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
+    enabled: false,
+  })
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
@@ -109,6 +121,7 @@ const Configuration: FC = () => {
     suggested_questions_after_answer: null,
     speech_to_text: null,
     retriever_resource: null,
+    sensitive_word_avoidance: null,
     dataSets: [],
   })
 
@@ -324,6 +337,9 @@ const Configuration: FC = () => {
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
 
+      if (modelConfig.sensitive_word_avoidance)
+        setModerationConfig(modelConfig.sensitive_word_avoidance)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -338,6 +354,7 @@ const Configuration: FC = () => {
           suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
           speech_to_text: modelConfig.speech_to_text,
           retriever_resource: modelConfig.retriever_resource,
+          sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
           dataSets: datasets || [],
         },
         completionParams: model.completion_params,
@@ -426,6 +443,7 @@ const Configuration: FC = () => {
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
+      sensitive_word_avoidance: moderationConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -515,6 +533,8 @@ const Configuration: FC = () => {
       setSpeechToTextConfig,
       citationConfig,
       setCitationConfig,
+      moderationConfig,
+      setModerationConfig,
       formattingChanged,
       setFormattingChanged,
       inputs,

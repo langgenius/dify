@@ -16,6 +16,7 @@ type IConfig = {
   suggestedQuestionsAfterAnswer: boolean
   speechToText: boolean
   citation: boolean
+  moderation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -119,10 +120,10 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
           <>
             <FeatureItem
               icon={<FileSearch02 className='w-4 h-4 text-[#039855]' />}
-              previewImgClassName='moreLikeThisPreview'
+              previewImgClassName=''
               title={t('appDebug.feature.moderation.title')}
               description={t('appDebug.feature.moderation.description')}
-              value={config.moreLikeThis}
+              value={config.moderation}
               onChange={value => onChange('moderation', value)}
             />
           </>

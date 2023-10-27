@@ -1,6 +1,22 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
-import type { BlockStatus, ChatPromptConfig, CitationConfig, CompletionParams, CompletionPromptConfig, ConversationHistoriesRole, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptItem, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type {
+  BlockStatus,
+  ChatPromptConfig,
+  CitationConfig,
+  CompletionParams,
+  CompletionPromptConfig,
+  ConversationHistoriesRole,
+  DatasetConfigs,
+  Inputs,
+  ModelConfig,
+  ModerationConfig,
+  MoreLikeThisConfig,
+  PromptConfig,
+  PromptItem,
+  SpeechToTextConfig,
+  SuggestedQuestionsAfterAnswerConfig,
+} from '@/models/debug'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -40,6 +56,8 @@ type IDebugConfiguration = {
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
+  moderationConfig: ModerationConfig
+  setModerationConfig: (moderationConfig: ModerationConfig) => void
   formattingChanged: boolean
   setFormattingChanged: (formattingChanged: boolean) => void
   inputs: Inputs
@@ -115,6 +133,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     enabled: false,
   },
   setCitationConfig: () => {},
+  moderationConfig: {
+    enabled: false,
+  },
+  setModerationConfig: () => {},
   formattingChanged: false,
   setFormattingChanged: () => { },
   inputs: {},
@@ -142,6 +164,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     suggested_questions_after_answer: null,
     speech_to_text: null,
     retriever_resource: null,
+    sensitive_word_avoidance: null,
     dataSets: [],
   },
   setModelConfig: () => { },

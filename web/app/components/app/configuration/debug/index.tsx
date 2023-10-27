@@ -47,6 +47,7 @@ const Debug: FC<IDebug> = ({
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
     citationConfig,
+    moderationConfig,
     moreLikeThisConfig,
     inputs,
     // setInputs,
@@ -190,6 +191,7 @@ const Debug: FC<IDebug> = ({
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
+      sensitive_word_avoidance: moderationConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -371,6 +373,7 @@ const Debug: FC<IDebug> = ({
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
+      sensitive_word_avoidance: moderationConfig,
       more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,

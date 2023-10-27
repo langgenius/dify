@@ -144,32 +144,24 @@ const translation = {
             suffix: '.',
           },
           keywords: 'Keywords',
-          custom: 'Custom API',
         },
         keywords: {
           tip: 'One per line, separated by line breaks. Up to 100 characters per line.',
           placeholder: 'One per line, separated by line breaks',
+          errorMessage: 'Keywords cannot be empty',
         },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: 'How to develop your own sensitive content filtering API？',
-          placeholder: 'Please enter API Endpoint',
+        apiBased: {
+          errorMessage: 'Please add API-based Extension',
         },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: 'Regenerate',
-          placeholder: 'Please enter API KEY',
-        },
-        input: {
-          title: 'Moderate INPUT Content',
+        content: {
+          input: 'Moderate INPUT Content',
+          output: 'Moderate OUTPUT Content',
           preset: 'Preset replies',
           placeholder: 'Preset replies content here',
-          apiTip: 'Preset replies are returned by API',
+          condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
+          fromApi: 'Preset replies are returned by API',
+          errorMessage: 'Preset replies cannot be empty',
         },
-        output: {
-          title: 'Moderate OUTPUT Content',
-        },
-        condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
       },
     },
   },

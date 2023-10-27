@@ -144,32 +144,24 @@ const translation = {
             suffix: '中配置 OpenAI API 密钥。',
           },
           keywords: '关键词',
-          custom: '自定义 API',
         },
         keywords: {
           tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
           placeholder: '每行一个，用换行符分隔',
+          errorMessage: '关键词不能为空',
         },
-        apiEndpoint: {
-          title: 'API Endpoint',
-          link: '如何开发自己的敏感内容过滤 API ？',
-          placeholder: '请输入 API Endpoint',
+        apiBased: {
+          errorMessage: '请添加基于 API 的扩展',
         },
-        apiKey: {
-          title: 'API-Key',
-          regenerate: '重新生成',
-          placeholder: '请输入 API KEY',
-        },
-        input: {
-          title: '审核输入内容',
+        content: {
+          input: '审核输入内容',
+          output: '审核输出内容',
           preset: '预设回复',
           placeholder: '这里预设回复内容',
-          apiTip: '预设回复通过 API 返回',
+          condition: '审核输入内容和审核输出内容至少启用一项',
+          fromApi: '预设回复通过 API 返回',
+          errorMessage: '预设回复不能为空',
         },
-        output: {
-          title: '审核输出内容',
-        },
-        condition: '审核输入内容和审核输出内容至少启用一项',
       },
     },
   },

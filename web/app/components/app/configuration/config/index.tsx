@@ -20,6 +20,8 @@ import ConfigVar from '@/app/components/app/configuration/config-var'
 import type { PromptVariable } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
+
 const Config: FC = () => {
   const {
     mode,
@@ -42,9 +44,12 @@ const Config: FC = () => {
     setSpeechToTextConfig,
     citationConfig,
     setCitationConfig,
+    moderationConfig,
+    setModerationConfig,
   } = useContext(ConfigContext)
   const isChatApp = mode === AppType.chat
   const { speech2textDefaultModel } = useProviderContext()
+  const { setShowModerationSettingModal } = useModalContext()
 
   const promptTemplate = modelConfig.configs.prompt_template
   const promptVariables = modelConfig.configs.prompt_variables
@@ -100,6 +105,33 @@ const Config: FC = () => {
       setCitationConfig(produce(citationConfig, (draft) => {
         draft.enabled = value
       }))
+    },
+    moderation: moderationConfig.enabled,
+    setModeration: (value) => {
+      setModerationConfig(produce(moderationConfig, (draft) => {
+        draft.enabled = value
+      }))
+      if (value) {
+        setShowModerationSettingModal({
+          moderationConfig: {
+            enabled: true,
+            type: 'keywords',
+            configs: {
+              keywords: '',
+              inputs_configs: {
+                enabled: true,
+                preset_response: '',
+              },
+            },
+          },
+          onSaveCallback: setModerationConfig,
+          onCancelCallback: () => {
+            setModerationConfig(produce(moderationConfig, (draft) => {
+              draft.enabled = false
+            }))
+          },
+        })
+      }
     },
   })
 
@@ -191,7 +223,11 @@ const Config: FC = () => {
         )}
 
         {/* Toolbox */}
-        <Toolbox showModerationSettings />
+        {
+          moderationConfig.enabled && (
+            <Toolbox showModerationSettings />
+          )
+        }
       </div>
     </>
   )

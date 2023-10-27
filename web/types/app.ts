@@ -113,6 +113,9 @@ export type ModelConfig = {
   retriever_resource: {
     enabled: boolean
   }
+  sensitive_word_avoidance: {
+    enabled: boolean
+  }
   agent_mode: {
     enabled: boolean
     tools: ToolItem[]
