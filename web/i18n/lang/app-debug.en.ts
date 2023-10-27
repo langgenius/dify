@@ -134,6 +134,8 @@ const translation = {
     moderation: {
       title: 'Content moderation',
       description: 'Content moderation',
+      inputEnabled: 'INPUT Content Enabled',
+      outputEnabled: 'OUTPUT Content Enabled',
       modal: {
         title: 'Content moderation settings',
         provider: {
@@ -149,6 +151,7 @@ const translation = {
           tip: 'One per line, separated by line breaks. Up to 100 characters per line.',
           placeholder: 'One per line, separated by line breaks',
           errorMessage: 'Keywords cannot be empty',
+          line: 'Line',
         },
         apiBased: {
           errorMessage: 'Please add API-based Extension',

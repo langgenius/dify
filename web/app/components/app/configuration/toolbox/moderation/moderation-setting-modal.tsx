@@ -9,13 +9,13 @@ import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/educatio
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
 
-type SettingsModalProps = {
+type ModerationSettingModalProps = {
   data: ModerationConfig
   onCancel: () => void
   onSave: (moderationConfig: ModerationConfig) => void
 }
 
-const SettingsModal: FC<SettingsModalProps> = ({
+const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   data,
   onCancel,
   onSave,
@@ -43,11 +43,22 @@ const SettingsModal: FC<SettingsModalProps> = ({
   }
 
   const handleDataKeywordsChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value
+
+    const arr = value.split('\n').reduce((prev: string[], next: string) => {
+      if (next !== '')
+        prev.push(next.slice(0, 100))
+      if (next === '' && prev[prev.length - 1] !== '')
+        prev.push(next)
+
+      return prev
+    }, [])
+
     setLocaleData({
       ...localeData,
       configs: {
         ...localeData.configs,
-        keywords: e.target.value,
+        keywords: arr.slice(0, 100).join('\n'),
       },
     })
   }
@@ -104,7 +115,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         <div className='leading-9 text-sm font-medium text-gray-900'>
           {t('appDebug.feature.moderation.modal.provider.title')}
         </div>
-        <div className='grid gap-[11px] grid-cols-3'>
+        <div className='grid gap-2.5 grid-cols-3'>
           {
             providers.map(provider => (
               <div
@@ -129,13 +140,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className='py-2'>
             <div className='mb-1 text-sm font-medium text-gray-900'>{t('appDebug.feature.moderation.modal.provider.keywords')}</div>
             <div className='mb-2 text-xs text-gray-500'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
-            <div className='px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
+            <div className='relative px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
               <textarea
                 value={localeData.configs?.keywords || ''}
                 onChange={handleDataKeywordsChange}
                 className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
                 placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''}
               />
+              <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-gray-50 text-xs font-medium text-gray-300'>
+                <span>{(localeData.configs?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-gray-500'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
+              </div>
             </div>
           </div>
         )
@@ -192,4 +206,4 @@ const SettingsModal: FC<SettingsModalProps> = ({
   )
 }
 
-export default SettingsModal
+export default ModerationSettingModal

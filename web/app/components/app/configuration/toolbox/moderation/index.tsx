@@ -20,6 +20,28 @@ const Moderation = () => {
     })
   }
 
+  const renderInfo = () => {
+    let prefix = ''
+    let input = ''
+    let output = ''
+    if (moderationConfig.type === 'openai')
+      prefix = t('appDebug.feature.moderation.modal.provider.openai')
+
+    if (moderationConfig.type === 'keywords')
+      prefix = t('appDebug.feature.moderation.modal.provider.keywords')
+
+    if (moderationConfig.type === 'api_based')
+      prefix = t('common.apiBasedExtension.selector.title')
+
+    if (moderationConfig.configs?.inputs_configs?.enabled)
+      input = t('appDebug.feature.moderation.inputEnabled')
+
+    if (moderationConfig.configs?.outputs_configs?.enabled)
+      output += t('appDebug.feature.moderation.outputEnabled')
+
+    return `${prefix} · ${input} ${output}`
+  }
+
   return (
     <>
       <div className='flex items-center px-3 py-2 bg-gray-50 rounded-xl'>
@@ -28,7 +50,7 @@ const Moderation = () => {
         </div>
         <div className='shrink-0 mr-2 whitespace-nowrap text-sm text-gray-800 font-semibold'>{t('appDebug.feature.moderation.title')}</div>
         <div className='grow flex items-center text-xs text-gray-500'>
-          OpenAI Moderation · INPUT Content Enabled
+          {renderInfo()}
         </div>
         <div className='shrink-0 ml-4 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
         <div

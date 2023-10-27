@@ -5,7 +5,7 @@ import { useState } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
-import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/settings-modal'
+import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import type { ApiBasedExtensionData } from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import type { ModerationConfig } from '@/models/debug'
 

@@ -111,7 +111,7 @@ const Config: FC = () => {
       setModerationConfig(produce(moderationConfig, (draft) => {
         draft.enabled = value
       }))
-      if (value) {
+      if (value && !moderationConfig.type) {
         setShowModerationSettingModal({
           moderationConfig: {
             enabled: true,

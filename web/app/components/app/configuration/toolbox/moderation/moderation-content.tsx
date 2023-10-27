@@ -20,6 +20,8 @@ const ModerationContent: FC<ModerationContentProps> = ({
   const { t } = useTranslation()
 
   const handleConfigChange = (field: string, value: boolean | string) => {
+    if (field === 'preset_response' && typeof value === 'string')
+      value = value.slice(0, 100)
     onConfigChange({ ...config, [field]: value })
   }
 
@@ -47,11 +49,14 @@ const ModerationContent: FC<ModerationContentProps> = ({
               <div className='leading-8 text-[13px] font-medium text-gray-700'>{t('appDebug.feature.moderation.modal.content.preset')}</div>
               <div className='relative px-3 py-2 h-20 rounded-lg bg-gray-100'>
                 <textarea
-                  value={config.preset_response}
+                  value={config.preset_response || ''}
                   className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
                   placeholder={t('appDebug.feature.moderation.modal.content.placeholder') || ''}
                   onChange={e => handleConfigChange('preset_response', e.target.value)}
                 />
+                <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-gray-50 text-xs font-medium text-gray-300'>
+                  <span>{(config.preset_response || '').length}</span>/<span className='text-gray-500'>100</span>
+                </div>
               </div>
             </div>
           )
