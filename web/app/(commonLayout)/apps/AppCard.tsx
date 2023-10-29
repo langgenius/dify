@@ -137,7 +137,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   return (
     <>
       <div
-        // href={`/app/${app.id}/overview`}
         onClick={(e) => {
           e.preventDefault()
           push(`/app/${app.id}/overview`)
