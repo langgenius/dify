@@ -1,5 +1,6 @@
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
+from core.helper.encrypter import encrypt_token
 
 class APIBasedExtensionService:
 
@@ -11,7 +12,7 @@ class APIBasedExtensionService:
                     .all()
 
     @staticmethod
-    def save(extension_data: APIBasedExtension) -> APIBasedExtension:
+    def save(extension_data: APIBasedExtension, need_encrypt: bool) -> APIBasedExtension:
         # name
         if not extension_data.name:
             raise ValueError("name must not be empty")
@@ -43,6 +44,9 @@ class APIBasedExtensionService:
         # api_key
         if not extension_data.api_key:
             raise ValueError("api_key must not be empty")
+        
+        if need_encrypt:
+            extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
         
         db.session.add(extension_data)
         db.session.commit()

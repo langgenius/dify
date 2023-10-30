@@ -24,7 +24,7 @@ def upgrade():
     sa.Column('tenant_id', postgresql.UUID(), nullable=False),
     sa.Column('name', sa.String(length=255), nullable=False),
     sa.Column('api_endpoint', sa.String(length=255), nullable=False),
-    sa.Column('api_key', sa.String(length=255), nullable=False),
+    sa.Column('api_key', sa.Text(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
     sa.PrimaryKeyConstraint('id', name='api_based_extension_pkey')
     )
