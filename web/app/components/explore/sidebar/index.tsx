@@ -106,9 +106,9 @@ const SideBar: FC<{
       {installedApps.length > 0 && (
         <div className='mt-10'>
           <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
-          <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden pb-20'
+          <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
             style={{
-              maxHeight: 'calc(100vh - 250px)',
+              height: 'calc(100vh - 250px)',
             }}
           >
             {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon, icon_background } }) => {

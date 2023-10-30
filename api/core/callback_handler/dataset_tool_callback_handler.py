@@ -1,5 +1,6 @@
 import json
 import logging
+from json import JSONDecodeError
 
 from typing import Any, Dict, List, Union, Optional
 
@@ -44,10 +45,15 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         input_str: str,
         **kwargs: Any,
     ) -> None:
-        # tool_name = serialized.get('name')
-        input_dict = json.loads(input_str.replace("'", "\""))
-        dataset_id = input_dict.get('dataset_id')
-        query = input_dict.get('query')
+        tool_name: str = serialized.get('name')
+        dataset_id = tool_name.removeprefix('dataset-')
+
+        try:
+            input_dict = json.loads(input_str.replace("'", "\""))
+            query = input_dict.get('query')
+        except JSONDecodeError:
+            query = input_str
+
         self.conversation_message_task.on_dataset_query_end(DatasetQueryObj(dataset_id=dataset_id, query=query))
 
     def on_tool_end(
@@ -58,11 +64,8 @@ class DatasetToolCallbackHandler(BaseCallbackHandler):
         llm_prefix: Optional[str] = None,
         **kwargs: Any,
     ) -> None:
-        # kwargs={'name': 'Search'}
-        # llm_prefix='Thought:'
-        # observation_prefix='Observation: '
-        # output='53 years'
         pass
+
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

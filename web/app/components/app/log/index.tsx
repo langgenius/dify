@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, SVGProps } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
@@ -29,7 +29,7 @@ export type QueryParam = {
 // Custom page count is not currently supported.
 const limit = 10
 
-const ThreeDotsIcon: FC<{ className?: string }> = ({ className }) => {
+const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>

@@ -48,7 +48,7 @@ const translation = {
           copyright: 'Copyright',
           copyRightPlaceholder: 'Enter the name of the author or organization',
           privacyPolicy: 'Privacy Policy',
-          privacyPolicyPlaceholder: 'Enter the privacy policy',
+          privacyPolicyPlaceholder: 'Enter the privacy policy link',
           privacyPolicyTip: 'Helps visitors understand the data the application collects, see Dify\'s <privacyPolicyLink>Privacy Policy</privacyPolicyLink>.',
         },
       },
@@ -60,6 +60,11 @@ const translation = {
         scripts: 'To add a chat app to the bottom right of your website add this code to your html.',
         copied: 'Copied',
         copy: 'Copy',
+      },
+      qrcode: {
+        title: 'QR code to share',
+        scan: 'Scan Share Application',
+        download: 'Download QR Code',
       },
       customize: {
         way: 'way',

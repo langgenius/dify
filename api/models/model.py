@@ -1,4 +1,5 @@
 import json
+from json import JSONDecodeError
 
 from flask import current_app, request
 from flask_login import UserMixin
@@ -87,9 +88,15 @@ class AppModelConfig(db.Model):
     more_like_this = db.Column(db.Text)
     model = db.Column(db.Text)
     user_input_form = db.Column(db.Text)
+    dataset_query_variable = db.Column(db.String(255))
     pre_prompt = db.Column(db.Text)
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
+    retriever_resource = db.Column(db.Text)
+    prompt_type = db.Column(db.String(255), nullable=False, default='simple')
+    chat_prompt_config = db.Column(db.Text)
+    completion_prompt_config = db.Column(db.Text)
+    dataset_configs = db.Column(db.Text)
 
     @property
     def app(self):
@@ -115,6 +122,11 @@ class AppModelConfig(db.Model):
             else {"enabled": False}
 
     @property
+    def retriever_resource_dict(self) -> dict:
+        return json.loads(self.retriever_resource) if self.retriever_resource \
+            else {"enabled": False}
+
+    @property
     def more_like_this_dict(self) -> dict:
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
 
@@ -131,6 +143,18 @@ class AppModelConfig(db.Model):
     def agent_mode_dict(self) -> dict:
         return json.loads(self.agent_mode) if self.agent_mode else {"enabled": False, "strategy": None, "tools": []}
 
+    @property
+    def chat_prompt_config_dict(self) -> dict:
+        return json.loads(self.chat_prompt_config) if self.chat_prompt_config else {}
+
+    @property
+    def completion_prompt_config_dict(self) -> dict:
+        return json.loads(self.completion_prompt_config) if self.completion_prompt_config else {}
+
+    @property
+    def dataset_configs_dict(self) -> dict:
+        return json.loads(self.dataset_configs) if self.dataset_configs else {"top_k": 2, "score_threshold": {"enable": False}}
+
     def to_dict(self) -> dict:
         return {
             "provider": "",
@@ -140,12 +164,18 @@ class AppModelConfig(db.Model):
             "suggested_questions": self.suggested_questions_list,
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
+            "retriever_resource": self.retriever_resource_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "model": self.model_dict,
             "user_input_form": self.user_input_form_list,
+            "dataset_query_variable": self.dataset_query_variable,
             "pre_prompt": self.pre_prompt,
-            "agent_mode": self.agent_mode_dict
+            "agent_mode": self.agent_mode_dict,
+            "prompt_type": self.prompt_type,
+            "chat_prompt_config": self.chat_prompt_config_dict,
+            "completion_prompt_config": self.completion_prompt_config_dict,
+            "dataset_configs": self.dataset_configs_dict
         }
 
     def from_model_config_dict(self, model_config: dict):
@@ -162,9 +192,18 @@ class AppModelConfig(db.Model):
             if model_config.get('sensitive_word_avoidance') else None
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
+        self.dataset_query_variable = model_config.get('dataset_query_variable')
         self.pre_prompt = model_config['pre_prompt']
         self.agent_mode = json.dumps(model_config['agent_mode'])
-
+        self.retriever_resource = json.dumps(model_config['retriever_resource']) \
+            if model_config.get('retriever_resource') else None
+        self.prompt_type = model_config.get('prompt_type', 'simple')
+        self.chat_prompt_config = json.dumps(model_config.get('chat_prompt_config')) \
+            if model_config.get('chat_prompt_config') else None
+        self.completion_prompt_config = json.dumps(model_config.get('completion_prompt_config')) \
+            if model_config.get('completion_prompt_config') else None
+        self.dataset_configs = json.dumps(model_config.get('dataset_configs')) \
+            if model_config.get('dataset_configs') else None
         return self
 
     def copy(self):
@@ -182,8 +221,14 @@ class AppModelConfig(db.Model):
             sensitive_word_avoidance=self.sensitive_word_avoidance,
             model=self.model,
             user_input_form=self.user_input_form,
+            dataset_query_variable=self.dataset_query_variable,
             pre_prompt=self.pre_prompt,
-            agent_mode=self.agent_mode
+            agent_mode=self.agent_mode,
+            retriever_resource=self.retriever_resource,
+            prompt_type=self.prompt_type,
+            chat_prompt_config=self.chat_prompt_config,
+            completion_prompt_config=self.completion_prompt_config,
+            dataset_configs=self.dataset_configs
         )
 
         return new_app_model_config
@@ -318,6 +363,7 @@ class Conversation(db.Model):
             model_config['suggested_questions'] = app_model_config.suggested_questions_list
             model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
             model_config['speech_to_text'] = app_model_config.speech_to_text_dict
+            model_config['retriever_resource'] = app_model_config.retriever_resource_dict
             model_config['more_like_this'] = app_model_config.more_like_this_dict
             model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
             model_config['user_input_form'] = app_model_config.user_input_form_list
@@ -476,6 +522,11 @@ class Message(db.Model):
         return db.session.query(MessageAgentThought).filter(MessageAgentThought.message_id == self.id) \
             .order_by(MessageAgentThought.position.asc()).all()
 
+    @property
+    def retriever_resources(self):
+        return db.session.query(DatasetRetrieverResource).filter(DatasetRetrieverResource.message_id == self.id) \
+            .order_by(DatasetRetrieverResource.position.asc()).all()
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
@@ -610,12 +661,13 @@ class ApiToken(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='api_token_pkey'),
         db.Index('api_token_app_id_type_idx', 'app_id', 'type'),
-        db.Index('api_token_token_idx', 'token', 'type')
+        db.Index('api_token_token_idx', 'token', 'type'),
+        db.Index('api_token_tenant_idx', 'tenant_id', 'type')
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=True)
-    dataset_id = db.Column(UUID, nullable=True)
+    tenant_id = db.Column(UUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
@@ -719,3 +771,31 @@ class MessageAgentThought(db.Model):
     created_by_role = db.Column(db.String, nullable=False)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+
+
+class DatasetRetrieverResource(db.Model):
+    __tablename__ = 'dataset_retriever_resources'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='dataset_retriever_resource_pkey'),
+        db.Index('dataset_retriever_resource_message_id_idx', 'message_id'),
+    )
+
+    id = db.Column(UUID, nullable=False, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(UUID, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    dataset_id = db.Column(UUID, nullable=False)
+    dataset_name = db.Column(db.Text, nullable=False)
+    document_id = db.Column(UUID, nullable=False)
+    document_name = db.Column(db.Text, nullable=False)
+    data_source_type = db.Column(db.Text, nullable=False)
+    segment_id = db.Column(UUID, nullable=False)
+    score = db.Column(db.Float, nullable=True)
+    content = db.Column(db.Text, nullable=False)
+    hit_count = db.Column(db.Integer, nullable=True)
+    word_count = db.Column(db.Integer, nullable=True)
+    segment_position = db.Column(db.Integer, nullable=True)
+    index_node_hash = db.Column(db.Text, nullable=True)
+    retriever_from = db.Column(db.Text, nullable=False)
+    created_by = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+

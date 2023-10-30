@@ -774,6 +774,10 @@
   border-radius: 6px;
 }
 
+.markdown-body pre {
+  padding: 0;
+}
+
 .markdown-body pre code,
 .markdown-body pre tt {
   display: inline-block;
@@ -1042,4 +1046,8 @@
 
 .markdown-body ::-webkit-calendar-picker-indicator {
   filter: invert(50%);
+}
+
+.markdown-body .react-syntax-highlighter-line-number {
+  color: #D0D5DD;
 }

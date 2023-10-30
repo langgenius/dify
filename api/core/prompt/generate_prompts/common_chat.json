@@ -8,6 +8,6 @@
     "pre_prompt",
     "histories_prompt"
   ],
-  "query_prompt": "Human: {{query}}\n\nAssistant: ",
+  "query_prompt": "\n\nHuman: {{query}}\n\nAssistant: ",
   "stops": ["\nHuman:", "</histories>"]
 }

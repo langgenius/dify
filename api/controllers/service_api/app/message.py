@@ -10,11 +10,31 @@ from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import AppApiResource
 from libs.helper import TimestampField, uuid_value
 from services.message_service import MessageService
+from extensions.ext_database import db
+from models.model import Account, Message
 
 
 class MessageListApi(AppApiResource):
     feedback_fields = {
         'rating': fields.String
+    }
+    retriever_resource_fields = {
+        'id': fields.String,
+        'message_id': fields.String,
+        'position': fields.Integer,
+        'dataset_id': fields.String,
+        'dataset_name': fields.String,
+        'document_id': fields.String,
+        'document_name': fields.String,
+        'data_source_type': fields.String,
+        'segment_id': fields.String,
+        'score': fields.Float,
+        'hit_count': fields.Integer,
+        'word_count': fields.Integer,
+        'segment_position': fields.Integer,
+        'index_node_hash': fields.String,
+        'content': fields.String,
+        'created_at': TimestampField
     }
 
     message_fields = {
@@ -24,6 +44,7 @@ class MessageListApi(AppApiResource):
         'query': fields.String,
         'answer': fields.String,
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
+        'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
         'created_at': TimestampField
     }
 
@@ -77,5 +98,36 @@ class MessageFeedbackApi(AppApiResource):
         return {'result': 'success'}
 
 
+class MessageSuggestedApi(AppApiResource):
+    def get(self, app_model, end_user, message_id):
+        message_id = str(message_id)
+        if app_model.mode != 'chat':
+            raise NotChatAppError()
+
+        try:
+            message = db.session.query(Message).filter(
+                Message.id == message_id,
+                Message.app_id == app_model.id,
+            ).first()
+
+            if end_user is None and message.from_account_id is not None:
+                user = db.session.get(Account, message.from_account_id)
+            elif end_user is None and message.from_end_user_id is not None:
+                user = create_or_update_end_user_for_user_id(app_model, message.from_end_user_id)
+            else:
+                user = end_user
+
+            questions = MessageService.get_suggested_questions_after_answer(
+                app_model=app_model,
+                user=user,
+                message_id=message_id
+            )
+        except services.errors.message.MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
+
+        return {'result': 'success', 'data': questions}
+
+
 api.add_resource(MessageListApi, '/messages')
 api.add_resource(MessageFeedbackApi, '/messages/<uuid:message_id>/feedbacks')
+api.add_resource(MessageSuggestedApi, '/messages/<uuid:message_id>/suggested')

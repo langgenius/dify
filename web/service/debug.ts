@@ -1,9 +1,18 @@
-import type { IOnCompleted, IOnData, IOnError } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd } from './base'
 import { get, post, ssePost } from './base'
+import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
+import type { ModelModeType } from '@/types/app'
 
-export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController }: {
+export type AutomaticRes = {
+  prompt: string
+  variables: string[]
+  opening_statement: string
+}
+
+export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
+  onMessageEnd: IOnMessageEnd
   onError: IOnError
   getAbortController?: (abortController: AbortController) => void
 }) => {
@@ -12,7 +21,7 @@ export const sendChatMessage = async (appId: string, body: Record<string, any>, 
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onError, getAbortController })
+  }, { onData, onCompleted, onError, getAbortController, onMessageEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string) => {
@@ -45,7 +54,7 @@ export const fetchConvesationMessages = (appId: string, conversation_id: string)
 }
 
 export const generateRule = (body: Record<string, any>) => {
-  return post('/rule-generate', {
+  return post<AutomaticRes>('/rule-generate', {
     body,
   })
 }
@@ -56,4 +65,27 @@ export const fetchModelParams = (providerName: string, modelId: string) => {
       model_name: modelId,
     },
   })
+}
+
+export const fetchPromptTemplate = ({
+  appMode,
+  mode,
+  modelName,
+  hasSetDataSet,
+}: { appMode: string; mode: ModelModeType; modelName: string; hasSetDataSet: boolean }) => {
+  return get<Promise<{ chat_prompt_config: ChatPromptConfig; completion_prompt_config: CompletionPromptConfig; stop: [] }>>('/app/prompt-templates', {
+    params: {
+      app_mode: appMode,
+      model_mode: mode,
+      model_name: modelName,
+      has_context: hasSetDataSet,
+    },
+  })
+}
+
+export const fetchTextGenerationMessge = ({
+  appId,
+  messageId,
+}: { appId: string; messageId: string }) => {
+  return get<Promise<{ message: [] }>>(`/apps/${appId}/messages/${messageId}`)
 }

@@ -48,7 +48,7 @@ const translation = {
           copyright: '版权',
           copyRightPlaceholder: '请输入作者或组织名称',
           privacyPolicy: '隐私政策',
-          privacyPolicyPlaceholder: '请输入隐私政策',
+          privacyPolicyPlaceholder: '请输入隐私政策链接',
           privacyPolicyTip: '帮助访问者了解该应用收集的数据，可参考 Dify 的<privacyPolicyLink>隐私政策</privacyPolicyLink>。',
         },
       },
@@ -60,6 +60,11 @@ const translation = {
         scripts: '将以下代码嵌入到你的网站中',
         copied: '已复制',
         copy: '复制',
+      },
+      qrcode: {
+        title: '二维码分享',
+        scan: '扫码分享应用',
+        download: '下载二维码',
       },
       customize: {
         way: '方法',

@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useEffect, useRef } from 'react'
 import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import AppCard from './AppCard'
@@ -10,8 +9,7 @@ import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import Confirm from '@/app/components/base/confirm/common'
+import { CheckModal } from '@/hooks/use-pay'
 
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
@@ -24,16 +22,6 @@ const Apps = () => {
   const { isCurrentWorkspaceManager } = useAppContext()
   const { data, isLoading, setSize, mutate } = useSWRInfinite(getKey, fetchAppList, { revalidateFirstPage: false })
   const anchorRef = useRef<HTMLDivElement>(null)
-  const searchParams = useSearchParams()
-  const router = useRouter()
-  const payProviderName = searchParams.get('provider_name')
-  const payStatus = searchParams.get('payment_result')
-  const [showPayStatusModal, setShowPayStatusModal] = useState(false)
-
-  const handleCancelShowPayStatusModal = useCallback(() => {
-    setShowPayStatusModal(false)
-    router.replace('/', { forceOptimisticNavigation: false })
-  }, [router])
 
   useEffect(() => {
     document.title = `${t('app.title')} -  Dify`
@@ -41,9 +29,7 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-    if (payProviderName === ProviderEnum.anthropic && (payStatus === 'succeeded' || payStatus === 'cancelled'))
-      setShowPayStatusModal(true)
-  }, [mutate, payProviderName, payStatus, t])
+  }, [mutate, t])
 
   useEffect(() => {
     let observer: IntersectionObserver | undefined
@@ -64,27 +50,7 @@ const Apps = () => {
       {data?.map(({ data: apps }) => apps.map(app => (
         <AppCard key={app.id} app={app} onRefresh={mutate} />
       )))}
-      {
-        showPayStatusModal && (
-          <Confirm
-            isShow
-            onCancel={handleCancelShowPayStatusModal}
-            onConfirm={handleCancelShowPayStatusModal}
-            type={
-              payStatus === 'succeeded'
-                ? 'success'
-                : 'danger'
-            }
-            title={
-              payStatus === 'succeeded'
-                ? t('common.actionMsg.paySucceeded')
-                : t('common.actionMsg.payCancelled')
-            }
-            showOperateCancel={false}
-            confirmText={(payStatus === 'cancelled' && t('common.operation.ok')) || ''}
-          />
-        )
-      }
+      <CheckModal />
     </nav>
     <div ref={anchorRef} className='h-0'> </div>
     </>

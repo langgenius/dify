@@ -78,20 +78,25 @@ const ModelPage = () => {
       config.azure_openai,
       config.replicate,
       config.huggingface_hub,
-      config.minimax,
+      config.zhipuai,
+      config.baichuan,
       config.spark,
+      config.minimax,
       config.tongyi,
       config.wenxin,
       config.chatglm,
       config.xinference,
       config.openllm,
+      config.localai,
     ]
   }
   else {
     modelList = [
       config.huggingface_hub,
-      config.minimax,
+      config.zhipuai,
+      config.baichuan,
       config.spark,
+      config.minimax,
       config.azure_openai,
       config.replicate,
       config.tongyi,
@@ -99,6 +104,7 @@ const ModelPage = () => {
       config.chatglm,
       config.xinference,
       config.openllm,
+      config.localai,
     ]
   }
 
@@ -122,6 +128,7 @@ const ModelPage = () => {
   const handleUpdateProvidersAndModelList = () => {
     updateModelList(ModelType.textGeneration)
     updateModelList(ModelType.embeddings)
+    updateModelList(ModelType.speech2text)
     mutateProviders()
   }
   const handleSave = async (originValue?: FormValue) => {
@@ -340,6 +347,7 @@ const ModelPage = () => {
         title={deleteModel?.model_name || ''}
         desc={t('common.modelProvider.item.deleteDesc', { modelName: deleteModel?.model_name }) || ''}
         onConfirm={handleDeleteModel}
+        confirmWrapperClassName='!z-30'
       />
     </div>
   )

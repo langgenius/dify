@@ -17,6 +17,7 @@ from controllers.console.explore.error import NotCompletionAppError, AppSuggeste
 from controllers.console.explore.wraps import InstalledAppResource
 from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
+from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs.helper import uuid_value, TimestampField
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
@@ -26,25 +27,6 @@ from services.message_service import MessageService
 
 
 class MessageListApi(InstalledAppResource):
-    feedback_fields = {
-        'rating': fields.String
-    }
-
-    message_fields = {
-        'id': fields.String,
-        'conversation_id': fields.String,
-        'inputs': fields.Raw,
-        'query': fields.String,
-        'answer': fields.String,
-        'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
-        'created_at': TimestampField
-    }
-
-    message_infinite_scroll_pagination_fields = {
-        'limit': fields.Integer,
-        'has_more': fields.Boolean,
-        'data': fields.List(fields.Nested(message_fields))
-    }
 
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, installed_app):

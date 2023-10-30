@@ -9,16 +9,15 @@ from extensions.ext_mail import mail
 
 
 @shared_task(queue='mail')
-def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspace_id: str, workspace_name: str):
+def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspace_name: str):
     """
     Async Send invite member mail
     :param to
     :param token
     :param inviter_name
-    :param workspace_id
     :param workspace_name
 
-    Usage: send_invite_member_mail_task.delay(to, token, inviter_name, workspace_id, workspace_name)
+    Usage: send_invite_member_mail_task.delay(to, token, inviter_name, workspace_name)
     """
     if not mail.is_inited():
         return
@@ -36,12 +35,7 @@ def send_invite_member_mail_task(to: str, token: str, inviter_name: str, workspa
 <p>Click <a href="{url}">here</a> to join.</p>
 <p>Thanks,</p>
 <p>Dify Team</p>""".format(inviter_name=inviter_name, workspace_name=workspace_name,
-                           url='{}/activate?workspace_id={}&email={}&token={}'.format(
-                               current_app.config.get("CONSOLE_WEB_URL"),
-                               workspace_id,
-                               to,
-                               token)
-                           )
+                           url=f'{current_app.config.get("CONSOLE_WEB_URL")}/activate?token={token}')
         )
 
         end_at = time.perf_counter()

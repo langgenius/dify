@@ -2,11 +2,13 @@ import json
 from typing import Type
 
 from core.helper import encrypter
-from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType
+from core.model_providers.models.embedding.openllm_embedding import OpenLLMEmbedding
+from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType, ModelMode
 from core.model_providers.models.llm.openllm_model import OpenLLMModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
 from core.model_providers.models.base import BaseProviderModel
+from core.third_party.langchain.embeddings.openllm_embedding import OpenLLMEmbeddings
 from core.third_party.langchain.llms.openllm import OpenLLM
 from models.provider import ProviderType
 
@@ -22,6 +24,9 @@ class OpenLLMProvider(BaseModelProvider):
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []
 
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
+
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
         Returns the model class.
@@ -31,6 +36,8 @@ class OpenLLMProvider(BaseModelProvider):
         """
         if model_type == ModelType.TEXT_GENERATION:
             model_class = OpenLLMModel
+        elif model_type== ModelType.EMBEDDINGS:
+            model_class = OpenLLMEmbedding
         else:
             raise NotImplementedError
 
@@ -45,11 +52,11 @@ class OpenLLMProvider(BaseModelProvider):
         :return:
         """
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0.01, max=2, default=1),
-            top_p=KwargRule[float](min=0, max=1, default=0.7),
-            presence_penalty=KwargRule[float](min=-2, max=2, default=0),
-            frequency_penalty=KwargRule[float](min=-2, max=2, default=0),
-            max_tokens=KwargRule[int](alias='max_new_tokens', min=10, max=4000, default=128),
+            temperature=KwargRule[float](min=0.01, max=2, default=1, precision=2),
+            top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
+            presence_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+            frequency_penalty=KwargRule[float](min=-2, max=2, default=0, precision=2),
+            max_tokens=KwargRule[int](alias='max_new_tokens', min=10, max=4000, default=128, precision=0),
         )
 
     @classmethod
@@ -69,14 +76,21 @@ class OpenLLMProvider(BaseModelProvider):
                 'server_url': credentials['server_url']
             }
 
-            llm = OpenLLM(
-                llm_kwargs={
-                    'max_new_tokens': 10
-                },
-                **credential_kwargs
-            )
+            if model_type == ModelType.TEXT_GENERATION:
+                llm = OpenLLM(
+                    llm_kwargs={
+                        'max_new_tokens': 10
+                    },
+                    **credential_kwargs
+                )
 
-            llm("ping")
+                llm("ping")
+            elif model_type == ModelType.EMBEDDINGS:
+                embedding = OpenLLMEmbeddings(
+                    **credential_kwargs
+                )
+
+                embedding.embed_query("ping")
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 

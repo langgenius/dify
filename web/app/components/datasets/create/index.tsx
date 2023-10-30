@@ -10,13 +10,11 @@ import StepThree from './step-three'
 import { DataSourceType } from '@/models/datasets'
 import type { DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
-import { fetchDataDetail } from '@/service/datasets'
-import type { DataSourceNotionPage } from '@/models/common'
+import { fetchDatasetDetail } from '@/service/datasets'
+import type { NotionPage } from '@/models/common'
 import { useProviderContext } from '@/context/provider-context'
 
 import AccountSetting from '@/app/components/header/account-setting'
-
-type Page = DataSourceNotionPage & { workspace_id: string }
 
 type DatasetUpdateFormProps = {
   datasetId?: string
@@ -35,8 +33,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [hasError, setHasError] = useState(false)
   const { embeddingsDefaultModel } = useProviderContext()
 
-  const [notionPages, setNotionPages] = useState<Page[]>([])
-  const updateNotionPages = (value: Page[]) => {
+  const [notionPages, setNotionPages] = useState<NotionPage[]>([])
+  const updateNotionPages = (value: NotionPage[]) => {
     setNotionPages(value)
   }
 
@@ -93,7 +91,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     (async () => {
       if (datasetId) {
         try {
-          const detail = await fetchDataDetail(datasetId)
+          const detail = await fetchDatasetDetail(datasetId)
           setDetail(detail)
         }
         catch (e) {
@@ -129,7 +127,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
         {(step === 2 && (!datasetId || (datasetId && !!detail))) && <StepTwo
           hasSetAPIKEY={!!embeddingsDefaultModel}
           onSetting={showSetAPIKey}
-          indexingType={detail?.indexing_technique || ''}
+          indexingType={detail?.indexing_technique}
           datasetId={datasetId}
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}

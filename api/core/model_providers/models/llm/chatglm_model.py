@@ -61,7 +61,3 @@ class ChatGLMModel(BaseLLM):
             return LLMBadRequestError(f"ChatGLM: {str(ex)}")
         else:
             return ex
-
-    @classmethod
-    def support_streaming(cls):
-        return False

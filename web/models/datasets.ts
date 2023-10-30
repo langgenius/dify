@@ -183,13 +183,20 @@ export type DocumentListResponse = {
   limit: number
 }
 
-export type CreateDocumentReq = {
+export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
   doc_form: 'text_model' | 'qa_model'
   doc_language: string
-  data_source: DataSource
   process_rule: ProcessRule
+}
+
+export type CreateDocumentReq = DocumentReq & {
+  data_source: DataSource
+}
+
+export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
+  dataset_id: string
 }
 
 export type DataSource = {

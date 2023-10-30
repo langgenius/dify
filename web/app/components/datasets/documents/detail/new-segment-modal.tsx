@@ -19,7 +19,7 @@ type NewSegmentModalProps = {
   onSave: () => void
 }
 
-const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
+const NewSegmentModal: FC<NewSegmentModalProps> = ({
   isShow,
   onCancel,
   docForm,
@@ -152,6 +152,6 @@ const NewSegmentModal: FC<NewSegmentModalProps> = memo(({
       </div>
     </Modal>
   )
-})
+}
 
-export default NewSegmentModal
+export default memo(NewSegmentModal)

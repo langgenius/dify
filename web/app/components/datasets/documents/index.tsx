@@ -17,26 +17,26 @@ import { get } from '@/service/base'
 import { createDocument, fetchDocuments } from '@/service/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { NotionPageSelectorModal } from '@/app/components/base/notion-page-selector'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 
 // Custom page count is not currently supported.
 const limit = 15
 
-const FolderPlusIcon: FC<{ className?: string }> = ({ className }) => {
+const FolderPlusIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M10.8332 5.83333L9.90355 3.9741C9.63601 3.439 9.50222 3.17144 9.30265 2.97597C9.12615 2.80311 8.91344 2.67164 8.6799 2.59109C8.41581 2.5 8.11668 2.5 7.51841 2.5H4.33317C3.39975 2.5 2.93304 2.5 2.57652 2.68166C2.26292 2.84144 2.00795 3.09641 1.84816 3.41002C1.6665 3.76654 1.6665 4.23325 1.6665 5.16667V5.83333M1.6665 5.83333H14.3332C15.7333 5.83333 16.4334 5.83333 16.9681 6.10582C17.4386 6.3455 17.821 6.72795 18.0607 7.19836C18.3332 7.73314 18.3332 8.4332 18.3332 9.83333V13.5C18.3332 14.9001 18.3332 15.6002 18.0607 16.135C17.821 16.6054 17.4386 16.9878 16.9681 17.2275C16.4334 17.5 15.7333 17.5 14.3332 17.5H5.6665C4.26637 17.5 3.56631 17.5 3.03153 17.2275C2.56112 16.9878 2.17867 16.6054 1.93899 16.135C1.6665 15.6002 1.6665 14.9001 1.6665 13.5V5.83333ZM9.99984 14.1667V9.16667M7.49984 11.6667H12.4998" stroke="#667085" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 }
 
-const ThreeDotsIcon: FC<{ className?: string }> = ({ className }) => {
+const ThreeDotsIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <path d="M5 6.5V5M8.93934 7.56066L10 6.5M10.0103 11.5H11.5103" stroke="#374151" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 }
 
-const NotionIcon: FC<{ className?: string }> = ({ className }) => {
+const NotionIcon = ({ className }: React.SVGProps<SVGElement>) => {
   return <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
     <g clip-path="url(#clip0_2164_11263)">
       <path fillRule="evenodd" clipRule="evenodd" d="M3.5725 18.2611L1.4229 15.5832C0.905706 14.9389 0.625 14.1466 0.625 13.3312V3.63437C0.625 2.4129 1.60224 1.39936 2.86295 1.31328L12.8326 0.632614C13.5569 0.583164 14.2768 0.775682 14.8717 1.17794L18.3745 3.5462C19.0015 3.97012 19.375 4.66312 19.375 5.40266V16.427C19.375 17.6223 18.4141 18.6121 17.1798 18.688L6.11458 19.3692C5.12958 19.4298 4.17749 19.0148 3.5725 18.2611Z" fill="white" />
@@ -51,7 +51,7 @@ const NotionIcon: FC<{ className?: string }> = ({ className }) => {
   </svg>
 }
 
-const EmptyElement: FC<{ onClick: () => void; type?: 'upload' | 'sync' }> = ({ onClick, type = 'upload' }) => {
+const EmptyElement: FC<{ canAdd: boolean; onClick: () => void; type?: 'upload' | 'sync' }> = ({ canAdd = true, onClick, type = 'upload' }) => {
   const { t } = useTranslation()
   return <div className={s.emptyWrapper}>
     <div className={s.emptyElement}>
@@ -62,7 +62,7 @@ const EmptyElement: FC<{ onClick: () => void; type?: 'upload' | 'sync' }> = ({ o
       <div className={s.emptyTip}>
         {t(`datasetDocuments.list.empty.${type}.tip`)}
       </div>
-      {type === 'upload' && <Button onClick={onClick} className={s.addFileBtn}>
+      {type === 'upload' && canAdd && <Button onClick={onClick} className={s.addFileBtn}>
         <PlusIcon className={s.plusIcon} />{t('datasetDocuments.list.addFile')}
       </Button>}
     </div>
@@ -84,6 +84,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const [notionPageSelectorModalVisible, setNotionPageSelectorModalVisible] = useState(false)
   const [timerCanRun, setTimerCanRun] = useState(true)
   const isDataSourceNotion = dataset?.data_source_type === DataSourceType.NOTION
+  const embeddingAvailable = !!dataset?.embedding_available
 
   const query = useMemo(() => {
     return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
@@ -142,7 +143,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const isLoading = !documentsRes && !error
 
-  const handleSaveNotionPageSelected = async (selectedPages: (DataSourceNotionPage & { workspace_id: string })[]) => {
+  const handleSaveNotionPageSelected = async (selectedPages: NotionPage[]) => {
     const workspacesMap = groupBy(selectedPages, 'workspace_id')
     const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
       return {
@@ -205,20 +206,19 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             onChange={debounce(setSearchValue, 500)}
             value={searchValue}
           />
-          <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
-            <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-            {
-              isDataSourceNotion
-                ? t('datasetDocuments.list.addPages')
-                : t('datasetDocuments.list.addFile')
-            }
-          </Button>
+          {embeddingAvailable && (
+            <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
+              <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
+              {isDataSourceNotion && t('datasetDocuments.list.addPages')}
+              {!isDataSourceNotion && t('datasetDocuments.list.addFile')}
+            </Button>
+          )}
         </div>
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
-            : <EmptyElement onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
+            ? <List embeddingAvailable={embeddingAvailable} documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
+            : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > limit)

@@ -1,0 +1,65 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "12",
+			"height": "12",
+			"viewBox": "0 0 12 12",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Left Icon",
+					"clip-path": "url(#clip0_10386_42171)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Icon",
+							"d": "M7.99998 4V2.5L9.49998 1L9.99998 2L11 2.5L9.49998 4H7.99998ZM7.99998 4L5.99999 5.99997M11 6C11 8.76142 8.76142 11 6 11C3.23858 11 1 8.76142 1 6C1 3.23858 3.23858 1 6 1M8.5 6C8.5 7.38071 7.38071 8.5 6 8.5C4.61929 8.5 3.5 7.38071 3.5 6C3.5 4.61929 4.61929 3.5 6 3.5",
+							"stroke": "currentColor",
+							"stroke-linecap": "round",
+							"stroke-linejoin": "round"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_10386_42171"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "12",
+									"height": "12",
+									"fill": "white"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Target04"
+}

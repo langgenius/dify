@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 For versatile conversational apps using a Q&A format, call the chat-messages API to initiate dialogue. Maintain ongoing conversations by passing the returned conversation_id. Response parameters and templates depend on LangGenius Prompt Eng. settings. **[Before you start, READ This !! What is a Bearer Token](https://swagger.io/docs/specification/authentication/bearer-authentication/)**
 
+<div>
+  ### Authentication
+
+  Service API of Dify authenticates using an `API-Key`.
+
+  It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
+
+  All API requests should include your `API-Key` in the **`Authorization`** HTTP Header, as shown below:
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/chat-messages'
   method='POST'
@@ -50,7 +69,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="POST" label="/chat-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "eh",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/chat-messages' \
+    curl --location --request POST '${props.appDetail.api_base_url}/chat-messages' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -119,7 +138,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -148,6 +167,54 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
           "id": "hSIhXBhNe8X1d8Et"
           // ...
         }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/suggested'
+  method='GET'
+  title='next suggested questions'
+  name='#suggested'
+/>
+<Row>
+  <Col>
+    Get next questions suggestions for the current message
+
+    ### Path Params
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        Message ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "data": [
+            "a",
+            "b",
+            "c"
+        ]
       ]
     }
     ```
@@ -189,7 +256,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="GET" label="/messages" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/messages?user=abc-123&conversation_id='
+    curl --location --request GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -251,7 +318,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="GET" label="/conversations" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/conversations?user=abc-123&last_id=&limit=20' \
+    curl --location --request GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 
@@ -312,7 +379,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="POST" label="/conversations/{converation_id}/name" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/{converation_id}/name' \
+    curl --location --request POST '${props.appDetail.api_base_url}/conversations/{converation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --data-raw '{
@@ -359,7 +426,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="DELETE" label="/conversations/{converation_id}" targetCode={`curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-        curl --location --request DELETE 'https://cloud.langgenius.dev/api/conversations/{convsation_id}' \
+        curl --location --request DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
         --header 'Content-Type: application/json' \
         --header 'Accept: application/json' \
         --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
@@ -396,7 +463,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 
     <Properties>
       <Property name='file' type='file' key='file'>
-        Audio file.    
+        Audio file.
         File uploads are currently limited to 15 MB and the following input file types are supported: mp3, mp4, mpeg, mpga, m4a, wav, and webm.
       </Property>
     </Properties>
@@ -406,7 +473,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="POST" label="/audio-to-text" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/conversations/name' \
+    curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --form 'file=@localfile;type=audio/mp3'
     ```
@@ -448,7 +515,7 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 

@@ -1,4 +1,4 @@
-import type { IOnCompleted, IOnData, IOnError, IOnThought } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnThought } from './base'
 import {
   del, get, patch, post, ssePost,
 } from './base'
@@ -10,11 +10,12 @@ function getUrl(url: string) {
   return `${baseUrl}/${url.startsWith('/') ? url.slice(1) : url}`
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onThought, getAbortController }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, onThought, onMessageEnd, getAbortController }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
   onThought: IOnThought
+  onMessageEnd: IOnMessageEnd
   getAbortController?: (abortController: AbortController) => void
 }) => {
   return ssePost(getUrl('messages'), {
@@ -22,7 +23,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onThought, onError, getAbortController })
+  }, { onData, onCompleted, onThought, onError, getAbortController, onMessageEnd })
 }
 
 export const stopChatMessageResponding = async (taskId: string) => {
@@ -43,6 +44,10 @@ export const unpinConversation = async (id: string) => {
 
 export const delConversation = async (id: string) => {
   return del(getUrl(`conversations/${id}`))
+}
+
+export const renameConversation = async (id: string, name: string) => {
+  return post(getUrl(`conversations/${id}/name`), { body: { name } })
 }
 
 export const fetchChatList = async (conversationId: string) => {

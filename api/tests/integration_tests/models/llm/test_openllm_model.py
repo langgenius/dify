@@ -55,7 +55,7 @@ def decrypt_side_effect(tenant_id, encrypted_api_key):
 def test_get_num_tokens(mock_decrypt, mocker):
     model = get_mock_model('facebook/opt-125m', mocker)
     rst = model.get_num_tokens([
-        PromptMessage(type=MessageType.HUMAN, content='Who is your manufacturer?')
+        PromptMessage(type=MessageType.USER, content='Who is your manufacturer?')
     ])
     assert rst == 5
 

@@ -29,6 +29,7 @@ const translation = {
     getForFree: 'Get for free',
     reload: 'Reload',
     ok: 'OK',
+    log: 'Log',
   },
   placeholder: {
     input: 'Please enter',
@@ -40,10 +41,12 @@ const translation = {
   actionMsg: {
     noModification: 'No modifications at the moment.',
     modifiedSuccessfully: 'Modified successfully',
-    modificationFailed: 'Modification failed',
+    modifiedUnsuccessfully: 'Modified unsuccessfully',
     copySuccessfully: 'Copied successfully',
     paySucceeded: 'Payment succeeded',
     payCancelled: 'Payment cancelled',
+    generatedSuccessfully: 'Generated successfully',
+    generatedUnsuccessfully: 'Generated unsuccessfully',
   },
   model: {
     params: {
@@ -55,15 +58,18 @@ const translation = {
         'Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.',
       presence_penalty: 'Presence penalty',
       presence_penaltyTip:
-        'How much to penalize new tokens based on whether they appear in the text so far. Increases the model\'s likelihood to talk about new topics.',
+        'How much to penalize new tokens based on whether they appear in the text so far.\nIncreases the model\'s likelihood to talk about new topics.',
       frequency_penalty: 'Frequency penalty',
       frequency_penaltyTip:
-        'How much to penalize new tokens based on their existing frequency in the text so far. Decreases the model\'s likelihood to repeat the same line verbatim.',
+        'How much to penalize new tokens based on their existing frequency in the text so far.\nDecreases the model\'s likelihood to repeat the same line verbatim.',
       max_tokens: 'Max token',
       max_tokensTip:
-        'Max tokens depending on the model. Prompt and completion share this limit. One token is roughly 1 English character.',
+        'Used to limit the maximum length of the reply, in tokens. \nLarger values may limit the space left for prompt words, chat logs, and data sets. \nIt is recommended to set it below two-thirds.',
       maxTokenSettingTip: 'Your max token setting is high, potentially limiting space for prompts, queries, and data. Consider setting it below 2/3.',
       setToCurrentModelMaxTokenTip: 'Max token is updated to the 80% maximum token of the current model {{maxToken}}.',
+      stop_sequences: 'Stop sequences',
+      stop_sequencesTip: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+      stop_sequencesPlaceholder: 'Enter sequence and press Tab',
     },
     tone: {
       Creative: 'Creative',
@@ -71,6 +77,7 @@ const translation = {
       Precise: 'Precise',
       Custom: 'Custom',
     },
+    addMoreModel: 'Go to settings to add more models',
   },
   menus: {
     status: 'beta',
@@ -135,11 +142,13 @@ const translation = {
     inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',
     emailInvalid: 'Invalid Email Format',
-    emailPlaceholder: 'Input Email',
-    sendInvite: 'Add',
+    emailPlaceholder: 'Please input emails',
+    sendInvite: 'Send Invite',
+    invitedAsRole: 'Invited as {{role}} user',
     invitationSent: 'Invitation sent',
     invitationSentTip: 'Invitation sent, and they can sign in to Dify to access your team data.',
     invitationLink: 'Invitation Link',
+    failedinvitationEmails: 'Below users were not invited successfully',
     ok: 'OK',
     removeFromTeam: 'Remove from team',
     removeFromTeamTip: 'Will remove team access',
@@ -333,6 +342,62 @@ const translation = {
     'whisper-1': 'Whisper-1',
     'claude-instant-1': 'Claude-Instant',
     'claude-2': 'Claude-2',
+  },
+  chat: {
+    renameConversation: 'Rename Conversation',
+    conversationName: 'Conversation name',
+    conversationNamePlaceholder: 'Please input conversation name',
+    conversationNameCanNotEmpty: 'Conversation name required',
+    citation: {
+      title: 'CITATIONS',
+      linkToDataset: 'Link to dataset',
+      characters: 'Characters:',
+      hitCount: 'Hit count:',
+      vectorHash: 'Vector hash:',
+      hitScore: 'Hit Score:',
+    },
+  },
+  promptEditor: {
+    placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
+    context: {
+      item: {
+        title: 'Context',
+        desc: 'Insert context template',
+      },
+      modal: {
+        title: '{{num}} Datasets in Context',
+        add: 'Add Context ',
+        footer: 'You can manage contexts in the Context section below.',
+      },
+    },
+    history: {
+      item: {
+        title: 'Conversation History',
+        desc: 'Insert historical message template',
+      },
+      modal: {
+        title: 'EXAMPLE',
+        user: 'Hello',
+        assistant: 'Hello! How can I assist you today?',
+        edit: 'Edit Conversation Role Names',
+      },
+    },
+    variable: {
+      item: {
+        title: 'Variables',
+        desc: 'Insert variable template',
+      },
+      modal: {
+        add: 'New variable',
+      },
+    },
+    query: {
+      item: {
+        title: 'Query',
+        desc: 'Insert user query template',
+      },
+    },
+    existed: 'Already exists in the prompt',
   },
 }
 

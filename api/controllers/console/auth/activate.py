@@ -16,26 +16,25 @@ from services.account_service import RegisterService
 class ActivateCheckApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='args')
-        parser.add_argument('email', type=email, required=True, nullable=False, location='args')
+        parser.add_argument('workspace_id', type=str, required=False, nullable=True, location='args')
+        parser.add_argument('email', type=email, required=False, nullable=True, location='args')
         parser.add_argument('token', type=str, required=True, nullable=False, location='args')
         args = parser.parse_args()
 
-        account = RegisterService.get_account_if_token_valid(args['workspace_id'], args['email'], args['token'])
+        workspaceId = args['workspace_id']
+        reg_email = args['email']
+        token = args['token']
 
-        tenant = db.session.query(Tenant).filter(
-            Tenant.id == args['workspace_id'],
-            Tenant.status == 'normal'
-        ).first()
+        invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
 
-        return {'is_valid': account is not None, 'workspace_name': tenant.name}
+        return {'is_valid': invitation is not None, 'workspace_name': invitation['tenant'].name if invitation else None}
 
 
 class ActivateApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('workspace_id', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('email', type=email, required=True, nullable=False, location='json')
+        parser.add_argument('workspace_id', type=str, required=False, nullable=True, location='json')
+        parser.add_argument('email', type=email, required=False, nullable=True, location='json')
         parser.add_argument('token', type=str, required=True, nullable=False, location='json')
         parser.add_argument('name', type=str_len(30), required=True, nullable=False, location='json')
         parser.add_argument('password', type=valid_password, required=True, nullable=False, location='json')
@@ -44,12 +43,13 @@ class ActivateApi(Resource):
         parser.add_argument('timezone', type=timezone, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        account = RegisterService.get_account_if_token_valid(args['workspace_id'], args['email'], args['token'])
-        if account is None:
+        invitation = RegisterService.get_invitation_if_token_valid(args['workspace_id'], args['email'], args['token'])
+        if invitation is None:
             raise AlreadyActivateError()
 
         RegisterService.revoke_token(args['workspace_id'], args['email'], args['token'])
 
+        account = invitation['account']
         account.name = args['name']
 
         # generate password salt

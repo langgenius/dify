@@ -1,5 +1,6 @@
 'use client'
 import React, { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import FilePreview from '../file-preview'
@@ -8,11 +9,12 @@ import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import s from './index.module.css'
 import type { FileItem } from '@/models/datasets'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
+import { fetchDocumentsLimit } from '@/service/common'
 
 type IStepOneProps = {
   datasetId?: string
@@ -23,13 +25,11 @@ type IStepOneProps = {
   files: FileItem[]
   updateFileList: (files: FileItem[]) => void
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
-  notionPages?: any[]
-  updateNotionPages: (value: any[]) => void
+  notionPages?: NotionPage[]
+  updateNotionPages: (value: NotionPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
 }
-
-type Page = DataSourceNotionPage & { workspace_id: string }
 
 type NotionConnectorProps = {
   onSetting: () => void
@@ -61,10 +61,11 @@ const StepOne = ({
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
+  const { data: limitsData } = useSWR('/datasets/limit', fetchDocumentsLimit)
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
-  const [currentNotionPage, setCurrentNotionPage] = useState<Page | undefined>()
+  const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
   const { t } = useTranslation()
 
   const modalShowHandle = () => setShowModal(true)
@@ -77,7 +78,7 @@ const StepOne = ({
     setCurrentFile(undefined)
   }
 
-  const updateCurrentPage = (page: Page) => {
+  const updateCurrentPage = (page: NotionPage) => {
     setCurrentNotionPage(page)
   }
 
@@ -151,7 +152,7 @@ const StepOne = ({
               </div>
             )
           }
-          {dataSourceType === DataSourceType.FILE && (
+          {dataSourceType === DataSourceType.FILE && limitsData && (
             <>
               <FileUploader
                 fileList={files}
@@ -160,6 +161,8 @@ const StepOne = ({
                 onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
+                countLimit={limitsData.documents_limit}
+                countUsed={limitsData.documents_count}
               />
               <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
@@ -167,10 +170,16 @@ const StepOne = ({
           {dataSourceType === DataSourceType.NOTION && (
             <>
               {!hasConnection && <NotionConnector onSetting={onSetting} />}
-              {hasConnection && (
+              {hasConnection && limitsData && (
                 <>
                   <div className='mb-8 w-[640px]'>
-                    <NotionPageSelector value={notionPages.map(page => page.page_id)} onSelect={updateNotionPages} onPreview={updateCurrentPage} />
+                    <NotionPageSelector
+                      value={notionPages.map(page => page.page_id)}
+                      onSelect={updateNotionPages}
+                      onPreview={updateCurrentPage}
+                      countLimit={limitsData.documents_limit}
+                      countUsed={limitsData.documents_count}
+                    />
                   </div>
                   <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>

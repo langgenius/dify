@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -24,6 +24,7 @@ import type { DataSet } from '@/models/datasets'
 export type IChatProps = {
   configElem?: React.ReactNode
   chatList: IChatItem[]
+  controlChatUpdateAllConversation?: number
   /**
    * Whether to display the editing area and rating status
    */
@@ -47,14 +48,18 @@ export type IChatProps = {
   isShowSuggestion?: boolean
   suggestionList?: string[]
   isShowSpeechToText?: boolean
-  answerIconClassName?: string
+  isShowCitation?: boolean
+  answerIcon?: ReactNode
   isShowConfigElem?: boolean
   dataSets?: DataSet[]
+  isShowCitationHitInfo?: boolean
+  isShowPromptLog?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
   configElem,
   chatList,
+
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   isHideSendInput = false,
@@ -72,9 +77,12 @@ const Chat: FC<IChatProps> = ({
   isShowSuggestion,
   suggestionList,
   isShowSpeechToText,
-  answerIconClassName,
+  isShowCitation,
+  answerIcon,
   isShowConfigElem,
   dataSets,
+  isShowCitationHitInfo,
+  isShowPromptLog,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -160,6 +168,7 @@ const Chat: FC<IChatProps> = ({
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
             const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
+            const citation = item.citation
             const isThinking = !item.content && item.agent_thoughts && item.agent_thoughts?.length > 0 && !item.agent_thoughts.some(item => item.thought === '[DONE]')
             return <Answer
               key={item.id}
@@ -170,13 +179,27 @@ const Chat: FC<IChatProps> = ({
               onSubmitAnnotation={onSubmitAnnotation}
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
-              answerIconClassName={answerIconClassName}
+              answerIcon={answerIcon}
               thoughts={thoughts}
+              citation={citation}
               isThinking={isThinking}
               dataSets={dataSets}
+              isShowCitation={isShowCitation}
+              isShowCitationHitInfo={isShowCitationHitInfo}
             />
           }
-          return <Question key={item.id} id={item.id} content={item.content} more={item.more} useCurrentUserAvatar={useCurrentUserAvatar} />
+          return (
+            <Question
+              key={item.id}
+              id={item.id}
+              content={item.content}
+              more={item.more}
+              useCurrentUserAvatar={useCurrentUserAvatar}
+              item={item}
+              isShowPromptLog={isShowPromptLog}
+              isResponsing={isResponsing}
+            />
+          )
         })}
       </div>
       {

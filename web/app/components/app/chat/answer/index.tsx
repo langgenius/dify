@@ -1,11 +1,11 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc, ThoughtItem } from '../type'
+import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc, ThoughtItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
 import { EditIcon, EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
@@ -13,6 +13,7 @@ import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
 import Thought from '../thought'
+import Citation from '../citation'
 import { randomString } from '@/utils'
 import type { Annotation, MessageRating } from '@/models/log'
 import AppContext from '@/context/app-context'
@@ -43,13 +44,16 @@ export type IAnswerProps = {
   onSubmitAnnotation?: SubmitAnnotationFunc
   displayScene: DisplayScene
   isResponsing?: boolean
-  answerIconClassName?: string
+  answerIcon?: ReactNode
   thoughts?: ThoughtItem[]
+  citation?: CitationItem[]
   isThinking?: boolean
   dataSets?: DataSet[]
+  isShowCitation?: boolean
+  isShowCitationHitInfo?: boolean
 }
 // The component needs to maintain its own state to control whether to display input component
-const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIconClassName, thoughts, isThinking, dataSets }) => {
+const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedbackEdit = false, onFeedback, onSubmitAnnotation, displayScene = 'web', isResponsing, answerIcon, thoughts, citation, isThinking, dataSets, isShowCitation, isShowCitationHitInfo = false }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -164,14 +168,18 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
   return (
     <div key={id}>
       <div className='flex items-start'>
-        <div className={`${s.answerIcon} ${answerIconClassName} w-10 h-10 shrink-0`}>
-          {isResponsing
-            && <div className={s.typeingIcon}>
-              <LoadingAnim type='avatar' />
+        {
+          answerIcon || (
+            <div className={`${s.answerIcon} w-10 h-10 shrink-0`}>
+              {isResponsing
+                && <div className={s.typeingIcon}>
+                  <LoadingAnim type='avatar' />
+                </div>
+              }
             </div>
-          }
-        </div>
-        <div className={s.answerWrapWrap}>
+          )
+        }
+        <div className={cn(s.answerWrapWrap, 'chat-answer-container')}>
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
@@ -236,6 +244,11 @@ const Answer: FC<IAnswerProps> = ({ item, feedbackDisabled = false, isHideFeedba
                         }}>{t('common.operation.cancel')}</Button>
                     </div>
                   </>
+                }
+                {
+                  !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
+                    <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
+                  )
                 }
               </div>
               <div className='absolute top-[-14px] right-[-14px] flex flex-row justify-end gap-1'>

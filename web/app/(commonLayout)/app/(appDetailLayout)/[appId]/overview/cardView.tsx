@@ -33,20 +33,18 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   if (!response)
     return <Loading />
 
-  const handleError = (err: Error | null) => {
-    if (!err) {
-      notify({
-        type: 'success',
-        message: t('common.actionMsg.modifiedSuccessfully'),
-      })
+  const handleCallbackResult = (err: Error | null, message?: string) => {
+    const type = err ? 'error' : 'success'
+
+    message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
+
+    if (type === 'success')
       mutate(detailParams)
-    }
-    else {
-      notify({
-        type: 'error',
-        message: t('common.actionMsg.modificationFailed'),
-      })
-    }
+
+    notify({
+      type,
+      message: t(`common.actionMsg.${message}`),
+    })
   }
 
   const onChangeSiteStatus = async (value: boolean) => {
@@ -56,7 +54,8 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
         body: { enable_site: value },
       }) as Promise<App>,
     )
-    handleError(err)
+
+    handleCallbackResult(err)
   }
 
   const onChangeApiStatus = async (value: boolean) => {
@@ -66,7 +65,8 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
         body: { enable_api: value },
       }) as Promise<App>,
     )
-    handleError(err)
+
+    handleCallbackResult(err)
   }
 
   const onSaveSiteConfig: IAppCardProps['onSaveSiteConfig'] = async (params) => {
@@ -79,7 +79,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
     if (!err)
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
 
-    handleError(err)
+    handleCallbackResult(err)
   }
 
   const onGenerateCode = async () => {
@@ -88,7 +88,8 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
         url: `/apps/${appId}/site/access-token-reset`,
       }) as Promise<UpdateAppSiteCodeResponse>,
     )
-    handleError(err)
+
+    handleCallbackResult(err, err ? 'generatedUnsuccessfully' : 'generatedSuccessfully')
   }
 
   return (

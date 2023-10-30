@@ -290,6 +290,10 @@
   background-image: url(../assets/csv.svg);
 }
 
+.fileIcon.docx {
+  background-image: url(../assets/docx.svg);
+}
+
 .fileIcon.xlsx,
 .fileIcon.xls {
   background-image: url(../assets/xlsx.svg);

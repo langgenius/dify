@@ -26,6 +26,8 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
+import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -188,6 +190,7 @@ const Main: FC<IMainProps> = ({
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -238,7 +241,6 @@ const Main: FC<IMainProps> = ({
     if (caculatedIntroduction && caculatedPromptVariables)
       caculatedIntroduction = replaceStringWithValues(caculatedIntroduction, promptConfig?.prompt_variables || [], caculatedPromptVariables)
 
-    // console.log(isPublicVersion)
     const openstatement = {
       id: `${Date.now()}`,
       content: caculatedIntroduction,
@@ -290,7 +292,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -400,7 +402,7 @@ const Main: FC<IMainProps> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,
@@ -488,7 +490,7 @@ const Main: FC<IMainProps> = ({
   }
 
   const difyIcon = (
-    <div className={s.difyHeader}></div>
+    <LogoHeader />
   )
 
   if (appUnavailable)
@@ -567,7 +569,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
-                    answerIconClassName={s.difyIcon}
+                    answerIcon={<LogoAvatar className='relative shrink-0' />}
                   />
                 </div>
               </div>)

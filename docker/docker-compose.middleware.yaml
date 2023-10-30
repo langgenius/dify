@@ -50,3 +50,17 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
     ports:
       - "8080:8080"
+
+  # Qdrant vector store.
+#  uncomment to use qdrant as vector store.
+#  (if uncommented, you need to comment out the weaviate service above,
+#  and set VECTOR_STORE to qdrant in the api & worker service.)
+#  qdrant:
+#    image: qdrant/qdrant:latest
+#    restart: always
+#    volumes:
+#      - ./volumes/qdrant:/qdrant/storage
+#    environment:
+#      QDRANT__API_KEY: 'difyai123456'
+#    ports:
+#      - "6333:6333"

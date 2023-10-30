@@ -4,11 +4,13 @@ import React, { useEffect, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean, useClickAway, useGetState } from 'ahooks'
-import { Cog8ToothIcon, InformationCircleIcon } from '@heroicons/react/24/outline'
+import { InformationCircleIcon } from '@heroicons/react/24/outline'
 import produce from 'immer'
 import ParamItem from './param-item'
 import ModelIcon from './model-icon'
 import ModelName from './model-name'
+import ModelModeTypeLabel from './model-mode-type-label'
+import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Radio from '@/app/components/base/radio'
 import Panel from '@/app/components/base/panel'
 import type { CompletionParams } from '@/models/debug'
@@ -25,21 +27,23 @@ import Loading from '@/app/components/base/loading'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
-
+import type { ModelModeType } from '@/types/app'
 export type IConfigModelProps = {
+  isAdvancedMode: boolean
   mode: string
   modelId: string
   provider: ProviderEnum
-  setModelId: (id: string, provider: ProviderEnum) => void
+  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType }) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
 }
 
 const ConfigModel: FC<IConfigModelProps> = ({
+  isAdvancedMode,
   modelId,
   provider,
-  setModelId,
+  setModel,
   completionParams,
   onCompletionParamsChange,
   disabled,
@@ -56,6 +60,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const hasEnableParams = currParams && Object.keys(currParams).some(key => currParams[key].enabled)
   const allSupportParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty', 'max_tokens']
   const currSupportParams = currParams ? allSupportParams.filter(key => currParams[key].enabled) : allSupportParams
+  if (isAdvancedMode)
+    currSupportParams.push('stop')
 
   useEffect(() => {
     (async () => {
@@ -115,11 +121,15 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return adjustedValue
   }
 
-  const handleSelectModel = (id: string, nextProvider = ProviderEnum.openai) => {
+  const handleSelectModel = ({ id, provider: nextProvider, mode }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
     return async () => {
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
-      setModelId(id, nextProvider)
+      setModel({
+        id,
+        provider: nextProvider || ProviderEnum.openai,
+        mode,
+      })
 
       await ensureModelParamLoaded(nextProvider, id)
 
@@ -211,16 +221,28 @@ const ConfigModel: FC<IConfigModelProps> = ({
     setToneId(matchToneId(completionParams))
   }, [completionParams])
 
-  const handleParamChange = (key: string, value: number) => {
-    const currParamsRule = getAllParams()[provider]?.[modelId]
-    let notOutRangeValue = parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
-    notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
+  const handleParamChange = (key: string, value: number | string[]) => {
+    if (value === undefined)
+      return
+    if ((completionParams as any)[key] === value)
+      return
 
-    onCompletionParamsChange({
-      ...completionParams,
-      [key]: notOutRangeValue,
-    })
+    if (key === 'stop') {
+      onCompletionParamsChange({
+        ...completionParams,
+        [key]: value as string[],
+      })
+    }
+    else {
+      const currParamsRule = getAllParams()[provider]?.[modelId]
+      let notOutRangeValue = parseFloat((value as number).toFixed(2))
+      notOutRangeValue = Math.max(currParamsRule[key].min, notOutRangeValue)
+      notOutRangeValue = Math.min(currParamsRule[key].max, notOutRangeValue)
+      onCompletionParamsChange({
+        ...completionParams,
+        [key]: notOutRangeValue,
+      })
+    }
   }
   const ableStyle = 'bg-indigo-25 border-[#2A87F5] cursor-pointer'
   const diabledStyle = 'bg-[#FFFCF5] border-[#F79009]'
@@ -228,7 +250,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const getToneIcon = (toneId: number) => {
     const className = 'w-[14px] h-[14px]'
     const res = ({
-      1: <Brush01 className={className}/>,
+      1: <Brush01 className={className} />,
       2: <Scales02 className={className} />,
       3: <Target04 className={className} />,
       4: <Sliders02 className={className} />,
@@ -249,17 +271,19 @@ const ConfigModel: FC<IConfigModelProps> = ({
   return (
     <div className='relative' ref={configContentRef}>
       <div
-        className={cn('flex items-center border h-8 px-2.5 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
+        className={cn('flex items-center border h-8 px-2 space-x-2 rounded-lg', disabled ? diabledStyle : ableStyle)}
         onClick={() => !disabled && toogleShowConfig()}
       >
         <ModelIcon
+          className='!w-5 !h-5'
           modelId={modelId}
           providerName={provider}
         />
         <div className='text-[13px] text-gray-900 font-medium'>
           <ModelName modelId={selectedModel.name} modelDisplayName={currModel?.model_display_name} />
         </div>
-        {disabled ? <InformationCircleIcon className='w-3.5 h-3.5 text-[#F79009]' /> : <Cog8ToothIcon className='w-3.5 h-3.5 text-gray-500' />}
+        {isAdvancedMode && <ModelModeTypeLabel type={currModel?.model_mode as ModelModeType} isHighlight />}
+        {disabled ? <InformationCircleIcon className='w-4 h-4 text-[#F79009]' /> : <SlidersH className='w-4 h-4 text-indigo-600' />}
       </div>
       {isShowConfig && (
         <Panel
@@ -282,6 +306,8 @@ const ConfigModel: FC<IConfigModelProps> = ({
             <div className="flex items-center justify-between my-5 h-9">
               <div>{t('appDebug.modelConfig.model')}</div>
               <ModelSelector
+                isShowModelModeType={isAdvancedMode}
+                isShowAddModel
                 popClassName='right-0'
                 triggerIconSmall
                 value={{
@@ -290,7 +316,11 @@ const ConfigModel: FC<IConfigModelProps> = ({
                 }}
                 modelType={ModelType.textGeneration}
                 onChange={(model) => {
-                  handleSelectModel(model.model_name, model.model_provider.provider_name as ProviderEnum)()
+                  handleSelectModel({
+                    id: model.model_name,
+                    provider: model.model_provider.provider_name as ProviderEnum,
+                    mode: model.model_mode,
+                  })()
                 }}
               />
             </div>
@@ -343,20 +373,21 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
             {/* Params */}
             <div className={cn(hasEnableParams && 'mt-4', 'space-y-4', !allParams[provider]?.[modelId] && 'flex items-center min-h-[200px]')}>
-              {allParams[provider]?.[modelId]
+              {(allParams[provider]?.[modelId])
                 ? (
                   currSupportParams.map(key => (<ParamItem
                     key={key}
                     id={key}
-                    name={t(`common.model.params.${key}`)}
-                    tip={t(`common.model.params.${key}Tip`)}
+                    name={t(`common.model.params.${key === 'stop' ? 'stop_sequences' : key}`)}
+                    tip={t(`common.model.params.${key === 'stop' ? 'stop_sequences' : key}Tip`)}
                     {...currParams[key] as any}
                     value={(completionParams as any)[key] as any}
                     onChange={handleParamChange}
+                    inputType={key === 'stop' ? 'inputTag' : 'slider'}
                   />))
                 )
                 : (
-                  <Loading type='area'/>
+                  <Loading type='area' />
                 )}
             </div>
           </div>

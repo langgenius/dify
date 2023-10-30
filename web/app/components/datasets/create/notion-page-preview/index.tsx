@@ -4,13 +4,12 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import s from './index.module.css'
-import type { DataSourceNotionPage } from '@/models/common'
+import type { NotionPage } from '@/models/common'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
 
-type Page = DataSourceNotionPage & { workspace_id: string }
 type IProps = {
-  currentPage?: Page
+  currentPage?: NotionPage
   hidePreview: () => void
 }
 

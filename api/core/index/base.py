@@ -17,6 +17,10 @@ class BaseIndex(ABC):
         raise NotImplementedError
 
     @abstractmethod
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        raise NotImplementedError
+
+    @abstractmethod
     def add_texts(self, texts: list[Document], **kwargs):
         raise NotImplementedError
 
@@ -26,6 +30,10 @@ class BaseIndex(ABC):
 
     @abstractmethod
     def delete_by_ids(self, ids: list[str]) -> None:
+        raise NotImplementedError
+
+    @abstractmethod
+    def delete_by_group_id(self, group_id: str) -> None:
         raise NotImplementedError
 
     @abstractmethod

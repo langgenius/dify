@@ -45,9 +45,15 @@ class ModelProviderFactory:
         elif provider_name == 'wenxin':
             from core.model_providers.providers.wenxin_provider import WenxinProvider
             return WenxinProvider
+        elif provider_name == 'zhipuai':
+            from core.model_providers.providers.zhipuai_provider import ZhipuAIProvider
+            return ZhipuAIProvider
         elif provider_name == 'chatglm':
             from core.model_providers.providers.chatglm_provider import ChatGLMProvider
             return ChatGLMProvider
+        elif provider_name == 'baichuan':
+            from core.model_providers.providers.baichuan_provider import BaichuanProvider
+            return BaichuanProvider
         elif provider_name == 'azure_openai':
             from core.model_providers.providers.azure_openai_provider import AzureOpenAIProvider
             return AzureOpenAIProvider
@@ -63,6 +69,9 @@ class ModelProviderFactory:
         elif provider_name == 'openllm':
             from core.model_providers.providers.openllm_provider import OpenLLMProvider
             return OpenLLMProvider
+        elif provider_name == 'localai':
+            from core.model_providers.providers.localai_provider import LocalAIProvider
+            return LocalAIProvider
         else:
             raise NotImplementedError
 
@@ -201,6 +210,9 @@ class ModelProviderFactory:
                                 Provider.provider_type == ProviderType.SYSTEM.value,
                                 Provider.quota_type == ProviderQuotaType.TRIAL.value
                             ).first()
+
+                        if provider.quota_limit == 0:
+                            return None
 
                         return provider
 

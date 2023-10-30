@@ -23,7 +23,7 @@ const translation = {
       title: '上传文本文件',
       button: '拖拽文件至此，或者',
       browse: '选择文件',
-      tip: '已支持 TXT、 HTML、 Markdown、 PDF、 XLSX，每个文件不超过 {{size}}MB。',
+      tip: '已支持 TXT、 HTML、 Markdown、 PDF、 XLSX、CSV、DOCX，每个文件不超过 {{size}}MB。',
       validation: {
         typeError: '文件类型不支持',
         size: '文件太大了，不能超过 {{size}}MB',
@@ -49,6 +49,7 @@ const translation = {
       confirmButton: '创建',
       failed: '创建失败',
     },
+    overCountLimit: '您的文件总数已超出限制 {{countLimit}}。',
   },
   stepTwo: {
     segmentation: '分段设置',
@@ -68,7 +69,7 @@ const translation = {
     indexMode: '索引方式',
     qualified: '高质量',
     recommend: '推荐',
-    qualifiedTip: '调用 OpenAI 的嵌入接口进行处理，以在用户查询时提供更高的准确度',
+    qualifiedTip: '调用系统默认的嵌入接口进行处理，以在用户查询时提供更高的准确度',
     warning: '请先完成模型供应商的 API KEY 设置。.',
     click: '前往设置',
     economical: '经济',

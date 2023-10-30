@@ -5,7 +5,7 @@ from typing import Generator, Union
 
 import flask_login
 from flask import Response, stream_with_context
-from core.login.login import login_required
+from libs.login import login_required
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
@@ -39,9 +39,10 @@ class CompletionMessageApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, location='json')
+        parser.add_argument('query', type=str, location='json', default='')
         parser.add_argument('model_config', type=dict, required=True, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
+        parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'
@@ -115,6 +116,7 @@ class ChatMessageApi(Resource):
         parser.add_argument('model_config', type=dict, required=True, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
+        parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'

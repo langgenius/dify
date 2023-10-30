@@ -1,7 +1,7 @@
 # -*- coding:utf-8 -*-
 from flask import current_app
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource, reqparse, marshal_with, abort, fields, marshal
 
 import services
@@ -49,46 +49,43 @@ class MemberInviteEmailApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('email', type=str, required=True, location='json')
+        parser.add_argument('emails', type=str, required=True, location='json', action='append')
         parser.add_argument('role', type=str, required=True, default='admin', location='json')
         args = parser.parse_args()
 
-        invitee_email = args['email']
+        invitee_emails = args['emails']
         invitee_role = args['role']
         if invitee_role not in ['admin', 'normal']:
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
         inviter = current_user
-
-        try:
-            token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
-                                                      inviter=inviter)
-            account = db.session.query(Account, TenantAccountJoin.role).join(
-                TenantAccountJoin, Account.id == TenantAccountJoin.account_id
-            ).filter(Account.email == args['email']).first()
-            account, role = account
-            account = marshal(account, account_fields)
-            account['role'] = role
-        except services.errors.account.CannotOperateSelfError as e:
-            return {'code': 'cannot-operate-self', 'message': str(e)}, 400
-        except services.errors.account.NoPermissionError as e:
-            return {'code': 'forbidden', 'message': str(e)}, 403
-        except services.errors.account.AccountAlreadyInTenantError as e:
-            return {'code': 'email-taken', 'message': str(e)}, 409
-        except Exception as e:
-            return {'code': 'unexpected-error', 'message': str(e)}, 500
-
-        # todo:413
+        invitation_results = []
+        console_web_url = current_app.config.get("CONSOLE_WEB_URL")
+        for invitee_email in invitee_emails:
+            try:
+                token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, role=invitee_role,
+                                                        inviter=inviter)
+                account = db.session.query(Account, TenantAccountJoin.role).join(
+                    TenantAccountJoin, Account.id == TenantAccountJoin.account_id
+                ).filter(Account.email == invitee_email).first()
+                account, role = account
+                invitation_results.append({
+                    'status': 'success',
+                    'email': invitee_email,
+                    'url': f'{console_web_url}/activate?email={invitee_email}&token={token}'
+                })
+                account = marshal(account, account_fields)
+                account['role'] = role
+            except Exception as e:
+                invitation_results.append({
+                    'status': 'failed',
+                    'email': invitee_email,
+                    'message': str(e)
+                })
 
         return {
             'result': 'success',
-            'account': account,
-            'invite_url': '{}/activate?workspace_id={}&email={}&token={}'.format(
-                current_app.config.get("CONSOLE_WEB_URL"),
-                str(current_user.current_tenant_id),
-                invitee_email,
-                token
-            )
+            'invitation_results': invitation_results,
         }, 201
 
 

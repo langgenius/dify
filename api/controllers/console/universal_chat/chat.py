@@ -29,6 +29,7 @@ class UniversalChatApi(UniversalChatResource):
         parser.add_argument('provider', type=str, required=True, location='json')
         parser.add_argument('model', type=str, required=True, location='json')
         parser.add_argument('tools', type=list, required=True, location='json')
+        parser.add_argument('retriever_from', type=str, required=False, default='universal_app', location='json')
         args = parser.parse_args()
 
         app_model_config = app_model.app_model_config

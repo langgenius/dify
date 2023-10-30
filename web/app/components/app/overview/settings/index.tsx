@@ -46,7 +46,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onSave,
 }) => {
   const [isShowMore, setIsShowMore] = useState(false)
-  const { title, description, copyright, privacy_policy, default_language, icon, icon_background } = appInfo.site
+  const { icon, icon_background } = appInfo
+  const { title, description, copyright, privacy_policy, default_language } = appInfo.site
   const [inputInfo, setInputInfo] = useState({ title, desc: description, copyright, privacyPolicy: privacy_policy })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -164,7 +165,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </div>
         {showEmojiPicker && <EmojiPicker
           onSelect={(icon, icon_background) => {
-            console.log(icon, icon_background)
             setEmoji({ icon, icon_background })
             setShowEmojiPicker(false)
           }}

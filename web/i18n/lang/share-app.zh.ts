@@ -31,6 +31,7 @@ const translation = {
       create: '运行一次',
       batch: '批量运行',
       saved: '已保存',
+
     },
     savedNoData: {
       title: '您还没有保存结果！',
@@ -50,11 +51,17 @@ const translation = {
     csvStructureTitle: 'CSV 文件必须符合以下结构：',
     downloadTemplate: '下载模板',
     field: '',
+    batchFailed: {
+      info: '{{num}} 次运行失败',
+      retry: '重试',
+      outputPlaceholder: '无输出内容',
+    },
     errorMsg: {
       empty: '上传文件的内容不能为空',
       fileStructNotMatch: '上传文件的内容与结构不匹配',
       emptyLine: '第 {{rowIndex}} 行的内容为空',
-      invalidLine: '第 {{rowIndex}} 行: 变量值必填',
+      invalidLine: '第 {{rowIndex}} 行: {{varName}}值必填',
+      moreThanMaxLengthLine: '第 {{rowIndex}} 行: {{varName}}值超过最大长度 {{maxLength}}',
       atLeastOne: '上传文件的内容不能少于一条',
     },
   },

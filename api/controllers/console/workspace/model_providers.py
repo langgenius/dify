@@ -1,5 +1,5 @@
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
@@ -246,7 +246,8 @@ class ModelProviderModelParameterRuleApi(Resource):
                 'enabled': v.enabled,
                 'min': v.min,
                 'max': v.max,
-                'default': v.default
+                'default': v.default,
+                'precision': v.precision
             }
             for k, v in vars(parameter_rules).items()
         }
@@ -285,6 +286,25 @@ class ModelProviderFreeQuotaSubmitApi(Resource):
         return result
 
 
+class ModelProviderFreeQuotaQualificationVerifyApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider_name: str):
+        parser = reqparse.RequestParser()
+        parser.add_argument('token', type=str, required=False, nullable=True, location='args')
+        args = parser.parse_args()
+
+        provider_service = ProviderService()
+        result = provider_service.free_quota_qualification_verify(
+            tenant_id=current_user.current_tenant_id,
+            provider_name=provider_name,
+            token=args['token']
+        )
+
+        return result
+
+
 api.add_resource(ModelProviderListApi, '/workspaces/current/model-providers')
 api.add_resource(ModelProviderValidateApi, '/workspaces/current/model-providers/<string:provider_name>/validate')
 api.add_resource(ModelProviderUpdateApi, '/workspaces/current/model-providers/<string:provider_name>')
@@ -300,3 +320,5 @@ api.add_resource(ModelProviderPaymentCheckoutUrlApi,
                  '/workspaces/current/model-providers/<string:provider_name>/checkout-url')
 api.add_resource(ModelProviderFreeQuotaSubmitApi,
                  '/workspaces/current/model-providers/<string:provider_name>/free-quota-submit')
+api.add_resource(ModelProviderFreeQuotaQualificationVerifyApi,
+                 '/workspaces/current/model-providers/<string:provider_name>/free-quota-qualification-verify')

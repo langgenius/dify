@@ -39,7 +39,7 @@ def test_is_provider_credentials_valid_or_raise_invalid():
         MODEL_PROVIDER_CLASS.is_provider_credentials_valid_or_raise({})
 
     credential = VALIDATE_CREDENTIAL.copy()
-    credential['api_key'] = 'invalid_key'
+    del credential['api_key']
 
     # raise CredentialsValidateFailedError if api_key is invalid
     with pytest.raises(CredentialsValidateFailedError):

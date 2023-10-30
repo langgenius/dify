@@ -64,6 +64,8 @@ const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseP
   ref,
 ) => <IconBase {...props} ref={ref} data={data as IconData} />)
 
+Icon.displayName = '<%= svgName %>'
+
 export default Icon
 `.trim())
 
@@ -112,6 +114,8 @@ const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTM
   { className, ...restProps },
   ref,
 ) => <span className={cn(s.wrapper, className)} {...restProps} ref={ref} />)
+
+Icon.displayName = '<%= fileName %>'
 
 export default Icon
 `.trim())

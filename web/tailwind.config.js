@@ -27,6 +27,7 @@ module.exports = {
           200: '#C3DDFD',
           300: '#A4CAFE',
           400: '#528BFF',
+          500: '#2970FF',
           600: '#1C64F2',
           700: '#1A56DB',
         },
@@ -50,7 +51,9 @@ module.exports = {
         indigo: {
           25: '#F5F8FF',
           100: '#E0EAFF',
+          400: '#8098F9',
           600: '#444CE7',
+          800: '#2D31A6',
         },
       },
       screens: {

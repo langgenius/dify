@@ -13,3 +13,16 @@
   padding: 2px;
   box-sizing: border-box;
 }
+
+.warningBorder {
+  border: 2px solid #F79009;
+  border-radius: 12px;
+}
+
+.optionWrap {
+  display: none;
+}
+
+.boxHeader:hover .optionWrap {
+  display: flex;
+}

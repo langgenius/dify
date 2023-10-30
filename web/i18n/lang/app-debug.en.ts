@@ -1,5 +1,23 @@
 const translation = {
-  pageTitle: 'Prompt Engineering',
+  pageTitle: {
+    line1: 'PROMPT',
+    line2: 'Engineering',
+  },
+  promptMode: {
+    simple: 'Switch to Expert Mode to edit the whole PROMPT',
+    advanced: 'Expert Mode',
+    switchBack: 'Switch back',
+    advancedWarning: {
+      title: 'You have switched to Expert Mode, and once you modify the PROMPT, you CANNOT return to the basic mode.',
+      description: 'In Expert Mode, you can edit whole PROMPT.',
+      learnMore: 'Learn more',
+      ok: 'OK',
+    },
+    operation: {
+      addMessage: 'Add Message',
+    },
+    contextMissing: 'Context component missed, the effectiveness of the prompt may not be good.',
+  },
   operation: {
     applyConfig: 'Publish',
     resetConfig: 'Reset',
@@ -51,6 +69,11 @@ const translation = {
       description: 'Once enabled, you can use voice input.',
       resDes: 'Voice input is enabled',
     },
+    citation: {
+      title: 'Citations and Attributions',
+      description: 'Once enabled, show source document and attributed section of the generated content.',
+      resDes: 'Citations and Attributions is enabled',
+    },
     dataSet: {
       title: 'Context',
       noData: 'You can import datasets as context',
@@ -61,6 +84,30 @@ const translation = {
       noDataSet: 'No dataset found',
       toCreate: 'Go to create',
       notSupportSelectMulti: 'Currently only support one dataset',
+      queryVariable: {
+        title: 'Query variable',
+        tip: 'This variable will be used as the query input for context retrieval, obtaining context information related to the input of this variable.',
+        choosePlaceholder: 'Choose query variable',
+        noVar: 'No variables',
+        noVarTip: 'please create a variable under the Variables section',
+        unableToQueryDataSet: 'Unable to query the dataset',
+        unableToQueryDataSetTip: 'Unable to query the dataset successfully, please choose a context query variable in the context section.',
+        ok: 'OK',
+        contextVarNotEmpty: 'context query variable can not be empty',
+        deleteContextVarTitle: 'Delete variable “{{varName}}”?',
+        deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
+      },
+    },
+    conversationHistory: {
+      title: 'Conversation History',
+      description: 'Set prefix names for conversation roles',
+      tip: 'The Conversation History is not enabled, please add <histories> in the prompt above.',
+      learnMore: 'Learn more',
+      editModal: {
+        title: 'Edit Conversation Role Names',
+        userPrefix: 'User prefix',
+        assistantPrefix: 'Assistant prefix',
+      },
     },
   },
   automatic: {
@@ -118,16 +165,22 @@ const translation = {
   },
   varKeyError: {
     canNoBeEmpty: 'Variable key can not be empty',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 16 characters',
+    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
     notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
     notStartWithNumber: 'Variable key: {{key}} can not start with a number',
     keyAlreadyExists: 'Variable key: :{{key}} already exists',
+  },
+  otherError: {
+    promptNoBeEmpty: 'Prompt can not be empty',
+    historyNoBeEmpty: 'Conversation history must be set in the prompt',
+    queryNoBeEmpty: 'Query must be set in the prompt',
   },
   variableConig: {
     modalTitle: 'Field settings',
     description: 'Setting for variable {{varName}}',
     fieldType: 'Field type',
-    string: 'Text',
+    string: 'Short Text',
+    paragraph: 'Paragraph',
     select: 'Select',
     notSet: 'Not set, try typing {{input}} in the prefix prompt',
     stringTitle: 'Form text box options',
@@ -150,9 +203,13 @@ const translation = {
     model: 'Model',
     setTone: 'Set tone of responses',
     title: 'Model and Parameters',
+    modeType: {
+      chat: 'Chat',
+      completion: 'Complete',
+    },
   },
   inputs: {
-    title: 'Debugging and Previewing',
+    title: 'Debug and Preview',
     noPrompt: 'Try write some prompt in pre-prompt input',
     userInputField: 'User Input Field',
     noVar: 'Fill in the value of the variable, which will be automatically replaced in the prompt word every time a new session is started.',
@@ -166,6 +223,13 @@ const translation = {
     run: 'RUN',
   },
   result: 'Output Text',
+  datasetConfig: {
+    params: 'Params',
+    top_k: 'Top K',
+    top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
+    score_threshold: 'Score Threshold',
+    score_thresholdTip: 'Used to set the similarity threshold for segment filtering.',
+  },
 }
 
 export default translation

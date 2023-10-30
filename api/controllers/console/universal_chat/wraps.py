@@ -2,7 +2,7 @@ import json
 from functools import wraps
 
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 from flask_restful import Resource
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -47,6 +47,7 @@ def universal_chat_app_required(view=None):
                     suggested_questions=json.dumps([]),
                     suggested_questions_after_answer=json.dumps({'enabled': True}),
                     speech_to_text=json.dumps({'enabled': True}),
+                    retriever_resource=json.dumps({'enabled': True}),
                     more_like_this=None,
                     sensitive_word_avoidance=None,
                     model=json.dumps({

@@ -3,6 +3,7 @@
 import type { ChangeEvent, FC } from 'react'
 import React, { useState } from 'react'
 import data from '@emoji-mart/data'
+import type { Emoji, EmojiMartData } from '@emoji-mart/data'
 import { SearchIndex, init } from 'emoji-mart'
 import cn from 'classnames'
 import {
@@ -30,9 +31,9 @@ declare global {
 init({ data })
 
 async function search(value: string) {
-  const emojis = await SearchIndex.search(value) || []
+  const emojis: Emoji[] = await SearchIndex.search(value) || []
 
-  const results = emojis.map((emoji: any) => {
+  const results = emojis.map((emoji) => {
     return emoji.skins[0].native
   })
   return results
@@ -59,6 +60,7 @@ const backgroundColors = [
   '#ECE9FE',
   '#FFE4E8',
 ]
+
 type IEmojiPickerProps = {
   isModal?: boolean
   onSelect?: (emoji: string, background: string) => void
@@ -69,14 +71,13 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   isModal = true,
   onSelect,
   onClose,
-
 }) => {
   const { t } = useTranslation()
-  const { categories } = data as any
+  const { categories } = data as EmojiMartData
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState(backgroundColors[0])
 
-  const [searchedEmojis, setSearchedEmojis] = useState([])
+  const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
   return isModal ? <Modal
@@ -133,11 +134,11 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         </div>
       </>}
 
-      {categories.map((category: any, index: number) => {
+      {categories.map((category, index: number) => {
         return <div key={`category-${index}`} className='flex flex-col'>
           <p className='font-medium uppercase text-xs text-[#101828] mb-1'>{category.id}</p>
           <div className='w-full h-full grid grid-cols-8 gap-1'>
-            {category.emojis.map((emoji: string, index: number) => {
+            {category.emojis.map((emoji, index: number) => {
               return <div
                 key={`emoji-${index}`}
                 className='inline-flex w-10 h-10 rounded-lg items-center justify-center'

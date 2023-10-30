@@ -49,21 +49,8 @@ class OpenLLMModel(BaseLLM):
         prompts = self._get_prompt_from_messages(messages)
         return max(self._client.get_num_tokens(prompts), 0)
 
-    def prompt_file_name(self, mode: str) -> str:
-        if 'baichuan' in self.name.lower():
-            if mode == 'completion':
-                return 'baichuan_completion'
-            else:
-                return 'baichuan_chat'
-        else:
-            return super().prompt_file_name(mode)
-
     def _set_model_kwargs(self, model_kwargs: ModelKwargs):
         pass
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         return LLMBadRequestError(f"OpenLLM: {str(ex)}")
-
-    @classmethod
-    def support_streaming(cls):
-        return False

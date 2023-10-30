@@ -101,6 +101,7 @@ const Main: FC<IMainProps> = ({
     resetNewConversationInputs,
     setCurrInputs,
     setNewConversationInfo,
+    existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -166,6 +167,7 @@ const Main: FC<IMainProps> = ({
 
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
@@ -186,6 +188,23 @@ const Main: FC<IMainProps> = ({
 
   const conversationName = currConversationInfo?.name || t('share.chat.newChatDefaultName') as string
   const conversationIntroduction = currConversationInfo?.introduction || ''
+  const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
+
+  useEffect(() => {
+    (async () => {
+      if (controlChatUpdateAllConversation && !isNewConversation) {
+        const { data: allConversations } = await fetchAllConversations() as { data: ConversationItem[]; has_more: boolean }
+        const item = allConversations.find(item => item.id === currConversationId)
+        setAllConversationList(allConversations)
+        if (item) {
+          setExistConversationInfo({
+            ...existConversationInfo,
+            name: item?.name || '',
+          } as any)
+        }
+      }
+    })()
+  }, [controlChatUpdateAllConversation])
 
   const handleConversationSwitch = () => {
     if (!inited)
@@ -231,6 +250,7 @@ const Main: FC<IMainProps> = ({
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -300,7 +320,7 @@ const Main: FC<IMainProps> = ({
       content: caculatedIntroduction,
       isAnswer: true,
       feedbackDisabled: true,
-      isOpeningStatement: isPublicVersion,
+      isOpeningStatement: true,
     }
     if (caculatedIntroduction)
       return [openstatement]
@@ -321,6 +341,8 @@ const Main: FC<IMainProps> = ({
         app_id: installedAppInfo?.id,
         site: {
           title: installedAppInfo?.app.name,
+          icon: installedAppInfo?.app.icon,
+          icon_background: installedAppInfo?.app.icon_background,
           prompt_public: false,
           copyright: '',
         },
@@ -346,7 +368,7 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -362,6 +384,7 @@ const Main: FC<IMainProps> = ({
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
+        setCitationConfig(retriever_resource)
 
         // setConversationList(conversations as ConversationItem[])
 
@@ -456,7 +479,7 @@ const Main: FC<IMainProps> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,
@@ -515,6 +538,23 @@ const Main: FC<IMainProps> = ({
           setIsShowSuggestion(true)
         }
       },
+      onMessageEnd: isInstalledApp
+        ? (messageEnd) => {
+          if (!isInstalledApp)
+            return
+          responseItem.citation = messageEnd.retriever_resources
+
+          const newListWithAnswer = produce(
+            getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+            (draft) => {
+              if (!draft.find(item => item.id === questionId))
+                draft.push({ ...questionItem })
+
+              draft.push({ ...responseItem })
+            })
+          setChatList(newListWithAnswer)
+        }
+        : undefined,
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -546,8 +586,16 @@ const Main: FC<IMainProps> = ({
     return (
       <Sidebar
         list={conversationList}
+        onListChanged={(list) => {
+          setConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        onPinnedListChanged={(list) => {
+          setPinnedConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
@@ -652,6 +700,7 @@ const Main: FC<IMainProps> = ({
                     isShowSuggestion={doShowSuggestion}
                     suggestionList={suggestQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
+                    isShowCitation={citationConfig?.enabled && isInstalledApp}
                   />
                 </div>
               </div>)

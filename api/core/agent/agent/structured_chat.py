@@ -1,19 +1,21 @@
 import re
-from typing import List, Tuple, Any, Union, Sequence, Optional
+from typing import List, Tuple, Any, Union, Sequence, Optional, cast
 
-from langchain import BasePromptTemplate
+from langchain import BasePromptTemplate, PromptTemplate
 from langchain.agents import StructuredChatAgent, AgentOutputParser, Agent
 from langchain.agents.structured_chat.base import HUMAN_MESSAGE_TEMPLATE
-from langchain.base_language import BaseLanguageModel
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.manager import Callbacks
-from langchain.memory.summary import SummarizerMixin
+from langchain.memory.prompt import SUMMARY_PROMPT
 from langchain.prompts import SystemMessagePromptTemplate, HumanMessagePromptTemplate, ChatPromptTemplate
-from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage, OutputParserException
+from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage, OutputParserException, BaseMessage, \
+    get_buffer_string
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
+from core.chain.llm_chain import LLMChain
+from core.model_providers.models.entity.model_params import ModelMode
 from core.model_providers.models.llm.base import BaseLLM
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
@@ -52,8 +54,7 @@ Action:
 class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
-    summary_llm: BaseLanguageModel = None
-    model_instance: BaseLLM
+    summary_model_instance: BaseLLM = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -95,24 +96,30 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         if prompts:
             messages = prompts[0].to_messages()
 
-        rest_tokens = self.get_message_rest_tokens(self.model_instance, messages)
+        rest_tokens = self.get_message_rest_tokens(self.llm_chain.model_instance, messages)
         if rest_tokens < 0:
             full_inputs = self.summarize_messages(intermediate_steps, **kwargs)
 
         try:
             full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
         except Exception as e:
-            new_exception = self.model_instance.handle_exceptions(e)
+            new_exception = self.llm_chain.model_instance.handle_exceptions(e)
             raise new_exception
 
         try:
-            return self.output_parser.parse(full_output)
+            agent_decision = self.output_parser.parse(full_output)
+            if isinstance(agent_decision, AgentAction) and agent_decision.tool == 'dataset':
+                tool_inputs = agent_decision.tool_input
+                if isinstance(tool_inputs, dict) and 'query' in tool_inputs:
+                    tool_inputs['query'] = kwargs['input']
+                    agent_decision.tool_input = tool_inputs
+            return agent_decision
         except OutputParserException:
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
                                           "I don't know how to respond to that."}, "")
 
     def summarize_messages(self, intermediate_steps: List[Tuple[AgentAction, str]], **kwargs):
-        if len(intermediate_steps) >= 2 and self.summary_llm:
+        if len(intermediate_steps) >= 2 and self.summary_model_instance:
             should_summary_intermediate_steps = intermediate_steps[self.moving_summary_index:-1]
             should_summary_messages = [AIMessage(content=observation)
                                        for _, observation in should_summary_intermediate_steps]
@@ -124,11 +131,10 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             error_msg = "Exceeded LLM tokens limit, stopped."
             raise ExceededLLMTokensLimitError(error_msg)
 
-        summary_handler = SummarizerMixin(llm=self.summary_llm)
         if self.moving_summary_buffer and 'chat_history' in kwargs:
             kwargs["chat_history"].pop()
 
-        self.moving_summary_buffer = summary_handler.predict_new_summary(
+        self.moving_summary_buffer = self.predict_new_summary(
             messages=should_summary_messages,
             existing_summary=self.moving_summary_buffer
         )
@@ -137,6 +143,18 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             kwargs["chat_history"].append(AIMessage(content=self.moving_summary_buffer))
 
         return self.get_full_inputs([intermediate_steps[-1]], **kwargs)
+
+    def predict_new_summary(
+        self, messages: List[BaseMessage], existing_summary: str
+    ) -> str:
+        new_lines = get_buffer_string(
+            messages,
+            human_prefix="Human",
+            ai_prefix="AI",
+        )
+
+        chain = LLMChain(model_instance=self.summary_model_instance, prompt=SUMMARY_PROMPT)
+        return chain.predict(summary=existing_summary, new_lines=new_lines)
 
     @classmethod
     def create_prompt(
@@ -168,9 +186,64 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
         return ChatPromptTemplate(input_variables=input_variables, messages=messages)
 
     @classmethod
+    def create_completion_prompt(
+            cls,
+            tools: Sequence[BaseTool],
+            prefix: str = PREFIX,
+            format_instructions: str = FORMAT_INSTRUCTIONS,
+            input_variables: Optional[List[str]] = None,
+    ) -> PromptTemplate:
+        """Create prompt in the style of the zero shot agent.
+
+        Args:
+            tools: List of tools the agent will have access to, used to format the
+                prompt.
+            prefix: String to put before the list of tools.
+            input_variables: List of input variables the final prompt will expect.
+
+        Returns:
+            A PromptTemplate with the template assembled from the pieces here.
+        """
+        suffix = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
+Question: {input}
+Thought: {agent_scratchpad}
+"""
+
+        tool_strings = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
+        tool_names = ", ".join([tool.name for tool in tools])
+        format_instructions = format_instructions.format(tool_names=tool_names)
+        template = "\n\n".join([prefix, tool_strings, format_instructions, suffix])
+        if input_variables is None:
+            input_variables = ["input", "agent_scratchpad"]
+        return PromptTemplate(template=template, input_variables=input_variables)
+
+    def _construct_scratchpad(
+        self, intermediate_steps: List[Tuple[AgentAction, str]]
+    ) -> str:
+        agent_scratchpad = ""
+        for action, observation in intermediate_steps:
+            agent_scratchpad += action.log
+            agent_scratchpad += f"\n{self.observation_prefix}{observation}\n{self.llm_prefix}"
+
+        if not isinstance(agent_scratchpad, str):
+            raise ValueError("agent_scratchpad should be of type string.")
+        if agent_scratchpad:
+            llm_chain = cast(LLMChain, self.llm_chain)
+            if llm_chain.model_instance.model_mode == ModelMode.CHAT:
+                return (
+                    f"This was your previous work "
+                    f"(but I haven't seen any of it! I only see what "
+                    f"you return as final answer):\n{agent_scratchpad}"
+                )
+            else:
+                return agent_scratchpad
+        else:
+            return agent_scratchpad
+
+    @classmethod
     def from_llm_and_tools(
             cls,
-            llm: BaseLanguageModel,
+            model_instance: BaseLLM,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             output_parser: Optional[AgentOutputParser] = None,
@@ -182,16 +255,35 @@ class AutoSummarizingStructuredChatAgent(StructuredChatAgent, CalcTokenMixin):
             memory_prompts: Optional[List[BasePromptTemplate]] = None,
             **kwargs: Any,
     ) -> Agent:
-        return super().from_llm_and_tools(
-            llm=llm,
-            tools=tools,
+        """Construct an agent from an LLM and tools."""
+        cls._validate_tools(tools)
+        if model_instance.model_mode == ModelMode.CHAT:
+            prompt = cls.create_prompt(
+                tools,
+                prefix=prefix,
+                suffix=suffix,
+                human_message_template=human_message_template,
+                format_instructions=format_instructions,
+                input_variables=input_variables,
+                memory_prompts=memory_prompts,
+            )
+        else:
+            prompt = cls.create_completion_prompt(
+                tools,
+                prefix=prefix,
+                format_instructions=format_instructions,
+                input_variables=input_variables,
+            )
+        llm_chain = LLMChain(
+            model_instance=model_instance,
+            prompt=prompt,
             callback_manager=callback_manager,
-            output_parser=output_parser,
-            prefix=prefix,
-            suffix=suffix,
-            human_message_template=human_message_template,
-            format_instructions=format_instructions,
-            input_variables=input_variables,
-            memory_prompts=memory_prompts,
+        )
+        tool_names = [tool.name for tool in tools]
+        _output_parser = output_parser
+        return cls(
+            llm_chain=llm_chain,
+            allowed_tools=tool_names,
+            output_parser=_output_parser,
             **kwargs,
         )

@@ -31,8 +31,8 @@ const ActivateForm = () => {
   const checkParams = {
     url: '/activate/check',
     params: {
-      workspace_id: workspaceID,
-      email,
+      ...workspaceID && { workspace_id: workspaceID },
+      ...email && { email },
       token,
     },
   }

@@ -7,7 +7,7 @@ from langchain.schema import HumanMessage
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.spark_model import SparkModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.spark import ChatSpark
@@ -30,14 +30,19 @@ class SparkProvider(BaseModelProvider):
                 {
                     'id': 'spark',
                     'name': 'Spark V1.5',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'spark-v2',
                     'name': 'Spark V2.0',
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
@@ -62,11 +67,11 @@ class SparkProvider(BaseModelProvider):
         :return:
         """
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0, max=1, default=0.5),
+            temperature=KwargRule[float](min=0, max=1, default=0.5, precision=2),
             top_p=KwargRule[float](enabled=False),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](min=10, max=4096, default=2048),
+            max_tokens=KwargRule[int](min=10, max=4096, default=2048, precision=0),
         )
 
     @classmethod
@@ -83,14 +88,15 @@ class SparkProvider(BaseModelProvider):
         if 'api_secret' not in credentials:
             raise CredentialsValidateFailedError('Spark api_secret must be provided.')
 
-        try:
-            credential_kwargs = {
-                'app_id': credentials['app_id'],
-                'api_key': credentials['api_key'],
-                'api_secret': credentials['api_secret'],
-            }
+        credential_kwargs = {
+            'app_id': credentials['app_id'],
+            'api_key': credentials['api_key'],
+            'api_secret': credentials['api_secret'],
+        }
 
+        try:
             chat_llm = ChatSpark(
+                model_name='spark-v2',
                 max_tokens=10,
                 temperature=0.01,
                 **credential_kwargs
@@ -104,7 +110,27 @@ class SparkProvider(BaseModelProvider):
 
             chat_llm(messages)
         except SparkError as ex:
-            raise CredentialsValidateFailedError(str(ex))
+            # try spark v1.5 if v2.1 failed
+            try:
+                chat_llm = ChatSpark(
+                    model_name='spark',
+                    max_tokens=10,
+                    temperature=0.01,
+                    **credential_kwargs
+                )
+
+                messages = [
+                    HumanMessage(
+                        content="ping"
+                    )
+                ]
+
+                chat_llm(messages)
+            except SparkError as ex:
+                raise CredentialsValidateFailedError(str(ex))
+            except Exception as ex:
+                logging.exception('Spark config validation failed')
+                raise ex
         except Exception as ex:
             logging.exception('Spark config validation failed')
             raise ex

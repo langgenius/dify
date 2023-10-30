@@ -4,29 +4,39 @@ import openai
 
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, LLMAuthorizationError
-from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelType
+from core.model_providers.models.moderation.base import BaseModeration
 from core.model_providers.providers.base import BaseModelProvider
 
-DEFAULT_AUDIO_MODEL = 'whisper-1'
+DEFAULT_MODEL = 'whisper-1'
 
 
-class OpenAIModeration(BaseProviderModel):
-    type: ModelType = ModelType.MODERATION
+class OpenAIModeration(BaseModeration):
 
     def __init__(self, model_provider: BaseModelProvider, name: str):
-        super().__init__(model_provider, openai.Moderation)
+        super().__init__(model_provider, openai.Moderation, name)
 
-    def run(self, text):
+    def _run(self, text: str) -> bool:
         credentials = self.model_provider.get_model_credentials(
-            model_name=DEFAULT_AUDIO_MODEL,
+            model_name=self.name,
             model_type=self.type
         )
 
-        try:
-            return self._client.create(input=text, api_key=credentials['openai_api_key'])
-        except Exception as ex:
-            raise self.handle_exceptions(ex)
+        # 2000 text per chunk
+        length = 2000
+        text_chunks = [text[i:i + length] for i in range(0, len(text), length)]
+
+        max_text_chunks = 32
+        chunks = [text_chunks[i:i + max_text_chunks] for i in range(0, len(text_chunks), max_text_chunks)]
+
+        for text_chunk in chunks:
+            moderation_result = self._client.create(input=text_chunk,
+                                                    api_key=credentials['openai_api_key'])
+
+            for result in moderation_result.results:
+                if result['flagged'] is True:
+                    return False
+
+        return True
 
     def handle_exceptions(self, ex: Exception) -> Exception:
         if isinstance(ex, openai.error.InvalidRequestError):

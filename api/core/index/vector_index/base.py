@@ -10,17 +10,17 @@ from weaviate import UnexpectedStatusCodeException
 
 from core.index.base import BaseIndex
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import Dataset, DocumentSegment, DatasetCollectionBinding
 from models.dataset import Document as DatasetDocument
 
 
 class BaseVectorIndex(BaseIndex):
-    
+
     def __init__(self, dataset: Dataset, embeddings: Embeddings):
         super().__init__(dataset)
         self._embeddings = embeddings
         self._vector_store = None
-        
+
     def get_type(self) -> str:
         raise NotImplementedError
 
@@ -110,6 +110,14 @@ class BaseVectorIndex(BaseIndex):
         for node_id in ids:
             vector_store.del_text(node_id)
 
+    def delete_by_group_id(self, group_id: str) -> None:
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+        if self.dataset.collection_binding_id:
+            vector_store.delete_by_group_id(group_id)
+        else:
+            vector_store.delete()
+
     def delete(self) -> None:
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
@@ -143,7 +151,7 @@ class BaseVectorIndex(BaseIndex):
                 DocumentSegment.status == 'completed',
                 DocumentSegment.enabled == True
             ).all()
-            
+
             for segment in segments:
                 document = Document(
                     page_content=segment.content,
@@ -217,5 +225,79 @@ class BaseVectorIndex(BaseIndex):
                 self.create(documents)
             except Exception as e:
                 raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def update_qdrant_dataset(self, dataset: Dataset):
+        logging.info(f"update_qdrant_dataset {dataset.id}")
+
+        segment = db.session.query(DocumentSegment).filter(
+            DocumentSegment.dataset_id == dataset.id,
+            DocumentSegment.status == 'completed',
+            DocumentSegment.enabled == True
+        ).first()
+
+        if segment:
+            try:
+                exist = self.text_exists(segment.index_node_id)
+                if exist:
+                    index_struct = {
+                        "type": 'qdrant',
+                        "vector_store": {"class_prefix": dataset.index_struct_dict['vector_store']['class_prefix']}
+                    }
+                    dataset.index_struct = json.dumps(index_struct)
+                    db.session.commit()
+            except Exception as e:
+                raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def restore_dataset_in_one(self, dataset: Dataset, dataset_collection_binding: DatasetCollectionBinding):
+        logging.info(f"restore dataset in_one,_dataset {dataset.id}")
+
+        dataset_documents = db.session.query(DatasetDocument).filter(
+            DatasetDocument.dataset_id == dataset.id,
+            DatasetDocument.indexing_status == 'completed',
+            DatasetDocument.enabled == True,
+            DatasetDocument.archived == False,
+        ).all()
+
+        documents = []
+        for dataset_document in dataset_documents:
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.status == 'completed',
+                DocumentSegment.enabled == True
+            ).all()
+
+            for segment in segments:
+                document = Document(
+                    page_content=segment.content,
+                    metadata={
+                        "doc_id": segment.index_node_id,
+                        "doc_hash": segment.index_node_hash,
+                        "document_id": segment.document_id,
+                        "dataset_id": segment.dataset_id,
+                    }
+                )
+
+                documents.append(document)
+
+        if documents:
+            try:
+                self.add_texts(documents)
+            except Exception as e:
+                raise e
+
+        logging.info(f"Dataset {dataset.id} recreate successfully.")
+
+    def delete_original_collection(self, dataset: Dataset, dataset_collection_binding: DatasetCollectionBinding):
+        logging.info(f"delete original collection: {dataset.id}")
+
+        self.delete()
+
+        dataset.collection_binding_id = dataset_collection_binding.id
+        db.session.add(dataset)
+        db.session.commit()
 
         logging.info(f"Dataset {dataset.id} recreate successfully.")

@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 For high-quality text generation, such as articles, summaries, and translations, use the completion-messages API with user input. Text generation relies on the model parameters and prompt templates set in Dify Prompt Engineering.
 
+<div>
+  ### Authentication
+
+  Service API of Dify authenticates using an `API-Key`.
+
+  It is suggested that developers store the `API-Key` in the backend instead of sharing or storing it in the client side to avoid the leakage of the `API-Key`, which may lead to property loss.
+
+  All API requests should include your `API-Key` in the **`Authorization`** HTTP Header, as shown below:
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/completion-messages'
   method='POST'
@@ -30,9 +49,6 @@ For high-quality text generation, such as articles, summaries, and translations,
         )}
         </ul>
       </Property>
-      <Property name='query' type='string' key='query'>
-        User input text content.
-      </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         - Blocking type, waiting for execution to complete and returning results. (Requests may be interrupted if the process is long)
         - streaming returns. Implementation of streaming return based on SSE (**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**).
@@ -44,15 +60,14 @@ For high-quality text generation, such as articles, summaries, and translations,
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "Hi",\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming"\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/completion-messages' \
+    curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "inputs": {},
-        "query": "Hi",
         "response_mode": "streaming",
         "user": "abc-123"
     }'
@@ -115,7 +130,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -176,7 +191,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 

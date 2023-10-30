@@ -17,7 +17,7 @@
 - 一套 API 即可包含插件、上下文增强等能力，替你省下了后端代码的编写工作
 - 可视化的对应用进行数据分析，查阅日志或进行标注
 
-
+https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e191da4d0f6
 
 ## 核心能力
 1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
@@ -36,7 +36,6 @@
 
 
 我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
-* 60 万 Tokens Claude 模型的消息调用额度，用于创建基于 Claude 模型的 AI 应用
 * 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
 * 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
 * 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用

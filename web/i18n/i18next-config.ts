@@ -33,7 +33,6 @@ import datasetCreationEn from './lang/dataset-creation.en'
 import datasetCreationZh from './lang/dataset-creation.zh'
 import exploreEn from './lang/explore.en'
 import exploreZh from './lang/explore.zh'
-import { getLocaleOnClient } from '@/i18n/client'
 
 const resources = {
   'en': {
@@ -86,7 +85,7 @@ i18n.use(initReactI18next)
   // init i18next
   // for all options read: https://www.i18next.com/overview/configuration-options
   .init({
-    lng: getLocaleOnClient(),
+    lng: undefined,
     fallbackLng: 'en',
     // debug: true,
     resources,

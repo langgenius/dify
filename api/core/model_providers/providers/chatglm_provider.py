@@ -6,7 +6,7 @@ from langchain.llms import ChatGLM
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.chatglm_model import ChatGLMModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from models.provider import ProviderType
@@ -27,14 +27,19 @@ class ChatGLMProvider(BaseModelProvider):
                 {
                     'id': 'chatglm2-6b',
                     'name': 'ChatGLM2-6B',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
                     'id': 'chatglm-6b',
                     'name': 'ChatGLM-6B',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
@@ -64,11 +69,11 @@ class ChatGLMProvider(BaseModelProvider):
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule[float](min=0, max=2, default=1),
-            top_p=KwargRule[float](min=0, max=1, default=0.7),
+            temperature=KwargRule[float](min=0, max=2, default=1, precision=2),
+            top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048),
+            max_tokens=KwargRule[int](alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
         )
 
     @classmethod

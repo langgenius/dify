@@ -51,8 +51,8 @@ const config: ProviderConfig = {
           'zh-Hans': '部署名称',
         },
         placeholder: {
-          'en': 'Enter your Deployment Name here',
-          'zh-Hans': '在此输入您的部署名称',
+          'en': 'Enter your Deployment Name here, matching the Azure deployment name.',
+          'zh-Hans': '在此输入您的部署名称，需要与 Azure 的部署名称匹配',
         },
       },
       {

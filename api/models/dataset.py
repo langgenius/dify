@@ -36,10 +36,10 @@ class Dataset(db.Model):
     updated_by = db.Column(UUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False,
                            server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    embedding_model = db.Column(db.String(
-        255), nullable=False, server_default=db.text("'text-embedding-ada-002'::character varying"))
-    embedding_model_provider = db.Column(db.String(
-        255), nullable=False, server_default=db.text("'openai'::character varying"))
+    embedding_model = db.Column(db.String(255), nullable=True)
+    embedding_model_provider = db.Column(db.String(255), nullable=True)
+    collection_binding_id = db.Column(UUID, nullable=True)
+
 
     @property
     def dataset_keyword_table(self):
@@ -447,3 +447,19 @@ class Embedding(db.Model):
 
     def get_embedding(self) -> list[float]:
         return pickle.loads(self.embedding)
+
+
+class DatasetCollectionBinding(db.Model):
+    __tablename__ = 'dataset_collection_bindings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='dataset_collection_bindings_pkey'),
+        db.Index('provider_model_name_idx', 'provider_name', 'model_name')
+
+    )
+
+    id = db.Column(UUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    provider_name = db.Column(db.String(40), nullable=False)
+    model_name = db.Column(db.String(40), nullable=False)
+    collection_name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+

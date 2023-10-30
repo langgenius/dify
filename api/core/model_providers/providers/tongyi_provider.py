@@ -4,7 +4,7 @@ from typing import Type
 
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
-from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType
+from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
 from core.model_providers.models.llm.tongyi_model import TongyiModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 from core.third_party.langchain.llms.tongyi_llm import EnhanceTongyi
@@ -24,16 +24,21 @@ class TongyiProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'qwen-v1',
-                    'name': 'qwen-v1',
+                    'id': 'qwen-turbo',
+                    'name': 'qwen-turbo',
+                    'mode': ModelMode.COMPLETION.value,
                 },
                 {
-                    'id': 'qwen-plus-v1',
-                    'name': 'qwen-plus-v1',
+                    'id': 'qwen-plus',
+                    'name': 'qwen-plus',
+                    'mode': ModelMode.COMPLETION.value,
                 }
             ]
         else:
             return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
@@ -58,16 +63,16 @@ class TongyiProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
-            'qwen-v1': 1500,
-            'qwen-plus-v1': 6500
+            'qwen-turbo': 6000,
+            'qwen-plus': 6000
         }
 
         return ModelKwargsRules(
-            temperature=KwargRule[float](enabled=False),
-            top_p=KwargRule[float](min=0, max=1, default=0.8),
+            temperature=KwargRule[float](min=0.01, max=1, default=1, precision=2),
+            top_p=KwargRule[float](min=0.01, max=0.99, default=0.5, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name), default=1024),
+            max_tokens=KwargRule[int](enabled=False, max=model_max_tokens.get(model_name)),
         )
 
     @classmethod
@@ -84,7 +89,7 @@ class TongyiProvider(BaseModelProvider):
             }
 
             llm = EnhanceTongyi(
-                model_name='qwen-v1',
+                model_name='qwen-turbo',
                 max_retries=1,
                 **credential_kwargs
             )

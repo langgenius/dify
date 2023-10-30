@@ -25,7 +25,33 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = {}
         for text in texts:
             keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(text.metadata['doc_id'], list(keywords))
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
+            keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
+
+        dataset_keyword_table = DatasetKeywordTable(
+            dataset_id=self.dataset.id,
+            keyword_table=json.dumps({
+                '__type__': 'keyword_table',
+                '__data__': {
+                    "index_id": self.dataset.id,
+                    "summary": None,
+                    "table": {}
+                }
+            }, cls=SetEncoder)
+        )
+        db.session.add(dataset_keyword_table)
+        db.session.commit()
+
+        self._save_dataset_keyword_table(keyword_table)
+
+        return self
+
+    def create_with_collection_name(self, texts: list[Document], collection_name: str, **kwargs) -> BaseIndex:
+        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table = {}
+        for text in texts:
+            keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
         dataset_keyword_table = DatasetKeywordTable(
@@ -52,7 +78,7 @@ class KeywordTableIndex(BaseIndex):
         keyword_table = self._get_dataset_keyword_table()
         for text in texts:
             keywords = keyword_table_handler.extract_keywords(text.page_content, self._config.max_keywords_per_chunk)
-            self._update_segment_keywords(text.metadata['doc_id'], list(keywords))
+            self._update_segment_keywords(self.dataset.id, text.metadata['doc_id'], list(keywords))
             keyword_table = self._add_text_to_keyword_table(keyword_table, text.metadata['doc_id'], list(keywords))
 
         self._save_dataset_keyword_table(keyword_table)
@@ -74,7 +100,7 @@ class KeywordTableIndex(BaseIndex):
             DocumentSegment.document_id == document_id
         ).all()
 
-        ids = [segment.id for segment in segments]
+        ids = [segment.index_node_id for segment in segments]
 
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._delete_ids_from_keyword_table(keyword_table, ids)
@@ -115,6 +141,12 @@ class KeywordTableIndex(BaseIndex):
         return documents
 
     def delete(self) -> None:
+        dataset_keyword_table = self.dataset.dataset_keyword_table
+        if dataset_keyword_table:
+            db.session.delete(dataset_keyword_table)
+            db.session.commit()
+
+    def delete_by_group_id(self, group_id: str) -> None:
         dataset_keyword_table = self.dataset.dataset_keyword_table
         if dataset_keyword_table:
             db.session.delete(dataset_keyword_table)
@@ -199,22 +231,42 @@ class KeywordTableIndex(BaseIndex):
 
         return sorted_chunk_indices[: k]
 
-    def _update_segment_keywords(self, node_id: str, keywords: List[str]):
-        document_segment = db.session.query(DocumentSegment).filter(DocumentSegment.index_node_id == node_id).first()
+    def _update_segment_keywords(self, dataset_id: str, node_id: str, keywords: List[str]):
+        document_segment = db.session.query(DocumentSegment).filter(
+            DocumentSegment.dataset_id == dataset_id,
+            DocumentSegment.index_node_id == node_id
+        ).first()
         if document_segment:
             document_segment.keywords = keywords
             db.session.commit()
 
     def create_segment_keywords(self, node_id: str, keywords: List[str]):
         keyword_table = self._get_dataset_keyword_table()
-        self._update_segment_keywords(node_id, keywords)
+        self._update_segment_keywords(self.dataset.id, node_id, keywords)
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
+        self._save_dataset_keyword_table(keyword_table)
+
+    def multi_create_segment_keywords(self, pre_segment_data_list: list):
+        keyword_table_handler = JiebaKeywordTableHandler()
+        keyword_table = self._get_dataset_keyword_table()
+        for pre_segment_data in pre_segment_data_list:
+            segment = pre_segment_data['segment']
+            if pre_segment_data['keywords']:
+                segment.keywords = pre_segment_data['keywords']
+                keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id,
+                                                                pre_segment_data['keywords'])
+            else:
+                keywords = keyword_table_handler.extract_keywords(segment.content,
+                                                                  self._config.max_keywords_per_chunk)
+                segment.keywords = list(keywords)
+                keyword_table = self._add_text_to_keyword_table(keyword_table, segment.index_node_id, list(keywords))
         self._save_dataset_keyword_table(keyword_table)
 
     def update_segment_keywords_index(self, node_id: str, keywords: List[str]):
         keyword_table = self._get_dataset_keyword_table()
         keyword_table = self._add_text_to_keyword_table(keyword_table, node_id, keywords)
         self._save_dataset_keyword_table(keyword_table)
+
 
 class KeywordTableRetriever(BaseRetriever, BaseModel):
     index: KeywordTableIndex

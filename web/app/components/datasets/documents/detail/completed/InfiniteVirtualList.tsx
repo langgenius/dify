@@ -10,12 +10,12 @@ type IInfiniteVirtualListProps = {
   hasNextPage?: boolean // Are there more items to load? (This information comes from the most recent API request.)
   isNextPageLoading: boolean // Are we currently loading a page of items? (This may be an in-flight flag in your Redux store for example.)
   items: Array<SegmentDetailModel[]> // Array of items loaded so far.
-  loadNextPage: () => Promise<any> // Callback function responsible for loading the next page of items.
+  loadNextPage: () => Promise<void> // Callback function responsible for loading the next page of items.
   onClick: (detail: SegmentDetailModel) => void
   onChangeSwitch: (segId: string, enabled: boolean) => Promise<void>
   onDelete: (segId: string) => Promise<void>
   archived?: boolean
-
+  embeddingAvailable: boolean
 }
 
 const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
@@ -27,6 +27,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
   onChangeSwitch,
   onDelete,
   archived,
+  embeddingAvailable,
 }) => {
   // If there are more items to be loaded then add an extra row to hold a loading indicator.
   const itemCount = hasNextPage ? items.length + 1 : items.length
@@ -45,7 +46,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
       content = (
         <>
           {[1, 2, 3].map(v => (
-            <SegmentCard loading={true} detail={{ position: v } as any} />
+            <SegmentCard key={v} loading={true} detail={{ position: v } as any} />
           ))}
         </>
       )
@@ -60,6 +61,7 @@ const InfiniteVirtualList: FC<IInfiniteVirtualListProps> = ({
           onDelete={onDelete}
           loading={false}
           archived={archived}
+          embeddingAvailable={embeddingAvailable}
         />
       ))
     }

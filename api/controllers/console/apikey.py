@@ -1,5 +1,5 @@
 from flask_login import current_user
-from core.login.login import login_required
+from libs.login import login_required
 import flask_restful
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
@@ -81,6 +81,7 @@ class BaseApiKeyListResource(Resource):
         key = ApiToken.generate_api_key(self.token_prefix, 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
+        api_token.tenant_id = current_user.current_tenant_id
         api_token.token = key
         api_token.type = self.resource_type
         db.session.add(api_token)

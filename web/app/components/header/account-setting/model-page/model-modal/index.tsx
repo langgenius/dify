@@ -92,7 +92,7 @@ const ModelModal: FC<ModelModalProps> = ({
   return (
     <Portal>
       <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-        <div className='w-[640px] max-h-screen bg-white shadow-xl rounded-2xl overflow-y-auto'>
+        <div className='w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
           <div className='px-8 pt-8'>
             <div className='flex justify-between items-center mb-2'>
               <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>

@@ -1,5 +1,23 @@
 const translation = {
-  pageTitle: '提示词编排',
+  pageTitle: {
+    line1: '提示词',
+    line2: '编排',
+  },
+  promptMode: {
+    simple: '切换到专家模式以编辑完整的提示词',
+    advanced: '专家模式',
+    switchBack: '返回简易模式',
+    advancedWarning: {
+      title: '您已切换到专家模式，一旦修改提示词，将无法返回简易模式。',
+      description: '在专家模式下，您可以编辑完整的提示词。',
+      learnMore: '了解更多',
+      ok: '确定',
+    },
+    operation: {
+      addMessage: '添加消息',
+    },
+    contextMissing: '上下文内容块缺失，提示词的有效性可能不好。',
+  },
   operation: {
     applyConfig: '发布',
     resetConfig: '重置',
@@ -51,6 +69,11 @@ const translation = {
       description: '启用后，您可以使用语音输入。',
       resDes: '语音输入已启用',
     },
+    citation: {
+      title: '引用和归属',
+      description: '启用后，显示源文档和生成内容的归属部分。',
+      resDes: '引用和归属已启用',
+    },
     dataSet: {
       title: '上下文',
       noData: '您可以导入数据集作为上下文',
@@ -61,6 +84,30 @@ const translation = {
       noDataSet: '未找到数据集',
       toCreate: '去创建',
       notSupportSelectMulti: '目前只支持引用一个数据集',
+      queryVariable: {
+        title: '查询变量',
+        tip: '该变量将用作上下文检索的查询输入，获取与该变量的输入相关的上下文信息。',
+        choosePlaceholder: '请选择变量',
+        noVar: '没有变量',
+        noVarTip: '请创建变量',
+        unableToQueryDataSet: '无法查询数据集',
+        unableToQueryDataSetTip: '无法成功查询数据集，请在上下文部分选择一个上下文查询变量。',
+        ok: '好的',
+        contextVarNotEmpty: '上下文查询变量不能为空',
+        deleteContextVarTitle: '删除变量“{{varName}}”？',
+        deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
+      },
+    },
+    conversationHistory: {
+      title: '对话历史',
+      description: '设置对话角色的前缀名称',
+      tip: '对话历史未启用，请在上面的提示中添加<histories>。',
+      learnMore: '了解更多',
+      editModal: {
+        title: '编辑对话角色名称',
+        userPrefix: '用户前缀',
+        assistantPrefix: '助手前缀',
+      },
     },
   },
   automatic: {
@@ -114,16 +161,22 @@ const translation = {
   },
   varKeyError: {
     canNoBeEmpty: '变量不能为空',
-    tooLong: '变量: {{key}} 长度太长。不能超过 16 个字符',
+    tooLong: '变量: {{key}} 长度太长。不能超过 30 个字符',
     notValid: '变量: {{key}} 非法。只能包含英文字符，数字和下划线',
     notStartWithNumber: '变量: {{key}} 不能以数字开头',
     keyAlreadyExists: '变量:{{key}} 已存在',
+  },
+  otherError: {
+    promptNoBeEmpty: '提示词不能为空',
+    historyNoBeEmpty: '提示词中必须设置对话历史',
+    queryNoBeEmpty: '提示词中必须设置查询内容',
   },
   variableConig: {
     modalTitle: '变量设置',
     description: '设置变量 {{varName}}',
     fieldType: '字段类型',
     string: '文本',
+    paragraph: '段落',
     select: '下拉选项',
     notSet: '未设置，在 Prompt 中输入 {{input}} 试试',
     stringTitle: '文本框设置',
@@ -160,6 +213,13 @@ const translation = {
     run: '运行',
   },
   result: '结果',
+  datasetConfig: {
+    params: '参数设置',
+    top_k: 'Top K',
+    top_kTip: '用于筛选与用户问题相似度最高的文本片段。系统同时会根据选用模型上下文窗口大小动态调整分段数量。',
+    score_threshold: 'Score 阈值',
+    score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
+  },
 }
 
 export default translation

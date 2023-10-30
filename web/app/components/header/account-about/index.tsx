@@ -6,10 +6,10 @@ import { useContext } from 'use-context-selector'
 import s from './index.module.css'
 import Modal from '@/app/components/base/modal'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { Dify } from '@/app/components/base/icons/src/public/common'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
 import I18n from '@/context/i18n'
+import LogoSite from '@/app/components/base/logo/logo-site'
 
 type IAccountSettingProps = {
   langeniusVersionInfo: LangGeniusVersionResponse
@@ -33,16 +33,12 @@ export default function AccountAbout({
       onClose={() => { }}
       className={s.modal}
     >
-      <div className='relative'>
+      <div className='relative pt-4'>
         <div className='absolute -top-2 -right-4 flex justify-center items-center w-8 h-8 cursor-pointer' onClick={onCancel}>
           <XClose className='w-4 h-4 text-gray-500' />
         </div>
         <div>
-          <div className={classNames(
-            s['logo-icon'],
-            'mx-auto mb-3 w-12 h-12 bg-white rounded-xl border-[0.5px] border-gray-200',
-          )} />
-          <Dify className='mx-auto mb-2' />
+          <LogoSite className='mx-auto mb-2' />
           <div className='mb-3 text-center text-xs font-normal text-gray-500'>Version {langeniusVersionInfo?.current_version}</div>
           <div className='mb-4 text-center text-xs font-normal text-gray-700'>
             <div>© 2023 LangGenius, Inc., Contributors.</div>

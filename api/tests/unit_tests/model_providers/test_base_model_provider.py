@@ -24,7 +24,7 @@ def test_get_supported_model_list(mocker):
     provider = FakeModelProvider(provider=Provider())
     result = provider.get_supported_model_list(ModelType.TEXT_GENERATION)
 
-    assert result == [{'id': 'test_model', 'name': 'test_model'}]
+    assert result == [{'id': 'test_model', 'name': 'test_model', 'mode': 'completion'}]
 
 
 def test_check_quota_over_limit(mocker):

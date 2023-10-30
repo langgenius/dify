@@ -43,6 +43,7 @@ type ISegmentCardProps = {
   scene?: UsageScene
   className?: string
   archived?: boolean
+  embeddingAvailable?: boolean
 }
 
 const SegmentCard: FC<ISegmentCardProps> = ({
@@ -55,6 +56,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
   scene = 'doc',
   className = '',
   archived,
+  embeddingAvailable,
 }) => {
   const { t } = useTranslation()
   const {
@@ -66,7 +68,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
     hit_count,
     index_node_hash,
     answer,
-  } = detail as any
+  } = detail as Required<ISegmentCardProps>['detail']
   const isDocScene = scene === 'doc'
   const [showModal, setShowModal] = useState(false)
 
@@ -115,24 +117,26 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 : (
                   <>
                     <StatusItem status={enabled ? 'enabled' : 'disabled'} reverse textCls="text-gray-500 text-xs" />
-                    <div className="hidden group-hover:inline-flex items-center">
-                      <Divider type="vertical" className="!h-2" />
-                      <div
-                        onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
-                          e.stopPropagation()
-                        }
-                        className="inline-flex items-center"
-                      >
-                        <Switch
-                          size='md'
-                          disabled={archived}
-                          defaultValue={enabled}
-                          onChange={async (val) => {
-                            await onChangeSwitch?.(id, val)
-                          }}
-                        />
+                    {embeddingAvailable && (
+                      <div className="hidden group-hover:inline-flex items-center">
+                        <Divider type="vertical" className="!h-2" />
+                        <div
+                          onClick={(e: React.MouseEvent<HTMLDivElement, MouseEvent>) =>
+                            e.stopPropagation()
+                          }
+                          className="inline-flex items-center"
+                        >
+                          <Switch
+                            size='md'
+                            disabled={archived}
+                            defaultValue={enabled}
+                            onChange={async (val) => {
+                              await onChangeSwitch?.(id, val)
+                            }}
+                          />
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </>
                 )}
             </div>
@@ -173,7 +177,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                   <div className={cn(s.commonIcon, s.bezierCurveIcon)} />
                   <div className={s.segDataText}>{index_node_hash}</div>
                 </div>
-                {!archived && (
+                {!archived && embeddingAvailable && (
                   <div className='shrink-0 w-6 h-6 flex items-center justify-center rounded-md hover:bg-red-100 hover:text-red-600 cursor-pointer group/delete' onClick={(e) => {
                     e.stopPropagation()
                     setShowModal(true)

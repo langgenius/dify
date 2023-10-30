@@ -5,6 +5,25 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 
 可用于生成高质量文本的应用，例如生成文章、摘要、翻译等，通过调用 completion-messages 接口，发送用户输入得到生成文本结果。用于生成文本的模型参数和提示词模版取决于开发者在 Dify 提示词编排页的设置。
 
+<div>
+  ### 鉴权
+
+  Dify Service API 使用 `API-Key` 进行鉴权。
+
+  建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
+
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
 <Heading
   url='/completion-messages'
   method='POST'
@@ -30,9 +49,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         )}
         </ul>
       </Property>
-      <Property name='query' type='string' key='query'>
-        用户输入的文本正文。
-      </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         - blocking 阻塞型，等待执行完毕后返回结果。（请求若流程较长可能会被中断）
         - streaming 流式返回。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现流式返回。
@@ -44,15 +60,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "Hi",\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/completion-messages' \
+    curl --location --request POST '${props.appDetail.api_base_url}/completion-messages' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
         "inputs": {},
-        "query": "Hi",
         "response_mode": "streaming",
         "user": "abc-123"
     }'
@@ -115,7 +130,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="POST" label="/messages/{message_id}/feedbacks" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json' \\\n --data-raw '{ \n "rating": "like",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST 'https://cloud.langgenius.dev/api/messages/{message_id}/feedbacks' \
+    curl --location --request POST '${props.appDetail.api_base_url}/messages/{message_id}/feedbacks' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -176,7 +191,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request GET 'https://cloud.langgenius.dev/api/parameters?user=abc-123' \
+    curl --location --request GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY'
     ```
 

@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { HTMLProps } from 'react'
 import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
@@ -22,6 +22,7 @@ import Tag from '@/app/components/base/tag'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
 import { AppType } from '@/types/app'
@@ -37,7 +38,7 @@ export type IAppCardProps = {
   onGenerateCode?: () => Promise<void>
 }
 
-const EmbedIcon: FC<{ className?: string }> = ({ className = '' }) => {
+const EmbedIcon = ({ className = '' }: HTMLProps<HTMLDivElement>) => {
   return <div className={`${style.codeBrowserIcon} ${className}`}></div>
 }
 
@@ -119,9 +120,11 @@ function AppCard({
   }
 
   const onGenCode = async () => {
-    setGenLoading(true)
-    await asyncRunSafe(onGenerateCode?.() as any)
-    setGenLoading(false)
+    if (onGenerateCode) {
+      setGenLoading(true)
+      await asyncRunSafe(onGenerateCode())
+      setGenLoading(false)
+    }
   }
 
   return (
@@ -166,6 +169,7 @@ function AppCard({
                 </div>
               </div>
               <Divider type="vertical" className="!h-3.5 shrink-0 !mx-0.5" />
+              {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} selectorId={randomString(8)} className={'hover:bg-gray-200'} />}
               <CopyFeedback
                 content={isApp ? appUrl : apiUrl}
                 selectorId={randomString(8)}

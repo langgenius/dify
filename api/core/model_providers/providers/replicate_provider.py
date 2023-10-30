@@ -6,7 +6,8 @@ import replicate
 from replicate.exceptions import ReplicateError
 
 from core.helper import encrypter
-from core.model_providers.models.entity.model_params import KwargRule, KwargRuleType, ModelKwargsRules, ModelType
+from core.model_providers.models.entity.model_params import KwargRule, KwargRuleType, ModelKwargsRules, ModelType, \
+    ModelMode
 from core.model_providers.models.llm.replicate_model import ReplicateModel
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
@@ -25,6 +26,9 @@ class ReplicateProvider(BaseModelProvider):
 
     def _get_fixed_model_list(self, model_type: ModelType) -> list[dict]:
         return []
+
+    def _get_text_generation_model_mode(self, model_name) -> str:
+        return ModelMode.CHAT.value if model_name.endswith('-chat') else ModelMode.COMPLETION.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
@@ -72,6 +76,7 @@ class ReplicateProvider(BaseModelProvider):
                         min=float(value.get('minimum')) if value.get('minimum') is not None else None,
                         max=float(value.get('maximum')) if value.get('maximum') is not None else None,
                         default=float(value.get('default')) if value.get('default') is not None else None,
+                        precision = 2
                     )
                     if key == 'temperature':
                         model_kwargs_rules.temperature = kwarg_rule
@@ -84,6 +89,7 @@ class ReplicateProvider(BaseModelProvider):
                         min=int(value.get('minimum')) if value.get('minimum') is not None else 1,
                         max=int(value.get('maximum')) if value.get('maximum') is not None else 8000,
                         default=int(value.get('default')) if value.get('default') is not None else 500,
+                        precision = 0
                     )
 
         return model_kwargs_rules

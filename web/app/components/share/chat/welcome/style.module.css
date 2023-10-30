@@ -20,10 +20,3 @@
 .customBtn {
   width: 136px;
 }
-
-.logo {
-  width: 48px;
-  height: 20px;
-  background: url(./icons/logo.png) center center no-repeat;
-  background-size: contain;
-}

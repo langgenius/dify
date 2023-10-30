@@ -144,9 +144,11 @@ docker/volumes/app/storage/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
+docker/volumes/qdrant/*
 
 sdks/python-client/build
 sdks/python-client/dist
 sdks/python-client/dify_client.egg-info
 
-.vscode/
+.vscode/*
+!.vscode/launch.json

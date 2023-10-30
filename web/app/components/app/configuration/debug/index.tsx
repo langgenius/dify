@@ -10,7 +10,8 @@ import dayjs from 'dayjs'
 import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
-import { AppType } from '@/types/app'
+import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
+import { AppType, ModelModeType } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -23,7 +24,6 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
-
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -37,9 +37,16 @@ const Debug: FC<IDebug> = ({
   const {
     appId,
     mode,
+    modelModeType,
+    hasSetBlockStatus,
+    isAdvancedMode,
+    promptMode,
+    chatPromptConfig,
+    completionPromptConfig,
     introduction,
     suggestedQuestionsAfterAnswerConfig,
     speechToTextConfig,
+    citationConfig,
     moreLikeThisConfig,
     inputs,
     // setInputs,
@@ -51,6 +58,8 @@ const Debug: FC<IDebug> = ({
     dataSets,
     modelConfig,
     completionParams,
+    hasSetContextVar,
+    datasetConfigs,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -76,6 +85,7 @@ const Debug: FC<IDebug> = ({
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   const [abortController, setAbortController] = useState<AbortController | null>(null)
   const [isShowFormattingChangeConfirm, setIsShowFormattingChangeConfirm] = useState(false)
+  const [isShowCannotQueryDataset, setShowCannotQueryDataset] = useState(false)
   const [isShowSuggestion, setIsShowSuggestion] = useState(false)
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
@@ -117,6 +127,18 @@ const Debug: FC<IDebug> = ({
   }
 
   const checkCanSend = () => {
+    if (isAdvancedMode && mode === AppType.chat) {
+      if (modelModeType === ModelModeType.completion) {
+        if (!hasSetBlockStatus.history) {
+          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+          return false
+        }
+        if (!hasSetBlockStatus.query) {
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          return false
+        }
+      }
+    }
     let hasEmptyInput = ''
     const requiredVars = modelConfig.configs.prompt_variables.filter(({ key, name, required }) => {
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
@@ -152,16 +174,22 @@ const Debug: FC<IDebug> = ({
         id,
       },
     }))
+    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
-      pre_prompt: modelConfig.configs.prompt_template,
+      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+      prompt_type: promptMode,
+      chat_prompt_config: {},
+      completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction,
       more_like_this: {
         enabled: false,
       },
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -169,8 +197,15 @@ const Debug: FC<IDebug> = ({
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
+      dataset_configs: datasetConfigs,
+    }
+
+    if (isAdvancedMode) {
+      postModelConfig.chat_prompt_config = chatPromptConfig
+      postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
     const data = {
@@ -199,7 +234,7 @@ const Debug: FC<IDebug> = ({
     setChatList(newList)
 
     // answer
-    const responseItem = {
+    const responseItem: IChatItem = {
       id: `${Date.now()}`,
       content: '',
       isAnswer: true,
@@ -249,6 +284,11 @@ const Debug: FC<IDebug> = ({
           setChatList(produce(getChatList(), (draft) => {
             const index = draft.findIndex(item => item.id === responseItem.id)
             if (index !== -1) {
+              const requestion = draft[index - 1]
+              draft[index - 1] = {
+                ...requestion,
+                log: newResponseItem.message,
+              }
               draft[index] = {
                 ...draft[index],
                 more: {
@@ -266,6 +306,19 @@ const Debug: FC<IDebug> = ({
           setIsShowSuggestion(true)
         }
       },
+      onMessageEnd: (messageEnd) => {
+        responseItem.citation = messageEnd.retriever_resources
+
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -282,8 +335,8 @@ const Debug: FC<IDebug> = ({
       setChatList([])
   }, [controlClearChatMessage])
 
-  const [completionQuery, setCompletionQuery] = useState('')
   const [completionRes, setCompletionRes] = useState('')
+  const [messageId, setMessageId] = useState<string | null>(null)
 
   const sendTextCompletion = async () => {
     if (isResponsing) {
@@ -291,13 +344,13 @@ const Debug: FC<IDebug> = ({
       return false
     }
 
+    if (dataSets.length > 0 && !hasSetContextVar) {
+      setShowCannotQueryDataset(true)
+      return true
+    }
+
     if (!checkCanSend())
       return
-
-    if (!completionQuery) {
-      logError(t('appDebug.errorMessage.queryRequired'))
-      return false
-    }
 
     const postDatasets = dataSets.map(({ id }) => ({
       dataset: {
@@ -305,13 +358,19 @@ const Debug: FC<IDebug> = ({
         id,
       },
     }))
+    const contextVar = modelConfig.configs.prompt_variables.find(item => item.is_context_var)?.key
 
     const postModelConfig: BackendModelConfig = {
-      pre_prompt: modelConfig.configs.prompt_template,
+      pre_prompt: !isAdvancedMode ? modelConfig.configs.prompt_template : '',
+      prompt_type: promptMode,
+      chat_prompt_config: {},
+      completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
+      dataset_query_variable: contextVar || '',
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
       more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,
@@ -320,24 +379,32 @@ const Debug: FC<IDebug> = ({
       model: {
         provider: modelConfig.provider,
         name: modelConfig.model_id,
+        mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
+      dataset_configs: datasetConfigs,
+    }
+
+    if (isAdvancedMode) {
+      postModelConfig.chat_prompt_config = chatPromptConfig
+      postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
     const data = {
       inputs,
-      query: completionQuery,
       model_config: postModelConfig,
     }
 
     setCompletionRes('')
+    setMessageId('')
     const res: string[] = []
 
     setResponsingTrue()
     sendCompletionMessage(appId, data, {
-      onData: (data: string) => {
+      onData: (data: string, _isFirstMessage: boolean, { messageId }) => {
         res.push(data)
         setCompletionRes(res.join(''))
+        setMessageId(messageId)
       },
       onCompleted() {
         setResponsingFalse()
@@ -364,8 +431,6 @@ const Debug: FC<IDebug> = ({
         </div>
         <PromptValuePanel
           appType={mode as AppType}
-          value={completionQuery}
-          onChange={setCompletionQuery}
           onSend={sendTextCompletion}
         />
       </div>
@@ -391,6 +456,9 @@ const Debug: FC<IDebug> = ({
                   isShowSuggestion={doShowSuggestion}
                   suggestionList={suggestQuestions}
                   isShowSpeechToText={speechToTextConfig.enabled && !!speech2textDefaultModel}
+                  isShowCitation={citationConfig.enabled}
+                  isShowCitationHitInfo
+                  isShowPromptLog
                 />
               </div>
             </div>
@@ -405,7 +473,11 @@ const Debug: FC<IDebug> = ({
                 className="mt-2"
                 content={completionRes}
                 isLoading={!completionRes && isResponsing}
+                isResponsing={isResponsing}
                 isInstalledApp={false}
+                messageId={messageId}
+                isError={false}
+                onRetry={() => { }}
               />
             )}
           </div>
@@ -414,6 +486,11 @@ const Debug: FC<IDebug> = ({
           <FormattingChanged
             onConfirm={handleConfirm}
             onCancel={handleCancel}
+          />
+        )}
+        {isShowCannotQueryDataset && (
+          <CannotQueryDataset
+            onConfirm={() => setShowCannotQueryDataset(false)}
           />
         )}
       </div>

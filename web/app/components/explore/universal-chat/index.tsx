@@ -130,6 +130,7 @@ const Main: FC<IMainProps> = () => {
     resetNewConversationInputs,
     setCurrInputs,
     setNewConversationInfo,
+    existConversationInfo,
     setExistConversationInfo,
   } = useConversation()
   const [hasMore, setHasMore] = useState<boolean>(true)
@@ -198,6 +199,7 @@ const Main: FC<IMainProps> = () => {
 
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
+  const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
 
@@ -270,6 +272,7 @@ const Main: FC<IMainProps> = () => {
             content: item.answer,
             feedback: item.feedback,
             isAnswer: true,
+            citation: item.retriever_resources,
           })
         })
         setChatList(newChatList)
@@ -373,7 +376,7 @@ const Main: FC<IMainProps> = () => {
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource }: any = appParams
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
 
         setNewConversationInfo({
@@ -386,6 +389,7 @@ const Main: FC<IMainProps> = () => {
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
+        setCitationConfig(retriever_resource)
 
         if (isNotNewConversation)
           setCurrConversationId(_conversationId, APP_ID, false)
@@ -592,6 +596,19 @@ const Main: FC<IMainProps> = () => {
           })
         setChatList(newListWithAnswer)
       },
+      onMessageEnd: (messageEnd) => {
+        responseItem.citation = messageEnd.retriever_resources
+
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
+      },
       onError() {
         setErrorHappened(true)
         // role back placeholder answer
@@ -618,14 +635,38 @@ const Main: FC<IMainProps> = () => {
     notify({ type: 'success', message: t('common.api.success') })
   }
 
+  const [controlChatUpdateAllConversation, setControlChatUpdateAllConversation] = useState(0)
+  useEffect(() => {
+    (async () => {
+      if (controlChatUpdateAllConversation && !isNewConversation) {
+        const { data: allConversations } = await fetchAllConversations() as { data: ConversationItem[]; has_more: boolean }
+        const item = allConversations.find(item => item.id === currConversationId)
+        setAllConversationList(allConversations)
+        if (item) {
+          setExistConversationInfo({
+            ...existConversationInfo,
+            name: item?.name || '',
+          } as any)
+        }
+      }
+    })()
+  }, [controlChatUpdateAllConversation])
   const renderSidebar = () => {
     if (!APP_ID || !promptConfig)
       return null
     return (
       <Sidebar
         list={conversationList}
+        onListChanged={(list) => {
+          setConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearConversationList={isClearConversationList}
         pinnedList={pinnedConversationList}
+        onPinnedListChanged={(list) => {
+          setPinnedConversationList(list)
+          setControlChatUpdateAllConversation(Date.now())
+        }}
         isClearPinnedConversationList={isClearPinnedConversationList}
         onMoreLoaded={onMoreLoaded}
         onPinnedMoreLoaded={onPinnedMoreLoaded}
@@ -758,6 +799,7 @@ const Main: FC<IMainProps> = () => {
                 isShowSuggestion={doShowSuggestion}
                 suggestionList={suggestQuestions}
                 isShowSpeechToText={speechToTextConfig?.enabled}
+                isShowCitation={citationConfig?.enabled}
                 dataSets={dataSets}
               />
             </div>

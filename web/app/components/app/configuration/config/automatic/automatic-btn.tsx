@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Button from '@/app/components/base/button'
 
 export type IAutomaticBtnProps = {
   onClick: () => void
@@ -22,12 +21,12 @@ const AutomaticBtn: FC<IAutomaticBtnProps> = ({
   const { t } = useTranslation()
 
   return (
-    <Button className='flex space-x-2 items-center !h-8'
+    <div className='flex px-3 space-x-2 items-center !h-8 cursor-pointer'
       onClick={onClick}
     >
       {leftIcon}
-      <span className='text-xs font-semibold text-primary-600 uppercase'>{t('appDebug.operation.automatic')}</span>
-    </Button>
+      <span className='text-xs font-semibold text-indigo-600 uppercase'>{t('appDebug.operation.automatic')}</span>
+    </div>
   )
 }
 export default React.memo(AutomaticBtn)

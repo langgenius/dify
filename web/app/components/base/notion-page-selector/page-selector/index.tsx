@@ -67,7 +67,7 @@ const recursivePushInParentDescendants = (
   }
 }
 
-const Item = memo(({ index, style, data }: ListChildComponentProps<{
+const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
   dataList: NotionPageItem[]
   handleToggle: (index: number) => void
   checkedIds: Set<string>
@@ -150,7 +150,8 @@ const Item = memo(({ index, style, data }: ListChildComponentProps<{
       }
     </div>
   )
-}, areEqual)
+}
+const Item = memo(ItemComponent, areEqual)
 
 const PageSelector = ({
   value,
@@ -227,29 +228,30 @@ const PageSelector = ({
     setDataList(newDataList)
   }
 
+  const copyValue = new Set([...value])
   const handleCheck = (index: number) => {
     const current = currentDataList[index]
     const pageId = current.page_id
     const currentWithChildrenAndDescendants = listMapWithChildrenAndDescendants[pageId]
 
-    if (value.has(pageId)) {
+    if (copyValue.has(pageId)) {
       if (!searchValue) {
         for (const item of currentWithChildrenAndDescendants.descendants)
-          value.delete(item)
+          copyValue.delete(item)
       }
 
-      value.delete(pageId)
+      copyValue.delete(pageId)
     }
     else {
       if (!searchValue) {
         for (const item of currentWithChildrenAndDescendants.descendants)
-          value.add(item)
+          copyValue.add(item)
       }
 
-      value.add(pageId)
+      copyValue.add(pageId)
     }
 
-    onSelect(new Set([...value]))
+    onSelect(new Set([...copyValue]))
   }
 
   const handlePreview = (index: number) => {

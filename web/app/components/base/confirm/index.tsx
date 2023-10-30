@@ -34,7 +34,7 @@ export default function Confirm({
   const cancelTxt = cancelText || `${t('common.operation.cancel')}`
   return (
     <Transition appear show={isShow} as={Fragment}>
-      <Dialog as="div" className="relative z-10" onClose={onClose} onClick={e => e.preventDefault()}>
+      <Dialog as="div" className="relative z-[100]" onClose={onClose} onClick={e => e.preventDefault()}>
         <Transition.Child
           as={Fragment}
           enter="ease-out duration-300"
