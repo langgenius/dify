@@ -6,46 +6,43 @@
     },
     "form_schema": [
         {
-            "select": {
-                "label": {
-                    "en-US": "Cloud Provider",
-                    "zh-Hans": "云计算厂商"
-                },
-                "variable": "cloud_provider",
-                "required": true,
-                "options": [
-                    "腾讯云",
-                    "阿里云",
-                    "AWS"
-                ],
-                "default": "",
-                "placeholder": ""
-            }
+            "type": "select",
+            "label": {
+                "en-US": "Cloud Provider",
+                "zh-Hans": "云计算厂商"
+            },
+            "variable": "cloud_provider",
+            "required": true,
+            "options": [
+                "腾讯云",
+                "阿里云",
+                "AWS"
+            ],
+            "default": "",
+            "placeholder": ""
         },
         {
-            "text-input": {
-                "label": {
-                    "en-US": "API Endpoint",
-                    "zh-Hans": "API Endpoint"
-                },
-                "variable": "api_endpoint",
-                "required": true,
-                "max_length": 100,
-                "default": "",
-                "placeholder": ""
-            }
+            "type": "text-input",
+            "label": {
+                "en-US": "API Endpoint",
+                "zh-Hans": "API Endpoint"
+            },
+            "variable": "api_endpoint",
+            "required": true,
+            "max_length": 100,
+            "default": "",
+            "placeholder": ""
         },
         {
-            "paragraph": {
-                "label": {
-                    "en-US": "API Key",
-                    "zh-Hans": "API Key"
-                },
-                "variable": "api_keys",
-                "required": true,
-                "default": "",
-                "placeholder": ""
-            }
+            "type": "paragraph",
+            "label": {
+                "en-US": "API Key",
+                "zh-Hans": "API Key"
+            },
+            "variable": "api_keys",
+            "required": true,
+            "default": "",
+            "placeholder": ""
         }
     ]
 }
