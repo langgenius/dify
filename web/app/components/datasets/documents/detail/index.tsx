@@ -175,7 +175,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             </div>
           }
           {showMetadata && <Metadata
-            docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentDetail?.doc_type === 'others' ? '' : documentDetail?.doc_type } as any}
+            docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}
             loading={isMetadataLoading}
             onUpdate={metadataMutate}
           />}
