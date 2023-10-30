@@ -1,7 +1,7 @@
 from core.moderation.base import BaseModeration
 
 class OpenAIModeration(BaseModeration):
-    register_name = "openai"
+    type = "openai"
 
     @classmethod
     def validate_config(self, config: dict):

@@ -2,7 +2,7 @@ from core.moderation.base import BaseModeration
 
 
 class ApiBasedModeration(BaseModeration):
-    register_name = "api_based"
+    type = "api_based"
 
     @classmethod
     def validate_config(self, config: dict) -> None:

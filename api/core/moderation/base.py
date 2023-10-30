@@ -1,8 +1,14 @@
 from abc import abstractclassmethod
-from core.helper.auto_register import AutoRegisterBase
 
 
-class BaseModeration(AutoRegisterBase):
+class BaseModeration():
+    _subclasses = {}
+
+    def __init_subclass__(cls, **kwargs):
+        super().__init_subclass__(**kwargs)
+        type = getattr(cls, 'type', None)
+        if type:
+            BaseModeration._subclasses[type] = cls
 
     @abstractclassmethod
     def validate_config(self, config: dict) -> None:
@@ -43,4 +49,9 @@ class BaseModeration(AutoRegisterBase):
         if outputs_configs_enabled and not outputs_configs.get("preset_response"):
             raise ValueError("outputs_configs.preset_response is required")
         
-        
+    @staticmethod
+    def create_instance(type: str, *args, **kwargs):
+        if type in BaseModeration._subclasses:
+            return BaseModeration._subclasses[type](*args, **kwargs)
+        else:
+            raise ValueError(f"No type named {type} found.")

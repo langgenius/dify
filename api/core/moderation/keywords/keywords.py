@@ -1,7 +1,7 @@
 from core.moderation.base import BaseModeration
 
 class KeywordsModeration(BaseModeration):
-    register_name = "keywords"
+    type = "keywords"
 
     @classmethod
     def validate_config(self, config):
