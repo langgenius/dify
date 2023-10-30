@@ -13,5 +13,5 @@ class APIBasedExtension(db.Model):
     tenant_id = db.Column(UUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
     api_endpoint = db.Column(db.String(255), nullable=False)
-    api_key = db.Column(db.String(255), nullable=False)
+    api_key = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
