@@ -56,9 +56,8 @@ def test_run(mock_decrypt, mocker):
     mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
 
     model = get_mock_model('ernie-bot')
-    messages = [PromptMessage(content='Human: 1 + 1=? \nAssistant: Integer answer is:')]
+    messages = [PromptMessage(type=MessageType.USER, content='Human: 1 + 1=? \nAssistant: Integer answer is:')]
     rst = model.run(
-        messages,
-        stop=['\nHuman:'],
+        messages
     )
     assert len(rst.content) > 0

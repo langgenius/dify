@@ -49,6 +49,7 @@ export type PromptEditorProps = {
   onChange?: (text: string) => void
   onBlur?: () => void
   contextBlock?: {
+    show?: boolean
     selectable?: boolean
     datasets: Dataset[]
     onInsert?: () => void
@@ -82,6 +83,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   onChange,
   onBlur,
   contextBlock = {
+    show: true,
     selectable: true,
     datasets: [],
     onAddContext: () => {},
@@ -158,23 +160,30 @@ const PromptEditor: FC<PromptEditorProps> = ({
         />
         <ComponentPicker
           contextDisabled={!contextBlock.selectable}
+          contextShow={contextBlock.show}
           historyDisabled={!historyBlock.selectable}
           historyShow={historyBlock.show}
           queryDisabled={!queryBlock.selectable}
           queryShow={queryBlock.show}
         />
         <VariablePicker items={variableBlock.variables} />
-        <ContextBlock
-          datasets={contextBlock.datasets}
-          onAddContext={contextBlock.onAddContext}
-          onInsert={contextBlock.onInsert}
-          onDelete={contextBlock.onDelete}
-        />
-        <ContextBlockReplacementBlock
-          datasets={contextBlock.datasets}
-          onAddContext={contextBlock.onAddContext}
-          onInsert={contextBlock.onInsert}
-        />
+        {
+          contextBlock.show && (
+            <>
+              <ContextBlock
+                datasets={contextBlock.datasets}
+                onAddContext={contextBlock.onAddContext}
+                onInsert={contextBlock.onInsert}
+                onDelete={contextBlock.onDelete}
+              />
+              <ContextBlockReplacementBlock
+                datasets={contextBlock.datasets}
+                onAddContext={contextBlock.onAddContext}
+                onInsert={contextBlock.onInsert}
+              />
+            </>
+          )
+        }
         <VariableBlock />
         {
           historyBlock.show && (

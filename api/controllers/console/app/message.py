@@ -295,8 +295,8 @@ class MessageSuggestedQuestionApi(Resource):
         try:
             questions = MessageService.get_suggested_questions_after_answer(
                 app_model=app_model,
-                user=current_user,
                 message_id=message_id,
+                user=current_user,
                 check_enabled=False
             )
         except MessageNotExistsError:

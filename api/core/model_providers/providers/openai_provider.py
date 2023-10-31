@@ -144,7 +144,7 @@ class OpenAIProvider(BaseModelProvider):
             'gpt-4': 8192,
             'gpt-4-32k': 32768,
             'gpt-3.5-turbo': 4096,
-            'gpt-3.5-turbo-instruct': 8192,
+            'gpt-3.5-turbo-instruct': 4097,
             'gpt-3.5-turbo-16k': 16384,
             'text-davinci-003': 4097,
         }
@@ -250,7 +250,7 @@ class OpenAIProvider(BaseModelProvider):
 
     def should_deduct_quota(self):
         if hosted_model_providers.openai \
-                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > 0:
+                and hosted_model_providers.openai.quota_limit and hosted_model_providers.openai.quota_limit > -1:
             return True
 
         return False

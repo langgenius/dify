@@ -9,7 +9,7 @@
             "trial"
         ],
         "quota_unit": "tokens",
-        "quota_limit": 600000
+        "quota_limit": 0
     },
     "model_flexibility": "fixed",
     "price_config": {

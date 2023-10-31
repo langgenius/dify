@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
-import { t } from 'i18next'
 import CryptoJS from 'crypto-js'
 
 let mermaidAPI: any
@@ -32,6 +31,14 @@ const Flowchart = React.forwardRef((props: {
   const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
   const [isRender, setIsRender] = useState(true)
 
+  const clearFlowchartCache = () => {
+    for (let i = localStorage.length - 1; i >= 0; --i) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('flowchart_'))
+        localStorage.removeItem(key)
+    }
+  }
+
   const renderFlowchart = async (PrimitiveCode: string) => {
     try {
       const cachedSvg: any = localStorage.getItem(chartId.current)
@@ -44,15 +51,15 @@ const Flowchart = React.forwardRef((props: {
         const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         const base64Svg: any = await svgToBase64(svgGraph.svg)
-        localStorage.setItem(chartId.current, base64Svg)
         setSvgCode(base64Svg)
+        if (chartId.current && base64Svg)
+          localStorage.setItem(chartId.current, base64Svg)
       }
     }
     catch (error) {
-      localStorage.clear()
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-expect-error
-      console.error(error.toString())
+      clearFlowchartCache()
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      handleReRender()
     }
   }
 
@@ -70,7 +77,9 @@ const Flowchart = React.forwardRef((props: {
   const handleReRender = () => {
     setIsRender(false)
     setSvgCode(null)
-    localStorage.removeItem(chartId.current)
+    if (chartId.current)
+      localStorage.removeItem(chartId.current)
+
     setTimeout(() => {
       setIsRender(true)
       renderFlowchart(props.PrimitiveCode)
@@ -90,9 +99,11 @@ const Flowchart = React.forwardRef((props: {
     // @ts-expect-error
     <div ref={ref}>
       {
-        isRender && <div id={chartId.current} className="mermaid" style={style}>{svgCode && (<img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />)}</div>
+        isRender
+          && <div id={chartId.current} className="mermaid" style={style}>
+            {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
+          </div>
       }
-      <button onClick={handleReRender}>{t('appApi.merMaind.rerender')}</button>
     </div>
   )
 })

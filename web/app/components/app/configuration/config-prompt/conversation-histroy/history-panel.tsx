@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import I18n from '@/context/i18n'
 
 type Props = {
   showWarning: boolean
@@ -16,6 +18,7 @@ const HistoryPanel: FC<Props> = ({
   onShowEditModal,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
 
   return (
     <Panel
@@ -40,8 +43,7 @@ const HistoryPanel: FC<Props> = ({
     >
       {showWarning && (
         <div className='flex justify-between py-2 px-3 rounded-b-xl bg-[#FFFAEB] text-xs text-gray-700'>
-          {/* <div>{t('appDebug.feature.conversationHistory.tip')} <a href="https://docs.dify.ai/getting-started/readme" target='_blank' className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}</a></div> */}
-          <div>{t('appDebug.feature.conversationHistory.tip')}</div>
+          <div>{t('appDebug.feature.conversationHistory.tip')} <a href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans/' : ''}advanced/prompt-engineering`} target='_blank' className='text-[#155EEF]'>{t('appDebug.feature.conversationHistory.learnMore')}</a></div>
         </div>
       )}
     </Panel>

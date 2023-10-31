@@ -347,6 +347,7 @@ const ModelPage = () => {
         title={deleteModel?.model_name || ''}
         desc={t('common.modelProvider.item.deleteDesc', { modelName: deleteModel?.model_name }) || ''}
         onConfirm={handleDeleteModel}
+        confirmWrapperClassName='!z-30'
       />
     </div>
   )

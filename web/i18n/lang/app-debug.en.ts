@@ -4,18 +4,19 @@ const translation = {
     line2: 'Engineering',
   },
   promptMode: {
-    simple: 'Switch to Advanced Mode to edit the built-in PROMPT',
-    advanced: 'Advanced Mode',
+    simple: 'Switch to Expert Mode to edit the whole PROMPT',
+    advanced: 'Expert Mode',
     switchBack: 'Switch back',
     advancedWarning: {
-      title: 'You have switched to Advanced Mode, and once you modify the PROMPT, you CANNOT return to the simple mode.',
-      description: 'In Advanced Mode, you can edit built-in PROMPT.',
+      title: 'You have switched to Expert Mode, and once you modify the PROMPT, you CANNOT return to the basic mode.',
+      description: 'In Expert Mode, you can edit whole PROMPT.',
       learnMore: 'Learn more',
       ok: 'OK',
     },
     operation: {
       addMessage: 'Add Message',
     },
+    contextMissing: 'Context component missed, the effectiveness of the prompt may not be good.',
   },
   operation: {
     applyConfig: 'Publish',
