@@ -42,19 +42,18 @@ class HitTestingApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, location='json')
+        parser.add_argument('query_mode', type=dict, location='json')
         args = parser.parse_args()
 
-        query = args['query']
-
-        if not query or len(query) > 250:
-            raise ValueError('Query is required and cannot exceed 250 characters')
+        HitTestingService.hit_testing_args_check(args)
 
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=query,
+                query=args['query'],
+                query_mode=args['query_mode'],
                 account=current_user,
-                limit=10,
+                limit=10
             )
 
             return {"query": response['query'], 'records': marshal(response['records'], hit_testing_record_fields)}
