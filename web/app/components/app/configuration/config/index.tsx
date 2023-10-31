@@ -113,7 +113,7 @@ const Config: FC = () => {
       }))
       if (value && !moderationConfig.type) {
         setShowModerationSettingModal({
-          moderationConfig: {
+          payload: {
             enabled: true,
             type: 'keywords',
             configs: {

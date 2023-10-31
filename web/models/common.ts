@@ -203,3 +203,28 @@ export type ApiBasedExtension = {
   api_endpoint?: string
   api_key?: string
 }
+
+export type I18nText = {
+  'en-US': string
+  'zh-Hans': string
+}
+
+export type CodeBasedExtensionForm = {
+  type: string
+  label: I18nText
+  variable: string
+  required: boolean
+  options: string[]
+  default: string
+  placeholder: string
+}
+
+export type CodeBasedExtensionItem = {
+  name: string
+  label: I18nText
+  form_schema: CodeBasedExtensionForm[]
+}
+export type CodeBasedExtension = {
+  module: string
+  data: CodeBasedExtensionItem[]
+}

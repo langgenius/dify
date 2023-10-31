@@ -3,6 +3,7 @@ import { del, get, patch, post, put } from './base'
 import type {
   AccountIntegrate,
   ApiBasedExtension,
+  CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
   DocumentsLimitResponse,
@@ -226,4 +227,8 @@ export const updateApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; 
 
 export const deleteApiBasedExtension: Fetcher<{ result: string }, string> = (url) => {
   return del(url) as Promise<{ result: string }>
+}
+
+export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = (url) => {
+  return get(url) as Promise<CodeBasedExtension>
 }

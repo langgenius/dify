@@ -134,6 +134,7 @@ const translation = {
     moderation: {
       title: '内容审核',
       description: '内容审核',
+      allEnabled: '审核输入/审核输出 内容已启用',
       inputEnabled: '审核输入内容已启用',
       outputEnabled: '审核输出内容已启用',
       modal: {
@@ -150,11 +151,7 @@ const translation = {
         keywords: {
           tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
           placeholder: '每行一个，用换行符分隔',
-          errorMessage: '关键词不能为空',
           line: '行',
-        },
-        apiBased: {
-          errorMessage: '请添加基于 API 的扩展',
         },
         content: {
           input: '审核输入内容',

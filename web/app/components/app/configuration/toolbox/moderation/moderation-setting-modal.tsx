@@ -1,13 +1,27 @@
 import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
+import useSWR from 'swr'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import ModerationContent from './moderation-content'
+import FormGeneration from './form-generation'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
+import { fetchCodeBasedExtensionList } from '@/service/common'
+import type { CodeBasedExtensionItem } from '@/models/common'
+import I18n from '@/context/i18n'
+
+const systemTypes = ['openai', 'keywords', 'api_based']
+
+type Provider = {
+  key: string
+  name: string
+  form_schema?: CodeBasedExtensionItem['form_schema']
+}
 
 type ModerationSettingModalProps = {
   data: ModerationConfig
@@ -22,8 +36,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const { locale } = useContext(I18n)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
-  const providers = [
+  const { data: codeBasedExtensionList } = useSWR(
+    '/code-based-extension?module=moderation',
+    fetchCodeBasedExtensionList,
+  )
+  const providers: Provider[] = [
     {
       key: 'openai',
       name: t('appDebug.feature.moderation.modal.provider.openai'),
@@ -36,10 +55,27 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       key: 'api_based',
       name: t('common.apiBasedExtension.selector.title'),
     },
+    ...(
+      codeBasedExtensionList
+        ? codeBasedExtensionList.data.map((item) => {
+          return {
+            key: item.name,
+            name: locale === 'zh-Hans' ? item.label['zh-Hans'] : item.label['en-US'],
+            form_schema: item.form_schema,
+          }
+        })
+        : []
+    ),
   ]
 
+  const currentProvider = providers.find(provider => provider.key === localeData.type)
+
   const handleDataTypeChange = (type: string) => {
-    setLocaleData({ ...localeData, type })
+    setLocaleData({
+      ...localeData,
+      type,
+      configs: undefined,
+    })
   }
 
   const handleDataKeywordsChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -73,6 +109,54 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     })
   }
 
+  const handleDataApiBasedChange = (apiBasedExtensionId: string) => {
+    setLocaleData({
+      ...localeData,
+      configs: {
+        ...localeData.configs,
+        api_based_extension_id: apiBasedExtensionId,
+      },
+    })
+  }
+
+  const handleDataExtraChange = (extraValue: Record<string, string>) => {
+    setLocaleData({
+      ...localeData,
+      configs: {
+        ...localeData.configs,
+        ...extraValue,
+      },
+    })
+  }
+
+  const formatData = (originData: ModerationConfig) => {
+    const { enabled, type, configs } = originData
+    const { inputs_configs, outputs_configs } = configs!
+    const params: Record<string, string | undefined> = {}
+
+    if (type === 'keywords')
+      params.keywords = configs?.keywords
+
+    if (type === 'api_based')
+      params.api_based_extension_id = configs?.api_based_extension_id
+
+    if (systemTypes.findIndex(t => t === type) < 0 && currentProvider?.form_schema) {
+      currentProvider.form_schema.forEach((form) => {
+        params[form.variable] = configs?.[form.variable]
+      })
+    }
+
+    return {
+      type,
+      enabled,
+      configs: {
+        inputs_configs,
+        outputs_configs,
+        ...params,
+      },
+    }
+  }
+
   const handleSave = () => {
     if (!localeData.configs?.inputs_configs?.enabled && !localeData.configs?.outputs_configs?.enabled) {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.condition') })
@@ -80,13 +164,25 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     }
 
     if (localeData.type === 'keywords' && !localeData.configs.keywords) {
-      notify({ type: 'error', message: t('appDebug.feature.moderation.modal.keywords.errorMessage') })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'keywords' : '关键词' }) })
       return
     }
 
     if (localeData.type === 'api_based' && !localeData.configs.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.feature.moderation.modal.apiBased.errorMessage') })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API-based Extension' : '基于 API 的扩展' }) })
       return
+    }
+
+    if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
+      for (let i = 0; i < currentProvider.form_schema.length; i++) {
+        if (!localeData.configs?.[currentProvider.form_schema[i].variable]) {
+          notify({
+            type: 'error',
+            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+          })
+          return
+        }
+      }
     }
 
     if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response && localeData.type !== 'api_based') {
@@ -99,14 +195,14 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
     }
 
-    onSave(localeData)
+    onSave(formatData(localeData))
   }
 
   return (
     <Modal
       isShow
       onClose={() => {}}
-      className='!p-8 !pb-6 !max-w-none !w-[640px]'
+      className='!p-8 !pb-6 !mt-14 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-[#1D2939]'>
         {t('appDebug.feature.moderation.modal.title')}
@@ -167,8 +263,22 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 {t('common.apiBasedExtension.link')}
               </a>
             </div>
-            <ApiBasedExtensionSelector />
+            <ApiBasedExtensionSelector
+              value={localeData.configs?.api_based_extension_id || ''}
+              onChange={handleDataApiBasedChange}
+            />
           </div>
+        )
+      }
+      {
+        systemTypes.findIndex(t => t === localeData.type) < 0
+        && currentProvider?.form_schema
+        && (
+          <FormGeneration
+            forms={currentProvider?.form_schema}
+            value={localeData.configs}
+            onChange={handleDataExtraChange}
+          />
         )
       }
       <div className='my-3 h-[1px] bg-gradient-to-r from-[#F3F4F6]'></div>
