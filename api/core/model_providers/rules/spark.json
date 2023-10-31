@@ -22,6 +22,12 @@
             "completion": "0.36",
             "unit": "0.0001",
             "currency": "RMB"
+        },
+        "spark-v3": {
+            "prompt": "0.36",
+            "completion": "0.36",
+            "unit": "0.0001",
+            "currency": "RMB"
         }
     }
 }
