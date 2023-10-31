@@ -150,8 +150,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       type,
       enabled,
       configs: {
-        inputs_configs,
-        outputs_configs,
+        inputs_configs: inputs_configs || { enabled: false },
+        outputs_configs: outputs_configs || { enabled: false },
         ...params,
       },
     }

@@ -75,7 +75,7 @@ export type CitationConfig = MoreLikeThisConfig
 
 export type ModerationContentConfig = {
   enabled: boolean
-  preset_response: string
+  preset_response?: string
 }
 export type ModerationConfig = MoreLikeThisConfig & {
   type?: string
