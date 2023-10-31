@@ -3,6 +3,7 @@ import importlib.util
 import json
 import logging
 import os
+from collections import OrderedDict
 from typing import Any
 
 from pydantic import BaseModel
@@ -19,6 +20,7 @@ class ModuleExtension(BaseModel):
     label: dict = {}
     form_schema: list = []
     builtin: bool = True
+    position: int = None
 
 
 class Extensible:
@@ -43,8 +45,14 @@ class Extensible:
                 # is builtin extension, builtin extension
                 # in the front-end page and business logic, there are special treatments.
                 builtin = False
+                position = None
                 if '__builtin__' in file_names:
                     builtin = True
+
+                    builtin_file_path = os.path.join(subdir_path, '__builtin__')
+                    if os.path.exists(builtin_file_path):
+                        with open(builtin_file_path, 'r') as f:
+                            position = int(f.read().strip())
 
                 if (extension_name + '.py') not in file_names:
                     logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip.")
@@ -75,7 +83,6 @@ class Extensible:
                     json_path = os.path.join(subdir_path, 'schema.json')
                     json_data = {}
                     if os.path.exists(json_path):
-                        builtin = False
                         with open(json_path, 'r') as f:
                             json_data = json.load(f)
 
@@ -84,7 +91,11 @@ class Extensible:
                     name=extension_name,
                     label=json_data.get('label', {}),
                     form_schema=json_data.get('form_schema', []),
-                    builtin=builtin
+                    builtin=builtin,
+                    position=position
                 )
 
-        return extensions
+        sorted_items = sorted(extensions.items(), key=lambda x: (x[1].position is None, x[1].position))
+        sorted_extensions = OrderedDict(sorted_items)
+
+        return sorted_extensions

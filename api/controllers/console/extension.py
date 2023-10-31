@@ -21,7 +21,10 @@ class CodeBasedExtensionAPI(Resource):
         parser.add_argument('module', type=str, required=True, location='args')
         args = parser.parse_args()
 
-        return CodeBasedExtensionService.get_code_based_extension(args['module'])
+        return {
+            'module': args['module'],
+            'data': CodeBasedExtensionService.get_code_based_extension(args['module'])
+        }
     
 
 class APIBasedExtensionAPI(Resource):
