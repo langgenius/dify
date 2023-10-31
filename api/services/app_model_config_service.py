@@ -365,7 +365,7 @@ class AppModelConfigService:
         type = config["sensitive_word_avoidance"]["type"]
         config = config["sensitive_word_avoidance"]["configs"]
 
-        ModerationFactory.get(type).validate_config(config)
+        ModerationFactory(type).validate_config(config)
 
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:
