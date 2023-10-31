@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +15,15 @@ import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { fetchApiBasedExtensionList } from '@/service/common'
 
-const ApiBasedExtensionSelector = () => {
+type ApiBasedExtensionSelectorProps = {
+  value: string
+  onChange: (value: string) => void
+}
+
+const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
+  value,
+  onChange,
+}) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const {
@@ -25,6 +34,12 @@ const ApiBasedExtensionSelector = () => {
     '/api-based-extension',
     fetchApiBasedExtensionList,
   )
+  const handleSelect = (id: string) => {
+    onChange(id)
+    setOpen(false)
+  }
+
+  const currentItem = data?.find(item => item.id === value)
 
   return (
     <PortalToFollowElem
@@ -34,15 +49,26 @@ const ApiBasedExtensionSelector = () => {
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} className='w-full'>
-        <div className='flex items-center justify-between pl-3 pr-2.5 h-9 bg-gray-100 rounded-lg'>
-          <div className='text-sm text-gray-900'>Data Search API</div>
-          <div className='flex items-center'>
-            <div className='mr-1.5 w-[270px] text-xs text-gray-400 truncate'>
-              opendatanetwork.com/api/datasets/opendataopendatanetwork.com/api/datasets/opendata
-            </div>
-            <ChevronDown className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
-          </div>
-        </div>
+        {
+          currentItem
+            ? (
+              <div className='flex items-center justify-between pl-3 pr-2.5 h-9 bg-gray-100 rounded-lg cursor-pointer'>
+                <div className='text-sm text-gray-900'>{currentItem.name}</div>
+                <div className='flex items-center'>
+                  <div className='mr-1.5 w-[270px] text-xs text-gray-400 truncate text-right'>
+                    {currentItem.api_endpoint}
+                  </div>
+                  <ChevronDown className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
+                </div>
+              </div>
+            )
+            : (
+              <div className='flex items-center justify-between pl-3 pr-2.5 h-9 bg-gray-100 rounded-lg text-sm text-gray-400 cursor-pointer'>
+                {t('common.apiBasedExtension.selector.placeholder')}
+                <ChevronDown className={`w-4 h-4 text-gray-700 ${!open && 'opacity-60'}`} />
+              </div>
+            )
+        }
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='w-[576px] z-[11]'>
         <div className='w-full rounded-lg border-[0.5px] border-gray-200 bg-white shadow-lg z-10'>
@@ -60,7 +86,9 @@ const ApiBasedExtensionSelector = () => {
               data?.map(item => (
                 <div
                   key={item.id}
-                  className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'>
+                  className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'
+                  onClick={() => handleSelect(item.id!)}
+                >
                   <div className='text-sm text-gray-900'>{item.name}</div>
                   <div className='text-xs text-gray-500'>{item.api_endpoint}</div>
                 </div>
