@@ -7,7 +7,7 @@ from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType, ModelMode
 from models.account import Account
 from services.dataset_service import DatasetService
-from core.moderation.base import BaseModeration
+from core.moderation.base import Moderation
 
 
 SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
@@ -365,7 +365,7 @@ class AppModelConfigService:
         type = config["sensitive_word_avoidance"]["type"]
         config = config["sensitive_word_avoidance"]["configs"]
 
-        BaseModeration.create_instance(type).validate_config(config)
+        Moderation.create_instance(type).validate_config(config)
     
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:

@@ -1,4 +1,4 @@
-from core.helper.extensible import Extensible
+from core.extension.extensible import Extensible
 
 class CodeBasedExtensionService:
     

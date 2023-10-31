@@ -1,5 +1,5 @@
-from core.moderation.base import BaseModeration
-from core.helper.extensible import Extensible
+from core.moderation.base import Moderation
+from core.extension.extensible import Extensible
 
-class CloudServiceModeration(BaseModeration, Extensible):
+class CloudServiceModeration(Moderation):
     type = "cloud_service"

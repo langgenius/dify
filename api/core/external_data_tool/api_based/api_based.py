@@ -1,13 +1,13 @@
-from core.moderation.base import Moderation
+from core.external_data_tool.base import ExternalDataTool
 
 
-class ApiBasedModeration(Moderation):
+class ApiBasedExternalDataTool(ExternalDataTool):
     type = "api_based"
 
     @classmethod
-    def validate_config(cls, config: dict) -> None:
+    def validate_config(self, config: dict) -> None:
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
         
-        cls._validate_inputs_and_outputs_config(config, False)
+        # todo

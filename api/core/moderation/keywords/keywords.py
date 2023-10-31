@@ -1,6 +1,6 @@
-from core.moderation.base import BaseModeration
+from core.moderation.base import Moderation
 
-class KeywordsModeration(BaseModeration):
+class KeywordsModeration(Moderation):
     type = "keywords"
 
     @classmethod

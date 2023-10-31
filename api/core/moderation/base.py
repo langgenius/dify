@@ -1,14 +1,9 @@
 from abc import abstractclassmethod
 
+from core.extension.extensible import Extensible
 
-class BaseModeration():
-    _subclasses = {}
 
-    def __init_subclass__(cls, **kwargs):
-        super().__init_subclass__(**kwargs)
-        type = getattr(cls, 'type', None)
-        if type:
-            BaseModeration._subclasses[type] = cls
+class Moderation(Extensible):
 
     @abstractclassmethod
     def validate_config(self, config: dict) -> None:
@@ -51,7 +46,7 @@ class BaseModeration():
         
     @staticmethod
     def create_instance(type: str, *args, **kwargs):
-        if type in BaseModeration._subclasses:
-            return BaseModeration._subclasses[type](*args, **kwargs)
+        if type in Moderation._subclasses:
+            return Moderation._subclasses[type](*args, **kwargs)
         else:
             raise ValueError(f"No type named {type} found.")

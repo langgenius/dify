@@ -1,6 +1,6 @@
-from core.moderation.base import BaseModeration
+from core.moderation.base import Moderation
 
-class OpenAIModeration(BaseModeration):
+class OpenAIModeration(Moderation):
     type = "openai"
 
     @classmethod
