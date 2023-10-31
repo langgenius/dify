@@ -1,3 +1,4 @@
+import enum
 import importlib.util
 import json
 import logging
@@ -5,6 +6,11 @@ import os
 from typing import Any
 
 from pydantic import BaseModel
+
+
+class ExtensionModule(enum.Enum):
+    MODERATION = 'moderation'
+    EXTERNAL_DATA_TOOL = 'external_data_tool'
 
 
 class ModuleExtension(BaseModel):

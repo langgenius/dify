@@ -1,8 +1,8 @@
-from core.extension.extension_factory import ExtensionFactory
+from core.extension.extension import Extension
 
 
 def init():
-    code_based_extension_factory.init()
+    code_based_extension.init()
 
 
-code_based_extension_factory = ExtensionFactory()
+code_based_extension = Extension()

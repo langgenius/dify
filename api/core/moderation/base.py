@@ -43,10 +43,3 @@ class Moderation(Extensible):
         
         if outputs_configs_enabled and not outputs_configs.get("preset_response"):
             raise ValueError("outputs_configs.preset_response is required")
-        
-    @staticmethod
-    def create_instance(type: str, *args, **kwargs):
-        if type in Moderation._subclasses:
-            return Moderation._subclasses[type](*args, **kwargs)
-        else:
-            raise ValueError(f"No type named {type} found.")

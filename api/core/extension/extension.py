@@ -1,19 +1,19 @@
-from core.extension.extensible import ModuleExtension
+from core.extension.extensible import ModuleExtension, ExtensionModule
 from core.external_data_tool.base import ExternalDataTool
 from core.moderation.base import Moderation
 
 
-class ExtensionFactory:
+class Extension:
     __module_extensions: dict[str, dict[str, ModuleExtension]] = {}
 
     module_classes = {
-        'moderation': Moderation,
-        'external_data_tool': ExternalDataTool
+        ExtensionModule.MODERATION: Moderation,
+        ExtensionModule.EXTERNAL_DATA_TOOL: ExternalDataTool
     }
 
     def init(self):
         for module, module_class in self.module_classes.items():
-            self.__module_extensions[module] = module_class.scan_extensions()
+            self.__module_extensions[module.value] = module_class.scan_extensions()
 
     def module_extensions(self, module: str) -> list[ModuleExtension]:
         module_extensions = self.__module_extensions.get(module)
@@ -23,8 +23,8 @@ class ExtensionFactory:
 
         return list(module_extensions.values())
 
-    def module_extension(self, module: str, extension_name: str) -> ModuleExtension:
-        module_extensions = self.__module_extensions.get(module)
+    def module_extension(self, module: ExtensionModule, extension_name: str) -> ModuleExtension:
+        module_extensions = self.__module_extensions.get(module.value)
 
         if not module_extensions:
             raise ValueError(f"Extension Module {module} not found")
@@ -35,3 +35,7 @@ class ExtensionFactory:
             raise ValueError(f"Extension {extension_name} not found")
 
         return module_extension
+
+    def extension_class(self, module: ExtensionModule, extension_name: str) -> type:
+        module_extension = self.module_extension(module, extension_name)
+        return module_extension.extension_class

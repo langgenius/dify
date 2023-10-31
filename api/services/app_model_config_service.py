@@ -1,13 +1,13 @@
 import re
 import uuid
 
+from core.moderation.moderation_factory import ModerationFactory
 from core.prompt.prompt_transform import AppMode
 from core.agent.agent_executor import PlanningStrategy
 from core.model_providers.model_provider_factory import ModelProviderFactory
 from core.model_providers.models.entity.model_params import ModelType, ModelMode
 from models.account import Account
 from services.dataset_service import DatasetService
-from core.moderation.base import Moderation
 
 
 SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current_datetime"]
@@ -365,8 +365,8 @@ class AppModelConfigService:
         type = config["sensitive_word_avoidance"]["type"]
         config = config["sensitive_word_avoidance"]["configs"]
 
-        Moderation.create_instance(type).validate_config(config)
-    
+        ModerationFactory.get(type).validate_config(config)
+
     @staticmethod
     def is_dataset_query_variable_valid(config: dict, mode: str) -> None:
         # Only check when mode is completion
