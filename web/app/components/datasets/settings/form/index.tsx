@@ -18,7 +18,11 @@ import type { ProviderEnum } from '@/app/components/header/account-setting/model
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import AccountSetting from '@/app/components/header/account-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
-
+import RadioCard from '@/app/components/base/radio-card'
+import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
+import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
+import TopKItem from '@/app/components/base/param-item/top-k-item'
+import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 const rowClass = `
   flex justify-between py-4
 `
@@ -172,6 +176,66 @@ const Form = () => {
           </div>
         </div>
       )}
+      <div className={rowClass}>
+        <div className={labelClass}>
+          <div>
+            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            <div className='leading-[18px] text-xs font-normal text-gray-500'>
+              <a href='' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              {t('datasetSettings.form.retrievalSetting.description')}
+            </div>
+          </div>
+        </div>
+        <div className='w-[480px]'>
+          <div className='space-y-2'>
+            <RadioCard
+              icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
+              title={'Semantic Search'}
+              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+              isChosen
+              onChosen={() => {}}
+            />
+            <RadioCard
+              icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
+              title={'Full-Text Search'}
+              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+              isChosen={false}
+              onChosen={() => {}}
+            />
+            <RadioCard
+              icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
+              title={'Hybrid Search'}
+              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+              isChosen={true}
+              onChosen={() => {}}
+              chosenConfig={
+                <div>
+                  <div>
+                    <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                    <div>Rerank Model 站位</div>
+                  </div>
+                  <div className='flex mt-4 space-between space-x-6'>
+                    <TopKItem
+                      className='grow'
+                      value={2}
+                      onChange={() => {}}
+                      enable={true}
+                    />
+                    <ScoreThresholdItem
+                      className='grow'
+                      value={1}
+                      onChange={() => {}}
+                      enable={true}
+                      hasSwitch={true}
+                      onSwitchChange={() => {}}
+                    />
+                  </div>
+                </div>
+              }
+            />
+          </div>
+        </div>
+      </div>
       {currentDataset?.embedding_available && (
         <div className={rowClass}>
           <div className={labelClass} />

@@ -6,8 +6,9 @@ import s from './style.module.css'
 
 type Props = {
   className?: string
-  icon?: React.ReactNode
-  title: string
+  icon: React.ReactNode
+  iconBgClassName?: string
+  title: React.ReactNode
   description: string
   isChosen: boolean
   onChosen: () => void
@@ -16,6 +17,7 @@ type Props = {
 
 const RadioCard: FC<Props> = ({
   icon,
+  iconBgClassName = 'bg-[#F5F3FF]',
   title,
   description,
   isChosen,
@@ -23,19 +25,21 @@ const RadioCard: FC<Props> = ({
   chosenConfig,
 }) => {
   return (
-    <div className={cn(s.radioItem, isChosen && s.active)}>
-      <div className=''>
-        {icon && (
-          <div className={cn(s.typeIcon)}>{icon}</div>
-        )}
-        <div className={s.radio} onClick={onChosen}></div>
-        <div className={s.typeHeader}>
-          <div className={s.title}>{title}</div>
-          <div className={s.tip}>{description}</div>
+    <div className={cn(s.item, isChosen && s.active)}>
+      <div className='flex py-3 pl-3 pr-4' onClick={onChosen}>
+        <div className={cn(iconBgClassName, 'mr-3 shrink-0 flex w-8 justify-center h-8 items-center rounded-lg')}>
+          {icon}
+        </div>
+        <div className='grow'>
+          <div className='leading-5 text-sm font-medium text-gray-900'>{title}</div>
+          <div className='leading-[18px] text-xs font-normal text-[#667085]'>{description}</div>
+        </div>
+        <div className='shrink-0 flex items-center h-8'>
+          <div className={s.radio}></div>
         </div>
       </div>
       {(isChosen && chosenConfig) && (
-        <div className={s.typeFormBody}>
+        <div className='pt-2 px-14 pb-6 border-t border-gray-200'>
           {chosenConfig}
         </div>
       )}

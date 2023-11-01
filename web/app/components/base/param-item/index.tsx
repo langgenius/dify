@@ -7,6 +7,7 @@ import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 
 type Props = {
+  className?: string
   id: string
   name: string
   tip: string
@@ -20,9 +21,9 @@ type Props = {
   onSwitchChange?: (key: string, enable: boolean) => void
 }
 
-const ParamItem: FC<Props> = ({ id, name, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({ className, id, name, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
-    <div>
+    <div className={className}>
       <div className="flex items-center h-8 justify-between">
         <div className="flex items-center">
           {hasSwitch && (

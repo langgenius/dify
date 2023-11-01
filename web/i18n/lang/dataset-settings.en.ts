@@ -18,6 +18,11 @@ const translation = {
     embeddingModel: 'Embedding Model',
     embeddingModelTip: 'Change the embedded model, please go to ',
     embeddingModelTipLink: 'Settings',
+    retrievalSetting: {
+      title: 'Retrieval Setting',
+      learnMore: 'Learn more',
+      description: ' about retrieval method.',
+    },
     save: 'Save',
   },
 }

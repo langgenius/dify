@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
 type Props = {
+  className?: string
   value: number
   onChange: (key: string, value: number) => void
   enable: boolean
@@ -19,6 +20,7 @@ const VALUE_LIMIT = {
 
 const key = 'top_k'
 const TopKItem: FC<Props> = ({
+  className,
   value,
   enable,
   onChange,
@@ -32,6 +34,7 @@ const TopKItem: FC<Props> = ({
   }
   return (
     <ParamItem
+      className={className}
       id={key}
       name={t(`appDebug.datasetConfig.${key}`)}
       tip={t(`appDebug.datasetConfig.${key}Tip`)}

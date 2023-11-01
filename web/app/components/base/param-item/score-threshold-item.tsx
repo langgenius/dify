@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
 type Props = {
+  className?: string
   value: number
   onChange: (key: string, value: number) => void
   enable: boolean
@@ -21,6 +22,7 @@ const VALUE_LIMIT = {
 
 const key = 'score_threshold'
 const ScoreThresholdItem: FC<Props> = ({
+  className,
   value,
   enable,
   onChange,
@@ -36,6 +38,7 @@ const ScoreThresholdItem: FC<Props> = ({
   }
   return (
     <ParamItem
+      className={className}
       id={key}
       name={t(`appDebug.datasetConfig.${key}`)}
       tip={t(`appDebug.datasetConfig.${key}Tip`)}
