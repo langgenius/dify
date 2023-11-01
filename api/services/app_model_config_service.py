@@ -1,7 +1,7 @@
 import re
 import uuid
 
-from core.moderation.moderation_factory import ModerationFactory
+from core.moderation.factory import ModerationFactory
 from core.prompt.prompt_transform import AppMode
 from core.agent.agent_executor import PlanningStrategy
 from core.model_providers.model_provider_factory import ModelProviderFactory

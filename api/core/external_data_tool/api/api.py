@@ -1,11 +1,11 @@
 from typing import Optional
 
-from core.moderation.base import Moderation
+from core.external_data_tool.base import ExternalDataTool
 from extensions.ext_database import db
 from models.api_based_extension import APIBasedExtension
 
 
-class ApiBasedModeration(Moderation):
+class ApiExternalDataTool(ExternalDataTool):
     name: str = "api"
 
     @classmethod
@@ -18,8 +18,8 @@ class ApiBasedModeration(Moderation):
         :return:
         """
         super().validate_config(tenant_id, config)
-        cls._validate_inputs_and_outputs_config(config, False)
 
+        # own validation logic
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
@@ -33,11 +33,25 @@ class ApiBasedModeration(Moderation):
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
-    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
-        pass
+    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+        """
+        Query the external data tool.
 
-    def moderation_for_outputs(self, text: str):
-        pass
+        :param inputs: user inputs
+        :param query: the query of chat app
+        :return: the tool query result
+        """
+        # get params from config
+        api_based_extension_id = self.config.get("api_based_extension_id")
 
+        # get api_based_extension
+        api_based_extension = db.session.query(APIBasedExtension).filter(
+            APIBasedExtension.tenant_id == self.tenant_id,
+            APIBasedExtension.id == api_based_extension_id
+        ).first()
 
-        
+        if not api_based_extension:
+            raise ValueError("api_based_extension_id is invalid")
+
+        # todo request api
+
