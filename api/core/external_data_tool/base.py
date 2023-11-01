@@ -12,7 +12,9 @@ class ExternalDataTool(Extensible, ABC):
     module: ExtensionModule = ExtensionModule.EXTERNAL_DATA_TOOL
 
     app_id: str
+    """the id of app"""
     variable: str
+    """the tool variable name of app tool"""
 
     def __init__(self, tenant_id: str, app_id: str, variable: str, config: Optional[dict] = None) -> None:
         super().__init__(tenant_id, config)

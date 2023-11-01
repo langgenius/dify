@@ -8,7 +8,12 @@ from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
 class ApiExternalDataTool(ExternalDataTool):
+    """
+    The api external data tool.
+    """
+
     name: str = "api"
+    """the unique name of external data tool"""
 
     @classmethod
     def validate_config(cls, tenant_id: str, config: dict) -> None:
@@ -64,7 +69,7 @@ class ApiExternalDataTool(ExternalDataTool):
         # request api
         requestor = APIBasedExtensionRequestor(
             api_endpoint=api_based_extension.api_endpoint,
-            api_key=api_based_extension.api_key
+            api_key=api_key
         )
 
         response_json = requestor.request(point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY, params={
