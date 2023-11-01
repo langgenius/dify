@@ -5,7 +5,11 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ApiBasedExtension } from '@/models/common'
-import { addApiBasedExtension } from '@/service/common'
+import {
+  addApiBasedExtension,
+  updateApiBasedExtension,
+} from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 export type ApiBasedExtensionData = {
   name?: string
@@ -25,17 +29,37 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [localeData, setLocaleData] = useState(data)
+  const [loading, setLoading] = useState(false)
+  const { notify } = useToastContext()
   const handleDataChange = (type: string, value: string) => {
     setLocaleData({ ...localeData, [type]: value })
   }
   const handleSave = async () => {
-    const res = await addApiBasedExtension({
-      url: '/api-based-extension',
-      body: localeData,
-    })
+    setLoading(true)
 
-    if (onSave)
-      onSave(res)
+    try {
+      let res: ApiBasedExtension = {}
+      if (!data.id) {
+        res = await addApiBasedExtension({
+          url: '/api-based-extension',
+          body: localeData,
+        })
+      }
+      else {
+        res = await updateApiBasedExtension({
+          url: `/api-based-extension/${data.id}`,
+          body: localeData,
+        })
+
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      }
+
+      if (onSave)
+        onSave(res)
+    }
+    finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -109,7 +133,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <Button
           type='primary'
           className='text-sm font-medium'
-          disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key}
+          disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading}
           onClick={handleSave}
         >
           {t('common.operation.save')}

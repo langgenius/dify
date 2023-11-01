@@ -327,6 +327,9 @@ const translation = {
         regenerate: '重新生成',
       },
     },
+    confirm: {
+      desc: '删除 WebHook 可能会导致这个基于 API 的扩展配置的扩展失败并产生错误。请谨慎删除。',
+    },
   },
   about: {
     changeLog: '更新日志',

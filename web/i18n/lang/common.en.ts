@@ -327,6 +327,9 @@ const translation = {
         regenerate: 'Regenerate',
       },
     },
+    confirm: {
+      desc: 'Deleting the WebHook might cause the extension points configured for this API-based Extension to fail and produce errors. Please proceed with caution.',
+    },
   },
   about: {
     changeLog: 'Changlog',
