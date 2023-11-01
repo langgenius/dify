@@ -314,17 +314,17 @@ const translation = {
       title: '新增基于 API 的扩展',
       editTitle: '编辑基于 API 的扩展',
       name: {
-        title: 'Name',
-        placeholder: 'Please enter the name',
+        title: '名称',
+        placeholder: '请输入名称',
       },
       apiEndpoint: {
         title: 'API Endpoint',
-        placeholder: 'Please enter the API endpoint',
+        placeholder: '请输入 API endpoint',
       },
       apiKey: {
         title: 'API-key',
-        placeholder: 'Please enter the API-key',
-        regenerate: 'Regenerate',
+        placeholder: '请输入 API-key',
+        regenerate: '重新生成',
       },
     },
   },
