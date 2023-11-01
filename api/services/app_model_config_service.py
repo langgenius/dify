@@ -329,6 +329,7 @@ class AppModelConfigService:
             "retriever_resource": config["retriever_resource"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],
+            "external_data_tools": config["external_data_tools"],
             "model": {
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],

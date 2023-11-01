@@ -1,12 +1,16 @@
+import concurrent
 import logging
-from typing import Optional, List, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, List, Union, Tuple
 
+from flask import current_app, Flask
 from requests.exceptions import ChunkedEncodingError
 
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
+from core.external_data_tool.factory import ExternalDataToolFactory
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
@@ -77,10 +81,10 @@ class Completion:
         )
 
         try:
-            # parse sensitive_word_avoidance_chain
             chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
            
             try:
+                # process sensitive_word_avoidance
                 cls.moderation_for_inputs(app.tenant_id, app_model_config, inputs, query)
             except ModerationException as e:
                 cls.run_final_llm(
@@ -95,6 +99,17 @@ class Completion:
                     fake_response=str(e)
                 )
                 return
+
+            # fill in variable inputs from external data tools if exists
+            external_data_tools = app_model_config.external_data_tools_list
+            if external_data_tools:
+                inputs = cls.fill_in_inputs_from_external_data_tools(
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    external_data_tools=external_data_tools,
+                    inputs=inputs,
+                    query=query
+                )
 
             # get agent executor
             agent_executor = orchestrator_rule_parser.to_agent_executor(
@@ -151,7 +166,61 @@ class Completion:
 
         moderation = ModerationFactory(type, tenant_id, app_model_config.sensitive_word_avoidance_dict['configs'])
         moderation.moderation_for_inputs(inputs, query)
-        
+
+    @classmethod
+    def fill_in_inputs_from_external_data_tools(cls, tenant_id: str, app_id: str, external_data_tools: list[dict],
+                                                inputs: dict, query: str) -> dict:
+        """
+        Fill in variable inputs from external data tools if exists.
+
+        :param tenant_id: workspace id
+        :param app_id: app id
+        :param external_data_tools: external data tools configs
+        :param inputs: the inputs
+        :param query: the query
+        :return: the filled inputs
+        """
+        results = {}
+        with ThreadPoolExecutor() as executor:
+            futures = {executor.submit(
+                cls.query_external_data_tool, current_app._get_current_object(), tenant_id, app_id, tool, inputs, query
+            ): tool for tool in external_data_tools}
+            for future in concurrent.futures.as_completed(futures):
+                tool_variable, result = future.result()
+                if tool_variable is not None:
+                    results[tool_variable] = result
+
+        inputs.update(results)
+        return inputs
+
+    @classmethod
+    def query_external_data_tool(cls, flask_app: Flask, tenant_id: str, app_id: str, external_data_tool: dict,
+                                 inputs: dict, query: str) -> Tuple[Optional[str], Optional[str]]:
+        with flask_app.app_context():
+            enabled = external_data_tool.get("enabled")
+            if not enabled:
+                return None, None
+
+            tool_variable = external_data_tool.get("variable")
+            tool_type = external_data_tool.get("type")
+            tool_config = external_data_tool.get("config")
+
+            external_data_tool_factory = ExternalDataToolFactory(
+                name=tool_type,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                variable=tool_variable,
+                config=tool_config
+            )
+
+            # query external data tool
+            result = external_data_tool_factory.query(
+                inputs=inputs,
+                query=query
+            )
+
+            return tool_variable, result
+
     @classmethod
     def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
         if app.mode != 'completion':
