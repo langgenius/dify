@@ -1,10 +1,12 @@
 from typing import Optional
 
 from core.extension.extensible import ExtensionModule
+from core.moderation.base import Moderation
 from extensions.ext_code_based_extension import code_based_extension
 
 
 class ModerationFactory:
+    __extension_instance: Moderation
 
     def __init__(self, name: str, tenant_id: str, config: dict) -> None:
         extension_class = code_based_extension.extension_class(ExtensionModule.MODERATION, name)

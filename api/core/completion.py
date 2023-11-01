@@ -6,7 +6,6 @@ from requests.exceptions import ChunkedEncodingError
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
-from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceError
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
@@ -18,6 +17,8 @@ from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from models.model import App, AppModelConfig, Account, Conversation, EndUser
+from core.moderation.base import ModerationException
+from core.moderation.factory import ModerationFactory
 
 
 class Completion:
@@ -78,24 +79,22 @@ class Completion:
         try:
             # parse sensitive_word_avoidance_chain
             chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
-            sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain(
-                final_model_instance, [chain_callback])
-            if sensitive_word_avoidance_chain:
-                try:
-                    query = sensitive_word_avoidance_chain.run(query)
-                except SensitiveWordAvoidanceError as ex:
-                    cls.run_final_llm(
-                        model_instance=final_model_instance,
-                        mode=app.mode,
-                        app_model_config=app_model_config,
-                        query=query,
-                        inputs=inputs,
-                        agent_execute_result=None,
-                        conversation_message_task=conversation_message_task,
-                        memory=memory,
-                        fake_response=ex.message
-                    )
-                    return
+           
+            try:
+                cls.moderation_for_inputs(app.tenant_id, app_model_config, inputs, query)
+            except ModerationException as e:
+                cls.run_final_llm(
+                    model_instance=final_model_instance,
+                    mode=app.mode,
+                    app_model_config=app_model_config,
+                    query=query,
+                    inputs=inputs,
+                    agent_execute_result=None,
+                    conversation_message_task=conversation_message_task,
+                    memory=memory,
+                    fake_response=str(e)
+                )
+                return
 
             # get agent executor
             agent_executor = orchestrator_rule_parser.to_agent_executor(
@@ -142,6 +141,16 @@ class Completion:
             logging.warning(f'ChunkedEncodingError: {e}')
             conversation_message_task.end()
             return
+    
+    @classmethod
+    def moderation_for_inputs(cls, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
+        if not app_model_config.sensitive_word_avoidance_dict['enabled']:
+            return
+
+        type = app_model_config.sensitive_word_avoidance_dict['type']
+
+        moderation = ModerationFactory(type, tenant_id, app_model_config.sensitive_word_avoidance_dict['configs'])
+        moderation.moderation_for_inputs(inputs, query)
         
     @classmethod
     def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:

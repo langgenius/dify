@@ -17,7 +17,6 @@ class ApiModeration(Moderation):
         :param config: the form config data
         :return:
         """
-        super().validate_config(tenant_id, config)
         cls._validate_inputs_and_outputs_config(config, False)
 
         api_based_extension_id = config.get("api_based_extension_id")
