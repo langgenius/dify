@@ -9,6 +9,5 @@ class CodeBasedExtensionService:
         return [{
             'name': module_extension.name,
             'label': module_extension.label,
-            'form_schema': module_extension.form_schema,
-            'builtin': module_extension.builtin
-        } for module_extension in module_extensions]
+            'form_schema': module_extension.form_schema
+        } for module_extension in module_extensions if not module_extension.builtin]
