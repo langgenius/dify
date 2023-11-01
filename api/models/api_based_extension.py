@@ -1,6 +1,13 @@
+import enum
+
 from sqlalchemy.dialects.postgresql import UUID
 
 from extensions.ext_database import db
+
+
+class APIBasedExtensionPoint(enum.Enum):
+    APP_EXTERNAL_DATA_TOOL_QUERY = 'app.external_data_tool.query'
+
 
 class APIBasedExtension(db.Model):
     __tablename__ = 'api_based_extensions'

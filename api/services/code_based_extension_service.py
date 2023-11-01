@@ -1,7 +1,14 @@
-from core.helper.extensible import Extensible
+from extensions.ext_code_based_extension import code_based_extension
+
 
 class CodeBasedExtensionService:
     
     @staticmethod
     def get_code_based_extension(module: str) -> list[dict]:
-        return Extensible.get_extensions().get(module, [])
+        module_extensions = code_based_extension.module_extensions(module)
+        return [{
+            'name': module_extension.name,
+            'label': module_extension.label,
+            'form_schema': module_extension.form_schema,
+            'builtin': module_extension.builtin
+        } for module_extension in module_extensions]

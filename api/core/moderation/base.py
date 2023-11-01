@@ -1,20 +1,54 @@
-from abc import abstractclassmethod
-from core.helper.auto_register import AutoRegisterBase
+from abc import ABC, abstractmethod
+from typing import Optional
+
+from core.extension.extensible import Extensible, ExtensionModule
 
 
-class BaseModeration(AutoRegisterBase):
+class Moderation(Extensible, ABC):
+    """
+    The base class of moderation.
+    """
+    module: ExtensionModule = ExtensionModule.MODERATION
 
-    @abstractclassmethod
-    def validate_config(self, config: dict) -> None:
-        pass
+    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+        super().__init__(tenant_id, config)
 
-    @abstractclassmethod
-    def moderation_for_inputs(self, config: dict):
-        pass
+    @classmethod
+    @abstractmethod
+    def validate_config(cls, tenant_id: str, config: dict) -> None:
+        """
+        Validate the incoming form config data.
 
-    @abstractclassmethod
-    def moderation_for_outputs(self, config: dict):
-        pass
+        :param tenant_id: the id of workspace
+        :param config: the form config data
+        :return:
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
+        """
+        Moderation for inputs.
+        After the user inputs, this method will be called to perform sensitive content review
+        on the user inputs and return the processed results.
+
+        :param inputs: user inputs
+        :param query: query string (required in chat app)
+        :return:
+        """
+        raise NotImplementedError
+
+    @abstractmethod
+    def moderation_for_outputs(self, text: str):
+        """
+        Moderation for outputs.
+        When LLM outputs content, the front end will pass the output content (may be segmented)
+        to this method for sensitive content review, and the output content will be shielded if the review fails.
+
+        :param text: LLM output content
+        :return:
+        """
+        raise NotImplementedError
 
     @classmethod
     def _validate_inputs_and_outputs_config(self, config: dict, is_preset_response_required: bool) -> None:
@@ -42,5 +76,3 @@ class BaseModeration(AutoRegisterBase):
         
         if outputs_configs_enabled and not outputs_configs.get("preset_response"):
             raise ValueError("outputs_configs.preset_response is required")
-        
-        
