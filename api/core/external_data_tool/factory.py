@@ -25,6 +25,7 @@ class ExternalDataToolFactory:
         :param config: the form config data
         :return:
         """
+        code_based_extension.validate_form_schema(ExtensionModule.EXTERNAL_DATA_TOOL, name, config)
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
         extension_class.validate_config(tenant_id, config)
 

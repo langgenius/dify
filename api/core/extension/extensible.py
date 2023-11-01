@@ -8,8 +8,6 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from extensions.ext_code_based_extension import code_based_extension
-
 
 class ExtensionModule(enum.Enum):
     MODERATION = 'moderation'
@@ -35,13 +33,6 @@ class Extensible:
     def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
         self.tenant_id = tenant_id
         self.config = config
-
-    @classmethod
-    def validate_form_schema(cls, config: dict) -> None:
-        module_extension = code_based_extension.module_extension(cls.module, cls.name)
-        form_schema = module_extension.form_schema
-
-        # TODO validate form_schema
 
     @classmethod
     def scan_extensions(cls):

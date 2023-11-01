@@ -39,3 +39,10 @@ class Extension:
     def extension_class(self, module: ExtensionModule, extension_name: str) -> type:
         module_extension = self.module_extension(module, extension_name)
         return module_extension.extension_class
+
+    def validate_form_schema(self, module: ExtensionModule, extension_name: str, config: dict) -> None:
+        module_extension = self.module_extension(module, extension_name)
+        form_schema = module_extension.form_schema
+
+        # TODO validate form_schema
+

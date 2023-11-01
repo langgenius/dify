@@ -22,6 +22,7 @@ class ExternalDataTool(Extensible, ABC):
         self.variable = variable
 
     @classmethod
+    @abstractmethod
     def validate_config(cls, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
@@ -30,9 +31,7 @@ class ExternalDataTool(Extensible, ABC):
         :param config: the form config data
         :return:
         """
-        super().validate_form_schema(config)
-
-        # implement your own validation logic here
+        raise NotImplementedError
 
     @abstractmethod
     def query(self, inputs: dict, query: Optional[str] = None) -> str:

@@ -14,6 +14,7 @@ class Moderation(Extensible, ABC):
         super().__init__(tenant_id, config)
 
     @classmethod
+    @abstractmethod
     def validate_config(cls, tenant_id: str, config: dict) -> None:
         """
         Validate the incoming form config data.
@@ -22,16 +23,31 @@ class Moderation(Extensible, ABC):
         :param config: the form config data
         :return:
         """
-        super().validate_form_schema(config)
-
-        # implement your own validation logic here
+        raise NotImplementedError
 
     @abstractmethod
     def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
+        """
+        Moderation for inputs.
+        After the user inputs, this method will be called to perform sensitive content review
+        on the user inputs and return the processed results.
+
+        :param inputs: user inputs
+        :param query: query string (required in chat app)
+        :return:
+        """
         raise NotImplementedError
 
     @abstractmethod
     def moderation_for_outputs(self, text: str):
+        """
+        Moderation for outputs.
+        When LLM outputs content, the front end will pass the output content (may be segmented)
+        to this method for sensitive content review, and the output content will be shielded if the review fails.
+
+        :param text: LLM output content
+        :return:
+        """
         raise NotImplementedError
 
     @classmethod
