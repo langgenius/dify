@@ -11,26 +11,8 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import ConfigContext from '@/context/debug-configuration'
-import ParamItem from '@/app/components/base/param-item'
-// TODO
-const PARAMS_KEY = [
-  'top_k',
-  'score_threshold',
-]
-const PARAMS = {
-  top_k: {
-    default: 2,
-    step: 1,
-    min: 1,
-    max: 10,
-  },
-  score_threshold: {
-    default: 0.7,
-    step: 0.01,
-    min: 0,
-    max: 1,
-  },
-} as any
+import TopKItem from '@/app/components/base/param-item/top-k-item'
+import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
@@ -41,13 +23,10 @@ const ParamsConfig: FC = () => {
   } = useContext(ConfigContext)
 
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(PARAMS[key].min, notOutRangeValue)
-    notOutRangeValue = Math.min(PARAMS[key].max, notOutRangeValue)
     if (key === 'top_k') {
       setDatasetConfigs({
         ...datasetConfigs,
-        top_k: notOutRangeValue,
+        top_k: value,
       })
     }
     else if (key === 'score_threshold') {
@@ -55,7 +34,7 @@ const ParamsConfig: FC = () => {
         ...datasetConfigs,
         [key]: {
           enable: datasetConfigs.score_threshold.enable,
-          value: notOutRangeValue,
+          value,
         },
       })
     }
@@ -93,24 +72,18 @@ const ParamsConfig: FC = () => {
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
         <div className='w-[240px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
-          {PARAMS_KEY.map((key: string) => {
-            const currentValue = key === 'top_k' ? datasetConfigs[key] : (datasetConfigs as any)[key].value
-            const currentEnableState = key === 'top_k' ? true : (datasetConfigs as any)[key].enable
-            return (
-              <ParamItem
-                key={key}
-                id={key}
-                name={t(`appDebug.datasetConfig.${key}`)}
-                tip={t(`appDebug.datasetConfig.${key}Tip`)}
-                {...PARAMS[key]}
-                value={currentValue}
-                enable={currentEnableState}
-                onChange={handleParamChange}
-                hasSwitch={key === 'score_threshold'}
-                onSwitchChange={handleSwitch}
-              />
-            )
-          })}
+          <TopKItem
+            value={datasetConfigs.top_k}
+            onChange={handleParamChange}
+            enable={true}
+          />
+          <ScoreThresholdItem
+            value={datasetConfigs.score_threshold.value}
+            onChange={handleParamChange}
+            enable={datasetConfigs.score_threshold.enable}
+            hasSwitch={true}
+            onSwitchChange={handleSwitch}
+          />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
