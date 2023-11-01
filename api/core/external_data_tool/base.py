@@ -11,8 +11,13 @@ class ExternalDataTool(Extensible, ABC):
 
     module: ExtensionModule = ExtensionModule.EXTERNAL_DATA_TOOL
 
-    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+    app_id: str
+    variable: str
+
+    def __init__(self, tenant_id: str, app_id: str, variable: str, config: Optional[dict] = None) -> None:
         super().__init__(tenant_id, config)
+        self.app_id = app_id
+        self.variable = variable
 
     @classmethod
     def validate_config(cls, tenant_id: str, config: dict) -> None:

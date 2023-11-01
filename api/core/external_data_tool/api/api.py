@@ -1,8 +1,10 @@
 from typing import Optional
 
+from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.external_data_tool.base import ExternalDataTool
+from core.helper import encrypter
 from extensions.ext_database import db
-from models.api_based_extension import APIBasedExtension
+from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
 class ApiExternalDataTool(ExternalDataTool):
@@ -53,5 +55,26 @@ class ApiExternalDataTool(ExternalDataTool):
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
 
-        # todo request api
+        # decrypt api_key
+        api_key = encrypter.decrypt_token(
+            tenant_id=self.tenant_id,
+            token=api_based_extension.api_key
+        )
 
+        # request api
+        requestor = APIBasedExtensionRequestor(
+            api_endpoint=api_based_extension.api_endpoint,
+            api_key=api_based_extension.api_key
+        )
+
+        response_json = requestor.request(point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY, params={
+            'app_id': self.app_id,
+            'tool_variable': self.variable,
+            'inputs': inputs,
+            'query': query
+        })
+
+        if 'result' not in response_json:
+            raise ValueError("result not found in response")
+
+        return response_json['result']
