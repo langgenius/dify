@@ -1,6 +1,7 @@
 import re
 import uuid
 
+from core.external_data_tool.factory import ExternalDataToolFactory
 from core.moderation.factory import ModerationFactory
 from core.prompt.prompt_transform import AppMode
 from core.agent.agent_executor import PlanningStrategy
@@ -14,8 +15,8 @@ SUPPORT_TOOLS = ["dataset", "google_search", "web_reader", "wikipedia", "current
 
 
 class AppModelConfigService:
-    @staticmethod
-    def is_dataset_exists(account: Account, dataset_id: str) -> bool:
+    @classmethod
+    def is_dataset_exists(cls, account: Account, dataset_id: str) -> bool:
         # verify if the dataset ID exists
         dataset = DatasetService.get_dataset(dataset_id)
 
@@ -27,8 +28,8 @@ class AppModelConfigService:
 
         return True
 
-    @staticmethod
-    def validate_model_completion_params(cp: dict, model_name: str) -> dict:
+    @classmethod
+    def validate_model_completion_params(cls, cp: dict, model_name: str) -> dict:
         # 6. model.completion_params
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")
@@ -74,8 +75,8 @@ class AppModelConfigService:
 
         return filtered_cp
 
-    @staticmethod
-    def validate_configuration(tenant_id: str, account: Account, config: dict, mode: str) -> dict:
+    @classmethod
+    def validate_configuration(cls, tenant_id: str, account: Account, config: dict, mode: str) -> dict:
         # opening_statement
         if 'opening_statement' not in config or not config["opening_statement"]:
             config["opening_statement"] = ""
@@ -187,7 +188,7 @@ class AppModelConfigService:
         if 'completion_params' not in config["model"]:
             raise ValueError("model.completion_params is required")
 
-        config["model"]["completion_params"] = AppModelConfigService.validate_model_completion_params(
+        config["model"]["completion_params"] = cls.validate_model_completion_params(
             config["model"]["completion_params"],
             config["model"]["name"]
         )
@@ -304,17 +305,20 @@ class AppModelConfigService:
                 except ValueError:
                     raise ValueError("id in dataset must be of UUID type")
 
-                if not AppModelConfigService.is_dataset_exists(account, tool_item["id"]):
+                if not cls.is_dataset_exists(account, tool_item["id"]):
                     raise ValueError("Dataset ID does not exist, please check your permission.")
         
         # dataset_query_variable
-        AppModelConfigService.is_dataset_query_variable_valid(config, mode)
+        cls.is_dataset_query_variable_valid(config, mode)
 
         # advanced prompt validation
-        AppModelConfigService.is_advanced_prompt_valid(config, mode)
+        cls.is_advanced_prompt_valid(config, mode)
+
+        # external data tools validation
+        cls.is_external_data_tools_valid(tenant_id, config)
 
         # moderation validation
-        AppModelConfigService.is_moderation_valid(config)
+        cls.is_moderation_valid(tenant_id, config)
 
         # Filter out extra parameters
         filtered_config = {
@@ -343,8 +347,8 @@ class AppModelConfigService:
 
         return filtered_config
 
-    @staticmethod
-    def is_moderation_valid(config):
+    @classmethod
+    def is_moderation_valid(cls, tenant_id: str, config: dict):
         if 'sensitive_word_avoidance' not in config or not config["sensitive_word_avoidance"]:
             config["sensitive_word_avoidance"] = {
                 "enabled": False
@@ -363,12 +367,43 @@ class AppModelConfigService:
             raise ValueError("sensitive_word_avoidance.type is required")
         
         type = config["sensitive_word_avoidance"]["type"]
-        config = config["sensitive_word_avoidance"]["configs"]
+        config = config["sensitive_word_avoidance"]["config"]
 
-        ModerationFactory(type).validate_config(config)
+        ModerationFactory.validate_config(
+            name=type,
+            tenant_id=tenant_id,
+            config=config
+        )
 
-    @staticmethod
-    def is_dataset_query_variable_valid(config: dict, mode: str) -> None:
+    @classmethod
+    def is_external_data_tools_valid(cls, tenant_id: str, config: dict):
+        if 'external_data_tools' not in config or not config["external_data_tools"]:
+            config["external_data_tools"] = []
+
+        if not isinstance(config["external_data_tools"], list):
+            raise ValueError("external_data_tools must be of list type")
+
+        for tool in config["external_data_tools"]:
+            if "enabled" not in tool or not tool["enabled"]:
+                tool["enabled"] = False
+
+            if not tool["enabled"]:
+                continue
+
+            if "type" not in tool or not tool["type"]:
+                raise ValueError("external_data_tools[].type is required")
+
+            type = tool["type"]
+            config = tool["config"]
+
+            ExternalDataToolFactory.validate_config(
+                name=type,
+                tenant_id=tenant_id,
+                config=config
+            )
+
+    @classmethod
+    def is_dataset_query_variable_valid(cls, config: dict, mode: str) -> None:
         # Only check when mode is completion
         if mode != 'completion':
             return
@@ -383,8 +418,8 @@ class AppModelConfigService:
             raise ValueError("Dataset query variable is required when dataset is exist")
         
 
-    @staticmethod
-    def is_advanced_prompt_valid(config: dict, app_mode: str) -> None:
+    @classmethod
+    def is_advanced_prompt_valid(cls, config: dict, app_mode: str) -> None:
         # prompt_type
         if 'prompt_type' not in config or not config["prompt_type"]:
             config["prompt_type"] = "simple"
