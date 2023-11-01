@@ -235,6 +235,9 @@ const translation = {
       key: '语音转文本模型',
       tip: '设置对话中语音转文字输入的默认使用模型。',
     },
+    rerankModel: {
+      key: 'Rerank 模型',
+    },
     quota: '额度',
     searchModel: '搜索模型',
     noModelFound: '找不到模型 {{model}}',

@@ -34,7 +34,7 @@ const ParamItem: FC<Props> = ({ id, name, tip, step = 0.1, min = 0, max, value, 
               }}
             />
           )}
-          <span className="mx-1 text-gray-800 text-[13px] leading-[18px] font-medium">{name}</span>
+          <span className="mx-1 text-gray-900 text-[13px] leading-[18px] font-medium">{name}</span>
           <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
             <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
           </Tooltip>

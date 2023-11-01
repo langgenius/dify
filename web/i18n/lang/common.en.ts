@@ -235,6 +235,9 @@ const translation = {
       key: 'Speech-to-Text Model',
       tip: 'Set the default model for speech-to-text input in conversation.',
     },
+    rerankModel: {
+      key: 'Rerank Model',
+    },
     quota: 'Quota',
     searchModel: 'Search model',
     noModelFound: 'No model found for {{model}}',

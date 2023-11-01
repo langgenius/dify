@@ -225,6 +225,14 @@ const translation = {
   result: 'Output Text',
   datasetConfig: {
     settingTitle: 'Retrieve Settings',
+    retrieveOneWay: {
+      title: 'N选1召回',
+      description: '根据用户意图和数据集描述，由 Agent 自主判断选择最匹配的单个数据集来查询相关文本，适合数据集区分度大且数据集数量偏少的应用。',
+    },
+    retrieveMultiWay: {
+      title: '多路召回',
+      description: '根据用户意图同时匹配所有数据集，从多路数据集查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API。',
+    },
     params: 'Params',
     top_k: 'Top K',
     top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',

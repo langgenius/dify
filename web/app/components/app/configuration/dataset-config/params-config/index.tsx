@@ -5,23 +5,23 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
-
 import ConfigContext from '@/context/debug-configuration'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import RadioCard from '@/app/components/base/radio-card/simple'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
-  const [open, setOpen] = useState(true)
+  const [open, setOpen] = useState(false)
   const {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
 
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
-
+  // const [type, setType] = useState('one_way')
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
       setTempDataSetConfigs({
@@ -79,10 +79,29 @@ const ParamsConfig: FC = () => {
             onClose={() => {
               setOpen(false)
             }}
-            className='w-[528px]'
+            className='min-w-[528px]'
             wrapperClassName='z-50'
             title={t('appDebug.datasetConfig.settingTitle')}
           >
+            <div className='mt-2 space-y-3'>
+              <RadioCard
+                title={t('appDebug.datasetConfig.retrieveOneWay.title')}
+                description={t('appDebug.datasetConfig.retrieveOneWay.description')}
+                isChosen
+                onChosen={() => {}}
+              />
+              <RadioCard
+                title={t('appDebug.datasetConfig.retrieveMultiWay.title')}
+                description={t('appDebug.datasetConfig.retrieveMultiWay.description')}
+                isChosen={false}
+                onChosen={() => {}}
+              />
+            </div>
+            <div className='mt-6'>
+              <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+              <div>Rerank Model 站位</div>
+            </div>
+
             <div className='mt-4 space-y-4'>
               <TopKItem
                 value={tempDataSetConfigs.top_k}
