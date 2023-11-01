@@ -1,21 +1,38 @@
-from abc import abstractclassmethod
+from abc import ABC, abstractmethod
+from typing import Optional
 
-from core.extension.extensible import Extensible
+from core.extension.extensible import Extensible, ExtensionModule
 
 
-class Moderation(Extensible):
+class Moderation(Extensible, ABC):
+    """
+    The base class of moderation.
+    """
+    module: ExtensionModule = ExtensionModule.MODERATION
 
-    @abstractclassmethod
-    def validate_config(self, config: dict) -> None:
-        pass
+    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+        super().__init__(tenant_id, config)
 
-    @abstractclassmethod
-    def moderation_for_inputs(self, config: dict):
-        pass
+    @classmethod
+    def validate_config(cls, tenant_id: str, config: dict) -> None:
+        """
+        Validate the incoming form config data.
 
-    @abstractclassmethod
-    def moderation_for_outputs(self, config: dict):
-        pass
+        :param tenant_id: the id of workspace
+        :param config: the form config data
+        :return:
+        """
+        super().validate_form_schema(config)
+
+        # implement your own validation logic here
+
+    @abstractmethod
+    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
+        raise NotImplementedError
+
+    @abstractmethod
+    def moderation_for_outputs(self, text: str):
+        raise NotImplementedError
 
     @classmethod
     def _validate_inputs_and_outputs_config(self, config: dict, is_preset_response_required: bool) -> None:

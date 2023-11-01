@@ -1,5 +1,39 @@
-from core.extension.extensible import Extensible
+from abc import abstractmethod, ABC
+from typing import Optional
+
+from core.extension.extensible import Extensible, ExtensionModule
 
 
-class ExternalDataTool(Extensible):
-    pass
+class ExternalDataTool(Extensible, ABC):
+    """
+    The base class of external data tool.
+    """
+
+    module: ExtensionModule = ExtensionModule.EXTERNAL_DATA_TOOL
+
+    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+        super().__init__(tenant_id, config)
+
+    @classmethod
+    def validate_config(cls, tenant_id: str, config: dict) -> None:
+        """
+        Validate the incoming form config data.
+
+        :param tenant_id: the id of workspace
+        :param config: the form config data
+        :return:
+        """
+        super().validate_form_schema(config)
+
+        # implement your own validation logic here
+
+    @abstractmethod
+    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+        """
+        Query the external data tool.
+
+        :param inputs: user inputs
+        :param query: the query of chat app
+        :return: the tool query result
+        """
+        raise NotImplementedError

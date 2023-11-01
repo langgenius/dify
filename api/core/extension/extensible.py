@@ -4,9 +4,11 @@ import json
 import logging
 import os
 from collections import OrderedDict
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
+
+from extensions.ext_code_based_extension import code_based_extension
 
 
 class ExtensionModule(enum.Enum):
@@ -17,13 +19,30 @@ class ExtensionModule(enum.Enum):
 class ModuleExtension(BaseModel):
     extension_class: Any
     name: str
-    label: dict = {}
-    form_schema: list = []
+    label: Optional[dict] = None
+    form_schema: Optional[list] = None
     builtin: bool = True
-    position: int = None
+    position: Optional[int] = None
 
 
 class Extensible:
+    module: ExtensionModule
+
+    name: str
+    tenant_id: str
+    config: Optional[dict] = None
+
+    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+        self.tenant_id = tenant_id
+        self.config = config
+
+    @classmethod
+    def validate_form_schema(cls, config: dict) -> None:
+        module_extension = code_based_extension.module_extension(cls.module, cls.name)
+        form_schema = module_extension.form_schema
+
+        # TODO validate form_schema
+
     @classmethod
     def scan_extensions(cls):
         extensions = {}
@@ -89,8 +108,8 @@ class Extensible:
                 extensions[extension_name] = ModuleExtension(
                     extension_class=extension_class,
                     name=extension_name,
-                    label=json_data.get('label', {}),
-                    form_schema=json_data.get('form_schema', []),
+                    label=json_data.get('label'),
+                    form_schema=json_data.get('form_schema'),
                     builtin=builtin,
                     position=position
                 )

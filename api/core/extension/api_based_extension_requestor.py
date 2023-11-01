@@ -1,0 +1,2 @@
+class APIBasedExtensionRequestor:
+    pass

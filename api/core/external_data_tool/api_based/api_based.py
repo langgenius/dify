@@ -1,13 +1,57 @@
+from typing import Optional
+
 from core.external_data_tool.base import ExternalDataTool
+from extensions.ext_database import db
+from models.api_based_extension import APIBasedExtension
 
 
 class ApiBasedExternalDataTool(ExternalDataTool):
-    type = "api_based"
+    name: str = "api"
 
     @classmethod
-    def validate_config(self, config: dict) -> None:
+    def validate_config(cls, tenant_id: str, config: dict) -> None:
+        """
+        Validate the incoming form config data.
+
+        :param tenant_id: the id of workspace
+        :param config: the form config data
+        :return:
+        """
+        super().validate_config(tenant_id, config)
+
+        # own validation logic
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
             raise ValueError("api_based_extension_id is required")
-        
-        # todo
+
+        # get api_based_extension
+        api_based_extension = db.session.query(APIBasedExtension).filter(
+            APIBasedExtension.tenant_id == tenant_id,
+            APIBasedExtension.id == api_based_extension_id
+        ).first()
+
+        if not api_based_extension:
+            raise ValueError("api_based_extension_id is invalid")
+
+    def query(self, inputs: dict, query: Optional[str] = None) -> str:
+        """
+        Query the external data tool.
+
+        :param inputs: user inputs
+        :param query: the query of chat app
+        :return: the tool query result
+        """
+        # get params from config
+        api_based_extension_id = self.config.get("api_based_extension_id")
+
+        # get api_based_extension
+        api_based_extension = db.session.query(APIBasedExtension).filter(
+            APIBasedExtension.tenant_id == self.tenant_id,
+            APIBasedExtension.id == api_based_extension_id
+        ).first()
+
+        if not api_based_extension:
+            raise ValueError("api_based_extension_id is invalid")
+
+        # todo request api
+
