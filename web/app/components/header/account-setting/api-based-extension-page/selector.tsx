@@ -77,7 +77,10 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
               <div className='text-xs font-medium text-gray-500'>
                 {t('common.apiBasedExtension.selector.title')}
               </div>
-              <div className='flex items-center text-xs text-primary-600' onClick={() => setShowAccountSettingModal({ payload: 'api-based-extension' })}>
+              <div
+                className='flex items-center text-xs text-primary-600 cursor-pointer'
+                onClick={() => setShowAccountSettingModal({ payload: 'api-based-extension' })}
+              >
                 {t('common.apiBasedExtension.selector.manage')}
                 <ArrowUpRight className='ml-0.5 w-3 h-3' />
               </div>
