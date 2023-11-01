@@ -31,7 +31,11 @@ const ApiBasedExtensionPage = () => {
       {
         !isLoading && !!data?.length && (
           data.map(item => (
-            <Item key={item.id} data={item} />
+            <Item
+              key={item.id}
+              data={item}
+              onUpdate={() => mutate()}
+            />
           ))
         )
       }
