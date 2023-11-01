@@ -23,7 +23,7 @@ type Props = {
 const ParamItem: FC<Props> = ({ id, name, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center h-8 justify-between">
         <div className="flex items-center">
           {hasSwitch && (
             <Switch
@@ -41,19 +41,8 @@ const ParamItem: FC<Props> = ({ id, name, tip, step = 0.1, min = 0, max, value, 
         </div>
         <div className="flex items-center"></div>
       </div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center h-7">
-          <div className="w-[148px]">
-            <Slider
-              disabled={!enable}
-              value={max < 5 ? value * 100 : value}
-              min={min < 1 ? min * 100 : min}
-              max={max < 5 ? max * 100 : max}
-              onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            />
-          </div>
-        </div>
-        <div className="flex items-center">
+      <div className="mt-2 flex items-center">
+        <div className="mr-4 flex shrink-0 items-center">
           <input disabled={!enable} type="number" min={min} max={max} step={step} className="block w-[48px] h-7 text-xs leading-[18px] rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600 disabled:opacity-60" value={value} onChange={(e) => {
             const value = parseFloat(e.target.value)
             if (value < min || value > max)
@@ -61,6 +50,16 @@ const ParamItem: FC<Props> = ({ id, name, tip, step = 0.1, min = 0, max, value, 
 
             onChange(id, value)
           }} />
+        </div>
+        <div className="flex items-center h-7 grow">
+          <Slider
+            className='w-full'
+            disabled={!enable}
+            value={max < 5 ? value * 100 : value}
+            min={min < 1 ? min * 100 : min}
+            max={max < 5 ? max * 100 : max}
+            onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
+          />
         </div>
       </div>
     </div>

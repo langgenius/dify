@@ -214,6 +214,7 @@ const translation = {
   },
   result: '结果',
   datasetConfig: {
+    settingTitle: '召回设置',
     params: '参数设置',
     top_k: 'Top K',
     top_kTip: '用于筛选与用户问题相似度最高的文本片段。系统同时会根据选用模型上下文窗口大小动态调整分段数量。',
