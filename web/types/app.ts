@@ -20,6 +20,10 @@ export enum ModelModeType {
   'completion' = 'completion',
   'unset' = '',
 }
+export enum RETRIEVE_TYPE {
+  oneWay = 'oneWay',
+  multiWay = 'multiWay',
+}
 
 export type VariableInput = {
   key: string

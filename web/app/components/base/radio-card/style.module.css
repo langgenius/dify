@@ -1,0 +1,44 @@
+.radioItem {
+  @apply relative rounded-xl border border-gray-100 cursor-pointer;
+  background-color: #fcfcfd;
+}
+
+.radioItem.active {
+  border-width: 1.5px;
+  border-color: #528BFF;
+  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1), 0px 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.radioItem:hover {
+  background-color: #ffffff;
+  border-color: #B2CCFF;
+  box-shadow: 0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03);
+}
+
+.typeIcon {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+}
+
+.radio {
+  @apply w-4 h-4 border-[2px] border-gray-200 rounded-full;
+  position: absolute;
+  top: 16px;
+  right: 20px;
+}
+
+.radioItem.active .radio {
+  top: 25.5px;
+  right: 19.5px;
+  border-width: 5px;
+  border-color: #155EEF;
+}
+
+.typeFormBody {
+  @apply px-16;
+  border-top: 1px solid #F2F4F7;
+}

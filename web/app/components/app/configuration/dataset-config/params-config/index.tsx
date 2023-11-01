@@ -11,7 +11,7 @@ import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import RadioCard from '@/app/components/base/radio-card/simple'
-
+import { RETRIEVE_TYPE } from '@/types/app'
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -21,7 +21,7 @@ const ParamsConfig: FC = () => {
   } = useContext(ConfigContext)
 
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
-  // const [type, setType] = useState('one_way')
+  const [type, setType] = useState(RETRIEVE_TYPE.oneWay)
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
       setTempDataSetConfigs({
@@ -87,36 +87,38 @@ const ParamsConfig: FC = () => {
               <RadioCard
                 title={t('appDebug.datasetConfig.retrieveOneWay.title')}
                 description={t('appDebug.datasetConfig.retrieveOneWay.description')}
-                isChosen
-                onChosen={() => {}}
+                isChosen={type === RETRIEVE_TYPE.oneWay}
+                onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}
               />
               <RadioCard
                 title={t('appDebug.datasetConfig.retrieveMultiWay.title')}
                 description={t('appDebug.datasetConfig.retrieveMultiWay.description')}
-                isChosen={false}
-                onChosen={() => {}}
+                isChosen={type === RETRIEVE_TYPE.multiWay}
+                onChosen={() => { setType(RETRIEVE_TYPE.multiWay) }}
               />
             </div>
-            <div className='mt-6'>
-              <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-              <div>Rerank Model 站位</div>
-            </div>
-
-            <div className='mt-4 space-y-4'>
-              <TopKItem
-                value={tempDataSetConfigs.top_k}
-                onChange={handleParamChange}
-                enable={true}
-              />
-              <ScoreThresholdItem
-                value={tempDataSetConfigs.score_threshold.value}
-                onChange={handleParamChange}
-                enable={tempDataSetConfigs.score_threshold.enable}
-                hasSwitch={true}
-                onSwitchChange={handleSwitch}
-              />
-            </div>
-
+            {type === RETRIEVE_TYPE.multiWay && (
+              <>
+                <div className='mt-6'>
+                  <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div>Rerank Model 站位</div>
+                </div>
+                <div className='mt-4 space-y-4'>
+                  <TopKItem
+                    value={tempDataSetConfigs.top_k}
+                    onChange={handleParamChange}
+                    enable={true}
+                  />
+                  <ScoreThresholdItem
+                    value={tempDataSetConfigs.score_threshold.value}
+                    onChange={handleParamChange}
+                    enable={tempDataSetConfigs.score_threshold.enable}
+                    hasSwitch={true}
+                    onSwitchChange={handleSwitch}
+                  />
+                </div>
+              </>
+            )}
             <div className='mt-6 flex justify-end'>
               <Button className='mr-2 flex-shrink-0' onClick={() => {
                 setOpen(false)
