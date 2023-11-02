@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOuputsAction
+from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult
 
 
 class KeywordsModeration(Moderation):
@@ -30,29 +30,30 @@ class KeywordsModeration(Moderation):
         keywords_list = self.config['keywords'].split('\n')
         preset_response = self.config['inputs_configs']['preset_response']
 
-        if self._is_violated(inputs, preset_response, keywords_list):
+        if self._is_violated(inputs, keywords_list):
             raise ModerationException(preset_response)
 
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
-        if not self.config['outputs_configs']['enabled']:
-            return
+        flagged = False
+        preset_response = ""
 
-        keywords_list = self.config['keywords'].split('\n')
-        preset_response = self.config['outputs_configs']['preset_response']
+        if self.config['outputs_configs']['enabled']:
+            keywords_list = self.config['keywords'].split('\n')
+            flagged = self._is_violated({'text': text}, keywords_list)
+            if flagged:
+                preset_response = self.config['outputs_configs']['preset_response']
 
-        flagged = self._is_violated({'text': text}, preset_response, keywords_list)
+        return ModerationOutputsResult(flagged=flagged, text=preset_response)
 
-        return ModerationOutputsResult(flagged=flagged, action=ModerationOuputsAction.DIRECT_OUTPUT, preset_response=preset_response)
-
-    def _is_violated(self, inputs: dict, preset_response: str, keywords_list: list) -> bool:
+    def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
         for value in inputs.values():
-            if self._check_keywords_in_text(keywords_list, value):
+            if self._check_keywords_in_value(keywords_list, value):
                 return True
         
         return False
                 
-    def _check_keywords_in_text(self, keywords_list, text):
+    def _check_keywords_in_value(self, keywords_list, value):
         for keyword in keywords_list:
-            if keyword in text:
+            if keyword.lower() in value.lower():
                 return True
         return False

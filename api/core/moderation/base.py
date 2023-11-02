@@ -5,14 +5,9 @@ from enum import Enum
 
 from core.extension.extensible import Extensible, ExtensionModule
 
-class ModerationOuputsAction(Enum):
-    DIRECT_OUTPUT = "direct_output"
-    OVERRIDED = "overrided"
 
 class ModerationOutputsResult(BaseModel):
     flagged: bool = False
-    action: ModerationOuputsAction
-    preset_response: str = ""
     text: str = ""
 
 class Moderation(Extensible, ABC):

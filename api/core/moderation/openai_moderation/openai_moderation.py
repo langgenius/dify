@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from core.helper.encrypter import decrypt_token
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOuputsAction
+from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult
 from extensions.ext_database import db
 from models.provider import Provider
 
@@ -30,20 +30,21 @@ class OpenAIModeration(Moderation):
         if query:
             inputs['query__'] = query
 
-        if self._is_violated(inputs, preset_response):
+        if self._is_violated(inputs):
             raise ModerationException(preset_response)
 
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
-        if not self.config['outputs_configs']['enabled']:
-            return
+        flagged = False
+        preset_response = ""
 
-        preset_response = self.config['inputs_configs']['preset_response']
+        if self.config['outputs_configs']['enabled']:
+            flagged = self._is_violated({ 'text': text })
+            if flagged:
+                preset_response = self.config['outputs_configs']['preset_response']
 
-        flagged = self._is_violated({ 'text': text }, preset_response)
+        return ModerationOutputsResult(flagged=flagged, text=preset_response)
 
-        return ModerationOutputsResult(flagged=flagged, action=ModerationOuputsAction.DIRECT_OUTPUT, preset_response=preset_response)
-
-    def _is_violated(self, inputs: dict, preset_response: str):
+    def _is_violated(self, inputs: dict):
 
         openai_api_key = self._get_openai_api_key()
         moderation_result = openai.Moderation.create(input=list(inputs.values()), api_key=openai_api_key)
