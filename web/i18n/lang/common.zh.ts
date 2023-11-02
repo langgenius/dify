@@ -324,7 +324,7 @@ const translation = {
   },
   datasetMenus: {
     documents: '文档',
-    hitTesting: '命中测试',
+    hitTesting: '召回测试',
     settings: '设置',
     emptyTip: ' 数据集尚未关联，请前往应用程序或插件完成关联。',
     viewDoc: '查看文档',
@@ -355,9 +355,9 @@ const translation = {
       title: '引用',
       linkToDataset: '跳转至数据集',
       characters: '字符：',
-      hitCount: '命中次数：',
+      hitCount: '召回次数：',
       vectorHash: '向量哈希：',
-      hitScore: '命中得分：',
+      hitScore: '召回得分：',
     },
   },
   promptEditor: {

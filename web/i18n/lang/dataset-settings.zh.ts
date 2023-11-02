@@ -5,7 +5,7 @@ const translation = {
     name: '数据集名称',
     nameError: '名称不能为空',
     desc: '数据集描述',
-    descPlaceholder: '描述这个数据集中的内容。详细的描述可以让 AI 及时访问数据集的内容。如果为空，Dify 将使用默认的命中策略。',
+    descPlaceholder: '描述这个数据集中的内容。详细的描述可以让 AI 及时访问数据集的内容。如果为空，Dify 将使用默认的召回策略。',
     descWrite: '了解如何编写更好的数据集描述。',
     permissions: '可见权限',
     permissionsOnlyMe: '只有我',

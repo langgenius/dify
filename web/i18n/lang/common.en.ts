@@ -324,7 +324,7 @@ const translation = {
   },
   datasetMenus: {
     documents: 'Documents',
-    hitTesting: 'Hit Testing',
+    hitTesting: 'Retrieval Testing',
     settings: 'Settings',
     emptyTip: 'The data set has not been associated, please go to the application or plug-in to complete the association.',
     viewDoc: 'View documentation',
@@ -355,9 +355,9 @@ const translation = {
       title: 'CITATIONS',
       linkToDataset: 'Link to dataset',
       characters: 'Characters:',
-      hitCount: 'Hit count:',
+      hitCount: 'Retrieval count:',
       vectorHash: 'Vector hash:',
-      hitScore: 'Hit Score:',
+      hitScore: 'Retrieval Score:',
     },
   },
   promptEditor: {

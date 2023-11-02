@@ -21,6 +21,7 @@ type Props = {
   setLoading: (v: boolean) => void
   text: string
   setText: (v: string) => void
+  onClickRetrievalMethod: () => void
 }
 
 const TextAreaWithButton: FC<Props> = ({
@@ -31,6 +32,7 @@ const TextAreaWithButton: FC<Props> = ({
   loading,
   text,
   setText,
+  onClickRetrievalMethod,
 }) => {
   const { t } = useTranslation()
   const { indexingTechnique } = useContext(DatasetDetailContext)
@@ -65,7 +67,10 @@ const TextAreaWithButton: FC<Props> = ({
               selector={'change-retrieval-method'}
               htmlContent={t('dataset.retrieval.changeRetrievalMethod')}
             >
-              <div className='flex px-2 h-7 items-center space-x-1 bg-white hover:bg-[#ECE9FE] rounded-md shadow-sm cursor-pointer text-[#6927DA]'>
+              <div
+                onClick={onClickRetrievalMethod}
+                className='flex px-2 h-7 items-center space-x-1 bg-white hover:bg-[#ECE9FE] rounded-md shadow-sm cursor-pointer text-[#6927DA]'
+              >
                 <Icon className='w-3.5 h-3.5'></Icon>
                 <div className='text-xs font-medium'>{t(`dataset.retrieval.${retrievalMethod}.title`)}</div>
               </div>
