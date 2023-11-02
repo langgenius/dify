@@ -9,6 +9,7 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import RetrievalMethodConfig from '../../common/retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -18,11 +19,8 @@ import type { ProviderEnum } from '@/app/components/header/account-setting/model
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import AccountSetting from '@/app/components/header/account-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
-import RadioCard from '@/app/components/base/radio-card'
-import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
-import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
-import TopKItem from '@/app/components/base/param-item/top-k-item'
-import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
+import { RETRIEVE_METHOD } from '@/types/app'
+
 const rowClass = `
   flex justify-between py-4
 `
@@ -92,6 +90,7 @@ const Form = () => {
   useInitialValue<DataSet['permission'] | undefined>(currentDataset?.permission, setPermission)
   useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
+  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
   return (
     <div className='w-[800px] px-16 py-6'>
       <div className={rowClass}>
@@ -187,53 +186,10 @@ const Form = () => {
           </div>
         </div>
         <div className='w-[480px]'>
-          <div className='space-y-2'>
-            <RadioCard
-              icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
-              title={'Semantic Search'}
-              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
-              isChosen
-              onChosen={() => {}}
-            />
-            <RadioCard
-              icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
-              title={'Full-Text Search'}
-              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
-              isChosen={false}
-              onChosen={() => {}}
-            />
-            <RadioCard
-              icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
-              title={'Hybrid Search'}
-              description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
-              isChosen={true}
-              onChosen={() => {}}
-              chosenConfig={
-                <div>
-                  <div>
-                    <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-                    <div>Rerank Model 站位</div>
-                  </div>
-                  <div className='flex mt-4 space-between space-x-6'>
-                    <TopKItem
-                      className='grow'
-                      value={2}
-                      onChange={() => {}}
-                      enable={true}
-                    />
-                    <ScoreThresholdItem
-                      className='grow'
-                      value={1}
-                      onChange={() => {}}
-                      enable={true}
-                      hasSwitch={true}
-                      onSwitchChange={() => {}}
-                    />
-                  </div>
-                </div>
-              }
-            />
-          </div>
+          <RetrievalMethodConfig
+            value={retrievalMethod}
+            onChange={setRetrievalMethod}
+          />
         </div>
       </div>
       {currentDataset?.embedding_available && (
