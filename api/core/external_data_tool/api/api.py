@@ -64,11 +64,17 @@ class ApiExternalDataTool(ExternalDataTool):
             token=api_based_extension.api_key
         )
 
-        # request api
-        requestor = APIBasedExtensionRequestor(
-            api_endpoint=api_based_extension.api_endpoint,
-            api_key=api_key
-        )
+        try:
+            # request api
+            requestor = APIBasedExtensionRequestor(
+                api_endpoint=api_based_extension.api_endpoint,
+                api_key=api_key
+            )
+        except Exception as e:
+            raise ValueError("[External data tool] API query failed, variable: {}, error: {}".format(
+                self.config.get('variable'),
+                e
+            ))
 
         response_json = requestor.request(point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY, params={
             'app_id': self.app_id,
