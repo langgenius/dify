@@ -201,7 +201,7 @@ class CompletionService:
                 )
             except ConversationTaskStoppedException:
                 pass
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
+            except (ValueError, LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
                     ModelCurrentlyNotSupportError) as e:
                 PubHandler.pub_error(user, generate_task_id, e)
@@ -508,6 +508,7 @@ class CompletionService:
 
         # handle errors
         llm_errors = {
+            'ValueError': LLMBadRequestError,
             'LLMBadRequestError': LLMBadRequestError,
             'LLMAPIConnectionError': LLMAPIConnectionError,
             'LLMAPIUnavailableError': LLMAPIUnavailableError,
