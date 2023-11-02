@@ -19,7 +19,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableErro
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-
+from services.moderation_service import ModerationService
 
 # define completion api for user
 class CompletionApi(InstalledAppResource):
@@ -175,8 +175,19 @@ def compact_response(response: Union[dict | Generator]) -> Response:
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')
 
+class ModerationApi(InstalledAppResource):
+
+     def post(self, installed_app):
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_id', type=str, required=True, location='json')
+        parser.add_argument('text', type=str, required=True, location='json')
+        args = parser.parse_args()
+                
+        service = ModerationService()
+        return service.moderation_for_outputs(installed_app.app, current_user, args['text'])
 
 api.add_resource(CompletionApi, '/installed-apps/<uuid:installed_app_id>/completion-messages', endpoint='installed_app_completion')
 api.add_resource(CompletionStopApi, '/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop', endpoint='installed_app_stop_completion')
 api.add_resource(ChatApi, '/installed-apps/<uuid:installed_app_id>/chat-messages', endpoint='installed_app_chat_completion')
 api.add_resource(ChatStopApi, '/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop', endpoint='installed_app_stop_chat_completion')
+api.add_resource(ModerationApi, '/installed-apps/moderation')

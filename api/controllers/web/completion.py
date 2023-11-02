@@ -18,6 +18,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableErro
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
+from services.moderation_service import ModerationService
 
 
 # define completion api for user
@@ -172,8 +173,19 @@ def compact_response(response: Union[dict | Generator]) -> Response:
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')
 
+class ModerationAPI(WebApiResource):
+
+    def post(self, app_model, end_user):
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_id', type=str, required=True, location='json')
+        parser.add_argument('text', type=str, required=True, location='json')
+        args = parser.parse_args()
+
+        service = ModerationService()
+        return service.moderation_for_outputs(app_model, end_user, args['text'])
 
 api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
 api.add_resource(ChatApi, '/chat-messages')
 api.add_resource(ChatStopApi, '/chat-messages/<string:task_id>/stop')
+api.add_resource(ModerationAPI, '/moderation')

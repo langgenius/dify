@@ -23,6 +23,7 @@ from libs.helper import uuid_value
 from flask_restful import Resource, reqparse
 
 from services.completion_service import CompletionService
+from services.moderation_service import ModerationService
 
 
 # define completion message api for user
@@ -207,8 +208,22 @@ class ChatMessageStopApi(Resource):
 
         return {'result': 'success'}, 200
 
+class ModerationApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, app_id):
+        parser = reqparse.RequestParser()
+        parser.add_argument('app_id', type=str, required=True, location='json')
+        parser.add_argument('text', type=str, required=True, location='json')
+        args = parser.parse_args()
+        
+        service = ModerationService()
+        return service.moderation_for_outputs(_get_app(str(app_id), None), flask_login.current_user, args['text'])
 
 api.add_resource(CompletionMessageApi, '/apps/<uuid:app_id>/completion-messages')
 api.add_resource(CompletionMessageStopApi, '/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop')
 api.add_resource(ChatMessageApi, '/apps/<uuid:app_id>/chat-messages')
 api.add_resource(ChatMessageStopApi, '/apps/<uuid:app_id>/chat-messages/<string:task_id>/stop')
+api.add_resource(ModerationApi, '/apps/moderation')
