@@ -24,8 +24,6 @@ class ApiExternalDataTool(ExternalDataTool):
         :param config: the form config data
         :return:
         """
-        super().validate_config(tenant_id, config)
-
         # own validation logic
         api_based_extension_id = config.get("api_based_extension_id")
         if not api_based_extension_id:
