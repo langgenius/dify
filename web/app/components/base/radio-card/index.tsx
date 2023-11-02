@@ -10,8 +10,9 @@ type Props = {
   iconBgClassName?: string
   title: React.ReactNode
   description: string
-  isChosen: boolean
-  onChosen: () => void
+  noRadio?: boolean
+  isChosen?: boolean
+  onChosen?: () => void
   chosenConfig?: React.ReactNode
 }
 
@@ -20,8 +21,9 @@ const RadioCard: FC<Props> = ({
   iconBgClassName = 'bg-[#F5F3FF]',
   title,
   description,
+  noRadio,
   isChosen,
-  onChosen,
+  onChosen = () => {},
   chosenConfig,
 }) => {
   return (
@@ -34,11 +36,13 @@ const RadioCard: FC<Props> = ({
           <div className='leading-5 text-sm font-medium text-gray-900'>{title}</div>
           <div className='leading-[18px] text-xs font-normal text-[#667085]'>{description}</div>
         </div>
-        <div className='shrink-0 flex items-center h-8'>
-          <div className={s.radio}></div>
-        </div>
+        {!noRadio && (
+          <div className='shrink-0 flex items-center h-8'>
+            <div className={s.radio}></div>
+          </div>
+        )}
       </div>
-      {(isChosen && chosenConfig) && (
+      {((isChosen && chosenConfig) || noRadio) && (
         <div className='pt-2 px-14 pb-6 border-t border-gray-200'>
           {chosenConfig}
         </div>

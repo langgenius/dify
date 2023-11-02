@@ -34,6 +34,10 @@ const translation = {
       description: 'Execute keyword and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
       recommend: 'Recommend',
     },
+    invertedIndex: {
+      title: 'Inverted Index',
+      description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
+    },
   },
 }
 

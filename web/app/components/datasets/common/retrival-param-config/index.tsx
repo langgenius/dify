@@ -22,26 +22,30 @@ const RetrivalParamConfig: FC<Props> = ({
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
   const [isRerankModalEnable, setIsRerankModalEnable] = useState(false)
   const isScoreThresholdDisabled = type === RETRIEVE_METHOD.fullText && !isRerankModalEnable
+  const isEconomical = type === RETRIEVE_METHOD.invertedIndex
   return (
     <div>
-      <div>
-        <div className='flex h-8 items-center text-[13px] font-medium text-gray-900 space-x-2'>
-          {canToggleRerankModalEnable && (
-            <Switch
-              size='md'
-              defaultValue={isRerankModalEnable}
-              onChange={setIsRerankModalEnable}
-            />
-          )}
-          <div className='flex items-center'>
-            <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
-            <Tooltip popupContent={<div className="w-[200px]">{'TODO'}</div>}>
-              <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+      {!isEconomical && (
+        <div>
+          <div className='flex h-8 items-center text-[13px] font-medium text-gray-900 space-x-2'>
+            {canToggleRerankModalEnable && (
+              <Switch
+                size='md'
+                defaultValue={isRerankModalEnable}
+                onChange={setIsRerankModalEnable}
+              />
+            )}
+            <div className='flex items-center'>
+              <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
+              <Tooltip popupContent={<div className="w-[200px]">{'TODO'}</div>}>
+                <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+              </Tooltip>
+            </div>
           </div>
+          <div>Rerank Model 站位</div>
         </div>
-        <div>Rerank Model 站位</div>
-      </div>
+      )}
+
       <div className='flex mt-4 space-between space-x-6'>
         <TopKItem
           className='grow'
@@ -49,7 +53,7 @@ const RetrivalParamConfig: FC<Props> = ({
           onChange={() => {}}
           enable={true}
         />
-        {!isScoreThresholdDisabled && (
+        {!isScoreThresholdDisabled && !isEconomical && (
           <ScoreThresholdItem
             className='grow'
             value={1}

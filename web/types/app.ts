@@ -30,6 +30,7 @@ export enum RETRIEVE_METHOD {
   semantic = 'semantic',
   fullText = 'fullText',
   hybrid = 'hybrid',
+  invertedIndex = 'invertedIndex',
 }
 
 export type VariableInput = {

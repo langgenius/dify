@@ -10,6 +10,7 @@ import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
 import RetrievalMethodConfig from '../../common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '../../common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -187,6 +188,11 @@ const Form = () => {
         </div>
         <div className='w-[480px]'>
           <RetrievalMethodConfig
+            value={retrievalMethod}
+            onChange={setRetrievalMethod}
+          />
+
+          <EconomicalRetrievalMethodConfig
             value={retrievalMethod}
             onChange={setRetrievalMethod}
           />
