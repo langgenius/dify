@@ -6,8 +6,12 @@ import { createContext, useContext } from 'use-context-selector'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
+import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
 import type { ModerationConfig } from '@/models/debug'
-import type { ApiBasedExtension } from '@/models/common'
+import type {
+  ApiBasedExtension,
+  ExternalDataTool,
+} from '@/models/common'
 
 export type ModalState<T> = {
   payload: T
@@ -19,10 +23,12 @@ const ModalContext = createContext<{
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
+  setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
 }>({
   setShowAccountSettingModal: () => {},
   setShowApiBasedExtensionModal: () => {},
   setShowModerationSettingModal: () => {},
+  setShowExternalDataToolModal: () => {},
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -36,6 +42,7 @@ export const ModalContextProvider = ({
   const [showAccountSettingModal, setShowAccountSettingModal] = useState<ModalState<string> | null>(null)
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
+  const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
 
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
@@ -65,11 +72,19 @@ export const ModalContextProvider = ({
     setShowModerationSettingModal(null)
   }
 
+  const handleSaveExternalDataTool = (newExternalDataTool: ExternalDataTool) => {
+    if (showExternalDataToolModal?.onSaveCallback)
+      showExternalDataToolModal.onSaveCallback(newExternalDataTool)
+
+    setShowExternalDataToolModal(null)
+  }
+
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
+      setShowExternalDataToolModal,
     }}>
       <>
         {children}
@@ -96,6 +111,15 @@ export const ModalContextProvider = ({
               data={showModerationSettingModal.payload}
               onCancel={handleCancelModerationSettingModal}
               onSave={handleSaveModeration}
+            />
+          )
+        }
+        {
+          !!showExternalDataToolModal && (
+            <ExternalDataToolModal
+              data={showExternalDataToolModal.payload}
+              onCancel={() => setShowExternalDataToolModal(null)}
+              onSave={handleSaveExternalDataTool}
             />
           )
         }

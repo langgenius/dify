@@ -19,6 +19,8 @@ import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
 import { AppType } from '@/types/app'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { useModalContext } from '@/context/modal-context'
+import type { ExternalDataTool } from '@/models/common'
 
 type Props = {
   type: PromptRole
@@ -56,8 +58,18 @@ const AdvancedPromptInput: FC<Props> = ({
     showHistoryModal,
     dataSets,
     showSelectDataSet,
-    showAddExternalToolModal,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { setShowExternalDataToolModal } = useModalContext()
+  const handleOpenExternalDataToolModal = () => {
+    setShowExternalDataToolModal({
+      payload: {},
+      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+      },
+    })
+  }
   const isChatApp = mode === AppType.chat
   const [isCopied, setIsCopied] = React.useState(false)
 
@@ -175,7 +187,13 @@ const AdvancedPromptInput: FC<Props> = ({
                 name: item.name,
                 value: item.key,
               })),
-              onAddExternalTool: showAddExternalToolModal,
+              externalTools: externalDataToolsConfig.map(item => ({
+                name: item.label!,
+                variableName: item.variable!,
+                icon: item.icon,
+                icon_background: item.icon_background,
+              })),
+              onAddExternalTool: handleOpenExternalDataToolModal,
             }}
             historyBlock={{
               show: !isChatMode && isChatApp,

@@ -99,21 +99,21 @@ const translation = {
       },
     },
     tools: {
-      title: 'Tools',
-      toolsInUse: '{{count}} tools in use',
+      title: '工具',
+      toolsInUse: '{{count}} 工具使用中',
       modal: {
-        title: 'Add tool',
+        title: '添加工具',
         toolType: {
-          title: 'Tool Type',
-          placeholder: 'WebHook',
+          title: '工具类型',
+          placeholder: '请选择工具类型',
         },
         name: {
-          title: 'Name',
-          placeholder: 'Name',
+          title: '名称',
+          placeholder: '请填写名称',
         },
         variableName: {
-          title: 'Variable Name',
-          placeholder: 'Variable Name',
+          title: '变量名称',
+          placeholder: '请填写变量名称',
         },
       },
     },

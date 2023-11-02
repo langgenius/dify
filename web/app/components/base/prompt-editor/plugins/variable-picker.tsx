@@ -14,6 +14,7 @@ import { $createCustomTextNode } from './custom-text/node'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import AppIcon from '@/app/components/base/app-icon'
 
 class VariablePickerOption extends MenuOption {
   title: string
@@ -87,7 +88,7 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
       <div className='mr-2'>
         {option.icon}
       </div>
-      <div className='text-[13px] text-gray-900'>
+      <div className='grow text-[13px] text-gray-900 truncate' title={option.title}>
         {before}
         <span className='text-[#2970FF]'>{middle}</span>
         {after}
@@ -105,6 +106,8 @@ export type Option = {
 export type ExternalToolOption = {
   name: string
   variableName: string
+  icon?: string
+  icon_background?: string
 }
 
 type VariablePickerProps = {
@@ -145,7 +148,13 @@ const VariablePicker: FC<VariablePickerProps> = ({
   const toolOptions = useMemo(() => {
     const baseToolOptions = externalTools.map((item) => {
       return new VariablePickerOption(item.name, {
-        icon: <BracketsX className='w-[14px] h-[14px] text-[#2970FF]' />,
+        icon: (
+          <AppIcon
+            className='!w-[14px] !h-[14px]'
+            icon={item.icon}
+            background={item.icon_background}
+          />
+        ),
         extraElement: <div className='text-xs text-gray-400'>{item.variableName}</div>,
         onSelect: () => {
           editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${item.variableName}}}`)
