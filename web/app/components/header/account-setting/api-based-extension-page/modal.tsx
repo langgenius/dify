@@ -37,12 +37,21 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
   const handleSave = async () => {
     setLoading(true)
 
+    if (localeData && localeData.api_key && localeData.api_key?.length < 5) {
+      notify({ type: 'error', message: t('common.apiBasedExtension.modal.apiKey.lengthError') })
+      setLoading(false)
+      return
+    }
+
     try {
       let res: ApiBasedExtension = {}
       if (!data.id) {
         res = await addApiBasedExtension({
           url: '/api-based-extension',
-          body: localeData,
+          body: {
+            ...localeData,
+            api_key: data.api_key === localeData.api_key ? '[__HIDDEN__]' : localeData.api_key,
+          },
         })
       }
       else {
@@ -116,11 +125,6 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
             className='block grow mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
             placeholder={t('common.apiBasedExtension.modal.apiKey.placeholder') || ''}
           />
-          <Button
-            className='text-sm font-medium'
-          >
-            {t('common.apiBasedExtension.modal.apiKey.regenerate')}
-          </Button>
         </div>
       </div>
       <div className='flex items-center justify-end mt-6'>

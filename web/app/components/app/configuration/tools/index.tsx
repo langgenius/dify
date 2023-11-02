@@ -15,13 +15,16 @@ import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
 import AppIcon from '@/app/components/base/app-icon'
+import { useToastContext } from '@/app/components/base/toast'
 
 const Tools = () => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const {
     externalDataToolsConfig,
     setExternalDataToolsConfig,
+    modelConfig,
   } = useContext(ConfigContext)
   const [expanded, setExpanded] = useState(true)
 
@@ -37,10 +40,40 @@ const Tools = () => {
       setExternalDataToolsConfig([...externalDataToolsConfig, externalDataTool])
     }
   }
+  const handleValidateBeforeSaveExternalDataToolModal = (newExternalDataTool: ExternalDataTool, index: number) => {
+    const promptVariables = modelConfig?.configs?.prompt_variables || []
+    for (let i = 0; i < promptVariables.length; i++) {
+      if (promptVariables[i].key === newExternalDataTool.variable) {
+        notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+        return false
+      }
+    }
+
+    let existedExternalDataTools = []
+    if (index > -1) {
+      existedExternalDataTools = [
+        ...externalDataToolsConfig.slice(0, index),
+        ...externalDataToolsConfig.slice(index + 1),
+      ]
+    }
+    else {
+      existedExternalDataTools = [...externalDataToolsConfig]
+    }
+
+    for (let i = 0; i < existedExternalDataTools.length; i++) {
+      if (existedExternalDataTools[i].variable === newExternalDataTool.variable) {
+        notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: existedExternalDataTools[i].variable }) })
+        return false
+      }
+    }
+
+    return true
+  }
   const handleOpenExternalDataToolModal = (payload: ExternalDataTool, index: number) => {
     setShowExternalDataToolModal({
       payload,
       onSaveCallback: (externalDataTool: ExternalDataTool) => handleSaveExternalDataToolModal(externalDataTool, index),
+      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => handleValidateBeforeSaveExternalDataToolModal(newExternalDataTool, index),
     })
   }
 
