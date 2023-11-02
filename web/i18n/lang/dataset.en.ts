@@ -20,6 +20,21 @@ const translation = {
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'DATASETS',
   datasetsApi: 'API',
+  retrival: {
+    semantic: {
+      title: 'Semantic Search',
+      description: 'Generate query embeddings and search for the text chunk most similar to its vector representation.',
+    },
+    fullText: {
+      title: 'Full-Text Search',
+      description: 'Index all terms in the document, allowing users to search any term and retrieve relevant text chunk containing those terms.',
+    },
+    hybrid: {
+      title: 'Hybrid Search',
+      description: 'Execute keyword and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
+      recommend: 'Recommend',
+    },
+  },
 }
 
 export default translation

@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import RetrivalParamConfig from '../retrival-param-config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
@@ -16,12 +17,14 @@ const RetrievalMethodConfig: FC<Props> = ({
   value,
   onChange,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <div className='space-y-2'>
       <RadioCard
         icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
-        title={'Semantic Search'}
-        description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+        title={t('dataset.retrival.semantic.title')}
+        description={t('dataset.retrival.semantic.description')}
         isChosen={value === RETRIEVE_METHOD.semantic}
         onChosen={() => onChange(RETRIEVE_METHOD.semantic)}
         chosenConfig={
@@ -34,8 +37,8 @@ const RetrievalMethodConfig: FC<Props> = ({
       />
       <RadioCard
         icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
-        title={'Full-Text Search'}
-        description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+        title={t('dataset.retrival.fullText.title')}
+        description={t('dataset.retrival.fullText.description')}
         isChosen={value === RETRIEVE_METHOD.fullText}
         onChosen={() => onChange(RETRIEVE_METHOD.fullText)}
         chosenConfig={
@@ -48,8 +51,8 @@ const RetrievalMethodConfig: FC<Props> = ({
       />
       <RadioCard
         icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
-        title={'Hybrid Search'}
-        description='Generate query embeddings and search for the text chunk most similar to its vector representation.'
+        title={t('dataset.retrival.hybrid.title')}
+        description={t('dataset.retrival.hybrid.description')}
         isChosen={value === RETRIEVE_METHOD.hybrid}
         onChosen={() => onChange(RETRIEVE_METHOD.hybrid)}
         chosenConfig={
