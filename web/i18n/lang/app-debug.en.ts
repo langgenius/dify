@@ -102,7 +102,7 @@ const translation = {
       title: 'Tools',
       toolsInUse: '{{count}} tools in use',
       modal: {
-        title: 'Add tool',
+        title: 'Tool',
         toolType: {
           title: 'Tool Type',
           placeholder: 'Please select the tool type',

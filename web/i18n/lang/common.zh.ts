@@ -324,7 +324,7 @@ const translation = {
       apiKey: {
         title: 'API-key',
         placeholder: '请输入 API-key',
-        regenerate: '重新生成',
+        lengthError: 'API-key 不能少于 5 位',
       },
     },
     confirm: {

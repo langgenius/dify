@@ -17,6 +17,7 @@ export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload: T) => void
+  onValidateBeforeSaveCallback?: (newPayload: T) => boolean
 }
 
 const ModalContext = createContext<{
@@ -79,6 +80,13 @@ export const ModalContextProvider = ({
     setShowExternalDataToolModal(null)
   }
 
+  const handleValidateBeforeSaveExternalDataTool = (newExternalDataTool: ExternalDataTool) => {
+    if (showExternalDataToolModal?.onValidateBeforeSaveCallback)
+      return showExternalDataToolModal?.onValidateBeforeSaveCallback(newExternalDataTool)
+
+    return true
+  }
+
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
@@ -120,6 +128,7 @@ export const ModalContextProvider = ({
               data={showExternalDataToolModal.payload}
               onCancel={() => setShowExternalDataToolModal(null)}
               onSave={handleSaveExternalDataTool}
+              onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
             />
           )
         }

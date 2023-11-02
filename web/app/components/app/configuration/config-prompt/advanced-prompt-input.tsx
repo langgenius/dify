@@ -21,6 +21,7 @@ import { AppType } from '@/types/app'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { useModalContext } from '@/context/modal-context'
 import type { ExternalDataTool } from '@/models/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 type Props = {
   type: PromptRole
@@ -61,12 +62,30 @@ const AdvancedPromptInput: FC<Props> = ({
     externalDataToolsConfig,
     setExternalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
   const handleOpenExternalDataToolModal = () => {
     setShowExternalDataToolModal({
       payload: {},
       onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+      },
+      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        for (let i = 0; i < promptVariables.length; i++) {
+          if (promptVariables[i].key === newExternalDataTool.variable) {
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            return false
+          }
+        }
+
+        for (let i = 0; i < externalDataToolsConfig.length; i++) {
+          if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
+            return false
+          }
+        }
+
+        return true
       },
     })
   }
@@ -89,7 +108,7 @@ const AdvancedPromptInput: FC<Props> = ({
   }
   const handleBlur = () => {
     const keys = getVars(value)
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj)).map(key => getNewVar(key))
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       showConfirmAddVar()

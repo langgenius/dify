@@ -324,7 +324,7 @@ const translation = {
       apiKey: {
         title: 'API-key',
         placeholder: 'Please enter the API-key',
-        regenerate: 'Regenerate',
+        lengthError: 'API-key length cannot be less than 5 characters',
       },
     },
     confirm: {

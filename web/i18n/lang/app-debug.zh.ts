@@ -102,7 +102,7 @@ const translation = {
       title: '工具',
       toolsInUse: '{{count}} 工具使用中',
       modal: {
-        title: '添加工具',
+        title: '工具',
         toolType: {
           title: '工具类型',
           placeholder: '请选择工具类型',

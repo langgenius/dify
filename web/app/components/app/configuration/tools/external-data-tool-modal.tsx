@@ -24,6 +24,7 @@ type ExternalDataToolModalProps = {
   data: ExternalDataTool
   onCancel: () => void
   onSave: (externalDataTool: ExternalDataTool) => void
+  onValidateBeforeSave?: (externalDataTool: ExternalDataTool) => boolean
 }
 type Provider = {
   key: string
@@ -34,6 +35,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   data,
   onCancel,
   onSave,
+  onValidateBeforeSave,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -159,8 +161,15 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       }
     }
 
-    onSave(formatData(localeData))
+    const formatedData = formatData(localeData)
+
+    if (onValidateBeforeSave && !onValidateBeforeSave(formatedData))
+      return
+
+    onSave(formatData(formatedData))
   }
+
+  const action = data.type ? t('common.operation.edit') : t('common.operation.add')
 
   return (
     <Modal
@@ -169,7 +178,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
-        {t('appDebug.feature.tools.modal.title')}
+        {`${action} ${t('appDebug.feature.tools.modal.title')}`}
       </div>
       <div className='py-2'>
         <div className='leading-9 text-sm font-medium text-gray-900'>
@@ -192,7 +201,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         </div>
         <div className='flex items-center'>
           <input
-            value={localeData.label}
+            value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
             className='grow block mr-2 px-3 h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
             placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
@@ -210,7 +219,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           {t('appDebug.feature.tools.modal.variableName.title')}
         </div>
         <input
-          value={localeData.variable}
+          value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
           className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
           placeholder={t('appDebug.feature.tools.modal.variableName.placeholder') || ''}
