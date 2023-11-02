@@ -445,7 +445,7 @@ const StepTwo = ({
   }, [segmentationType, indexType])
 
   const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
-
+  const [isChangeRetrieval, setChangeRetrieval] = useState(false)
   return (
     <div className='flex w-full h-full'>
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
@@ -633,27 +633,44 @@ const StepTwo = ({
             )}
             {/* Retrieval Method Config */}
             <div>
-              <div className={s.label}>
-                {t('datasetSettings.form.retrievalSetting.title')}
-                <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                  <a href='' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.longDescription')}
-                </div>
-              </div>
+              {!datasetId
+                ? (
+                  <div className={s.label}>
+                    {t('datasetSettings.form.retrievalSetting.title')}
+                    <div className='leading-[18px] text-xs font-normal text-gray-500'>
+                      <a href='' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      {t('datasetSettings.form.retrievalSetting.longDescription')}
+                    </div>
+                  </div>
+                )
+                : (
+                  <div className={cn(s.label, 'flex justify-between items-center')}>
+                    <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                    {!isChangeRetrieval && <div className='text-xs font-medium text-[#155EEF] cursor-pointer' onClick={() => setChangeRetrieval(true)}>{t('dataset.retrieval.change')}</div>}
+                  </div>
+                )}
+
               <div className='max-w-[640px]'>
-                {getIndexing_technique() === IndexingType.QUALIFIED
-                  ? (
-                    <RetrievalMethodConfig
-                      value={retrievalMethod}
-                      onChange={setRetrievalMethod}
-                    />
-                  )
-                  : (
-                    <EconomicalRetrievalMethodConfig
-                      value={{}}
-                      onChange={() => {}}
-                    />
-                  )}
+                {(!datasetId || (datasetId && isChangeRetrieval))
+                  ? (<>
+                    {getIndexing_technique() === IndexingType.QUALIFIED
+                      ? (
+                        <RetrievalMethodConfig
+                          value={retrievalMethod}
+                          onChange={setRetrievalMethod}
+                        />
+                      )
+                      : (
+                        <EconomicalRetrievalMethodConfig
+                          value={{}}
+                          onChange={() => {}}
+                        />
+                      )}
+                  </>)
+                  : (<>
+                readonly
+                  </>)}
+
               </div>
             </div>
 

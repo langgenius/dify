@@ -20,7 +20,7 @@ const translation = {
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'DATASETS',
   datasetsApi: 'API',
-  retrival: {
+  retrieval: {
     semantic: {
       title: 'Semantic Search',
       description: 'Generate query embeddings and search for the text chunk most similar to its vector representation.',
@@ -38,6 +38,7 @@ const translation = {
       title: 'Inverted Index',
       description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
     },
+    change: 'Change',
   },
 }
 

@@ -15,7 +15,7 @@ type Props = {
   onChange: () => void
 }
 
-const RetrivalParamConfig: FC<Props> = ({
+const RetrievalParamConfig: FC<Props> = ({
   type,
 }) => {
   const { t } = useTranslation()
@@ -67,4 +67,4 @@ const RetrivalParamConfig: FC<Props> = ({
     </div>
   )
 }
-export default React.memo(RetrivalParamConfig)
+export default React.memo(RetrievalParamConfig)

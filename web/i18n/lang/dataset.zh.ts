@@ -20,7 +20,7 @@ const translation = {
   unavailableTip: '由于 embedding 模型不可用，需要配置默认 embedding 模型',
   datasets: '数据集',
   datasetsApi: 'API',
-  retrival: {
+  retrieval: {
     semantic: {
       title: '语义检索',
       description: '通过生成查询嵌入并查询与其向量表示最相似的文本分段',
@@ -38,6 +38,7 @@ const translation = {
       title: '倒排索引',
       description: '倒排索引是一种用于高效检索的结构。按术语组织，每个术语指向包含它的文档或网页',
     },
+    change: '更改',
   },
 }
 
