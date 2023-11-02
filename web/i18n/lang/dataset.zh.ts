@@ -39,6 +39,7 @@ const translation = {
       description: '倒排索引是一种用于高效检索的结构。按术语组织，每个术语指向包含它的文档或网页',
     },
     change: '更改',
+    changeRetrievalMethod: '更改检索方法',
   },
 }
 

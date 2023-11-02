@@ -39,6 +39,7 @@ const translation = {
       description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
     },
     change: 'Change',
+    changeRetrievalMethod: 'Change retrieval method',
   },
 }
 

@@ -13,7 +13,7 @@ type Props = {
   value: any
 }
 
-const getIcon = (type: RETRIEVE_METHOD) => {
+export const getIcon = (type: RETRIEVE_METHOD) => {
   return ({
     [RETRIEVE_METHOD.semantic]: Semantic,
     [RETRIEVE_METHOD.fullText]: FileSearch02,
