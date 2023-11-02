@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next'
 import RetrivalParamConfig from '../retrival-param-config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
-import { Semantic } from '@/app/components/base/icons/src/vender/solid/development'
+import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
 
 type Props = {
-  value: RETRIEVE_METHOD
-  onChange: (value: RETRIEVE_METHOD) => void
+  value: any
+  onChange: (value: any) => void
 }
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
@@ -21,12 +21,10 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
   return (
     <div className='space-y-2'>
       <RadioCard
-        icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
+        icon={<HighPriority className='w-4 h-4 text-[#7839EE]' />}
         title={t('dataset.retrival.invertedIndex.title')}
         description={t('dataset.retrival.invertedIndex.description')}
         noRadio
-        isChosen={value === RETRIEVE_METHOD.invertedIndex}
-        onChosen={() => onChange(RETRIEVE_METHOD.invertedIndex)}
         chosenConfig={
           <RetrivalParamConfig
             type={RETRIEVE_METHOD.invertedIndex}

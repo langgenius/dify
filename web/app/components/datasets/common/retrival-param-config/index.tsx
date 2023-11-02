@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
-
 type Props = {
   type: RETRIEVE_METHOD
   value: any
@@ -46,7 +46,7 @@ const RetrivalParamConfig: FC<Props> = ({
         </div>
       )}
 
-      <div className='flex mt-4 space-between space-x-6'>
+      <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
         <TopKItem
           className='grow'
           value={2}

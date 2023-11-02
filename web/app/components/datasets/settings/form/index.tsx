@@ -187,15 +187,19 @@ const Form = () => {
           </div>
         </div>
         <div className='w-[480px]'>
-          <RetrievalMethodConfig
-            value={retrievalMethod}
-            onChange={setRetrievalMethod}
-          />
-
-          <EconomicalRetrievalMethodConfig
-            value={retrievalMethod}
-            onChange={setRetrievalMethod}
-          />
+          {indexMethod === 'high_quality'
+            ? (
+              <RetrievalMethodConfig
+                value={retrievalMethod}
+                onChange={setRetrievalMethod}
+              />
+            )
+            : (
+              <EconomicalRetrievalMethodConfig
+                value={{}}
+                onChange={() => {}}
+              />
+            )}
         </div>
       </div>
       {currentDataset?.embedding_available && (
