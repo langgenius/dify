@@ -51,7 +51,12 @@ const RetrievalMethodConfig: FC<Props> = ({
       />
       <RadioCard
         icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
-        title={t('dataset.retrival.hybrid.title')}
+        title={
+          <div className='flex items-center space-x-1'>
+            <div>{t('dataset.retrival.hybrid.title')}</div>
+            <div className='flex h-full items-center px-1.5 rounded-md border border-[#E0EAFF] text-xs font-medium text-[#444CE7]'>{t('dataset.retrival.hybrid.recommend')}</div>
+          </div>
+        }
         description={t('dataset.retrival.hybrid.description')}
         isChosen={value === RETRIEVE_METHOD.hybrid}
         onChosen={() => onChange(RETRIEVE_METHOD.hybrid)}
