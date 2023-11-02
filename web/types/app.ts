@@ -1,4 +1,5 @@
 import type { ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
+import type { ExternalDataTool } from '@/models/common'
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',
@@ -116,6 +117,7 @@ export type ModelConfig = {
   sensitive_word_avoidance: {
     enabled: boolean
   }
+  external_data_tools: ExternalDataTool[]
   agent_mode: {
     enabled: boolean
     tools: ToolItem[]

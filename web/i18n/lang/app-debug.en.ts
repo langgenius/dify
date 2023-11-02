@@ -105,15 +105,15 @@ const translation = {
         title: 'Add tool',
         toolType: {
           title: 'Tool Type',
-          placeholder: 'WebHook',
+          placeholder: 'Please select the tool type',
         },
         name: {
           title: 'Name',
-          placeholder: 'Name',
+          placeholder: 'Please enter the name',
         },
         variableName: {
           title: 'Variable Name',
-          placeholder: 'Variable Name',
+          placeholder: 'Please enter the variable name',
         },
       },
     },

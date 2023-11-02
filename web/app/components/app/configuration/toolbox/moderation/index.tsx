@@ -31,11 +31,11 @@ const Moderation = () => {
   const renderInfo = () => {
     let prefix = ''
     let suffix = ''
-    if (moderationConfig.type === 'openai')
+    if (moderationConfig.type === 'openai_moderation')
       prefix = t('appDebug.feature.moderation.modal.provider.openai')
     else if (moderationConfig.type === 'keywords')
       prefix = t('appDebug.feature.moderation.modal.provider.keywords')
-    else if (moderationConfig.type === 'api_based')
+    else if (moderationConfig.type === 'api')
       prefix = t('common.apiBasedExtension.selector.title')
     else
       prefix = codeBasedExtensionList?.data.find(item => item.name === moderationConfig.type)?.label[locale === 'en' ? 'en-US' : 'zh-Hans'] || ''

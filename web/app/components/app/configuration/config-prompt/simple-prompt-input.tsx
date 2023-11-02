@@ -18,6 +18,8 @@ import type { AutomaticRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
+import { useModalContext } from '@/context/modal-context'
+import type { ExternalDataTool } from '@/models/common'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -43,8 +45,18 @@ const Prompt: FC<ISimplePromptInput> = ({
     setIntroduction,
     hasSetBlockStatus,
     showSelectDataSet,
-    showAddExternalToolModal,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { setShowExternalDataToolModal } = useModalContext()
+  const handleOpenExternalDataToolModal = () => {
+    setShowExternalDataToolModal({
+      payload: {},
+      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+      },
+    })
+  }
   const promptVariablesObj = (() => {
     const obj: Record<string, boolean> = {}
     promptVariables.forEach((item) => {
@@ -128,7 +140,13 @@ const Prompt: FC<ISimplePromptInput> = ({
                 name: item.name,
                 value: item.key,
               })),
-              onAddExternalTool: showAddExternalToolModal,
+              externalTools: externalDataToolsConfig.map(item => ({
+                name: item.label!,
+                variableName: item.variable!,
+                icon: item.icon,
+                icon_background: item.icon_background,
+              })),
+              onAddExternalTool: handleOpenExternalDataToolModal,
             }}
             historyBlock={{
               show: false,

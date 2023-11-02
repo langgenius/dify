@@ -13,7 +13,6 @@ import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
-import AddExternalToolModal from './tools/add-external-tool-modal'
 import type {
   CompletionParams,
   DatasetConfigs,
@@ -24,6 +23,7 @@ import type {
   PromptConfig,
   PromptVariable,
 } from '@/models/debug'
+import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -85,6 +85,7 @@ const Configuration: FC = () => {
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
   })
+  const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
@@ -195,8 +196,6 @@ const Configuration: FC = () => {
       enabled: false,
     })
   }
-
-  const [isShowAddExternalToolModal, { setTrue: showAddExternalToolModal, setFalse: hideAddExternalToolModal }] = useBoolean(false)
 
   const { textGenerationModelList } = useProviderContext()
   const hasSetCustomAPIKEY = !!textGenerationModelList?.find(({ model_provider: provider }) => {
@@ -340,6 +339,9 @@ const Configuration: FC = () => {
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
 
+      if (modelConfig.external_data_tools)
+        setExternalDataToolsConfig(modelConfig.external_data_tools)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -355,6 +357,7 @@ const Configuration: FC = () => {
           speech_to_text: modelConfig.speech_to_text,
           retriever_resource: modelConfig.retriever_resource,
           sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
+          external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
         },
         completionParams: model.completion_params,
@@ -444,6 +447,7 @@ const Configuration: FC = () => {
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
+      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -535,6 +539,8 @@ const Configuration: FC = () => {
       setCitationConfig,
       moderationConfig,
       setModerationConfig,
+      externalDataToolsConfig,
+      setExternalDataToolsConfig,
       formattingChanged,
       setFormattingChanged,
       inputs,
@@ -551,7 +557,6 @@ const Configuration: FC = () => {
       datasetConfigs,
       setDatasetConfigs,
       hasSetContextVar,
-      showAddExternalToolModal,
     }}
     >
       <>
@@ -659,14 +664,6 @@ const Configuration: FC = () => {
             }}
           />
         )}
-
-        {
-          isShowAddExternalToolModal && (
-            <AddExternalToolModal
-              onCancel={hideAddExternalToolModal}
-            />
-          )
-        }
       </>
     </ConfigContext.Provider>
   )

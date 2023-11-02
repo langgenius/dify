@@ -15,7 +15,7 @@ import { fetchCodeBasedExtensionList } from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 
-const systemTypes = ['openai', 'keywords', 'api_based']
+const systemTypes = ['openai_moderation', 'keywords', 'api']
 
 type Provider = {
   key: string
@@ -44,7 +44,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   )
   const providers: Provider[] = [
     {
-      key: 'openai',
+      key: 'openai_moderation',
       name: t('appDebug.feature.moderation.modal.provider.openai'),
     },
     {
@@ -52,7 +52,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       name: t('appDebug.feature.moderation.modal.provider.keywords'),
     },
     {
-      key: 'api_based',
+      key: 'api',
       name: t('common.apiBasedExtension.selector.title'),
     },
     ...(
@@ -137,7 +137,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     if (type === 'keywords')
       params.keywords = configs?.keywords
 
-    if (type === 'api_based')
+    if (type === 'api')
       params.api_based_extension_id = configs?.api_based_extension_id
 
     if (systemTypes.findIndex(t => t === type) < 0 && currentProvider?.form_schema) {
@@ -168,7 +168,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       return
     }
 
-    if (localeData.type === 'api_based' && !localeData.configs.api_based_extension_id) {
+    if (localeData.type === 'api' && !localeData.configs.api_based_extension_id) {
       notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API-based Extension' : '基于 API 的扩展' }) })
       return
     }
@@ -185,12 +185,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       }
     }
 
-    if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response && localeData.type !== 'api_based') {
+    if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response && localeData.type !== 'api') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }
 
-    if (localeData.configs.outputs_configs?.enabled && !localeData.configs.outputs_configs.preset_response && localeData.type !== 'api_based') {
+    if (localeData.configs.outputs_configs?.enabled && !localeData.configs.outputs_configs.preset_response && localeData.type !== 'api') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }
@@ -251,7 +251,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         )
       }
       {
-        localeData.type === 'api_based' && (
+        localeData.type === 'api' && (
           <div className='py-2'>
             <div className='flex items-center justify-between h-9'>
               <div className='text-sm font-medium text-gray-900'>{t('common.apiBasedExtension.selector.title')}</div>
@@ -286,15 +286,15 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         title={t('appDebug.feature.moderation.modal.content.input') || ''}
         config={localeData.configs?.inputs_configs || { enabled: false, preset_response: '' }}
         onConfigChange={config => handleDataContentChange('inputs_configs', config)}
-        info={(localeData.type === 'api_based' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
-        showPreset={!(localeData.type === 'api_based')}
+        info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
+        showPreset={!(localeData.type === 'api')}
       />
       <ModerationContent
         title={t('appDebug.feature.moderation.modal.content.output') || ''}
         config={localeData.configs?.outputs_configs || { enabled: false, preset_response: '' }}
         onConfigChange={config => handleDataContentChange('outputs_configs', config)}
-        info={(localeData.type === 'api_based' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
-        showPreset={!(localeData.type === 'api_based')}
+        info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
+        showPreset={!(localeData.type === 'api')}
       />
       <div className='mt-1 mb-8 text-xs font-medium text-gray-500'>{t('appDebug.feature.moderation.modal.content.condition')}</div>
       <div className='flex items-center justify-end'>

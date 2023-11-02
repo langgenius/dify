@@ -17,6 +17,7 @@ import type {
   SpeechToTextConfig,
   SuggestedQuestionsAfterAnswerConfig,
 } from '@/models/debug'
+import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import { ModelModeType } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -58,6 +59,8 @@ type IDebugConfiguration = {
   setCitationConfig: (citationConfig: CitationConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
+  externalDataToolsConfig: ExternalDataTool[]
+  setExternalDataToolsConfig: (externalDataTools: ExternalDataTool[]) => void
   formattingChanged: boolean
   setFormattingChanged: (formattingChanged: boolean) => void
   inputs: Inputs
@@ -77,7 +80,6 @@ type IDebugConfiguration = {
   datasetConfigs: DatasetConfigs
   setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
-  showAddExternalToolModal: () => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -137,6 +139,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     enabled: false,
   },
   setModerationConfig: () => {},
+  externalDataToolsConfig: [],
+  setExternalDataToolsConfig: () => {},
   formattingChanged: false,
   setFormattingChanged: () => { },
   inputs: {},
@@ -180,7 +184,6 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setDatasetConfigs: () => {},
   hasSetContextVar: false,
-  showAddExternalToolModal: () => {},
 })
 
 export default DebugConfigurationContext
