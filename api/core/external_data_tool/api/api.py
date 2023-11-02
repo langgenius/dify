@@ -56,7 +56,9 @@ class ApiExternalDataTool(ExternalDataTool):
         ).first()
 
         if not api_based_extension:
-            raise ValueError("api_based_extension_id is invalid")
+            raise ValueError("[External data tool] API query failed, variable: {}, "
+                             "error: api_based_extension_id is invalid"
+                             .format(self.config.get('variable')))
 
         # decrypt api_key
         api_key = encrypter.decrypt_token(
@@ -84,6 +86,7 @@ class ApiExternalDataTool(ExternalDataTool):
         })
 
         if 'result' not in response_json:
-            raise ValueError("result not found in response")
+            raise ValueError("[External data tool] API query failed, variable: {}, error: result not found in response"
+                             .format(self.config.get('variable')))
 
         return response_json['result']

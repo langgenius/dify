@@ -1,7 +1,7 @@
 from typing import Optional
 
 from core.extension.extensible import ExtensionModule
-from core.moderation.base import Moderation
+from core.moderation.base import Moderation, ModerationOutputsResult
 from extensions.ext_code_based_extension import code_based_extension
 
 
@@ -38,7 +38,7 @@ class ModerationFactory:
         """
         return self.__extension_instance.moderation_for_inputs(inputs, query)
 
-    def moderation_for_outputs(self, text: str):
+    def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         """
         Moderation for outputs.
         When LLM outputs content, the front end will pass the output content (may be segmented)
