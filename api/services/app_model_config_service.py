@@ -329,6 +329,7 @@ class AppModelConfigService:
             "retriever_resource": config["retriever_resource"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],
+            "external_data_tools": config["external_data_tools"],
             "model": {
                 "provider": config["model"]["provider"],
                 "name": config["model"]["name"],
@@ -367,7 +368,7 @@ class AppModelConfigService:
             raise ValueError("sensitive_word_avoidance.type is required")
         
         type = config["sensitive_word_avoidance"]["type"]
-        config = config["sensitive_word_avoidance"]["config"]
+        config = config["sensitive_word_avoidance"]["configs"]
 
         ModerationFactory.validate_config(
             name=type,

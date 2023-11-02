@@ -76,3 +76,6 @@ class Moderation(Extensible, ABC):
         
         if outputs_configs_enabled and not outputs_configs.get("preset_response"):
             raise ValueError("outputs_configs.preset_response is required")
+
+class ModerationException(Exception):
+    pass

@@ -1,3 +1,5 @@
+import os
+
 import requests
 
 from models.api_based_extension import APIBasedExtensionPoint
@@ -27,6 +29,14 @@ class APIBasedExtensionRequestor:
         url = self.api_endpoint
 
         try:
+            # proxy support for security
+            proxies = None
+            if os.environ.get("API_BASED_EXTENSION_HTTP_PROXY") and os.environ.get("API_BASED_EXTENSION_HTTPS_PROXY"):
+                proxies = {
+                    'http': os.environ.get("API_BASED_EXTENSION_HTTP_PROXY"),
+                    'https': os.environ.get("API_BASED_EXTENSION_HTTPS_PROXY"),
+                }
+
             response = requests.request(
                 method='POST',
                 url=url,
@@ -35,10 +45,9 @@ class APIBasedExtensionRequestor:
                     'params': params
                 },
                 headers=headers,
-                timeout=self.timeout
+                timeout=self.timeout,
+                proxies=proxies
             )
-
-            # TODO proxy support for security
         except requests.exceptions.Timeout:
             raise ValueError("request timeout")
         except requests.exceptions.ConnectionError:
