@@ -19,6 +19,6 @@ class ModerationAPI(Resource):
         args = parser.parse_args()
 
         service = ModerationService()
-        return service.moderation_for_outputs(args['app_id'], current_user.current_tenant_id, args['text'])
+        return service.moderation_for_outputs(args['app_id'], args['text'])
 
 api.add_resource(ModerationAPI, '/moderation')
