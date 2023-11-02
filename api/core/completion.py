@@ -1,4 +1,5 @@
 import concurrent
+import json
 import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Optional, List, Union, Tuple
@@ -180,15 +181,33 @@ class Completion:
         :param query: the query
         :return: the filled inputs
         """
+        # Group tools by type and config
+        grouped_tools = {}
+        for tool in external_data_tools:
+            if not tool.get("enabled"):
+                continue
+
+            tool_key = (tool.get("type"), json.dumps(tool.get("config"), sort_keys=True))
+            grouped_tools.setdefault(tool_key, []).append(tool)
+
         results = {}
         with ThreadPoolExecutor() as executor:
-            futures = {executor.submit(
-                cls.query_external_data_tool, current_app._get_current_object(), tenant_id, app_id, tool, inputs, query
-            ): tool for tool in external_data_tools}
+            futures = {}
+            for tools in grouped_tools.values():
+                # Only query the first tool in each group
+                first_tool = tools[0]
+                future = executor.submit(
+                    cls.query_external_data_tool, current_app._get_current_object(), tenant_id, app_id, first_tool,
+                    inputs, query
+                )
+                for tool in tools:
+                    futures[future] = tool
+
             for future in concurrent.futures.as_completed(futures):
-                tool_variable, result = future.result()
-                if tool_variable is not None:
-                    results[tool_variable] = result
+                tool_key, result = future.result()
+                if tool_key in grouped_tools:
+                    for tool in grouped_tools[tool_key]:
+                        results[tool['variable']] = result
 
         inputs.update(results)
         return inputs
@@ -197,10 +216,6 @@ class Completion:
     def query_external_data_tool(cls, flask_app: Flask, tenant_id: str, app_id: str, external_data_tool: dict,
                                  inputs: dict, query: str) -> Tuple[Optional[str], Optional[str]]:
         with flask_app.app_context():
-            enabled = external_data_tool.get("enabled")
-            if not enabled:
-                return None, None
-
             tool_variable = external_data_tool.get("variable")
             tool_type = external_data_tool.get("type")
             tool_config = external_data_tool.get("config")
@@ -219,7 +234,9 @@ class Completion:
                 query=query
             )
 
-            return tool_variable, result
+            tool_key = (external_data_tool.get("type"), json.dumps(external_data_tool.get("config"), sort_keys=True))
+
+            return tool_key, result
 
     @classmethod
     def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
