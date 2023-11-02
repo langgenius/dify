@@ -22,6 +22,7 @@ const translation = {
       title: 'Retrieval Setting',
       learnMore: 'Learn more',
       description: ' about retrieval method.',
+      longDescription: ' about retrieval method, you can change this at any time in the dataset settings.',
     },
     save: 'Save',
   },

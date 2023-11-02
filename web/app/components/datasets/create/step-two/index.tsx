@@ -19,6 +19,8 @@ import {
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
@@ -31,6 +33,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
+import { RETRIEVE_METHOD } from '@/types/app'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -441,6 +444,8 @@ const StepTwo = ({
     }
   }, [segmentationType, indexType])
 
+  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
+
   return (
     <div className='flex w-full h-full'>
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
@@ -626,6 +631,32 @@ const StepTwo = ({
                 )}
               </div>
             )}
+            {/* Retrieval Method Config */}
+            <div>
+              <div className={s.label}>
+                {t('datasetSettings.form.retrievalSetting.title')}
+                <div className='leading-[18px] text-xs font-normal text-gray-500'>
+                  <a href='' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                  {t('datasetSettings.form.retrievalSetting.longDescription')}
+                </div>
+              </div>
+              <div className='max-w-[640px]'>
+                {getIndexing_technique() === IndexingType.QUALIFIED
+                  ? (
+                    <RetrievalMethodConfig
+                      value={retrievalMethod}
+                      onChange={setRetrievalMethod}
+                    />
+                  )
+                  : (
+                    <EconomicalRetrievalMethodConfig
+                      value={{}}
+                      onChange={() => {}}
+                    />
+                  )}
+              </div>
+            </div>
+
             <div className={s.source}>
               <div className={s.sourceContent}>
                 {dataSourceType === DataSourceType.FILE && (

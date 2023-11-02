@@ -22,6 +22,7 @@ const translation = {
       title: '检索设置',
       learnMore: '了解更多',
       description: '关于检索方法。',
+      longDescription: '关于检索方法，您可以随时在数据集设置中更改此设置。',
     },
     save: '保存',
   },

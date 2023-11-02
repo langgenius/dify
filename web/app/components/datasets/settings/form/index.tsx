@@ -176,6 +176,7 @@ const Form = () => {
           </div>
         </div>
       )}
+      {/* Retrieval Method Config */}
       <div className={rowClass}>
         <div className={labelClass}>
           <div>
