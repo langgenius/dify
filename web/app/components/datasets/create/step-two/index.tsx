@@ -7,6 +7,7 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
+import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -667,9 +668,10 @@ const StepTwo = ({
                         />
                       )}
                   </>)
-                  : (<>
-                readonly
-                  </>)}
+                  : (<RetrievalMethodInfo
+                    type={RETRIEVE_METHOD.semantic}
+                    value={{}}
+                  />)}
 
               </div>
             </div>

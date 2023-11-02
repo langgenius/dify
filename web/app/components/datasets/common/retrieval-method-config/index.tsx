@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import RetrivalParamConfig from '../retrieval-param-config'
+import RetrievalParamConfig from '../retrieval-param-config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
 import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
@@ -28,7 +28,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         isChosen={value === RETRIEVE_METHOD.semantic}
         onChosen={() => onChange(RETRIEVE_METHOD.semantic)}
         chosenConfig={
-          <RetrivalParamConfig
+          <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
             value={{}}
             onChange={() => {}}
@@ -42,7 +42,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         isChosen={value === RETRIEVE_METHOD.fullText}
         onChosen={() => onChange(RETRIEVE_METHOD.fullText)}
         chosenConfig={
-          <RetrivalParamConfig
+          <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
             value={{}}
             onChange={() => {}}
@@ -61,7 +61,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         isChosen={value === RETRIEVE_METHOD.hybrid}
         onChosen={() => onChange(RETRIEVE_METHOD.hybrid)}
         chosenConfig={
-          <RetrivalParamConfig
+          <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}
             value={value}
             onChange={() => {}}

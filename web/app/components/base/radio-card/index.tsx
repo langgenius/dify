@@ -14,6 +14,7 @@ type Props = {
   isChosen?: boolean
   onChosen?: () => void
   chosenConfig?: React.ReactNode
+  chosenConfigWrapClassName?: string
 }
 
 const RadioCard: FC<Props> = ({
@@ -25,6 +26,7 @@ const RadioCard: FC<Props> = ({
   isChosen,
   onChosen = () => {},
   chosenConfig,
+  chosenConfigWrapClassName,
 }) => {
   return (
     <div className={cn(s.item, isChosen && s.active)}>
@@ -43,7 +45,7 @@ const RadioCard: FC<Props> = ({
         )}
       </div>
       {((isChosen && chosenConfig) || noRadio) && (
-        <div className='pt-2 px-14 pb-6 border-t border-gray-200'>
+        <div className={cn(chosenConfigWrapClassName, 'pt-2 px-14 pb-6 border-t border-gray-200')}>
           {chosenConfig}
         </div>
       )}

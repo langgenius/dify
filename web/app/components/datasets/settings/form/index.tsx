@@ -21,7 +21,6 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import AccountSetting from '@/app/components/header/account-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { RETRIEVE_METHOD } from '@/types/app'
-
 const rowClass = `
   flex justify-between py-4
 `
@@ -188,6 +187,7 @@ const Form = () => {
           </div>
         </div>
         <div className='w-[480px]'>
+
           {indexMethod === 'high_quality'
             ? (
               <RetrievalMethodConfig
