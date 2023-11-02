@@ -134,7 +134,7 @@ class AppModelConfig(db.Model):
     @property
     def sensitive_word_avoidance_dict(self) -> dict:
         return json.loads(self.sensitive_word_avoidance) if self.sensitive_word_avoidance \
-            else {"enabled": False, "words": [], "canned_response": []}
+            else {"enabled": False, "type": "", "configs": []}
 
     @property
     def external_data_tools_list(self) -> list[dict]:

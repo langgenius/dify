@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.moderation.base import Moderation, ModerationException
+from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOuputsAction
 
 
 class KeywordsModeration(Moderation):
@@ -30,21 +30,26 @@ class KeywordsModeration(Moderation):
         keywords_list = self.config['keywords'].split('\n')
         preset_response = self.config['inputs_configs']['preset_response']
 
-        self._is_violated(inputs, preset_response, keywords_list)
+        if self._is_violated(inputs, preset_response, keywords_list):
+            raise ModerationException(preset_response)
 
-    def moderation_for_outputs(self, text: str):
+    def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         if not self.config['outputs_configs']['enabled']:
             return
 
         keywords_list = self.config['keywords'].split('\n')
         preset_response = self.config['outputs_configs']['preset_response']
 
-        self._is_violated({'text': text}, preset_response, keywords_list)
+        flagged = self._is_violated({'text': text}, preset_response, keywords_list)
 
-    def _is_violated(self, inputs: dict, preset_response: str, keywords_list: list):
+        return ModerationOutputsResult(flagged=flagged, action=ModerationOuputsAction.DIRECT_OUTPUT, preset_response=preset_response)
+
+    def _is_violated(self, inputs: dict, preset_response: str, keywords_list: list) -> bool:
         for value in inputs.values():
             if self._check_keywords_in_text(keywords_list, value):
-                raise ModerationException(preset_response)
+                return True
+        
+        return False
                 
     def _check_keywords_in_text(self, keywords_list, text):
         for keyword in keywords_list:

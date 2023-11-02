@@ -1,8 +1,19 @@
 from abc import ABC, abstractmethod
 from typing import Optional
+from pydantic import BaseModel
+from enum import Enum
 
 from core.extension.extensible import Extensible, ExtensionModule
 
+class ModerationOuputsAction(Enum):
+    DIRECT_OUTPUT = "direct_output"
+    OVERRIDED = "overrided"
+
+class ModerationOutputsResult(BaseModel):
+    flagged: bool = False
+    action: ModerationOuputsAction
+    preset_response: str = ""
+    text: str = ""
 
 class Moderation(Extensible, ABC):
     """
@@ -39,7 +50,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def moderation_for_outputs(self, text: str):
+    def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         """
         Moderation for outputs.
         When LLM outputs content, the front end will pass the output content (may be segmented)
