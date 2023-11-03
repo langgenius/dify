@@ -77,7 +77,12 @@ const ModifyRetrievalModal: FC<Props> = ({
             />
           )}
       </div>
-      <div className='mt-6 flex justify-end'>
+      <div
+        className='flex justify-end pt-6 px-6 border-t'
+        style={{
+          borderColor: 'rgba(0, 0, 0, 0.05)',
+        }}
+      >
         <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
         <Button type='primary' className='flex-shrink-0' onClick={onSave} >{t('common.operation.save')}</Button>
       </div>
