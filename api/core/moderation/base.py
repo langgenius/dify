@@ -6,14 +6,22 @@ from enum import Enum
 from core.extension.extensible import Extensible, ExtensionModule
 
 
-class ModerationOutputsAction(Enum):
+class ModerationAction(Enum):
     DIRECT_OUTPUT = 'direct_output'
     OVERRIDED = 'overrided'
 
 
+class ModerationInputsResult(BaseModel):
+    flagged: bool = False
+    action: ModerationAction
+    preset_response: str = ""
+    inputs: dict = {}
+    query: str = ""
+
+
 class ModerationOutputsResult(BaseModel):
     flagged: bool = False
-    action: ModerationOutputsAction
+    action: ModerationAction
     preset_response: str = ""
     text: str = ""
 
@@ -24,8 +32,9 @@ class Moderation(Extensible, ABC):
     """
     module: ExtensionModule = ExtensionModule.MODERATION
 
-    def __init__(self, tenant_id: str, config: Optional[dict] = None) -> None:
+    def __init__(self, app_id: str, tenant_id: str, config: Optional[dict] = None) -> None:
         super().__init__(tenant_id, config)
+        self.app_id = app_id
 
     @classmethod
     @abstractmethod
@@ -40,7 +49,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
+    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         """
         Moderation for inputs.
         After the user inputs, this method will be called to perform sensitive content review

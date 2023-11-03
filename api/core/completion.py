@@ -23,7 +23,7 @@ from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from models.model import App, AppModelConfig, Account, Conversation, EndUser
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationException, ModerationAction
 from core.moderation.factory import ModerationFactory
 
 
@@ -87,7 +87,7 @@ class Completion:
            
             try:
                 # process sensitive_word_avoidance
-                cls.moderation_for_inputs(app.tenant_id, app_model_config, inputs, query)
+                inputs, query = cls.moderation_for_inputs(app.id, app.tenant_id, app_model_config, inputs, query)
             except ModerationException as e:
                 cls.run_final_llm(
                     model_instance=final_model_instance,
@@ -160,14 +160,27 @@ class Completion:
             return
     
     @classmethod
-    def moderation_for_inputs(cls, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
+    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str) -> Tuple[dict, str]:
         if not app_model_config.sensitive_word_avoidance_dict['enabled']:
-            return
+            return inputs, query
 
         type = app_model_config.sensitive_word_avoidance_dict['type']
 
-        moderation = ModerationFactory(type, tenant_id, app_model_config.sensitive_word_avoidance_dict['config'])
-        moderation.moderation_for_inputs(inputs, query)
+        moderation = ModerationFactory(type, app_id, tenant_id, app_model_config.sensitive_word_avoidance_dict['config'])
+        moderation_result = moderation.moderation_for_inputs(inputs, query)
+
+        if not moderation_result.flagged:
+            return inputs, query
+
+        if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
+            raise ModerationException(moderation_result.preset_response)
+        elif moderation_result.action == ModerationAction.OVERRIDED:
+            inputs = moderation_result.inputs
+            query = moderation_result.query
+
+        return inputs, query
+            
+
 
     @classmethod
     def fill_in_inputs_from_external_data_tools(cls, tenant_id: str, app_id: str, external_data_tools: list[dict],

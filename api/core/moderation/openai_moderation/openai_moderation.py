@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from core.helper.encrypter import decrypt_token
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOutputsAction
+from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
 from extensions.ext_database import db
 from models.provider import Provider
 
@@ -22,16 +22,18 @@ class OpenAIModeration(Moderation):
         """
         cls._validate_inputs_and_outputs_config(config, True)
 
-    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
-        if not self.config['inputs_config']['enabled']:
-            return
+    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+        flagged = False
+        preset_response = ""
 
-        preset_response = self.config['inputs_config']['preset_response']
-        if query:
-            inputs['query__'] = query
+        if self.config['inputs_config']['enabled']:
+            preset_response = self.config['inputs_config']['preset_response']
 
-        if self._is_violated(inputs):
-            raise ModerationException(preset_response)
+            if query:
+                inputs['query__'] = query
+            flagged = self._is_violated(inputs)
+        
+        return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
@@ -41,7 +43,7 @@ class OpenAIModeration(Moderation):
             flagged = self._is_violated({ 'text': text })
             preset_response = self.config['outputs_config']['preset_response']
 
-        return ModerationOutputsResult(flagged=flagged, action=ModerationOutputsAction.DIRECT_OUTPUT, preset_response=preset_response)
+        return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict):
 
