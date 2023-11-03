@@ -3,11 +3,19 @@ from typing import Any, Dict, List, Union
 
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import LLMResult, BaseMessage
+from pydantic import BaseModel
 
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
 from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
+from core.moderation.base import ModerationOutputsResult, ModerationOutputsAction
+from core.moderation.factory import ModerationFactory
+
+
+class ModerationRule(BaseModel):
+    type: str
+    config: Dict[str, Any]
 
 
 class LLMCallbackHandler(BaseCallbackHandler):
@@ -19,6 +27,19 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.llm_message = LLMMessage()
         self.start_at = None
         self.conversation_message_task = conversation_message_task
+
+        app_model_config = self.conversation_message_task.app_model_config
+        sensitive_word_avoidance_dict = app_model_config.sensitive_word_avoidance_dict
+
+        self.is_interrupt = False
+        self.moderation_rule = None
+        self.moderation_buffer = ''
+        self.moderation_chunk = ''
+        if sensitive_word_avoidance_dict and sensitive_word_avoidance_dict.get("enabled"):
+            self.moderation_rule = ModerationRule(
+                type=sensitive_word_avoidance_dict.get("type"),
+                config=sensitive_word_avoidance_dict.get("config")
+            )
 
     @property
     def always_verbose(self) -> bool:
@@ -60,8 +81,11 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
         if not self.conversation_message_task.streaming:
-            self.conversation_message_task.append_message_text(response.generations[0][0].text)
-            self.llm_message.completion = response.generations[0][0].text
+            moderation_result = self.moderation_completion(response.generations[0][0].text)
+            if not moderation_result:
+                self.llm_message.completion = response.generations[0][0].text
+
+            self.conversation_message_task.append_message_text(self.llm_message.completion)
 
         if response.llm_output and 'token_usage' in response.llm_output:
             if 'prompt_tokens' in response.llm_output['token_usage']:
@@ -79,13 +103,16 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.conversation_message_task.save_message(self.llm_message)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        try:
-            self.conversation_message_task.append_message_text(token)
-        except ConversationTaskStoppedException as ex:
-            self.on_llm_error(error=ex)
-            raise ex
+        self.moderation_completion(token)
 
-        self.llm_message.completion += token
+        if not self.is_interrupt:
+            try:
+                self.conversation_message_task.append_message_text(token)
+            except ConversationTaskStoppedException as ex:
+                self.on_llm_error(error=ex)
+                raise ex
+
+            self.llm_message.completion += token
 
     def on_llm_error(
             self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
@@ -99,3 +126,48 @@ class LLMCallbackHandler(BaseCallbackHandler):
                 self.conversation_message_task.save_message(llm_message=self.llm_message, by_stopped=True)
         else:
             logging.debug("on_llm_error: %s", error)
+
+    def moderation_completion(self, token: str) -> bool:
+        """
+        Moderation for outputs.
+
+        :param token: LLM output content
+        :return: bool
+        """
+        if not self.moderation_rule:
+            return False
+
+        if len(self.moderation_chunk) < 50:
+            self.moderation_chunk += token
+            return False
+
+        moderation_chunk = self.moderation_chunk
+        self.moderation_chunk = ''
+
+        try:
+            moderation_factory = ModerationFactory(
+                name=self.moderation_rule.type,
+                tenant_id=self.conversation_message_task.tenant_id,
+                config=self.moderation_rule.config
+            )
+
+            result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_chunk)
+            if not result.flagged:
+                return False
+
+            if result.action == ModerationOutputsAction.DIRECT_OUTPUT:
+                self.is_interrupt = True
+                self.llm_message.completion = result.text
+            else:
+                self.llm_message.completion = self.moderation_buffer + moderation_chunk + self.moderation_chunk
+
+            if self.conversation_message_task.streaming:
+                # TODO trigger replace event
+                logging.debug("Moderation %s replace event: %s", result.action.value, self.llm_message.completion)
+        except Exception as e:
+            logging.error("Moderation Output error: %s", e)
+            return False
+        finally:
+            self.moderation_buffer += moderation_chunk
+
+        return True
