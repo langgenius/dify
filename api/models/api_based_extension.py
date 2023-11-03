@@ -7,6 +7,7 @@ from extensions.ext_database import db
 
 class APIBasedExtensionPoint(enum.Enum):
     APP_EXTERNAL_DATA_TOOL_QUERY = 'app.external_data_tool.query'
+    PING = 'ping'
 
 
 class APIBasedExtension(db.Model):
