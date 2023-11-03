@@ -19,6 +19,9 @@ import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { fetchTextGenerationMessge } from '@/service/debug'
+import type { ModerationService } from '@/models/common'
+import { useModerate } from '@/hooks/use-moderate'
+
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
@@ -40,6 +43,8 @@ export type IGenerationItemProps = {
   installedAppId?: string
   taskId?: string
   controlClearMoreLikeThis?: number
+  enableModeration?: boolean
+  moderationService?: (text: string) => ReturnType<ModerationService>
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -66,7 +71,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   className,
   isError,
   onRetry,
-  content,
+  content: originContent,
   messageId,
   isLoading,
   isResponsing,
@@ -81,6 +86,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   installedAppId,
   taskId,
   controlClearMoreLikeThis,
+  enableModeration,
+  moderationService,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -98,6 +105,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
     setChildFeedback(childFeedback)
   }
+
+  const moderatedContent = useModerate(
+    enableModeration ? originContent : '',
+    !isResponsing,
+    moderationService || (() => Promise.resolve({ flagged: false, text: '' })),
+  )
+  const content = enableModeration ? moderatedContent : originContent
 
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
