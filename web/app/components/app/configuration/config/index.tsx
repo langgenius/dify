@@ -116,9 +116,9 @@ const Config: FC = () => {
           payload: {
             enabled: true,
             type: 'keywords',
-            configs: {
+            config: {
               keywords: '',
-              inputs_configs: {
+              inputs_config: {
                 enabled: true,
                 preset_response: '',
               },

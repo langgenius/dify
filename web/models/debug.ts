@@ -79,11 +79,11 @@ export type ModerationContentConfig = {
 }
 export type ModerationConfig = MoreLikeThisConfig & {
   type?: string
-  configs?: {
+  config?: {
     keywords?: string
     api_based_extension_id?: string
-    inputs_configs?: ModerationContentConfig
-    outputs_configs?: ModerationContentConfig
+    inputs_config?: ModerationContentConfig
+    outputs_config?: ModerationContentConfig
   } & Partial<Record<string, any>>
 }
 

@@ -40,11 +40,11 @@ const Moderation = () => {
     else
       prefix = codeBasedExtensionList?.data.find(item => item.name === moderationConfig.type)?.label[locale === 'en' ? 'en-US' : 'zh-Hans'] || ''
 
-    if (moderationConfig.configs?.inputs_configs?.enabled && moderationConfig.configs?.outputs_configs?.enabled)
+    if (moderationConfig.config?.inputs_config?.enabled && moderationConfig.config?.outputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.allEnabled')
-    else if (moderationConfig.configs?.inputs_configs?.enabled)
+    else if (moderationConfig.config?.inputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.inputEnabled')
-    else if (moderationConfig.configs?.outputs_configs?.enabled)
+    else if (moderationConfig.config?.outputs_config?.enabled)
       suffix = t('appDebug.feature.moderation.outputEnabled')
 
     return `${prefix} · ${suffix}`
