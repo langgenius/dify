@@ -22,8 +22,6 @@ import { Markdown } from '@/app/components/base/markdown'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
-import type { ModerationService } from '@/models/common'
-import { useModerate } from '@/hooks/use-moderate'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -54,8 +52,6 @@ export type IAnswerProps = {
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
-  enableModeration?: boolean
-  moderationService?: (text: string) => ReturnType<ModerationService>
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -73,23 +69,15 @@ const Answer: FC<IAnswerProps> = ({
   dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
-  enableModeration,
-  moderationService,
 }) => {
-  const { id, content: originContent, more, feedback, adminFeedback, annotation: initAnnotation } = item
+  const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
   const [annotation, setAnnotation] = useState<Annotation | undefined | null>(initAnnotation)
   const [inputValue, setInputValue] = useState<string>(initAnnotation?.content ?? '')
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
-  const moderatedContent = useModerate(
-    enableModeration ? originContent : '',
-    !isResponsing,
-    moderationService || (() => Promise.resolve({ flagged: false, text: '' })),
-  )
   const { t } = useTranslation()
-  const content = enableModeration ? moderatedContent : originContent
   /**
  * Render feedback results (distinguish between users and administrators)
  * User reviews cannot be cancelled in Console

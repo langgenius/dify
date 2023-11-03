@@ -16,7 +16,7 @@ import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
 import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
-import type { ModerationConfig, PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
@@ -28,7 +28,6 @@ import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
-import { moderate } from '@/service/common'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -126,7 +125,6 @@ const Main: FC<IMainProps> = ({
   }
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
-  const [moderationConfig, setModerationConfig] = useState<ModerationConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
@@ -310,7 +308,6 @@ const Main: FC<IMainProps> = ({
         } as PromptConfig)
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
-        setModerationConfig(sensitive_word_avoidance)
 
         // setConversationList(conversations as ConversationItem[])
 
@@ -573,14 +570,6 @@ const Main: FC<IMainProps> = ({
                     displayScene='web'
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     answerIcon={<LogoAvatar className='relative shrink-0' />}
-                    enableModeration={moderationConfig?.enabled}
-                    moderationService={(text: string) => moderate(
-                      '/moderation',
-                      {
-                        app_id: appId,
-                        text,
-                      },
-                    )}
                   />
                 </div>
               </div>)

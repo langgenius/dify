@@ -24,7 +24,6 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
-import { moderate } from '@/service/common'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -324,6 +323,9 @@ const Debug: FC<IDebug> = ({
           })
         setChatList(newListWithAnswer)
       },
+      onMessageReplace: (messageReplace) => {
+        responseItem.content = messageReplace.answer
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -404,7 +406,7 @@ const Debug: FC<IDebug> = ({
 
     setCompletionRes('')
     setMessageId('')
-    const res: string[] = []
+    let res: string[] = []
 
     setResponsingTrue()
     sendCompletionMessage(appId, data, {
@@ -412,6 +414,10 @@ const Debug: FC<IDebug> = ({
         res.push(data)
         setCompletionRes(res.join(''))
         setMessageId(messageId)
+      },
+      onMessageReplace: (messageReplace) => {
+        res = [messageReplace.answer]
+        setCompletionRes(res.join(''))
       },
       onCompleted() {
         setResponsingFalse()
@@ -466,14 +472,6 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
-                  enableModeration={moderationConfig.enabled}
-                  moderationService={(text: string) => moderate(
-                    '/apps/moderation',
-                    {
-                      app_id: appId,
-                      text,
-                    },
-                  )}
                 />
               </div>
             </div>
@@ -493,14 +491,6 @@ const Debug: FC<IDebug> = ({
                 messageId={messageId}
                 isError={false}
                 onRetry={() => { }}
-                enableModeration={moderationConfig.enabled}
-                moderationService={(text: string) => moderate(
-                  '/apps/moderation',
-                  {
-                    app_id: appId,
-                    text,
-                  },
-                )}
               />
             )}
           </div>

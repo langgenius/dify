@@ -29,7 +29,7 @@ import {
   updateFeedback,
 } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
-import type { ModerationConfig, PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
 import { changeLanguage } from '@/i18n/i18next-config'
@@ -39,7 +39,6 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import Confirm from '@/app/components/base/confirm'
-import { moderate } from '@/service/common'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -169,7 +168,6 @@ const Main: FC<IMainProps> = ({
   const [suggestedQuestionsAfterAnswerConfig, setSuggestedQuestionsAfterAnswerConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [speechToTextConfig, setSpeechToTextConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
   const [citationConfig, setCitationConfig] = useState<SuggestedQuestionsAfterAnswerConfig | null>(null)
-  const [moderationConfig, setModerationConfig] = useState<ModerationConfig | null>(null)
 
   const [conversationIdChangeBecauseOfNew, setConversationIdChangeBecauseOfNew, getConversationIdChangeBecauseOfNew] = useGetState(false)
   const [isChatStarted, { setTrue: setChatStarted, setFalse: setChatNotStarted }] = useBoolean(false)
@@ -387,7 +385,6 @@ const Main: FC<IMainProps> = ({
         setSuggestedQuestionsAfterAnswerConfig(suggested_questions_after_answer)
         setSpeechToTextConfig(speech_to_text)
         setCitationConfig(retriever_resource)
-        setModerationConfig(sensitive_word_avoidance)
 
         // setConversationList(conversations as ConversationItem[])
 
@@ -704,14 +701,6 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
-                    enableModeration={moderationConfig?.enabled}
-                    moderationService={(text: string) => moderate(
-                      isInstalledApp ? `/installed-apps/${installedAppInfo?.id}/moderation` : '/moderation',
-                      {
-                        app_id: (isInstalledApp ? installedAppInfo?.app.id : appId) || '',
-                        text,
-                      },
-                    )}
                   />
                 </div>
               </div>)
