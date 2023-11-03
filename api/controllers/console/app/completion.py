@@ -220,7 +220,7 @@ class ModerationApi(Resource):
         args = parser.parse_args()
         
         service = ModerationService()
-        return service.moderation_for_outputs(_get_app(str(args['app_id']), None), flask_login.current_user, args['text'])
+        return service.moderation_for_outputs(_get_app(str(args['app_id']), None), args['text'])
 
 api.add_resource(CompletionMessageApi, '/apps/<uuid:app_id>/completion-messages')
 api.add_resource(CompletionMessageStopApi, '/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop')

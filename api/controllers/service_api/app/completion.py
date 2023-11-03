@@ -180,6 +180,7 @@ def compact_response(response: Union[dict | Generator]) -> Response:
                         mimetype='text/event-stream')
 
 class ModerationAPI(AppApiResource):
+
     def post(self, app_model, end_user):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, location='json')
@@ -187,7 +188,7 @@ class ModerationAPI(AppApiResource):
         args = parser.parse_args()
 
         service = ModerationService()
-        return service.moderation_for_outputs(app_model, end_user, args['text'])
+        return service.moderation_for_outputs(app_model, args['text'])
 
 api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')

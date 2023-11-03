@@ -1,12 +1,10 @@
-from typing import Union
-
-from models.model import AppModelConfig, App, Account, EndUser
+from models.model import AppModelConfig, App
 from core.moderation.factory import ModerationFactory
 from extensions.ext_database import db
 
 class ModerationService:
 
-    def moderation_for_outputs(self, app_model: App, user: Union[Account , EndUser], text: str) -> dict:
+    def moderation_for_outputs(self, app_model: App, text: str) -> dict:
         app_model_config: AppModelConfig = None
 
         app_model_config = db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()
@@ -17,5 +15,5 @@ class ModerationService:
         name = app_model_config.sensitive_word_avoidance_dict['type']
         config = app_model_config.sensitive_word_avoidance_dict['configs']
 
-        moderation = ModerationFactory(name, user.current_tenant_id, config)
+        moderation = ModerationFactory(name, app_model.tenant_id, config)
         return moderation.moderation_for_outputs(text).dict()

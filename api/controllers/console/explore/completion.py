@@ -184,10 +184,10 @@ class ModerationApi(InstalledAppResource):
         args = parser.parse_args()
                 
         service = ModerationService()
-        return service.moderation_for_outputs(installed_app.app, current_user, args['text'])
+        return service.moderation_for_outputs(installed_app.app, args['text'])
 
 api.add_resource(CompletionApi, '/installed-apps/<uuid:installed_app_id>/completion-messages', endpoint='installed_app_completion')
 api.add_resource(CompletionStopApi, '/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop', endpoint='installed_app_stop_completion')
 api.add_resource(ChatApi, '/installed-apps/<uuid:installed_app_id>/chat-messages', endpoint='installed_app_chat_completion')
 api.add_resource(ChatStopApi, '/installed-apps/<uuid:installed_app_id>/chat-messages/<string:task_id>/stop', endpoint='installed_app_stop_chat_completion')
-api.add_resource(ModerationApi, '/installed-apps/moderation', endpoint='installed_app_moderation')
+api.add_resource(ModerationApi, '/installed-apps/<uuid:installed_app_id>/moderation', endpoint='installed_app_moderation')
