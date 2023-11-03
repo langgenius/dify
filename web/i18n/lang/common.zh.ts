@@ -308,7 +308,7 @@ const translation = {
     selector: {
       title: '基于 API 的扩展',
       placeholder: '请选择基于 API 的扩展',
-      manage: 'Manage Webhook APIs',
+      manage: '管理基于 API 的扩展',
     },
     modal: {
       title: '新增基于 API 的扩展',

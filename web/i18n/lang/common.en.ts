@@ -308,7 +308,7 @@ const translation = {
     selector: {
       title: 'API-based Extension',
       placeholder: 'Please select API-based extension',
-      manage: 'Manage Webhook APIs',
+      manage: 'Manage API-based Extension',
     },
     modal: {
       title: 'Add API-based Extension',

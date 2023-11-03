@@ -85,18 +85,20 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
                 <ArrowUpRight className='ml-0.5 w-3 h-3' />
               </div>
             </div>
-            {
-              data?.map(item => (
-                <div
-                  key={item.id}
-                  className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'
-                  onClick={() => handleSelect(item.id!)}
-                >
-                  <div className='text-sm text-gray-900'>{item.name}</div>
-                  <div className='text-xs text-gray-500'>{item.api_endpoint}</div>
-                </div>
-              ))
-            }
+            <div className='max-h-[250px] overflow-y-auto'>
+              {
+                data?.map(item => (
+                  <div
+                    key={item.id}
+                    className='px-3 py-1.5 w-full cursor-pointer hover:bg-gray-50 rounded-md text-left'
+                    onClick={() => handleSelect(item.id!)}
+                  >
+                    <div className='text-sm text-gray-900'>{item.name}</div>
+                    <div className='text-xs text-gray-500'>{item.api_endpoint}</div>
+                  </div>
+                ))
+              }
+            </div>
           </div>
           <div className='h-[1px] bg-gray-100' />
           <div className='p-1'>

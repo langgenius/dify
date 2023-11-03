@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import copy from 'copy-to-clipboard'
 import { useContext } from 'use-context-selector'
 import ConfigContext from '@/context/debug-configuration'
 import Switch from '@/app/components/base/switch'
@@ -27,6 +28,7 @@ const Tools = () => {
     modelConfig,
   } = useContext(ConfigContext)
   const [expanded, setExpanded] = useState(true)
+  const [copied, setCopied] = useState(false)
 
   const handleSaveExternalDataToolModal = (externalDataTool: ExternalDataTool, index: number) => {
     if (index > -1) {
@@ -138,8 +140,18 @@ const Tools = () => {
                       background={item.icon_background}
                     />
                     <div className='mr-2 text-[13px] font-medium text-gray-800'>{item.label}</div>
-                    <TooltipPlus popupContent='111'>
-                      <div className='text-xs text-gray-500'>{item.variable}</div>
+                    <TooltipPlus
+                      popupContent={copied ? t('appApi.copied') : `${item.variable}, ${t('appApi.copy')}`}
+                    >
+                      <div
+                        className='text-xs text-gray-500'
+                        onClick={() => {
+                          copy(item.variable || '')
+                          setCopied(true)
+                        }}
+                      >
+                        {item.variable}
+                      </div>
                     </TooltipPlus>
                   </div>
                   <div
