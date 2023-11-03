@@ -1,5 +1,3 @@
-import json
-
 from models.model import AppModelConfig, App
 from core.moderation.factory import ModerationFactory, ModerationOutputsResult
 from extensions.ext_database import db
@@ -18,5 +16,4 @@ class ModerationService:
         config = app_model_config.sensitive_word_avoidance_dict['config']
 
         moderation = ModerationFactory(name, app_id, app_model.tenant_id, config)
-        data = moderation.moderation_for_outputs(text).json()
-        return json.loads(data)
+        return moderation.moderation_for_outputs(text)

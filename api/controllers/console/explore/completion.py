@@ -20,6 +20,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableErro
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
 
+
 # define completion api for user
 class CompletionApi(InstalledAppResource):
 
