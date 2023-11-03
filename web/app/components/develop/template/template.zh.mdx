@@ -212,9 +212,60 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         },
         {
           // ...
+        }
       ]
     }
     ```
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/moderation'
+  method='POST'
+  title='内容审核'
+  name='#moderation'
+/>
+<Row>
+  <Col>
+    应用返回内容审核，建议返回内容每 50 个字符为一组调用此接口。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='app_id' type='string' key='app_id'>
+        应用 ID
+      </Property>
+      <Property name='text' type='string' key='text'>
+        输出内容
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/moderation" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/moderation' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--data-raw '{ \n "app_id": "", \n "text": ""\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/conversations/name' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --data-raw '{
+        "app_id": "",
+        "text": ""
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "flagged": true, // 是否违反校验规则
+      "text": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
