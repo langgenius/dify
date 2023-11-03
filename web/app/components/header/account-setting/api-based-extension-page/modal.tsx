@@ -48,16 +48,16 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
       if (!data.id) {
         res = await addApiBasedExtension({
           url: '/api-based-extension',
-          body: {
-            ...localeData,
-            api_key: data.api_key === localeData.api_key ? '[__HIDDEN__]' : localeData.api_key,
-          },
+          body: localeData,
         })
       }
       else {
         res = await updateApiBasedExtension({
           url: `/api-based-extension/${data.id}`,
-          body: localeData,
+          body: {
+            ...localeData,
+            api_key: data.api_key === localeData.api_key ? '[__HIDDEN__]' : localeData.api_key,
+          },
         })
 
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
