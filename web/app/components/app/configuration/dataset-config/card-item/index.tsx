@@ -14,6 +14,7 @@ import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 export type ICardItemProps = {
   className?: string
   config: DataSet
+  onSetting: (id: string) => void
   onRemove: (id: string) => void
   readonly?: boolean
 }
@@ -21,6 +22,7 @@ export type ICardItemProps = {
 const CardItem: FC<ICardItemProps> = ({
   className,
   config,
+  onSetting,
   onRemove,
   readonly,
 }) => {
@@ -57,7 +59,10 @@ const CardItem: FC<ICardItemProps> = ({
       {!readonly
       && (
         <div className={`${s.btnWrap} absolute right-2 top-1/2 translate-y-[-50%] flex items-center space-x-1`}>
-          <div className={cn(s.settingBtn, 'rounded-md text-gray-500 p-1 cursor-pointer')} >
+          <div
+            onClick={() => onSetting(config.id)}
+            className={cn(s.settingBtn, 'rounded-md text-gray-500 p-1 cursor-pointer')}
+          >
             <Settings01 className='w-4 h-4' />
           </div>
           <RemoveIcon className={`${s.deleteBtn}`} onClick={() => onRemove(config.id)} />
