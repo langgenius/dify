@@ -16,7 +16,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunOnce from '@/app/components/share/text-generation/run-once'
 import { fetchSavedMessage as doFetchSavedMessage, fetchAppInfo, fetchAppParams, removeMessage, saveMessage } from '@/service/share'
 import type { SiteInfo } from '@/models/share'
-import type { MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
+import type { ModerationConfig, MoreLikeThisConfig, PromptConfig, SavedMessage } from '@/models/debug'
 import AppIcon from '@/app/components/base/app-icon'
 import { changeLanguage } from '@/i18n/i18next-config'
 import Loading from '@/app/components/base/loading'
@@ -26,6 +26,8 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+import { moderate } from '@/service/common'
+
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
@@ -70,6 +72,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
+  const [moderationConfig, setModerationConfig] = useState<ModerationConfig | null>(null)
 
   // save message
   const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
@@ -337,13 +340,14 @@ const TextGeneration: FC<IMainProps> = ({
       setSiteInfo(siteInfo as SiteInfo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this }: any = appParams
+      const { user_input_form, more_like_this, sensitive_word_avoidance }: any = appParams
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture
         prompt_variables,
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
+      setModerationConfig(sensitive_word_avoidance)
     })()
   }, [])
 
@@ -377,6 +381,14 @@ const TextGeneration: FC<IMainProps> = ({
     handleSaveMessage={handleSaveMessage}
     taskId={task?.id}
     onCompleted={handleCompleted}
+    enableModeration={moderationConfig?.enabled}
+    moderationService={(text: string) => moderate(
+      isInstalledApp ? `/installed-apps/${installedAppInfo?.id}/moderation` : '/moderation',
+      {
+        app_id: (isInstalledApp ? installedAppInfo?.app.id : appId) || '',
+        text,
+      },
+    )}
   />)
 
   const renderBatchRes = () => {

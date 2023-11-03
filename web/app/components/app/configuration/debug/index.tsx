@@ -493,6 +493,14 @@ const Debug: FC<IDebug> = ({
                 messageId={messageId}
                 isError={false}
                 onRetry={() => { }}
+                enableModeration={moderationConfig.enabled}
+                moderationService={(text: string) => moderate(
+                  '/apps/moderation',
+                  {
+                    app_id: appId,
+                    text,
+                  },
+                )}
               />
             )}
           </div>

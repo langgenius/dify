@@ -12,6 +12,7 @@ import type { Feedbacktype } from '@/app/components/app/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
+import type { ModerationService } from '@/models/common'
 export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
@@ -29,6 +30,8 @@ export type IResultProps = {
   handleSaveMessage: (messageId: string) => void
   taskId?: number
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  enableModeration?: boolean
+  moderationService?: (text: string) => ReturnType<ModerationService>
 }
 
 const Result: FC<IResultProps> = ({
@@ -48,6 +51,8 @@ const Result: FC<IResultProps> = ({
   handleSaveMessage,
   taskId,
   onCompleted,
+  enableModeration,
+  moderationService,
 }) => {
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -202,6 +207,8 @@ const Result: FC<IResultProps> = ({
       isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}
+      enableModeration={enableModeration}
+      moderationService={moderationService}
     />
   )
 
