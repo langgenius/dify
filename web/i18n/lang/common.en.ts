@@ -302,7 +302,7 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: 'API-based Extension Description text here.',
+    title: 'API-based extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
     link: 'Learn how to develop your own API-based Extension.',
     add: 'Add API-based Extension',
     selector: {
