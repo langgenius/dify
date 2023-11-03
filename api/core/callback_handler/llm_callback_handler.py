@@ -157,13 +157,14 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
             if result.action == ModerationOutputsAction.DIRECT_OUTPUT:
                 self.is_interrupt = True
-                self.llm_message.completion = result.text
+                self.llm_message.completion = result.preset_response
             else:
-                self.llm_message.completion = self.moderation_buffer + moderation_chunk + self.moderation_chunk
+                self.llm_message.completion = self.moderation_buffer + result.text + self.moderation_chunk
 
             if self.conversation_message_task.streaming:
-                # TODO trigger replace event
+                # trigger replace event
                 logging.debug("Moderation %s replace event: %s", result.action.value, self.llm_message.completion)
+                self.conversation_message_task.on_message_replace(self.llm_message.completion)
         except Exception as e:
             logging.error("Moderation Output error: %s", e)
             return False

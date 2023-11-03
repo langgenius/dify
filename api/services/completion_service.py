@@ -386,6 +386,8 @@ class CompletionService:
                                 break
                             if event == 'message':
                                 yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'message_replace':
+                                yield "data: " + json.dumps(cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
                             elif event == 'chain':
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
@@ -416,6 +418,21 @@ class CompletionService:
     def get_message_response_data(cls, data: dict):
         response_data = {
             'event': 'message',
+            'task_id': data.get('task_id'),
+            'id': data.get('message_id'),
+            'answer': data.get('text'),
+            'created_at': int(time.time())
+        }
+
+        if data.get('mode') == 'chat':
+            response_data['conversation_id'] = data.get('conversation_id')
+
+        return response_data
+
+    @classmethod
+    def get_message_replace_response_data(cls, data: dict):
+        response_data = {
+            'event': 'message_replace',
             'task_id': data.get('task_id'),
             'id': data.get('message_id'),
             'answer': data.get('text'),
