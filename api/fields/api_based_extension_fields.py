@@ -5,7 +5,7 @@ from libs.helper import TimestampField
 
 class HiddenAPIKey(fields.Raw):
     def output(self, key, obj):
-        return obj.api_key[:8] + '***' + obj.api_key[-8:]
+        return obj.api_key[:3] + '***' + obj.api_key[-3:]
 
 api_based_extension_fields = {
     'id': fields.String,

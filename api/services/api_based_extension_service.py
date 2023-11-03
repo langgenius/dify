@@ -1,18 +1,24 @@
 from extensions.ext_database import db
-from models.api_based_extension import APIBasedExtension
-from core.helper.encrypter import encrypt_token
+from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
+from core.helper.encrypter import encrypt_token, decrypt_token
+from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 
 class APIBasedExtensionService:
 
     @staticmethod
     def get_all_by_tenant_id(tenant_id: str):
-        return db.session.query(APIBasedExtension) \
+        extension_list =  db.session.query(APIBasedExtension) \
                     .filter_by(tenant_id=tenant_id) \
                     .order_by(APIBasedExtension.created_at.desc()) \
                     .all()
+        
+        for extension in extension_list:
+            extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
 
-    @staticmethod
-    def save(extension_data: APIBasedExtension, need_encrypt: bool) -> APIBasedExtension:
+        return extension_list
+
+    @classmethod
+    def save(cls, extension_data: APIBasedExtension, need_encrypt: bool) -> APIBasedExtension:
         # name
         if not extension_data.name:
             raise ValueError("name must not be empty")
@@ -45,6 +51,11 @@ class APIBasedExtensionService:
         if not extension_data.api_key:
             raise ValueError("api_key must not be empty")
         
+        if len(extension_data.api_key) < 5:
+            raise ValueError("api_key must be at least 5 characters")
+        
+        cls._ping_connection(extension_data)
+        
         if need_encrypt:
             extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
         
@@ -59,12 +70,24 @@ class APIBasedExtensionService:
 
     @staticmethod
     def get_with_tenant_id(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
-        api_based_extension = db.session.query(APIBasedExtension) \
+        extension = db.session.query(APIBasedExtension) \
             .filter_by(tenant_id=tenant_id) \
             .filter_by(id=api_based_extension_id) \
             .first()
         
-        if not api_based_extension:
+        if not extension:
             raise ValueError("API based extension is not found")
         
-        return api_based_extension
+        extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
+        
+        return extension
+    
+    @staticmethod
+    def _ping_connection(extension_data: APIBasedExtension) -> None:
+        try:
+            client = APIBasedExtensionRequestor(extension_data.api_endpoint, extension_data.api_key)
+            resp = client.request(point=APIBasedExtensionPoint.PING, params={})
+            if resp.get('result') != 'pong':
+                raise ValueError(resp)
+        except Exception as e:
+            raise ValueError("connection error: {}".format(e))
