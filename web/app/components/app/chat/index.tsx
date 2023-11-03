@@ -20,6 +20,7 @@ import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaA
 import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
+import type { ModerationService } from '@/models/common'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -54,6 +55,8 @@ export type IChatProps = {
   dataSets?: DataSet[]
   isShowCitationHitInfo?: boolean
   isShowPromptLog?: boolean
+  enableModeration?: boolean
+  moderationService?: (text: string) => ReturnType<ModerationService>
 }
 
 const Chat: FC<IChatProps> = ({
@@ -83,6 +86,8 @@ const Chat: FC<IChatProps> = ({
   dataSets,
   isShowCitationHitInfo,
   isShowPromptLog,
+  enableModeration,
+  moderationService,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -186,6 +191,8 @@ const Chat: FC<IChatProps> = ({
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
+              enableModeration={enableModeration}
+              moderationService={moderationService}
             />
           }
           return (

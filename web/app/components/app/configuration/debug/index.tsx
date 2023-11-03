@@ -24,6 +24,7 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import { moderate } from '@/service/common'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -61,6 +62,7 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
+    externalDataToolsConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -192,6 +194,7 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
+      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -374,6 +377,7 @@ const Debug: FC<IDebug> = ({
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
       sensitive_word_avoidance: moderationConfig,
+      external_data_tools: externalDataToolsConfig,
       more_like_this: moreLikeThisConfig,
       agent_mode: {
         enabled: true,
@@ -462,6 +466,14 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
+                  enableModeration={moderationConfig.enabled}
+                  moderationService={(text: string) => moderate(
+                    '/apps/moderation',
+                    {
+                      app_id: appId,
+                      text,
+                    },
+                  )}
                 />
               </div>
             </div>

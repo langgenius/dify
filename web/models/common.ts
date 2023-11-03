@@ -240,3 +240,16 @@ export type ExternalDataTool = {
     api_based_extension_id?: string
   } & Partial<Record<string, any>>
 }
+
+export type ModerateResponse = {
+  flagged: boolean
+  text: string
+}
+
+export type ModerationService = (
+  url: string,
+  body: {
+    app_id: string
+    text: string
+  }
+) => Promise<ModerateResponse>
