@@ -555,6 +555,9 @@ const Main: FC<IMainProps> = ({
           setChatList(newListWithAnswer)
         }
         : undefined,
+      onMessageReplace: (messageReplace) => {
+        responseItem.content = messageReplace.answer
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer

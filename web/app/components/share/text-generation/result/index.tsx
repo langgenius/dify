@@ -51,8 +51,6 @@ const Result: FC<IResultProps> = ({
   handleSaveMessage,
   taskId,
   onCompleted,
-  enableModeration,
-  moderationService,
 }) => {
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -132,7 +130,7 @@ const Result: FC<IResultProps> = ({
     })
     setCompletionRes('')
 
-    const res: string[] = []
+    let res: string[] = []
     let tempMessageId = ''
 
     if (!isPC)
@@ -164,6 +162,10 @@ const Result: FC<IResultProps> = ({
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
         clearInterval(runId)
+      },
+      onMessageReplace: (messageReplace) => {
+        res = [messageReplace.answer]
+        setCompletionRes(res.join(''))
       },
       onError() {
         if (isTimeout)
@@ -207,8 +209,6 @@ const Result: FC<IResultProps> = ({
       isLoading={isCallBatchAPI ? (!completionRes && isResponsing) : false}
       taskId={isCallBatchAPI ? ((taskId as number) < 10 ? `0${taskId}` : `${taskId}`) : undefined}
       controlClearMoreLikeThis={controlClearMoreLikeThis}
-      enableModeration={enableModeration}
-      moderationService={moderationService}
     />
   )
 
