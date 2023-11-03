@@ -102,7 +102,9 @@ const Tools = () => {
           <div className='mr-1 text-sm font-semibold text-gray-800'>
             {t('appDebug.feature.tools.title')}
           </div>
-          <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
+          <TooltipPlus popupContent={<div className='max-w-[160px]'>{t('appDebug.feature.tools.tips')}</div>}>
+            <HelpCircle className='w-3.5 h-3.5 text-gray-400' />
+          </TooltipPlus>
         </div>
         {
           !expanded && !!externalDataToolsConfig.length && (

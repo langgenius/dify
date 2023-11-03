@@ -100,6 +100,7 @@ const translation = {
     },
     tools: {
       title: '工具',
+      tips: '工具提供了一个标准的 API 调用方式，将用户输入或变量作为 API 的请求参数，用于查询外部数据作为上下文。',
       toolsInUse: '{{count}} 工具使用中',
       modal: {
         title: '工具',

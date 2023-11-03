@@ -117,6 +117,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     return {
       ...originData,
       type,
+      enabled: data.type ? data.enabled : true,
       config: {
         ...params,
       },
