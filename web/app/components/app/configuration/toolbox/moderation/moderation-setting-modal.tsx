@@ -90,7 +90,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     setLocaleData({
       ...localeData,
       type,
-      configs: undefined,
+      config: undefined,
     })
   }
 
@@ -108,8 +108,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
 
     setLocaleData({
       ...localeData,
-      configs: {
-        ...localeData.configs,
+      config: {
+        ...localeData.config,
         keywords: arr.slice(0, 100).join('\n'),
       },
     })
@@ -118,8 +118,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const handleDataContentChange = (contentType: string, contentConfig: ModerationContentConfig) => {
     setLocaleData({
       ...localeData,
-      configs: {
-        ...localeData.configs,
+      config: {
+        ...localeData.config,
         [contentType]: contentConfig,
       },
     })
@@ -128,8 +128,8 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const handleDataApiBasedChange = (apiBasedExtensionId: string) => {
     setLocaleData({
       ...localeData,
-      configs: {
-        ...localeData.configs,
+      config: {
+        ...localeData.config,
         api_based_extension_id: apiBasedExtensionId,
       },
     })
@@ -138,36 +138,36 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const handleDataExtraChange = (extraValue: Record<string, string>) => {
     setLocaleData({
       ...localeData,
-      configs: {
-        ...localeData.configs,
+      config: {
+        ...localeData.config,
         ...extraValue,
       },
     })
   }
 
   const formatData = (originData: ModerationConfig) => {
-    const { enabled, type, configs } = originData
-    const { inputs_configs, outputs_configs } = configs!
+    const { enabled, type, config } = originData
+    const { inputs_config, outputs_config } = config!
     const params: Record<string, string | undefined> = {}
 
     if (type === 'keywords')
-      params.keywords = configs?.keywords
+      params.keywords = config?.keywords
 
     if (type === 'api')
-      params.api_based_extension_id = configs?.api_based_extension_id
+      params.api_based_extension_id = config?.api_based_extension_id
 
     if (systemTypes.findIndex(t => t === type) < 0 && currentProvider?.form_schema) {
       currentProvider.form_schema.forEach((form) => {
-        params[form.variable] = configs?.[form.variable]
+        params[form.variable] = config?.[form.variable]
       })
     }
 
     return {
       type,
       enabled,
-      configs: {
-        inputs_configs: inputs_configs || { enabled: false },
-        outputs_configs: outputs_configs || { enabled: false },
+      config: {
+        inputs_config: inputs_config || { enabled: false },
+        outputs_config: outputs_config || { enabled: false },
         ...params,
       },
     }
@@ -177,24 +177,24 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     if (localeData.type === 'openai_moderation' && !openaiProviderConfiged)
       return
 
-    if (!localeData.configs?.inputs_configs?.enabled && !localeData.configs?.outputs_configs?.enabled) {
+    if (!localeData.config?.inputs_config?.enabled && !localeData.config?.outputs_config?.enabled) {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.condition') })
       return
     }
 
-    if (localeData.type === 'keywords' && !localeData.configs.keywords) {
+    if (localeData.type === 'keywords' && !localeData.config.keywords) {
       notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'keywords' : '关键词' }) })
       return
     }
 
-    if (localeData.type === 'api' && !localeData.configs.api_based_extension_id) {
+    if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
       notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API-based Extension' : '基于 API 的扩展' }) })
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.configs?.[currentProvider.form_schema[i].variable]) {
+        if (!localeData.config?.[currentProvider.form_schema[i].variable]) {
           notify({
             type: 'error',
             message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
@@ -204,12 +204,12 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       }
     }
 
-    if (localeData.configs.inputs_configs?.enabled && !localeData.configs.inputs_configs.preset_response && localeData.type !== 'api') {
+    if (localeData.config.inputs_config?.enabled && !localeData.config.inputs_config.preset_response && localeData.type !== 'api') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }
 
-    if (localeData.configs.outputs_configs?.enabled && !localeData.configs.outputs_configs.preset_response && localeData.type !== 'api') {
+    if (localeData.config.outputs_config?.enabled && !localeData.config.outputs_config.preset_response && localeData.type !== 'api') {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.errorMessage') })
       return
     }
@@ -275,13 +275,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             <div className='mb-2 text-xs text-gray-500'>{t('appDebug.feature.moderation.modal.keywords.tip')}</div>
             <div className='relative px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
               <textarea
-                value={localeData.configs?.keywords || ''}
+                value={localeData.config?.keywords || ''}
                 onChange={handleDataKeywordsChange}
                 className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
                 placeholder={t('appDebug.feature.moderation.modal.keywords.placeholder') || ''}
               />
               <div className='absolute bottom-2 right-2 flex items-center px-1 h-5 rounded-md bg-gray-50 text-xs font-medium text-gray-300'>
-                <span>{(localeData.configs?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-gray-500'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
+                <span>{(localeData.config?.keywords || '').split('\n').filter(Boolean).length}</span>/<span className='text-gray-500'>100 {t('appDebug.feature.moderation.modal.keywords.line')}</span>
               </div>
             </div>
           </div>
@@ -301,7 +301,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
               </a>
             </div>
             <ApiBasedExtensionSelector
-              value={localeData.configs?.api_based_extension_id || ''}
+              value={localeData.config?.api_based_extension_id || ''}
               onChange={handleDataApiBasedChange}
             />
           </div>
@@ -313,7 +313,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
         && (
           <FormGeneration
             forms={currentProvider?.form_schema}
-            value={localeData.configs}
+            value={localeData.config}
             onChange={handleDataExtraChange}
           />
         )
@@ -321,15 +321,15 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
       <div className='my-3 h-[1px] bg-gradient-to-r from-[#F3F4F6]'></div>
       <ModerationContent
         title={t('appDebug.feature.moderation.modal.content.input') || ''}
-        config={localeData.configs?.inputs_configs || { enabled: false, preset_response: '' }}
-        onConfigChange={config => handleDataContentChange('inputs_configs', config)}
+        config={localeData.config?.inputs_config || { enabled: false, preset_response: '' }}
+        onConfigChange={config => handleDataContentChange('inputs_config', config)}
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
         showPreset={!(localeData.type === 'api')}
       />
       <ModerationContent
         title={t('appDebug.feature.moderation.modal.content.output') || ''}
-        config={localeData.configs?.outputs_configs || { enabled: false, preset_response: '' }}
-        onConfigChange={config => handleDataContentChange('outputs_configs', config)}
+        config={localeData.config?.outputs_config || { enabled: false, preset_response: '' }}
+        onConfigChange={config => handleDataContentChange('outputs_config', config)}
         info={(localeData.type === 'api' && t('appDebug.feature.moderation.modal.content.fromApi')) || ''}
         showPreset={!(localeData.type === 'api')}
       />

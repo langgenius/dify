@@ -7,7 +7,7 @@ import type { ModerationConfig } from '@/models/debug'
 
 type FormGenerationProps = {
   forms: CodeBasedExtensionForm[]
-  value: ModerationConfig['configs']
+  value: ModerationConfig['config']
   onChange: (v: Record<string, string>) => void
 }
 const FormGeneration: FC<FormGenerationProps> = ({
