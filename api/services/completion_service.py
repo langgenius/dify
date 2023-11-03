@@ -10,7 +10,8 @@ from redis.client import PubSub
 from sqlalchemy import and_
 
 from core.completion import Completion
-from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
+from core.conversation_message_task import PubHandler, ConversationTaskStoppedException, \
+    ConversationTaskInterruptException
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
@@ -203,7 +204,7 @@ class CompletionService:
                     retriever_from=retriever_from,
                     auto_generate_name=auto_generate_name
                 )
-            except ConversationTaskStoppedException:
+            except (ConversationTaskInterruptException, ConversationTaskStoppedException):
                 pass
             except (ValueError, LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
@@ -391,6 +392,8 @@ class CompletionService:
                                 break
                             if event == 'message':
                                 yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'message_replace':
+                                yield "data: " + json.dumps(cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
                             elif event == 'chain':
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
@@ -421,6 +424,21 @@ class CompletionService:
     def get_message_response_data(cls, data: dict):
         response_data = {
             'event': 'message',
+            'task_id': data.get('task_id'),
+            'id': data.get('message_id'),
+            'answer': data.get('text'),
+            'created_at': int(time.time())
+        }
+
+        if data.get('mode') == 'chat':
+            response_data['conversation_id'] = data.get('conversation_id')
+
+        return response_data
+
+    @classmethod
+    def get_message_replace_response_data(cls, data: dict):
+        response_data = {
+            'event': 'message_replace',
             'task_id': data.get('task_id'),
             'id': data.get('message_id'),
             'answer': data.get('text'),

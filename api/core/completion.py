@@ -10,7 +10,8 @@ from requests.exceptions import ChunkedEncodingError
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
-from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
+from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
+    ConversationTaskInterruptException
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
@@ -152,7 +153,7 @@ class Completion:
                 memory=memory,
                 fake_response=fake_response
             )
-        except ConversationTaskStoppedException:
+        except (ConversationTaskInterruptException, ConversationTaskStoppedException):
             return
         except ChunkedEncodingError as e:
             # Interrupt by LLM (like OpenAI), handle it.
