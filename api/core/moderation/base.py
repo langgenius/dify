@@ -57,30 +57,30 @@ class Moderation(Extensible, ABC):
 
     @classmethod
     def _validate_inputs_and_outputs_config(self, config: dict, is_preset_response_required: bool) -> None:
-        # inputs_configs
-        inputs_configs = config.get("inputs_configs")
-        if not isinstance(inputs_configs, dict):
-            raise ValueError("inputs_configs must be a dict")
+        # inputs_config
+        inputs_config = config.get("inputs_config")
+        if not isinstance(inputs_config, dict):
+            raise ValueError("inputs_config must be a dict")
         
-        # outputs_configs
-        outputs_configs = config.get("outputs_configs")
-        if not isinstance(outputs_configs, dict):
-            raise ValueError("outputs_configs must be a dict")
+        # outputs_config
+        outputs_config = config.get("outputs_config")
+        if not isinstance(outputs_config, dict):
+            raise ValueError("outputs_config must be a dict")
 
-        inputs_configs_enabled = inputs_configs.get("enabled")
-        outputs_configs_enabled = outputs_configs.get("enabled")
-        if not inputs_configs_enabled and not outputs_configs_enabled:
-            raise ValueError("At least one of inputs_configs or outputs_configs must be enabled")
+        inputs_config_enabled = inputs_config.get("enabled")
+        outputs_config_enabled = outputs_config.get("enabled")
+        if not inputs_config_enabled and not outputs_config_enabled:
+            raise ValueError("At least one of inputs_config or outputs_config must be enabled")
 
         # preset_response
         if not is_preset_response_required:
             return
         
-        if inputs_configs_enabled and not inputs_configs.get("preset_response"):
-            raise ValueError("inputs_configs.preset_response is required")
+        if inputs_config_enabled and not inputs_config.get("preset_response"):
+            raise ValueError("inputs_config.preset_response is required")
         
-        if outputs_configs_enabled and not outputs_configs.get("preset_response"):
-            raise ValueError("outputs_configs.preset_response is required")
+        if outputs_config_enabled and not outputs_config.get("preset_response"):
+            raise ValueError("outputs_config.preset_response is required")
 
 class ModerationException(Exception):
     pass

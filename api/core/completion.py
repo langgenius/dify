@@ -165,7 +165,7 @@ class Completion:
 
         type = app_model_config.sensitive_word_avoidance_dict['type']
 
-        moderation = ModerationFactory(type, tenant_id, app_model_config.sensitive_word_avoidance_dict['configs'])
+        moderation = ModerationFactory(type, tenant_id, app_model_config.sensitive_word_avoidance_dict['config'])
         moderation.moderation_for_inputs(inputs, query)
 
     @classmethod

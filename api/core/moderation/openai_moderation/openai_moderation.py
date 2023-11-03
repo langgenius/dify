@@ -23,10 +23,10 @@ class OpenAIModeration(Moderation):
         cls._validate_inputs_and_outputs_config(config, True)
 
     def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
-        if not self.config['inputs_configs']['enabled']:
+        if not self.config['inputs_config']['enabled']:
             return
 
-        preset_response = self.config['inputs_configs']['preset_response']
+        preset_response = self.config['inputs_config']['preset_response']
         if query:
             inputs['query__'] = query
 
@@ -37,10 +37,10 @@ class OpenAIModeration(Moderation):
         flagged = False
         preset_response = ""
 
-        if self.config['outputs_configs']['enabled']:
+        if self.config['outputs_config']['enabled']:
             flagged = self._is_violated({ 'text': text })
             if flagged:
-                preset_response = self.config['outputs_configs']['preset_response']
+                preset_response = self.config['outputs_config']['preset_response']
 
         return ModerationOutputsResult(flagged=flagged, text=preset_response)
 
