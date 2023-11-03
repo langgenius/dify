@@ -184,7 +184,7 @@ class ModerationAPI(WebApiResource):
         args = parser.parse_args()
 
         service = ModerationService()
-        return service.moderation_for_outputs(app_model, end_user, args['text'])
+        return service.moderation_for_outputs(app_model, args['text'])
 
 api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
