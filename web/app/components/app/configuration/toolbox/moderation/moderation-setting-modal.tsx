@@ -11,7 +11,10 @@ import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import type { ModerationConfig, ModerationContentConfig } from '@/models/debug'
 import { useToastContext } from '@/app/components/base/toast'
-import { fetchCodeBasedExtensionList } from '@/service/common'
+import {
+  fetchCodeBasedExtensionList,
+  fetchModelProviders,
+} from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
 
@@ -37,11 +40,13 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
+  const { data: modelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { data: codeBasedExtensionList } = useSWR(
     '/code-based-extension?module=moderation',
     fetchCodeBasedExtensionList,
   )
+  const openaiProviderConfiged = modelProviders?.openai.providers.some(item => item.is_valid)
   const providers: Provider[] = [
     {
       key: 'openai_moderation',

@@ -13,6 +13,7 @@ import type {
   InvitationResponse,
   LangGeniusVersionResponse,
   Member,
+  ModerateResponse,
   OauthResponse,
   PluginProvider,
   Provider,
@@ -231,4 +232,8 @@ export const deleteApiBasedExtension: Fetcher<{ result: string }, string> = (url
 
 export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = (url) => {
   return get(url) as Promise<CodeBasedExtension>
+}
+
+export const moderate = (url: string, body: { app_id: string; text: string }) => {
+  return post(url, { body }) as Promise<ModerateResponse>
 }
