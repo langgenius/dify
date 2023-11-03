@@ -3,7 +3,7 @@ import json
 from typing import Optional
 
 from core.helper.encrypter import decrypt_token
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult
+from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOutputsAction
 from extensions.ext_database import db
 from models.provider import Provider
 
@@ -39,10 +39,9 @@ class OpenAIModeration(Moderation):
 
         if self.config['outputs_config']['enabled']:
             flagged = self._is_violated({ 'text': text })
-            if flagged:
-                preset_response = self.config['outputs_config']['preset_response']
+            preset_response = self.config['outputs_config']['preset_response']
 
-        return ModerationOutputsResult(flagged=flagged, text=preset_response)
+        return ModerationOutputsResult(flagged=flagged, action=ModerationOutputsAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict):
 

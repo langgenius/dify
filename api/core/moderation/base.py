@@ -8,7 +8,7 @@ from core.extension.extensible import Extensible, ExtensionModule
 
 class ModerationOutputsAction(Enum):
     DIRECT_OUTPUT = 'direct_output'
-    OVERRIDE = 'override'
+    OVERRIDED = 'overrided'
 
 
 class ModerationOutputsResult(BaseModel):
