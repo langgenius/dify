@@ -258,6 +258,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
                 try:
                     moderation_factory = ModerationFactory(
                         name=self.moderation_rule.type,
+                        app_id=self.conversation_message_task.app.id,
                         tenant_id=self.conversation_message_task.tenant_id,
                         config=self.moderation_rule.config
                     )
