@@ -57,7 +57,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     '/code-based-extension?module=moderation',
     fetchCodeBasedExtensionList,
   )
-  const openaiProviderConfiged = modelProviders?.openai.providers.some(item => item.is_valid)
+  const systemOpenaiProvider = modelProviders?.openai.providers.find(item => item.provider_type === 'system')
+  const systemOpenaiProviderCanUse = systemOpenaiProvider && (((systemOpenaiProvider as any).quota_limit - (systemOpenaiProvider as any).quota_used) > 0)
+  const customOpenaiProviders = modelProviders?.openai.providers.filter(item => item.provider_type !== 'system')
+  const customOpenaiProvidersCanUse = customOpenaiProviders?.some(item => item.is_valid)
+  const openaiProviderConfiged = customOpenaiProvidersCanUse || systemOpenaiProviderCanUse
   const providers: Provider[] = [
     {
       key: 'openai_moderation',
