@@ -18,7 +18,6 @@ from core.model_providers.error import LLMBadRequestError, LLMAuthorizationError
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-from services.moderation_service import ModerationService
 
 
 class CompletionApi(AppApiResource):
@@ -181,6 +180,7 @@ def compact_response(response: Union[dict | Generator]) -> Response:
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')
+
 
 api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')

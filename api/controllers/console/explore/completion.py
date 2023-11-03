@@ -21,7 +21,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableErro
 from extensions.ext_database import db
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
-from services.moderation_service import ModerationService
+
 
 # define completion api for user
 class CompletionApi(InstalledAppResource):
@@ -184,6 +184,7 @@ def compact_response(response: Union[dict | Generator]) -> Response:
 
         return Response(stream_with_context(generate()), status=200,
                         mimetype='text/event-stream')
+
 
 api.add_resource(CompletionApi, '/installed-apps/<uuid:installed_app_id>/completion-messages', endpoint='installed_app_completion')
 api.add_resource(CompletionStopApi, '/installed-apps/<uuid:installed_app_id>/completion-messages/<string:task_id>/stop', endpoint='installed_app_stop_completion')
