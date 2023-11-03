@@ -91,6 +91,7 @@ class APIBasedExtensionDetailAPI(Resource):
         need_encrypt = False
         if args['api_key'] != '[__HIDDEN__]':
             need_encrypt = True
+            extension_data_from_db.api_key = args['api_key']
 
         return APIBasedExtensionService.save(extension_data_from_db, need_encrypt)
 

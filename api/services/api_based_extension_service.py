@@ -6,7 +6,7 @@ from core.extension.api_based_extension_requestor import APIBasedExtensionReques
 class APIBasedExtensionService:
 
     @staticmethod
-    def get_all_by_tenant_id(tenant_id: str):
+    def get_all_by_tenant_id(tenant_id: str) -> list[APIBasedExtension]:
         extension_list =  db.session.query(APIBasedExtension) \
                     .filter_by(tenant_id=tenant_id) \
                     .order_by(APIBasedExtension.created_at.desc()) \
@@ -19,6 +19,36 @@ class APIBasedExtensionService:
 
     @classmethod
     def save(cls, extension_data: APIBasedExtension, need_encrypt: bool) -> APIBasedExtension:
+        cls._validation(extension_data)
+
+        if need_encrypt:
+            extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
+
+        db.session.add(extension_data)
+        db.session.commit()
+        return extension_data
+
+    @staticmethod
+    def delete(extension_data: APIBasedExtension) -> None:
+        db.session.delete(extension_data)
+        db.session.commit()
+
+    @staticmethod
+    def get_with_tenant_id(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
+        extension = db.session.query(APIBasedExtension) \
+            .filter_by(tenant_id=tenant_id) \
+            .filter_by(id=api_based_extension_id) \
+            .first()
+        
+        if not extension:
+            raise ValueError("API based extension is not found")
+        
+        extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
+        
+        return extension
+    
+    @classmethod
+    def _validation(cls, extension_data: APIBasedExtension) -> None:
         # name
         if not extension_data.name:
             raise ValueError("name must not be empty")
@@ -54,33 +84,8 @@ class APIBasedExtensionService:
         if len(extension_data.api_key) < 5:
             raise ValueError("api_key must be at least 5 characters")
         
+        # check endpoint
         cls._ping_connection(extension_data)
-        
-        if need_encrypt:
-            extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
-        
-        db.session.add(extension_data)
-        db.session.commit()
-        return extension_data
-    
-    @staticmethod
-    def delete(extension_data: APIBasedExtension) -> None:
-        db.session.delete(extension_data)
-        db.session.commit()
-
-    @staticmethod
-    def get_with_tenant_id(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
-        extension = db.session.query(APIBasedExtension) \
-            .filter_by(tenant_id=tenant_id) \
-            .filter_by(id=api_based_extension_id) \
-            .first()
-        
-        if not extension:
-            raise ValueError("API based extension is not found")
-        
-        extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
-        
-        return extension
     
     @staticmethod
     def _ping_connection(extension_data: APIBasedExtension) -> None:
