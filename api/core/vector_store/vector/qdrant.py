@@ -28,7 +28,7 @@ from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
-from qdrant_client.http.models import PayloadSchemaType
+from qdrant_client.http.models import PayloadSchemaType, FilterSelector
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -600,7 +600,7 @@ class Qdrant(VectorStore):
             limit=k,
             offset=offset,
             with_payload=True,
-            with_vectors=True,  # Langchain does not expect vectors to be returned
+            with_vectors=True,
             score_threshold=score_threshold,
             consistency=consistency,
             **kwargs,
@@ -611,6 +611,40 @@ class Qdrant(VectorStore):
                     result, self.content_payload_key, self.metadata_payload_key
                 ),
                 result.score,
+            )
+            for result in results
+        ]
+
+    def similarity_search_by_bm25(
+        self,
+        k: int = 4,
+        filter: Optional[MetadataFilter] = None
+    ) -> List[Document]:
+        """Return docs most similar by bm25.
+
+        Args:
+            embedding: Embedding vector to look up documents similar to.
+            k: Number of Documents to return. Defaults to 4.
+            filter: Filter by metadata. Defaults to None.
+            search_params: Additional search params
+        Returns:
+            List of documents most similar to the query text and distance for each.
+        """
+        results = self.client.scroll(
+            collection_name=self.collection_name,
+            points_selector=FilterSelector(
+                filter=filter
+            ),
+            limit=k,
+            with_payload=True,
+            with_vectors=True
+
+        )
+        return [
+            (
+                self._document_from_scored_point(
+                    result, self.content_payload_key, self.metadata_payload_key
+                )
             )
             for result in results
         ]

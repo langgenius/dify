@@ -42,7 +42,6 @@ class HitTestingApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, location='json')
-        parser.add_argument('query_mode', type=dict, location='json')
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -51,7 +50,6 @@ class HitTestingApi(Resource):
             response = HitTestingService.retrieve(
                 dataset=dataset,
                 query=args['query'],
-                query_mode=args['query_mode'],
                 account=current_user,
                 limit=10
             )

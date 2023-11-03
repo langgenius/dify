@@ -173,6 +173,9 @@ class DatasetService:
         filtered_data['updated_by'] = user.id
         filtered_data['updated_at'] = datetime.datetime.now()
 
+        # update Retrival model
+        filtered_data['retrival_model'] = data['retrieval_model']
+
         dataset.query.filter_by(id=dataset_id).update(filtered_data)
 
         db.session.commit()

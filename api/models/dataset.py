@@ -3,7 +3,7 @@ import pickle
 from json import JSONDecodeError
 
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import UUID, JSONB
 
 from extensions.ext_database import db
 from models.account import Account
@@ -15,6 +15,7 @@ class Dataset(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='dataset_pkey'),
         db.Index('dataset_tenant_idx', 'tenant_id'),
+        db.Index('retrieval_model_idx', "retrieval_model", postgresql_using='gin')
     )
 
     INDEXING_TECHNIQUE_LIST = ['high_quality', 'economy']
@@ -39,6 +40,8 @@ class Dataset(db.Model):
     embedding_model = db.Column(db.String(255), nullable=True)
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(UUID, nullable=True)
+    retrieval_model = db.Column(JSONB, nullable=True)
+
 
 
     @property

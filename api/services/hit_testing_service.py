@@ -1,25 +1,32 @@
+import json
 import logging
 import threading
 import time
 from typing import List
 
 import numpy as np
-from flask import current_app, Flask
+from flask import current_app
 from langchain.embeddings.base import Embeddings
 from langchain.schema import Document
 from sklearn.manifold import TSNE
 
 from core.embedding.cached_embedding import CacheEmbedding
-from core.index.vector_index.vector_index import VectorIndex
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
+from services.retrival_service import RetrivalService
 
+default_retrival_model = {
+    'search_method': 'semantic_search',
+    'reranking_enable': False,
+    'top_k': 2,
+    'score_threshold_enable': False
+}
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, query_mode: dict, account: Account, limit: int = 10) -> dict:
+    def retrieve(cls, dataset: Dataset, query: str, account: Account, limit: int = 10) -> dict:
         if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
@@ -29,28 +36,54 @@ class HitTestingService:
                 "records": []
             }
 
-
         start = time.perf_counter()
+
+        # get retrival model , if the model is not setting , using default
+        retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
+
+        # get embedding model
+        embedding_model = ModelFactory.get_embedding_model(
+            tenant_id=dataset.tenant_id,
+            model_provider_name=dataset.embedding_model_provider,
+            model_name=dataset.embedding_model
+        )
+        embeddings = CacheEmbedding(embedding_model)
+
         all_document = []
         threads = []
-        if query_mode['embedding']:
-            embedding_thread = threading.Thread(target=cls._embedding_search, kwargs={
+
+        # retrival source with semantic
+        if retrival_model['search_method'] == 'semantic_search' or retrival_model['search_method'] == 'hybrid_search':
+            embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset': dataset,
                 'query': query,
-                'all_documents': all_document
+                'top_k': retrival_model['top_k'],
+                'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
+                'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
+                'all_documents': all_document,
+                'search_method': retrival_model['search_method'],
+                'embeddings': embeddings
             })
             threads.append(embedding_thread)
             embedding_thread.start()
-        if query_mode['full-text-index']:
-            full_text_index_thread = threading.Thread(target=cls._full_text_index_search, kwargs={
+
+        # retrival source with full text
+        if retrival_model['search_method'] == 'full_text-search' or retrival_model['search_method'] == 'hybrid_search':
+            full_text_index_thread = threading.Thread(target=RetrivalService.full_text_index_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset': dataset,
                 'query': query,
+                'search_method': retrival_model['search_method'],
+                'embeddings': embeddings,
+                'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
+                'top_k': retrival_model['top_k'],
+                'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
                 'all_documents': all_document
             })
             threads.append(full_text_index_thread)
             full_text_index_thread.start()
+
         for thread in threads:
             thread.join()
 
@@ -68,66 +101,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(dataset, embeddings, query, documents)
-
-    def _embedding_search(self, flask_app: Flask, dataset: Dataset, query: str, all_documents: list):
-        with flask_app.app_context():
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-
-            embeddings = CacheEmbedding(embedding_model)
-
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
-            )
-
-            documents = vector_index.search(
-                query,
-                search_type='similarity_score_threshold',
-                search_kwargs={
-                    'k': 10,
-                    'filter': {
-                        'group_id': [dataset.id]
-                    }
-                }
-            )
-            if documents:
-                all_documents.append(documents)
-
-    def _full_text_index_search(self, flask_app: Flask, dataset: Dataset, query: str, all_documents: list):
-        with flask_app.app_context():
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=dataset.tenant_id,
-                model_provider_name=dataset.embedding_model_provider,
-                model_name=dataset.embedding_model
-            )
-
-            embeddings = CacheEmbedding(embedding_model)
-
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
-            )
-
-            documents = vector_index.search(
-                query,
-                search_type='similarity_score_threshold',
-                search_kwargs={
-                    'k': 10,
-                    'filter': {
-                        'group_id': [dataset.id]
-                    }
-                }
-            )
-            if documents:
-                all_documents.append(documents)
-
+        return cls.compact_retrieve_response(dataset, embeddings, query, all_document)
 
     @classmethod
     def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: List[Document]):

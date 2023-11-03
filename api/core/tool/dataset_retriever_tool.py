@@ -1,5 +1,5 @@
 import json
-from typing import Type, Optional
+from typing import Type, Optional, List
 
 from flask import current_app
 from langchain.tools import BaseTool
@@ -49,14 +49,14 @@ class DatasetRetrieverTool(BaseTool):
             **kwargs
         )
 
-    def _run(self, query: str) -> str:
+    def _run(self, query: str) -> List[str]:
         dataset = db.session.query(Dataset).filter(
             Dataset.tenant_id == self.tenant_id,
             Dataset.id == self.dataset_id
         ).first()
 
         if not dataset:
-            return f'[{self.name} failed to find dataset with id {self.dataset_id}.]'
+            return []
 
         if dataset.indexing_technique == "economy":
             # use keyword table query
@@ -68,7 +68,7 @@ class DatasetRetrieverTool(BaseTool):
             )
 
             documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
-            return str("\n".join([document.page_content for document in documents]))
+            return [document.page_content for document in documents]
         else:
 
             try:
@@ -78,9 +78,9 @@ class DatasetRetrieverTool(BaseTool):
                     model_name=dataset.embedding_model
                 )
             except LLMBadRequestError:
-                return ''
+                return []
             except ProviderTokenNotInitError:
-                return ''
+                return []
 
             embeddings = CacheEmbedding(embedding_model)
             vector_index = VectorIndex(
@@ -164,7 +164,7 @@ class DatasetRetrieverTool(BaseTool):
                         resource_number += 1
                     hit_callback.return_retriever_resource_info(context_list)
 
-            return str("\n".join(document_context_list))
+            return document_context_list
 
     async def _arun(self, tool_input: str) -> str:
         raise NotImplementedError()

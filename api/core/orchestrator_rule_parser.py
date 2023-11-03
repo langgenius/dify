@@ -1,11 +1,17 @@
-from typing import Optional
+import json
+import threading
+from typing import Optional, List
 
+from flask import Flask
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 from pydantic import BaseModel, Field
 
+from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
+from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
+from core.agent.agent.structed_multi_dataset_router_agent import StructuredMultiDatasetRouterAgent
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
@@ -26,6 +32,12 @@ from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
+default_retrival_model = {
+    'search_method': 'semantic_search',
+    'reranking_enable': False,
+    'top_k': 2,
+    'score_threshold_enable': False
+}
 
 class OrchestratorRuleParser:
     """Parse the orchestrator rule to entities."""
@@ -103,7 +115,10 @@ class OrchestratorRuleParser:
                 rest_tokens=rest_tokens,
                 return_resource=return_resource,
                 retriever_from=retriever_from,
-                dataset_configs=dataset_configs
+                dataset_configs=dataset_configs,
+                strategy=planning_strategy,
+                model_instance=agent_model_instance,
+                memory=memory
             )
 
             if len(tools) == 0:
@@ -180,6 +195,7 @@ class OrchestratorRuleParser:
         :return:
         """
         tools = []
+        dataset_tools = []
         for tool_config in tool_configs:
             tool_type = list(tool_config.keys())[0]
             tool_val = list(tool_config.values())[0]
@@ -188,7 +204,7 @@ class OrchestratorRuleParser:
 
             tool = None
             if tool_type == "dataset":
-                tool = self.to_dataset_retriever_tool(tool_config=tool_val, **kwargs)
+                dataset_tools.append(tool)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool(tool_config=tool_val, **kwargs)
             elif tool_type == "google_search":
@@ -204,57 +220,119 @@ class OrchestratorRuleParser:
                 else:
                     tool.callbacks = callbacks
                 tools.append(tool)
-
+        # format dataset tool
+        if len(dataset_tools) > 0:
+            tools.append(self.to_dataset_retriever_tool(tool_configs=dataset_tools, **kwargs))
         return tools
 
-    def to_dataset_retriever_tool(self, tool_config: dict, conversation_message_task: ConversationMessageTask,
-                                  dataset_configs: dict, rest_tokens: int,
+    def to_dataset_retriever_tool(self, tool_configs: List, conversation_message_task: ConversationMessageTask,
+                                  rest_tokens: int,
                                   return_resource: bool = False, retriever_from: str = 'dev',
                                   **kwargs) \
             -> Optional[BaseTool]:
         """
         A dataset tool is a tool that can be used to retrieve information from a dataset
         :param rest_tokens:
-        :param tool_config:
-        :param dataset_configs:
+        :param tool_configs:
         :param conversation_message_task:
         :param return_resource:
         :param retriever_from:
         :return:
         """
-        # get dataset from dataset id
-        dataset = db.session.query(Dataset).filter(
-            Dataset.tenant_id == self.tenant_id,
-            Dataset.id == tool_config.get("id")
-        ).first()
+        tools = []
+        for tool_config in tool_configs:
+            # get dataset from dataset id
+            dataset = db.session.query(Dataset).filter(
+                Dataset.tenant_id == self.tenant_id,
+                Dataset.id == tool_config.get("id")
+            ).first()
 
-        if not dataset:
-            return None
+            if not dataset:
+                return None
 
-        if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
-            return None
+            if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
+                return None
+            retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
+            top_k = retrival_model['top_k']
 
-        top_k = dataset_configs.get("top_k", 2)
+            # dynamically adjust top_k when the remaining token number is not enough to support top_k
+            # top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
 
-        # dynamically adjust top_k when the remaining token number is not enough to support top_k
-        top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
+            score_threshold = None
+            score_threshold_enable = retrival_model.get("score_threshold_enable")
+            if score_threshold_enable:
+                score_threshold = retrival_model.get("score_threshold")
 
-        score_threshold = None
-        score_threshold_config = dataset_configs.get("score_threshold")
-        if score_threshold_config and score_threshold_config.get("enable"):
-            score_threshold = score_threshold_config.get("value")
+            tool = DatasetRetrieverTool.from_dataset(
+                dataset=dataset,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
+                conversation_message_task=conversation_message_task,
+                return_resource=return_resource,
+                retriever_from=retriever_from
+            )
+            tools.append(tool)
 
-        tool = DatasetRetrieverTool.from_dataset(
-            dataset=dataset,
-            top_k=top_k,
-            score_threshold=score_threshold,
-            callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
-            conversation_message_task=conversation_message_task,
-            return_resource=return_resource,
-            retriever_from=retriever_from
-        )
+        # get app dataset retrival config
+        dataset_configs = kwargs['dataset_configs']
+        model_instance = kwargs['model_instance']
+        memory = kwargs['memory']
+        strategy = kwargs['strategy']
+        if dataset_configs['retrival_model'] == 'single':
+
+            if strategy == PlanningStrategy.ROUTER:
+                agent = MultiDatasetRouterAgent.from_llm_and_tools(
+                    model_instance=model_instance,
+                    tools=tools,
+                    extra_prompt_messages=memory.buffer if memory else None,
+                    verbose=True
+                )
+            elif strategy == PlanningStrategy.REACT_ROUTER:
+                agent = StructuredMultiDatasetRouterAgent.from_llm_and_tools(
+                    model_instance=model_instance,
+                    tools=tools,
+                    output_parser=StructuredChatOutputParser(),
+                    verbose=True
+                )
+            else:
+                raise NotImplementedError(f"Unknown Agent Strategy: {strategy}")
 
         return tool
+
+    def dataset_tool_format(self, flask_app: Flask, tool_config: dict, tools: List):
+        with flask_app.app_context():
+            # get dataset from dataset id
+            dataset = db.session.query(Dataset).filter(
+                Dataset.tenant_id == self.tenant_id,
+                Dataset.id == tool_config.get("id")
+            ).first()
+
+            if not dataset:
+                return None
+
+            if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
+                return None
+            retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
+            top_k = retrival_model['top_k']
+
+            # dynamically adjust top_k when the remaining token number is not enough to support top_k
+            # top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
+
+            score_threshold = None
+            score_threshold_enable = retrival_model.get("score_threshold_enable")
+            if score_threshold_enable:
+                score_threshold = retrival_model.get("score_threshold")
+
+            tool = DatasetRetrieverTool.from_dataset(
+                dataset=dataset,
+                top_k=top_k,
+                score_threshold=score_threshold,
+                callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
+                conversation_message_task=conversation_message_task,
+                return_resource=return_resource,
+                retriever_from=retriever_from
+            )
 
     def to_web_reader_tool(self, tool_config: dict, agent_model_instance: BaseLLM, **kwargs) -> Optional[BaseTool]:
         """
