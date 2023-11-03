@@ -100,6 +100,7 @@ const translation = {
     },
     tools: {
       title: 'Tools',
+      tips: 'Tools provide a standard API call method, taking user input or variables as request parameters for querying external data as context.',
       toolsInUse: '{{count}} tools in use',
       modal: {
         title: 'Tool',
