@@ -162,6 +162,10 @@ const translation = {
           fromApi: '预设回复通过 API 返回',
           errorMessage: '预设回复不能为空',
         },
+        openaiNotConfig: {
+          before: 'OpenAI 内容审核需要在',
+          after: '中配置 OpenAI API 密钥。',
+        },
       },
     },
   },
