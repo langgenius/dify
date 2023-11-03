@@ -1,13 +1,22 @@
 from abc import ABC, abstractmethod
 from typing import Optional
 from pydantic import BaseModel
+from enum import Enum
 
 from core.extension.extensible import Extensible, ExtensionModule
 
 
+class ModerationOutputsAction(Enum):
+    DIRECT_OUTPUT = 'direct_output'
+    OVERRIDED = 'overrided'
+
+
 class ModerationOutputsResult(BaseModel):
     flagged: bool = False
+    action: ModerationOutputsAction
+    preset_response: str = ""
     text: str = ""
+
 
 class Moderation(Extensible, ABC):
     """

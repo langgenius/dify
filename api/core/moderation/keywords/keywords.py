@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult
+from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOutputsAction
 
 
 class KeywordsModeration(Moderation):
@@ -40,10 +40,9 @@ class KeywordsModeration(Moderation):
         if self.config['outputs_config']['enabled']:
             keywords_list = self.config['keywords'].split('\n')
             flagged = self._is_violated({'text': text}, keywords_list)
-            if flagged:
-                preset_response = self.config['outputs_config']['preset_response']
+            preset_response = self.config['outputs_config']['preset_response']
 
-        return ModerationOutputsResult(flagged=flagged, text=preset_response)
+        return ModerationOutputsResult(flagged=flagged, action=ModerationOutputsAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
         for value in inputs.values():
