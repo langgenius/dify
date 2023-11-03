@@ -237,6 +237,7 @@ const translation = {
     },
     rerankModel: {
       key: 'Rerank 模型',
+      description: '重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果',
     },
     quota: '额度',
     searchModel: '搜索模型',

@@ -226,12 +226,12 @@ const translation = {
   datasetConfig: {
     settingTitle: 'Retrieve Settings',
     retrieveOneWay: {
-      title: 'N选1召回',
-      description: '根据用户意图和数据集描述，由 Agent 自主判断选择最匹配的单个数据集来查询相关文本，适合数据集区分度大且数据集数量偏少的应用。',
+      title: 'N-to-1 retrieval',
+      description: 'Based on user intent and dataset descriptions, the Agent autonomously selects the best dataset for querying. Best for applications with distinct, limited datasets.',
     },
     retrieveMultiWay: {
-      title: '多路召回',
-      description: '根据用户意图同时匹配所有数据集，从多路数据集查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API。',
+      title: 'Multi-path retrieval',
+      description: 'Based on user intent, queries across all datasets, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
     },
     params: 'Params',
     top_k: 'Top K',

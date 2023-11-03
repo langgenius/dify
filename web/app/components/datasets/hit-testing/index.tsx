@@ -55,7 +55,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
     setCurrParagraph({ paraInfo: detail, showModal: true })
   }
 
-  const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(true)
+  const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
 
   return (
     <div className={s.container}>

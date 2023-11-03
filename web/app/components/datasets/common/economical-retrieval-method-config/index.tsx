@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import RetrivalParamConfig from '../retrieval-param-config'
+import RetrievalParamConfig from '../retrieval-param-config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
 import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
@@ -26,7 +26,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         description={t('dataset.retrieval.invertedIndex.description')}
         noRadio
         chosenConfig={
-          <RetrivalParamConfig
+          <RetrievalParamConfig
             type={RETRIEVE_METHOD.invertedIndex}
             value={{}}
             onChange={() => {}}
