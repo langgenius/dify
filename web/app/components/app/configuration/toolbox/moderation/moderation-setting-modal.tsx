@@ -17,6 +17,8 @@ import {
 } from '@/service/common'
 import type { CodeBasedExtensionItem } from '@/models/common'
 import I18n from '@/context/i18n'
+import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { useModalContext } from '@/context/modal-context'
 
 const systemTypes = ['openai_moderation', 'keywords', 'api']
 
@@ -40,8 +42,17 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { locale } = useContext(I18n)
-  const { data: modelProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: modelProviders, isLoading, mutate } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
+  const { setShowAccountSettingModal } = useModalContext()
+  const handleOpenSettingsModal = () => {
+    setShowAccountSettingModal({
+      payload: 'provider',
+      onCancelCallback: () => {
+        mutate()
+      },
+    })
+  }
   const { data: codeBasedExtensionList } = useSWR(
     '/code-based-extension?module=moderation',
     fetchCodeBasedExtensionList,
@@ -163,6 +174,9 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   }
 
   const handleSave = () => {
+    if (localeData.type === 'openai_moderation' && !openaiProviderConfiged)
+      return
+
     if (!localeData.configs?.inputs_configs?.enabled && !localeData.configs?.outputs_configs?.enabled) {
       notify({ type: 'error', message: t('appDebug.feature.moderation.modal.content.condition') })
       return
@@ -224,6 +238,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
                 className={`
                   flex items-center px-3 py-2 rounded-lg text-sm text-gray-900 cursor-pointer
                   ${localeData.type === provider.key ? 'bg-white border-[1.5px] border-primary-400 shadow-sm' : 'border border-gray-100 bg-gray-25'}
+                  ${localeData.type === 'openai_moderation' && provider.key === 'openai_moderation' && !openaiProviderConfiged && 'opacity-50'}
                 `}
                 onClick={() => handleDataTypeChange(provider.key)}
               >
@@ -235,6 +250,23 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
             ))
           }
         </div>
+        {
+          !isLoading && !openaiProviderConfiged && localeData.type === 'openai_moderation' && (
+            <div className='flex items-center mt-2 px-3 py-2 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]'>
+              <InfoCircle className='mr-1 w-4 h-4 text-[#F79009]' />
+              <div className='flex items-center text-xs font-medium text-gray-700'>
+                {t('appDebug.feature.moderation.modal.openaiNotConfig.before')}
+                <span
+                  className='text-primary-600 cursor-pointer'
+                  onClick={handleOpenSettingsModal}
+                >
+                  &nbsp;{t('common.settings.provider')}&nbsp;
+                </span>
+                {t('appDebug.feature.moderation.modal.openaiNotConfig.after')}
+              </div>
+            </div>
+          )
+        }
       </div>
       {
         localeData.type === 'keywords' && (
@@ -313,6 +345,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
           type='primary'
           className='text-sm font-medium'
           onClick={handleSave}
+          disabled={localeData.type === 'openai_moderation' && !openaiProviderConfiged}
         >
           {t('common.operation.save')}
         </Button>

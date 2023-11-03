@@ -162,6 +162,10 @@ const translation = {
           fromApi: 'Preset replies are returned by API',
           errorMessage: 'Preset replies cannot be empty',
         },
+        openaiNotConfig: {
+          before: 'OpenAI Moderation requires an OpenAI API key configured in the',
+          after: '',
+        },
       },
     },
   },
