@@ -23,7 +23,6 @@ from libs.helper import uuid_value
 from flask_restful import Resource, reqparse
 
 from services.completion_service import CompletionService
-from services.moderation_service import ModerationService
 
 
 # define completion message api for user
@@ -207,6 +206,7 @@ class ChatMessageStopApi(Resource):
         PubHandler.stop(account, task_id)
 
         return {'result': 'success'}, 200
+
 
 api.add_resource(CompletionMessageApi, '/apps/<uuid:app_id>/completion-messages')
 api.add_resource(CompletionMessageStopApi, '/apps/<uuid:app_id>/completion-messages/<string:task_id>/stop')
