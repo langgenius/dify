@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.moderation.base import Moderation, ModerationException, ModerationOutputsResult, ModerationOutputsAction
+from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
 
 
 class KeywordsModeration(Moderation):
@@ -20,19 +20,20 @@ class KeywordsModeration(Moderation):
         if not config.get("keywords"):
             raise ValueError("keywords is required")
 
-    def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
-        if not self.config['inputs_config']['enabled']:
-            return
+    def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
+        flagged = False
+        preset_response = ""
 
-        if query:
-            inputs['query__'] = query
+        if self.config['inputs_config']['enabled']:
+            preset_response = self.config['inputs_config']['preset_response']
 
-        keywords_list = self.config['keywords'].split('\n')
-        preset_response = self.config['inputs_config']['preset_response']
+            if query:
+                inputs['query__'] = query
+            keywords_list = self.config['keywords'].split('\n')
+            flagged = self._is_violated(inputs, keywords_list)
 
-        if self._is_violated(inputs, keywords_list):
-            raise ModerationException(preset_response)
-
+        return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
+        
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
         preset_response = ""
@@ -42,7 +43,7 @@ class KeywordsModeration(Moderation):
             flagged = self._is_violated({'text': text}, keywords_list)
             preset_response = self.config['outputs_config']['preset_response']
 
-        return ModerationOutputsResult(flagged=flagged, action=ModerationOutputsAction.DIRECT_OUTPUT, preset_response=preset_response)
+        return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
         for value in inputs.values():

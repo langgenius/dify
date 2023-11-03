@@ -8,6 +8,8 @@ from extensions.ext_database import db
 class APIBasedExtensionPoint(enum.Enum):
     APP_EXTERNAL_DATA_TOOL_QUERY = 'app.external_data_tool.query'
     PING = 'ping'
+    APP_MODERATION_INPUT = 'app.moderation.input'
+    APP_MODERATION_OUTPUT = 'app.moderation.output'
 
 
 class APIBasedExtension(db.Model):

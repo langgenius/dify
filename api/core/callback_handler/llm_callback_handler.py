@@ -10,7 +10,7 @@ from core.conversation_message_task import ConversationMessageTask, Conversation
     ConversationTaskInterruptException
 from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage
 from core.model_providers.models.llm.base import BaseLLM
-from core.moderation.base import ModerationOutputsResult, ModerationOutputsAction
+from core.moderation.base import ModerationOutputsResult, ModerationAction
 from core.moderation.factory import ModerationFactory
 
 
@@ -161,7 +161,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
             if not result.flagged:
                 return False
 
-            if result.action == ModerationOutputsAction.DIRECT_OUTPUT:
+            if result.action == ModerationAction.DIRECT_OUTPUT:
                 self.is_interrupt = True
                 self.llm_message.completion = result.preset_response
             else:
