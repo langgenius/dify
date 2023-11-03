@@ -21,14 +21,14 @@ class KeywordsModeration(Moderation):
             raise ValueError("keywords is required")
 
     def moderation_for_inputs(self, inputs: dict, query: Optional[str] = None):
-        if not self.config['inputs_configs']['enabled']:
+        if not self.config['inputs_config']['enabled']:
             return
 
         if query:
             inputs['query__'] = query
 
         keywords_list = self.config['keywords'].split('\n')
-        preset_response = self.config['inputs_configs']['preset_response']
+        preset_response = self.config['inputs_config']['preset_response']
 
         if self._is_violated(inputs, keywords_list):
             raise ModerationException(preset_response)
@@ -37,11 +37,11 @@ class KeywordsModeration(Moderation):
         flagged = False
         preset_response = ""
 
-        if self.config['outputs_configs']['enabled']:
+        if self.config['outputs_config']['enabled']:
             keywords_list = self.config['keywords'].split('\n')
             flagged = self._is_violated({'text': text}, keywords_list)
             if flagged:
-                preset_response = self.config['outputs_configs']['preset_response']
+                preset_response = self.config['outputs_config']['preset_response']
 
         return ModerationOutputsResult(flagged=flagged, text=preset_response)
 

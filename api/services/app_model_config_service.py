@@ -368,7 +368,7 @@ class AppModelConfigService:
             raise ValueError("sensitive_word_avoidance.type is required")
         
         type = config["sensitive_word_avoidance"]["type"]
-        config = config["sensitive_word_avoidance"]["configs"]
+        config = config["sensitive_word_avoidance"]["config"]
 
         ModerationFactory.validate_config(
             name=type,

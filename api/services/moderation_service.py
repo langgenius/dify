@@ -13,7 +13,7 @@ class ModerationService:
             raise ValueError("app model config not found")
         
         name = app_model_config.sensitive_word_avoidance_dict['type']
-        config = app_model_config.sensitive_word_avoidance_dict['configs']
+        config = app_model_config.sensitive_word_avoidance_dict['config']
 
         moderation = ModerationFactory(name, app_model.tenant_id, config)
         return moderation.moderation_for_outputs(text).dict()
