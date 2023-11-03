@@ -17,5 +17,5 @@ class ModerationService:
         name = app_model_config.sensitive_word_avoidance_dict['type']
         config = app_model_config.sensitive_word_avoidance_dict['configs']
 
-        moderation = ModerationFactory(name, user.tenant_id, config)
+        moderation = ModerationFactory(name, user.current_tenant_id, config)
         return moderation.moderation_for_outputs(text).dict()
