@@ -10,7 +10,8 @@ from redis.client import PubSub
 from sqlalchemy import and_
 
 from core.completion import Completion
-from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
+from core.conversation_message_task import PubHandler, ConversationTaskStoppedException, \
+    ConversationTaskInterruptException
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
@@ -199,7 +200,7 @@ class CompletionService:
                     is_override=is_model_config_override,
                     retriever_from=retriever_from
                 )
-            except ConversationTaskStoppedException:
+            except (ConversationTaskInterruptException, ConversationTaskStoppedException):
                 pass
             except (ValueError, LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
