@@ -55,7 +55,7 @@ class APIBasedExtensionAPI(Resource):
             api_key=args['api_key']
         )
 
-        return APIBasedExtensionService.save(extension_data, True)
+        return APIBasedExtensionService.save(extension_data)
     
 class APIBasedExtensionDetailAPI(Resource):
     
@@ -88,12 +88,10 @@ class APIBasedExtensionDetailAPI(Resource):
         extension_data_from_db.name = args['name']
         extension_data_from_db.api_endpoint = args['api_endpoint']
 
-        need_encrypt = False
         if args['api_key'] != '[__HIDDEN__]':
-            need_encrypt = True
             extension_data_from_db.api_key = args['api_key']
 
-        return APIBasedExtensionService.save(extension_data_from_db, need_encrypt)
+        return APIBasedExtensionService.save(extension_data_from_db)
 
     @setup_required
     @login_required
