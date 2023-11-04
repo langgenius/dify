@@ -18,11 +18,10 @@ class APIBasedExtensionService:
         return extension_list
 
     @classmethod
-    def save(cls, extension_data: APIBasedExtension, need_encrypt: bool) -> APIBasedExtension:
+    def save(cls, extension_data: APIBasedExtension) -> APIBasedExtension:
         cls._validation(extension_data)
 
-        if need_encrypt:
-            extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
+        extension_data.api_key = encrypt_token(extension_data.tenant_id, extension_data.api_key)
 
         db.session.add(extension_data)
         db.session.commit()
