@@ -24,14 +24,18 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
+import type { Inputs } from '@/models/debug'
+
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
+  inputs: Inputs
 }
 
 const Debug: FC<IDebug> = ({
   hasSetAPIKEY = true,
   onSetting,
+  inputs,
 }) => {
   const { t } = useTranslation()
   const {
@@ -49,8 +53,6 @@ const Debug: FC<IDebug> = ({
     citationConfig,
     moderationConfig,
     moreLikeThisConfig,
-    inputs,
-    // setInputs,
     formattingChanged,
     setFormattingChanged,
     conversationId,
@@ -445,6 +447,7 @@ const Debug: FC<IDebug> = ({
         <PromptValuePanel
           appType={mode as AppType}
           onSend={sendTextCompletion}
+          inputs={inputs}
         />
       </div>
       <div className="flex flex-col grow">

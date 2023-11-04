@@ -615,7 +615,11 @@ const Configuration: FC = () => {
               <Config />
             </div>
             <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={() => setShowAccountSettingModal({ payload: 'provider' })} />
+              <Debug
+                hasSetAPIKEY={hasSetAPIKEY}
+                onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                inputs={inputs}
+              />
             </div>
           </div>
         </div>
