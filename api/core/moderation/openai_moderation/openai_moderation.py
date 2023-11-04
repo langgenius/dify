@@ -1,6 +1,5 @@
 import openai
 import json
-from typing import Optional
 
 from core.helper.encrypter import decrypt_token
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
@@ -32,7 +31,7 @@ class OpenAIModeration(Moderation):
             if query:
                 inputs['query__'] = query
             flagged = self._is_violated(inputs)
-        
+
         return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
@@ -40,7 +39,7 @@ class OpenAIModeration(Moderation):
         preset_response = ""
 
         if self.config['outputs_config']['enabled']:
-            flagged = self._is_violated({ 'text': text })
+            flagged = self._is_violated({'text': text})
             preset_response = self.config['outputs_config']['preset_response']
 
         return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
@@ -53,9 +52,9 @@ class OpenAIModeration(Moderation):
         for result in moderation_result.results:
             if result['flagged']:
                 return True
-            
+
         return False
-            
+
     def _get_openai_api_key(self) -> str:
         provider = db.session.query(Provider) \
                     .filter_by(tenant_id=self.tenant_id) \

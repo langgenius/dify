@@ -79,7 +79,7 @@ class Moderation(Extensible, ABC):
         inputs_config = config.get("inputs_config")
         if not isinstance(inputs_config, dict):
             raise ValueError("inputs_config must be a dict")
-        
+
         # outputs_config
         outputs_config = config.get("outputs_config")
         if not isinstance(outputs_config, dict):
@@ -93,21 +93,21 @@ class Moderation(Extensible, ABC):
         # preset_response
         if not is_preset_response_required:
             return
-        
+
         if inputs_config_enabled:
             if not inputs_config.get("preset_response"):
                 raise ValueError("inputs_config.preset_response is required")
-            
+
             if len(inputs_config.get("preset_response")) > 100:
                 raise ValueError("inputs_config.preset_response must be less than 100 characters")
-                
-        
+
         if outputs_config_enabled:
             if not outputs_config.get("preset_response"):
                 raise ValueError("outputs_config.preset_response is required")
-            
+
             if len(outputs_config.get("preset_response")) > 100:
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
+
 
 class ModerationException(Exception):
     pass

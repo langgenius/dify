@@ -2,7 +2,7 @@ from extensions.ext_code_based_extension import code_based_extension
 
 
 class CodeBasedExtensionService:
-    
+
     @staticmethod
     def get_code_based_extension(module: str) -> list[dict]:
         module_extensions = code_based_extension.module_extensions(module)

@@ -1,7 +1,6 @@
-from typing import Union
 from pydantic import BaseModel
 
-from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction, ModerationException
+from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
 from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor, APIBasedExtensionPoint
 from core.helper.encrypter import decrypt_token
 from extensions.ext_database import db
@@ -51,12 +50,11 @@ class ApiModeration(Moderation):
                 inputs=inputs,
                 query=query
             )
-            
+
             result = self._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_INPUT, params.dict())
             return ModerationInputsResult(**result)
-            
+
         return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
-        
 
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
@@ -70,16 +68,15 @@ class ApiModeration(Moderation):
 
             result = self._get_config_by_requestor(APIBasedExtensionPoint.APP_MODERATION_OUTPUT, params.dict())
             return ModerationOutputsResult(**result)
-        
+
         return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
-
     def _get_config_by_requestor(self, extension_point: APIBasedExtensionPoint, params: dict) -> dict:
-            extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id"))
-            requestor = APIBasedExtensionRequestor(extension.api_endpoint, decrypt_token(self.tenant_id, extension.api_key))
-            
-            result = requestor.request(extension_point, params)
-            return result
+        extension = self._get_api_based_extension(self.tenant_id, self.config.get("api_based_extension_id"))
+        requestor = APIBasedExtensionRequestor(extension.api_endpoint, decrypt_token(self.tenant_id, extension.api_key))
+
+        result = requestor.request(extension_point, params)
+        return result
 
     @staticmethod
     def _get_api_based_extension(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
@@ -87,5 +84,5 @@ class ApiModeration(Moderation):
             APIBasedExtension.tenant_id == tenant_id,
             APIBasedExtension.id == api_based_extension_id
         ).first()
-        
+
         return extension

@@ -1,5 +1,3 @@
-from typing import Optional
-
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
 
 
@@ -19,7 +17,7 @@ class KeywordsModeration(Moderation):
 
         if not config.get("keywords"):
             raise ValueError("keywords is required")
-        
+
         if len(config.get("keywords")) > 1000:
             raise ValueError("keywords length must be less than 1000")
 
@@ -36,7 +34,7 @@ class KeywordsModeration(Moderation):
             flagged = self._is_violated(inputs, keywords_list)
 
         return ModerationInputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
-        
+
     def moderation_for_outputs(self, text: str) -> ModerationOutputsResult:
         flagged = False
         preset_response = ""
@@ -52,9 +50,9 @@ class KeywordsModeration(Moderation):
         for value in inputs.values():
             if self._check_keywords_in_value(keywords_list, value):
                 return True
-        
+
         return False
-                
+
     def _check_keywords_in_value(self, keywords_list, value):
         for keyword in keywords_list:
             if keyword.lower() in value.lower():

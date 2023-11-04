@@ -45,4 +45,3 @@ class Extension:
         form_schema = module_extension.form_schema
 
         # TODO validate form_schema
-
