@@ -29,9 +29,9 @@ from services.errors.message import MessageNotExistsError
 class CompletionService:
 
     @classmethod
-    def completion(cls, app_model: App, user: Union[Account | EndUser], args: Any,
+    def completion(cls, app_model: App, user: Union[Account, EndUser], args: Any,
                    from_source: str, streaming: bool = True,
-                   is_model_config_override: bool = False) -> Union[dict | Generator]:
+                   is_model_config_override: bool = False) -> Union[dict, Generator]:
         # is streaming mode
         inputs = args['inputs']
         query = args['query']
@@ -244,9 +244,9 @@ class CompletionService:
         return countdown_thread
 
     @classmethod
-    def generate_more_like_this(cls, app_model: App, user: Union[Account | EndUser],
+    def generate_more_like_this(cls, app_model: App, user: Union[Account, EndUser],
                                 message_id: str, streaming: bool = True,
-                                retriever_from: str = 'dev') -> Union[dict | Generator]:
+                                retriever_from: str = 'dev') -> Union[dict, Generator]:
         if not user:
             raise ValueError('user cannot be None')
 
@@ -342,7 +342,7 @@ class CompletionService:
         return filtered_inputs
 
     @classmethod
-    def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict | Generator]:
+    def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict, Generator]:
         generate_channel = list(pubsub.channels.keys())[0].decode('utf-8')
         if not streaming:
             try:

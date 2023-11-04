@@ -84,7 +84,7 @@ class Completion:
 
         try:
             chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
-           
+
             try:
                 # process sensitive_word_avoidance
                 inputs, query = cls.moderation_for_inputs(app.id, app.tenant_id, app_model_config, inputs, query)
@@ -158,7 +158,7 @@ class Completion:
             logging.warning(f'ChunkedEncodingError: {e}')
             conversation_message_task.end()
             return
-    
+
     @classmethod
     def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
         if not app_model_config.sensitive_word_avoidance_dict['enabled']:
@@ -179,8 +179,6 @@ class Completion:
             query = moderation_result.query
 
         return inputs, query
-            
-
 
     @classmethod
     def fill_in_inputs_from_external_data_tools(cls, tenant_id: str, app_id: str, external_data_tools: list[dict],
@@ -256,7 +254,7 @@ class Completion:
     def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
         if app.mode != 'completion':
             return query
-        
+
         return inputs.get(app_model_config.dataset_query_variable, "")
 
     @classmethod

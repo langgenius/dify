@@ -2,6 +2,7 @@ from models.model import AppModelConfig, App
 from core.moderation.factory import ModerationFactory, ModerationOutputsResult
 from extensions.ext_database import db
 
+
 class ModerationService:
 
     def moderation_for_outputs(self, app_id: str, app_model: App, text: str) -> ModerationOutputsResult:
@@ -11,7 +12,7 @@ class ModerationService:
 
         if not app_model_config:
             raise ValueError("app model config not found")
-        
+
         name = app_model_config.sensitive_word_avoidance_dict['type']
         config = app_model_config.sensitive_word_avoidance_dict['config']
 

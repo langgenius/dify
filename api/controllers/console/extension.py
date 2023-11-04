@@ -25,7 +25,7 @@ class CodeBasedExtensionAPI(Resource):
             'module': args['module'],
             'data': CodeBasedExtensionService.get_code_based_extension(args['module'])
         }
-    
+
 
 class APIBasedExtensionAPI(Resource):
 
@@ -36,7 +36,7 @@ class APIBasedExtensionAPI(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
         return APIBasedExtensionService.get_all_by_tenant_id(tenant_id)
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -56,9 +56,10 @@ class APIBasedExtensionAPI(Resource):
         )
 
         return APIBasedExtensionService.save(extension_data)
-    
+
+
 class APIBasedExtensionDetailAPI(Resource):
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -66,9 +67,9 @@ class APIBasedExtensionDetailAPI(Resource):
     def get(self, id):
         api_based_extension_id = str(id)
         tenant_id = current_user.current_tenant_id
-    
+
         return APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -103,7 +104,7 @@ class APIBasedExtensionDetailAPI(Resource):
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
 
         APIBasedExtensionService.delete(extension_data_from_db)
-        
+
         return {'result': 'success'}
 
 
