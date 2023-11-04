@@ -128,9 +128,11 @@ const Config: FC = () => {
           onCancelCallback: () => {
             setModerationConfig(produce(moderationConfig, (draft) => {
               draft.enabled = false
+              showChooseFeatureTrue()
             }))
           },
         })
+        showChooseFeatureFalse()
       }
     },
   })
