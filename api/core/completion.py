@@ -162,7 +162,7 @@ class Completion:
             return
     
     @classmethod
-    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str) -> Tuple[dict, str]:
+    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
         if not app_model_config.sensitive_word_avoidance_dict['enabled']:
             return inputs, query
 
