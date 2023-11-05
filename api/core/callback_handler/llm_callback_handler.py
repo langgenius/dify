@@ -39,6 +39,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.moderation_rule = None
         self.moderation_chunk = ''
         self.moderation_buffer = ''
+        self.moderation_final_chunk = False
         self.moderation_thread = None
         if sensitive_word_avoidance_dict and sensitive_word_avoidance_dict.get("enabled"):
             self.moderation_rule = ModerationRule(
@@ -92,10 +93,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
             self.conversation_message_task.append_message_text(self.llm_message.completion)
         else:
-            if len(self.llm_message.completion) < 300:
-                self.moderation_completion_async(self.llm_message.completion, True)
-            elif self.moderation_chunk:
-                self.moderation_completion_async(self.moderation_chunk, True)
+            self.moderation_completion_async(self.llm_message.completion, True)
 
         if response.llm_output and 'token_usage' in response.llm_output:
             if 'prompt_tokens' in response.llm_output['token_usage']:
@@ -114,22 +112,23 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self.moderation_thread.join()
 
         if self.direct_output_response:
-            raise ConversationTaskInterruptException()
+            ex = ConversationTaskInterruptException()
+            self.on_llm_error(error=ex)
+            raise ex
 
         self.conversation_message_task.save_message(self.llm_message)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        try:
-            if self.direct_output_response:
-                raise ConversationTaskInterruptException()
+        if self.direct_output_response:
+            ex = ConversationTaskInterruptException()
+            self.on_llm_error(error=ex)
+            raise ex
 
+        try:
             self.conversation_message_task.append_message_text(token)
             self.moderation_completion_async(token)
             self.llm_message.completion += token
         except ConversationTaskStoppedException as ex:
-            self.on_llm_error(error=ex)
-            raise ex
-        except ConversationTaskInterruptException as ex:
             self.on_llm_error(error=ex)
             raise ex
 
@@ -157,6 +156,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
         Moderation for outputs.
 
         :param token: LLM output content
+        :param no_chunk: whether to chunk the token
         :return: bool
         """
         if not self.moderation_rule:
@@ -168,8 +168,8 @@ class LLMCallbackHandler(BaseCallbackHandler):
             if len(self.moderation_chunk) < 300:
                 return False
         else:
-            self.moderation_buffer += token
-            self.moderation_chunk = token
+            self.moderation_buffer = token
+            self.moderation_final_chunk = True
 
         self.moderation_chunk = ''
 
@@ -186,7 +186,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
             while True:
                 moderation_buffer = self.moderation_buffer
                 buffer_length = len(moderation_buffer)
-                if buffer_length - current_length < 300:
+                if not self.moderation_final_chunk and buffer_length - current_length < 300:
                     if buffer_length - current_length == 0:
                         break
 
