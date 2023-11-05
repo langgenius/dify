@@ -35,7 +35,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
         app_model_config = self.conversation_message_task.app_model_config
         sensitive_word_avoidance_dict = app_model_config.sensitive_word_avoidance_dict
 
-        self.is_moderation_working = False
         self.direct_output_response = None
         self.moderation_rule = None
         self.moderation_chunk = ''
@@ -111,8 +110,8 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
                 [PromptMessage(content=self.llm_message.completion)])
 
-        while self.is_moderation_working:
-            time.sleep(0.1)
+        if self.moderation_thread:
+            self.moderation_thread.join()
 
         if self.direct_output_response:
             raise ConversationTaskInterruptException()
@@ -120,24 +119,24 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.conversation_message_task.save_message(self.llm_message)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        if self.direct_output_response:
-            raise ConversationTaskInterruptException()
-
         try:
+            if self.direct_output_response:
+                raise ConversationTaskInterruptException()
+
             self.conversation_message_task.append_message_text(token)
+            self.moderation_completion_async(token)
+            self.llm_message.completion += token
         except ConversationTaskStoppedException as ex:
             self.on_llm_error(error=ex)
             raise ex
-
-        self.moderation_completion_async(token)
-
-        self.llm_message.completion += token
+        except ConversationTaskInterruptException as ex:
+            self.on_llm_error(error=ex)
+            raise ex
 
     def on_llm_error(
             self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         """Do nothing."""
-        self.is_moderation_working = False
         if isinstance(error, ConversationTaskStoppedException):
             if self.conversation_message_task.streaming:
                 self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
@@ -152,63 +151,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self.conversation_message_task.save_message(llm_message=self.llm_message)
         else:
             logging.debug("on_llm_error: %s", error)
-
-    def moderation_completion(self, token: str, no_chunk: bool = False) -> bool:
-        """
-        Moderation for outputs.
-
-        :param token: LLM output content
-        :return: bool
-        """
-        if not self.moderation_rule:
-            return False
-
-        if not no_chunk:
-            self.moderation_chunk += token
-            self.moderation_buffer += token
-            if len(self.moderation_chunk) < 300:
-                return False
-        else:
-            self.moderation_buffer += token
-            self.moderation_chunk = token
-
-        self.moderation_chunk = ''
-
-        try:
-            moderation_factory = ModerationFactory(
-                name=self.moderation_rule.type,
-                tenant_id=self.conversation_message_task.tenant_id,
-                config=self.moderation_rule.config
-            )
-
-            logging.info('Moderation params: %s', self.moderation_buffer)
-            result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(self.moderation_buffer)
-            if not result.flagged:
-                return False
-
-            if result.action == ModerationAction.DIRECT_OUTPUT:
-                self.llm_message.completion = result.preset_response
-            else:
-                self.llm_message.completion = result.text + self.moderation_chunk
-
-            if self.conversation_message_task.streaming:
-                # trigger replace event
-                logging.info("Moderation %s replace event: %s", result.action.value, self.llm_message.completion)
-                self.conversation_message_task.on_message_replace(self.llm_message.completion)
-
-                if result.action == ModerationAction.DIRECT_OUTPUT:
-                    self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
-                        [PromptMessage(content=self.llm_message.completion)]
-                    )
-                    self.conversation_message_task.save_message(llm_message=self.llm_message)
-                    raise ConversationTaskInterruptException()
-        except ConversationTaskInterruptException as e:
-            raise e
-        except Exception as e:
-            logging.error("Moderation Output error: %s", e)
-            return False
-
-        return True
 
     def moderation_completion_async(self, token: str, no_chunk: bool = False) -> bool:
         """
@@ -240,14 +182,12 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
     def moderation_worker(self, flask_app: Flask):
         with flask_app.app_context():
-            self.is_moderation_working = True
             current_length = 0
-            while self.is_moderation_working:
+            while True:
                 moderation_buffer = self.moderation_buffer
                 buffer_length = len(moderation_buffer)
                 if buffer_length - current_length < 300:
                     if buffer_length - current_length == 0:
-                        self.is_moderation_working = False
                         break
 
                     time.sleep(0.1)
@@ -269,7 +209,6 @@ class LLMCallbackHandler(BaseCallbackHandler):
                         continue
 
                     if result.action == ModerationAction.DIRECT_OUTPUT:
-                        self.is_moderation_working = False
                         self.llm_message.completion = result.preset_response
                         self.direct_output_response = result.preset_response
                     else:
@@ -279,5 +218,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
                         # trigger replace event
                         logging.info("Moderation %s replace event: %s", result.action.value, self.llm_message.completion)
                         self.conversation_message_task.on_message_replace(self.llm_message.completion)
+                        if result.action == ModerationAction.DIRECT_OUTPUT:
+                            break
                 except Exception as e:
                     logging.error("Moderation Output error: %s", e)

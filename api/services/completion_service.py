@@ -239,7 +239,7 @@ class CompletionService:
                     PubHandler.stop(user, generate_task_id)
                     try:
                         pubsub.close()
-                    except:
+                    except Exception:
                         pass
 
         countdown_thread = threading.Thread(target=close_pubsub)
