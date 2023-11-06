@@ -30,7 +30,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
     setShowAccountSettingModal,
     setShowApiBasedExtensionModal,
   } = useModalContext()
-  const { data } = useSWR(
+  const { data, mutate } = useSWR(
     '/api-based-extension',
     fetchApiBasedExtensionList,
   )
@@ -104,7 +104,7 @@ const ApiBasedExtensionSelector: FC<ApiBasedExtensionSelectorProps> = ({
           <div className='p-1'>
             <div
               className='flex items-center px-3 h-8 text-sm text-primary-600 cursor-pointer'
-              onClick={() => setShowApiBasedExtensionModal({ payload: {} })}
+              onClick={() => setShowApiBasedExtensionModal({ payload: {}, onSaveCallback: () => mutate() })}
             >
               <Plus className='mr-2 w-4 h-4' />
               {t('common.operation.add')}
