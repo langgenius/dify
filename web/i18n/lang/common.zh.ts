@@ -304,6 +304,7 @@ const translation = {
   apiBasedExtension: {
     title: '基于 API 的扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
     link: '了解如何开发您自己的基于 API 的扩展。',
+    linkUrl: 'https://docs.dify.ai/v/zh-hans/advanced/api_based_extension',
     add: '新增基于 API 的扩展',
     selector: {
       title: '基于 API 的扩展',
