@@ -59,6 +59,11 @@
   max-width: 100%;
 }
 
+.answer {
+  display: inline-block;
+  max-width: 100%;
+}
+
 .answerWrap:hover .copyBtn {
   display: block;
 }

@@ -19,7 +19,7 @@ import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import type { ModelModeType } from '@/types/app'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import AccountSetting from '@/app/components/header/account-setting'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   value: {
@@ -59,6 +59,7 @@ const ModelSelector: FC<Props> = ({
   triggerIconSmall,
 }) => {
   const { t } = useTranslation()
+  const { setShowAccountSettingModal } = useModalContext()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
   const [search, setSearch] = useState('')
   const modelList = supportAgentThought
@@ -111,8 +112,6 @@ const ModelSelector: FC<Props> = ({
     })
     return res
   })()
-
-  const [showSettingModal, setShowSettingModal] = useState(false)
 
   return (
     <div className=''>
@@ -248,9 +247,7 @@ const ModelSelector: FC<Props> = ({
                   style={{
                     borderColor: 'rgba(0, 0, 0, 0.05)',
                   }}
-                  onClick={() => {
-                    setShowSettingModal(true)
-                  }}
+                  onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
                 >
                   <CubeOutline className='w-4 h-4 mr-2' />
                   <div>{t('common.model.addMoreModel')}</div>
@@ -260,14 +257,6 @@ const ModelSelector: FC<Props> = ({
           </Transition>
         )}
       </Popover>
-
-      {
-        showSettingModal && (
-          <AccountSetting activeTab="provider" onCancel={async () => {
-            setShowSettingModal(false)
-          }} />
-        )
-      }
     </div>
   )
 }

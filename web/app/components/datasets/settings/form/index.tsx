@@ -16,8 +16,8 @@ import type { DataSet, DataSetListResponse } from '@/models/datasets'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import AccountSetting from '@/app/components/header/account-setting'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { useModalContext } from '@/context/modal-context'
 
 const rowClass = `
   flex justify-between py-4
@@ -45,12 +45,12 @@ const Form = () => {
   const { notify } = useContext(ToastContext)
   const { mutate } = useSWRConfig()
   const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
+  const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
-  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
   const handleSave = async () => {
     if (loading)
       return
@@ -167,7 +167,7 @@ const Form = () => {
             </div>
             <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
               {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowSetAPIKeyModal(true)}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
             </div>
           </div>
         </div>
@@ -185,11 +185,6 @@ const Form = () => {
             </Button>
           </div>
         </div>
-      )}
-      {showSetAPIKeyModal && (
-        <AccountSetting activeTab="provider" onCancel={async () => {
-          setShowSetAPIKeyModal(false)
-        }} />
       )}
     </div>
   )

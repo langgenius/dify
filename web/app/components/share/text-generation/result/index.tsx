@@ -12,6 +12,7 @@ import type { Feedbacktype } from '@/app/components/app/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
+import type { ModerationService } from '@/models/common'
 export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
@@ -29,6 +30,8 @@ export type IResultProps = {
   handleSaveMessage: (messageId: string) => void
   taskId?: number
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  enableModeration?: boolean
+  moderationService?: (text: string) => ReturnType<ModerationService>
 }
 
 const Result: FC<IResultProps> = ({
@@ -127,7 +130,7 @@ const Result: FC<IResultProps> = ({
     })
     setCompletionRes('')
 
-    const res: string[] = []
+    let res: string[] = []
     let tempMessageId = ''
 
     if (!isPC)
@@ -159,6 +162,10 @@ const Result: FC<IResultProps> = ({
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
         clearInterval(runId)
+      },
+      onMessageReplace: (messageReplace) => {
+        res = [messageReplace.answer]
+        setCompletionRes(res.join(''))
       },
       onError() {
         if (isTimeout)

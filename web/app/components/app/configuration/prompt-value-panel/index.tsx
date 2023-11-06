@@ -7,7 +7,7 @@ import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
 import ConfigContext from '@/context/debug-configuration'
-import type { PromptVariable } from '@/models/debug'
+import type { Inputs, PromptVariable } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
@@ -18,14 +18,16 @@ import Tooltip from '@/app/components/base/tooltip-plus'
 export type IPromptValuePanelProps = {
   appType: AppType
   onSend?: () => void
+  inputs: Inputs
 }
 
 const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   appType,
   onSend,
+  inputs,
 }) => {
   const { t } = useTranslation()
-  const { modelModeType, modelConfig, inputs, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
