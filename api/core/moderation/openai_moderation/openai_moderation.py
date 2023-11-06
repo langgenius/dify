@@ -1,7 +1,3 @@
-import openai
-import json
-
-from core.helper.encrypter import decrypt_token
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
 from core.model_providers.model_factory import ModelFactory
 
@@ -44,21 +40,7 @@ class OpenAIModeration(Moderation):
         return ModerationOutputsResult(flagged=flagged, action=ModerationAction.DIRECT_OUTPUT, preset_response=preset_response)
 
     def _is_violated(self, inputs: dict):
-
-        openai_api_key = self._get_openai_api_key()
-        moderation_result = openai.Moderation.create(input=list(inputs.values()), api_key=openai_api_key)
-
-        for result in moderation_result.results:
-            if result['flagged']:
-                return True
-
-        return False
-
-    def _get_openai_api_key(self) -> str:
-        model_class_obj = ModelFactory.get_moderation_model(self.tenant_id, "openai", "moderation")
-        if not model_class_obj:
-            raise ValueError("openai provider is not configured")
-
-        encrypted_config = json.loads(model_class_obj.model_provider.provider.encrypted_config)
-
-        return decrypt_token(self.tenant_id, encrypted_config['openai_api_key'])
+        text = '\n'.join(inputs.values())
+        openai_moderation = ModelFactory.get_moderation_model(self.tenant_id, "openai", "moderation")
+        is_not_invalid = openai_moderation.run(text)
+        return not is_not_invalid
