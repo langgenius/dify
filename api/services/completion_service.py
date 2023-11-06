@@ -10,7 +10,8 @@ from redis.client import PubSub
 from sqlalchemy import and_
 
 from core.completion import Completion
-from core.conversation_message_task import PubHandler, ConversationTaskStoppedException
+from core.conversation_message_task import PubHandler, ConversationTaskStoppedException, \
+    ConversationTaskInterruptException
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
@@ -28,9 +29,9 @@ from services.errors.message import MessageNotExistsError
 class CompletionService:
 
     @classmethod
-    def completion(cls, app_model: App, user: Union[Account | EndUser], args: Any,
+    def completion(cls, app_model: App, user: Union[Account, EndUser], args: Any,
                    from_source: str, streaming: bool = True,
-                   is_model_config_override: bool = False) -> Union[dict | Generator]:
+                   is_model_config_override: bool = False) -> Union[dict, Generator]:
         # is streaming mode
         inputs = args['inputs']
         query = args['query']
@@ -199,9 +200,9 @@ class CompletionService:
                     is_override=is_model_config_override,
                     retriever_from=retriever_from
                 )
-            except ConversationTaskStoppedException:
+            except (ConversationTaskInterruptException, ConversationTaskStoppedException):
                 pass
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
+            except (ValueError, LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
                     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError,
                     ModelCurrentlyNotSupportError) as e:
                 PubHandler.pub_error(user, generate_task_id, e)
@@ -234,7 +235,7 @@ class CompletionService:
                     PubHandler.stop(user, generate_task_id)
                     try:
                         pubsub.close()
-                    except:
+                    except Exception:
                         pass
 
         countdown_thread = threading.Thread(target=close_pubsub)
@@ -243,9 +244,9 @@ class CompletionService:
         return countdown_thread
 
     @classmethod
-    def generate_more_like_this(cls, app_model: App, user: Union[Account | EndUser],
+    def generate_more_like_this(cls, app_model: App, user: Union[Account, EndUser],
                                 message_id: str, streaming: bool = True,
-                                retriever_from: str = 'dev') -> Union[dict | Generator]:
+                                retriever_from: str = 'dev') -> Union[dict, Generator]:
         if not user:
             raise ValueError('user cannot be None')
 
@@ -341,7 +342,7 @@ class CompletionService:
         return filtered_inputs
 
     @classmethod
-    def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict | Generator]:
+    def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict, Generator]:
         generate_channel = list(pubsub.channels.keys())[0].decode('utf-8')
         if not streaming:
             try:
@@ -386,6 +387,8 @@ class CompletionService:
                                 break
                             if event == 'message':
                                 yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'message_replace':
+                                yield "data: " + json.dumps(cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
                             elif event == 'chain':
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':
@@ -416,6 +419,21 @@ class CompletionService:
     def get_message_response_data(cls, data: dict):
         response_data = {
             'event': 'message',
+            'task_id': data.get('task_id'),
+            'id': data.get('message_id'),
+            'answer': data.get('text'),
+            'created_at': int(time.time())
+        }
+
+        if data.get('mode') == 'chat':
+            response_data['conversation_id'] = data.get('conversation_id')
+
+        return response_data
+
+    @classmethod
+    def get_message_replace_response_data(cls, data: dict):
+        response_data = {
+            'event': 'message_replace',
             'task_id': data.get('task_id'),
             'id': data.get('message_id'),
             'answer': data.get('text'),
@@ -508,6 +526,7 @@ class CompletionService:
 
         # handle errors
         llm_errors = {
+            'ValueError': LLMBadRequestError,
             'LLMBadRequestError': LLMBadRequestError,
             'LLMAPIConnectionError': LLMAPIConnectionError,
             'LLMAPIUnavailableError': LLMAPIUnavailableError,

@@ -19,7 +19,7 @@ from flask_cors import CORS
 
 from core.model_providers.providers import hosted
 from extensions import ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage, ext_mail, ext_stripe
+    ext_database, ext_storage, ext_mail, ext_stripe, ext_code_based_extension
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
@@ -79,6 +79,7 @@ def create_app(test_config=None) -> Flask:
 def initialize_extensions(app):
     # Since the application instance is now created, pass it to each Flask
     # extension instance to bind it to the Flask application instance (app)
+    ext_code_based_extension.init()
     ext_database.init_app(app)
     ext_migrate.init(app, db)
     ext_redis.init_app(app)

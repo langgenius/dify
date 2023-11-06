@@ -97,6 +97,7 @@ class AppModelConfig(db.Model):
     chat_prompt_config = db.Column(db.Text)
     completion_prompt_config = db.Column(db.Text)
     dataset_configs = db.Column(db.Text)
+    external_data_tools = db.Column(db.Text)
 
     @property
     def app(self):
@@ -133,7 +134,12 @@ class AppModelConfig(db.Model):
     @property
     def sensitive_word_avoidance_dict(self) -> dict:
         return json.loads(self.sensitive_word_avoidance) if self.sensitive_word_avoidance \
-            else {"enabled": False, "words": [], "canned_response": []}
+            else {"enabled": False, "type": "", "configs": []}
+
+    @property
+    def external_data_tools_list(self) -> list[dict]:
+        return json.loads(self.external_data_tools) if self.external_data_tools \
+            else []
 
     @property
     def user_input_form_list(self) -> dict:
@@ -167,6 +173,7 @@ class AppModelConfig(db.Model):
             "retriever_resource": self.retriever_resource_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
+            "external_data_tools": self.external_data_tools_list,
             "model": self.model_dict,
             "user_input_form": self.user_input_form_list,
             "dataset_query_variable": self.dataset_query_variable,
@@ -190,6 +197,7 @@ class AppModelConfig(db.Model):
         self.more_like_this = json.dumps(model_config['more_like_this'])
         self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
             if model_config.get('sensitive_word_avoidance') else None
+        self.external_data_tools = json.dumps(model_config['external_data_tools'])
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
         self.dataset_query_variable = model_config.get('dataset_query_variable')
@@ -219,6 +227,7 @@ class AppModelConfig(db.Model):
             speech_to_text=self.speech_to_text,
             more_like_this=self.more_like_this,
             sensitive_word_avoidance=self.sensitive_word_avoidance,
+            external_data_tools=self.external_data_tools,
             model=self.model,
             user_input_form=self.user_input_form,
             dataset_query_variable=self.dataset_query_variable,
@@ -332,41 +341,16 @@ class Conversation(db.Model):
             override_model_configs = json.loads(self.override_model_configs)
 
             if 'model' in override_model_configs:
-                model_config['model'] = override_model_configs['model']
-                model_config['pre_prompt'] = override_model_configs['pre_prompt']
-                model_config['agent_mode'] = override_model_configs['agent_mode']
-                model_config['opening_statement'] = override_model_configs['opening_statement']
-                model_config['suggested_questions'] = override_model_configs['suggested_questions']
-                model_config['suggested_questions_after_answer'] = override_model_configs[
-                    'suggested_questions_after_answer'] \
-                    if 'suggested_questions_after_answer' in override_model_configs else {"enabled": False}
-                model_config['speech_to_text'] = override_model_configs[
-                    'speech_to_text'] \
-                    if 'speech_to_text' in override_model_configs else {"enabled": False}
-                model_config['more_like_this'] = override_model_configs['more_like_this'] \
-                    if 'more_like_this' in override_model_configs else {"enabled": False}
-                model_config['sensitive_word_avoidance'] = override_model_configs['sensitive_word_avoidance'] \
-                    if 'sensitive_word_avoidance' in override_model_configs \
-                    else {"enabled": False, "words": [], "canned_response": []}
-                model_config['user_input_form'] = override_model_configs['user_input_form']
+                app_model_config = AppModelConfig()
+                app_model_config = app_model_config.from_model_config_dict(override_model_configs)
+                model_config = app_model_config.to_dict()
             else:
                 model_config['configs'] = override_model_configs
         else:
             app_model_config = db.session.query(AppModelConfig).filter(
                 AppModelConfig.id == self.app_model_config_id).first()
 
-            model_config['configs'] = app_model_config.configs
-            model_config['model'] = app_model_config.model_dict
-            model_config['pre_prompt'] = app_model_config.pre_prompt
-            model_config['agent_mode'] = app_model_config.agent_mode_dict
-            model_config['opening_statement'] = app_model_config.opening_statement
-            model_config['suggested_questions'] = app_model_config.suggested_questions_list
-            model_config['suggested_questions_after_answer'] = app_model_config.suggested_questions_after_answer_dict
-            model_config['speech_to_text'] = app_model_config.speech_to_text_dict
-            model_config['retriever_resource'] = app_model_config.retriever_resource_dict
-            model_config['more_like_this'] = app_model_config.more_like_this_dict
-            model_config['sensitive_word_avoidance'] = app_model_config.sensitive_word_avoidance_dict
-            model_config['user_input_form'] = app_model_config.user_input_form_list
+            model_config = app_model_config.to_dict()
 
         model_config['model_id'] = self.model_id
         model_config['provider'] = self.model_provider
