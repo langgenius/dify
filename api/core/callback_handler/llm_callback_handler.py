@@ -158,7 +158,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
 
 class OutputModerationHandler(BaseModel):
-    BUFFER_SIZE: int = 300
+    DEFAULT_BUFFER_SIZE: int = 300
 
     tenant_id: str
     app_id: str
@@ -211,8 +211,10 @@ class OutputModerationHandler(BaseModel):
         return final_output
 
     def start_thread(self) -> threading.Thread:
+        buffer_size = int(current_app.config.get('MODERATION_BUFFER_SIZE', self.DEFAULT_BUFFER_SIZE))
         thread = threading.Thread(target=self.worker, kwargs={
-            'flask_app': current_app._get_current_object()
+            'flask_app': current_app._get_current_object(),
+            'buffer_size': buffer_size if buffer_size > 0 else self.DEFAULT_BUFFER_SIZE
         })
 
         thread.start()
@@ -223,7 +225,7 @@ class OutputModerationHandler(BaseModel):
         if self.thread and self.thread.is_alive():
             self.thread_running = False
 
-    def worker(self, flask_app: Flask):
+    def worker(self, flask_app: Flask, buffer_size: int):
         with flask_app.app_context():
             current_length = 0
             while self.thread_running:
@@ -231,7 +233,7 @@ class OutputModerationHandler(BaseModel):
                 buffer_length = len(moderation_buffer)
                 if not self.is_final_chunk:
                     chunk_length = buffer_length - current_length
-                    if 0 <= chunk_length < self.BUFFER_SIZE:
+                    if 0 <= chunk_length < buffer_size:
                         time.sleep(1)
                         continue
 

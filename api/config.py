@@ -57,6 +57,7 @@ DEFAULTS = {
     'CLEAN_DAY_SETTING': 30,
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
+    'OUTPUT_MODERATION_BUFFER_SIZE': 300
 }
 
 
@@ -227,6 +228,9 @@ class Config:
         # uploading settings
         self.UPLOAD_FILE_SIZE_LIMIT = int(get_env('UPLOAD_FILE_SIZE_LIMIT'))
         self.UPLOAD_FILE_BATCH_LIMIT = int(get_env('UPLOAD_FILE_BATCH_LIMIT'))
+
+        # moderation settings
+        self.OUTPUT_MODERATION_BUFFER_SIZE = int(get_env('OUTPUT_MODERATION_BUFFER_SIZE'))
 
 
 class CloudEditionConfig(Config):
