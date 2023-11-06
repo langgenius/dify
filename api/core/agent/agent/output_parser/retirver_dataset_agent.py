@@ -14,7 +14,6 @@ from pydantic import root_validator
 from core.model_providers.models.entity.message import to_prompt_messages
 from core.model_providers.models.llm.base import BaseLLM
 from core.third_party.langchain.llms.fake import FakeLLM
-from core.tool.dataset_choose_tool import DatasetChooseTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
@@ -58,23 +57,31 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             Action specifying what tool to use.
         """
         if len(self.tools) == 0:
-            return AgentFinish(return_values={"output": []}, log='')
+            return AgentFinish(return_values={"output": ''}, log='')
         elif len(self.tools) == 1:
             tool = next(iter(self.tools))
-            tool = cast(DatasetChooseTool, tool)
+            tool = cast(DatasetRetrieverTool, tool)
             rst = tool.run(tool_input={'query': kwargs['input']})
             # output = ''
             # rst_json = json.loads(rst)
             # for item in rst_json:
             #     output += f'{item["content"]}\n'
-            return AgentFinish(return_values={"output": rst}, log=str(rst))
+            return AgentFinish(return_values={"output": rst}, log=rst)
 
         if intermediate_steps:
             _, observation = intermediate_steps[-1]
             return AgentFinish(return_values={"output": observation}, log=observation)
 
         try:
-            return self.real_plan(intermediate_steps, **kwargs)
+            agent_decision = self.real_plan(intermediate_steps, callbacks, **kwargs)
+            if isinstance(agent_decision, AgentAction):
+                tool_inputs = agent_decision.tool_input
+                if isinstance(tool_inputs, dict) and 'query' in tool_inputs and 'chat_history' not in kwargs:
+                    tool_inputs['query'] = kwargs['input']
+                    agent_decision.tool_input = tool_inputs
+            else:
+                agent_decision.return_values['output'] = ''
+            return agent_decision
         except Exception as e:
             new_exception = self.model_instance.handle_exceptions(e)
             raise new_exception
@@ -82,6 +89,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
     def real_plan(
         self,
         intermediate_steps: List[Tuple[AgentAction, str]],
+        callbacks: Callbacks = None,
         **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
         """Given input, decided what to do.
@@ -106,10 +114,15 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             functions=self.functions,
         )
 
-        if result.function_call:
-            function_name = result.function_call["name"]
-            return AgentFinish(return_values={"output": [function_name]}, log=function_name)
-        return AgentFinish(return_values={"output": ''}, log='')
+        ai_message = AIMessage(
+            content=result.content,
+            additional_kwargs={
+                'function_call': result.function_call
+            }
+        )
+
+        agent_decision = _parse_ai_message(ai_message)
+        return agent_decision
 
     async def aplan(
             self,
