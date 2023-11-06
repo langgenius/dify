@@ -162,6 +162,7 @@ const translation = {
           condition: '审核输入内容和审核输出内容至少启用一项',
           fromApi: '预设回复通过 API 返回',
           errorMessage: '预设回复不能为空',
+          supportMarkdown: '支持 Markdown',
         },
         openaiNotConfig: {
           before: 'OpenAI 内容审核需要在',
