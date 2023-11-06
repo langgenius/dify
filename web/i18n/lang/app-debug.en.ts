@@ -162,6 +162,7 @@ const translation = {
           condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
           fromApi: 'Preset replies are returned by API',
           errorMessage: 'Preset replies cannot be empty',
+          supportMarkdown: 'Markdown supported',
         },
         openaiNotConfig: {
           before: 'OpenAI Moderation requires an OpenAI API key configured in the',

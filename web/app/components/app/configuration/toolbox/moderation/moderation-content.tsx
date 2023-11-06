@@ -46,7 +46,10 @@ const ModerationContent: FC<ModerationContentProps> = ({
         {
           config.enabled && showPreset && (
             <div className='px-3 pt-1 pb-3 bg-white rounded-lg'>
-              <div className='leading-8 text-[13px] font-medium text-gray-700'>{t('appDebug.feature.moderation.modal.content.preset')}</div>
+              <div className='flex items-center justify-between h-8 text-[13px] font-medium text-gray-700'>
+                {t('appDebug.feature.moderation.modal.content.preset')}
+                <span className='text-xs font-normal text-gray-500'>{t('appDebug.feature.moderation.modal.content.supportMarkdown')}</span>
+              </div>
               <div className='relative px-3 py-2 h-20 rounded-lg bg-gray-100'>
                 <textarea
                   value={config.preset_response || ''}
