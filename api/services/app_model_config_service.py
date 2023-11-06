@@ -250,11 +250,6 @@ class AppModelConfigService:
         if not isinstance(config["pre_prompt"], str):
             raise ValueError("pre_prompt must be of string type")
 
-        template_vars = re.findall(r"\{\{(\w+)\}\}", config["pre_prompt"])
-        for var in template_vars:
-            if var not in variables:
-                raise ValueError("Template variables in pre_prompt must be defined in user_input_form")
-
         # agent_mode
         if "agent_mode" not in config or not config["agent_mode"]:
             config["agent_mode"] = {
