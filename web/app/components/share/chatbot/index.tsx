@@ -456,7 +456,15 @@ const Main: FC<IMainProps> = ({
         }
       },
       onMessageReplace: (messageReplace) => {
-        responseItem.content = messageReplace.answer
+        setChatList(produce(
+          getChatList(),
+          (draft) => {
+            const current = draft.find(item => item.id === messageReplace.id)
+
+            if (current)
+              current.content = messageReplace.answer
+          },
+        ))
       },
       onError(errorMessage, errorCode) {
         if (['provider_not_initialize', 'completion_request_error'].includes(errorCode as string))
