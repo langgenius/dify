@@ -556,7 +556,15 @@ const Main: FC<IMainProps> = ({
         }
         : undefined,
       onMessageReplace: (messageReplace) => {
-        responseItem.content = messageReplace.answer
+        setChatList(produce(
+          getChatList(),
+          (draft) => {
+            const current = draft.find(item => item.id === messageReplace.id)
+
+            if (current)
+              current.content = messageReplace.answer
+          },
+        ))
       },
       onError() {
         setResponsingFalse()
