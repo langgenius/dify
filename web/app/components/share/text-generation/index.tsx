@@ -26,6 +26,7 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
@@ -337,7 +338,7 @@ const TextGeneration: FC<IMainProps> = ({
       setSiteInfo(siteInfo as SiteInfo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this }: any = appParams
+      const { user_input_form, more_like_this, sensitive_word_avoidance }: any = appParams
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture

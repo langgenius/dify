@@ -13,7 +13,17 @@ import Loading from '../../base/loading'
 import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
-import type { CompletionParams, DatasetConfigs, Inputs, ModelConfig, MoreLikeThisConfig, PromptConfig, PromptVariable } from '@/models/debug'
+import type {
+  CompletionParams,
+  DatasetConfigs,
+  Inputs,
+  ModelConfig,
+  ModerationConfig,
+  MoreLikeThisConfig,
+  PromptConfig,
+  PromptVariable,
+} from '@/models/debug'
+import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
@@ -26,7 +36,6 @@ import { ToastContext } from '@/app/components/base/toast'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
-import AccountSetting from '@/app/components/header/account-setting'
 import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -34,6 +43,7 @@ import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -43,7 +53,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-
+  const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
   const pathname = usePathname()
@@ -72,6 +82,10 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
+    enabled: false,
+  })
+  const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
@@ -108,6 +122,7 @@ const Configuration: FC = () => {
     suggested_questions_after_answer: null,
     speech_to_text: null,
     retriever_resource: null,
+    sensitive_word_avoidance: null,
     dataSets: [],
   })
 
@@ -214,7 +229,6 @@ const Configuration: FC = () => {
 
   const hasSetAPIKEY = hasSetCustomAPIKEY || !isTrailFinished
 
-  const [isShowSetAPIKey, { setTrue: showSetAPIKey, setFalse: hideSetAPIkey }] = useBoolean()
   const [promptMode, doSetPromptMode] = useState(PromptMode.simple)
   const isAdvancedMode = promptMode === PromptMode.advanced
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
@@ -322,6 +336,12 @@ const Configuration: FC = () => {
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
 
+      if (modelConfig.sensitive_word_avoidance)
+        setModerationConfig(modelConfig.sensitive_word_avoidance)
+
+      if (modelConfig.external_data_tools)
+        setExternalDataToolsConfig(modelConfig.external_data_tools)
+
       const config = {
         modelConfig: {
           provider: model.provider,
@@ -336,6 +356,8 @@ const Configuration: FC = () => {
           suggested_questions_after_answer: modelConfig.suggested_questions_after_answer,
           speech_to_text: modelConfig.speech_to_text,
           retriever_resource: modelConfig.retriever_resource,
+          sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
+          external_data_tools: modelConfig.external_data_tools,
           dataSets: datasets || [],
         },
         completionParams: model.completion_params,
@@ -424,6 +446,8 @@ const Configuration: FC = () => {
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
       retriever_resource: citationConfig,
+      sensitive_word_avoidance: moderationConfig,
+      external_data_tools: externalDataToolsConfig,
       agent_mode: {
         enabled: true,
         tools: [...postDatasets],
@@ -469,7 +493,6 @@ const Configuration: FC = () => {
   }
 
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
-  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
   const { locale } = useContext(I18n)
 
   if (isLoading) {
@@ -514,6 +537,10 @@ const Configuration: FC = () => {
       setSpeechToTextConfig,
       citationConfig,
       setCitationConfig,
+      moderationConfig,
+      setModerationConfig,
+      externalDataToolsConfig,
+      setExternalDataToolsConfig,
       formattingChanged,
       setFormattingChanged,
       inputs,
@@ -588,7 +615,11 @@ const Configuration: FC = () => {
               <Config />
             </div>
             <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-              <Debug hasSetAPIKEY={hasSetAPIKEY} onSetting={showSetAPIKey} />
+              <Debug
+                hasSetAPIKEY={hasSetAPIKEY}
+                onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+                inputs={inputs}
+              />
             </div>
           </div>
         </div>
@@ -609,22 +640,12 @@ const Configuration: FC = () => {
             isShow={showUseGPT4Confirm}
             onClose={() => setShowUseGPT4Confirm(false)}
             onConfirm={() => {
-              setShowSetAPIKeyModal(true)
+              setShowAccountSettingModal({ payload: 'provider' })
               setShowUseGPT4Confirm(false)
             }}
             onCancel={() => setShowUseGPT4Confirm(false)}
           />
         )}
-        {
-          showSetAPIKeyModal && (
-            <AccountSetting activeTab="provider" onCancel={async () => {
-              setShowSetAPIKeyModal(false)
-            }} />
-          )
-        }
-        {isShowSetAPIKey && <AccountSetting activeTab="provider" onCancel={async () => {
-          hideSetAPIkey()
-        }} />}
 
         {isShowSelectDataSet && (
           <SelectDataSet

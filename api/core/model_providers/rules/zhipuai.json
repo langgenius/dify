@@ -11,6 +11,12 @@
     },
     "model_flexibility": "fixed",
     "price_config": {
+        "chatglm_turbo": {
+            "prompt": "0.005",
+            "completion": "0.005",
+            "unit": "0.001",
+            "currency": "RMB"
+        },
         "chatglm_pro": {
             "prompt": "0.01",
             "completion": "0.01",

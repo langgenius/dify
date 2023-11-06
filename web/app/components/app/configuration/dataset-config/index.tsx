@@ -6,11 +6,12 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import FeaturePanel from '../base/feature-panel'
 import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item'
+import CardItem from './card-item/item'
 import ParamsConfig from './params-config'
 import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
+import type { DataSet } from '@/models/datasets'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -30,12 +31,18 @@ const DatasetConfig: FC = () => {
     setModelConfig,
     showSelectDataSet,
   } = useContext(ConfigContext)
-  const selectedIds = dataSet.map(item => item.id)
 
   const hasData = dataSet.length > 0
 
   const onRemove = (id: string) => {
     setDataSet(dataSet.filter(item => item.id !== id))
+    setFormattingChanged(true)
+  }
+
+  const handleSave = (newDataset: DataSet) => {
+    const index = dataSet.findIndex(item => item.id === newDataset.id)
+
+    setDataSet([...dataSet.slice(0, index), newDataset, ...dataSet.slice(index + 1)])
     setFormattingChanged(true)
   }
 
@@ -77,10 +84,10 @@ const DatasetConfig: FC = () => {
           <div className='flex flex-wrap mt-1 px-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
-                className="mb-2"
                 key={item.id}
                 config={item}
                 onRemove={onRemove}
+                onSave={handleSave}
               />
             ))}
           </div>

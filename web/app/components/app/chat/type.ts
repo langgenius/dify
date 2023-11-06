@@ -73,3 +73,10 @@ export type MessageEnd = {
   id: string
   retriever_resources?: CitationItem[]
 }
+
+export type MessageReplace = {
+  id: string
+  task_id: string
+  answer: string
+  conversation_id: string
+}

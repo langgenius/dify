@@ -11,7 +11,6 @@ from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGa
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.std_out_callback_handler import DifyStdOutCallbackHandler
-from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceChain, SensitiveWordAvoidanceRule
 from core.conversation_message_task import ConversationMessageTask
 from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
@@ -124,52 +123,6 @@ class OrchestratorRuleParser:
             return AgentExecutor(agent_configuration)
 
         return chain
-
-    def to_sensitive_word_avoidance_chain(self, model_instance: BaseLLM, callbacks: Callbacks = None, **kwargs) \
-            -> Optional[SensitiveWordAvoidanceChain]:
-        """
-        Convert app sensitive word avoidance config to chain
-
-        :param model_instance: model instance
-        :param callbacks: callbacks for the chain
-        :param kwargs:
-        :return:
-        """
-        sensitive_word_avoidance_rule = None
-
-        if self.app_model_config.sensitive_word_avoidance_dict:
-            sensitive_word_avoidance_config = self.app_model_config.sensitive_word_avoidance_dict
-            if sensitive_word_avoidance_config.get("enabled", False):
-                if sensitive_word_avoidance_config.get('type') == 'moderation':
-                    sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
-                        type=SensitiveWordAvoidanceRule.Type.MODERATION,
-                        canned_response=sensitive_word_avoidance_config.get("canned_response")
-                        if sensitive_word_avoidance_config.get("canned_response")
-                        else 'Your content violates our usage policy. Please revise and try again.',
-                    )
-                else:
-                    sensitive_words = sensitive_word_avoidance_config.get("words", "")
-                    if sensitive_words:
-                        sensitive_word_avoidance_rule = SensitiveWordAvoidanceRule(
-                            type=SensitiveWordAvoidanceRule.Type.KEYWORDS,
-                            canned_response=sensitive_word_avoidance_config.get("canned_response")
-                            if sensitive_word_avoidance_config.get("canned_response")
-                            else 'Your content violates our usage policy. Please revise and try again.',
-                            extra_params={
-                                'sensitive_words': sensitive_words.split(','),
-                            }
-                        )
-
-        if sensitive_word_avoidance_rule:
-            return SensitiveWordAvoidanceChain(
-                model_instance=model_instance,
-                sensitive_word_avoidance_rule=sensitive_word_avoidance_rule,
-                output_key="sensitive_word_avoidance_output",
-                callbacks=callbacks,
-                **kwargs
-            )
-
-        return None
 
     def to_tools(self, tool_configs: list, callbacks: Callbacks = None, **kwargs) -> list[BaseTool]:
         """

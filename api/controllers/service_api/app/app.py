@@ -28,6 +28,7 @@ class AppParameterApi(AppApiResource):
         'retriever_resource': fields.Raw,
         'more_like_this': fields.Raw,
         'user_input_form': fields.Raw,
+        'sensitive_word_avoidance': fields.Raw
     }
 
     @marshal_with(parameters_fields)
@@ -42,7 +43,8 @@ class AppParameterApi(AppApiResource):
             'speech_to_text': app_model_config.speech_to_text_dict,
             'retriever_resource': app_model_config.retriever_resource_dict,
             'more_like_this': app_model_config.more_like_this_dict,
-            'user_input_form': app_model_config.user_input_form_list
+            'user_input_form': app_model_config.user_input_form_list,
+            'sensitive_word_avoidance': app_model_config.sensitive_word_avoidance_dict
         }
 
 

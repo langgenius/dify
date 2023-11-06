@@ -1,6 +1,6 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
-import type { MessageEnd, ThoughtItem } from '@/app/components/app/chat/type'
+import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
 
 const TIME_OUT = 100000
 
@@ -33,6 +33,7 @@ export type IOnDataMoreInfo = {
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
 export type IOnThought = (though: ThoughtItem) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
+export type IOnMessageReplace = (messageReplace: MessageReplace) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string, code?: string) => void
 
@@ -44,6 +45,7 @@ type IOtherOptions = {
   onData?: IOnData // for stream
   onThought?: IOnThought
   onMessageEnd?: IOnMessageEnd
+  onMessageReplace?: IOnMessageReplace
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -77,7 +79,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd) => {
+const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -134,6 +136,9 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
             }
             else if (bufferObj.event === 'message_end') {
               onMessageEnd?.(bufferObj as MessageEnd)
+            }
+            else if (bufferObj.event === 'message_replace') {
+              onMessageReplace?.(bufferObj as MessageReplace)
             }
           }
         })
@@ -327,7 +332,7 @@ export const upload = (options: any): Promise<any> => {
   })
 }
 
-export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -366,7 +371,7 @@ export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAP
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })

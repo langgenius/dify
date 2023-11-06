@@ -35,7 +35,7 @@ import OnBlurBlock from './plugins/on-blur-block'
 import { textToEditorState } from './utils'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
-import type { Option } from './plugins/variable-picker'
+import type { ExternalToolOption, Option } from './plugins/variable-picker'
 import {
   UPDATE_DATASETS_EVENT_EMITTER,
   UPDATE_HISTORY_EVENT_EMITTER,
@@ -59,6 +59,8 @@ export type PromptEditorProps = {
   variableBlock?: {
     selectable?: boolean
     variables: Option[]
+    externalTools?: ExternalToolOption[]
+    onAddExternalTool?: () => void
   }
   historyBlock?: {
     show?: boolean
@@ -166,7 +168,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
           queryDisabled={!queryBlock.selectable}
           queryShow={queryBlock.show}
         />
-        <VariablePicker items={variableBlock.variables} />
+        <VariablePicker
+          items={variableBlock.variables}
+          externalTools={variableBlock.externalTools}
+          onAddExternalTool={variableBlock.onAddExternalTool}
+        />
         {
           contextBlock.show && (
             <>

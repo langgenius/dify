@@ -183,4 +183,3 @@ api.add_resource(CompletionApi, '/completion-messages')
 api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
 api.add_resource(ChatApi, '/chat-messages')
 api.add_resource(ChatStopApi, '/chat-messages/<string:task_id>/stop')
-

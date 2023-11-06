@@ -7,7 +7,7 @@ import FeaturePanel from '@/app/components/app/configuration/base/feature-panel'
 import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 import { getToolProviders } from '@/service/explore'
 import Loading from '@/app/components/base/loading'
-import AccountSetting from '@/app/components/header/account-setting'
+import { useModalContext } from '@/context/modal-context'
 
 export type IPluginsProps = {
   readonly?: boolean
@@ -27,6 +27,7 @@ const Plugins: FC<IPluginsProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
+  const { setShowAccountSettingModal } = useModalContext()
   const [isLoading, setIsLoading] = React.useState(!readonly)
   const [isSerpApiValid, setIsSerpApiValid] = React.useState(false)
   const checkSerpApiKey = async () => {
@@ -42,8 +43,6 @@ const Plugins: FC<IPluginsProps> = ({
     checkSerpApiKey()
   }, [])
 
-  const [showSetSerpAPIKeyModal, setShowSetAPIKeyModal] = React.useState(false)
-
   const itemConfigs = plugins.map((plugin) => {
     const res: Record<string, any> = { ...plugin }
     const { key } = plugin
@@ -56,7 +55,7 @@ const Plugins: FC<IPluginsProps> = ({
       res.more = (
         <div className='border-t border-[#FEF0C7] flex items-center h-[34px] pl-2 bg-[#FFFAEB] text-gray-700 text-xs '>
           <span className='whitespace-pre'>{t('explore.universalChat.plugins.google_search.more.left')}</span>
-          <span className='cursor-pointer text-[#155EEF]' onClick={() => setShowSetAPIKeyModal(true)}>{t('explore.universalChat.plugins.google_search.more.link')}</span>
+          <span className='cursor-pointer text-[#155EEF]' onClick={() => setShowAccountSettingModal({ payload: 'plugin', onCancelCallback: async () => await checkSerpApiKey() })}>{t('explore.universalChat.plugins.google_search.more.link')}</span>
           <span className='whitespace-pre'>{t('explore.universalChat.plugins.google_search.more.right')}</span>
         </div>
       )
@@ -98,14 +97,6 @@ const Plugins: FC<IPluginsProps> = ({
             ))}
           </div>)}
       </FeaturePanel>
-      {
-        showSetSerpAPIKeyModal && (
-          <AccountSetting activeTab="plugin" onCancel={async () => {
-            setShowSetAPIKeyModal(false)
-            await checkSerpApiKey()
-          }} />
-        )
-      }
     </>
   )
 }
