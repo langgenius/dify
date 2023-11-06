@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
 from flask import Flask, current_app
 from langchain.callbacks.base import BaseCallbackHandler
@@ -32,19 +32,22 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.start_at = None
         self.conversation_message_task = conversation_message_task
 
+        self.output_moderation_handler = None
+        self.init_output_moderation()
+
+    def init_output_moderation(self):
         app_model_config = self.conversation_message_task.app_model_config
         sensitive_word_avoidance_dict = app_model_config.sensitive_word_avoidance_dict
 
-        self.direct_output_response = None
-        self.moderation_rule = None
-        self.moderation_chunk = ''
-        self.moderation_buffer = ''
-        self.moderation_final_chunk = False
-        self.moderation_thread = None
         if sensitive_word_avoidance_dict and sensitive_word_avoidance_dict.get("enabled"):
-            self.moderation_rule = ModerationRule(
-                type=sensitive_word_avoidance_dict.get("type"),
-                config=sensitive_word_avoidance_dict.get("config")
+            self.output_moderation_handler = OutputModerationHandler(
+                tenant_id=self.conversation_message_task.tenant_id,
+                app_id=self.conversation_message_task.app.id,
+                rule=ModerationRule(
+                    type=sensitive_word_avoidance_dict.get("type"),
+                    config=sensitive_word_avoidance_dict.get("config")
+                ),
+                on_message_replace_func=self.conversation_message_task.on_message_replace
             )
 
     @property
@@ -86,14 +89,18 @@ class LLMCallbackHandler(BaseCallbackHandler):
         self.llm_message.prompt_tokens = self.model_instance.get_num_tokens([PromptMessage(content=prompts[0])])
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        if not self.conversation_message_task.streaming:
-            moderation_result = self.moderation_completion_async(response.generations[0][0].text, True)
-            if not moderation_result:
-                self.llm_message.completion = response.generations[0][0].text
+        if self.output_moderation_handler:
+            self.output_moderation_handler.stop_thread()
 
-            self.conversation_message_task.append_message_text(self.llm_message.completion)
+            self.llm_message.completion = self.output_moderation_handler.moderation_completion(
+                completion=response.generations[0][0].text,
+                public_event=True if self.conversation_message_task.streaming else False
+            )
         else:
-            self.moderation_completion_async(self.llm_message.completion, True)
+            self.llm_message.completion = response.generations[0][0].text
+
+        if not self.conversation_message_task.streaming:
+            self.conversation_message_task.append_message_text(self.llm_message.completion)
 
         if response.llm_output and 'token_usage' in response.llm_output:
             if 'prompt_tokens' in response.llm_output['token_usage']:
@@ -108,26 +115,21 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
                 [PromptMessage(content=self.llm_message.completion)])
 
-        if self.moderation_thread:
-            self.moderation_thread.join()
-
-        if self.direct_output_response:
-            ex = ConversationTaskInterruptException()
-            self.on_llm_error(error=ex)
-            raise ex
-
         self.conversation_message_task.save_message(self.llm_message)
 
     def on_llm_new_token(self, token: str, **kwargs: Any) -> None:
-        if self.direct_output_response:
+        if self.output_moderation_handler and self.output_moderation_handler.should_direct_output():
+            # stop subscribe new token when output moderation should direct output
             ex = ConversationTaskInterruptException()
             self.on_llm_error(error=ex)
             raise ex
 
         try:
             self.conversation_message_task.append_message_text(token)
-            self.moderation_completion_async(token)
             self.llm_message.completion += token
+
+            if self.output_moderation_handler:
+                self.output_moderation_handler.append_new_token(token)
         except ConversationTaskStoppedException as ex:
             self.on_llm_error(error=ex)
             raise ex
@@ -136,6 +138,9 @@ class LLMCallbackHandler(BaseCallbackHandler):
             self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
     ) -> None:
         """Do nothing."""
+        if self.output_moderation_handler:
+            self.output_moderation_handler.stop_thread()
+
         if isinstance(error, ConversationTaskStoppedException):
             if self.conversation_message_task.streaming:
                 self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
@@ -143,7 +148,7 @@ class LLMCallbackHandler(BaseCallbackHandler):
                 )
                 self.conversation_message_task.save_message(llm_message=self.llm_message, by_stopped=True)
         if isinstance(error, ConversationTaskInterruptException):
-            self.llm_message.completion = self.direct_output_response
+            self.llm_message.completion = self.output_moderation_handler.get_final_output()
             self.llm_message.completion_tokens = self.model_instance.get_num_tokens(
                 [PromptMessage(content=self.llm_message.completion)]
             )
@@ -151,74 +156,121 @@ class LLMCallbackHandler(BaseCallbackHandler):
         else:
             logging.debug("on_llm_error: %s", error)
 
-    def moderation_completion_async(self, token: str, no_chunk: bool = False) -> bool:
-        """
-        Moderation for outputs.
 
-        :param token: LLM output content
-        :param no_chunk: whether to chunk the token
-        :return: bool
-        """
-        if not self.moderation_rule:
-            return False
+class OutputModerationHandler(BaseModel):
+    BUFFER_SIZE: int = 300
 
-        if not no_chunk:
-            self.moderation_chunk += token
-            self.moderation_buffer += token
-            if len(self.moderation_chunk) < 300:
-                return False
+    tenant_id: str
+    app_id: str
+
+    rule: ModerationRule
+    on_message_replace_func: Any
+
+    thread: Optional[threading.Thread] = None
+    thread_running: bool = True
+    buffer: str = ''
+    is_final_chunk: bool = False
+    final_output: Optional[str] = None
+
+    class Config:
+        arbitrary_types_allowed = True
+
+    def should_direct_output(self):
+        return self.final_output is not None
+
+    def get_final_output(self):
+        return self.final_output
+
+    def append_new_token(self, token: str):
+        self.buffer += token
+
+        if not self.thread:
+            self.thread = self.start_thread()
+
+    def moderation_completion(self, completion: str, public_event: bool = False) -> str:
+        self.buffer = completion
+        self.is_final_chunk = True
+
+        result = self.moderation(
+            tenant_id=self.tenant_id,
+            app_id=self.app_id,
+            moderation_buffer=completion
+        )
+
+        if not result or not result.flagged:
+            return completion
+
+        if result.action == ModerationAction.DIRECT_OUTPUT:
+            final_output = result.preset_response
         else:
-            self.moderation_buffer = token
-            self.moderation_final_chunk = True
+            final_output = result.text
 
-        self.moderation_chunk = ''
+        if public_event:
+            self.on_message_replace_func(final_output)
 
-        if not self.moderation_thread:
-            self.moderation_thread = threading.Thread(target=self.moderation_worker, kwargs={
-                'flask_app': current_app._get_current_object()
-            })
+        return final_output
 
-            self.moderation_thread.start()
+    def start_thread(self) -> threading.Thread:
+        thread = threading.Thread(target=self.worker, kwargs={
+            'flask_app': current_app._get_current_object()
+        })
 
-    def moderation_worker(self, flask_app: Flask):
+        thread.start()
+
+        return thread
+
+    def stop_thread(self):
+        if self.thread and self.thread.is_alive():
+            self.thread_running = False
+
+    def worker(self, flask_app: Flask):
         with flask_app.app_context():
             current_length = 0
-            while True:
-                moderation_buffer = self.moderation_buffer
+            while self.thread_running:
+                moderation_buffer = self.buffer
                 buffer_length = len(moderation_buffer)
-                if not self.moderation_final_chunk and buffer_length - current_length < 300:
-                    if buffer_length - current_length == 0:
-                        break
-
-                    time.sleep(0.1)
-                    continue
+                if not self.is_final_chunk:
+                    chunk_length = buffer_length - current_length
+                    if 0 <= chunk_length < self.BUFFER_SIZE:
+                        time.sleep(1)
+                        continue
 
                 current_length = buffer_length
 
-                try:
-                    moderation_factory = ModerationFactory(
-                        name=self.moderation_rule.type,
-                        app_id=self.conversation_message_task.app.id,
-                        tenant_id=self.conversation_message_task.tenant_id,
-                        config=self.moderation_rule.config
-                    )
+                result = self.moderation(
+                    tenant_id=self.tenant_id,
+                    app_id=self.app_id,
+                    moderation_buffer=moderation_buffer
+                )
 
-                    logging.info('Moderation params: %s', moderation_buffer)
-                    result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
-                    if not result.flagged:
-                        continue
+                if not result or not result.flagged:
+                    continue
 
-                    if result.action == ModerationAction.DIRECT_OUTPUT:
-                        self.llm_message.completion = result.preset_response
-                        self.direct_output_response = result.preset_response
-                    else:
-                        self.llm_message.completion = result.text + self.moderation_buffer[len(moderation_buffer):]
+                if result.action == ModerationAction.DIRECT_OUTPUT:
+                    final_output = result.preset_response
+                else:
+                    final_output = result.text + self.buffer[len(moderation_buffer):]
 
-                    if self.conversation_message_task.streaming:
-                        # trigger replace event
-                        logging.info("Moderation %s replace event: %s", result.action.value, self.llm_message.completion)
-                        self.conversation_message_task.on_message_replace(self.llm_message.completion)
-                        if result.action == ModerationAction.DIRECT_OUTPUT:
-                            break
-                except Exception as e:
-                    logging.error("Moderation Output error: %s", e)
+                # trigger replace event
+                if self.thread_running:
+                    self.on_message_replace_func(final_output)
+
+                if result.action == ModerationAction.DIRECT_OUTPUT:
+                    self.final_output = final_output
+                    break
+
+    def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> Optional[ModerationOutputsResult]:
+        try:
+            moderation_factory = ModerationFactory(
+                name=self.rule.type,
+                app_id=app_id,
+                tenant_id=tenant_id,
+                config=self.rule.config
+            )
+
+            result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)
+            return result
+        except Exception as e:
+            logging.error("Moderation Output error: %s", e)
+
+        return None
