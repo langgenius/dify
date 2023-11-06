@@ -100,10 +100,11 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
         <div className='flex justify-between items-center h-9 text-sm font-medium text-gray-900'>
           {t('common.apiBasedExtension.modal.apiEndpoint.title')}
           <a
-            href={'/'}
-            className='flex items-center text-xs text-gray-500'
+            href={t('common.apiBasedExtension.linkUrl') || '/'}
+            target='_blank'
+            className='group flex items-center text-xs text-gray-500 font-normal hover:text-primary-600'
           >
-            <BookOpen01 className='mr-1 w-3 h-3 text-gray-500' />
+            <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
             {t('common.apiBasedExtension.link')}
           </a>
         </div>
