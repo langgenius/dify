@@ -556,15 +556,20 @@ const Main: FC<IMainProps> = ({
         }
         : undefined,
       onMessageReplace: (messageReplace) => {
-        setChatList(produce(
-          getChatList(),
-          (draft) => {
-            const current = draft.find(item => item.id === messageReplace.id)
+        if (isInstalledApp) {
+          responseItem.content = messageReplace.answer
+        }
+        else {
+          setChatList(produce(
+            getChatList(),
+            (draft) => {
+              const current = draft.find(item => item.id === messageReplace.id)
 
-            if (current)
-              current.content = messageReplace.answer
-          },
-        ))
+              if (current)
+                current.content = messageReplace.answer
+            },
+          ))
+        }
       },
       onError() {
         setResponsingFalse()
