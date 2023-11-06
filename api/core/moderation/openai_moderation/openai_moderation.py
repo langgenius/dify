@@ -3,8 +3,7 @@ import json
 
 from core.helper.encrypter import decrypt_token
 from core.moderation.base import Moderation, ModerationInputsResult, ModerationOutputsResult, ModerationAction
-from extensions.ext_database import db
-from models.provider import Provider
+from core.model_providers.model_factory import ModelFactory
 
 
 class OpenAIModeration(Moderation):
@@ -56,14 +55,10 @@ class OpenAIModeration(Moderation):
         return False
 
     def _get_openai_api_key(self) -> str:
-        provider = db.session.query(Provider) \
-                    .filter_by(tenant_id=self.tenant_id) \
-                    .filter_by(provider_name="openai") \
-                    .first()
-
-        if not provider:
+        model_class_obj = ModelFactory.get_moderation_model(self.tenant_id, "openai", "moderation")
+        if not model_class_obj:
             raise ValueError("openai provider is not configured")
 
-        encrypted_config = json.loads(provider.encrypted_config)
+        encrypted_config = json.loads(model_class_obj.model_provider.provider.encrypted_config)
 
         return decrypt_token(self.tenant_id, encrypted_config['openai_api_key'])
