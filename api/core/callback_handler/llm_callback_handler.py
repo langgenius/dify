@@ -250,6 +250,7 @@ class OutputModerationHandler(BaseModel):
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     final_output = result.preset_response
+                    self.final_output = final_output
                 else:
                     final_output = result.text + self.buffer[len(moderation_buffer):]
 
@@ -258,7 +259,6 @@ class OutputModerationHandler(BaseModel):
                     self.on_message_replace_func(final_output)
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
-                    self.final_output = final_output
                     break
 
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> Optional[ModerationOutputsResult]:
