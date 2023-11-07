@@ -23,20 +23,35 @@ COMPLETION_MODELS = [
 ]
 
 CHAT_MODELS = [
+    'gpt-4-1106-preview',  # 128,000 tokens
+    'gpt-4-vision-preview',  # 128,000 tokens
     'gpt-4',  # 8,192 tokens
     'gpt-4-32k',  # 32,768 tokens
+    'gpt-3.5-turbo-1106',  # 16,384 tokens
     'gpt-3.5-turbo',  # 4,096 tokens
     'gpt-3.5-turbo-16k',  # 16,384 tokens
 ]
 
 MODEL_MAX_TOKENS = {
+    'gpt-4-1106-preview': 128000,
+    'gpt-4-vision-preview': 128000,
     'gpt-4': 8192,
     'gpt-4-32k': 32768,
+    'gpt-3.5-turbo-1106': 16384,
     'gpt-3.5-turbo': 4096,
     'gpt-3.5-turbo-instruct': 4097,
     'gpt-3.5-turbo-16k': 16384,
     'text-davinci-003': 4097,
 }
+
+FUNCTION_CALL_MODELS = [
+    'gpt-4-1106-preview',
+    'gpt-4',
+    'gpt-4-32k',
+    'gpt-3.5-turbo-1106',
+    'gpt-3.5-turbo',
+    'gpt-3.5-turbo-16k'
+]
 
 
 class OpenAIModel(BaseLLM):
@@ -50,7 +65,6 @@ class OpenAIModel(BaseLLM):
         else:
             self.model_mode = ModelMode.CHAT
         
-        # TODO load price config from configs(db)
         super().__init__(model_provider, name, model_kwargs, streaming, callbacks)
 
     def _init_client(self) -> Any:
@@ -100,7 +114,7 @@ class OpenAIModel(BaseLLM):
         :param callbacks:
         :return:
         """
-        if self.name == 'gpt-4' \
+        if self.name.startswith('gpt-4') \
                 and self.model_provider.provider.provider_type == ProviderType.SYSTEM.value \
                 and self.model_provider.provider.quota_type == ProviderQuotaType.TRIAL.value:
             raise ModelCurrentlyNotSupportError("Dify Hosted OpenAI GPT-4 currently not support.")
@@ -174,6 +188,10 @@ class OpenAIModel(BaseLLM):
     @property
     def support_streaming(self):
         return True
+
+    @property
+    def support_function_call(self):
+        return self.name in FUNCTION_CALL_MODELS
 
     # def is_model_valid_or_raise(self):
     #     """

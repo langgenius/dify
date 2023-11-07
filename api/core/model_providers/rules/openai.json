@@ -24,8 +24,26 @@
             "unit": "0.001",
             "currency": "USD"
         },
+        "gpt-4-1106-preview": {
+            "prompt": "0.01",
+            "completion": "0.03",
+            "unit": "0.001",
+            "currency": "USD"
+        },
+        "gpt-4-vision-preview": {
+            "prompt": "0.01",
+            "completion": "0.03",
+            "unit": "0.001",
+            "currency": "USD"
+        },
         "gpt-3.5-turbo": {
             "prompt": "0.0015",
+            "completion": "0.002",
+            "unit": "0.001",
+            "currency": "USD"
+        },
+        "gpt-3.5-turbo-1106": {
+            "prompt": "0.0010",
             "completion": "0.002",
             "unit": "0.001",
             "currency": "USD"
