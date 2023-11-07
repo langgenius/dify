@@ -8,6 +8,7 @@ import copyStyle from '@/app/components/app/chat/copy-btn/style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
+import Button from '@/app/components/base/button'
 
 // const isDevelopment = process.env.NODE_ENV === 'development'
 
@@ -47,6 +48,9 @@ const OPTION_MAP = {
  defer>
 </script>`,
   },
+  chromePlugin: {
+    getContent: (url: string, token: string) => `ChatBot URL: ${url}/chatbot/${token}`,
+  },
 }
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
@@ -55,17 +59,25 @@ type Option = keyof typeof OPTION_MAP
 type OptionStatus = {
   iframe: boolean
   scripts: boolean
+  chromePlugin: boolean
 }
 
 const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false })
+  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
 
   const { langeniusVersionInfo } = useAppContext()
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
-    copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+    if (option === 'chromePlugin') {
+      const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')
+      if (splitUrl.length > 1)
+        copy(splitUrl[1])
+    }
+    else {
+      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+    }
     setIsCopied({ ...isCopied, [option]: true })
   }
 
@@ -76,6 +88,10 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       cache[key as keyof OptionStatus] = false
     })
     setIsCopied(cache)
+  }
+
+  const navigateToChromeUrl = () => {
+    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf/related', '_blank')
   }
 
   useEffect(() => {
@@ -133,6 +149,11 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
           </div>
         </div>
       </div>
+      {option === 'chromePlugin' && (<div className="py-3 center w-full">
+        <Button onClick={navigateToChromeUrl}
+          className="bg-blue-600 text-white py-2 rounded hover:bg-blue-500 focus:outline-none focus:bg-blue-500 w-full">{t(`${prefixEmbedded}.chromePlugin`)}
+        </Button>
+      </div>)}
     </Modal>
   )
 }
