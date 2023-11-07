@@ -28,7 +28,7 @@ from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
-from qdrant_client.http.models import PayloadSchemaType, FilterSelector
+from qdrant_client.http.models import PayloadSchemaType, FilterSelector, TextIndexParams
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -194,9 +194,21 @@ class Qdrant(VectorStore):
             added_ids.extend(batch_ids)
         # if is new collection, create payload index on group_id
         if self.is_new_collection:
+            # create payload index
             self.client.create_payload_index(self.collection_name, self.group_payload_key,
                                              field_schema=PayloadSchemaType.KEYWORD,
                                              field_type=PayloadSchemaType.KEYWORD)
+            # creat full text index
+            text_index_params = TextIndexParams(
+                type="text",
+                tokenizer="multilingual",
+                min_token_len=2,
+                max_token_len=20,
+                lowercase=True
+            )
+            self.client.create_payload_index(self.collection_name, self.content_payload_key,
+                                             field_schema=text_index_params,
+                                             field_type=PayloadSchemaType.TEXT)
         return added_ids
 
     @sync_call_fallback
