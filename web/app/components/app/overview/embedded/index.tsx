@@ -106,7 +106,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       <div className="mb-4 mt-8 text-gray-900 text-[14px] font-medium leading-tight">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
-      <div className="flex gap-4 items-center">
+      <div className="flex items-center justify-between">
         {Object.keys(OPTION_MAP).map((v, index) => {
           return (
             <div
