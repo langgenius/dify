@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useTranslation } from 'react-i18next'
 
 export type IModelNameProps = {
   modelId: string
@@ -16,19 +15,11 @@ export const supportI18nModelName = [
 ]
 
 const ModelName: FC<IModelNameProps> = ({
-  modelId,
   modelDisplayName,
 }) => {
-  const { t } = useTranslation()
-  let name = modelId
-  if (supportI18nModelName.includes(modelId))
-    name = t(`common.modelName.${modelId}`)
-  else if (modelDisplayName)
-    name = modelDisplayName
-
   return (
-    <span title={name}>
-      {name}
+    <span title={modelDisplayName}>
+      {modelDisplayName}
     </span>
   )
 }
