@@ -1,0 +1,65 @@
+{
+    "label": {
+        "en-US": "Cloud Service",
+        "zh-Hans": "云服务"
+    },
+    "form_schema": [
+        {
+            "type": "select",
+            "label": {
+                "en-US": "Cloud Provider",
+                "zh-Hans": "云厂商"
+            },
+            "variable": "cloud_provider",
+            "required": true,
+            "options": [
+                {
+                    "label": {
+                        "en-US": "AWS",
+                        "zh-Hans": "亚马逊"
+                    },
+                    "value": "AWS"
+                },
+                {
+                    "label": {
+                        "en-US": "Google Cloud",
+                        "zh-Hans": "谷歌云"
+                    },
+                    "value": "GoogleCloud"
+                },
+                {
+                    "label": {
+                        "en-US": "Azure Cloud",
+                        "zh-Hans": "微软云"
+                    },
+                    "value": "Azure"
+                }
+            ],
+            "default": "GoogleCloud",
+            "placeholder": ""
+        },
+        {
+            "type": "text-input",
+            "label": {
+                "en-US": "API Endpoint",
+                "zh-Hans": "API Endpoint"
+            },
+            "variable": "api_endpoint",
+            "required": true,
+            "max_length": 100,
+            "default": "",
+            "placeholder": "https://api.example.com"
+        },
+        {
+            "type": "paragraph",
+            "label": {
+                "en-US": "API Key",
+                "zh-Hans": "API Key"
+            },
+            "variable": "api_keys",
+            "required": true,
+            "default": "",
+            "placeholder": "Paste your API key here"
+        }
+    ]
+}
