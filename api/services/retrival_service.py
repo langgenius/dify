@@ -9,6 +9,10 @@ from models.dataset import Dataset
 default_retrival_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
+    'reranking_model': {
+        'reranking_provider_name': '',
+        'reranking_model_name': ''
+    },
     'top_k': 2,
     'score_threshold_enable': False
 }
@@ -47,7 +51,7 @@ class RetrivalService:
                         model_provider_name=reranking_model['reranking_provider_name'],
                         model_name=reranking_model['reranking_model_name']
                     )
-                    all_documents.extend(rerank.rerank(query, documents, score_threshold))
+                    all_documents.extend(rerank.rerank(query, documents, score_threshold, len(documents)))
                 else:
                     all_documents.extend(documents)
 
@@ -75,7 +79,7 @@ class RetrivalService:
                         model_provider_name=reranking_model['reranking_provider_name'],
                         model_name=reranking_model['reranking_model_name']
                     )
-                    all_documents.extend(rerank.rerank(query, documents, score_threshold))
+                    all_documents.extend(rerank.rerank(query, documents, score_threshold, len(documents)))
                 else:
                     all_documents.extend(documents)
 

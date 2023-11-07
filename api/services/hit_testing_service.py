@@ -20,6 +20,10 @@ from services.retrival_service import RetrivalService
 default_retrival_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
+    'reranking_model': {
+        'reranking_provider_name': '',
+        'reranking_model_name': ''
+    },
     'top_k': 2,
     'score_threshold_enable': False
 }
@@ -49,7 +53,7 @@ class HitTestingService:
         )
         embeddings = CacheEmbedding(embedding_model)
 
-        all_document = []
+        all_documents = []
         threads = []
 
         # retrival source with semantic
@@ -61,7 +65,7 @@ class HitTestingService:
                 'top_k': retrival_model['top_k'],
                 'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
                 'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
-                'all_documents': all_document,
+                'all_documents': all_documents,
                 'search_method': retrival_model['search_method'],
                 'embeddings': embeddings
             })
@@ -79,13 +83,21 @@ class HitTestingService:
                 'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
                 'top_k': retrival_model['top_k'],
                 'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
-                'all_documents': all_document
+                'all_documents': all_documents
             })
             threads.append(full_text_index_thread)
             full_text_index_thread.start()
 
         for thread in threads:
             thread.join()
+
+        if retrival_model['search_method'] == 'hybrid_search':
+            hybrid_rerank = ModelFactory.get_reranking_model(
+                tenant_id=dataset.tenant_id,
+                model_provider_name=retrival_model['reranking_model']['reranking_provider_name'],
+                model_name=retrival_model['reranking_model']['reranking_model_name']
+            )
+            all_documents = hybrid_rerank.rerank(query, all_documents, retrival_model['score_threshold'], retrival_model['top_k'])
 
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
@@ -101,7 +113,7 @@ class HitTestingService:
         db.session.add(dataset_query)
         db.session.commit()
 
-        return cls.compact_retrieve_response(dataset, embeddings, query, all_document)
+        return cls.compact_retrieve_response(dataset, embeddings, query, all_documents)
 
     @classmethod
     def compact_retrieve_response(cls, dataset: Dataset, embeddings: Embeddings, query: str, documents: List[Document]):

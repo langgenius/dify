@@ -23,11 +23,11 @@ class CohereReranking(BaseReranking):
 
         super().__init__(model_provider, client, name)
 
-    def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float]) -> Optional[List[Document]]:
+    def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float], top_k: Optional[int]) -> Optional[List[Document]]:
         docs = []
         for document in documents:
             docs.append(document.page_content)
-        results = self.client.rerank(query=query, documents=docs, model=self.name)
+        results = self.client.rerank(query=query, documents=docs, model=self.name, top_n=top_k)
         rerank_documents = []
 
         for idx, result in enumerate(results):

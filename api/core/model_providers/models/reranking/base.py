@@ -28,7 +28,7 @@ class BaseReranking(BaseProviderModel):
         return self.name
 
     @abstractmethod
-    def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float]) -> Optional[List[Document]]:
+    def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float], top_k: Optional[int]) -> Optional[List[Document]]:
         raise NotImplementedError
 
     @abstractmethod

@@ -1,4 +1,5 @@
 import json
+import threading
 from typing import Type, Optional, List
 
 from flask import current_app
@@ -14,6 +15,18 @@ from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitE
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
+from services.retrival_service import RetrivalService
+
+default_retrival_model = {
+    'search_method': 'semantic_search',
+    'reranking_enable': False,
+    'reranking_model': {
+        'reranking_provider_name': '',
+        'reranking_model_name': ''
+    },
+    'top_k': 2,
+    'score_threshold_enable': False
+}
 
 
 class DatasetRetrieverToolInput(BaseModel):
@@ -49,14 +62,16 @@ class DatasetRetrieverTool(BaseTool):
             **kwargs
         )
 
-    def _run(self, query: str) -> List[str]:
+    def _run(self, query: str) -> str:
         dataset = db.session.query(Dataset).filter(
             Dataset.tenant_id == self.tenant_id,
             Dataset.id == self.dataset_id
         ).first()
 
         if not dataset:
-            return []
+            return ''
+        # get retrival model , if the model is not setting , using default
+        retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
 
         if dataset.indexing_technique == "economy":
             # use keyword table query
@@ -68,7 +83,7 @@ class DatasetRetrieverTool(BaseTool):
             )
 
             documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
-            return [document.page_content for document in documents]
+            return str("\n".join([document.page_content for document in documents]))
         else:
 
             try:
@@ -78,33 +93,65 @@ class DatasetRetrieverTool(BaseTool):
                     model_name=dataset.embedding_model
                 )
             except LLMBadRequestError:
-                return []
+                return ''
             except ProviderTokenNotInitError:
-                return []
+                return ''
 
             embeddings = CacheEmbedding(embedding_model)
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
-            )
 
+            documents = []
+            threads = []
             if self.top_k > 0:
-                documents = vector_index.search(
-                    query,
-                    search_type='similarity_score_threshold',
-                    search_kwargs={
-                        'k': self.top_k,
-                        'score_threshold': self.score_threshold,
-                        'filter': {
-                            'group_id': [dataset.id]
-                        }
-                    }
-                )
+                # retrival source with semantic
+                if retrival_model['search_method'] == 'semantic_search' or retrival_model['search_method'] == 'hybrid_search':
+                    embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
+                        'flask_app': current_app._get_current_object(),
+                        'dataset': dataset,
+                        'query': query,
+                        'top_k': self.top_k,
+                        'score_threshold': retrival_model['score_threshold'] if retrival_model[
+                            'score_threshold_enable'] else None,
+                        'reranking_model': retrival_model['reranking_model'] if retrival_model[
+                            'reranking_enable'] else None,
+                        'all_documents': documents,
+                        'search_method': retrival_model['search_method'],
+                        'embeddings': embeddings
+                    })
+                    threads.append(embedding_thread)
+                    embedding_thread.start()
+
+                # retrival source with full text
+                if retrival_model['search_method'] == 'full_text-search' or retrival_model['search_method'] == 'hybrid_search':
+                    full_text_index_thread = threading.Thread(target=RetrivalService.full_text_index_search, kwargs={
+                        'flask_app': current_app._get_current_object(),
+                        'dataset': dataset,
+                        'query': query,
+                        'search_method': retrival_model['search_method'],
+                        'embeddings': embeddings,
+                        'score_threshold': retrival_model['score_threshold'] if retrival_model[
+                            'score_threshold_enable'] else None,
+                        'top_k': self.top_k,
+                        'reranking_model': retrival_model['reranking_model'] if retrival_model[
+                            'reranking_enable'] else None,
+                        'all_documents': documents
+                    })
+                    threads.append(full_text_index_thread)
+                    full_text_index_thread.start()
+
+                for thread in threads:
+                    thread.join()
+                # hybrid search: rerank after all documents have been searched
+                if retrival_model['search_method'] == 'hybrid_search':
+                    hybrid_rerank = ModelFactory.get_reranking_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=retrival_model['reranking_model']['reranking_provider_name'],
+                        model_name=retrival_model['reranking_model']['reranking_model_name']
+                    )
+                    documents = hybrid_rerank.rerank(query, documents, retrival_model['score_threshold'], self.top_k)
             else:
                 documents = []
 
-            hit_callback = DatasetIndexToolCallbackHandler(dataset.id, self.conversation_message_task)
+            hit_callback = DatasetIndexToolCallbackHandler(self.conversation_message_task)
             hit_callback.on_tool_end(documents)
             document_score_list = {}
             if dataset.indexing_technique != "economy":
@@ -164,7 +211,7 @@ class DatasetRetrieverTool(BaseTool):
                         resource_number += 1
                     hit_callback.return_retriever_resource_info(context_list)
 
-            return document_context_list
+            return str("\n".join(document_context_list))
 
     async def _arun(self, tool_input: str) -> str:
         raise NotImplementedError()
