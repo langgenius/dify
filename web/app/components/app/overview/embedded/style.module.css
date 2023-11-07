@@ -15,3 +15,6 @@
 .chromePluginIcon {
   background-image: url(../assets/chromeplugin-option.svg);
 }
+.pluginInstallIcon {
+  background-image: url(../assets/chromeplugin-install.svg);
+}
