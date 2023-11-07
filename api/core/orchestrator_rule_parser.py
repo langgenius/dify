@@ -33,7 +33,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset, DatasetProcessRule
 from models.model import AppModelConfig
 
-default_retrival_model = {
+default_retrieval_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
     'reranking_model': {
@@ -259,16 +259,16 @@ class OrchestratorRuleParser:
                 return None
             dataset_ids.append(dataset.id)
             if retrieval_model == 'single':
-                retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
-                top_k = retrival_model['top_k']
+                retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
+                top_k = retrieval_model['top_k']
 
                 # dynamically adjust top_k when the remaining token number is not enough to support top_k
                 # top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
 
                 score_threshold = None
-                score_threshold_enable = retrival_model.get("score_threshold_enable")
+                score_threshold_enable = retrieval_model.get("score_threshold_enable")
                 if score_threshold_enable:
-                    score_threshold = retrival_model.get("score_threshold")
+                    score_threshold = retrieval_model.get("score_threshold")
 
                 tool = DatasetRetrieverTool.from_dataset(
                     dataset=dataset,

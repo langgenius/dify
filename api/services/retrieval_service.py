@@ -6,7 +6,7 @@ from core.index.vector_index.vector_index import VectorIndex
 from core.model_providers.model_factory import ModelFactory
 from models.dataset import Dataset
 
-default_retrival_model = {
+default_retrieval_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
     'reranking_model': {
@@ -18,7 +18,7 @@ default_retrival_model = {
 }
 
 
-class RetrivalService:
+class RetrievalService:
 
     @classmethod
     def embedding_search(cls, flask_app: Flask, dataset: Dataset, query: str,

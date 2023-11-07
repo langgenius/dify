@@ -221,6 +221,8 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
                             location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
+                            location='json')
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args['indexing_technique']:
@@ -262,6 +264,8 @@ class DatasetInitApi(Resource):
         parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
         if args['indexing_technique'] == 'high_quality':

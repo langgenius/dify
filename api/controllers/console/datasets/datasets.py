@@ -438,7 +438,7 @@ class DatasetApiBaseUrlApi(Resource):
         }
 
 
-class DatasetRetrivalSettingApi(Resource):
+class DatasetRetrievalSettingApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -446,13 +446,13 @@ class DatasetRetrivalSettingApi(Resource):
         vector_type = current_app.config['VECTOR_STORE']
         if vector_type == 'milvus':
             return {
-                'retrival_method': [
+                'retrieval_method': [
                     'semantic_search'
                 ]
             }
         elif vector_type == 'qdrant' or vector_type == 'weaviate':
             return {
-                'retrival_method': [
+                'retrieval_method': [
                     'semantic_search', 'full_text_search', 'hybrid_search'
                 ]
             }
@@ -469,4 +469,4 @@ api.add_resource(DatasetIndexingStatusApi, '/datasets/<uuid:dataset_id>/indexing
 api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
 api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
-api.add_resource(DatasetRetrivalSettingApi, '/datasets/retrival-setting')
+api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')

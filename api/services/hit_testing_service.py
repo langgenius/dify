@@ -15,9 +15,9 @@ from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
-from services.retrival_service import RetrivalService
+from services.retrieval_service import RetrievalService
 
-default_retrival_model = {
+default_retrieval_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
     'reranking_model': {
@@ -42,8 +42,8 @@ class HitTestingService:
 
         start = time.perf_counter()
 
-        # get retrival model , if the model is not setting , using default
-        retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
+        # get retrieval model , if the model is not setting , using default
+        retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
 
         # get embedding model
         embedding_model = ModelFactory.get_embedding_model(
@@ -56,33 +56,33 @@ class HitTestingService:
         all_documents = []
         threads = []
 
-        # retrival source with semantic
-        if retrival_model['search_method'] == 'semantic_search' or retrival_model['search_method'] == 'hybrid_search':
-            embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
+        # retrieval_model source with semantic
+        if retrieval_model['search_method'] == 'semantic_search' or retrieval_model['search_method'] == 'hybrid_search':
+            embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset': dataset,
                 'query': query,
-                'top_k': retrival_model['top_k'],
-                'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
-                'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
+                'top_k': retrieval_model['top_k'],
+                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                'reranking_model': retrieval_model['reranking_model'] if retrieval_model['reranking_enable'] else None,
                 'all_documents': all_documents,
-                'search_method': retrival_model['search_method'],
+                'search_method': retrieval_model['search_method'],
                 'embeddings': embeddings
             })
             threads.append(embedding_thread)
             embedding_thread.start()
 
-        # retrival source with full text
-        if retrival_model['search_method'] == 'full_text-search' or retrival_model['search_method'] == 'hybrid_search':
-            full_text_index_thread = threading.Thread(target=RetrivalService.full_text_index_search, kwargs={
+        # retrieval source with full text
+        if retrieval_model['search_method'] == 'full_text-search' or retrieval_model['search_method'] == 'hybrid_search':
+            full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset': dataset,
                 'query': query,
-                'search_method': retrival_model['search_method'],
+                'search_method': retrieval_model['search_method'],
                 'embeddings': embeddings,
-                'score_threshold': retrival_model['score_threshold'] if retrival_model['score_threshold_enable'] else None,
-                'top_k': retrival_model['top_k'],
-                'reranking_model': retrival_model['reranking_model'] if retrival_model['reranking_enable'] else None,
+                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                'top_k': retrieval_model['top_k'],
+                'reranking_model': retrieval_model['reranking_model'] if retrieval_model['reranking_enable'] else None,
                 'all_documents': all_documents
             })
             threads.append(full_text_index_thread)
@@ -91,13 +91,13 @@ class HitTestingService:
         for thread in threads:
             thread.join()
 
-        if retrival_model['search_method'] == 'hybrid_search':
+        if retrieval_model['search_method'] == 'hybrid_search':
             hybrid_rerank = ModelFactory.get_reranking_model(
                 tenant_id=dataset.tenant_id,
-                model_provider_name=retrival_model['reranking_model']['reranking_provider_name'],
-                model_name=retrival_model['reranking_model']['reranking_model_name']
+                model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
+                model_name=retrieval_model['reranking_model']['reranking_model_name']
             )
-            all_documents = hybrid_rerank.rerank(query, all_documents, retrival_model['score_threshold'], retrival_model['top_k'])
+            all_documents = hybrid_rerank.rerank(query, all_documents, retrieval_model['score_threshold'], retrieval_model['top_k'])
 
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")

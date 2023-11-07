@@ -16,9 +16,9 @@ from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitE
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
-from services.retrival_service import RetrivalService
+from services.retrieval_service import RetrievalService
 
-default_retrival_model = {
+default_retrieval_model = {
     'search_method': 'semantic_search',
     'reranking_enable': False,
     'reranking_model': {
@@ -62,13 +62,13 @@ class DatasetMultiRetrieverTool(BaseTool):
         threads = []
         all_documents = []
         for dataset_id in self.dataset_ids:
-            retrival_thread = threading.Thread(target=self._retriever, kwargs={
+            retrieval_thread = threading.Thread(target=self._retriever, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
                 'query': query,
                 'all_documents': all_documents
             })
-            threads.append(retrival_thread)
+            threads.append(retrieval_thread)
         # do rerank for searched documents
         rerank = ModelFactory.get_reranking_model(
             tenant_id=self.tenant_id,
@@ -148,8 +148,8 @@ class DatasetMultiRetrieverTool(BaseTool):
 
             if not dataset:
                 return []
-            # get retrival model , if the model is not setting , using default
-            retrival_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrival_model
+            # get retrieval model , if the model is not setting , using default
+            retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
@@ -181,8 +181,8 @@ class DatasetMultiRetrieverTool(BaseTool):
                 documents = []
                 threads = []
                 if self.top_k > 0:
-                    # retrival source with semantic
-                    if retrival_model['search_method'] == 'semantic_search' or retrival_model[
+                    # retrieval_model source with semantic
+                    if retrieval_model['search_method'] == 'semantic_search' or retrieval_model[
                         'search_method'] == 'hybrid_search':
                         embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
                             'flask_app': current_app._get_current_object(),
@@ -198,8 +198,8 @@ class DatasetMultiRetrieverTool(BaseTool):
                         threads.append(embedding_thread)
                         embedding_thread.start()
 
-                    # retrival source with full text
-                    if retrival_model['search_method'] == 'full_text-search' or retrival_model[
+                    # retrieval_model source with full text
+                    if retrieval_model['search_method'] == 'full_text-search' or retrieval_model[
                         'search_method'] == 'hybrid_search':
                         full_text_index_thread = threading.Thread(target=RetrivalService.full_text_index_search,
                                                                   kwargs={
@@ -208,12 +208,12 @@ class DatasetMultiRetrieverTool(BaseTool):
                                                                       'query': query,
                                                                       'search_method': 'hybrid_search',
                                                                       'embeddings': embeddings,
-                                                                      'score_threshold': retrival_model[
-                                                                          'score_threshold'] if retrival_model[
+                                                                      'score_threshold': retrieval_model[
+                                                                          'score_threshold'] if retrieval_model[
                                                                           'score_threshold_enable'] else None,
                                                                       'top_k': self.top_k,
-                                                                      'reranking_model': retrival_model[
-                                                                          'reranking_model'] if retrival_model[
+                                                                      'reranking_model': retrieval_model[
+                                                                          'reranking_model'] if retrieval_model[
                                                                           'reranking_enable'] else None,
                                                                       'all_documents': documents
                                                                   })

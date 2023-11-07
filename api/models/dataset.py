@@ -96,6 +96,20 @@ class Dataset(db.Model):
         return Document.query.with_entities(func.coalesce(func.sum(Document.word_count))) \
             .filter(Document.dataset_id == self.id).scalar()
 
+    @property
+    def retrieval_model_dict(self):
+        default_retrieval_model = {
+            'search_method': 'semantic_search',
+            'reranking_enable': False,
+            'reranking_model': {
+                'reranking_provider_name': '',
+                'reranking_model_name': ''
+            },
+            'top_k': 2,
+            'score_threshold_enable': False
+        }
+        return json.loads(self.retrieval_model) if self.retrieval_model else default_retrieval_model
+
 
 class DatasetProcessRule(db.Model):
     __tablename__ = 'dataset_process_rules'
