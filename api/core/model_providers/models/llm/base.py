@@ -310,6 +310,10 @@ class BaseLLM(BaseProviderModel):
     def support_streaming(self):
         return False
 
+    @property
+    def support_function_call(self):
+        return False
+
     def _get_prompt_from_messages(self, messages: List[PromptMessage],
                                   model_mode: Optional[ModelMode] = None) -> Union[str , List[BaseMessage]]:
         if not model_mode:

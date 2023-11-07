@@ -42,8 +42,16 @@ class OpenAIProvider(BaseModelProvider):
                     ]
                 },
                 {
+                    'id': 'gpt-3.5-turbo-1106',
+                    'name': 'gpt-3.5-turbo-1106',
+                    'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
                     'id': 'gpt-3.5-turbo-instruct',
-                    'name': 'GPT-3.5-Turbo-Instruct',
+                    'name': 'gpt-3.5-turbo-instruct',
                     'mode': ModelMode.COMPLETION.value,
                 },
                 {
@@ -60,6 +68,22 @@ class OpenAIProvider(BaseModelProvider):
                     'mode': ModelMode.CHAT.value,
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-4-1106-preview',
+                    'name': 'gpt-4-1106-preview',
+                    'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-4-vision-preview',
+                    'name': 'gpt-4-vision-preview',
+                    'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.VISION.value
                     ]
                 },
                 {
@@ -141,8 +165,11 @@ class OpenAIProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
+            'gpt-4-1106-preview': 128000,
+            'gpt-4-vision-preview': 128000,
             'gpt-4': 8192,
             'gpt-4-32k': 32768,
+            'gpt-3.5-turbo-1106': 16384,
             'gpt-3.5-turbo': 4096,
             'gpt-3.5-turbo-instruct': 4097,
             'gpt-3.5-turbo-16k': 16384,
