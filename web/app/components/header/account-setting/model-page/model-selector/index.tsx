@@ -13,7 +13,7 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
-import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
@@ -75,8 +75,8 @@ const ModelSelector: FC<Props> = ({
       return {}
 
     const res: Record<string, string> = {}
-    modelList.forEach(({ model_name }) => {
-      res[model_name] = supportI18nModelName.includes(model_name) ? t(`common.modelName.${model_name}`) : model_name
+    modelList.forEach(({ model_name, model_display_name }) => {
+      res[model_name] = model_display_name
     })
     return res
   })()
