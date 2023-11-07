@@ -60,8 +60,8 @@ const FormGeneration: FC<FormGenerationProps> = ({
                   defaultValue={value?.[form.variable]}
                   items={form.options.map((option) => {
                     return {
-                      value: option,
-                      name: option,
+                      name: option.label[locale === 'zh-Hans' ? 'zh-Hans' : 'en-US'],
+                      value: option.value,
                     }
                   })}
                   onSelect={item => handleFormChange(form.variable, item.value as string)}
