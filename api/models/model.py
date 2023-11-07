@@ -197,7 +197,7 @@ class AppModelConfig(db.Model):
         self.more_like_this = json.dumps(model_config['more_like_this'])
         self.sensitive_word_avoidance = json.dumps(model_config['sensitive_word_avoidance']) \
             if model_config.get('sensitive_word_avoidance') else None
-        self.external_data_tools = json.dumps(model_config['sensitive_word_avoidance']) \
+        self.external_data_tools = json.dumps(model_config['external_data_tools']) \
             if model_config.get('external_data_tools') else None
         self.model = json.dumps(model_config['model'])
         self.user_input_form = json.dumps(model_config['user_input_form'])
