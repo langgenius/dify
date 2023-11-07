@@ -7,7 +7,6 @@ import classNames from 'classnames'
 import Link from 'next/link'
 import { Menu, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
-import AccountSetting from '../account-setting'
 import AccountAbout from '../account-about'
 import WorkplaceSelector from './workplace-selector'
 import I18n from '@/context/i18n'
@@ -16,6 +15,7 @@ import { logout } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
+import { useModalContext } from '@/context/modal-context'
 
 export default function AppSelector() {
   const itemClassName = `
@@ -23,12 +23,12 @@ export default function AppSelector() {
     rounded-lg font-normal hover:bg-gray-50 cursor-pointer
   `
   const router = useRouter()
-  const [settingVisible, setSettingVisible] = useState(false)
   const [aboutVisible, setAboutVisible] = useState(false)
 
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const { userProfile, langeniusVersionInfo } = useAppContext()
+  const { setShowAccountSettingModal } = useModalContext()
 
   const handleLogout = async () => {
     await logout({
@@ -89,7 +89,7 @@ export default function AppSelector() {
                   </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
-                      <div className={itemClassName} onClick={() => setSettingVisible(true)}>
+                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'account' })}>
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
@@ -134,9 +134,6 @@ export default function AppSelector() {
           )
         }
       </Menu>
-      {
-        settingVisible && <AccountSetting onCancel={() => setSettingVisible(false)} />
-      }
       {
         aboutVisible && <AccountAbout onCancel={() => setAboutVisible(false)} langeniusVersionInfo={langeniusVersionInfo} />
       }

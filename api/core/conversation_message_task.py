@@ -290,6 +290,10 @@ class ConversationMessageTask:
                 db.session.commit()
             self.retriever_resource = resource
 
+    def on_message_replace(self, text: str):
+        if text is not None:
+            self._pub_handler.pub_message_replace(text)
+
     def message_end(self):
         self._pub_handler.pub_message_end(self.retriever_resource)
 
@@ -327,6 +331,24 @@ class PubHandler:
     def pub_text(self, text: str):
         content = {
             'event': 'message',
+            'data': {
+                'task_id': self._task_id,
+                'message_id': str(self._message.id),
+                'text': text,
+                'mode': self._conversation.mode,
+                'conversation_id': str(self._conversation.id)
+            }
+        }
+
+        redis_client.publish(self._channel, json.dumps(content))
+
+        if self._is_stopped():
+            self.pub_end()
+            raise ConversationTaskStoppedException()
+
+    def pub_message_replace(self, text: str):
+        content = {
+            'event': 'message_replace',
             'data': {
                 'task_id': self._task_id,
                 'message_id': str(self._message.id),
@@ -442,4 +464,8 @@ class PubHandler:
 
 
 class ConversationTaskStoppedException(Exception):
+    pass
+
+
+class ConversationTaskInterruptException(Exception):
     pass

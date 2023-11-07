@@ -12,10 +12,14 @@ import { useBasicTypeaheadTriggerMatch } from '../hooks'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from './variable-block'
 import { $createCustomTextNode } from './custom-text/node'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
+import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
+import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import AppIcon from '@/app/components/base/app-icon'
 
 class VariablePickerOption extends MenuOption {
   title: string
   icon?: JSX.Element
+  extraElement?: JSX.Element
   keywords: Array<string>
   keyboardShortcut?: string
   onSelect: (queryString: string) => void
@@ -24,6 +28,7 @@ class VariablePickerOption extends MenuOption {
     title: string,
     options: {
       icon?: JSX.Element
+      extraElement?: JSX.Element
       keywords?: Array<string>
       keyboardShortcut?: string
       onSelect: (queryString: string) => void
@@ -33,6 +38,7 @@ class VariablePickerOption extends MenuOption {
     this.title = title
     this.keywords = options.keywords || []
     this.icon = options.icon
+    this.extraElement = options.extraElement
     this.keyboardShortcut = options.keyboardShortcut
     this.onSelect = options.onSelect.bind(this)
   }
@@ -82,11 +88,12 @@ const VariablePickerMenuItem: FC<VariablePickerMenuItemProps> = ({
       <div className='mr-2'>
         {option.icon}
       </div>
-      <div className='text-[13px] text-gray-900'>
+      <div className='grow text-[13px] text-gray-900 truncate' title={option.title}>
         {before}
         <span className='text-[#2970FF]'>{middle}</span>
         {after}
       </div>
+      {option.extraElement}
     </div>
   )
 }
@@ -96,11 +103,22 @@ export type Option = {
   name: string
 }
 
+export type ExternalToolOption = {
+  name: string
+  variableName: string
+  icon?: string
+  icon_background?: string
+}
+
 type VariablePickerProps = {
   items?: Option[]
+  externalTools?: ExternalToolOption[]
+  onAddExternalTool?: () => void
 }
 const VariablePicker: FC<VariablePickerProps> = ({
   items = [],
+  externalTools = [],
+  onAddExternalTool,
 }) => {
   const { t } = useTranslation()
   const [editor] = useLexicalComposerContext()
@@ -127,6 +145,30 @@ const VariablePicker: FC<VariablePickerProps> = ({
     return baseOptions.filter(option => regex.test(option.title) || option.keywords.some(keyword => regex.test(keyword)))
   }, [editor, queryString, items])
 
+  const toolOptions = useMemo(() => {
+    const baseToolOptions = externalTools.map((item) => {
+      return new VariablePickerOption(item.name, {
+        icon: (
+          <AppIcon
+            className='!w-[14px] !h-[14px]'
+            icon={item.icon}
+            background={item.icon_background}
+          />
+        ),
+        extraElement: <div className='text-xs text-gray-400'>{item.variableName}</div>,
+        onSelect: () => {
+          editor.dispatchCommand(INSERT_VARIABLE_VALUE_BLOCK_COMMAND, `{{${item.variableName}}}`)
+        },
+      })
+    })
+    if (!queryString)
+      return baseToolOptions
+
+    const regex = new RegExp(queryString, 'i')
+
+    return baseToolOptions.filter(option => regex.test(option.title) || option.keywords.some(keyword => regex.test(keyword)))
+  }, [editor, queryString, externalTools])
+
   const newOption = new VariablePickerOption(t('common.promptEditor.variable.modal.add'), {
     icon: <BracketsX className='mr-2 w-[14px] h-[14px] text-[#2970FF]' />,
     onSelect: () => {
@@ -136,6 +178,15 @@ const VariablePicker: FC<VariablePickerProps> = ({
         $insertNodes([prefixNode, suffixNode])
         prefixNode.select()
       })
+    },
+  })
+
+  const newToolOption = new VariablePickerOption(t('common.promptEditor.variable.modal.addTool'), {
+    icon: <Tool03 className='mr-2 w-[14px] h-[14px] text-[#444CE7]' />,
+    extraElement: <ArrowUpRight className='w-3 h-3 text-gray-400' />,
+    onSelect: () => {
+      if (onAddExternalTool)
+        onAddExternalTool()
     },
   })
 
@@ -157,7 +208,7 @@ const VariablePicker: FC<VariablePickerProps> = ({
     [editor],
   )
 
-  const mergedOptions = [...options, newOption]
+  const mergedOptions = [...options, ...toolOptions, newOption, newToolOption]
 
   return (
     <LexicalTypeaheadMenuPlugin
@@ -195,25 +246,69 @@ const VariablePicker: FC<VariablePickerProps> = ({
                   </>
                 )
               }
+              {
+                !!toolOptions.length && (
+                  <>
+                    <div className='p-1'>
+                      {toolOptions.map((option, i: number) => (
+                        <VariablePickerMenuItem
+                          isSelected={selectedIndex === i + options.length}
+                          onClick={() => {
+                            setHighlightedIndex(i + options.length)
+                            selectOptionAndCleanUp(option)
+                          }}
+                          onMouseEnter={() => {
+                            setHighlightedIndex(i + options.length)
+                          }}
+                          key={option.key}
+                          option={option}
+                          queryString={queryString}
+                        />
+                      ))}
+                    </div>
+                    <div className='h-[1px] bg-gray-100' />
+                  </>
+                )
+              }
               <div className='p-1'>
                 <div
                   className={`
                     flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
-                    ${selectedIndex === options.length && 'bg-primary-50'}
+                    ${selectedIndex === options.length + toolOptions.length && 'bg-primary-50'}
                   `}
                   ref={newOption.setRefElement}
                   tabIndex={-1}
                   onClick={() => {
-                    setHighlightedIndex(options.length)
+                    setHighlightedIndex(options.length + toolOptions.length)
                     selectOptionAndCleanUp(newOption)
                   }}
                   onMouseEnter={() => {
-                    setHighlightedIndex(options.length)
+                    setHighlightedIndex(options.length + toolOptions.length)
                   }}
                   key={newOption.key}
                 >
                   {newOption.icon}
                   <div className='text-[13px] text-gray-900'>{newOption.title}</div>
+                </div>
+                <div
+                  className={`
+                    flex items-center px-3 h-6 rounded-md hover:bg-primary-50 cursor-pointer
+                    ${selectedIndex === options.length + toolOptions.length + 1 && 'bg-primary-50'}
+                  `}
+                  ref={newToolOption.setRefElement}
+                  tabIndex={-1}
+                  onClick={() => {
+                    setHighlightedIndex(options.length + toolOptions.length + 1)
+                    selectOptionAndCleanUp(newToolOption)
+                  }}
+                  onMouseEnter={() => {
+                    setHighlightedIndex(options.length + toolOptions.length + 1)
+                  }}
+                  key={newToolOption.key}
+                >
+                  {newToolOption.icon}
+                  <div className='grow text-[13px] text-gray-900'>{newToolOption.title}</div>
+                  {newToolOption.extraElement}
                 </div>
               </div>
             </div>,

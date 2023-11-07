@@ -18,6 +18,9 @@ import type { AutomaticRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
+import { useModalContext } from '@/context/modal-context'
+import type { ExternalDataTool } from '@/models/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -43,7 +46,36 @@ const Prompt: FC<ISimplePromptInput> = ({
     setIntroduction,
     hasSetBlockStatus,
     showSelectDataSet,
+    externalDataToolsConfig,
+    setExternalDataToolsConfig,
   } = useContext(ConfigContext)
+  const { notify } = useToastContext()
+  const { setShowExternalDataToolModal } = useModalContext()
+  const handleOpenExternalDataToolModal = () => {
+    setShowExternalDataToolModal({
+      payload: {},
+      onSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        setExternalDataToolsConfig([...externalDataToolsConfig, newExternalDataTool])
+      },
+      onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
+        for (let i = 0; i < promptVariables.length; i++) {
+          if (promptVariables[i].key === newExternalDataTool.variable) {
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            return false
+          }
+        }
+
+        for (let i = 0; i < externalDataToolsConfig.length; i++) {
+          if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
+            return false
+          }
+        }
+
+        return true
+      },
+    })
+  }
   const promptVariablesObj = (() => {
     const obj: Record<string, boolean> = {}
     promptVariables.forEach((item) => {
@@ -57,7 +89,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
 
   const handleChange = (newTemplates: string, keys: string[]) => {
-    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj)).map(key => getNewVar(key))
+    const newPromptVariables = keys.filter(key => !(key in promptVariablesObj) && !externalDataToolsConfig.find(item => item.variable === key)).map(key => getNewVar(key))
     if (newPromptVariables.length > 0) {
       setNewPromptVariables(newPromptVariables)
       setNewTemplates(newTemplates)
@@ -127,6 +159,13 @@ const Prompt: FC<ISimplePromptInput> = ({
                 name: item.name,
                 value: item.key,
               })),
+              externalTools: externalDataToolsConfig.map(item => ({
+                name: item.label!,
+                variableName: item.variable!,
+                icon: item.icon,
+                icon_background: item.icon_background,
+              })),
+              onAddExternalTool: handleOpenExternalDataToolModal,
             }}
             historyBlock={{
               show: false,

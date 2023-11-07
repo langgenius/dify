@@ -53,8 +53,12 @@
   justify-content: flex-end;
 }
 
-.answerWrap,
 .question {
+  display: inline-block;
+  max-width: 100%;
+}
+
+.answer {
   display: inline-block;
   max-width: 100%;
 }

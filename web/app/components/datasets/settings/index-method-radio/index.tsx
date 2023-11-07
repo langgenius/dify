@@ -14,12 +14,14 @@ type IIndexMethodRadioProps = {
   value?: DataSet['indexing_technique']
   onChange: (v?: DataSet['indexing_technique']) => void
   disable?: boolean
+  itemClassName?: string
 }
 
 const IndexMethodRadio = ({
   value,
   onChange,
   disable,
+  itemClassName,
 }: IIndexMethodRadioProps) => {
   const { t } = useTranslation()
   const options = [
@@ -45,6 +47,7 @@ const IndexMethodRadio = ({
             key={option.key}
             className={classNames(
               itemClass,
+              itemClassName,
               s.item,
               option.key === value && s['item-active'],
               disable && s.disable,

@@ -98,6 +98,26 @@ const translation = {
         deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
     },
+    tools: {
+      title: '工具',
+      tips: '工具提供了一个标准的 API 调用方式，将用户输入或变量作为 API 的请求参数，用于查询外部数据作为上下文。',
+      toolsInUse: '{{count}} 工具使用中',
+      modal: {
+        title: '工具',
+        toolType: {
+          title: '工具类型',
+          placeholder: '请选择工具类型',
+        },
+        name: {
+          title: '名称',
+          placeholder: '请填写名称',
+        },
+        variableName: {
+          title: '变量名称',
+          placeholder: '请填写变量名称',
+        },
+      },
+    },
     conversationHistory: {
       title: '对话历史',
       description: '设置对话角色的前缀名称',
@@ -107,6 +127,47 @@ const translation = {
         title: '编辑对话角色名称',
         userPrefix: '用户前缀',
         assistantPrefix: '助手前缀',
+      },
+    },
+    toolbox: {
+      title: '工具箱',
+    },
+    moderation: {
+      title: '内容审核',
+      description: '内容审核',
+      allEnabled: '审核输入/审核输出 内容已启用',
+      inputEnabled: '审核输入内容已启用',
+      outputEnabled: '审核输出内容已启用',
+      modal: {
+        title: '内容审核设置',
+        provider: {
+          title: '类别',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation 需要在',
+            suffix: '中配置 OpenAI API 密钥。',
+          },
+          keywords: '关键词',
+        },
+        keywords: {
+          tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
+          placeholder: '每行一个，用换行符分隔',
+          line: '行',
+        },
+        content: {
+          input: '审核输入内容',
+          output: '审核输出内容',
+          preset: '预设回复',
+          placeholder: '这里预设回复内容',
+          condition: '审核输入内容和审核输出内容至少启用一项',
+          fromApi: '预设回复通过 API 返回',
+          errorMessage: '预设回复不能为空',
+          supportMarkdown: '支持 Markdown',
+        },
+        openaiNotConfig: {
+          before: 'OpenAI 内容审核需要在',
+          after: '中配置 OpenAI API 密钥。',
+        },
       },
     },
   },

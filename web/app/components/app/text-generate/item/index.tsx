@@ -19,6 +19,7 @@ import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { fetchTextGenerationMessge } from '@/service/debug'
+
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
   className?: string
