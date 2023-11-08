@@ -285,5 +285,5 @@ export type VisionSettings = {
   enable: boolean
   number_limits: number
   detail: Resolution
-  transfer_methods: TransferMethod
+  transfer_methods: TransferMethod[]
 }
