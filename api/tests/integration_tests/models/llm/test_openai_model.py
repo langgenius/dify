@@ -5,7 +5,7 @@ from unittest.mock import patch
 from langchain.schema import Generation, ChatGeneration, AIMessage
 
 from core.model_providers.providers.openai_provider import OpenAIProvider
-from core.model_providers.models.entity.message import PromptMessage, MessageType
+from core.model_providers.models.entity.message import PromptMessage, MessageType, ImageMessageFile
 from core.model_providers.models.entity.model_params import ModelKwargs
 from core.model_providers.models.llm.openai_model import OpenAIModel
 from models.provider import Provider, ProviderType
@@ -58,6 +58,18 @@ def test_chat_get_num_tokens(mock_decrypt):
 
 
 @patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
+def test_vision_chat_get_num_tokens(mock_decrypt):
+    openai_model = get_mock_openai_model('gpt-4-vision-preview')
+    messages = [
+        PromptMessage(content='What’s in first image?', files=[
+            ImageMessageFile(
+                data='https://upload.wikimedia.org/wikipedia/commons/0/00/1890s_Carlisle_Boarding_School_Graduates_PA.jpg')
+        ])
+    ]
+    rst = openai_model.get_num_tokens(messages)
+    assert rst == 77
+
+@patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
 def test_run(mock_decrypt, mocker):
     mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
 
@@ -79,5 +91,21 @@ def test_chat_run(mock_decrypt, mocker):
     rst = openai_model.run(
         messages,
         stop=['\nHuman:'],
+    )
+    assert (len(rst.content) > 0)
+
+
+@patch('core.helper.encrypter.decrypt_token', side_effect=decrypt_side_effect)
+def test_vision_run(mock_decrypt, mocker):
+    mocker.patch('core.model_providers.providers.base.BaseModelProvider.update_last_used', return_value=None)
+
+    openai_model = get_mock_openai_model('gpt-4-vision-preview')
+    messages = [
+        PromptMessage(content='What’s in first image?', files=[
+            ImageMessageFile(data='https://upload.wikimedia.org/wikipedia/commons/0/00/1890s_Carlisle_Boarding_School_Graduates_PA.jpg')
+        ])
+    ]
+    rst = openai_model.run(
+        messages,
     )
     assert len(rst.content) > 0

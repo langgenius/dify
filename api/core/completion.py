@@ -17,7 +17,7 @@ from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
 from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.entity.message import PromptMessage
+from core.model_providers.models.entity.message import PromptMessage, PromptMessageFile
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
@@ -30,8 +30,8 @@ from core.moderation.factory import ModerationFactory
 class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
-                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
-                 is_override: bool = False, retriever_from: str = 'dev'):
+                 files: List[PromptMessageFile], user: Union[Account, EndUser], conversation: Optional[Conversation],
+                 streaming: bool, is_override: bool = False, retriever_from: str = 'dev'):
         """
         errors: ProviderTokenNotInitError
         """
@@ -95,6 +95,7 @@ class Completion:
                     app_model_config=app_model_config,
                     query=query,
                     inputs=inputs,
+                    files=files,
                     agent_execute_result=None,
                     conversation_message_task=conversation_message_task,
                     memory=memory,
@@ -146,6 +147,7 @@ class Completion:
                 app_model_config=app_model_config,
                 query=query,
                 inputs=inputs,
+                files=files,
                 agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
                 memory=memory,
@@ -257,6 +259,7 @@ class Completion:
     @classmethod
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
                       inputs: dict,
+                      files: List[PromptMessageFile],
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
@@ -270,6 +273,7 @@ class Completion:
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=agent_execute_result.output if agent_execute_result else None,
                 memory=memory,
                 model_instance=model_instance
@@ -280,6 +284,7 @@ class Completion:
                 app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=agent_execute_result.output if agent_execute_result else None,
                 memory=memory,
                 model_instance=model_instance
