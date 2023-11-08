@@ -269,3 +269,21 @@ export type AppTemplate = {
   /** Model */
   model_config: ModelConfig
 }
+
+export enum Resolution {
+  low = 'low',
+  high = 'high',
+}
+
+export enum TransferMethod {
+  all = 'all',
+  upload_file = 'upload_file',
+  remote_url = 'remote_url',
+}
+
+export type VisionSettings = {
+  enable: boolean
+  number_limits: number
+  detail: Resolution
+  transfer_methods: TransferMethod
+}
