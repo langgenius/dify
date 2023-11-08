@@ -25,8 +25,11 @@ class CohereReranking(BaseReranking):
 
     def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float], top_k: Optional[int]) -> Optional[List[Document]]:
         docs = []
+        doc_id = []
         for document in documents:
-            docs.append(document.page_content)
+            if document.metadata['doc_id'] not in doc_id:
+                doc_id.append(document.metadata['doc_id'])
+                docs.append(document.page_content)
         results = self.client.rerank(query=query, documents=docs, model=self.name, top_n=top_k)
         rerank_documents = []
 

@@ -158,7 +158,7 @@ class OrchestratorRuleParser:
 
             tool = None
             if tool_type == "dataset":
-                dataset_tools.append(tool)
+                dataset_tools.append(tool_config)
             elif tool_type == "web_reader":
                 tool = self.to_web_reader_tool(tool_config=tool_val, **kwargs)
             elif tool_type == "google_search":
