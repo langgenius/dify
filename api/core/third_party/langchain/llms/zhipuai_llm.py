@@ -96,7 +96,7 @@ class ZhipuAIChatLLM(BaseChatModel):
         return True
 
     client: Any = None  #: :meta private:
-    model: str = "chatglm_lite"
+    model: str = "chatglm_turbo"
     """Model name to use."""
     temperature: float = 0.95
     """A non-negative float that tunes the degree of randomness in generation."""

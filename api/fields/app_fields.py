@@ -23,6 +23,7 @@ model_config_fields = {
     'retriever_resource': fields.Raw(attribute='retriever_resource_dict'),
     'more_like_this': fields.Raw(attribute='more_like_this_dict'),
     'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
+    'external_data_tools': fields.Raw(attribute='external_data_tools_list'),
     'model': fields.Raw(attribute='model_dict'),
     'user_input_form': fields.Raw(attribute='user_input_form_list'),
     'dataset_query_variable': fields.String,

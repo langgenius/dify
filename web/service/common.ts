@@ -1,13 +1,26 @@
 import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type {
-  AccountIntegrate, CommonResponse, DataSourceNotion,
+  AccountIntegrate,
+  ApiBasedExtension,
+  CodeBasedExtension,
+  CommonResponse,
+  DataSourceNotion,
   DocumentsLimitResponse,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace, InvitationResponse, LangGeniusVersionResponse, Member,
-  OauthResponse, PluginProvider, Provider, ProviderAnthropicToken, ProviderAzureToken,
-  SetupStatusResponse, UserProfileOriginResponse,
+  IWorkspace,
+  InvitationResponse,
+  LangGeniusVersionResponse,
+  Member,
+  ModerateResponse,
+  OauthResponse,
+  PluginProvider,
+  Provider,
+  ProviderAnthropicToken,
+  ProviderAzureToken,
+  SetupStatusResponse,
+  UserProfileOriginResponse,
 } from '@/models/common'
 import type {
   UpdateOpenAIKeyResponse,
@@ -195,4 +208,32 @@ export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) =>
 
 export const fetchDataSourceNotionBinding: Fetcher<{ result: string }, string> = (url) => {
   return get(url) as Promise<{ result: string }>
+}
+
+export const fetchApiBasedExtensionList: Fetcher<ApiBasedExtension[], string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension[]>
+}
+
+export const fetchApiBasedExtensionDetail: Fetcher<ApiBasedExtension, string> = (url) => {
+  return get(url) as Promise<ApiBasedExtension>
+}
+
+export const addApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const updateApiBasedExtension: Fetcher<ApiBasedExtension, { url: string; body: ApiBasedExtension }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<ApiBasedExtension>
+}
+
+export const deleteApiBasedExtension: Fetcher<{ result: string }, string> = (url) => {
+  return del(url) as Promise<{ result: string }>
+}
+
+export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = (url) => {
+  return get(url) as Promise<CodeBasedExtension>
+}
+
+export const moderate = (url: string, body: { app_id: string; text: string }) => {
+  return post(url, { body }) as Promise<ModerateResponse>
 }

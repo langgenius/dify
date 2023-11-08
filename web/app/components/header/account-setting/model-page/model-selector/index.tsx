@@ -13,13 +13,13 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
-import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import type { ModelModeType } from '@/types/app'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import AccountSetting from '@/app/components/header/account-setting'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   value: {
@@ -59,6 +59,7 @@ const ModelSelector: FC<Props> = ({
   triggerIconSmall,
 }) => {
   const { t } = useTranslation()
+  const { setShowAccountSettingModal } = useModalContext()
   const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
   const [search, setSearch] = useState('')
   const modelList = supportAgentThought
@@ -74,8 +75,8 @@ const ModelSelector: FC<Props> = ({
       return {}
 
     const res: Record<string, string> = {}
-    modelList.forEach(({ model_name }) => {
-      res[model_name] = supportI18nModelName.includes(model_name) ? t(`common.modelName.${model_name}`) : model_name
+    modelList.forEach(({ model_name, model_display_name }) => {
+      res[model_name] = model_display_name
     })
     return res
   })()
@@ -111,8 +112,6 @@ const ModelSelector: FC<Props> = ({
     })
     return res
   })()
-
-  const [showSettingModal, setShowSettingModal] = useState(false)
 
   return (
     <div className=''>
@@ -248,9 +247,7 @@ const ModelSelector: FC<Props> = ({
                   style={{
                     borderColor: 'rgba(0, 0, 0, 0.05)',
                   }}
-                  onClick={() => {
-                    setShowSettingModal(true)
-                  }}
+                  onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
                 >
                   <CubeOutline className='w-4 h-4 mr-2' />
                   <div>{t('common.model.addMoreModel')}</div>
@@ -260,14 +257,6 @@ const ModelSelector: FC<Props> = ({
           </Transition>
         )}
       </Popover>
-
-      {
-        showSettingModal && (
-          <AccountSetting activeTab="provider" onCancel={async () => {
-            setShowSettingModal(false)
-          }} />
-        )
-      }
     </div>
   )
 }

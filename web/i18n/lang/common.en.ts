@@ -30,6 +30,7 @@ const translation = {
     reload: 'Reload',
     ok: 'OK',
     log: 'Log',
+    learnMore: 'Learn More',
   },
   placeholder: {
     input: 'Please enter',
@@ -108,6 +109,7 @@ const translation = {
     provider: 'Model Provider',
     dataSource: 'Data Source',
     plugin: 'Plugins',
+    apiBasedExtension: 'API-based Extension',
   },
   account: {
     avatar: 'Avatar',
@@ -299,6 +301,37 @@ const translation = {
       keyFrom: 'Get your SerpAPI key from SerpAPI Account Page',
     },
   },
+  apiBasedExtension: {
+    title: 'API-based extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
+    link: 'Learn how to develop your own API-based Extension.',
+    linkUrl: 'https://docs.dify.ai/advanced/api_based_extension',
+    add: 'Add API-based Extension',
+    selector: {
+      title: 'API-based Extension',
+      placeholder: 'Please select API-based extension',
+      manage: 'Manage API-based Extension',
+    },
+    modal: {
+      title: 'Add API-based Extension',
+      editTitle: 'Edit API-based Extension',
+      name: {
+        title: 'Name',
+        placeholder: 'Please enter the name',
+      },
+      apiEndpoint: {
+        title: 'API Endpoint',
+        placeholder: 'Please enter the API endpoint',
+      },
+      apiKey: {
+        title: 'API-key',
+        placeholder: 'Please enter the API-key',
+        lengthError: 'API-key length cannot be less than 5 characters',
+      },
+    },
+    confirm: {
+      desc: 'Deleting the WebHook might cause the extension points configured for this API-based Extension to fail and produce errors. Please proceed with caution.',
+    },
+  },
   about: {
     changeLog: 'Changlog',
     updateNow: 'Update now',
@@ -384,11 +417,12 @@ const translation = {
     },
     variable: {
       item: {
-        title: 'Variables',
-        desc: 'Insert variable template',
+        title: 'Variables & External Tools',
+        desc: 'Insert Variables & External Tools',
       },
       modal: {
         add: 'New variable',
+        addTool: 'New tool',
       },
     },
     query: {

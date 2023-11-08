@@ -19,6 +19,13 @@ from core.model_providers.models.entity.model_params import ModelMode, ModelKwar
 AZURE_OPENAI_API_VERSION = '2023-07-01-preview'
 
 
+FUNCTION_CALL_MODELS = [
+    'gpt-4',
+    'gpt-4-32k',
+    'gpt-35-turbo',
+    'gpt-35-turbo-16k'
+]
+
 class AzureOpenAIModel(BaseLLM):
     def __init__(self, model_provider: BaseModelProvider,
                  name: str,
@@ -157,3 +164,7 @@ class AzureOpenAIModel(BaseLLM):
     @property
     def support_streaming(self):
         return True
+
+    @property
+    def support_function_call(self):
+        return self.base_model_name in FUNCTION_CALL_MODELS
