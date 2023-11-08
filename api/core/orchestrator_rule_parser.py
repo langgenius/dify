@@ -73,8 +73,7 @@ class OrchestratorRuleParser:
             planning_strategy = PlanningStrategy(agent_mode_config.get('strategy', 'router'))
 
             # only OpenAI chat model (include Azure) support function call, use ReACT instead
-            if agent_model_instance.model_mode != ModelMode.CHAT \
-                    or agent_model_instance.model_provider.provider_name not in ['openai', 'azure_openai']:
+            if not agent_model_instance.support_function_call:
                 if planning_strategy == PlanningStrategy.FUNCTION_CALL:
                     planning_strategy = PlanningStrategy.REACT
                 elif planning_strategy == PlanningStrategy.ROUTER:
