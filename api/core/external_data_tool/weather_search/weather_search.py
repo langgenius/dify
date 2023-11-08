@@ -1,19 +1,10 @@
 from typing import Optional
 
-from core.extension.api_based_extension_requestor import APIBasedExtensionRequestor
 from core.external_data_tool.base import ExternalDataTool
-from core.helper import encrypter
-from extensions.ext_database import db
-from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
-class DemoExternalDataTool(ExternalDataTool):
-    """
-    The api external data tool.
-    """
-
-    name: str = "demo"
-    """the unique name of external data tool"""
+class WeatherSearch(ExternalDataTool):
+    name: str = "weather_search"
 
     @classmethod
     def validate_config(cls, tenant_id: str, config: dict) -> None:
@@ -24,7 +15,8 @@ class DemoExternalDataTool(ExternalDataTool):
         :param config: the form config data
         :return:
         """
-        pass
+        if not config.get('temperature_unit'):
+            raise ValueError('temperature unit is required')
 
     def query(self, inputs: dict, query: Optional[str] = None) -> str:
         """
@@ -34,4 +26,10 @@ class DemoExternalDataTool(ExternalDataTool):
         :param query: the query of chat app
         :return: the tool query result
         """
-        pass
+        city = inputs.get('city')
+        temperature_unit = self.config.get('temperature_unit')
+
+        if temperature_unit == 'fahrenheit':
+            return f'Weather in {city} is 0°F'
+        else:
+            return f'Weather in {city} is 0°C'
