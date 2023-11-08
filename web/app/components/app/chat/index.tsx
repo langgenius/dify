@@ -20,6 +20,8 @@ import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaA
 import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
+// import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
+// import ImageList from '@/app/components/base/image-uploader/image-list'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -86,6 +88,7 @@ const Chat: FC<IChatProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const [fileItems, setFileItems] = useState([])
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -247,6 +250,7 @@ const Chat: FC<IChatProps> = ({
                 </div>)
             }
             <div className="relative">
+              {/* <ImageList list={fileItems} /> */}
               <AutoHeightTextarea
                 value={query}
                 onChange={handleContentChange}
@@ -255,9 +259,18 @@ const Chat: FC<IChatProps> = ({
                 minHeight={48}
                 autoFocus
                 controlFocus={controlFocus}
-                className={`${cn(s.textArea)} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
+                className={`${cn(s.textArea)} resize-none block w-full pl-[53px] bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
               />
-              <div className="absolute top-0 right-2 flex items-center h-[48px]">
+              {/* <div className='absolute bottom-2 left-2 flex items-center'>
+                <ChatImageUploader
+                  settings={{
+                    transfer_methods: ['upload_file', 'remote_url']
+                  }}
+                  onUpload={fileItem => setFileItems([...fileItems, fileItem])}
+                />
+                <div className='ml-1 w-[1px] h-4 bg-black/5' />
+              </div> */}
+              <div className="absolute bottom-0 right-2 flex items-center h-[48px]">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
                 {
                   query
