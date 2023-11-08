@@ -176,6 +176,9 @@ export type ModelConfig = {
     }
   }
   dataset_configs: DatasetConfigs
+  file_upload?: {
+    image: VisionSettings
+  }
 }
 
 export const LanguagesSupported = ['zh-Hans', 'en-US'] as const

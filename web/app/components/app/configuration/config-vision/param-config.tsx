@@ -2,24 +2,18 @@
 import type { FC } from 'react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import cn from 'classnames'
+import ParamConfigContent from './param-config-content'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ConfigContext from '@/context/debug-configuration'
-import Checkbox from '@/app/components/base/checkbox'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const {
-    datasetConfigs,
-    setDatasetConfigs,
-  } = useContext(ConfigContext)
 
   return (
     <PortalToFollowElem
@@ -37,8 +31,8 @@ const ParamsConfig: FC = () => {
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-[240px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
-          <Checkbox checked />
+        <div className='w-[412px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
+          <ParamConfigContent />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

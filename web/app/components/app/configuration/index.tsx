@@ -37,7 +37,7 @@ import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType } from '@/types/app'
+import { AppType, ModelModeType, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -299,6 +299,13 @@ const Configuration: FC = () => {
     setModelConfig(newModelConfig)
   }
 
+  const [visionConfig, setVisionConfig] = useState({
+    enable: true, // TODO: change to false
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.upload_file],
+  })
+
   useEffect(() => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
       setMode(res.mode)
@@ -362,6 +369,10 @@ const Configuration: FC = () => {
         },
         completionParams: model.completion_params,
       }
+      // TODO: wait API
+      if (modelConfig.file_upload)
+        setVisionConfig(modelConfig.file_upload.image)
+
       syncToPublishedConfig(config)
       setPublishedConfig(config)
       setDatasetConfigs(modelConfig.dataset_configs)
@@ -459,6 +470,9 @@ const Configuration: FC = () => {
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {
@@ -557,6 +571,8 @@ const Configuration: FC = () => {
       datasetConfigs,
       setDatasetConfigs,
       hasSetContextVar,
+      visionConfig,
+      setVisionConfig,
     }}
     >
       <>

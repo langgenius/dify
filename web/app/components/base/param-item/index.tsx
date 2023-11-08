@@ -58,6 +58,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
         </div>
         <div className="flex items-center h-7 grow">
           <Slider
+            className='w-full'
             disabled={!enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}
