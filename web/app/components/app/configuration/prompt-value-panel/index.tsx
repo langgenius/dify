@@ -14,6 +14,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import Tooltip from '@/app/components/base/tooltip-plus'
+import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 
 export type IPromptValuePanelProps = {
   appType: AppType
@@ -152,6 +153,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
                 )
             }
+            <TextGenerationImageUploader type='both' />
           </>
         )
         }
