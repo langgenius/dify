@@ -487,7 +487,8 @@ class DocumentService:
                         'top_k': 2,
                         'score_threshold_enable': False
                     }
-                    dataset.retrieval_model = json.dumps(document_data.get('retrieval_model', default_retrieval_model))
+
+                    dataset.retrieval_model = json.dumps(document_data.get('retrieval_model') if document_data.get('retrieval_model') else default_retrieval_model)
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))

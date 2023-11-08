@@ -7,10 +7,8 @@ from langchain.schema import HumanMessage
 from core.helper import encrypter
 from core.model_providers.models.base import BaseProviderModel
 from core.model_providers.models.entity.model_params import ModelKwargsRules, KwargRule, ModelType, ModelMode
-from core.model_providers.models.llm.baichuan_model import BaichuanModel
 from core.model_providers.models.reranking.cohere_reranking import CohereReranking
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
-from core.third_party.langchain.llms.baichuan_llm import BaichuanChatLLM
 from models.provider import ProviderType
 
 
@@ -83,20 +81,13 @@ class CohereProvider(BaseModelProvider):
             credential_kwargs = {
                 'api_key': credentials['api_key'],
             }
-
-            rerank = CohereReranking(
-                temperature=0,
-                **credential_kwargs
-            )
-
-            llm([HumanMessage(content='ping')])
+            # todo validate
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
     @classmethod
     def encrypt_provider_credentials(cls, tenant_id: str, credentials: dict) -> dict:
         credentials['api_key'] = encrypter.encrypt_token(tenant_id, credentials['api_key'])
-        credentials['secret_key'] = encrypter.encrypt_token(tenant_id, credentials['secret_key'])
         return credentials
 
     def get_provider_credentials(self, obfuscated: bool = False) -> dict:
@@ -106,7 +97,6 @@ class CohereProvider(BaseModelProvider):
             except JSONDecodeError:
                 credentials = {
                     'api_key': None,
-                    'secret_key': None,
                 }
 
             if credentials['api_key']:

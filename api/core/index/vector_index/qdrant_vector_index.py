@@ -205,7 +205,7 @@ class QdrantVectorIndex(BaseVectorIndex):
                 ),
                 models.FieldCondition(
                     key="page_content",
-                    match=models.MatchValue(text=query),
-                ),
+                    match=models.MatchText(text=query),
+                )
             ],
         ), kwargs.get('top_k', 2))

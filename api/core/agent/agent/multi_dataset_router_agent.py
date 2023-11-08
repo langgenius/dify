@@ -14,7 +14,6 @@ from pydantic import root_validator
 from core.model_providers.models.entity.message import to_prompt_messages
 from core.model_providers.models.llm.base import BaseLLM
 from core.third_party.langchain.llms.fake import FakeLLM
-from core.tool.dataset_choose_tool import DatasetChooseTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 

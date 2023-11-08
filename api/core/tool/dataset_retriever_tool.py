@@ -147,7 +147,9 @@ class DatasetRetrieverTool(BaseTool):
                         model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
                         model_name=retrieval_model['reranking_model']['reranking_model_name']
                     )
-                    documents = hybrid_rerank.rerank(query, documents, retrieval_model['score_threshold'], self.top_k)
+                    documents = hybrid_rerank.rerank(query, documents,
+                                                     retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                                                     self.top_k)
             else:
                 documents = []
 

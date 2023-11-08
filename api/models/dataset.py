@@ -42,8 +42,6 @@ class Dataset(db.Model):
     collection_binding_id = db.Column(UUID, nullable=True)
     retrieval_model = db.Column(JSONB, nullable=True)
 
-
-
     @property
     def dataset_keyword_table(self):
         dataset_keyword_table = db.session.query(DatasetKeywordTable).filter(
@@ -479,4 +477,3 @@ class DatasetCollectionBinding(db.Model):
     model_name = db.Column(db.String(40), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-

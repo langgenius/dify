@@ -97,7 +97,9 @@ class HitTestingService:
                 model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
                 model_name=retrieval_model['reranking_model']['reranking_model_name']
             )
-            all_documents = hybrid_rerank.rerank(query, all_documents, retrieval_model['score_threshold'], retrieval_model['top_k'])
+            all_documents = hybrid_rerank.rerank(query, all_documents,
+                                                 retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                                                 retrieval_model['top_k'])
 
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
@@ -190,18 +192,3 @@ class HitTestingService:
         if not query or len(query) > 250:
             raise ValueError('Query is required and cannot exceed 250 characters')
 
-        if 'query_mode' not in args or not args['query']:
-            # set default value embedding search
-            query_mode = {
-                'embedding': True,
-                'full-text-index': False
-            }
-            args['query_mode'] = query_mode
-        else:
-            if 'embedding' not in args['query_mode']:
-                args['query_mode']['embedding'] = False
-            if 'full-text-index' not in args['query_mode']:
-                args['query_mode']['full-text-index'] = False
-
-        if not args['query_mode']['embedding'] and not args['query_mode']['full-text-index']:
-            raise ValueError('At least one search method needs to be selected.')

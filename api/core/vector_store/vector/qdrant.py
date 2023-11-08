@@ -28,7 +28,7 @@ from langchain.docstore.document import Document
 from langchain.embeddings.base import Embeddings
 from langchain.vectorstores import VectorStore
 from langchain.vectorstores.utils import maximal_marginal_relevance
-from qdrant_client.http.models import PayloadSchemaType, FilterSelector, TextIndexParams
+from qdrant_client.http.models import PayloadSchemaType, FilterSelector, TextIndexParams, TokenizerType, TextIndexType
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -189,7 +189,7 @@ class Qdrant(VectorStore):
             texts, metadatas, ids, batch_size
         ):
             self.client.upsert(
-                collection_name=self.collection_name, points=points, **kwargs
+                collection_name=self.collection_name, points=points
             )
             added_ids.extend(batch_ids)
         # if is new collection, create payload index on group_id
@@ -200,15 +200,14 @@ class Qdrant(VectorStore):
                                              field_type=PayloadSchemaType.KEYWORD)
             # creat full text index
             text_index_params = TextIndexParams(
-                type="text",
-                tokenizer="multilingual",
+                type=TextIndexType.TEXT,
+                tokenizer=TokenizerType.MULTILINGUAL,
                 min_token_len=2,
                 max_token_len=20,
                 lowercase=True
             )
             self.client.create_payload_index(self.collection_name, self.content_payload_key,
-                                             field_schema=text_index_params,
-                                             field_type=PayloadSchemaType.TEXT)
+                                             field_schema=text_index_params)
         return added_ids
 
     @sync_call_fallback
@@ -629,8 +628,8 @@ class Qdrant(VectorStore):
 
     def similarity_search_by_bm25(
         self,
-        k: int = 4,
-        filter: Optional[MetadataFilter] = None
+        filter: Optional[MetadataFilter] = None,
+        k: int = 4
     ) -> List[Document]:
         """Return docs most similar by bm25.
 
@@ -642,24 +641,23 @@ class Qdrant(VectorStore):
         Returns:
             List of documents most similar to the query text and distance for each.
         """
-        results = self.client.scroll(
+        response = self.client.scroll(
             collection_name=self.collection_name,
-            points_selector=FilterSelector(
-                filter=filter
-            ),
+            scroll_filter=filter,
             limit=k,
             with_payload=True,
             with_vectors=True
 
         )
-        return [
-            (
-                self._document_from_scored_point(
-                    result, self.content_payload_key, self.metadata_payload_key
-                )
-            )
-            for result in results
-        ]
+        results = response[0]
+        documents = []
+        for result in results:
+            if result:
+                documents.append(self._document_from_scored_point(
+                        result, self.content_payload_key, self.metadata_payload_key
+                    ))
+
+        return documents
 
     @sync_call_fallback
     async def asimilarity_search_with_score_by_vector(

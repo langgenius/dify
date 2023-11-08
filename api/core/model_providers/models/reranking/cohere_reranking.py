@@ -14,12 +14,12 @@ from core.model_providers.providers.base import BaseModelProvider
 class CohereReranking(BaseReranking):
 
     def __init__(self, model_provider: BaseModelProvider, name: str):
-        credentials = model_provider.get_model_credentials(
+        self.credentials = model_provider.get_model_credentials(
             model_name=name,
             model_type=self.type
         )
 
-        client = cohere.Client(credentials['api_key'])
+        client = cohere.Client(self.credentials.get('api_key'))
 
         super().__init__(model_provider, client, name)
 
