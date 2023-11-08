@@ -247,6 +247,7 @@ function AppCard({
               linkUrl=""
               onClose={() => setShowCustomizeModal(false)}
               appId={appInfo.id}
+              api_base_url={appInfo.api_base_url}
               mode={appInfo.mode}
             />
           </>
