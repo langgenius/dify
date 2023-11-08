@@ -302,13 +302,13 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: 'API-based extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
+    title: 'API extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
     link: 'Learn how to develop your own API Extension.',
     linkUrl: 'https://docs.dify.ai/advanced/api_based_extension',
     add: 'Add API Extension',
     selector: {
       title: 'API Extension',
-      placeholder: 'Please select API-based extension',
+      placeholder: 'Please select API extension',
       manage: 'Manage API Extension',
     },
     modal: {
