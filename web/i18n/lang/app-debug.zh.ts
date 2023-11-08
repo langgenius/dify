@@ -245,6 +245,11 @@ const translation = {
     options: '选项',
     addOption: '添加选项',
   },
+  vision: {
+    name: '视觉',
+    description: '视觉功能可以让您的应用程序识别图像中的对象、场景和文字。',
+    settings: '设置',
+  },
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',

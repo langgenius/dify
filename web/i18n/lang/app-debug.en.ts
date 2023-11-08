@@ -249,6 +249,11 @@ const translation = {
     options: 'Options',
     addOption: 'Add option',
   },
+  vision: {
+    name: 'Vision',
+    description: 'Vision is a feature that allows AI to describe images.',
+    settings: 'Settings',
+  },
   openingStatement: {
     title: 'Opening remarks',
     add: 'Add',
