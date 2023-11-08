@@ -433,6 +433,11 @@ const translation = {
     },
     existed: 'Prompt 中已存在',
   },
+  imageUploader: {
+    uploadFromComputer: 'Upload from Computer',
+    pasteImageLink: 'Paste image link',
+    pasteImageLinkInputPlaceholder: 'Paste image link here',
+  },
 }
 
 export default translation
