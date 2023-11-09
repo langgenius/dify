@@ -12,13 +12,14 @@ from sqlalchemy import and_
 from core.completion import Completion
 from core.conversation_message_task import PubHandler, ConversationTaskStoppedException, \
     ConversationTaskInterruptException
+from core.file.message_file_parser import MessageFileParser
 from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError, \
     LLMRateLimitError, \
     LLMAuthorizationError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
-from core.model_providers.models.entity.message import PromptMessageFile, ImagePromptMessageFile
+from core.model_providers.models.entity.message import PromptMessageFile
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message, MessageFile
+from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message
 from services.app_model_config_service import AppModelConfigService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError
@@ -135,7 +136,7 @@ class CompletionService:
         inputs = cls.get_cleaned_inputs(inputs, app_model_config)
 
         # parse files
-        prompt_message_files = cls.parse_files(files, app_model_config, user)
+        prompt_message_files = MessageFileParser.parse_arg_files(files, app_model_config, user)
 
         generate_task_id = str(uuid.uuid4())
 
@@ -162,7 +163,8 @@ class CompletionService:
         generate_worker_thread.start()
 
         # wait for 10 minutes to close the thread
-        cls.countdown_and_close(current_app._get_current_object(), generate_worker_thread, pubsub, user, generate_task_id)
+        cls.countdown_and_close(current_app._get_current_object(), generate_worker_thread, pubsub, user,
+                                generate_task_id)
 
         return cls.compact_response(pubsub, streaming)
 
@@ -178,8 +180,10 @@ class CompletionService:
         return user
 
     @classmethod
-    def generate_worker(cls, flask_app: Flask, generate_task_id: str, detached_app_model: App, app_model_config: AppModelConfig,
-                        query: str, inputs: dict, files: List[PromptMessageFile], detached_user: Union[Account, EndUser],
+    def generate_worker(cls, flask_app: Flask, generate_task_id: str, detached_app_model: App,
+                        app_model_config: AppModelConfig,
+                        query: str, inputs: dict, files: List[PromptMessageFile],
+                        detached_user: Union[Account, EndUser],
                         detached_conversation: Optional[Conversation], streaming: bool, is_model_config_override: bool,
                         retriever_from: str = 'dev'):
         with flask_app.app_context():
@@ -222,7 +226,8 @@ class CompletionService:
                 db.session.commit()
 
     @classmethod
-    def countdown_and_close(cls, flask_app: Flask, worker_thread, pubsub, detached_user, generate_task_id) -> threading.Thread:
+    def countdown_and_close(cls, flask_app: Flask, worker_thread, pubsub, detached_user,
+                            generate_task_id) -> threading.Thread:
         # wait for 10 minutes to close the thread
         timeout = 600
 
@@ -283,7 +288,7 @@ class CompletionService:
 
         # parse files
         message_files = message.files
-        prompt_message_files = cls.parse_message_files(message_files, app_model_config, user)
+        prompt_message_files = MessageFileParser.parse_message_files(message_files, app_model_config, user)
 
         generate_task_id = str(uuid.uuid4())
 
@@ -354,81 +359,6 @@ class CompletionService:
         return filtered_inputs
 
     @classmethod
-    def parse_files(cls, files: List[dict], app_model_config: AppModelConfig,
-                    user: Union[Account, EndUser]) -> List[PromptMessageFile]:
-        # TODO: wait for file upload config parse in app model config
-        file_upload_config = app_model_config.file_upload_config_dict
-
-        message_files = []
-        for file in files:
-            if file.get('type') == 'image':
-                message_file = cls.parse_image_file(file, file_upload_config, user)
-                message_files.append(message_file)
-
-        return message_files
-
-    @classmethod
-    def parse_message_files(cls, message_files: List[MessageFile], app_model_config: AppModelConfig,
-                    user: Union[Account, EndUser]) -> List[PromptMessageFile]:
-        # TODO: wait for file upload config parse in app model config
-        file_upload_config = app_model_config.file_upload_config_dict
-
-        prompt_message_files = []
-        for message_file in message_files:
-            if message_file.type == 'image':
-                message_file = cls.parse_image_message_file(message_file, file_upload_config, user)
-                prompt_message_files.append(message_file)
-
-        return prompt_message_files
-
-    @classmethod
-    def parse_image_file(cls, file: dict, file_upload_config: dict,
-                         user: Union[Account, EndUser]) -> Optional[PromptMessageFile]:
-        if not file_upload_config.get('image'):
-            return None
-
-        image_config = file_upload_config.get('image')
-
-        if not image_config['enabled']:
-            return None
-
-        if file.get('transfer_method') not in image_config['transfer_methods']:
-            return None
-
-        detail = image_config['detail']
-        if file.get('transfer_method') == 'remote_url':
-            url = file.get('url')
-        elif file.get('transfer_method') == 'local_file':
-            # TODO: get signed url from upload file
-            url = ''
-        else:
-            return None
-
-        return ImagePromptMessageFile(
-            detail=detail,
-            data=url,
-        )
-
-    @classmethod
-    def parse_image_message_file(cls, message_file: MessageFile, file_upload_config: dict,
-                         user: Union[Account, EndUser]) -> Optional[PromptMessageFile]:
-        image_config = file_upload_config.get('image')
-        detail = image_config['detail']
-        if message_file.transfer_method == 'remote_url':
-            url = message_file.url
-        elif message_file.transfer_method == 'local_file':
-            # TODO: get signed url from upload file
-            url = ''
-        else:
-            return None
-
-        return ImagePromptMessageFile(
-            detail=detail,
-            data=url,
-        )
-
-
-    @classmethod
     def compact_response(cls, pubsub: PubSub, streaming: bool = False) -> Union[dict, Generator]:
         generate_channel = list(pubsub.channels.keys())[0].decode('utf-8')
         if not streaming:
@@ -475,7 +405,8 @@ class CompletionService:
                             if event == 'message':
                                 yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
                             elif event == 'message_replace':
-                                yield "data: " + json.dumps(cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
+                                yield "data: " + json.dumps(
+                                    cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
                             elif event == 'chain':
                                 yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
                             elif event == 'agent_thought':

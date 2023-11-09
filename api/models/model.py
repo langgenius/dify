@@ -560,7 +560,7 @@ class MessageFile(db.Model):
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     message_id = db.Column(UUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
-    transfer_methods = db.Column(db.String(255), nullable=False)
+    transfer_method = db.Column(db.String(255), nullable=False)
     url = db.Column(db.String(255), nullable=True)
     upload_file_id = db.Column(UUID, nullable=True)
     created_by_role = db.Column(db.String(255), nullable=False)
