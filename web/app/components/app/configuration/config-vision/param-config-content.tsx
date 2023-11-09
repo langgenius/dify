@@ -10,6 +10,8 @@ import ParamItem from '@/app/components/base/param-item'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 
+const MIN = 1
+const MAX = 6
 const ParamConfigContent: FC = () => {
   const { t } = useTranslation()
 
@@ -105,12 +107,15 @@ const ParamConfigContent: FC = () => {
               {...{
                 default: 2,
                 step: 1,
-                min: 1,
-                max: 6,
+                min: MIN,
+                max: MAX,
               }}
               value={visionConfig.number_limits}
               enable={true}
               onChange={(_key: string, value: number) => {
+                if (!value)
+                  return
+
                 setVisionConfig({
                   ...visionConfig,
                   number_limits: value,
