@@ -434,9 +434,12 @@ const translation = {
     existed: 'Prompt 中已存在',
   },
   imageUploader: {
-    uploadFromComputer: 'Upload from Computer',
-    pasteImageLink: 'Paste image link',
-    pasteImageLinkInputPlaceholder: 'Paste image link here',
+    uploadFromComputer: '从本地上传',
+    uploadFromComputerReadError: '图片读取失败，请重新选择。',
+    uploadFromComputerUploadError: '图片上传失败，请重新上传。',
+    pasteImageLink: '粘贴图片链接',
+    pasteImageLinkInputPlaceholder: '将图像链接粘贴到此处',
+    pasteImageLinkInvalid: '图片链接无效',
   },
 }
 

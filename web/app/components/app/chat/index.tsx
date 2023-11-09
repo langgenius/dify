@@ -22,7 +22,8 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
-import type { VisionSettings } from '@/types/app'
+import { imageUpload } from '@/app/components/base/image-uploader/utils'
+import type { ImageFile, VisionSettings } from '@/types/app'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -91,7 +92,7 @@ const Chat: FC<IChatProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [fileItems, setFileItems] = useState<any>([])
+  const [files, setFiles] = useState<ImageFile[]>([])
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -163,6 +164,48 @@ const Chat: FC<IChatProps> = ({
     }, () => {
       logError(t('common.voiceInput.notAllow'))
     })
+  }
+  const handleRemove = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1)
+      setFiles([...files.slice(0, index), ...files.slice(index + 1)])
+  }
+  const handleImageLinkLoadError = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleImageLinkLoadSuccess = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleReUpload = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      imageUpload({
+        file: currentImageFile.file!,
+        onProgressCallback: (progress) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)])
+        },
+        onSuccessCallback: (res) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)])
+        },
+        onErrorCallback: () => {
+          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
+        },
+      })
+    }
   }
 
   return (
@@ -259,12 +302,18 @@ const Chat: FC<IChatProps> = ({
                     <div className='absolute bottom-2 left-2 flex items-center'>
                       <ChatImageUploader
                         settings={visionConfig}
-                        onUpload={fileItem => setFileItems([...fileItems, fileItem])}
+                        onUpload={fileItem => setFiles([...files, fileItem])}
                       />
                       <div className='mx-1 w-[1px] h-4 bg-black/5' />
                     </div>
                     <div className='pl-[52px]'>
-                      <ImageList list={fileItems} />
+                      <ImageList
+                        list={files}
+                        onRemove={handleRemove}
+                        onReUpload={handleReUpload}
+                        onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
+                        onImageLinkLoadError={handleImageLinkLoadError}
+                      />
                     </div>
                   </>
                 )

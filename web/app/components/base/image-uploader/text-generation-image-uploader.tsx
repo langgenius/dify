@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
 import ImageList from './image-list'
+import { imageUpload } from './utils'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -15,6 +16,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import type { ImageFile } from '@/types/app'
+import { useToastContext } from '@/app/components/base/toast'
 
 type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
@@ -24,6 +26,11 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
+
+  const handleUpload = (imageFile: ImageFile) => {
+    setOpen(false)
+    onUpload(imageFile)
+  }
 
   return (
     <PortalToFollowElem
@@ -39,7 +46,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='p-2 w-[320px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg'>
-          <ImageLinkInput onUpload={onUpload} />
+          <ImageLinkInput onUpload={handleUpload} />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
@@ -53,6 +60,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   type,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const [files, setFiles] = useState<ImageFile[]>([])
 
   const handleUpload = (imageFile: ImageFile) => {
@@ -63,6 +71,42 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
 
     if (index > -1)
       setFiles([...files.slice(0, index), ...files.slice(index + 1)])
+  }
+  const handleImageLinkLoadError = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleImageLinkLoadSuccess = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleReUpload = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      imageUpload({
+        file: currentImageFile.file!,
+        onProgressCallback: (progress) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)])
+        },
+        onSuccessCallback: (res) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)])
+        },
+        onErrorCallback: () => {
+          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
+        },
+      })
+    }
   }
 
   const localUpload = (
@@ -106,6 +150,9 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
         <ImageList
           list={files}
           onRemove={handleRemove}
+          onReUpload={handleReUpload}
+          onImageLinkLoadError={handleImageLinkLoadError}
+          onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
         />
       </div>
       <div className={`grid gap-1 ${gridColsClassName}`}>

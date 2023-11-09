@@ -435,8 +435,11 @@ const translation = {
   },
   imageUploader: {
     uploadFromComputer: 'Upload from Computer',
+    uploadFromComputerReadError: 'Image reading failed, please try again.',
+    uploadFromComputerUploadError: 'Image upload failed, please upload again.',
     pasteImageLink: 'Paste image link',
     pasteImageLinkInputPlaceholder: 'Paste image link here',
+    pasteImageLinkInvalid: 'Invalid image link',
   },
 }
 
