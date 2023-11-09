@@ -19,7 +19,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage, stopChatMessageResponding } from '@/service/debug'
 import Button from '@/app/components/base/button'
-import type { ModelConfig as BackendModelConfig, File } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
@@ -167,7 +167,7 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
-  const onSend = async (message: string, files?: File[]) => {
+  const onSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false

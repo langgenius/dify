@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
@@ -15,12 +15,12 @@ import ConfigContext from '@/context/debug-configuration'
 
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
-  const [disabled, setDisabled] = useState(false)
   const {
     visionConfig,
+    setVisionConfig,
   } = useContext(ConfigContext)
 
-  const isShowVision = visionConfig.enable
+  const isShowVision = true // todo: read from current model
 
   if (!isShowVision)
     return null
@@ -48,8 +48,11 @@ const ConfigVision: FC = () => {
           <ParamConfig />
           <div className='ml-4 mr-3 w-[1px] h-3.5 bg-gray-200'></div>
           <Switch
-            defaultValue={disabled}
-            onChange={setDisabled}
+            defaultValue={visionConfig.enable}
+            onChange={value => setVisionConfig({
+              ...visionConfig,
+              enable: value,
+            })}
             size='md'
           />
         </div>

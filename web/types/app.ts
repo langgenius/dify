@@ -179,7 +179,7 @@ export type ModelConfig = {
   file_upload?: {
     image: VisionSettings
   }
-  files?: File[]
+  files?: VisionFile[]
 }
 
 export const LanguagesSupported = ['zh-Hans', 'en-US'] as const
@@ -302,7 +302,7 @@ export type ImageFile = {
   base64Url?: string
 }
 
-export type File = {
+export type VisionFile = {
   type: string
   transfer_method: TransferMethod
   url: string
