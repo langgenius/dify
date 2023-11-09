@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import {
-  Fragment,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +14,8 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { ImageFile } from '@/types/app'
+import type { ImageFile, VisionSettings } from '@/types/app'
+import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 
 type PasteImageLinkButtonProps = {
@@ -54,10 +54,10 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 }
 
 type TextGenerationImageUploaderProps = {
-  type: string
+  settings: VisionSettings
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
-  type,
+  settings,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -130,20 +130,6 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
     <PasteImageLinkButton onUpload={handleUpload} />
   )
 
-  let buttons: JSX.Element[] = []
-  let gridColsClassName = 'grid-cols-1'
-
-  if (type === 'both') {
-    gridColsClassName = 'grid-cols-2'
-    buttons = [localUpload, urlUpload]
-  }
-  else if (type === 'local') {
-    buttons = [localUpload]
-  }
-  else if (type === 'url') {
-    buttons = [urlUpload]
-  }
-
   return (
     <div>
       <div className='mb-1'>
@@ -155,8 +141,18 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
         />
       </div>
-      <div className={`grid gap-1 ${gridColsClassName}`}>
-        {buttons.map((button, index) => <Fragment key={index}>{button}</Fragment>)}
+      <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        {
+          settings.transfer_methods.map((method) => {
+            if (method === TransferMethod.upload_file)
+              return localUpload
+
+            if (method === TransferMethod.remote_url)
+              return urlUpload
+
+            return null
+          })
+        }
       </div>
     </div>
   )

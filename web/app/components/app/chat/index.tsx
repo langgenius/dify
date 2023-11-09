@@ -297,7 +297,7 @@ const Chat: FC<IChatProps> = ({
             }
             <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
               {
-                visionConfig?.enable && (
+                visionConfig?.enabled && (
                   <>
                     <div className='absolute bottom-2 left-2 flex items-center'>
                       <ChatImageUploader
@@ -321,7 +321,7 @@ const Chat: FC<IChatProps> = ({
               <Textarea
                 className={`
                   block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
-                  ${visionConfig?.enable && 'pl-12'}
+                  ${visionConfig?.enabled && 'pl-12'}
                 `}
                 value={query}
                 onChange={handleContentChange}

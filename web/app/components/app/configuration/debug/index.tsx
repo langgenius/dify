@@ -452,6 +452,7 @@ const Debug: FC<IDebug> = ({
           appType={mode as AppType}
           onSend={sendTextCompletion}
           inputs={inputs}
+          visionConfig={visionConfig}
         />
       </div>
       <div className="flex flex-col grow">
