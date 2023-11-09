@@ -6,6 +6,7 @@ import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
 import ParamConfig from './param-config'
 import ParamConfigContent from './param-config-content'
+// import { ImageGalleryTest } from '@/app/components/base/image-gallery'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
@@ -25,6 +26,7 @@ const ConfigVision: FC = () => {
     return null
 
   return (<>
+    {/* <ImageGalleryTest /> */}
     <ParamConfigContent />
     <Panel
       className="mt-4"
