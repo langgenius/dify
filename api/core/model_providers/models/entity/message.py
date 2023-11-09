@@ -1,4 +1,5 @@
 import enum
+from typing import Any, cast, Union, List, Dict
 
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage, FunctionMessage
 from pydantic import BaseModel
@@ -18,17 +19,45 @@ class MessageType(enum.Enum):
     SYSTEM = 'system'
 
 
+class PromptMessageFileType(enum.Enum):
+    IMAGE = 'image'
+
+
+class PromptMessageFile(BaseModel):
+    type: PromptMessageFileType
+    data: Any
+
+
+class ImagePromptMessageFile(PromptMessageFile):
+    class DETAIL(enum.Enum):
+        LOW = 'low'
+        HIGH = 'high'
+
+    type: PromptMessageFileType = PromptMessageFileType.IMAGE
+    detail: DETAIL = DETAIL.LOW
+
+
 class PromptMessage(BaseModel):
     type: MessageType = MessageType.USER
     content: str = ''
+    files: list[PromptMessageFile] = []
     function_call: dict = None
+
+
+class LCHumanMessageWithFiles(HumanMessage):
+    # content: Union[str, List[Union[str, Dict]]]
+    content: str
+    files: list[PromptMessageFile]
 
 
 def to_lc_messages(messages: list[PromptMessage]):
     lc_messages = []
     for message in messages:
         if message.type == MessageType.USER:
-            lc_messages.append(HumanMessage(content=message.content))
+            if not message.files:
+                lc_messages.append(HumanMessage(content=message.content))
+            else:
+                lc_messages.append(LCHumanMessageWithFiles(content=message.content, files=message.files))
         elif message.type == MessageType.ASSISTANT:
             additional_kwargs = {}
             if message.function_call:
