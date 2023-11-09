@@ -32,7 +32,8 @@ model_config_fields = {
     'prompt_type': fields.String,
     'chat_prompt_config': fields.Raw(attribute='chat_prompt_config_dict'),
     'completion_prompt_config': fields.Raw(attribute='completion_prompt_config_dict'),
-    'dataset_configs': fields.Raw(attribute='dataset_configs_dict')
+    'dataset_configs': fields.Raw(attribute='dataset_configs_dict'),
+    'file_upload': fields.Raw(attribute='file_upload_dict'),
 }
 
 app_detail_fields = {

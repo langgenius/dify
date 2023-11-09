@@ -1,5 +1,4 @@
 import json
-from json import JSONDecodeError
 
 from flask import current_app, request
 from flask_login import UserMixin
@@ -164,7 +163,7 @@ class AppModelConfig(db.Model):
 
     @property
     def file_upload_dict(self) -> dict:
-        return json.loads(self.file_upload) if self.file_upload else {"enabled": False}
+        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False}}
 
     def to_dict(self) -> dict:
         return {
@@ -812,4 +811,3 @@ class DatasetRetrieverResource(db.Model):
     retriever_from = db.Column(db.Text, nullable=False)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
-
