@@ -201,7 +201,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     }
 
     if (localeData.type === 'api' && !localeData.config.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API-based Extension' : '基于 API 的扩展' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API Extension' : 'API 扩展' }) })
       return
     }
 

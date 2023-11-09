@@ -4,32 +4,21 @@
 <head>
   <title>Dify Chatbot Extension</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <link href="./tailwind.css" rel="stylesheet">
 </head>
 
-<body class="bg-gray-100 py-8 px-4 w-96">
+<body class="bg-gray-100 py-4 px-4 w-128">
   <div class="max-w-md mx-auto bg-white shadow-md rounded-lg p-4">
     <h2 class="text-2xl font-semibold mb-4">Dify Chatbot Extension</h2>
     <form>
       <div class="mb-4 flex items-center">
         <div class="w-1/4">
-          <label for="base-url" class="block font-semibold text-gray-700">Base URL</label>
+          <label for="chatbot-url" class="block font-semibold text-gray-700">ChatBot URL</label>
         </div>
         <div class="w-3/4">
-          <input type="text" id="base-url" name="base-url" value=""
+          <input type="text" id="chatbot-url" name="base-url" value=""
             class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-400"
-            placeholder="https://udify.app">
-        </div>
-      </div>
-
-      <div class="mb-4 flex items-center">
-        <div class="w-1/4">
-          <label for="token" class="block font-semibold text-gray-700">Token</label>
-        </div>
-        <div class="w-3/4">
-          <input type="text" id="token" name="token" value=""
-            class="w-full border border-gray-300 rounded px-3 py-2 focus:outline-none focus:border-blue-400"
-            placeholder="Application Embedded Token">
+            placeholder="https://udify.app/chatbot/7CQBa5yyvYLSkZtx">
         </div>
       </div>
 

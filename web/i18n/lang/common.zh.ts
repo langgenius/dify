@@ -109,7 +109,7 @@ const translation = {
     provider: '模型供应商',
     dataSource: '数据来源',
     plugin: '插件',
-    apiBasedExtension: '基于 API 的扩展',
+    apiBasedExtension: 'API 的扩展',
   },
   account: {
     avatar: '头像',
@@ -302,18 +302,18 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: '基于 API 的扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
-    link: '了解如何开发您自己的基于 API 的扩展。',
+    title: 'API 的扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
+    link: '了解如何开发您自己的 API 的扩展。',
     linkUrl: 'https://docs.dify.ai/v/zh-hans/advanced/api_based_extension',
-    add: '新增基于 API 的扩展',
+    add: '新增 API 的扩展',
     selector: {
-      title: '基于 API 的扩展',
-      placeholder: '请选择基于 API 的扩展',
-      manage: '管理基于 API 的扩展',
+      title: 'API 的扩展',
+      placeholder: '请选择 API 的扩展',
+      manage: '管理 API 的扩展',
     },
     modal: {
-      title: '新增基于 API 的扩展',
-      editTitle: '编辑基于 API 的扩展',
+      title: '新增 API 的扩展',
+      editTitle: '编辑 API 的扩展',
       name: {
         title: '名称',
         placeholder: '请输入名称',
@@ -329,7 +329,7 @@ const translation = {
       },
     },
     confirm: {
-      desc: '删除 WebHook 可能会导致这个基于 API 的扩展配置的扩展失败并产生错误。请谨慎删除。',
+      desc: '删除 WebHook 可能会导致这个 API 的扩展配置的扩展失败并产生错误。请谨慎删除。',
     },
   },
   about: {

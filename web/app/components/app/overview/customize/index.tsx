@@ -14,6 +14,7 @@ type IShareLinkProps = {
   isShow: boolean
   onClose: () => void
   linkUrl: string
+  api_base_url: string
   appId: string
   mode: AppMode
 }
@@ -37,6 +38,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
   isShow,
   onClose,
   appId,
+  api_base_url,
   mode,
 }) => {
   const { t } = useTranslation()
@@ -64,30 +66,32 @@ const CustomizeModal: FC<IShareLinkProps> = ({
           </a>
         </div>
       </div>
-      <div className='flex py-4'>
-        <StepNum>2</StepNum>
-        <div className='flex flex-col w-full'>
-          <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step2`)}</div>
-          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
-          <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
-            export const APP_ID = '{appId}'<br />
-            export const API_KEY = {'\'<Web API Key From Dify>\''}
-          </pre>
-        </div>
-      </div>
       <div className='flex pt-4'>
-        <StepNum>3</StepNum>
+        <StepNum>2</StepNum>
         <div className='flex flex-col'>
           <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step3`)}</div>
-          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
+          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step2Tip`)}</div>
           <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target='_blank'>
             <Button className='text-gray-800 text-sm w-fit'>
               <div className='mr-1.5 border-solid border-t-0 border-r-[7px] border-l-[7px] border-b-[12px] border-r-transparent border-b-black border-l-transparent border-t-transparent'></div>
-              <span>{t(`${prefixCustomize}.way1.step3Operation`)}</span>
+              <span>{t(`${prefixCustomize}.way1.step2Operation`)}</span>
             </Button>
           </a>
         </div>
       </div>
+      <div className='flex py-4'>
+        <StepNum>3</StepNum>
+        <div className='flex flex-col w-full'>
+          <div className='text-gray-900'>{t(`${prefixCustomize}.way1.step3`)}</div>
+          <div className='text-gray-500 text-xs mt-1 mb-2'>{t(`${prefixCustomize}.way1.step3Tip`)}</div>
+          <pre className='box-border py-3 px-4 bg-gray-100 text-xs font-medium rounded-lg select-text'>
+            NEXT_PUBLIC_APP_ID={`'${appId}'`} <br />
+            NEXT_PUBLIC_APP_KEY={'\'<Web API Key From Dify>\''} <br />
+            NEXT_PUBLIC_API_URL={`'${api_base_url}'`}
+          </pre>
+        </div>
+      </div>
+
     </div>
     <div className='w-full mt-4 px-6 py-5 border-gray-200 rounded-lg border-[0.5px]'>
       <Tag bordered={true} hideBg={true} className='text-primary-600 border-primary-600 uppercase'>{t(`${prefixCustomize}.way`)} 2</Tag>
