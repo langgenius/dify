@@ -29,7 +29,7 @@ const Uploader: FC<UploaderProps> = ({
       'load',
       () => {
         const imageFile = {
-          type: TransferMethod.upload_file,
+          type: TransferMethod.local_file,
           _id: `${Date.now()}`,
           fileId: '',
           file,

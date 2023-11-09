@@ -46,7 +46,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const hasUploadFromLocal = methods.find(method => method === TransferMethod.upload_file)
+  const hasUploadFromLocal = methods.find(method => method === TransferMethod.local_file)
 
   return (
     <PortalToFollowElem
@@ -100,7 +100,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
   settings,
   onUpload,
 }) => {
-  const onlyUploadLocal = settings.transfer_methods.length === 1 && settings.transfer_methods[0] === TransferMethod.upload_file
+  const onlyUploadLocal = settings.transfer_methods.length === 1 && settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (

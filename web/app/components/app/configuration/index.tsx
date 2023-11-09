@@ -299,7 +299,6 @@ const Configuration: FC = () => {
 
     setModelConfig(newModelConfig)
     const supportVision = features && features.includes('vision')
-    console.log(supportVision)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setVisionConfig({
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -309,10 +308,10 @@ const Configuration: FC = () => {
   }
 
   const [visionConfig, setVisionConfig] = useState({
-    enabled: true, // TODO: change to false
+    enabled: true,
     number_limits: 2,
     detail: Resolution.low,
-    transfer_methods: [TransferMethod.upload_file],
+    transfer_methods: [TransferMethod.local_file],
   })
 
   useEffect(() => {
@@ -378,7 +377,7 @@ const Configuration: FC = () => {
         },
         completionParams: model.completion_params,
       }
-      // TODO: wait API
+      console.log(modelConfig.file_upload)
       if (modelConfig.file_upload)
         setVisionConfig(modelConfig.file_upload.image)
 

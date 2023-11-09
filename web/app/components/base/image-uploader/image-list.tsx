@@ -44,7 +44,7 @@ const ImageList: FC<ImageListProps> = ({
             className='group relative mr-1'
           >
             {
-              item.type === TransferMethod.upload_file && item.progress !== 100 && (
+              item.type === TransferMethod.local_file && item.progress !== 100 && (
                 <div className='absolute inset-0 flex items-center justify-center rounded-lg z-[1] bg-black/30'>
                   {
                     item.progress === -1 && (

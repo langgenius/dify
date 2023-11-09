@@ -51,7 +51,7 @@ const ConfigVision: FC = () => {
             defaultValue={visionConfig.enabled}
             onChange={value => setVisionConfig({
               ...visionConfig,
-              enable: value,
+              enabled: value,
             })}
             size='md'
           />

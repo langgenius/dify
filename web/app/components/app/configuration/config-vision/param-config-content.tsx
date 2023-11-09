@@ -73,7 +73,7 @@ const ParamConfigContent: FC = () => {
                 },
                 {
                   label: t('appDebug.vision.visionSettings.localUpload'),
-                  value: TransferMethod.upload_file,
+                  value: TransferMethod.local_file,
                 },
                 {
                   label: t('appDebug.vision.visionSettings.url'),
@@ -85,7 +85,7 @@ const ParamConfigContent: FC = () => {
                 if (value === TransferMethod.all) {
                   setVisionConfig({
                     ...visionConfig,
-                    transfer_methods: [TransferMethod.remote_url, TransferMethod.upload_file],
+                    transfer_methods: [TransferMethod.remote_url, TransferMethod.local_file],
                   })
                   return
                 }

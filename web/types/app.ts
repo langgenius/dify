@@ -281,7 +281,7 @@ export enum Resolution {
 
 export enum TransferMethod {
   all = 'all',
-  upload_file = 'upload_file',
+  local_file = 'local_file',
   remote_url = 'remote_url',
 }
 
