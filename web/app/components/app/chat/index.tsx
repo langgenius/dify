@@ -1,6 +1,7 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import Textarea from 'rc-textarea'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
@@ -10,9 +11,8 @@ import type { DisplayScene, FeedbackFunc, IChatItem, SubmitAnnotationFunc } from
 import { TryToAskIcon, stopIcon } from './icon-component'
 import Answer from './answer'
 import Question from './question'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import VoiceInput from '@/app/components/base/voice-input'
@@ -20,8 +20,9 @@ import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaA
 import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
-// import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
-// import ImageList from '@/app/components/base/image-uploader/image-list'
+import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
+import ImageList from '@/app/components/base/image-uploader/image-list'
+import type { VisionSettings } from '@/types/app'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -56,6 +57,7 @@ export type IChatProps = {
   dataSets?: DataSet[]
   isShowCitationHitInfo?: boolean
   isShowPromptLog?: boolean
+  visionConfig?: VisionSettings
 }
 
 const Chat: FC<IChatProps> = ({
@@ -85,10 +87,11 @@ const Chat: FC<IChatProps> = ({
   dataSets,
   isShowCitationHitInfo,
   isShowPromptLog,
+  visionConfig,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [fileItems, setFileItems] = useState([])
+  const [fileItems, setFileItems] = useState<any>([])
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -249,28 +252,35 @@ const Chat: FC<IChatProps> = ({
                   </div>
                 </div>)
             }
-            <div className="relative">
-              {/* <ImageList list={fileItems} /> */}
-              <AutoHeightTextarea
+            <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
+              {
+                visionConfig?.enable && (
+                  <>
+                    <div className='absolute bottom-2 left-2 flex items-center'>
+                      <ChatImageUploader
+                        settings={visionConfig}
+                        onUpload={fileItem => setFileItems([...fileItems, fileItem])}
+                      />
+                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
+                    </div>
+                    <div className='pl-[52px]'>
+                      <ImageList list={fileItems} />
+                    </div>
+                  </>
+                )
+              }
+              <Textarea
+                className={`
+                  block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
+                  ${visionConfig?.enable && 'pl-12'}
+                `}
                 value={query}
                 onChange={handleContentChange}
                 onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
-                minHeight={48}
-                autoFocus
-                controlFocus={controlFocus}
-                className={`${cn(s.textArea)} resize-none block w-full pl-[53px] bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
+                autoSize
               />
-              {/* <div className='absolute bottom-2 left-2 flex items-center'>
-                <ChatImageUploader
-                  settings={{
-                    transfer_methods: ['upload_file', 'remote_url']
-                  }}
-                  onUpload={fileItem => setFileItems([...fileItems, fileItem])}
-                />
-                <div className='ml-1 w-[1px] h-4 bg-black/5' />
-              </div> */}
-              <div className="absolute bottom-0 right-2 flex items-center h-[48px]">
+              <div className="absolute bottom-2 right-2 flex items-center h-8">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
                 {
                   query
@@ -295,9 +305,8 @@ const Chat: FC<IChatProps> = ({
                 {isMobile
                   ? sendBtn
                   : (
-                    <Tooltip
-                      selector='send-tip'
-                      htmlContent={
+                    <TooltipPlus
+                      popupContent={
                         <div>
                           <div>{t('common.operation.send')} Enter</div>
                           <div>{t('common.operation.lineBreak')} Shift Enter</div>
@@ -305,7 +314,7 @@ const Chat: FC<IChatProps> = ({
                       }
                     >
                       {sendBtn}
-                    </Tooltip>
+                    </TooltipPlus>
                   )}
               </div>
               {

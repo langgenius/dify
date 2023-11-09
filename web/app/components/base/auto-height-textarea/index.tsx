@@ -6,6 +6,7 @@ type IProps = {
   value: string
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void
   className?: string
+  wrapperClassName?: string
   minHeight?: number
   maxHeight?: number
   autoFocus?: boolean
@@ -16,7 +17,7 @@ type IProps = {
 
 const AutoHeightTextarea = forwardRef(
   (
-    { value, onChange, placeholder, className, minHeight = 36, maxHeight = 96, autoFocus, controlFocus, onKeyDown, onKeyUp }: IProps,
+    { value, onChange, placeholder, className, wrapperClassName, minHeight = 36, maxHeight = 96, autoFocus, controlFocus, onKeyDown, onKeyUp }: IProps,
     outerRef: any,
   ) => {
     // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -54,7 +55,7 @@ const AutoHeightTextarea = forwardRef(
     }, [controlFocus])
 
     return (
-      <div className='relative'>
+      <div className={`relative ${wrapperClassName}`}>
         <div className={cn(className, 'invisible whitespace-pre-wrap break-all  overflow-y-auto')} style={{
           minHeight,
           maxHeight,
@@ -79,5 +80,7 @@ const AutoHeightTextarea = forwardRef(
     )
   },
 )
+
+AutoHeightTextarea.displayName = 'AutoHeightTextarea'
 
 export default AutoHeightTextarea

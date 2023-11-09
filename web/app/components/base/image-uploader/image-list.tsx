@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import type { FileItem } from './text-generation-image-uploader'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import type { ImageFile } from '@/types/app'
 
 type ImageListProps = {
-  list: FileItem[]
+  list: ImageFile[]
   readonly?: boolean
   onRemove?: (fileItemId: string) => void
 }
@@ -13,6 +13,10 @@ const ImageList: FC<ImageListProps> = ({
   readonly,
   onRemove,
 }) => {
+  const handleImageLoadError = () => {
+
+  }
+
   return (
     <div className='flex'>
       {
@@ -24,7 +28,8 @@ const ImageList: FC<ImageListProps> = ({
               className='w-16 h-16 rounded-lg cursor-pointer'
               alt=''
               onLoad={() => {}}
-              src={item.url}
+              onError={handleImageLoadError}
+              src={item.url || item.base64Url}
             />
             {
               !readonly && (

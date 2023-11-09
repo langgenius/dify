@@ -3,11 +3,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
-import type { FileItem } from './text-generation-image-uploader'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
-import type {
-  VisionSettings,
-} from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import {
   PortalToFollowElem,
@@ -15,9 +11,10 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { Upload03 } from '@/app/components/base/icons/src/vender/line/general'
+import type { ImageFile, VisionSettings } from '@/types/app'
 
 type UploadOnlyFromLocalProps = {
-  onUpload: (fileItem: FileItem) => void
+  onUpload: (imageFile: ImageFile) => void
 }
 const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
   onUpload,
@@ -40,7 +37,7 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
 
 type UploaderButtonProps = {
   methods: VisionSettings['transfer_methods']
-  onUpload: (fileItem: FileItem) => void
+  onUpload: (imageFile: ImageFile) => void
 }
 const UploaderButton: FC<UploaderButtonProps> = ({
   methods,
@@ -64,7 +61,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-50'>
         <div className='p-2 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
-          <ImageLinkInput />
+          <ImageLinkInput onUpload={onUpload} />
           {
             hasUploadFromLocal && (
               <>
@@ -97,7 +94,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
 
 type ChatImageUploaderProps = {
   settings: VisionSettings
-  onUpload: (fileItem: FileItem) => void
+  onUpload: (imageFile: ImageFile) => void
 }
 const ChatImageUploader: FC<ChatImageUploaderProps> = ({
   settings,

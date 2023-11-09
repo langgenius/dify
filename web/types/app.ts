@@ -290,3 +290,13 @@ export type VisionSettings = {
   detail: Resolution
   transfer_methods: TransferMethod[]
 }
+
+export type ImageFile = {
+  type: TransferMethod
+  _id: string
+  fileId: string
+  file?: File
+  progress: number
+  url: string
+  base64Url?: string
+}

@@ -64,6 +64,7 @@ const Debug: FC<IDebug> = ({
     hasSetContextVar,
     datasetConfigs,
     externalDataToolsConfig,
+    visionConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -475,6 +476,7 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
+                  visionConfig={visionConfig}
                 />
               </div>
             </div>

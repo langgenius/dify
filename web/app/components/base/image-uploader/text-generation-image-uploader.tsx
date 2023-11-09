@@ -14,14 +14,14 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import type { ImageFile } from '@/types/app'
 
-export type FileItem = {
-  _id: string
-  origin: File
-  url: string
+type PasteImageLinkButtonProps = {
+  onUpload: (imageFile: ImageFile) => void
 }
-
-const PasteImageLinkButton = () => {
+const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
+  onUpload,
+}) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -39,7 +39,7 @@ const PasteImageLinkButton = () => {
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>
         <div className='p-2 w-[320px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg'>
-          <ImageLinkInput />
+          <ImageLinkInput onUpload={onUpload} />
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
@@ -53,13 +53,13 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   type,
 }) => {
   const { t } = useTranslation()
-  const [files, setFiles] = useState<FileItem[]>([])
+  const [files, setFiles] = useState<ImageFile[]>([])
 
-  const handleUpload = (fileItem: FileItem) => {
-    setFiles([...files, fileItem])
+  const handleUpload = (imageFile: ImageFile) => {
+    setFiles([...files, imageFile])
   }
-  const handleRemove = (fileItemId: string) => {
-    const index = files.findIndex(file => file._id === fileItemId)
+  const handleRemove = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
 
     if (index > -1)
       setFiles([...files.slice(0, index), ...files.slice(index + 1)])
@@ -83,7 +83,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   )
 
   const urlUpload = (
-    <PasteImageLinkButton />
+    <PasteImageLinkButton onUpload={handleUpload} />
   )
 
   let buttons: JSX.Element[] = []
