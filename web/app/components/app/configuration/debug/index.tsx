@@ -210,7 +210,7 @@ const Debug: FC<IDebug> = ({
       dataset_configs: datasetConfigs,
     }
 
-    if (visionConfig.enable && files && files?.length > 0)
+    if (visionConfig.enabled && files && files?.length > 0)
       postModelConfig.files = files
 
     if (isAdvancedMode) {

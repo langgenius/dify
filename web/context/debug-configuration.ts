@@ -188,7 +188,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   setDatasetConfigs: () => {},
   hasSetContextVar: false,
   visionConfig: {
-    enable: false,
+    enabled: false,
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.remote_url],

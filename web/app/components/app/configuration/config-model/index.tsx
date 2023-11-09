@@ -33,7 +33,7 @@ export type IConfigModelProps = {
   mode: string
   modelId: string
   provider: ProviderEnum
-  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType }) => void
+  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -121,7 +121,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return adjustedValue
   }
 
-  const handleSelectModel = ({ id, provider: nextProvider, mode }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
+  const handleSelectModel = ({ id, provider: nextProvider, mode, features }: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => {
     return async () => {
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
@@ -129,6 +129,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
         id,
         provider: nextProvider || ProviderEnum.openai,
         mode,
+        features,
       })
 
       await ensureModelParamLoaded(nextProvider, id)
@@ -320,6 +321,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
                     id: model.model_name,
                     provider: model.model_provider.provider_name as ProviderEnum,
                     mode: model.model_mode,
+                    features: model.features,
                   })()
                 }}
               />

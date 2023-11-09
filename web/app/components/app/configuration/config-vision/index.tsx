@@ -48,7 +48,7 @@ const ConfigVision: FC = () => {
           <ParamConfig />
           <div className='ml-4 mr-3 w-[1px] h-3.5 bg-gray-200'></div>
           <Switch
-            defaultValue={visionConfig.enable}
+            defaultValue={visionConfig.enabled}
             onChange={value => setVisionConfig({
               ...visionConfig,
               enable: value,

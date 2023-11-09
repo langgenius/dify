@@ -271,7 +271,8 @@ const Configuration: FC = () => {
     id: modelId,
     provider,
     mode: modeMode,
-  }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
+    features,
+  }: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => {
     if (isAdvancedMode) {
       const appMode = mode
 
@@ -297,10 +298,18 @@ const Configuration: FC = () => {
     })
 
     setModelConfig(newModelConfig)
+    const supportVision = features && features.includes('vision')
+    console.log(supportVision)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    setVisionConfig({
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      ...visionConfig,
+      enabled: supportVision,
+    })
   }
 
   const [visionConfig, setVisionConfig] = useState({
-    enable: true, // TODO: change to false
+    enabled: true, // TODO: change to false
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.upload_file],
