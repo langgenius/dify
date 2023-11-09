@@ -163,7 +163,7 @@ class AppModelConfig(db.Model):
 
     @property
     def file_upload_dict(self) -> dict:
-        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False}}
+        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False, "number_limits": 3, "detail": "high", "transfer_methods": ["remote_url", "local_file"]}}
 
     def to_dict(self) -> dict:
         return {
