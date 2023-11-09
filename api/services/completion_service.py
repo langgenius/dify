@@ -18,7 +18,7 @@ from core.model_providers.error import LLMBadRequestError, LLMAPIConnectionError
 from core.model_providers.models.entity.message import PromptMessageFile, ImagePromptMessageFile
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message
+from models.model import Conversation, AppModelConfig, App, Account, EndUser, Message, MessageFile
 from services.app_model_config_service import AppModelConfigService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.app_model_config import AppModelConfigBrokenError

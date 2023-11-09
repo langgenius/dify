@@ -98,6 +98,7 @@ class AppModelConfig(db.Model):
     completion_prompt_config = db.Column(db.Text)
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
+    file_upload = db.Column(db.Text)
 
     @property
     def app(self):
@@ -161,6 +162,10 @@ class AppModelConfig(db.Model):
     def dataset_configs_dict(self) -> dict:
         return json.loads(self.dataset_configs) if self.dataset_configs else {"top_k": 2, "score_threshold": {"enable": False}}
 
+    @property
+    def file_upload_dict(self) -> dict:
+        return json.loads(self.file_upload) if self.file_upload else {"enabled": False}
+
     def to_dict(self) -> dict:
         return {
             "provider": "",
@@ -182,7 +187,8 @@ class AppModelConfig(db.Model):
             "prompt_type": self.prompt_type,
             "chat_prompt_config": self.chat_prompt_config_dict,
             "completion_prompt_config": self.completion_prompt_config_dict,
-            "dataset_configs": self.dataset_configs_dict
+            "dataset_configs": self.dataset_configs_dict,
+            "file_upload": self.file_upload_dict
         }
 
     def from_model_config_dict(self, model_config: dict):
@@ -213,6 +219,8 @@ class AppModelConfig(db.Model):
             if model_config.get('completion_prompt_config') else None
         self.dataset_configs = json.dumps(model_config.get('dataset_configs')) \
             if model_config.get('dataset_configs') else None
+        self.file_upload = json.dumps(model_config.get('file_upload')) \
+            if model_config.get('file_upload') else None
         return self
 
     def copy(self):
@@ -238,7 +246,8 @@ class AppModelConfig(db.Model):
             prompt_type=self.prompt_type,
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
-            dataset_configs=self.dataset_configs
+            dataset_configs=self.dataset_configs,
+            file_upload=self.file_upload
         )
 
         return new_app_model_config
@@ -540,6 +549,27 @@ class MessageFeedback(db.Model):
         return account
 
 
+class MessageFile(db.Model):
+    __tablename__ = 'message_files'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='message_file_pkey'),
+        db.Index('message_file_message_idx', 'message_id'),
+        db.Index('message_file_upload_file_id_idx', 'upload_file_id'),
+        db.Index('message_file_created_by_idx', 'created_by')
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(UUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    transfer_methods = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.String(255), nullable=False)
+    upload_file_id = db.Column(UUID, nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
 class MessageAnnotation(db.Model):
     __tablename__ = 'message_annotations'
     __table_args__ = (
@@ -683,6 +713,7 @@ class UploadFile(db.Model):
     size = db.Column(db.Integer, nullable=False)
     extension = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(255), nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=True)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     used = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
