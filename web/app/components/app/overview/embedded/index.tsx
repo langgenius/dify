@@ -156,14 +156,6 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
           </div>
         </div>
       </div>
-      {option === 'chromePlugin' && (
-        <div className="py-3 w-full">
-          <div className="py-3 bg-blue-600 justify-center items-center gap-2 inline-flex w-full rounded hover:bg-blue-500 focus:outline-none focus:bg-blue-500">
-            <div className={`w-4 h-4 relative ${style.pluginInstallIcon}`}></div>
-            <div className="text-white text-sm font-medium font-['Inter'] leading-tight" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
-          </div>
-        </div>
-      )}
     </Modal>
   )
 }
