@@ -554,7 +554,6 @@ class MessageFile(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='message_file_pkey'),
         db.Index('message_file_message_idx', 'message_id'),
-        db.Index('message_file_upload_file_id_idx', 'upload_file_id'),
         db.Index('message_file_created_by_idx', 'created_by')
     )
 
@@ -562,12 +561,11 @@ class MessageFile(db.Model):
     message_id = db.Column(UUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     transfer_methods = db.Column(db.String(255), nullable=False)
-    url = db.Column(db.String(255), nullable=False)
-    upload_file_id = db.Column(UUID, nullable=False)
+    url = db.Column(db.String(255), nullable=True)
+    upload_file_id = db.Column(UUID, nullable=True)
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False,
-                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
 class MessageAnnotation(db.Model):
