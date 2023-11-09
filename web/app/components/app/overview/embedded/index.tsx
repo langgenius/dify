@@ -88,7 +88,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   }
 
   const navigateToChromeUrl = () => {
-    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf/related', '_blank')
+    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank')
   }
 
   useEffect(() => {
