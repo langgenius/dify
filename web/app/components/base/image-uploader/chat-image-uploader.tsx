@@ -15,12 +15,14 @@ import type { ImageFile, VisionSettings } from '@/types/app'
 
 type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
+  disabled?: boolean
 }
 const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
   onUpload,
+  disabled,
 }) => {
   return (
-    <Uploader onUpload={onUpload}>
+    <Uploader onUpload={onUpload} disabled={disabled}>
       {
         hovering => (
           <div className={`
@@ -38,15 +40,29 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
 type UploaderButtonProps = {
   methods: VisionSettings['transfer_methods']
   onUpload: (imageFile: ImageFile) => void
+  disabled?: boolean
 }
 const UploaderButton: FC<UploaderButtonProps> = ({
   methods,
   onUpload,
+  disabled,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
   const hasUploadFromLocal = methods.find(method => method === TransferMethod.local_file)
+
+  const handleUpload = (imageFile: ImageFile) => {
+    setOpen(false)
+    onUpload(imageFile)
+  }
+
+  const handleToggle = () => {
+    if (disabled)
+      return
+
+    setOpen(v => !v)
+  }
 
   return (
     <PortalToFollowElem
@@ -54,14 +70,17 @@ const UploaderButton: FC<UploaderButtonProps> = ({
       onOpenChange={setOpen}
       placement='top-start'
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='relative flex items-center justify-center w-8 h-8 hover:bg-gray-100 rounded-lg cursor-pointer'>
+      <PortalToFollowElemTrigger onClick={handleToggle}>
+        <div className={`
+          relative flex items-center justify-center w-8 h-8 hover:bg-gray-100 rounded-lg
+          ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+        `}>
           <ImagePlus className='w-4 h-4 text-gray-500' />
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-50'>
         <div className='p-2 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'>
-          <ImageLinkInput onUpload={onUpload} />
+          <ImageLinkInput onUpload={handleUpload} />
           {
             hasUploadFromLocal && (
               <>
@@ -70,7 +89,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                   OR
                   <div className='ml-3 w-[93px] h-[1px] bg-gradient-to-r from-[#F3F4F6]' />
                 </div>
-                <Uploader onUpload={onUpload}>
+                <Uploader onUpload={handleUpload}>
                   {
                     hovering => (
                       <div className={`
@@ -95,16 +114,21 @@ const UploaderButton: FC<UploaderButtonProps> = ({
 type ChatImageUploaderProps = {
   settings: VisionSettings
   onUpload: (imageFile: ImageFile) => void
+  disabled?: boolean
 }
 const ChatImageUploader: FC<ChatImageUploaderProps> = ({
   settings,
   onUpload,
+  disabled,
 }) => {
   const onlyUploadLocal = settings.transfer_methods.length === 1 && settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (
-      <UploadOnlyFromLocal onUpload={onUpload} />
+      <UploadOnlyFromLocal
+        onUpload={onUpload}
+        disabled={disabled}
+      />
     )
   }
 
@@ -112,6 +136,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
     <UploaderButton
       methods={settings.transfer_methods}
       onUpload={onUpload}
+      disabled={disabled}
     />
   )
 }

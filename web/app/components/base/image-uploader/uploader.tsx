@@ -9,10 +9,12 @@ import { useToastContext } from '@/app/components/base/toast'
 type UploaderProps = {
   children: (hovering: boolean) => JSX.Element
   onUpload: (imageFile: ImageFile) => void
+  disabled?: boolean
 }
 const Uploader: FC<UploaderProps> = ({
   children,
   onUpload,
+  disabled,
 }) => {
   const [hovering, setHovering] = useState(false)
   const { notify } = useToastContext()
@@ -72,10 +74,14 @@ const Uploader: FC<UploaderProps> = ({
     >
       {children(hovering)}
       <input
-        className='absolute block top-0 right-0 bottom-0 left-0 opacity-0 cursor-pointer'
+        className={`
+          absolute block inset-0 opacity-0 text-[0]
+          ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+        `}
         type='file'
         accept='.png, .jpg, .jpeg, .webp, .gif'
         onChange={handleChange}
+        disabled={disabled}
       />
     </div>
   )

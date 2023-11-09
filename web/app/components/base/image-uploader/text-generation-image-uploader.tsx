@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import {
+  Fragment,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,9 +21,11 @@ import { useToastContext } from '@/app/components/base/toast'
 
 type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
+  disabled?: boolean
 }
 const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
   onUpload,
+  disabled,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -32,19 +35,29 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     onUpload(imageFile)
   }
 
+  const handleToggle = () => {
+    if (disabled)
+      return
+
+    setOpen(v => !v)
+  }
+
   return (
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
       placement='top-start'
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className='relative flex items-center justify-center px-3 h-8 bg-gray-100 hover:bg-gray-200 text-xs text-gray-500 rounded-lg cursor-pointer'>
+      <PortalToFollowElemTrigger onClick={handleToggle}>
+        <div className={`
+          relative flex items-center justify-center px-3 h-8 bg-gray-100 hover:bg-gray-200 text-xs text-gray-500 rounded-lg
+          ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
+        `}>
           <Link03 className='mr-2 w-4 h-4' />
           {t('common.imageUploader.pasteImageLink')}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-10'>
         <div className='p-2 w-[320px] bg-white border-[0.5px] border-gray-200 rounded-lg shadow-lg'>
           <ImageLinkInput onUpload={handleUpload} />
         </div>
@@ -110,7 +123,10 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   }
 
   const localUpload = (
-    <Uploader onUpload={handleUpload}>
+    <Uploader
+      onUpload={handleUpload}
+      disabled={files.length >= settings.number_limits}
+    >
       {
         hovering => (
           <div className={`
@@ -127,7 +143,10 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   )
 
   const urlUpload = (
-    <PasteImageLinkButton onUpload={handleUpload} />
+    <PasteImageLinkButton
+      onUpload={handleUpload}
+      disabled={files.length >= settings.number_limits}
+    />
   )
 
   return (
@@ -145,10 +164,10 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
         {
           settings.transfer_methods.map((method) => {
             if (method === TransferMethod.local_file)
-              return localUpload
+              return <Fragment key={TransferMethod.local_file}>{localUpload}</Fragment>
 
             if (method === TransferMethod.remote_url)
-              return urlUpload
+              return <Fragment key={TransferMethod.remote_url}>{urlUpload}</Fragment>
 
             return null
           })
