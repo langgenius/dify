@@ -109,7 +109,7 @@ const translation = {
     provider: 'Model Provider',
     dataSource: 'Data Source',
     plugin: 'Plugins',
-    apiBasedExtension: 'API-based Extension',
+    apiBasedExtension: 'API Extension',
   },
   account: {
     avatar: 'Avatar',
@@ -303,17 +303,17 @@ const translation = {
   },
   apiBasedExtension: {
     title: 'API-based extensions provide centralized API management, simplifying configuration for easy use across Dify\'s applications.',
-    link: 'Learn how to develop your own API-based Extension.',
+    link: 'Learn how to develop your own API Extension.',
     linkUrl: 'https://docs.dify.ai/advanced/api_based_extension',
-    add: 'Add API-based Extension',
+    add: 'Add API Extension',
     selector: {
-      title: 'API-based Extension',
+      title: 'API Extension',
       placeholder: 'Please select API-based extension',
-      manage: 'Manage API-based Extension',
+      manage: 'Manage API Extension',
     },
     modal: {
-      title: 'Add API-based Extension',
-      editTitle: 'Edit API-based Extension',
+      title: 'Add API Extension',
+      editTitle: 'Edit API Extension',
       name: {
         title: 'Name',
         placeholder: 'Please enter the name',
@@ -329,7 +329,7 @@ const translation = {
       },
     },
     confirm: {
-      desc: 'Deleting the WebHook might cause the extension points configured for this API-based Extension to fail and produce errors. Please proceed with caution.',
+      desc: 'Deleting the WebHook might cause the extension points configured for this API Extension to fail and produce errors. Please proceed with caution.',
     },
   },
   about: {
