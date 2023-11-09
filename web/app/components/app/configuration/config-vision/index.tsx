@@ -5,8 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
 import ParamConfig from './param-config'
-import ParamConfigContent from './param-config-content'
-// import { ImageGalleryTest } from '@/app/components/base/image-gallery'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
@@ -16,18 +14,15 @@ import ConfigContext from '@/context/debug-configuration'
 const ConfigVision: FC = () => {
   const { t } = useTranslation()
   const {
+    isShowVisionConfig,
     visionConfig,
     setVisionConfig,
   } = useContext(ConfigContext)
 
-  const isShowVision = true // todo: read from current model
-
-  if (!isShowVision)
+  if (!isShowVisionConfig)
     return null
 
   return (<>
-    {/* <ImageGalleryTest /> */}
-    <ParamConfigContent />
     <Panel
       className="mt-4"
       headerIcon={

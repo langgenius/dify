@@ -247,6 +247,8 @@ const Chat: FC<IChatProps> = ({
               item={item}
               isShowPromptLog={isShowPromptLog}
               isResponsing={isResponsing}
+              // TODO: set imgSrcs
+              imgSrcs={['https://placekitten.com/360/360', 'https://placekitten.com/360/640']}
             />
           )
         })}

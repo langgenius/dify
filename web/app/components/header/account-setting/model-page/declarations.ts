@@ -71,6 +71,7 @@ export enum ModelType {
 
 export enum ModelFeature {
   agentThought = 'agent_thought',
+  vision = 'vision',
 }
 
 // backend defined model struct: /console/api/workspaces/current/models/model-type/:model_type

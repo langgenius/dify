@@ -31,7 +31,7 @@ import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
-import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelFeature, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -198,6 +198,7 @@ const Configuration: FC = () => {
   }
 
   const { textGenerationModelList } = useProviderContext()
+  const currModel = textGenerationModelList.find(item => item.model_name === modelConfig.model_id)
   const hasSetCustomAPIKEY = !!textGenerationModelList?.find(({ model_provider: provider }) => {
     if (provider.provider_type === 'system' && provider.quota_type === 'paid')
       return true
@@ -298,7 +299,7 @@ const Configuration: FC = () => {
     })
 
     setModelConfig(newModelConfig)
-    const supportVision = features && features.includes('vision')
+    const supportVision = features && features.includes(ModelFeature.vision)
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     setVisionConfig({
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -307,15 +308,16 @@ const Configuration: FC = () => {
     })
   }
 
+  const isShowVisionConfig = !!currModel?.features.includes(ModelFeature.vision)
   const [visionConfig, setVisionConfig] = useState({
-    enabled: true,
+    enabled: false,
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
 
   useEffect(() => {
-    fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
       setMode(res.mode)
       const modelConfig = res.model_config
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
@@ -377,7 +379,7 @@ const Configuration: FC = () => {
         },
         completionParams: model.completion_params,
       }
-      console.log(modelConfig.file_upload)
+
       if (modelConfig.file_upload)
         setVisionConfig(modelConfig.file_upload.image)
 
@@ -579,6 +581,7 @@ const Configuration: FC = () => {
       datasetConfigs,
       setDatasetConfigs,
       hasSetContextVar,
+      isShowVisionConfig,
       visionConfig,
       setVisionConfig,
     }}

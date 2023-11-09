@@ -81,6 +81,7 @@ type IDebugConfiguration = {
   datasetConfigs: DatasetConfigs
   setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
+  isShowVisionConfig: boolean
   visionConfig: VisionSettings
   setVisionConfig: (visionConfig: VisionSettings) => void
 }
@@ -187,6 +188,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   setDatasetConfigs: () => {},
   hasSetContextVar: false,
+  isShowVisionConfig: false,
   visionConfig: {
     enabled: false,
     number_limits: 2,
