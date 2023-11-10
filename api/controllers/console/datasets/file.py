@@ -1,4 +1,3 @@
-from cachetools import TTLCache
 from flask import request, current_app
 
 import services
@@ -14,8 +13,6 @@ from controllers.console.wraps import account_initialization_required
 from fields.file_fields import upload_config_fields, file_fields
 
 from services.file_service import FileService
-
-cache = TTLCache(maxsize=None, ttl=30)
 
 PREVIEW_WORDS_LIMIT = 3000
 

@@ -1,5 +1,4 @@
 import base64
-import enum
 import hashlib
 import hmac
 import logging
@@ -11,7 +10,7 @@ import requests
 from flask import current_app
 from pydantic import BaseModel
 
-from core.model_providers.models.entity.message import PromptMessageFile, PromptMessageFileType, ImagePromptMessageFile
+from core.model_providers.models.entity.message import PromptMessageFile, ImagePromptMessageFile
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
@@ -66,7 +65,7 @@ class FileObj(BaseModel):
                     return None
 
                 if current_app.config['MULTIMODAL_SEND_IMAGE_FORMAT'] == 'url' or force_url:
-                    return self._get_signed_temp_image_url(upload_file)
+                    return get_signed_temp_image_url(upload_file)
                 else:
                     # get image file base64
                     try:
@@ -79,53 +78,6 @@ class FileObj(BaseModel):
                     return f'data:{upload_file.mime_type};base64,{encoded_string}'
 
         return None
-
-    def _get_signed_temp_image_url(self, upload_file: UploadFile) -> str:
-        """
-        get signed url from upload file
-
-        :param upload_file: UploadFile object
-        :return:
-        """
-        image_preview_url = current_app.config.get('FILES_URL') + '/image-preview/' + upload_file.id
-
-        timestamp = int(time.time())
-        nonce = os.urandom(16).hex()
-        data_to_sign = f"{image_preview_url}|{timestamp}|{nonce}"
-        secret_key = current_app.config['SECRET_KEY'].encode()
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        return f"{image_preview_url}?timestamp={timestamp}&nonce={nonce}&signature={encoded_sign}"
-
-    def _verify_signature(self, file_key: str, timestamp: int, nonce: str, sign: str) -> bool:
-        """
-        verify signature
-
-        :param file_key: file id
-        :param timestamp: timestamp
-        :param nonce: nonce
-        :param sign: signature
-        :return:
-        """
-        image_preview_url = current_app.config.get('FILES_URL') + '/image-preview/' + file_key
-
-        data_to_sign = f"{image_preview_url}|{timestamp}|{nonce}"
-        secret_key = current_app.config['SECRET_KEY'].encode()
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
-
-        # verify signature
-        if sign != recalculated_encoded_sign:
-            return False
-
-        current_time = int(time.time())
-        return current_time - int(timestamp) <= 300  # expired after 5 minutes
-
-
-class PassInFrom(enum.Enum):
-    MESSAGE = 'message'
-    ARG = 'arg'
 
 
 class MessageFileParser:
@@ -274,3 +226,46 @@ class MessageFileParser:
                 return False, "URL does not exist."
         except requests.RequestException as e:
             return False, f"Error checking URL: {e}"
+
+
+def get_signed_temp_image_url(upload_file: UploadFile) -> str:
+    """
+    get signed url from upload file
+
+    :param upload_file: UploadFile object
+    :return:
+    """
+    base_url = current_app.config.get('FILES_URL')
+    image_preview_url = base_url + '/files/image-preview/' + upload_file.id
+
+    timestamp = str(int(time.time()))
+    nonce = os.urandom(16).hex()
+    data_to_sign = f"image-preview|{upload_file.id}|{timestamp}|{nonce}"
+    secret_key = current_app.config['SECRET_KEY'].encode()
+    sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+    return f"{image_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+
+
+def verify_image_file_signature(upload_file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
+    """
+    verify signature
+
+    :param upload_file_id: file id
+    :param timestamp: timestamp
+    :param nonce: nonce
+    :param sign: signature
+    :return:
+    """
+    data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+    secret_key = current_app.config['SECRET_KEY'].encode()
+    recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+    recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
+
+    # verify signature
+    if sign != recalculated_encoded_sign:
+        return False
+
+    current_time = int(time.time())
+    return current_time - int(timestamp) <= 300  # expired after 5 minutes
