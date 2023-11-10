@@ -19,7 +19,7 @@ import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage, stopChatMessageResponding } from '@/service/debug'
 import Button from '@/app/components/base/button'
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
@@ -64,6 +64,7 @@ const Debug: FC<IDebug> = ({
     hasSetContextVar,
     datasetConfigs,
     externalDataToolsConfig,
+    visionConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -166,7 +167,7 @@ const Debug: FC<IDebug> = ({
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
-  const onSend = async (message: string) => {
+  const onSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
@@ -214,12 +215,15 @@ const Debug: FC<IDebug> = ({
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       conversation_id: conversationId,
       inputs,
       query: message,
       model_config: postModelConfig,
     }
+
+    if (visionConfig.enabled && files && files?.length > 0)
+      data.files = files
 
     // qustion
     const questionId = `question-${Date.now()}`
@@ -227,6 +231,7 @@ const Debug: FC<IDebug> = ({
       id: questionId,
       content: message,
       isAnswer: false,
+      message_files: files,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -347,6 +352,7 @@ const Debug: FC<IDebug> = ({
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -401,10 +407,13 @@ const Debug: FC<IDebug> = ({
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       inputs,
       model_config: postModelConfig,
     }
+
+    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0)
+      data.files = completionFiles
 
     setCompletionRes('')
     setMessageId('')
@@ -448,6 +457,8 @@ const Debug: FC<IDebug> = ({
           appType={mode as AppType}
           onSend={sendTextCompletion}
           inputs={inputs}
+          visionConfig={visionConfig}
+          onVisionFilesChange={setCompletionFiles}
         />
       </div>
       <div className="flex flex-col grow">
@@ -475,6 +486,7 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
+                  visionConfig={visionConfig}
                 />
               </div>
             </div>

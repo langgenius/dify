@@ -245,6 +245,25 @@ const translation = {
     options: '选项',
     addOption: '添加选项',
   },
+  vision: {
+    name: '视觉',
+    description: '开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题',
+    settings: '设置',
+    visionSettings: {
+      title: '视觉设置',
+      resolution: '分辨率',
+      resolutionTooltip: `低分辨率模式将使模型接收图像的低分辨率版本，尺寸为512 x 512，并使用65 Tokens 来表示图像。这样可以使API更快地返回响应，并在不需要高细节的用例中消耗更少的输入。
+      \n
+      高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建512像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为129 Tokens。`,
+      high: '高',
+      low: '低',
+      uploadMethod: '上传方式',
+      both: '两者',
+      localUpload: '本地上传',
+      url: 'URL',
+      uploadLimit: '上传数量限制',
+    },
+  },
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',

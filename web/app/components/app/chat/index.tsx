@@ -1,6 +1,7 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import Textarea from 'rc-textarea'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
@@ -10,9 +11,8 @@ import type { DisplayScene, FeedbackFunc, IChatItem, SubmitAnnotationFunc } from
 import { TryToAskIcon, stopIcon } from './icon-component'
 import Answer from './answer'
 import Question from './question'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import VoiceInput from '@/app/components/base/voice-input'
@@ -20,6 +20,10 @@ import { Microphone01 } from '@/app/components/base/icons/src/vender/line/mediaA
 import { Microphone01 as Microphone01Solid } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
+import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
+import ImageList from '@/app/components/base/image-uploader/image-list'
+import { imageUpload } from '@/app/components/base/image-uploader/utils'
+import type { ImageFile, VisionFile, VisionSettings } from '@/types/app'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -37,7 +41,7 @@ export type IChatProps = {
   onFeedback?: FeedbackFunc
   onSubmitAnnotation?: SubmitAnnotationFunc
   checkCanSend?: () => boolean
-  onSend?: (message: string) => void
+  onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
   isResponsing?: boolean
@@ -54,6 +58,7 @@ export type IChatProps = {
   dataSets?: DataSet[]
   isShowCitationHitInfo?: boolean
   isShowPromptLog?: boolean
+  visionConfig?: VisionSettings
 }
 
 const Chat: FC<IChatProps> = ({
@@ -83,9 +88,11 @@ const Chat: FC<IChatProps> = ({
   dataSets,
   isShowCitationHitInfo,
   isShowPromptLog,
+  visionConfig,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const [files, setFiles] = useState<ImageFile[]>([])
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -114,7 +121,14 @@ const Chat: FC<IChatProps> = ({
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
-    onSend(query)
+    onSend(query, files.filter(file => file.progress === 100).map(fileItem => ({
+      type: 'image',
+      transfer_method: fileItem.type,
+      url: fileItem.url,
+      upload_file_id: fileItem.fileId,
+    })))
+    if (files.length)
+      setFiles([])
     if (!isResponsing)
       setQuery('')
   }
@@ -158,6 +172,48 @@ const Chat: FC<IChatProps> = ({
       logError(t('common.voiceInput.notAllow'))
     })
   }
+  const handleRemove = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1)
+      setFiles([...files.slice(0, index), ...files.slice(index + 1)])
+  }
+  const handleImageLinkLoadError = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleImageLinkLoadSuccess = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      setFiles([...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)])
+    }
+  }
+  const handleReUpload = (imageFileId: string) => {
+    const index = files.findIndex(file => file._id === imageFileId)
+
+    if (index > -1) {
+      const currentImageFile = files[index]
+      imageUpload({
+        file: currentImageFile.file!,
+        onProgressCallback: (progress) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)])
+        },
+        onSuccessCallback: (res) => {
+          setFiles([...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)])
+        },
+        onErrorCallback: () => {
+          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+          setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
+        },
+      })
+    }
+  }
 
   return (
     <div className={cn('px-3.5', 'h-full')}>
@@ -198,6 +254,8 @@ const Chat: FC<IChatProps> = ({
               item={item}
               isShowPromptLog={isShowPromptLog}
               isResponsing={isResponsing}
+              // ['https://placekitten.com/360/360', 'https://placekitten.com/360/640']
+              imgSrcs={(item.message_files && item.message_files?.length > 0) ? item.message_files.map(item => item.url) : []}
             />
           )
         })}
@@ -246,18 +304,42 @@ const Chat: FC<IChatProps> = ({
                   </div>
                 </div>)
             }
-            <div className="relative">
-              <AutoHeightTextarea
+            <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
+              {
+                visionConfig?.enabled && (
+                  <>
+                    <div className='absolute bottom-2 left-2 flex items-center'>
+                      <ChatImageUploader
+                        settings={visionConfig}
+                        onUpload={fileItem => setFiles([...files, fileItem])}
+                        disabled={files.length >= visionConfig.number_limits}
+                      />
+                      <div className='mx-1 w-[1px] h-4 bg-black/5' />
+                    </div>
+                    <div className='pl-[52px]'>
+                      <ImageList
+                        list={files}
+                        onRemove={handleRemove}
+                        onReUpload={handleReUpload}
+                        onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
+                        onImageLinkLoadError={handleImageLinkLoadError}
+                      />
+                    </div>
+                  </>
+                )
+              }
+              <Textarea
+                className={`
+                  block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
+                  ${visionConfig?.enabled && 'pl-12'}
+                `}
                 value={query}
                 onChange={handleContentChange}
                 onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
-                minHeight={48}
-                autoFocus
-                controlFocus={controlFocus}
-                className={`${cn(s.textArea)} resize-none block w-full pl-3 bg-gray-50 border border-gray-200 rounded-md  focus:outline-none sm:text-sm text-gray-700`}
+                autoSize
               />
-              <div className="absolute top-0 right-2 flex items-center h-[48px]">
+              <div className="absolute bottom-2 right-2 flex items-center h-8">
                 <div className={`${s.count} mr-4 h-5 leading-5 text-sm bg-gray-50 text-gray-500`}>{query.trim().length}</div>
                 {
                   query
@@ -282,9 +364,8 @@ const Chat: FC<IChatProps> = ({
                 {isMobile
                   ? sendBtn
                   : (
-                    <Tooltip
-                      selector='send-tip'
-                      htmlContent={
+                    <TooltipPlus
+                      popupContent={
                         <div>
                           <div>{t('common.operation.send')} Enter</div>
                           <div>{t('common.operation.lineBreak')} Shift Enter</div>
@@ -292,7 +373,7 @@ const Chat: FC<IChatProps> = ({
                       }
                     >
                       {sendBtn}
-                    </Tooltip>
+                    </TooltipPlus>
                   )}
               </div>
               {
