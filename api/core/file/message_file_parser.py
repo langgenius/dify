@@ -30,6 +30,24 @@ class FileObj(BaseModel):
 
     @property
     def data(self) -> Optional[str]:
+        return self._get_data()
+
+    @property
+    def preview_url(self) -> Optional[str]:
+        return self._get_data(force_url=True)
+
+    @property
+    def prompt_message_file(self) -> PromptMessageFile:
+        if self.type == MessageFileType.IMAGE:
+            image_config = self.file_config.get('image')
+
+            return ImagePromptMessageFile(
+                data=self.data,
+                detail=ImagePromptMessageFile.DETAIL.HIGH
+                if image_config.get("detail") == "high" else ImagePromptMessageFile.DETAIL.LOW
+            )
+
+    def _get_data(self, force_url: bool = False) -> Optional[str]:
         if self.type == MessageFileType.IMAGE:
             if self.transfer_method == MessageFileTransferMethod.REMOTE_URL:
                 return self.url
@@ -47,7 +65,7 @@ class FileObj(BaseModel):
                 if upload_file.extension not in SUPPORT_EXTENSIONS:
                     return None
 
-                if current_app.config['MULTIMODAL_SEND_IMAGE_FORMAT'] == 'url':
+                if current_app.config['MULTIMODAL_SEND_IMAGE_FORMAT'] == 'url' or force_url:
                     return self._get_signed_temp_image_url(upload_file)
                 else:
                     # get image file base64
@@ -61,17 +79,6 @@ class FileObj(BaseModel):
                     return f'data:{upload_file.mime_type};base64,{encoded_string}'
 
         return None
-
-    @property
-    def prompt_message_file(self) -> PromptMessageFile:
-        if self.type == MessageFileType.IMAGE:
-            image_config = self.file_config.get('image')
-
-            return ImagePromptMessageFile(
-                data=self.data,
-                detail=ImagePromptMessageFile.DETAIL.HIGH
-                if image_config.get("detail") == "high" else ImagePromptMessageFile.DETAIL.LOW
-            )
 
     def _get_signed_temp_image_url(self, upload_file: UploadFile) -> str:
         """
