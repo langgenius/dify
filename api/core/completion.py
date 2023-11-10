@@ -73,7 +73,8 @@ class Completion:
             model_instance=final_model_instance,
             app_model_config=app_model_config,
             query=query,
-            inputs=inputs
+            inputs=inputs,
+            files=files
         )
 
         # init orchestrator rule parser
@@ -342,7 +343,7 @@ class Completion:
 
     @classmethod
     def get_validate_rest_tokens(cls, mode: str, model_instance: BaseLLM, app_model_config: AppModelConfig,
-                                 query: str, inputs: dict) -> int:
+                                 query: str, inputs: dict, files: List[PromptMessageFile]) -> int:
         model_limited_tokens = model_instance.model_rules.max_tokens.max
         max_tokens = model_instance.get_model_kwargs().max_tokens
 
@@ -353,7 +354,6 @@ class Completion:
             max_tokens = 0
 
         prompt_transform = PromptTransform()
-        prompt_messages = []
 
         # get prompt without memory and context
         if app_model_config.prompt_type == 'simple':
@@ -362,6 +362,7 @@ class Completion:
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=None,
                 memory=None,
                 model_instance=model_instance
@@ -372,6 +373,7 @@ class Completion:
                 app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=None,
                 memory=None,
                 model_instance=model_instance
