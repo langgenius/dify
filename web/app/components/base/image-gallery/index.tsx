@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import s from './style.module.css'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   srcs: string[]
@@ -29,6 +30,8 @@ const getWidthStyle = (imgNum: number) => {
 const ImageGallery: FC<Props> = ({
   srcs,
 }) => {
+  const { setShowImagePreview } = useModalContext()
+
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
   return (
@@ -42,6 +45,7 @@ const ImageGallery: FC<Props> = ({
           style={imgStyle}
           src={src}
           alt=''
+          onClick={() => setShowImagePreview({ payload: src })}
         />
       ))}
     </div>

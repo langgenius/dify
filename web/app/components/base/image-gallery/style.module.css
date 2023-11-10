@@ -5,6 +5,7 @@
   object-fit: cover;
   object-position: center;
   border-radius: 8px;
+  cursor: pointer;
 }
 
 .item:nth-child(3n) {

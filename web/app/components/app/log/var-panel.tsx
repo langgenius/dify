@@ -4,6 +4,7 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   varList: { label: string; value: string }[]
@@ -16,6 +17,8 @@ const VarPanel: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [isCollapse, { toggle: toggleCollapse }] = useBoolean(false)
+  const { setShowImagePreview } = useModalContext()
+
   return (
     <div className='rounded-xl border border-color-indigo-100 bg-indigo-25'>
       <div
@@ -49,8 +52,9 @@ const VarPanel: FC<Props> = ({
                 {message_files.map((url, index) => (
                   <div
                     key={index}
-                    className="pl-2.5 w-16 h-16 rounded-lg bg-no-repeat bg-cover bg-center"
+                    className="pl-2.5 w-16 h-16 rounded-lg bg-no-repeat bg-cover bg-center cursor-pointer"
                     style={{ backgroundImage: `url(${url})` }}
+                    onClick={() => setShowImagePreview({ payload: url })}
                   />
                 ))}
               </div>
