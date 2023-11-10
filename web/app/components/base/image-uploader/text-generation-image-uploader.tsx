@@ -68,29 +68,38 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
 
 type TextGenerationImageUploaderProps = {
   settings: VisionSettings
+  onFilesChange: (files: ImageFile[]) => void
 }
 const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   settings,
+  onFilesChange,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const [files, setFiles] = useState<ImageFile[]>([])
 
   const handleUpload = (imageFile: ImageFile) => {
-    setFiles([...files, imageFile])
+    const newFiles = [...files, imageFile]
+    setFiles(newFiles)
+    onFilesChange(newFiles)
   }
   const handleRemove = (imageFileId: string) => {
     const index = files.findIndex(file => file._id === imageFileId)
 
-    if (index > -1)
-      setFiles([...files.slice(0, index), ...files.slice(index + 1)])
+    if (index > -1) {
+      const newFiles = [...files.slice(0, index), ...files.slice(index + 1)]
+      setFiles(newFiles)
+      onFilesChange(newFiles)
+    }
   }
   const handleImageLinkLoadError = (imageFileId: string) => {
     const index = files.findIndex(file => file._id === imageFileId)
 
     if (index > -1) {
       const currentFile = files[index]
-      setFiles([...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)])
+      const newFiles = [...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)]
+      setFiles(newFiles)
+      onFilesChange(newFiles)
     }
   }
   const handleImageLinkLoadSuccess = (imageFileId: string) => {
@@ -98,7 +107,9 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
 
     if (index > -1) {
       const currentImageFile = files[index]
-      setFiles([...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)])
+      const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)]
+      setFiles(newFiles)
+      onFilesChange(newFiles)
     }
   }
   const handleReUpload = (imageFileId: string) => {
@@ -109,14 +120,20 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       imageUpload({
         file: currentImageFile.file!,
         onProgressCallback: (progress) => {
-          setFiles([...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)])
+          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)]
+          setFiles(newFiles)
+          onFilesChange(newFiles)
         },
         onSuccessCallback: (res) => {
-          setFiles([...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)])
+          const newFiles = [...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)]
+          setFiles(newFiles)
+          onFilesChange(newFiles)
         },
         onErrorCallback: () => {
           notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
-          setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
+          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)]
+          setFiles(newFiles)
+          onFilesChange(newFiles)
         },
       })
     }
