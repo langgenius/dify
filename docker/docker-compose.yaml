@@ -19,18 +19,22 @@ services:
       # different from api or web app domain.
       # example: http://cloud.dify.ai
       CONSOLE_API_URL: ''
-      # The URL for Service API endpoints, refers to the base URL of the current API service if api domain is
+      # The URL prefix for Service API endpoints, refers to the base URL of the current API service if api domain is
       # different from console domain.
       # example: http://api.dify.ai
       SERVICE_API_URL: ''
-      # The URL for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
+      # The URL prefix for Web APP api server, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
       APP_API_URL: ''
-      # The URL for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
+      # The URL prefix for Web APP frontend, refers to the Web App base URL of WEB service if web app domain is different from
       # console or api domain.
       # example: http://udify.app
       APP_WEB_URL: ''
+      # File preview or download Url prefix.
+      # used to display File preview or download Url to the front-end or as Multi-model inputs;
+      # Url is signed and has expiration time.
+      FILES_URL: ''
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.

@@ -22,6 +22,14 @@ class MessageType(enum.Enum):
 class PromptMessageFileType(enum.Enum):
     IMAGE = 'image'
 
+    @staticmethod
+    def value_of(value):
+        for member in PromptMessageFileType:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
+
+
 
 class PromptMessageFile(BaseModel):
     type: PromptMessageFileType

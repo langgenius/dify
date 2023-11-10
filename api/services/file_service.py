@@ -15,7 +15,9 @@ from extensions.ext_database import db
 from models.model import UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
+                      'jpg', 'jpeg', 'png', 'webp', 'gif']
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
 PREVIEW_WORDS_LIMIT = 3000
 cache = TTLCache(maxsize=None, ttl=30)
 
@@ -23,20 +25,27 @@ cache = TTLCache(maxsize=None, ttl=30)
 class FileService:
 
     @staticmethod
-    def upload_file(file: FileStorage) -> UploadFile:
-        # read file content
-        file_content = file.read()
-        # get file size
-        file_size = len(file_content)
-
-        file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
-        if file_size > file_size_limit:
-            message = f'File size exceeded. {file_size} > {file_size_limit}'
-            raise FileTooLargeError(message)
-
+    def upload_file(file: FileStorage, only_image: bool = False) -> UploadFile:
         extension = file.filename.split('.')[-1]
         if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
+        elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
+            raise UnsupportedFileTypeError()
+
+        # read file content
+        file_content = file.read()
+
+        # get file size
+        file_size = len(file_content)
+
+        if extension.lower() in IMAGE_EXTENSIONS:
+            file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT") * 1024 * 1024
+        else:
+            file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
+
+        if file_size > file_size_limit:
+            message = f'File size exceeded. {file_size} > {file_size_limit}'
+            raise FileTooLargeError(message)
 
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
