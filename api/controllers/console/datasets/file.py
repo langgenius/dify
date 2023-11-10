@@ -26,9 +26,11 @@ class FileApi(Resource):
     def get(self):
         file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT")
         batch_count_limit = current_app.config.get("UPLOAD_FILE_BATCH_LIMIT")
+        image_file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT")
         return {
             'file_size_limit': file_size_limit,
-            'batch_count_limit': batch_count_limit
+            'batch_count_limit': batch_count_limit,
+            'image_file_size_limit': image_file_size_limit
         }, 200
 
     @setup_required
