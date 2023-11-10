@@ -208,6 +208,9 @@ const Debug: FC<IDebug> = ({
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {
@@ -400,6 +403,9 @@ const Debug: FC<IDebug> = ({
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {

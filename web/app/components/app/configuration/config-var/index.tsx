@@ -169,7 +169,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       }
       title={
         <div className='flex items-center'>
-          <div className='ml-1 mr-1'>{t('appDebug.variableTitle')}</div>
+          <div className='mr-1'>{t('appDebug.variableTitle')}</div>
           {!readonly && (
             <Tooltip htmlContent={<div className='w-[180px]'>
               {t('appDebug.variableTip')}
