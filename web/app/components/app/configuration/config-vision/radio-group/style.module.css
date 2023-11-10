@@ -1,5 +1,5 @@
 .item {
-  @apply grow flex items-center h-8 px-2.5 rounded-lg bg-gray-25 border-[2px] border-gray-100 cursor-pointer space-x-2;
+  @apply grow flex items-center h-8 px-2.5 rounded-lg bg-gray-25 border border-gray-100 cursor-pointer space-x-2;
 }
 
 .item:hover {

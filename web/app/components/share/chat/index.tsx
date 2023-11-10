@@ -39,6 +39,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import Confirm from '@/app/components/base/confirm'
+import { Resolution, TransferMethod } from '@/types/app'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -368,7 +369,8 @@ const Main: FC<IMainProps> = ({
         const isNotNewConversation = allConversations.some(item => item.id === _conversationId)
         setAllConversationList(allConversations)
         // fetch new conversation info
-        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource, sensitive_word_avoidance }: any = appParams
+        const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
+        setVisionConfig(file_upload.image)
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -448,7 +450,12 @@ const Main: FC<IMainProps> = ({
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
-
+  const [visionConfig, setVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
   const handleSend = async (message: string) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -717,6 +724,7 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
+                    visionConfig={visionConfig}
                   />
                 </div>
               </div>)
