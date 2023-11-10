@@ -98,12 +98,19 @@ class MessageFileParser:
         file_upload_config = app_model_config.file_upload_dict
 
         for file in files:
+            if not isinstance(file, dict):
+                raise ValueError('Invalid file format')
             if not file.get('type'):
                 raise ValueError('Missing file type')
+            MessageFileType.value_of(file.get('type'))
             if not file.get('transfer_method'):
                 raise ValueError('Missing file transfer method')
-            if file.get('transfer_method') == MessageFileTransferMethod.REMOTE_URL.value and not file.get('url'):
-                raise ValueError('Missing file url')
+            MessageFileTransferMethod.value_of(file.get('transfer_method'))
+            if file.get('transfer_method') == MessageFileTransferMethod.REMOTE_URL.value:
+                if not file.get('url'):
+                    raise ValueError('Missing file url')
+                if not file.get('url').startswith('http'):
+                    raise ValueError('Invalid file url')
             if file.get('transfer_method') == MessageFileTransferMethod.LOCAL_FILE.value and not file.get('upload_file_id'):
                 raise ValueError('Missing file upload_file_id')
 
