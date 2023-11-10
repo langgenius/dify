@@ -12,6 +12,7 @@ from core.data_loader.file_extractor import FileExtractor
 from core.file.message_file_parser import verify_image_file_signature
 from extensions.ext_storage import storage
 from extensions.ext_database import db
+from models.account import Account
 from models.model import UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
@@ -55,15 +56,17 @@ class FileService:
 
         # save file to db
         config = current_app.config
+        user = current_user
         upload_file = UploadFile(
-            tenant_id=current_user.current_tenant_id,
+            tenant_id=user.current_tenant_id,
             storage_type=config['STORAGE_TYPE'],
             key=file_key,
             name=file.filename,
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
-            created_by=current_user.id,
+            created_by_role=('account' if isinstance(user, Account) else 'end_user'),
+            created_by=user.id,
             created_at=datetime.datetime.utcnow(),
             used=False,
             hash=hashlib.sha3_256(file_content).hexdigest()
