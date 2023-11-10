@@ -23,8 +23,8 @@ class FileObj(BaseModel):
     tenant_id: str
     type: MessageFileType
     transfer_method: MessageFileTransferMethod
-    url: str
-    upload_file_id: str
+    url: Optional[str]
+    upload_file_id: Optional[str]
     file_config: dict
 
     @property
@@ -220,7 +220,7 @@ class MessageFileParser:
                 type=MessageFileType.value_of(file.get('type')),
                 transfer_method=MessageFileTransferMethod.value_of(file.get('transfer_method')),
                 url=file.get('url'),
-                upload_file_id=file.get('upload_file_id'),
+                upload_file_id=file.get('upload_file_id') or None,
                 file_config=file_upload_config
             )
         else:
