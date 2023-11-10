@@ -260,6 +260,10 @@ const translation = {
     model: '语言模型',
     setTone: '模型设置',
     title: '模型及参数',
+    modeType: {
+      chat: '对话型',
+      completion: '补全型',
+    },
   },
   inputs: {
     title: '调试与预览',
