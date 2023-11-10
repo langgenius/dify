@@ -78,7 +78,7 @@ const ImageList: FC<ImageListProps> = ({
               )
             }
             <img
-              className='w-16 h-16 rounded-lg cursor-pointer'
+              className='w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5'
               alt=''
               onLoad={() => handleImageLinkLoadSuccess(item)}
               onError={() => handleImageLinkLoadError(item)}
