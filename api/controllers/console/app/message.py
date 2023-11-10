@@ -27,6 +27,7 @@ from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from services.message_service import MessageService
+from services.message_file_service import MessageFileService
 
 
 class ChatMessageListApi(Resource):
@@ -90,6 +91,8 @@ class ChatMessageListApi(Resource):
                 has_more = True
 
         history_messages = list(reversed(history_messages))
+
+        MessageFileService.assemble_message_files(history_messages)
 
         return InfiniteScrollPagination(
             data=history_messages,
