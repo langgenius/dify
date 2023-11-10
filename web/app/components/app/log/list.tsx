@@ -76,11 +76,13 @@ const PARAM_MAP = {
 const getFormattedChatList = (messages: ChatMessage[]) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
+    console.log(item.message_files)
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
       log: item.message as any,
+      message_files: item.message_files,
     })
 
     newChatList.push({
