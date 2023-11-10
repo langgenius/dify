@@ -1,3 +1,4 @@
+import enum
 import json
 
 from flask import current_app, request
@@ -548,6 +549,29 @@ class MessageFeedback(db.Model):
         return account
 
 
+class MessageFileType(enum.Enum):
+    IMAGE = 'image'
+
+    @staticmethod
+    def value_of(value):
+        for member in MessageFileType:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class MessageFileTransferMethod(enum.Enum):
+    REMOTE_URL = 'remote_url'
+    LOCAL_FILE = 'local_file'
+
+    @staticmethod
+    def value_of(value):
+        for member in MessageFileTransferMethod:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
+
+
 class MessageFile(db.Model):
     __tablename__ = 'message_files'
     __table_args__ = (
@@ -710,7 +734,7 @@ class UploadFile(db.Model):
     size = db.Column(db.Integer, nullable=False)
     extension = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(255), nullable=True)
-    created_by_role = db.Column(db.String(255), nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'account'::character varying"))
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     used = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))

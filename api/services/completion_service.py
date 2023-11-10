@@ -139,7 +139,13 @@ class CompletionService:
         inputs = cls.get_cleaned_inputs(inputs, app_model_config)
 
         # parse files
-        prompt_message_files = MessageFileParser.parse_arg_files(files, app_model_config, user)
+        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id, user=user)
+        file_objs = message_file_parser.validate_and_transform_files_arg(
+            files,
+            app_model_config
+        )
+
+        prompt_message_files = [file_obj.prompt_message_file for file_obj in file_objs]
 
         generate_task_id = str(uuid.uuid4())
 
@@ -292,8 +298,12 @@ class CompletionService:
         app_model_config.model = json.dumps(model_dict)
 
         # parse files
-        message_files = message.files
-        prompt_message_files = MessageFileParser.parse_message_files(message_files, app_model_config, user)
+        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id, user=user)
+        file_objs = message_file_parser.transform_message_files(
+            message.files, app_model_config
+        )
+
+        prompt_message_files = [file_obj.prompt_message_file for file_obj in file_objs]
 
         generate_task_id = str(uuid.uuid4())
 

@@ -38,7 +38,7 @@ def upgrade():
         batch_op.add_column(sa.Column('file_upload', sa.Text(), nullable=True))
 
     with op.batch_alter_table('upload_files', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('created_by_role', sa.String(length=255), nullable=True))
+        batch_op.add_column(sa.Column('created_by_role', sa.String(length=255), server_default=sa.text("'account'::character varying"), nullable=False))
 
     # ### end Alembic commands ###
 

@@ -1,42 +1,50 @@
 import datetime
 import hashlib
-import time
 import uuid
+from typing import Generator, Tuple
 
-from cachetools import TTLCache
-from flask import request, current_app
+from flask import current_app
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from core.data_loader.file_extractor import FileExtractor
+from core.file.message_file_parser import verify_image_file_signature
 from extensions.ext_storage import storage
 from extensions.ext_database import db
 from models.model import UploadFile
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
+ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
+                      'jpg', 'jpeg', 'png', 'webp', 'gif']
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
 PREVIEW_WORDS_LIMIT = 3000
-cache = TTLCache(maxsize=None, ttl=30)
 
 
 class FileService:
 
     @staticmethod
-    def upload_file(file: FileStorage) -> UploadFile:
-        # read file content
-        file_content = file.read()
-        # get file size
-        file_size = len(file_content)
-
-        file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
-        if file_size > file_size_limit:
-            message = f'File size exceeded. {file_size} > {file_size_limit}'
-            raise FileTooLargeError(message)
-
+    def upload_file(file: FileStorage, only_image: bool = False) -> UploadFile:
         extension = file.filename.split('.')[-1]
         if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
+        elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
+            raise UnsupportedFileTypeError()
+
+        # read file content
+        file_content = file.read()
+
+        # get file size
+        file_size = len(file_content)
+
+        if extension.lower() in IMAGE_EXTENSIONS:
+            file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT") * 1024 * 1024
+        else:
+            file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
+
+        if file_size > file_size_limit:
+            message = f'File size exceeded. {file_size} > {file_size_limit}'
+            raise FileTooLargeError(message)
 
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
@@ -99,12 +107,6 @@ class FileService:
 
     @staticmethod
     def get_file_preview(file_id: str) -> str:
-        # get file storage key
-        key = file_id + request.path
-        cached_response = cache.get(key)
-        if cached_response and time.time() - cached_response['timestamp'] < cache.ttl:
-            return cached_response['response']
-
         upload_file = db.session.query(UploadFile) \
             .filter(UploadFile.id == file_id) \
             .first()
@@ -121,3 +123,25 @@ class FileService:
         text = text[0:PREVIEW_WORDS_LIMIT] if text else ''
 
         return text
+
+    @staticmethod
+    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> Tuple[Generator, str]:
+        result = verify_image_file_signature(file_id, timestamp, nonce, sign)
+        if not result:
+            raise NotFound("File not found or signature is invalid")
+
+        upload_file = db.session.query(UploadFile) \
+            .filter(UploadFile.id == file_id) \
+            .first()
+
+        if not upload_file:
+            raise NotFound("File not found or signature is invalid")
+
+        # extract text from file
+        extension = upload_file.extension
+        if extension.lower() not in IMAGE_EXTENSIONS:
+            raise UnsupportedFileTypeError()
+
+        generator = storage.load(upload_file.key, stream=True)
+
+        return generator, upload_file.mime_type
