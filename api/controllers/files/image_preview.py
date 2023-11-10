@@ -31,7 +31,7 @@ class ImagePreviewApi(Resource):
         return Response(generator, mimetype=mimetype)
 
 
-api.add_resource(ImagePreviewApi, '/files/image-preview/<uuid:file_id>')
+api.add_resource(ImagePreviewApi, '/files/<uuid:file_id>/image-preview')
 
 
 class UnsupportedFileTypeError(BaseHTTPException):

@@ -97,6 +97,16 @@ class MessageFileParser:
         """
         file_upload_config = app_model_config.file_upload_dict
 
+        for file in files:
+            if not file.get('type'):
+                raise ValueError('Missing file type')
+            if not file.get('transfer_method'):
+                raise ValueError('Missing file transfer method')
+            if file.get('transfer_method') == MessageFileTransferMethod.REMOTE_URL.value and not file.get('url'):
+                raise ValueError('Missing file url')
+            if file.get('transfer_method') == MessageFileTransferMethod.LOCAL_FILE.value and not file.get('upload_file_id'):
+                raise ValueError('Missing file upload_file_id')
+
         # transform files to file objs
         type_file_objs = self._to_file_objs(files, file_upload_config)
 
@@ -236,7 +246,7 @@ def get_signed_temp_image_url(upload_file: UploadFile) -> str:
     :return:
     """
     base_url = current_app.config.get('FILES_URL')
-    image_preview_url = base_url + '/files/image-preview/' + upload_file.id
+    image_preview_url = f'{base_url}/files/{upload_file.id}/image-preview'
 
     timestamp = str(int(time.time()))
     nonce = os.urandom(16).hex()
