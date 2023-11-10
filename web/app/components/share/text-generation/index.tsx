@@ -525,6 +525,8 @@ const TextGeneration: FC<IMainProps> = ({
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}
+                visionConfig={visionConfig}
+                onVisionFilesChange={setCompletionFiles}
               />
             </div>
             <div className={cn(isInBatchTab ? 'block' : 'hidden')}>

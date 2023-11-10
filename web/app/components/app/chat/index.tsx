@@ -127,6 +127,8 @@ const Chat: FC<IChatProps> = ({
       url: fileItem.url,
       upload_file_id: fileItem.fileId,
     })))
+    if (files.length)
+      setFiles([])
     if (!isResponsing)
       setQuery('')
   }
