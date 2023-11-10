@@ -179,6 +179,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       value: varValues[itemContent.variable],
     }
   })
+  const message_files = (detail.message.message_files && detail.message.message_files.length > 0)
+    ? detail.message.message_files.map((item: any) => item.url)
+    : []
 
   const getParamValue = (param: string) => {
     const value = detail?.model_config.model?.completion_params?.[param] || '-'
@@ -241,11 +244,15 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
     </div>
     {/* Panel Body */}
-    {varList.length > 0 && (
+    {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
       <div className='px-6 pt-4 pb-2'>
-        <VarPanel varList={varList} />
+        <VarPanel
+          varList={varList}
+          message_files={message_files}
+        />
       </div>
     )}
+
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
