@@ -12,3 +12,9 @@
 .scriptsIcon {
   background-image: url(../assets/scripts-option.svg);
 }
+.chromePluginIcon {
+  background-image: url(../assets/chromeplugin-option.svg);
+}
+.pluginInstallIcon {
+  background-image: url(../assets/chromeplugin-install.svg);
+}
