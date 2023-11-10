@@ -210,20 +210,20 @@ const Debug: FC<IDebug> = ({
       dataset_configs: datasetConfigs,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0)
-      postModelConfig.files = files
-
     if (isAdvancedMode) {
       postModelConfig.chat_prompt_config = chatPromptConfig
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       conversation_id: conversationId,
       inputs,
       query: message,
       model_config: postModelConfig,
     }
+
+    if (visionConfig.enabled && files && files?.length > 0)
+      data.files = files
 
     // qustion
     const questionId = `question-${Date.now()}`
@@ -352,6 +352,7 @@ const Debug: FC<IDebug> = ({
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -406,10 +407,13 @@ const Debug: FC<IDebug> = ({
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       inputs,
       model_config: postModelConfig,
     }
+
+    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0)
+      data.files = completionFiles
 
     setCompletionRes('')
     setMessageId('')
@@ -454,6 +458,7 @@ const Debug: FC<IDebug> = ({
           onSend={sendTextCompletion}
           inputs={inputs}
           visionConfig={visionConfig}
+          onVisionFilesChange={setCompletionFiles}
         />
       </div>
       <div className="flex flex-col grow">

@@ -15,13 +15,14 @@ import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import type { VisionSettings } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
 
 export type IPromptValuePanelProps = {
   appType: AppType
   onSend?: () => void
   inputs: Inputs
   visionConfig: VisionSettings
+  onVisionFilesChange: (files: VisionFile[]) => void
 }
 
 const PromptValuePanel: FC<IPromptValuePanelProps> = ({
@@ -29,6 +30,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   onSend,
   inputs,
   visionConfig,
+  onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
   const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
