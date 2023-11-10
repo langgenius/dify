@@ -303,6 +303,7 @@ export type ImageFile = {
 }
 
 export type VisionFile = {
+  id?: string
   type: string
   transfer_method: TransferMethod
   url: string

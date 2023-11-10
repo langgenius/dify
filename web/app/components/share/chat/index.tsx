@@ -39,6 +39,7 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import Confirm from '@/app/components/base/confirm'
+import type { VisionFile } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 
 export type IMainProps = {
@@ -245,6 +246,7 @@ const Main: FC<IMainProps> = ({
             id: `question-${item.id}`,
             content: item.query,
             isAnswer: false,
+            message_files: item.message_files,
           })
           newChatList.push({
             id: item.id,
@@ -456,16 +458,19 @@ const Main: FC<IMainProps> = ({
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
-  const handleSend = async (message: string) => {
+  const handleSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
     }
-    const data = {
+    const data: Record<string, any> = {
       inputs: currInputs,
       query: message,
       conversation_id: isNewConversation ? null : currConversationId,
     }
+
+    if (visionConfig.enabled && files && files?.length > 0)
+      data.files = files
 
     // qustion
     const questionId = `question-${Date.now()}`
@@ -473,6 +478,7 @@ const Main: FC<IMainProps> = ({
       id: questionId,
       content: message,
       isAnswer: false,
+      message_files: files,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`

@@ -231,6 +231,7 @@ const Debug: FC<IDebug> = ({
       id: questionId,
       content: message,
       isAnswer: false,
+      message_files: files,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
