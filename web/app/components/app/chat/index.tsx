@@ -23,7 +23,7 @@ import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { imageUpload } from '@/app/components/base/image-uploader/utils'
-import type { ImageFile, VisionSettings } from '@/types/app'
+import type { ImageFile, VisionFile, VisionSettings } from '@/types/app'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -41,7 +41,7 @@ export type IChatProps = {
   onFeedback?: FeedbackFunc
   onSubmitAnnotation?: SubmitAnnotationFunc
   checkCanSend?: () => boolean
-  onSend?: (message: string) => void
+  onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
   useCurrentUserAvatar?: boolean
   isResponsing?: boolean
@@ -121,7 +121,12 @@ const Chat: FC<IChatProps> = ({
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
-    onSend(query)
+    onSend(query, files.map(fileItem => ({
+      type: 'image',
+      transfer_method: fileItem.type,
+      url: fileItem.url,
+      upload_file_id: fileItem.fileId,
+    })))
     if (!isResponsing)
       setQuery('')
   }
