@@ -30,7 +30,7 @@ const ConfigVision: FC = () => {
       }
       title={
         <div className='flex items-center'>
-          <div className='ml-1 mr-1'>{t('appDebug.vision.name')}</div>
+          <div className='mr-1'>{t('appDebug.vision.name')}</div>
           <Tooltip htmlContent={<div className='w-[180px]' >
             {t('appDebug.vision.description')}
           </div>} selector='config-vision-tooltip'>
