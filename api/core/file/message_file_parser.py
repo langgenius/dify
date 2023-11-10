@@ -118,6 +118,7 @@ class MessageFileParser:
         type_file_objs = self._to_file_objs(files, file_upload_config)
 
         # validate files
+        new_files = []
         for file_type, file_objs in type_file_objs.items():
             if file_type == MessageFileType.IMAGE:
                 # parse and validate files
@@ -125,7 +126,7 @@ class MessageFileParser:
 
                 # check if image file feature is enabled
                 if not image_config['enabled']:
-                    raise ValueError('Image file upload is not enabled')
+                    continue
 
                 # Validate number of files
                 if len(files) > image_config['number_limits']:
@@ -160,8 +161,10 @@ class MessageFileParser:
                         if not upload_file:
                             raise ValueError('Invalid upload file')
 
+                    new_files.append(file_obj)
+
         # return all file objs
-        return [file_obj for file_objs in type_file_objs.values() for file_obj in file_objs]
+        return new_files
 
     def transform_message_files(self, files: List[MessageFile], app_model_config: AppModelConfig) -> List[FileObj]:
         """

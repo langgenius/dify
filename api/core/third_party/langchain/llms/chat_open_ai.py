@@ -94,6 +94,13 @@ class EnhanceChatOpenAI(ChatOpenAI):
                 # TODO: The current token calculation method for the image type is not implemented,
                 #  which need to download the image and then get the resolution for calculation,
                 #  and will increase the request delay
+                if isinstance(value, list):
+                    text = ''
+                    for item in value:
+                        if isinstance(item, dict) and item['type'] == 'text':
+                            text += item['text']
+
+                    value = text
                 num_tokens += len(encoding.encode(str(value)))
                 if key == "name":
                     num_tokens += tokens_per_name
