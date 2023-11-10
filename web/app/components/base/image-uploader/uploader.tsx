@@ -11,6 +11,7 @@ type UploaderProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
 }
+
 const Uploader: FC<UploaderProps> = ({
   children,
   onUpload,

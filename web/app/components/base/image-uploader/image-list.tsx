@@ -6,6 +6,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/aler
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
+import { useModalContext } from '@/context/modal-context'
 
 type ImageListProps = {
   list: ImageFile[]
@@ -25,6 +26,7 @@ const ImageList: FC<ImageListProps> = ({
   onImageLinkLoadError,
 }) => {
   const { t } = useTranslation()
+  const { setShowImagePreview } = useModalContext()
 
   const handleImageLinkLoadSuccess = (item: ImageFile) => {
     if (item.type === TransferMethod.remote_url && onImageLinkLoadSuccess)
@@ -81,6 +83,7 @@ const ImageList: FC<ImageListProps> = ({
               onLoad={() => handleImageLinkLoadSuccess(item)}
               onError={() => handleImageLinkLoadError(item)}
               src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
+              onClick={() => setShowImagePreview({ payload: (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string })}
             />
             {
               !readonly && (
