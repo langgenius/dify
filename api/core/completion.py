@@ -13,6 +13,7 @@ from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
     ConversationTaskInterruptException
 from core.external_data_tool.factory import ExternalDataToolFactory
+from core.file.message_file_parser import FileObj
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
@@ -30,7 +31,7 @@ from core.moderation.factory import ModerationFactory
 class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
-                 files: List[PromptMessageFile], user: Union[Account, EndUser], conversation: Optional[Conversation],
+                 files: List[FileObj], user: Union[Account, EndUser], conversation: Optional[Conversation],
                  streaming: bool, is_override: bool = False, retriever_from: str = 'dev'):
         """
         errors: ProviderTokenNotInitError
@@ -64,9 +65,12 @@ class Completion:
             is_override=is_override,
             inputs=inputs,
             query=query,
+            files=files,
             streaming=streaming,
             model_instance=final_model_instance
         )
+
+        prompt_message_files = [file.prompt_message_file for file in files]
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
             mode=app.mode,
@@ -74,7 +78,7 @@ class Completion:
             app_model_config=app_model_config,
             query=query,
             inputs=inputs,
-            files=files
+            files=prompt_message_files
         )
 
         # init orchestrator rule parser
@@ -96,7 +100,7 @@ class Completion:
                     app_model_config=app_model_config,
                     query=query,
                     inputs=inputs,
-                    files=files,
+                    files=prompt_message_files,
                     agent_execute_result=None,
                     conversation_message_task=conversation_message_task,
                     memory=memory,
@@ -148,7 +152,7 @@ class Completion:
                 app_model_config=app_model_config,
                 query=query,
                 inputs=inputs,
-                files=files,
+                files=prompt_message_files,
                 agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
                 memory=memory,

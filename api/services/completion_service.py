@@ -142,8 +142,6 @@ class CompletionService:
             app_model_config
         )
 
-        prompt_message_files = [file_obj.prompt_message_file for file_obj in file_objs]
-
         generate_task_id = str(uuid.uuid4())
 
         pubsub = redis_client.pubsub()
@@ -158,7 +156,7 @@ class CompletionService:
             'app_model_config': app_model_config.copy(),
             'query': query,
             'inputs': inputs,
-            'files': prompt_message_files,
+            'files': file_objs,
             'detached_user': user,
             'detached_conversation': conversation,
             'streaming': streaming,
@@ -298,8 +296,6 @@ class CompletionService:
             message.files, app_model_config
         )
 
-        prompt_message_files = [file_obj.prompt_message_file for file_obj in file_objs]
-
         generate_task_id = str(uuid.uuid4())
 
         pubsub = redis_client.pubsub()
@@ -314,7 +310,7 @@ class CompletionService:
             'app_model_config': app_model_config.copy(),
             'query': message.query,
             'inputs': message.inputs,
-            'files': prompt_message_files,
+            'files': file_objs,
             'detached_user': user,
             'detached_conversation': None,
             'streaming': streaming,
