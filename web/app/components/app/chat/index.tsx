@@ -23,7 +23,7 @@ import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { imageUpload } from '@/app/components/base/image-uploader/utils'
-import type { ImageFile, VisionFile, VisionSettings } from '@/types/app'
+import { type ImageFile, TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -121,16 +121,18 @@ const Chat: FC<IChatProps> = ({
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
-    onSend(query, files.filter(file => file.progress === 100).map(fileItem => ({
+    onSend(query, files.map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,
       upload_file_id: fileItem.fileId,
     })))
-    if (files.length)
-      setFiles([])
-    if (!isResponsing)
-      setQuery('')
+    if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
+      if (files.length)
+        setFiles([])
+      if (!isResponsing)
+        setQuery('')
+    }
   }
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {

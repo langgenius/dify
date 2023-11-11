@@ -199,6 +199,7 @@ const translation = {
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',
     notSelectModel: '请选择模型',
+    waitForImgUpload: '请等待图片上传完成',
   },
   chatSubTitle: '对话前提示词',
   completionSubTitle: '前缀提示词',

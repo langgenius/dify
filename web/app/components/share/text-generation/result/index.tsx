@@ -13,7 +13,7 @@ import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
-import type { VisionFile, VisionSettings } from '@/types/app'
+import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
@@ -111,6 +111,11 @@ const Result: FC<IResultProps> = ({
 
     if (hasEmptyInput) {
       logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      return false
+    }
+
+    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
       return false
     }
     return !hasEmptyInput
