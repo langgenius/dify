@@ -81,7 +81,14 @@ def to_prompt_messages(messages: list[BaseMessage]):
     prompt_messages = []
     for message in messages:
         if isinstance(message, HumanMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
+            if isinstance(message, LCHumanMessageWithFiles):
+                prompt_messages.append(PromptMessage(
+                    content=message.content,
+                    type=MessageType.USER,
+                    files=message.files
+                ))
+            else:
+                prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
         elif isinstance(message, AIMessage):
             message_kwargs = {
                 'content': message.content,
