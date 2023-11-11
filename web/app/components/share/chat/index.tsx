@@ -23,6 +23,7 @@ import {
   fetchChatList,
   fetchConversations,
   fetchSuggestedQuestions,
+  generationConversationName,
   pinConversation,
   sendChatMessage,
   stopChatMessageResponding,
@@ -551,7 +552,12 @@ const Main: FC<IMainProps> = ({
 
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: allConversations }: any = await fetchAllConversations()
-          setAllConversationList(allConversations)
+          const newItem: any = await generationConversationName(isInstalledApp, installedAppInfo?.id, allConversations[0].id)
+
+          const newAllConversations = produce(allConversations, (draft: any) => {
+            draft[0].name = newItem.name
+          })
+          setAllConversationList(newAllConversations as any)
           noticeUpdateList()
         }
         setConversationIdChangeBecauseOfNew(false)
