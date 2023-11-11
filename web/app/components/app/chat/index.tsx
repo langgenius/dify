@@ -121,7 +121,7 @@ const Chat: FC<IChatProps> = ({
   const handleSend = () => {
     if (!valid() || (checkCanSend && !checkCanSend()))
       return
-    onSend(query, files.map(fileItem => ({
+    onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
       type: 'image',
       transfer_method: fileItem.type,
       url: fileItem.url,

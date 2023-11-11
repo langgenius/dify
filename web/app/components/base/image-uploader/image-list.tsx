@@ -43,17 +43,27 @@ const ImageList: FC<ImageListProps> = ({
         list.map(item => (
           <div
             key={item._id}
-            className='group relative mr-1'
+            className='group relative mr-1 border-[0.5px] border-black/5 rounded-lg'
           >
             {
               item.type === TransferMethod.local_file && item.progress !== 100 && (
-                <div className='absolute inset-0 flex items-center justify-center rounded-lg z-[1] bg-black/30'>
+                <>
+                  <div
+                    className='absolute inset-0 flex items-center justify-center z-[1] bg-black/30'
+                    style={{ left: item.progress > -1 ? `${item.progress}%` : 0 }}
+                  >
+                    {
+                      item.progress === -1 && (
+                        <RefreshCcw01 className='w-5 h-5 text-white' onClick={() => onReUpload && onReUpload(item._id)} />
+                      )
+                    }
+                  </div>
                   {
-                    item.progress === -1 && (
-                      <RefreshCcw01 className='w-5 h-5 text-white' onClick={() => onReUpload && onReUpload(item._id)} />
+                    item.progress > -1 && (
+                      <span className='absolute top-[50%] left-[50%] translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten z-[1]'>{item.progress}%</span>
                     )
                   }
-                </div>
+                </>
               )
             }
             {
@@ -83,7 +93,7 @@ const ImageList: FC<ImageListProps> = ({
               onLoad={() => handleImageLinkLoadSuccess(item)}
               onError={() => handleImageLinkLoadError(item)}
               src={item.type === TransferMethod.remote_url ? item.url : item.base64Url}
-              onClick={() => setShowImagePreview({ payload: (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string })}
+              onClick={() => item.progress === 100 && setShowImagePreview({ payload: (item.type === TransferMethod.remote_url ? item.url : item.base64Url) as string })}
             />
             {
               !readonly && (
