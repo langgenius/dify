@@ -157,7 +157,6 @@ const Result: FC<IResultProps> = ({
         setResponsingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         isTimeout = true
-        console.log(`[#${taskId}]: timeout`)
       }
     }, 1000)
     sendCompletionMessage(data, {
