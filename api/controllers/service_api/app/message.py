@@ -43,7 +43,7 @@ class MessageListApi(AppApiResource):
         'inputs': fields.Raw,
         'query': fields.String,
         'answer': fields.String,
-        'message_files': fields.List(fields.Nested(message_file_fields)),
+        'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
         'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
         'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
         'created_at': TimestampField

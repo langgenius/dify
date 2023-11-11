@@ -139,10 +139,11 @@ class CompletionService:
         inputs = cls.get_cleaned_inputs(inputs, app_model_config)
 
         # parse files
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id, user=user)
+        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_objs = message_file_parser.validate_and_transform_files_arg(
             files,
-            app_model_config
+            app_model_config,
+            user
         )
 
         generate_task_id = str(uuid.uuid4())
@@ -296,7 +297,7 @@ class CompletionService:
         app_model_config.model = json.dumps(model_dict)
 
         # parse files
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id, user=user)
+        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_objs = message_file_parser.transform_message_files(
             message.files, app_model_config
         )

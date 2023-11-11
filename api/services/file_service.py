@@ -9,7 +9,7 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from core.data_loader.file_extractor import FileExtractor
-from core.file.message_file_parser import verify_image_file_signature
+from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_storage import storage
 from extensions.ext_database import db
 from models.account import Account
@@ -129,7 +129,7 @@ class FileService:
 
     @staticmethod
     def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> Tuple[Generator, str]:
-        result = verify_image_file_signature(file_id, timestamp, nonce, sign)
+        result = UploadFileParser.verify_image_file_signature(file_id, timestamp, nonce, sign)
         if not result:
             raise NotFound("File not found or signature is invalid")
 

@@ -6,7 +6,7 @@ from core.callback_handler.entity.agent_loop import AgentLoop
 from core.callback_handler.entity.dataset_query import DatasetQueryObj
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.callback_handler.entity.chain_result import ChainResult
-from core.file.message_file_parser import FileObj
+from core.file.file_obj import FileObj
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import to_prompt_messages, MessageType, PromptMessageFile
 from core.model_providers.models.llm.base import BaseLLM

@@ -18,7 +18,6 @@ from fields.conversation_fields import conversation_pagination_fields, conversat
 from libs.helper import datetime_string
 from extensions.ext_database import db
 from models.model import Message, MessageAnnotation, Conversation
-from services.message_file_service import MessageFileService
 
 
 class CompletionConversationApi(Resource):
@@ -269,8 +268,6 @@ def _get_conversation(app_id, conversation_id, mode):
 
     if not conversation:
         raise NotFound("Conversation Not Exists.")
-
-    MessageFileService.assemble_message_files(conversation.messages)
 
     if not conversation.read_at:
         conversation.read_at = datetime.utcnow()

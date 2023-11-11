@@ -50,7 +50,7 @@ message_detail_fields = {
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
     'annotation': fields.Nested(annotation_fields, allow_null=True),
     'created_at': TimestampField,
-    'message_files': fields.List(fields.Nested(message_file_fields)),
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
 }
 
 feedback_stat_fields = {
