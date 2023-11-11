@@ -12,7 +12,6 @@ from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError, ConversationCompletedError
 from services.errors.message import FirstMessageNotExistsError, MessageNotExistsError, LastMessageNotExistsError, \
     SuggestedQuestionsAfterAnswerDisabledError
-from services.message_file_service import MessageFileService
 
 
 class MessageService:
@@ -61,8 +60,6 @@ class MessageService:
                 has_more = True
 
         history_messages = list(reversed(history_messages))
-
-        MessageFileService.assemble_message_files(history_messages)
 
         return InfiniteScrollPagination(
             data=history_messages,
@@ -114,8 +111,6 @@ class MessageService:
 
             if rest_count > 0:
                 has_more = True
-
-        MessageFileService.assemble_message_files(history_messages)
 
         return InfiniteScrollPagination(
             data=history_messages,

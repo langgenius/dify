@@ -1,10 +1,10 @@
-import enum
 import json
 
 from flask import current_app, request
 from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import UUID
 
+from core.file.upload_file_parser import UploadFileParser
 from libs.helper import generate_string
 from extensions.ext_database import db
 from .account import Account, Tenant
@@ -521,6 +521,37 @@ class Message(db.Model):
         return db.session.query(DatasetRetrieverResource).filter(DatasetRetrieverResource.message_id == self.id) \
             .order_by(DatasetRetrieverResource.position.asc()).all()
 
+    @property
+    def message_files(self):
+        return db.session.query(MessageFile).filter(MessageFile.message_id == self.id).all()
+
+    @property
+    def files(self):
+        message_files = self.message_files
+
+        files = []
+        for message_file in message_files:
+            url = message_file.url
+            if message_file.type == 'image':
+                if message_file.transfer_method == 'local_file':
+                    upload_file = (db.session.query(UploadFile)
+                                   .filter(
+                        UploadFile.id == message_file.upload_file_id
+                    ).first())
+
+                    url = UploadFileParser.get_image_data(
+                        upload_file=upload_file,
+                        force_url=True
+                    )
+
+            files.append({
+                'id': message_file.id,
+                'type': message_file.type,
+                'url': url
+            })
+
+        return files
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
@@ -547,29 +578,6 @@ class MessageFeedback(db.Model):
     def from_account(self):
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
-
-
-class MessageFileType(enum.Enum):
-    IMAGE = 'image'
-
-    @staticmethod
-    def value_of(value):
-        for member in MessageFileType:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
-
-
-class MessageFileTransferMethod(enum.Enum):
-    REMOTE_URL = 'remote_url'
-    LOCAL_FILE = 'local_file'
-
-    @staticmethod
-    def value_of(value):
-        for member in MessageFileTransferMethod:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
 
 
 class MessageFile(db.Model):

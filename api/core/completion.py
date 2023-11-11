@@ -13,7 +13,7 @@ from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
     ConversationTaskInterruptException
 from core.external_data_tool.factory import ExternalDataToolFactory
-from core.file.message_file_parser import FileObj
+from core.file.file_obj import FileObj
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
