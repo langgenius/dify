@@ -463,6 +463,12 @@ const Main: FC<IMainProps> = ({
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return
     }
+
+    if (files?.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      return false
+    }
+
     const data: Record<string, any> = {
       inputs: currInputs,
       query: message,

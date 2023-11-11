@@ -202,6 +202,7 @@ const translation = {
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
+    waitForImgUpload: 'Please wait for the image to upload',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',

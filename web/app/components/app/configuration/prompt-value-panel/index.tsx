@@ -165,7 +165,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   <div className='grow'>
                     <TextGenerationImageUploader
                       settings={visionConfig}
-                      onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress === 100).map(fileItem => ({
+                      onFilesChange={files => onVisionFilesChange(files.map(fileItem => ({
                         type: 'image',
                         transfer_method: fileItem.type,
                         url: fileItem.url,

@@ -86,7 +86,7 @@ const RunOnce: FC<IRunOnceProps> = ({
                 <div className='mt-2'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
-                    onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress === 100).map(fileItem => ({
+                    onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
                       type: 'image',
                       transfer_method: fileItem.type,
                       url: fileItem.url,
