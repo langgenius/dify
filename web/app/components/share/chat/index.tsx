@@ -3,6 +3,7 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -39,8 +40,9 @@ import { replaceStringWithValues } from '@/app/components/app/configuration/prom
 import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import type { InstalledApp } from '@/models/explore'
 import Confirm from '@/app/components/base/confirm'
-import type { VisionFile } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
+import { fetchFileUploadConfig } from '@/service/common'
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -354,6 +356,8 @@ const Main: FC<IMainProps> = ({
       : fetchAppInfo(), fetchAllConversations(), fetchAppParams(isInstalledApp, installedAppInfo?.id)])
   }
 
+  const { data: fileUploadConfigResponse } = useSWR(isInstalledApp ? { url: '/files/upload' } : null, fetchFileUploadConfig)
+
   // init
   useEffect(() => {
     (async () => {
@@ -372,7 +376,10 @@ const Main: FC<IMainProps> = ({
         setAllConversationList(allConversations)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, retriever_resource, file_upload, sensitive_word_avoidance }: any = appParams
-        setVisionConfig(file_upload.image)
+        setVisionConfig({
+          ...file_upload.image,
+          image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        })
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -452,7 +459,7 @@ const Main: FC<IMainProps> = ({
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
-  const [visionConfig, setVisionConfig] = useState({
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
     detail: Resolution.low,
@@ -736,7 +743,10 @@ const Main: FC<IMainProps> = ({
                     suggestionList={suggestQuestions}
                     isShowSpeechToText={speechToTextConfig?.enabled}
                     isShowCitation={citationConfig?.enabled && isInstalledApp}
-                    visionConfig={visionConfig}
+                    visionConfig={{
+                      ...visionConfig,
+                      image_file_size_limit: fileUploadConfigResponse ? fileUploadConfigResponse.image_file_size_limit : visionConfig.image_file_size_limit,
+                    }}
                   />
                 </div>
               </div>)

@@ -16,13 +16,15 @@ import type { ImageFile, VisionSettings } from '@/types/app'
 type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
+  limit?: number
 }
 const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
   onUpload,
   disabled,
+  limit,
 }) => {
   return (
-    <Uploader onUpload={onUpload} disabled={disabled}>
+    <Uploader onUpload={onUpload} disabled={disabled} limit={limit}>
       {
         hovering => (
           <div className={`
@@ -41,11 +43,13 @@ type UploaderButtonProps = {
   methods: VisionSettings['transfer_methods']
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
+  limit?: number
 }
 const UploaderButton: FC<UploaderButtonProps> = ({
   methods,
   onUpload,
   disabled,
+  limit,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -89,7 +93,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                   OR
                   <div className='ml-3 w-[93px] h-[1px] bg-gradient-to-r from-[#F3F4F6]' />
                 </div>
-                <Uploader onUpload={handleUpload}>
+                <Uploader onUpload={handleUpload} limit={limit}>
                   {
                     hovering => (
                       <div className={`
@@ -128,6 +132,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
       <UploadOnlyFromLocal
         onUpload={onUpload}
         disabled={disabled}
+        limit={+settings.image_file_size_limit!}
       />
     )
   }
@@ -137,6 +142,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
       methods={settings.transfer_methods}
       onUpload={onUpload}
       disabled={disabled}
+      limit={+settings.image_file_size_limit!}
     />
   )
 }
