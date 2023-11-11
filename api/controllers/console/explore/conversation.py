@@ -72,7 +72,7 @@ class ConversationRenameApi(InstalledAppResource):
         conversation_id = str(c_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, location='json')
+        parser.add_argument('name', type=str, required=False, location='json')
         parser.add_argument('auto_generate', type=bool, required=False, default='False', location='json')
         args = parser.parse_args()
 
