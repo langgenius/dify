@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
@@ -25,6 +26,7 @@ import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -69,6 +71,7 @@ const Debug: FC<IDebug> = ({
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     // scroll to bottom
     if (chatListDomRef.current)
@@ -474,7 +477,10 @@ const Debug: FC<IDebug> = ({
           appType={mode as AppType}
           onSend={sendTextCompletion}
           inputs={inputs}
-          visionConfig={visionConfig}
+          visionConfig={{
+            ...visionConfig,
+            image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+          }}
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
@@ -503,7 +509,10 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
-                  visionConfig={visionConfig}
+                  visionConfig={{
+                    ...visionConfig,
+                    image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+                  }}
                 />
               </div>
             </div>

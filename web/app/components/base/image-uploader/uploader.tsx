@@ -9,12 +9,14 @@ import { useToastContext } from '@/app/components/base/toast'
 type UploaderProps = {
   children: (hovering: boolean) => JSX.Element
   onUpload: (imageFile: ImageFile) => void
+  limit?: number
   disabled?: boolean
 }
 
 const Uploader: FC<UploaderProps> = ({
   children,
   onUpload,
+  limit,
   disabled,
 }) => {
   const [hovering, setHovering] = useState(false)
@@ -27,6 +29,11 @@ const Uploader: FC<UploaderProps> = ({
     if (!file)
       return
 
+    if (limit && file.size > limit * 1024 * 1024) {
+      notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerLimit', { size: limit }) })
+      return
+    }
+
     const reader = new FileReader()
     reader.addEventListener(
       'load',
@@ -36,7 +43,7 @@ const Uploader: FC<UploaderProps> = ({
           _id: `${Date.now()}`,
           fileId: '',
           file,
-          url: '',
+          url: reader.result as string,
           base64Url: reader.result as string,
           progress: 0,
         }

@@ -143,6 +143,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
     <Uploader
       onUpload={handleUpload}
       disabled={files.length >= settings.number_limits}
+      limit={+settings.image_file_size_limit!}
     >
       {
         hovering => (

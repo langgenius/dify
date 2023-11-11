@@ -290,6 +290,7 @@ export type VisionSettings = {
   number_limits: number
   detail: Resolution
   transfer_methods: TransferMethod[]
+  image_file_size_limit?: number | string
 }
 
 export type ImageFile = {

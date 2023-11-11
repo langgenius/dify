@@ -28,7 +28,7 @@ import type { InstalledApp } from '@/models/explore'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
-import type { VisionFile } from '@/types/app'
+import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
 
 export type IMainProps = {
@@ -296,7 +296,10 @@ const Main: FC<IMainProps> = ({
         setAllConversationList(allConversations)
         // fetch new conversation info
         const { user_input_form, opening_statement: introduction, suggested_questions_after_answer, speech_to_text, file_upload, sensitive_word_avoidance }: any = appParams
-        setVisionConfig(file_upload.image)
+        setVisionConfig({
+          ...file_upload.image,
+          image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        })
         const prompt_variables = userInputsFormToPromptVariables(user_input_form)
         if (siteInfo.default_language)
           changeLanguage(siteInfo.default_language)
@@ -375,7 +378,7 @@ const Main: FC<IMainProps> = ({
   const [messageTaskId, setMessageTaskId] = useState('')
   const [hasStopResponded, setHasStopResponded, getHasStopResponded] = useGetState(false)
   const [shouldReload, setShouldReload] = useState(false)
-  const [visionConfig, setVisionConfig] = useState({
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
     enabled: false,
     number_limits: 2,
     detail: Resolution.low,
