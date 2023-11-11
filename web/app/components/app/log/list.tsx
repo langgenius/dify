@@ -179,7 +179,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       value: varValues[itemContent.variable],
     }
   })
-  const message_files = (detail.message.message_files && detail.message.message_files.length > 0)
+  const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
     ? detail.message.message_files.map((item: any) => item.url)
     : []
 
