@@ -14,7 +14,7 @@ import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
 import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
-import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
+import { fetchAppInfo, fetchAppParams, fetchChatList, fetchConversations, fetchSuggestedQuestions, generationConversationName, sendChatMessage, stopChatMessageResponding, updateFeedback } from '@/service/share'
 import type { ConversationItem, SiteInfo } from '@/models/share'
 import type { PromptConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import type { Feedbacktype, IChatItem } from '@/app/components/app/chat/type'
@@ -464,7 +464,11 @@ const Main: FC<IMainProps> = ({
 
         if (getConversationIdChangeBecauseOfNew()) {
           const { data: allConversations }: any = await fetchAllConversations()
-          setAllConversationList(allConversations)
+          const newItem: any = await generationConversationName(isInstalledApp, installedAppInfo?.id, allConversations[0].id)
+          const newAllConversations = produce(allConversations, (draft: any) => {
+            draft[0].name = newItem.name
+          })
+          setAllConversationList(newAllConversations as any)
           noticeUpdateList()
         }
         setConversationIdChangeBecauseOfNew(false)
