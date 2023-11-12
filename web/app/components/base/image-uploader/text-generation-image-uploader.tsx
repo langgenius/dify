@@ -3,6 +3,7 @@ import {
   Fragment,
   useState,
 } from 'react'
+import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
@@ -75,6 +76,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   onFilesChange,
 }) => {
   const { t } = useTranslation()
+  const params = useParams()
   const { notify } = useToastContext()
   const [files, setFiles] = useState<ImageFile[]>([])
 
@@ -135,7 +137,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           setFiles(newFiles)
           onFilesChange(newFiles)
         },
-      })
+      }, !!params.token)
     }
   }
 

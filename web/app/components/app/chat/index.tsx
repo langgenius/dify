@@ -1,6 +1,7 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useParams } from 'next/navigation'
 import Textarea from 'rc-textarea'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -94,6 +95,7 @@ const Chat: FC<IChatProps> = ({
   const { notify } = useContext(ToastContext)
   const [files, setFiles] = useState<ImageFile[]>([])
   const isUseInputMethod = useRef(false)
+  const params = useParams()
 
   const [query, setQuery] = React.useState('')
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -213,7 +215,7 @@ const Chat: FC<IChatProps> = ({
           notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
           setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
         },
-      })
+      }, !!params.token)
     }
   }
 
