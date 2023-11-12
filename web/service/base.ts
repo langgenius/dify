@@ -299,11 +299,28 @@ const baseFetch = <T>(
 
 export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let token = ''
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    token = accessTokenJson[sharedToken]
+  }
+  else {
+    const accessToken = localStorage.getItem('console_token') || ''
+    token = accessToken
+  }
   const defaultOptions = {
     method: 'POST',
     url: `${urlPrefix}/files/upload`,
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
+      Authorization: `Bearer ${token}`,
     },
     data: {},
   }
