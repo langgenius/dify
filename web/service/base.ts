@@ -297,10 +297,11 @@ const baseFetch = <T>(
   ]) as Promise<T>
 }
 
-export const upload = (options: any): Promise<any> => {
+export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
+  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   const defaultOptions = {
     method: 'POST',
-    url: `${API_PREFIX}/files/upload`,
+    url: `${urlPrefix}/files/upload`,
     headers: {
       Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
     },

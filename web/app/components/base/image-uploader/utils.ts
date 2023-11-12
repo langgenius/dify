@@ -26,7 +26,7 @@ export const imageUpload: ImageUpload = ({
     xhr: new XMLHttpRequest(),
     data: formData,
     onprogress: onProgress,
-  })
+  }, true)
     .then((res: { id: string }) => {
       onSuccessCallback(res)
     })
