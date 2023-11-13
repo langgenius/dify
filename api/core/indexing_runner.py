@@ -89,22 +89,6 @@ class IndexingRunner:
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
 
-    def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
-        matches = re.findall(regex, text, re.MULTILINE)
-
-        result = []
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
-
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
         try:
@@ -647,21 +631,16 @@ class IndexingRunner:
         return text
 
     def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
-        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
+        matches = re.findall(regex, text, re.MULTILINE)
 
-        result = []  # 存储最终的结果
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                # 如果Q和A都存在，就将其添加到结果中
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
+        return [
+            {
+                "question": q,
+                "answer": re.sub(r"\n\s*", "\n", a.strip())
+            }
+            for q, a in matches if q and a
+        ]
 
     def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
         """
