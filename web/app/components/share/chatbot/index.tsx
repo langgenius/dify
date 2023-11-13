@@ -401,8 +401,17 @@ const Main: FC<IMainProps> = ({
       conversation_id: isNewConversation ? null : currConversationId,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0)
-      data.files = files
+    if (visionConfig.enabled && files && files?.length > 0) {
+      data.files = files.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
+    }
 
     // qustion
     const questionId = `question-${Date.now()}`

@@ -239,8 +239,17 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0)
-      data.files = files
+    if (visionConfig.enabled && files && files?.length > 0) {
+      data.files = files.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
+    }
 
     // qustion
     const questionId = `question-${Date.now()}`
@@ -432,8 +441,17 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0)
-      data.files = completionFiles
+    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
+      data.files = completionFiles.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
+    }
 
     setCompletionRes('')
     setMessageId('')
