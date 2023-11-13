@@ -7,7 +7,6 @@ import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import type { ModerationConfig } from '@/models/debug'
 import type {
   ApiBasedExtension,
@@ -26,13 +25,11 @@ const ModalContext = createContext<{
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
-  setShowImagePreview: Dispatch<SetStateAction<ModalState<string> | null>>
 }>({
   setShowAccountSettingModal: () => {},
   setShowApiBasedExtensionModal: () => {},
   setShowModerationSettingModal: () => {},
   setShowExternalDataToolModal: () => {},
-  setShowImagePreview: () => {},
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -47,7 +44,6 @@ export const ModalContextProvider = ({
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
-  const [showImagePreview, setShowImagePreview] = useState<ModalState<string> | null>(null)
 
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
@@ -97,7 +93,6 @@ export const ModalContextProvider = ({
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
-      setShowImagePreview,
     }}>
       <>
         {children}
@@ -134,14 +129,6 @@ export const ModalContextProvider = ({
               onCancel={() => setShowExternalDataToolModal(null)}
               onSave={handleSaveExternalDataTool}
               onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
-            />
-          )
-        }
-        {
-          !!showImagePreview && (
-            <ImagePreview
-              url={showImagePreview.payload}
-              onCancel={() => setShowImagePreview(null)}
             />
           )
         }

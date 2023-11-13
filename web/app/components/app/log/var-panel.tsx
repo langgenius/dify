@@ -1,10 +1,10 @@
 'use client'
 import { useBoolean } from 'ahooks'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import { useModalContext } from '@/context/modal-context'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 type Props = {
   varList: { label: string; value: string }[]
@@ -17,7 +17,7 @@ const VarPanel: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [isCollapse, { toggle: toggleCollapse }] = useBoolean(false)
-  const { setShowImagePreview } = useModalContext()
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   return (
     <div className='rounded-xl border border-color-indigo-100 bg-indigo-25'>
@@ -54,7 +54,7 @@ const VarPanel: FC<Props> = ({
                     key={index}
                     className="pl-2.5 w-16 h-16 rounded-lg bg-no-repeat bg-cover bg-center cursor-pointer"
                     style={{ backgroundImage: `url(${url})` }}
-                    onClick={() => setShowImagePreview({ payload: url })}
+                    onClick={() => setImagePreviewUrl(url)}
                   />
                 ))}
               </div>
@@ -62,7 +62,14 @@ const VarPanel: FC<Props> = ({
           )}
         </div>
       )}
-
+      {
+        imagePreviewUrl && (
+          <ImagePreview
+            url={imagePreviewUrl}
+            onCancel={() => setImagePreviewUrl('')}
+          />
+        )
+      }
     </div>
   )
 }

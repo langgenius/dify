@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import cn from 'classnames'
 import s from './style.module.css'
-import { useModalContext } from '@/context/modal-context'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 type Props = {
   srcs: string[]
@@ -30,7 +30,7 @@ const getWidthStyle = (imgNum: number) => {
 const ImageGallery: FC<Props> = ({
   srcs,
 }) => {
-  const { setShowImagePreview } = useModalContext()
+  const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   const imgNum = srcs.length
   const imgStyle = getWidthStyle(imgNum)
@@ -45,9 +45,17 @@ const ImageGallery: FC<Props> = ({
           style={imgStyle}
           src={src}
           alt=''
-          onClick={() => setShowImagePreview({ payload: src })}
+          onClick={() => setImagePreviewUrl(src)}
         />
       ))}
+      {
+        imagePreviewUrl && (
+          <ImagePreview
+            url={imagePreviewUrl}
+            onCancel={() => setImagePreviewUrl('')}
+          />
+        )
+      }
     </div>
   )
 }
