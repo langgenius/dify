@@ -56,6 +56,15 @@ For high-quality text generation, such as articles, summaries, and translations,
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the app.
       </Property>
+      <Property name='files' type='array[object]' key='files'>
+          Uploaded files.
+          - `type` file type: currently only `image` is supported.
+          - `transfer_method` transfer method:
+            - `remote_url`: Image address.
+            - `local_file`: upload file.
+          - `upload_file_id` Upload file ID. Required when `transfer_method` is `local_file`.
+          - `url` image address. Required when `transfer_method` is `remote_url`.
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -179,7 +188,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     Upload files to the server for text generation and dialogue. Uploaded files are only available to the current end user.
 
     ### Request Body
-
+    The request method is `multipart/form-data`
     <Properties>
       <Property name='file' type='file' key='file'>
         The file to upload. Currently supports png, jpg, jpeg, webp, gif format files.
@@ -196,7 +205,7 @@ For high-quality text generation, such as articles, summaries, and translations,
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
     --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=@localfile;type=audio/mp3'
+    --form 'file=@"/path/to/file"'
     ```
 
     </CodeGroup>
