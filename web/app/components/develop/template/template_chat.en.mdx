@@ -62,6 +62,15 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
       <Property name='user' type='string' key='user'>
         The user identifier, defined by the developer, must ensure uniqueness within the app.
       </Property>
+      <Property name='files' type='array[object]' key='files'>
+          Uploaded files.
+          - `type` file type: currently only `image` is supported.
+          - `transfer_method` transfer method:
+            - `remote_url`: Image address.
+            - `local_file`: upload file.
+          - `upload_file_id` Upload file ID. Required when `transfer_method` is `local_file`.
+           - `url` image address. Required when `transfer_method` is `remote_url`.
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -450,6 +459,57 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 ---
 
 <Heading
+  url='/files/upload'
+  method='POST'
+  title='Upload files'
+  name='#files-upload'
+/>
+<Row>
+  <Col>
+    Upload files to the server for text generation and dialogue. Uploaded files are only available to the current end user.
+
+    ### Request Body
+    The request method is `multipart/form-data`
+    <Properties>
+      <Property name='file' type='file' key='file'>
+        The file to upload. Currently supports png, jpg, jpeg, webp, gif format files.
+      </Property>
+      <Property name='user' type='string' key='user'>
+        User ID, rules are defined by the developer, and it is necessary to ensure that the user ID is unique within the application.
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": 123,  
+      "created_at": 1577836800,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='speech to text'
@@ -500,7 +560,9 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
 />
 <Row>
   <Col>
-    Retrieve configured Input parameters, including variable names, field names, types, and default values. Typically used for displaying these fields in a form or filling in default values after the client loads.
+    Content include:
+    1. Retrieve configured Input parameters, including variable names, field names, types, and default values. Typically used for displaying these fields in a form or filling in default values after the client loads.
+    2. Configuration of uploading images, including whether to enable image uploading, the number of uploaded images and the uploading method. Note: This configuration is only available when using a model that supports multimodality.
 
     ### Query
 
@@ -525,19 +587,30 @@ For versatile conversational apps using a Q&A format, call the chat-messages API
     ```json {{ title: 'Response' }}
     {
       "introduction": "nice to meet you",
-      "variables": [
+      "user_input_form": [
         {
-          "key": "book",
-          "name": "book",
-          "description": null,
-          "type": "string",
-          "default": null,
-          "options": null
-        },
+          "text-input": {
+            "label": "a",
+            "variable": "a",
+            "required": true,
+            "max_length": 48,
+            "default": ""
+          }
+        }
         {
           // ...
         }
-      ]
+      ],
+      "file_upload": {
+        "image": {
+          "enabled": true,
+          "number_limits": 3,
+          "transfer_methods": [
+            "remote_url",
+            "local_file"
+          ]
+        }
+      }
     }
     ```
     </CodeGroup>

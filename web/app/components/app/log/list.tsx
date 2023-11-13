@@ -33,7 +33,6 @@ import { TONE_LIST } from '@/config'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
-import { ModelModeType } from '@/types/app'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -81,6 +80,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
       log: item.message as any,
+      message_files: item.message_files,
     })
 
     newChatList.push({
@@ -174,9 +174,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     const itemContent = item[Object.keys(item)[0]]
     return {
       label: itemContent.variable,
-      value: varValues[itemContent.variable],
+      value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
     }
   })
+  const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
+    ? detail.message.message_files.map((item: any) => item.url)
+    : []
 
   const getParamValue = (param: string) => {
     const value = detail?.model_config.model?.completion_params?.[param] || '-'
@@ -209,7 +212,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <div className='text-[13px] text-gray-900 font-medium'>
             <ModelName modelId={modelName} modelDisplayName={modelName} />
           </div>
-          <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+          <ModelModeTypeLabel type={detail?.model_config.model.mode as any} isHighlight />
         </div>
         <Popover
           position='br'
@@ -239,11 +242,15 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
     </div>
     {/* Panel Body */}
-    {varList.length > 0 && (
+    {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
       <div className='px-6 pt-4 pb-2'>
-        <VarPanel varList={varList} />
+        <VarPanel
+          varList={varList}
+          message_files={message_files}
+        />
       </div>
     )}
+
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat

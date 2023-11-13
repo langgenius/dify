@@ -109,7 +109,7 @@ const translation = {
     provider: '模型供应商',
     dataSource: '数据来源',
     plugin: '插件',
-    apiBasedExtension: 'API 的扩展',
+    apiBasedExtension: 'API 扩展',
   },
   account: {
     avatar: '头像',
@@ -302,18 +302,18 @@ const translation = {
     },
   },
   apiBasedExtension: {
-    title: 'API 的扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
-    link: '了解如何开发您自己的 API 的扩展。',
+    title: 'API 扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
+    link: '了解如何开发您自己的 API 扩展。',
     linkUrl: 'https://docs.dify.ai/v/zh-hans/advanced/api_based_extension',
-    add: '新增 API 的扩展',
+    add: '新增 API 扩展',
     selector: {
-      title: 'API 的扩展',
-      placeholder: '请选择 API 的扩展',
-      manage: '管理 API 的扩展',
+      title: 'API 扩展',
+      placeholder: '请选择 API 扩展',
+      manage: '管理 API 扩展',
     },
     modal: {
-      title: '新增 API 的扩展',
-      editTitle: '编辑 API 的扩展',
+      title: '新增 API 扩展',
+      editTitle: '编辑 API 扩展',
       name: {
         title: '名称',
         placeholder: '请输入名称',
@@ -327,9 +327,6 @@ const translation = {
         placeholder: '请输入 API-key',
         lengthError: 'API-key 不能少于 5 位',
       },
-    },
-    confirm: {
-      desc: '删除 WebHook 可能会导致这个 API 的扩展配置的扩展失败并产生错误。请谨慎删除。',
     },
   },
   about: {
@@ -432,6 +429,15 @@ const translation = {
       },
     },
     existed: 'Prompt 中已存在',
+  },
+  imageUploader: {
+    uploadFromComputer: '从本地上传',
+    uploadFromComputerReadError: '图片读取失败，请重新选择。',
+    uploadFromComputerUploadError: '图片上传失败，请重新上传。',
+    uploadFromComputerLimit: '上传图片不能超过 {{size}} MB',
+    pasteImageLink: '粘贴图片链接',
+    pasteImageLinkInputPlaceholder: '将图像链接粘贴到此处',
+    pasteImageLinkInvalid: '图片链接无效',
   },
 }
 
