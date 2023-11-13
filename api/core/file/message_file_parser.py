@@ -173,11 +173,7 @@ class MessageFileParser:
 
             response = requests.head(url, headers=headers, allow_redirects=True)
             if response.status_code == 200:
-                content_type = response.headers.get('Content-Type', '')
-                if content_type.startswith('image/'):
-                    return True, "URL exists and is an image."
-                else:
-                    return False, "URL exists but is not an image."
+                return True, ""
             else:
                 return False, "URL does not exist."
         except requests.RequestException as e:
