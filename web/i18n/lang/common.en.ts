@@ -328,9 +328,6 @@ const translation = {
         lengthError: 'API-key length cannot be less than 5 characters',
       },
     },
-    confirm: {
-      desc: 'Deleting the WebHook might cause the extension points configured for this API Extension to fail and produce errors. Please proceed with caution.',
-    },
   },
   about: {
     changeLog: 'Changlog',
