@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { createPortal } from 'react-dom'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 
 type ImagePreviewProps = {
@@ -9,8 +10,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   url,
   onCancel,
 }) => {
-  return (
-    <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]'>
+  return createPortal(
+    <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]' onClick={e => e.stopPropagation()}>
       <img
         alt='preview image'
         src={url}
@@ -22,7 +23,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       >
         <XClose className='w-4 h-4 text-white' />
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
