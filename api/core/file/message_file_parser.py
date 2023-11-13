@@ -167,7 +167,11 @@ class MessageFileParser:
 
     def _check_image_remote_url(self, url):
         try:
-            response = requests.head(url, allow_redirects=True)
+            headers = {
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+            }
+
+            response = requests.head(url, headers=headers, allow_redirects=True)
             if response.status_code == 200:
                 content_type = response.headers.get('Content-Type', '')
                 if content_type.startswith('image/'):
