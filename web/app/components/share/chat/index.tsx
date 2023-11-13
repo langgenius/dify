@@ -555,7 +555,6 @@ const Main: FC<IMainProps> = ({
         setChatList(newListWithAnswer)
       },
       async onCompleted(hasError?: boolean) {
-        setResponsingFalse()
         if (hasError)
           return
 
@@ -578,6 +577,7 @@ const Main: FC<IMainProps> = ({
           setSuggestQuestions(data)
           setIsShowSuggestion(true)
         }
+        setResponsingFalse()
       },
       onMessageEnd: isInstalledApp
         ? (messageEnd) => {
