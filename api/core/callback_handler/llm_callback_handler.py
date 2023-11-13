@@ -11,7 +11,8 @@ from pydantic import BaseModel
 from core.callback_handler.entity.llm_message import LLMMessage
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
     ConversationTaskInterruptException
-from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage
+from core.model_providers.models.entity.message import to_prompt_messages, PromptMessage, LCHumanMessageWithFiles, \
+    ImagePromptMessageFile
 from core.model_providers.models.llm.base import BaseLLM
 from core.moderation.base import ModerationOutputsResult, ModerationAction
 from core.moderation.factory import ModerationFactory
@@ -72,7 +73,12 @@ class LLMCallbackHandler(BaseCallbackHandler):
 
             real_prompts.append({
                 "role": role,
-                "text": message.content
+                "text": message.content,
+                "files": [{
+                    "type": file.type.value,
+                    "data": file.data[:10] + '...[TRUNCATED]...' + file.data[-10:],
+                    "detail": file.detail.value if isinstance(file, ImagePromptMessageFile) else None,
+                } for file in (message.files if isinstance(message, LCHumanMessageWithFiles) else [])]
             })
 
         self.llm_message.prompt = real_prompts
