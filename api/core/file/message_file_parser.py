@@ -29,7 +29,7 @@ class MessageFileParser:
 
         for file in files:
             if not isinstance(file, dict):
-                raise ValueError('Invalid file format')
+                raise ValueError('Invalid file format, must be dict')
             if not file.get('type'):
                 raise ValueError('Missing file type')
             FileType.value_of(file.get('type'))
@@ -60,16 +60,16 @@ class MessageFileParser:
 
                 # Validate number of files
                 if len(files) > image_config['number_limits']:
-                    raise ValueError('Number of image files exceeds the maximum limit')
+                    raise ValueError(f"Number of image files exceeds the maximum limit {image_config['number_limits']}")
 
                 for file_obj in file_objs:
                     # Validate transfer method
                     if file_obj.transfer_method.value not in image_config['transfer_methods']:
-                        raise ValueError('Invalid transfer method')
+                        raise ValueError(f'Invalid transfer method: {file_obj.transfer_method.value}')
 
                     # Validate file type
                     if file_obj.type != FileType.IMAGE:
-                        raise ValueError('Invalid file type')
+                        raise ValueError(f'Invalid file type: {file_obj.type}')
 
                     if file_obj.transfer_method == FileTransferMethod.REMOTE_URL:
                         # check remote url valid and is image
