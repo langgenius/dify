@@ -1,7 +1,7 @@
 import datetime
 import hashlib
 import uuid
-from typing import Generator, Tuple
+from typing import Generator, Tuple, Union
 
 from flask import current_app
 from flask_login import current_user
@@ -13,7 +13,7 @@ from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_storage import storage
 from extensions.ext_database import db
 from models.account import Account
-from models.model import UploadFile
+from models.model import UploadFile, EndUser
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
@@ -25,7 +25,7 @@ PREVIEW_WORDS_LIMIT = 3000
 class FileService:
 
     @staticmethod
-    def upload_file(file: FileStorage, only_image: bool = False) -> UploadFile:
+    def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
         extension = file.filename.split('.')[-1]
         if extension.lower() not in ALLOWED_EXTENSIONS:
             raise UnsupportedFileTypeError()
@@ -49,16 +49,22 @@ class FileService:
 
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
-        file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.' + extension
+
+        if isinstance(user, Account):
+            current_tenant_id = user.current_tenant_id
+        else:
+            # end_user
+            current_tenant_id = user.tenant_id
+
+        file_key = 'upload_files/' + current_tenant_id + '/' + file_uuid + '.' + extension
 
         # save file to storage
         storage.save(file_key, file_content)
 
         # save file to db
         config = current_app.config
-        user = current_user
         upload_file = UploadFile(
-            tenant_id=user.current_tenant_id,
+            tenant_id=current_tenant_id,
             storage_type=config['STORAGE_TYPE'],
             key=file_key,
             name=file.filename,
