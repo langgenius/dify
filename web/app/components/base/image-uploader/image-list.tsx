@@ -39,7 +39,7 @@ const ImageList: FC<ImageListProps> = ({
   }
 
   return (
-    <div className='flex'>
+    <div className='flex flex-wrap'>
       {
         list.map(item => (
           <div
