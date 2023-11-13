@@ -3,7 +3,7 @@ from flask_restful import marshal_with
 
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
-from controllers.web.file_error import NoFileUploadedError, TooManyFilesError, FileTooLargeError, \
+from controllers.web.error import NoFileUploadedError, TooManyFilesError, FileTooLargeError, \
     UnsupportedFileTypeError
 import services
 from services.file_service import FileService
