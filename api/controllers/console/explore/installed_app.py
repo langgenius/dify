@@ -39,8 +39,9 @@ class InstalledAppsListApi(Resource):
             }
             for installed_app in installed_apps
         ]
-        installed_apps.sort(key=lambda app: (-app['is_pinned'], app['last_used_at']
-                            if app['last_used_at'] is not None else datetime.min))
+        installed_apps.sort(key=lambda app: (-app['is_pinned'],
+                                             app['last_used_at'] is None,
+                                             -app['last_used_at'].timestamp() if app['last_used_at'] is not None else 0))
 
         return {'installed_apps': installed_apps}
 

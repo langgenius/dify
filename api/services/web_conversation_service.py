@@ -11,7 +11,8 @@ from services.conversation_service import ConversationService
 class WebConversationService:
     @classmethod
     def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
-                              last_id: Optional[str], limit: int, pinned: Optional[bool] = None) -> InfiniteScrollPagination:
+                              last_id: Optional[str], limit: int, pinned: Optional[bool] = None,
+                              exclude_debug_conversation: bool = False) -> InfiniteScrollPagination:
         include_ids = None
         exclude_ids = None
         if pinned is not None:
@@ -32,7 +33,8 @@ class WebConversationService:
             last_id=last_id,
             limit=limit,
             include_ids=include_ids,
-            exclude_ids=exclude_ids
+            exclude_ids=exclude_ids,
+            exclude_debug_conversation=exclude_debug_conversation
         )
 
     @classmethod

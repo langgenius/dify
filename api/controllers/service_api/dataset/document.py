@@ -2,6 +2,7 @@ import json
 
 from flask import request
 from flask_restful import reqparse, marshal
+from flask_login import current_user
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
@@ -173,7 +174,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
-        upload_file = FileService.upload_file(file)
+        upload_file = FileService.upload_file(file, current_user)
         data_source = {
             'type': 'upload_file',
             'info_list': {
@@ -235,7 +236,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if len(request.files) > 1:
                 raise TooManyFilesError()
 
-            upload_file = FileService.upload_file(file)
+            upload_file = FileService.upload_file(file, current_user)
             data_source = {
                 'type': 'upload_file',
                 'info_list': {

@@ -1,7 +1,6 @@
 import datetime
 import json
 
-from cachetools import TTLCache
 from flask import request
 from flask_login import current_user
 from libs.login import login_required
@@ -19,8 +18,6 @@ from models.dataset import Document
 from models.source import DataSourceBinding
 from services.dataset_service import DatasetService, DocumentService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
-
-cache = TTLCache(maxsize=None, ttl=30)
 
 
 class DataSourceApi(Resource):
