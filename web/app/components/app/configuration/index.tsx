@@ -25,7 +25,7 @@ import type {
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionSettings } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
@@ -305,16 +305,22 @@ const Configuration: FC = () => {
       // eslint-disable-next-line @typescript-eslint/no-use-before-define
       ...visionConfig,
       enabled: supportVision,
-    })
+    }, true)
   }
 
   const isShowVisionConfig = !!currModel?.features.includes(ModelFeature.vision)
-  const [visionConfig, setVisionConfig] = useState({
+  const [visionConfig, doSetVisionConfig] = useState({
     enabled: false,
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
   })
+
+  const setVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
+    doSetVisionConfig(config)
+    if (!notNoticeFormattingChanged)
+      setFormattingChanged(true)
+  }
 
   useEffect(() => {
     fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
@@ -381,7 +387,7 @@ const Configuration: FC = () => {
       }
 
       if (modelConfig.file_upload)
-        setVisionConfig(modelConfig.file_upload.image)
+        setVisionConfig(modelConfig.file_upload.image, true)
 
       syncToPublishedConfig(config)
       setPublishedConfig(config)
