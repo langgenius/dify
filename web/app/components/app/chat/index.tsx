@@ -1,7 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { useParams } from 'next/navigation'
 import Textarea from 'rc-textarea'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
@@ -23,8 +22,8 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
-import { imageUpload } from '@/app/components/base/image-uploader/utils'
-import { type ImageFile, TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
+import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
+import { useImageFiles } from '@/app/components/base/image-uploader/hooks'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -93,9 +92,16 @@ const Chat: FC<IChatProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const [files, setFiles] = useState<ImageFile[]>([])
+  const {
+    files,
+    onUpload,
+    onRemove,
+    onReUpload,
+    onImageLinkLoadError,
+    onImageLinkLoadSuccess,
+    onClear,
+  } = useImageFiles()
   const isUseInputMethod = useRef(false)
-  const params = useParams()
 
   const [query, setQuery] = React.useState('')
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -131,7 +137,7 @@ const Chat: FC<IChatProps> = ({
     })))
     if (!files.find(item => item.type === TransferMethod.local_file && !item.fileId)) {
       if (files.length)
-        setFiles([])
+        onClear()
       if (!isResponsing)
         setQuery('')
     }
@@ -175,48 +181,6 @@ const Chat: FC<IChatProps> = ({
     }, () => {
       logError(t('common.voiceInput.notAllow'))
     })
-  }
-  const handleRemove = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1)
-      setFiles([...files.slice(0, index), ...files.slice(index + 1)])
-  }
-  const handleImageLinkLoadError = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentFile = files[index]
-      setFiles([...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)])
-    }
-  }
-  const handleImageLinkLoadSuccess = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentImageFile = files[index]
-      setFiles([...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)])
-    }
-  }
-  const handleReUpload = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentImageFile = files[index]
-      imageUpload({
-        file: currentImageFile.file!,
-        onProgressCallback: (progress) => {
-          setFiles([...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)])
-        },
-        onSuccessCallback: (res) => {
-          setFiles([...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)])
-        },
-        onErrorCallback: () => {
-          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
-          setFiles([...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)])
-        },
-      }, !!params.token)
-    }
   }
 
   return (
@@ -315,7 +279,7 @@ const Chat: FC<IChatProps> = ({
                     <div className='absolute bottom-2 left-2 flex items-center'>
                       <ChatImageUploader
                         settings={visionConfig}
-                        onUpload={fileItem => setFiles([...files, fileItem])}
+                        onUpload={onUpload}
                         disabled={files.length >= visionConfig.number_limits}
                       />
                       <div className='mx-1 w-[1px] h-4 bg-black/5' />
@@ -323,10 +287,10 @@ const Chat: FC<IChatProps> = ({
                     <div className='pl-[52px]'>
                       <ImageList
                         list={files}
-                        onRemove={handleRemove}
-                        onReUpload={handleReUpload}
-                        onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
-                        onImageLinkLoadError={handleImageLinkLoadError}
+                        onRemove={onRemove}
+                        onReUpload={onReUpload}
+                        onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                        onImageLinkLoadError={onImageLinkLoadError}
                       />
                     </div>
                   </>
