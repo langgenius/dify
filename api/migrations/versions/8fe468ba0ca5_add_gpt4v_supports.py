@@ -23,7 +23,7 @@ def upgrade():
     sa.Column('message_id', postgresql.UUID(), nullable=False),
     sa.Column('type', sa.String(length=255), nullable=False),
     sa.Column('transfer_method', sa.String(length=255), nullable=False),
-    sa.Column('url', sa.String(length=255), nullable=True),
+    sa.Column('url', sa.Text(), nullable=True),
     sa.Column('upload_file_id', postgresql.UUID(), nullable=True),
     sa.Column('created_by_role', sa.String(length=255), nullable=False),
     sa.Column('created_by', postgresql.UUID(), nullable=False),

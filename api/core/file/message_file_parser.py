@@ -145,12 +145,13 @@ class MessageFileParser:
         :return:
         """
         if isinstance(file, dict):
+            transfer_method = FileTransferMethod.value_of(file.get('transfer_method'))
             return FileObj(
                 tenant_id=self.tenant_id,
                 type=FileType.value_of(file.get('type')),
-                transfer_method=FileTransferMethod.value_of(file.get('transfer_method')),
-                url=file.get('url'),
-                upload_file_id=file.get('upload_file_id') or None,
+                transfer_method=transfer_method,
+                url=file.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
+                upload_file_id=file.get('upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
                 file_config=file_upload_config
             )
         else:

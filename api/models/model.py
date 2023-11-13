@@ -592,7 +592,7 @@ class MessageFile(db.Model):
     message_id = db.Column(UUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     transfer_method = db.Column(db.String(255), nullable=False)
-    url = db.Column(db.String(255), nullable=True)
+    url = db.Column(db.Text, nullable=True)
     upload_file_id = db.Column(UUID, nullable=True)
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(UUID, nullable=False)
