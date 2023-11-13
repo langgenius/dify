@@ -33,7 +33,6 @@ import { TONE_LIST } from '@/config'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
-import { ModelModeType } from '@/types/app'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -213,7 +212,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <div className='text-[13px] text-gray-900 font-medium'>
             <ModelName modelId={modelName} modelDisplayName={modelName} />
           </div>
-          <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+          <ModelModeTypeLabel type={detail?.model_config.model.mode as any} isHighlight />
         </div>
         <Popover
           position='br'
