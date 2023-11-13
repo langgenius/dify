@@ -37,6 +37,7 @@ class CompletionApi(WebApiResource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
+        args['auto_generate_name'] = False
 
         try:
             response = CompletionService.completion(
@@ -97,6 +98,7 @@ class ChatApi(WebApiResource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
+        args['auto_generate_name'] = False
 
         try:
             response = CompletionService.completion(

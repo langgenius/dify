@@ -40,13 +40,15 @@ class CompletionApi(AppApiResource):
         if end_user is None and args['user'] is not None:
             end_user = create_or_update_end_user_for_user_id(app_model, args['user'])
 
+        args['auto_generate_name'] = False
+
         try:
             response = CompletionService.completion(
                 app_model=app_model,
                 user=end_user,
                 args=args,
                 from_source='api',
-                streaming=streaming
+                streaming=streaming,
             )
 
             return compact_response(response)
@@ -96,6 +98,7 @@ class ChatApi(AppApiResource):
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('user', type=str, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
+        parser.add_argument('auto_generate_name', type=bool, required=False, default='True', location='json')
 
         args = parser.parse_args()
 

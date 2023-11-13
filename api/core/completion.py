@@ -32,7 +32,8 @@ class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
                  files: List[FileObj], user: Union[Account, EndUser], conversation: Optional[Conversation],
-                 streaming: bool, is_override: bool = False, retriever_from: str = 'dev'):
+                 streaming: bool, is_override: bool = False, retriever_from: str = 'dev',
+                 auto_generate_name: bool = True):
         """
         errors: ProviderTokenNotInitError
         """
@@ -67,7 +68,8 @@ class Completion:
             query=query,
             files=files,
             streaming=streaming,
-            model_instance=final_model_instance
+            model_instance=final_model_instance,
+            auto_generate_name=auto_generate_name
         )
 
         prompt_message_files = [file.prompt_message_file for file in files]

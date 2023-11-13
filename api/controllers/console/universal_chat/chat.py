@@ -61,6 +61,8 @@ class UniversalChatApi(UniversalChatResource):
         del args['model']
         del args['tools']
 
+        args['auto_generate_name'] = False
+
         try:
             response = CompletionService.completion(
                 app_model=app_model,

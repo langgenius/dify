@@ -16,7 +16,7 @@ from core.prompt.prompts import CONVERSATION_TITLE_PROMPT, GENERATOR_QA_PROMPT
 
 class LLMGenerator:
     @classmethod
-    def generate_conversation_name(cls, tenant_id: str, query, answer):
+    def generate_conversation_name(cls, tenant_id: str, query):
         prompt = CONVERSATION_TITLE_PROMPT
 
         if len(query) > 2000:
@@ -40,8 +40,12 @@ class LLMGenerator:
 
         result_dict = json.loads(answer)
         answer = result_dict['Your Output']
+        name = answer.strip()
 
-        return answer.strip()
+        if len(name) > 75:
+            name = name[:75] + '...'
+
+        return name
 
     @classmethod
     def generate_suggested_questions_after_answer(cls, tenant_id: str, histories: str):

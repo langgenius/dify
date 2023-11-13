@@ -23,7 +23,8 @@ from models.model import AppModelConfig, Conversation, Account, Message, EndUser
 class ConversationMessageTask:
     def __init__(self, task_id: str, app: App, app_model_config: AppModelConfig, user: Account,
                  inputs: dict, query: str, files: List[FileObj], streaming: bool,
-                 model_instance: BaseLLM, conversation: Optional[Conversation] = None, is_override: bool = False):
+                 model_instance: BaseLLM, conversation: Optional[Conversation] = None, is_override: bool = False,
+                 auto_generate_name: bool = True):
         self.start_at = time.perf_counter()
 
         self.task_id = task_id
@@ -47,6 +48,7 @@ class ConversationMessageTask:
         self.message = None
 
         self.retriever_resource = None
+        self.auto_generate_name = auto_generate_name
 
         self.model_dict = self.app_model_config.model_dict
         self.provider_name = self.model_dict.get('provider')
@@ -102,7 +104,7 @@ class ConversationMessageTask:
                 model_id=self.model_name,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=self.mode,
-                name='',
+                name='New conversation',
                 inputs=self.inputs,
                 introduction=introduction,
                 system_instruction=system_instruction,
@@ -191,7 +193,8 @@ class ConversationMessageTask:
         message_was_created.send(
             self.message,
             conversation=self.conversation,
-            is_first_message=self.is_new_conversation
+            is_first_message=self.is_new_conversation,
+            auto_generate_name=self.auto_generate_name
         )
 
         if not by_stopped:

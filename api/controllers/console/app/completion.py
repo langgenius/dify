@@ -47,6 +47,7 @@ class CompletionMessageApi(Resource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'
+        args['auto_generate_name'] = False
 
         account = flask_login.current_user
 
@@ -122,6 +123,7 @@ class ChatMessageApi(Resource):
         args = parser.parse_args()
 
         streaming = args['response_mode'] != 'blocking'
+        args['auto_generate_name'] = False
 
         account = flask_login.current_user
 

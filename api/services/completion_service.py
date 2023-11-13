@@ -38,6 +38,8 @@ class CompletionService:
         inputs = args['inputs']
         query = args['query']
         files = args['files'] if 'files' in args and args['files'] else []
+        auto_generate_name = args['auto_generate_name'] \
+            if 'auto_generate_name' in args else True
 
         if app_model.mode != 'completion' and not query:
             raise ValueError('query is required')
@@ -162,7 +164,8 @@ class CompletionService:
             'detached_conversation': conversation,
             'streaming': streaming,
             'is_model_config_override': is_model_config_override,
-            'retriever_from': args['retriever_from'] if 'retriever_from' in args else 'dev'
+            'retriever_from': args['retriever_from'] if 'retriever_from' in args else 'dev',
+            'auto_generate_name': auto_generate_name
         })
 
         generate_worker_thread.start()
@@ -190,7 +193,7 @@ class CompletionService:
                         query: str, inputs: dict, files: List[PromptMessageFile],
                         detached_user: Union[Account, EndUser],
                         detached_conversation: Optional[Conversation], streaming: bool, is_model_config_override: bool,
-                        retriever_from: str = 'dev'):
+                        retriever_from: str = 'dev', auto_generate_name: bool = True):
         with flask_app.app_context():
             # fixed the state of the model object when it detached from the original session
             user = db.session.merge(detached_user)
@@ -214,7 +217,8 @@ class CompletionService:
                     conversation=conversation,
                     streaming=streaming,
                     is_override=is_model_config_override,
-                    retriever_from=retriever_from
+                    retriever_from=retriever_from,
+                    auto_generate_name=auto_generate_name
                 )
             except (ConversationTaskInterruptException, ConversationTaskStoppedException):
                 pass
@@ -316,7 +320,8 @@ class CompletionService:
             'detached_conversation': None,
             'streaming': streaming,
             'is_model_config_override': True,
-            'retriever_from': retriever_from
+            'retriever_from': retriever_from,
+            'auto_generate_name': False
         })
 
         generate_worker_thread.start()
