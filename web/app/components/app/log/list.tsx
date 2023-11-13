@@ -76,7 +76,6 @@ const PARAM_MAP = {
 const getFormattedChatList = (messages: ChatMessage[]) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
-    console.log(item.message_files)
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
@@ -176,7 +175,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     const itemContent = item[Object.keys(item)[0]]
     return {
       label: itemContent.variable,
-      value: varValues[itemContent.variable],
+      value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
     }
   })
   const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
