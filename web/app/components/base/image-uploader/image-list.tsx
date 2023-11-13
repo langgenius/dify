@@ -30,7 +30,7 @@ const ImageList: FC<ImageListProps> = ({
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
 
   const handleImageLinkLoadSuccess = (item: ImageFile) => {
-    if (item.type === TransferMethod.remote_url && onImageLinkLoadSuccess)
+    if (item.type === TransferMethod.remote_url && onImageLinkLoadSuccess && item.progress !== -1)
       onImageLinkLoadSuccess(item._id)
   }
   const handleImageLinkLoadError = (item: ImageFile) => {

@@ -8,6 +8,7 @@ import { TransferMethod } from '@/types/app'
 type ImageLinkInputProps = {
   onUpload: (imageFile: ImageFile) => void
 }
+const regex = /^(https?|ftp):\/\//
 const ImageLinkInput: FC<ImageLinkInputProps> = ({
   onUpload,
 }) => {
@@ -19,7 +20,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
       type: TransferMethod.remote_url,
       _id: `${Date.now()}`,
       fileId: '',
-      progress: 0,
+      progress: regex.test(imageLink) ? 0 : -1,
       url: imageLink,
     }
 
