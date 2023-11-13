@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import {
   Fragment,
+  useEffect,
   useState,
 } from 'react'
-import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
 import ImageList from './image-list'
-import { imageUpload } from './utils'
+import { useImageFiles } from './hooks'
 import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
 import { Link03 } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -18,7 +18,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import type { ImageFile, VisionSettings } from '@/types/app'
 import { TransferMethod } from '@/types/app'
-import { useToastContext } from '@/app/components/base/toast'
 
 type PasteImageLinkButtonProps = {
   onUpload: (imageFile: ImageFile) => void
@@ -76,74 +75,23 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
   onFilesChange,
 }) => {
   const { t } = useTranslation()
-  const params = useParams()
-  const { notify } = useToastContext()
-  const [files, setFiles] = useState<ImageFile[]>([])
 
-  const handleUpload = (imageFile: ImageFile) => {
-    const newFiles = [...files, imageFile]
-    setFiles(newFiles)
-    onFilesChange(newFiles)
-  }
-  const handleRemove = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
+  const {
+    files,
+    onUpload,
+    onRemove,
+    onImageLinkLoadError,
+    onImageLinkLoadSuccess,
+    onReUpload,
+  } = useImageFiles()
 
-    if (index > -1) {
-      const newFiles = [...files.slice(0, index), ...files.slice(index + 1)]
-      setFiles(newFiles)
-      onFilesChange(newFiles)
-    }
-  }
-  const handleImageLinkLoadError = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentFile = files[index]
-      const newFiles = [...files.slice(0, index), { ...currentFile, progress: -1 }, ...files.slice(index + 1)]
-      setFiles(newFiles)
-      onFilesChange(newFiles)
-    }
-  }
-  const handleImageLinkLoadSuccess = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentImageFile = files[index]
-      const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: 100 }, ...files.slice(index + 1)]
-      setFiles(newFiles)
-      onFilesChange(newFiles)
-    }
-  }
-  const handleReUpload = (imageFileId: string) => {
-    const index = files.findIndex(file => file._id === imageFileId)
-
-    if (index > -1) {
-      const currentImageFile = files[index]
-      imageUpload({
-        file: currentImageFile.file!,
-        onProgressCallback: (progress) => {
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress }, ...files.slice(index + 1)]
-          setFiles(newFiles)
-          onFilesChange(newFiles)
-        },
-        onSuccessCallback: (res) => {
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, fileId: res.id, progress: 100 }, ...files.slice(index + 1)]
-          setFiles(newFiles)
-          onFilesChange(newFiles)
-        },
-        onErrorCallback: () => {
-          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
-          const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)]
-          setFiles(newFiles)
-          onFilesChange(newFiles)
-        },
-      }, !!params.token)
-    }
-  }
+  useEffect(() => {
+    onFilesChange(files)
+  }, [files])
 
   const localUpload = (
     <Uploader
-      onUpload={handleUpload}
+      onUpload={onUpload}
       disabled={files.length >= settings.number_limits}
       limit={+settings.image_file_size_limit!}
     >
@@ -164,7 +112,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
 
   const urlUpload = (
     <PasteImageLinkButton
-      onUpload={handleUpload}
+      onUpload={onUpload}
       disabled={files.length >= settings.number_limits}
     />
   )
@@ -174,10 +122,10 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       <div className='mb-1'>
         <ImageList
           list={files}
-          onRemove={handleRemove}
-          onReUpload={handleReUpload}
-          onImageLinkLoadError={handleImageLinkLoadError}
-          onImageLinkLoadSuccess={handleImageLinkLoadSuccess}
+          onRemove={onRemove}
+          onReUpload={onReUpload}
+          onImageLinkLoadError={onImageLinkLoadError}
+          onImageLinkLoadSuccess={onImageLinkLoadSuccess}
         />
       </div>
       <div className={`grid gap-1 ${settings.transfer_methods.length === 2 ? 'grid-cols-2' : 'grid-cols-1'}`}>
