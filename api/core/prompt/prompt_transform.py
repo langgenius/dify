@@ -27,7 +27,6 @@ class AppMode(enum.Enum):
 class PromptTransform:
     def get_prompt(self,
                    app_mode: str,
-                   app_model_config: AppModelConfig,
                    pre_prompt: str,
                    inputs: dict,
                    query: str,
@@ -36,10 +35,9 @@ class PromptTransform:
                    memory: Optional[BaseChatMemory],
                    model_instance: BaseLLM) -> \
             Tuple[List[PromptMessage], Optional[List[str]]]:
-        model_mode = app_model_config.model_dict['mode']
 
         app_mode_enum = AppMode(app_mode)
-        model_mode_enum = ModelMode(model_mode)
+        model_mode_enum = model_instance.model_mode
 
         prompt_rules = self._read_prompt_rules_from_file(self._prompt_file_name(app_mode, model_instance))
 
