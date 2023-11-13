@@ -14,7 +14,6 @@ import ModelItem from './model-item'
 import ModelModal from './model-modal'
 import config from './configs'
 import { ConfigurableProviders } from './utils'
-import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import {
   changeModelProviderPriority,
@@ -62,7 +61,6 @@ const ModelPage = () => {
   } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
-  const [showMoreModel, setShowMoreModel] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -94,8 +92,8 @@ const ModelPage = () => {
     modelList = [
       config.huggingface_hub,
       config.zhipuai,
-      config.baichuan,
       config.spark,
+      config.baichuan,
       config.minimax,
       config.azure_openai,
       config.replicate,
@@ -315,7 +313,7 @@ const ModelPage = () => {
         }
       </div>
       {
-        modelList.slice(0, showMoreModel ? modelList.length : 3).map((model, index) => (
+        modelList.map((model, index) => (
           <ModelItem
             key={index}
             modelItem={model.item}
@@ -325,14 +323,6 @@ const ModelPage = () => {
             onUpdate={mutateProviders}
           />
         ))
-      }
-      {
-        !showMoreModel && (
-          <div className='inline-flex items-center px-1 h-[26px] cursor-pointer' onClick={() => setShowMoreModel(true)}>
-            <ChevronDownDouble className='mr-1 w-3 h-3 text-gray-500' />
-            <div className='text-xs font-medium text-gray-500'>{t('common.modelProvider.showMoreModelProvider')}</div>
-          </div>
-        )
       }
       <ModelModal
         isShow={showModal}
