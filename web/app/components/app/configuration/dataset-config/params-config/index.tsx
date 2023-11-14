@@ -19,9 +19,15 @@ const ParamsConfig: FC = () => {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
-
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
-  const [type, setType] = useState(RETRIEVE_TYPE.oneWay)
+  const type = tempDataSetConfigs.retrieval_model
+  const setType = (value: RETRIEVE_TYPE) => {
+    setTempDataSetConfigs({
+      ...tempDataSetConfigs,
+      retrieval_model: value,
+    })
+  }
+  // const [type, setType] = useState(RETRIEVE_TYPE.oneWay)
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
       setTempDataSetConfigs({

@@ -23,8 +23,8 @@ export enum ModelModeType {
 }
 
 export enum RETRIEVE_TYPE {
-  oneWay = 'oneWay',
-  multiWay = 'multiWay',
+  oneWay = 'single',
+  multiWay = 'multiple',
 }
 
 export enum RETRIEVE_METHOD {
