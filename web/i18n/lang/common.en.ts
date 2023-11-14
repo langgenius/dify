@@ -223,6 +223,8 @@ const translation = {
     },
   },
   modelProvider: {
+    systemModelSettings: 'System Model Settings',
+    systemModelSettingsLink: 'Why is it necessary to set up a system model?',
     selectModel: 'Select your model',
     setupModelFirst: 'Please set up your model first',
     systemReasoningModel: {
@@ -239,7 +241,7 @@ const translation = {
     },
     rerankModel: {
       key: 'Rerank Model',
-      description: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',
+      tip: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',
     },
     quota: 'Quota',
     searchModel: 'Search model',

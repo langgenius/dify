@@ -20,6 +20,7 @@ import {
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 
 const SystemModel = () => {
   const { t } = useTranslation()
@@ -78,7 +79,7 @@ const SystemModel = () => {
           ${open && 'bg-gray-100 shadow-none'}
         `}>
           <Settings01 className='mr-1 w-3 h-3 text-gray-500' />
-          System Model Settings
+          {t('common.modelProvider.systemModelSettings')}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-50'>
@@ -125,6 +126,26 @@ const SystemModel = () => {
           </div>
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
+              {t('common.modelProvider.rerankModel.key')}
+              <Tooltip
+                selector='model-page-system-rerankModel-model-tip'
+                htmlContent={
+                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
+                }
+              >
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+              </Tooltip>
+            </div>
+            <div>
+              <ModelSelector
+                value={rerankDefaultModel && { providerName: rerankDefaultModel.model_provider.provider_name, modelName: rerankDefaultModel.model_name }}
+                modelType={ModelType.reranking}
+                onChange={v => handleChangeDefaultModel(ModelType.reranking, v)}
+              />
+            </div>
+          </div>
+          <div className='px-6 py-1'>
+            <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.speechToTextModel.key')}
               <Tooltip
                 selector='model-page-system-speechToText-model-tip'
@@ -140,26 +161,6 @@ const SystemModel = () => {
                 value={speech2textDefaultModel && { providerName: speech2textDefaultModel.model_provider.provider_name, modelName: speech2textDefaultModel.model_name }}
                 modelType={ModelType.speech2text}
                 onChange={v => handleChangeDefaultModel(ModelType.speech2text, v)}
-              />
-            </div>
-          </div>
-          <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
-              {t('common.modelProvider.rerankModel.key')}
-              <Tooltip
-                selector='model-page-system-speechToText-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
-                }
-              >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
-            </div>
-            <div>
-              <ModelSelector
-                value={rerankDefaultModel && { providerName: rerankDefaultModel.model_provider.provider_name, modelName: rerankDefaultModel.model_name }}
-                modelType={ModelType.reranking}
-                onChange={v => handleChangeDefaultModel(ModelType.reranking, v)}
               />
             </div>
           </div>
@@ -179,7 +180,14 @@ const SystemModel = () => {
             </Button>
           </div>
           <div className='flex items-center justify-center h-[42px] bg-gray-50 text-xs text-gray-500 border-t-[0.5px] border-t-black/5 rounded-b-xl'>
-            Why is it necessary to set up a system model?
+            <a
+              href={t('common.modelProvider.systemModelSettingsLink') || '/'}
+              target='_blank'
+              className='group flex items-center text-xs text-gray-500 hover:text-primary-600'
+            >
+              <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
+              {t('common.modelProvider.systemModelSettingsLink')}
+            </a>
           </div>
         </div>
       </PortalToFollowElemContent>
