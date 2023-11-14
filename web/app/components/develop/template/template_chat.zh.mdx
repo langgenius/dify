@@ -62,6 +62,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='user' type='string' key='user'>
         用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
+      <Property name='files' type='array[object]' key='files'>
+          上传的文件。
+          - `type` 文件类型:目前仅支持 `image`。
+          - `transfer_method` 传递方式:
+            - `remote_url`: 图片地址。
+            - `local_file`: 上传文件。
+          - `upload_file_id` 上传文件 ID。`transfer_method` 为 `local_file` 时必填。
+          - `url` 图片地址。`transfer_method` 为 `remote_url` 时必填。
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -449,6 +458,57 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/files/upload'
+  method='POST'
+  title='上传文件'
+  name='#files-upload'
+/>
+<Row>
+  <Col>
+    上传文件到服务器，供文本生成、对话使用。上传的文件仅供当前终端用户使用。
+
+    ### Request Body
+    请求方式为 `multipart/form-data`。
+    <Properties>
+      <Property name='file' type='file' key='file'>
+        要上传的文件。目前支持 png, jpg, jpeg, webp, gif 格式文件。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",  
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": 123,  
+      "created_at": 1577836800,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/audio-to-text'
   method='POST'
   title='语音转文字'
@@ -499,7 +559,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-    获取已配置的 Input 参数，包括变量名、字段名称、类型与默认值。通常用于客户端加载后显示这些字段的表单或填入默认值。
+    内容包括：
+    1. 已配置的 Input 参数，包括变量名、字段名称、类型与默认值。通常用于客户端加载后显示这些字段的表单或填入默认值。
+    2. 上传图片的配置，包括是否开启上传图片，上传图片的数量和上传方式。注意：这个配置只有使用支持多模态的模型时才会生效。
 
     ### Query
 
@@ -524,19 +586,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ```json {{ title: 'Response' }}
     {
       "introduction": "nice to meet you",
-      "variables": [
+      "user_input_form": [
         {
-          "key": "book",
-          "name": "book",
-          "description": null,
-          "type": "string",
-          "default": null,
-          "options": null
-        },
+          "text-input": {
+            "label": "a",
+            "variable": "a",
+            "required": true,
+            "max_length": 48,
+            "default": ""
+          }
+        }
         {
           // ...
         }
-      ]
+      ],
+      "file_upload": {
+        "image": {
+          "enabled": true,
+          "number_limits": 3,
+          "transfer_methods": [
+            "remote_url",
+            "local_file"
+          ]
+        }
+      }
     }
     ```
     </CodeGroup>

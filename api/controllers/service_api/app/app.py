@@ -1,5 +1,6 @@
 # -*- coding:utf-8 -*-
 from flask_restful import fields, marshal_with
+from flask import current_app
 
 from controllers.service_api import api
 from controllers.service_api.wraps import AppApiResource
@@ -20,6 +21,10 @@ class AppParameterApi(AppApiResource):
         'options': fields.List(fields.String)
     }
 
+    system_parameters_fields = {
+        'image_file_size_limit': fields.String
+    }
+
     parameters_fields = {
         'opening_statement': fields.String,
         'suggested_questions': fields.Raw,
@@ -28,7 +33,9 @@ class AppParameterApi(AppApiResource):
         'retriever_resource': fields.Raw,
         'more_like_this': fields.Raw,
         'user_input_form': fields.Raw,
-        'sensitive_word_avoidance': fields.Raw
+        'sensitive_word_avoidance': fields.Raw,
+        'file_upload': fields.Raw,
+        'system_parameters': fields.Nested(system_parameters_fields)
     }
 
     @marshal_with(parameters_fields)
@@ -44,7 +51,11 @@ class AppParameterApi(AppApiResource):
             'retriever_resource': app_model_config.retriever_resource_dict,
             'more_like_this': app_model_config.more_like_this_dict,
             'user_input_form': app_model_config.user_input_form_list,
-            'sensitive_word_avoidance': app_model_config.sensitive_word_avoidance_dict
+            'sensitive_word_avoidance': app_model_config.sensitive_word_avoidance_dict,
+            'file_upload': app_model_config.file_upload_dict,
+            'system_parameters': {
+                'image_file_size_limit': current_app.config.get('UPLOAD_IMAGE_FILE_SIZE_LIMIT')
+            }
         }
 
 

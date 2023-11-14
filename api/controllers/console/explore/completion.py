@@ -1,6 +1,7 @@
 # -*- coding:utf-8 -*-
 import json
 import logging
+from datetime import datetime
 from typing import Generator, Union
 
 from flask import Response, stream_with_context
@@ -17,6 +18,7 @@ from controllers.console.explore.wraps import InstalledAppResource
 from core.conversation_message_task import PubHandler
 from core.model_providers.error import LLMBadRequestError, LLMAPIUnavailableError, LLMAuthorizationError, LLMAPIConnectionError, \
     LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from extensions.ext_database import db
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
 
@@ -32,11 +34,16 @@ class CompletionApi(InstalledAppResource):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, location='json', default='')
+        parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
+        args['auto_generate_name'] = False
+
+        installed_app.last_used_at = datetime.utcnow()
+        db.session.commit()
 
         try:
             response = CompletionService.completion(
@@ -91,12 +98,17 @@ class ChatApi(InstalledAppResource):
         parser = reqparse.RequestParser()
         parser.add_argument('inputs', type=dict, required=True, location='json')
         parser.add_argument('query', type=str, required=True, location='json')
+        parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('retriever_from', type=str, required=False, default='explore_app', location='json')
         args = parser.parse_args()
 
         streaming = args['response_mode'] == 'streaming'
+        args['auto_generate_name'] = False
+
+        installed_app.last_used_at = datetime.utcnow()
+        db.session.commit()
 
         try:
             response = CompletionService.completion(

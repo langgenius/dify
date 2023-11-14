@@ -61,7 +61,6 @@ const Item: FC<ItemProps> = ({
             onCancel={() => setShowDeleteConfirm(false)}
             title={`${t('common.operation.delete')} “${data.name}”?`}
             onConfirm={handleDeleteApiBasedExtension}
-            desc={t('common.apiBasedExtension.confirm.desc') || ''}
             confirmWrapperClassName='!z-30'
             confirmText={t('common.operation.delete') || ''}
             confirmBtnClassName='!bg-[#D92D20]'

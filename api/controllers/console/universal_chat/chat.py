@@ -25,6 +25,7 @@ class UniversalChatApi(UniversalChatResource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, required=True, location='json')
+        parser.add_argument('files', type=list, required=False, location='json')
         parser.add_argument('conversation_id', type=uuid_value, location='json')
         parser.add_argument('provider', type=str, required=True, location='json')
         parser.add_argument('model', type=str, required=True, location='json')
@@ -59,6 +60,8 @@ class UniversalChatApi(UniversalChatResource):
 
         del args['model']
         del args['tools']
+
+        args['auto_generate_name'] = False
 
         try:
             response = CompletionService.completion(
