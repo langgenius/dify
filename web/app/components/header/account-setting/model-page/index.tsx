@@ -59,6 +59,7 @@ const ModelPage = () => {
       config.azure_openai,
       config.replicate,
       config.huggingface_hub,
+      config.cohere,
       config.zhipuai,
       config.baichuan,
       config.spark,
@@ -74,6 +75,7 @@ const ModelPage = () => {
   else {
     modelList = [
       config.huggingface_hub,
+      config.cohere,
       config.zhipuai,
       config.spark,
       config.baichuan,

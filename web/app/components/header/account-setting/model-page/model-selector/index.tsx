@@ -60,7 +60,13 @@ const ModelSelector: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
-  const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
+  const {
+    textGenerationModelList,
+    embeddingsModelList,
+    speech2textModelList,
+    rerankModelList,
+    agentThoughtModelList,
+  } = useProviderContext()
   const [search, setSearch] = useState('')
   const modelList = supportAgentThought
     ? agentThoughtModelList
@@ -68,6 +74,7 @@ const ModelSelector: FC<Props> = ({
       [ModelType.textGeneration]: textGenerationModelList,
       [ModelType.embeddings]: embeddingsModelList,
       [ModelType.speech2text]: speech2textModelList,
+      [ModelType.reranking]: rerankModelList,
     })[modelType]
   const currModel = modelList.find(item => item.model_name === value?.modelName && item.model_provider.provider_name === value.providerName)
   const allModelNames = (() => {
