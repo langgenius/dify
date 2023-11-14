@@ -1,6 +1,6 @@
 import ReactSlider from 'react-slider'
-import './style.css'
 import cn from 'classnames'
+import './style.css'
 
 type ISliderProps = {
   className?: string
@@ -19,7 +19,7 @@ const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disa
     min={min || 0}
     max={max || 100}
     step={step || 1}
-    className={cn('slider', className)}
+    className={cn(className, 'slider')}
     thumbClassName="slider-thumb"
     trackClassName="slider-track"
     onChange={onChange}

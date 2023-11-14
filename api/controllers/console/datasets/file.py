@@ -1,5 +1,5 @@
-from cachetools import TTLCache
 from flask import request, current_app
+from flask_login import current_user
 
 import services
 from libs.login import login_required
@@ -15,9 +15,6 @@ from fields.file_fields import upload_config_fields, file_fields
 
 from services.file_service import FileService
 
-cache = TTLCache(maxsize=None, ttl=30)
-
-ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -30,9 +27,11 @@ class FileApi(Resource):
     def get(self):
         file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT")
         batch_count_limit = current_app.config.get("UPLOAD_FILE_BATCH_LIMIT")
+        image_file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT")
         return {
             'file_size_limit': file_size_limit,
-            'batch_count_limit': batch_count_limit
+            'batch_count_limit': batch_count_limit,
+            'image_file_size_limit': image_file_size_limit
         }, 200
 
     @setup_required
@@ -51,7 +50,7 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file)
+            upload_file = FileService.upload_file(file, current_user)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

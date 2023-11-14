@@ -67,10 +67,19 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const currentProvider = providers.find(provider => provider.key === localeData.type)
 
   const handleDataTypeChange = (type: string) => {
+    let config: undefined | Record<string, any>
+    const currProvider = providers.find(provider => provider.key === type)
+
+    if (systemTypes.findIndex(t => t === type) < 0 && currProvider?.form_schema) {
+      config = currProvider?.form_schema.reduce((prev, next) => {
+        prev[next.variable] = next.default
+        return prev
+      }, {} as Record<string, any>)
+    }
     setLocaleData({
       ...localeData,
       type,
-      config: undefined,
+      config,
     })
   }
 
@@ -146,13 +155,13 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API-based Extension' : '基于 API 的扩展' }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
     if (systemTypes.findIndex(t => t === localeData.type) < 0 && currentProvider?.form_schema) {
       for (let i = 0; i < currentProvider.form_schema.length; i++) {
-        if (!localeData.config?.[currentProvider.form_schema[i].variable]) {
+        if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
             message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale === 'en' ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),

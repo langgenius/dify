@@ -176,6 +176,7 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   file_size_limit: number
   batch_count_limit: number
+  image_file_size_limit?: number | string
 }
 
 export type DocumentsLimitResponse = {
@@ -214,9 +215,10 @@ export type CodeBasedExtensionForm = {
   label: I18nText
   variable: string
   required: boolean
-  options: string[]
+  options: { label: I18nText; value: string }[]
   default: string
   placeholder: string
+  max_length?: number
 }
 
 export type CodeBasedExtensionItem = {

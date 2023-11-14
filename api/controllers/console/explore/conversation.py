@@ -38,7 +38,8 @@ class ConversationListApi(InstalledAppResource):
                 user=current_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
-                pinned=pinned
+                pinned=pinned,
+                exclude_debug_conversation=True
             )
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
@@ -71,11 +72,18 @@ class ConversationRenameApi(InstalledAppResource):
         conversation_id = str(c_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, location='json')
+        parser.add_argument('name', type=str, required=False, location='json')
+        parser.add_argument('auto_generate', type=bool, required=False, default='False', location='json')
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(app_model, conversation_id, current_user, args['name'])
+            return ConversationService.rename(
+                app_model,
+                conversation_id,
+                current_user,
+                args['name'],
+                args['auto_generate']
+            )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

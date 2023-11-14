@@ -10,7 +10,8 @@ type Props = {
   className?: string
   id: string
   name: string
-  tip: string
+  noTooltip?: boolean
+  tip?: string
   value: number
   enable: boolean
   step?: number
@@ -21,7 +22,7 @@ type Props = {
   onSwitchChange?: (key: string, enable: boolean) => void
 }
 
-const ParamItem: FC<Props> = ({ className, id, name, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
+const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div className={className}>
       <div className="flex items-center h-8 justify-between">
@@ -36,9 +37,12 @@ const ParamItem: FC<Props> = ({ className, id, name, tip, step = 0.1, min = 0, m
             />
           )}
           <span className="mx-1 text-gray-900 text-[13px] leading-[18px] font-medium">{name}</span>
-          <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
-            <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
-          </Tooltip>
+          {!noTooltip && (
+            <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
+              <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
+            </Tooltip>
+          )}
+
         </div>
         <div className="flex items-center"></div>
       </div>

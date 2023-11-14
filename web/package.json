@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.3.29",
+  "version": "0.3.30",
   "private": true,
   "scripts": {
     "dev": "next dev",
@@ -50,6 +50,7 @@
     "next": "13.3.1",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
+    "rc-textarea": "^1.5.2",
     "react": "^18.2.0",
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "^18.2.0",

@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import I18n from '@/context/i18n'
-import { SimpleSelect } from '@/app/components/base/select'
+import { PortalSelect } from '@/app/components/base/select'
 import type { ModerationConfig } from '@/models/debug'
 
 type FormGenerationProps = {
@@ -56,15 +56,16 @@ const FormGeneration: FC<FormGenerationProps> = ({
             }
             {
               form.type === 'select' && (
-                <SimpleSelect
-                  defaultValue={value?.[form.variable]}
+                <PortalSelect
+                  value={value?.[form.variable]}
                   items={form.options.map((option) => {
                     return {
-                      value: option,
-                      name: option,
+                      name: option.label[locale === 'zh-Hans' ? 'zh-Hans' : 'en-US'],
+                      value: option.value,
                     }
                   })}
                   onSelect={item => handleFormChange(form.variable, item.value as string)}
+                  popupClassName='w-[576px]'
                 />
               )
             }
