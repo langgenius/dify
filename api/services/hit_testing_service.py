@@ -30,7 +30,7 @@ default_retrieval_model = {
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, account: Account, limit: int = 10) -> dict:
+    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10) -> dict:
         if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
@@ -43,7 +43,8 @@ class HitTestingService:
         start = time.perf_counter()
 
         # get retrieval model , if the model is not setting , using default
-        retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
+        if not retrieval_model:
+            retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
 
         # get embedding model
         embedding_model = ModelFactory.get_embedding_model(
