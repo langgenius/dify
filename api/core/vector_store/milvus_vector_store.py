@@ -1,4 +1,4 @@
-from core.index.vector_index.milvus import Milvus
+from core.vector_store.vector.milvus import Milvus
 
 
 class MilvusVectorStore(Milvus):

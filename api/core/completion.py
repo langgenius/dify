@@ -277,7 +277,6 @@ class Completion:
         if app_model_config.prompt_type == 'simple':
             prompt_messages, stop_words = prompt_transform.get_prompt(
                 app_mode=mode,
-                app_model_config=app_model_config,
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
@@ -366,7 +365,6 @@ class Completion:
         if app_model_config.prompt_type == 'simple':
             prompt_messages, _ = prompt_transform.get_prompt(
                 app_mode=mode,
-                app_model_config=app_model_config,
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,

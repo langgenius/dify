@@ -60,7 +60,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             return AgentFinish(return_values={"output": ''}, log='')
         elif len(self.tools) == 1:
             tool = next(iter(self.tools))
-            # tool = cast(DatasetChooseTool, tool)
+            tool = cast(DatasetRetrieverTool, tool)
             rst = tool.run(tool_input={'query': kwargs['input']})
             # output = ''
             # rst_json = json.loads(rst)

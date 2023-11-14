@@ -13,5 +13,6 @@
   "huggingface_hub",
   "xinference",
   "openllm",
-  "localai"
+  "localai",
+  "cohere"
 ]

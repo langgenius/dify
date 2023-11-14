@@ -160,7 +160,13 @@ class AppModelConfig(db.Model):
 
     @property
     def dataset_configs_dict(self) -> dict:
-        return json.loads(self.dataset_configs) if self.dataset_configs else {"top_k": 2, "score_threshold": {"enable": False}}
+        if self.dataset_configs:
+            dataset_configs = json.loads(self.dataset_configs)
+            if 'retrieval_model' not in dataset_configs:
+                return {'retrieval_model': 'single'}
+            else:
+                return dataset_configs
+        return {'retrieval_model': 'single'}
 
     @property
     def file_upload_dict(self) -> dict:
