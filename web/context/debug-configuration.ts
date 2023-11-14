@@ -7,7 +7,7 @@ import type {
   CompletionParams,
   CompletionPromptConfig,
   ConversationHistoriesRole,
-  DatasetConfigs,
+  DatasetConfigsFromOldConfig,
   Inputs,
   ModelConfig,
   ModerationConfig,
@@ -78,8 +78,8 @@ type IDebugConfiguration = {
   setDataSets: (dataSet: DataSet[]) => void
   showSelectDataSet: () => void
   // dataset config
-  datasetConfigs: DatasetConfigs
-  setDatasetConfigs: (config: DatasetConfigs) => void
+  datasetConfigs: DatasetConfigsFromOldConfig
+  setDatasetConfigs: (config: DatasetConfigsFromOldConfig) => void
   hasSetContextVar: boolean
   isShowVisionConfig: boolean
   visionConfig: VisionSettings

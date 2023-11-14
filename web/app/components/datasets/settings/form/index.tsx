@@ -19,6 +19,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
+import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 
@@ -54,6 +55,7 @@ const Form = () => {
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const handleSave = async () => {
     if (loading)
       return
@@ -70,6 +72,7 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
+          retrieval_model: retrievalConfig,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -191,8 +194,8 @@ const Form = () => {
           {indexMethod === 'high_quality'
             ? (
               <RetrievalMethodConfig
-                value={retrievalMethod}
-                onChange={setRetrievalMethod}
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
               />
             )
             : (

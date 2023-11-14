@@ -28,9 +28,9 @@ export enum RETRIEVE_TYPE {
 }
 
 export enum RETRIEVE_METHOD {
-  semantic = 'semantic',
-  fullText = 'fullText',
-  hybrid = 'hybrid',
+  semantic = 'semantic_search',
+  fullText = 'full_text_search',
+  hybrid = 'hybrid_search',
   invertedIndex = 'invertedIndex',
 }
 
@@ -321,4 +321,16 @@ export type VisionFile = {
   transfer_method: TransferMethod
   url: string
   upload_file_id: string
+}
+
+export type RetrievalConfig = {
+  search_method: RETRIEVE_METHOD
+  reranking_enable: boolean
+  reranking_model: {
+    reranking_provider_name: string
+    reranking_model_name: string
+  }
+  top_k: number
+  score_threshold_enabled: boolean
+  score_threshold: number
 }

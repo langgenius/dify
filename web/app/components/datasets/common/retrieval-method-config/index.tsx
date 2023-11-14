@@ -3,14 +3,15 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import RetrievalParamConfig from '../retrieval-param-config'
+import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
 import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type Props = {
-  value: RETRIEVE_METHOD
-  onChange: (value: RETRIEVE_METHOD) => void
+  value: RetrievalConfig
+  onChange: (value: RetrievalConfig) => void
 }
 
 const RetrievalMethodConfig: FC<Props> = ({
@@ -25,8 +26,11 @@ const RetrievalMethodConfig: FC<Props> = ({
         icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
         title={t('dataset.retrieval.semantic.title')}
         description={t('dataset.retrieval.semantic.description')}
-        isChosen={value === RETRIEVE_METHOD.semantic}
-        onChosen={() => onChange(RETRIEVE_METHOD.semantic)}
+        isChosen={value.search_method === RETRIEVE_METHOD.semantic}
+        onChosen={() => onChange({
+          ...value,
+          search_method: RETRIEVE_METHOD.semantic,
+        })}
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
@@ -39,8 +43,11 @@ const RetrievalMethodConfig: FC<Props> = ({
         icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
         title={t('dataset.retrieval.fullText.title')}
         description={t('dataset.retrieval.fullText.description')}
-        isChosen={value === RETRIEVE_METHOD.fullText}
-        onChosen={() => onChange(RETRIEVE_METHOD.fullText)}
+        isChosen={value.search_method === RETRIEVE_METHOD.fullText}
+        onChosen={() => onChange({
+          ...value,
+          search_method: RETRIEVE_METHOD.fullText,
+        })}
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
@@ -58,8 +65,11 @@ const RetrievalMethodConfig: FC<Props> = ({
           </div>
         }
         description={t('dataset.retrieval.hybrid.description')}
-        isChosen={value === RETRIEVE_METHOD.hybrid}
-        onChosen={() => onChange(RETRIEVE_METHOD.hybrid)}
+        isChosen={value.search_method === RETRIEVE_METHOD.hybrid}
+        onChosen={() => onChange({
+          ...value,
+          search_method: RETRIEVE_METHOD.hybrid,
+        })}
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}

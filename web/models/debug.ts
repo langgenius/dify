@@ -107,7 +107,8 @@ export type DatasetConfigItem = {
   enable: boolean
   value: number
 }
-export type DatasetConfigs = {
+
+export type DatasetConfigsFromOldConfig = {
   retrieval_model: RETRIEVE_TYPE
   reranking_model: {
     reranking_provider_name: string
@@ -115,6 +116,17 @@ export type DatasetConfigs = {
   }
   top_k: number
   score_threshold: DatasetConfigItem
+}
+
+export type DatasetConfigs = {
+  retrieval_model: RETRIEVE_TYPE
+  reranking_model: {
+    reranking_provider_name: string
+    reranking_model_name: string
+  }
+  top_k: number
+  score_threshold_enabled: boolean
+  score_threshold: number
 }
 
 export type DebugRequestBody = {

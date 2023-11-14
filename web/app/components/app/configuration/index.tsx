@@ -16,6 +16,7 @@ import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
   CompletionParams,
   DatasetConfigs,
+  DatasetConfigsFromOldConfig,
   Inputs,
   ModelConfig,
   ModerationConfig,
@@ -126,7 +127,7 @@ const Configuration: FC = () => {
     dataSets: [],
   })
 
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigsFromOldConfig>({
     retrieval_model: RETRIEVE_TYPE.oneWay,
     reranking_model: {
       reranking_provider_name: '',
@@ -467,6 +468,11 @@ const Configuration: FC = () => {
       },
     }))
 
+    const formattedDatasetConfig: DatasetConfigs = produce(datasetConfigs, (draft: any) => {
+      draft.score_threshold_enabled = (datasetConfigs.score_threshold as any)?.enable
+      draft.score_threshold = (datasetConfigs.score_threshold as any)?.value
+    }) as unknown as DatasetConfigs
+
     // new model config data struct
     const data: BackendModelConfig = {
       // Simple Mode prompt
@@ -493,7 +499,7 @@ const Configuration: FC = () => {
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: formattedDatasetConfig,
       file_upload: {
         image: visionConfig,
       },
