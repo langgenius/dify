@@ -44,8 +44,6 @@ const ModelPage = () => {
     updateModelList,
   } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-  const [showMoreModel, setShowMoreModel] = useState(false)
-  const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
