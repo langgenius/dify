@@ -9,6 +9,7 @@ const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
   speech2textModelList: BackendModel[]
+  rerankingModelList: BackendModel[]
   agentThoughtModelList: BackendModel[]
   updateModelList: (type: ModelType) => void
   embeddingsDefaultModel?: BackendModel
@@ -19,6 +20,7 @@ const ProviderContext = createContext<{
       textGenerationModelList: [],
       embeddingsModelList: [],
       speech2textModelList: [],
+      rerankingModelList: [],
       agentThoughtModelList: [],
       updateModelList: () => {},
       speech2textDefaultModel: undefined,
@@ -40,6 +42,7 @@ export const ProviderContextProvider = ({
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-type/'
   const { data: textGenerationModelList, mutate: mutateTextGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.textGeneration}`, fetchModelList)
   const { data: embeddingsModelList, mutate: mutateEmbeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
+  const { data: rerankingModelList, mutate: mutateRerankingModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.reranking}`, fetchModelList)
   const { data: speech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
   const agentThoughtModelList = textGenerationModelList?.filter((item) => {
     return item.features?.includes(ModelFeature.agentThought)
@@ -57,6 +60,7 @@ export const ProviderContextProvider = ({
       textGenerationModelList: textGenerationModelList || [],
       embeddingsModelList: embeddingsModelList || [],
       speech2textModelList: speech2textModelList || [],
+      rerankingModelList: rerankingModelList || [],
       agentThoughtModelList: agentThoughtModelList || [],
       updateModelList,
       embeddingsDefaultModel,

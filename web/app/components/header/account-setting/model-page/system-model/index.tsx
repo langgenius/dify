@@ -31,6 +31,7 @@ const SystemModel = () => {
   } = useProviderContext()
   const { notify } = useToastContext()
   const [open, setOpen] = useState(false)
+  const [selectedModel, setSelectedModel] = useState<BackendModel | undefined>(undefined)
   const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
 
   const mutateDefaultModel = (type: ModelType) => {
@@ -54,6 +55,9 @@ const SystemModel = () => {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       mutateDefaultModel(type)
     }
+  }
+  const handleSave = () => {
+
   }
 
   return (
@@ -141,12 +145,14 @@ const SystemModel = () => {
           <div className='flex items-center justify-end px-6 py-4'>
             <Button
               className='mr-2 !h-8 !text-[13px]'
+              onClick={() => setOpen(false)}
             >
               {t('common.operation.cancel')}
             </Button>
             <Button
               type='primary'
               className='!h-8 !text-[13px]'
+              onClick={handleSave}
             >
               {t('common.operation.save')}
             </Button>
