@@ -44,7 +44,7 @@ class HitTestingService:
 
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
-            retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
         # get embedding model
         embedding_model = ModelFactory.get_embedding_model(
