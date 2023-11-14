@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
@@ -11,7 +12,7 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
-import { AppType, ModelModeType } from '@/types/app'
+import { AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
 import Chat from '@/app/components/app/chat'
@@ -19,12 +20,13 @@ import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchConvesationMessages, fetchSuggestedQuestions, sendChatMessage, sendCompletionMessage, stopChatMessageResponding } from '@/service/debug'
 import Button from '@/app/components/base/button'
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type IDebug = {
   hasSetAPIKEY: boolean
@@ -64,10 +66,12 @@ const Debug: FC<IDebug> = ({
     hasSetContextVar,
     datasetConfigs,
     externalDataToolsConfig,
+    visionConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     // scroll to bottom
     if (chatListDomRef.current)
@@ -161,14 +165,25 @@ const Debug: FC<IDebug> = ({
       logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
       return false
     }
+
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      return false
+    }
     return !hasEmptyInput
   }
 
   const doShowSuggestion = isShowSuggestion && !isResponsing
   const [suggestQuestions, setSuggestQuestions] = useState<string[]>([])
-  const onSend = async (message: string) => {
+  const onSend = async (message: string, files?: VisionFile[]) => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      return false
+    }
+
+    if (files?.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
       return false
     }
 
@@ -207,6 +222,9 @@ const Debug: FC<IDebug> = ({
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {
@@ -214,11 +232,23 @@ const Debug: FC<IDebug> = ({
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       conversation_id: conversationId,
       inputs,
       query: message,
       model_config: postModelConfig,
+    }
+
+    if (visionConfig.enabled && files && files?.length > 0) {
+      data.files = files.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
     }
 
     // qustion
@@ -227,6 +257,7 @@ const Debug: FC<IDebug> = ({
       id: questionId,
       content: message,
       isAnswer: false,
+      message_files: files,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -347,6 +378,7 @@ const Debug: FC<IDebug> = ({
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
 
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const sendTextCompletion = async () => {
     if (isResponsing) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
@@ -394,6 +426,9 @@ const Debug: FC<IDebug> = ({
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {
@@ -401,9 +436,21 @@ const Debug: FC<IDebug> = ({
       postModelConfig.completion_prompt_config = completionPromptConfig
     }
 
-    const data = {
+    const data: Record<string, any> = {
       inputs,
       model_config: postModelConfig,
+    }
+
+    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
+      data.files = completionFiles.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
     }
 
     setCompletionRes('')
@@ -448,6 +495,11 @@ const Debug: FC<IDebug> = ({
           appType={mode as AppType}
           onSend={sendTextCompletion}
           inputs={inputs}
+          visionConfig={{
+            ...visionConfig,
+            image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+          }}
+          onVisionFilesChange={setCompletionFiles}
         />
       </div>
       <div className="flex flex-col grow">
@@ -475,6 +527,10 @@ const Debug: FC<IDebug> = ({
                   isShowCitation={citationConfig.enabled}
                   isShowCitationHitInfo
                   isShowPromptLog
+                  visionConfig={{
+                    ...visionConfig,
+                    image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+                  }}
                 />
               </div>
             </div>

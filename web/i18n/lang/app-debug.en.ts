@@ -202,6 +202,7 @@ const translation = {
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
+    waitForImgUpload: 'Please wait for the image to upload',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',
@@ -248,6 +249,25 @@ const translation = {
     maxLength: 'Max length',
     options: 'Options',
     addOption: 'Add option',
+  },
+  vision: {
+    name: 'Vision',
+    description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    settings: 'Settings',
+    visionSettings: {
+      title: 'Vision Settings',
+      resolution: 'Resolution',
+      resolutionTooltip: `low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.
+      \n
+      high res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.`,
+      high: 'High',
+      low: 'Low',
+      uploadMethod: 'Upload Method',
+      both: 'Both',
+      localUpload: 'Local Upload',
+      url: 'URL',
+      uploadLimit: 'Upload Limit',
+    },
   },
   openingStatement: {
     title: 'Opening remarks',

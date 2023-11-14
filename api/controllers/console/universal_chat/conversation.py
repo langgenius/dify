@@ -65,11 +65,18 @@ class UniversalChatConversationRenameApi(UniversalChatResource):
         conversation_id = str(c_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, location='json')
+        parser.add_argument('name', type=str, required=False, location='json')
+        parser.add_argument('auto_generate', type=bool, required=False, default='False', location='json')
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(app_model, conversation_id, current_user, args['name'])
+            return ConversationService.rename(
+                app_model,
+                conversation_id,
+                current_user,
+                args['name'],
+                args['auto_generate']
+            )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

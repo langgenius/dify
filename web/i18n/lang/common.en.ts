@@ -328,9 +328,6 @@ const translation = {
         lengthError: 'API-key length cannot be less than 5 characters',
       },
     },
-    confirm: {
-      desc: 'Deleting the WebHook might cause the extension points configured for this API Extension to fail and produce errors. Please proceed with caution.',
-    },
   },
   about: {
     changeLog: 'Changlog',
@@ -432,6 +429,15 @@ const translation = {
       },
     },
     existed: 'Already exists in the prompt',
+  },
+  imageUploader: {
+    uploadFromComputer: 'Upload from Computer',
+    uploadFromComputerReadError: 'Image reading failed, please try again.',
+    uploadFromComputerUploadError: 'Image upload failed, please upload again.',
+    uploadFromComputerLimit: 'Upload images cannot exceed {{size}} MB',
+    pasteImageLink: 'Paste image link',
+    pasteImageLinkInputPlaceholder: 'Paste image link here',
+    pasteImageLinkInvalid: 'Invalid image link',
   },
 }
 
