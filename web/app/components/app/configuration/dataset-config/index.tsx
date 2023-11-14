@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -9,7 +9,6 @@ import OperationBtn from '../base/operation-btn'
 import CardItem from './card-item/item'
 import ParamsConfig from './params-config'
 import ContextVar from './context-var'
-import SettingModal from './setting-modal'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
@@ -66,12 +65,6 @@ const DatasetConfig: FC = () => {
     setModelConfig(newModelConfig)
   }
 
-  const [isShowSettingModal, setIsShowSettingModal] = useState(false)
-  const [currentDatasetId, setCurrentDatasetId] = useState('')
-  const handleSetDataset = (id: string) => {
-    setCurrentDatasetId(id)
-    setIsShowSettingModal(true)
-  }
   return (
     <FeaturePanel
       className='mt-3'
@@ -112,17 +105,6 @@ const DatasetConfig: FC = () => {
           onChange={handleSelectContextVar}
         />
       )}
-
-      {
-        isShowSettingModal && (
-          <SettingModal
-            isShow={isShowSettingModal}
-            onHide={() => setIsShowSettingModal(false)}
-            onSave={() => setIsShowSettingModal(false)}
-          />
-        )
-      }
-
     </FeaturePanel>
   )
 }
