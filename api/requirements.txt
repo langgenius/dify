@@ -23,7 +23,6 @@ boto3==1.28.17
 tenacity==8.2.2
 cachetools~=5.3.0
 weaviate-client~=3.21.0
-qdrant_client~=1.1.6
 mailchimp-transactional~=1.0.50
 scikit-learn==1.2.2
 sentry-sdk[flask]~=1.21.1
