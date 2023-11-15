@@ -19,33 +19,30 @@
 
 https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e191da4d0f6
 
-## 核心能力
-1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
+## 为什么选择Dify
 
-- [x] **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
-- [x] **Azure OpenAI Service**
-- [x] **Anthropic**：Claude2、Claude-instant
-- [x] **Replicate**
-- [x] **Hugging Face Hub**
-- [x] **ChatGLM**
-- [x] **Llama2**
-- [x] **MiniMax**
-- [x] **讯飞星火大模型**
-- [x] **文心一言**
-- [x] **通义千问**
+Dify具有模型中立性，并且是一个完整的、经过工程化的技术栈，与像LangChain这样的硬编码开发库相比。不同于OpenAI的助手API，Dify允许完全本地部署服务。
 
+| Feature | Dify.AI | Assistants API | LangChain |
+|---------|---------|----------------|-----------|
+| **Programming Approach** | API-oriented | API-oriented | Python Code-oriented |
+| **Ecosystem Strategy** | Open Source | Closed and Commercial | Open Source |
+| **RAG Engine** | Supported | Supported | Not Supported |
+| **Prompt IDE** | Included | Included | None |
+| **Supported LLMs** | Rich Variety | Only GPT | Rich Variety |
+| **Local Deployment** | Supported | Not Supported | Not Applicable |
 
-我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
-* 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
-* 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
-* 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用
-2. **可视化编排 Prompt：** 通过界面化编写 prompt 并调试，只需几分钟即可发布一个 AI 应用。
-3. **文本 Embedding 处理（数据集）**：全自动完成文本预处理，使用你的数据作为上下文，无需理解晦涩的概念和技术处理。支持 PDF、txt 等文件格式，支持从 Notion、网页、API 同步数据。
-4. **基于 API 开发：** 后端即服务。您可以直接访问网页应用，也可以接入 API 集成到您的应用中，无需关注复杂的后端架构和部署过程。
-5. **插件能力：** Dify 「智聊」平台已支持网页浏览、Google 搜索、Wikipedia 查询等第一方插件，可在对话中实现联网搜索、分析网页内容、展示 AI 的推理过程。
-6. **团队 Workspace：** 团队成员可加入 Workspace 编辑、管理和使用团队内的 AI 应用。
-6. **数据标注与改进：** 可视化查阅 AI 应用日志并对数据进行改进标注，观测 AI 的推理过程，不断提高其性能。（Coming soon）
- -----------------------------
+## 特点
+
+**1. LLM支持**：与OpenAI的GPT系列模型或开源的Llama2系列模型集成。事实上，Dify支持主流的商业模型和开源模型（本地部署或基于MaaS）。
+
+**2. Prompt IDE**：基于LLM的应用和服务的可视化编排，与您的团队一起。
+
+**3. RAG引擎**：包括基于全文索引或向量数据库嵌入的各种RAG能力，允许直接上传PDF、TXT和其他文本格式。
+
+**4. 代理**：基于函数调用的代理框架，允许用户配置所见即所得。Dify包括基本的插件功能，如Google搜索。
+
+**5. 持续运营**：监控和分析应用日志和性能，使用生产数据不断改进提示、数据集或模型。
 ## 安装社区版
 
 ### 系统要求
