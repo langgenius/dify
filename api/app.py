@@ -10,6 +10,7 @@ if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
         import grpc.experimental.gevent
         grpc.experimental.gevent.init_gevent()
 
+import time
 import logging
 import json
 import threading
@@ -35,6 +36,9 @@ from libs.passport import PassportService
 
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
+
+os.environ['TZ'] = 'UTC'
+time.tzset()
 
 
 class DifyApp(Flask):
