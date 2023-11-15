@@ -19,7 +19,14 @@ const ParamsConfig: FC = () => {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
-  const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
+  const [plainTempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
+  const tempDataSetConfigs = {
+    score_threshold: {
+      enable: false,
+      value: 0,
+    },
+    ...plainTempDataSetConfigs as any,
+  }
   const type = tempDataSetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     setTempDataSetConfigs({
