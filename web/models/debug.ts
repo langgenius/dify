@@ -108,16 +108,6 @@ export type DatasetConfigItem = {
   value: number
 }
 
-export type DatasetConfigsFromOldConfig = {
-  retrieval_model: RETRIEVE_TYPE
-  reranking_model: {
-    reranking_provider_name: string
-    reranking_model_name: string
-  }
-  top_k: number
-  score_threshold: DatasetConfigItem
-}
-
 export type DatasetConfigs = {
   retrieval_model: RETRIEVE_TYPE
   reranking_model: {

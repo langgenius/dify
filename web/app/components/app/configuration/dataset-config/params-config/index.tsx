@@ -24,14 +24,7 @@ const ParamsConfig: FC = () => {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
-  const [plainTempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
-  const tempDataSetConfigs = {
-    score_threshold: {
-      enable: false,
-      value: 0,
-    },
-    ...plainTempDataSetConfigs as any,
-  }
+  const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
   const type = tempDataSetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     setTempDataSetConfigs({
@@ -69,10 +62,7 @@ const ParamsConfig: FC = () => {
     else if (key === 'score_threshold') {
       setTempDataSetConfigs({
         ...tempDataSetConfigs,
-        [key]: {
-          enable: tempDataSetConfigs.score_threshold.enable,
-          value,
-        },
+        score_threshold: value,
       })
     }
   }
@@ -83,10 +73,7 @@ const ParamsConfig: FC = () => {
 
     setTempDataSetConfigs({
       ...tempDataSetConfigs,
-      [key]: {
-        enable,
-        value: (tempDataSetConfigs as any)[key].value,
-      },
+      score_threshold_enabled: enable,
     })
   }
   const isValid = () => {
@@ -112,7 +99,7 @@ const ParamsConfig: FC = () => {
       config.reranking_model = {
         reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
         reranking_model_name: rerankDefaultModel?.model_name,
-      }
+      } as any
     }
     setDatasetConfigs(config)
     setOpen(false)
@@ -163,7 +150,7 @@ const ParamsConfig: FC = () => {
                   <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
                   <div>
                     <ModelSelector
-                      value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } }
+                      value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
                       modelType={ModelType.reranking}
                       onChange={(v) => {
                         setTempDataSetConfigs({
@@ -184,9 +171,9 @@ const ParamsConfig: FC = () => {
                     enable={true}
                   />
                   <ScoreThresholdItem
-                    value={tempDataSetConfigs.score_threshold.value}
+                    value={tempDataSetConfigs.score_threshold}
                     onChange={handleParamChange}
-                    enable={tempDataSetConfigs.score_threshold.enable}
+                    enable={tempDataSetConfigs.score_threshold_enabled}
                     hasSwitch={true}
                     onSwitchChange={handleSwitch}
                   />
