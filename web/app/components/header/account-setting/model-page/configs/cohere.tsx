@@ -1,5 +1,6 @@
 import { ProviderEnum } from '../declarations'
 import type { ProviderConfig } from '../declarations'
+import { Cohere, CohereText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
   selector: {
@@ -7,13 +8,13 @@ const config: ProviderConfig = {
       'en': 'cohere',
       'zh-Hans': 'cohere',
     },
-    icon: <span>co</span>,
+    icon: <Cohere className='w-full h-full' />,
   },
   item: {
     key: ProviderEnum.cohere,
     titleIcon: {
-      'en': <span>co</span>,
-      'zh-Hans': <span>co</span>,
+      'en': <CohereText className='w-[120px] h-6' />,
+      'zh-Hans': <CohereText className='w-[120px] h-6' />,
     },
   },
   modal: {
@@ -22,7 +23,7 @@ const config: ProviderConfig = {
       'en': 'cohere',
       'zh-Hans': 'cohere',
     },
-    icon: <span>co</span>,
+    icon: <Cohere className='w-6 h-6' />,
     link: {
       href: 'https://dashboard.cohere.com/api-keys',
       label: {
