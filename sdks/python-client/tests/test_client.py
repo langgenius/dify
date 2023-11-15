@@ -88,9 +88,9 @@ class TestDifyClient(unittest.TestCase):
         file_name = "panda.jpeg"
         mime_type = "image/jpeg"
 
-        with open(file_path, 'rb') as file:
+        with open(file_path, "rb") as file:
             files = {
-                'file': (file_name, file, mime_type)
+                "file": (file_name, file, mime_type)
             }
             response = self.dify_client.file_upload("test_user", files)
             self.assertIn("name", response.text)
