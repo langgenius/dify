@@ -35,6 +35,7 @@ const ParamsConfig: FC = () => {
 
   const {
     rerankDefaultModel,
+    isRerankDefaultModelVaild,
   } = useProviderContext()
 
   const rerankModel = (() => {
@@ -79,7 +80,7 @@ const ParamsConfig: FC = () => {
   const isValid = () => {
     let errMsg = ''
     if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
-      if (!tempDataSetConfigs.reranking_model && !rerankDefaultModel)
+      if (!tempDataSetConfigs.reranking_model?.reranking_model_name && (!rerankDefaultModel && isRerankDefaultModelVaild))
         errMsg = t('appDebug.datasetConfig.rerankModelRequired')
     }
     if (errMsg) {
