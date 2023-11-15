@@ -6,10 +6,11 @@ import RetrievalParamConfig from '../retrieval-param-config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
 import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
+import type { RetrievalConfig } from '@/types/app'
 
 type Props = {
-  value: any
-  onChange: (value: any) => void
+  value: RetrievalConfig
+  onChange: (value: RetrievalConfig) => void
 }
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
@@ -28,8 +29,8 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.invertedIndex}
-            value={{}}
-            onChange={() => {}}
+            value={value}
+            onChange={onChange}
           />
         }
       />

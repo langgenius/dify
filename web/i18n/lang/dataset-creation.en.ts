@@ -101,6 +101,7 @@ const translation = {
     previewSwitchTipEnd: ' consume additional tokens',
     characters: 'characters',
     indexSettedTip: 'To change the index method, please go to the ',
+    retrivalSettedTip: 'To change the index method, please go to the ',
     datasetSettingLink: 'dataset settings.',
   },
   stepThree: {

@@ -112,6 +112,7 @@ const ModelPage = () => {
     updateModelList(ModelType.textGeneration)
     updateModelList(ModelType.embeddings)
     updateModelList(ModelType.speech2text)
+    updateModelList(ModelType.reranking)
     mutateProviders()
   }
   const handleSave = async (originValue?: FormValue) => {

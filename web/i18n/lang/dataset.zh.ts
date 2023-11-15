@@ -21,15 +21,15 @@ const translation = {
   datasets: '数据集',
   datasetsApi: 'API',
   retrieval: {
-    semantic: {
+    semantic_search: {
       title: '语义检索',
       description: '通过生成查询嵌入并查询与其向量表示最相似的文本分段',
     },
-    fullText: {
+    full_text_search: {
       title: '全文检索',
       description: '索引文档中的所有词汇，从而允许用户查询任意词汇，并返回包含这些词汇的文本片段',
     },
-    hybrid: {
+    hybrid_search: {
       title: '混合检索',
       description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，需配置Rerank 模型 API',
       recommend: '推荐',

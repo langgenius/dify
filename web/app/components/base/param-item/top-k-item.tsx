@@ -37,7 +37,7 @@ const TopKItem: FC<Props> = ({
       className={className}
       id={key}
       name={t(`appDebug.datasetConfig.${key}`)}
-      tip={t(`appDebug.datasetConfig.${key}Tip`)}
+      tip={t(`appDebug.datasetConfig.${key}Tip`) as string}
       {...VALUE_LIMIT}
       value={value}
       enable={enable}

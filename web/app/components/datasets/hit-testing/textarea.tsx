@@ -11,6 +11,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
+import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 
 type Props = {
@@ -22,6 +23,7 @@ type Props = {
   text: string
   setText: (v: string) => void
   onClickRetrievalMethod: () => void
+  retrievalConfig: RetrievalConfig
 }
 
 const TextAreaWithButton: FC<Props> = ({
@@ -33,6 +35,7 @@ const TextAreaWithButton: FC<Props> = ({
   text,
   setText,
   onClickRetrievalMethod,
+  retrievalConfig,
 }) => {
   const { t } = useTranslation()
   const { indexingTechnique } = useContext(DatasetDetailContext)
@@ -44,7 +47,7 @@ const TextAreaWithButton: FC<Props> = ({
   const onSubmit = async () => {
     setLoading(true)
     const [e, res] = await asyncRunSafe<HitTestingResponse>(
-      hitTesting({ datasetId, queryText: text }) as Promise<HitTestingResponse>,
+      hitTesting({ datasetId, queryText: text, retrieval_model: retrievalConfig }) as Promise<HitTestingResponse>,
     )
     if (!e) {
       setHitResult(res)

@@ -12,6 +12,11 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import RadioCard from '@/app/components/base/radio-card/simple'
 import { RETRIEVE_TYPE } from '@/types/app'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import { useProviderContext } from '@/context/provider-context'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import Toast from '@/app/components/base/toast'
+
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -19,14 +24,7 @@ const ParamsConfig: FC = () => {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
-  const [plainTempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
-  const tempDataSetConfigs = {
-    score_threshold: {
-      enable: false,
-      value: 0,
-    },
-    ...plainTempDataSetConfigs as any,
-  }
+  const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
   const type = tempDataSetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     setTempDataSetConfigs({
@@ -34,7 +32,27 @@ const ParamsConfig: FC = () => {
       retrieval_model: value,
     })
   }
-  // const [type, setType] = useState(RETRIEVE_TYPE.oneWay)
+
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
+
+  const rerankModel = (() => {
+    if (tempDataSetConfigs.reranking_model) {
+      return {
+        provider_name: tempDataSetConfigs.reranking_model.reranking_provider_name,
+        model_name: tempDataSetConfigs.reranking_model.reranking_model_name,
+      }
+    }
+    else if (rerankDefaultModel) {
+      return {
+        provider_name: rerankDefaultModel.model_provider.provider_name,
+        model_name: rerankDefaultModel.model_name,
+      }
+    }
+  })()
+
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
       setTempDataSetConfigs({
@@ -45,10 +63,7 @@ const ParamsConfig: FC = () => {
     else if (key === 'score_threshold') {
       setTempDataSetConfigs({
         ...tempDataSetConfigs,
-        [key]: {
-          enable: tempDataSetConfigs.score_threshold.enable,
-          value,
-        },
+        score_threshold: value,
       })
     }
   }
@@ -59,15 +74,35 @@ const ParamsConfig: FC = () => {
 
     setTempDataSetConfigs({
       ...tempDataSetConfigs,
-      [key]: {
-        enable,
-        value: (tempDataSetConfigs as any)[key].value,
-      },
+      score_threshold_enabled: enable,
     })
   }
-
+  const isValid = () => {
+    let errMsg = ''
+    if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
+      if (!tempDataSetConfigs.reranking_model?.reranking_model_name && (!rerankDefaultModel && isRerankDefaultModelVaild))
+        errMsg = t('appDebug.datasetConfig.rerankModelRequired')
+    }
+    if (errMsg) {
+      Toast.notify({
+        type: 'error',
+        message: errMsg,
+      })
+    }
+    return !errMsg
+  }
   const handleSave = () => {
-    setDatasetConfigs(tempDataSetConfigs)
+    if (!isValid())
+      return
+
+    const config = { ...tempDataSetConfigs }
+    if (config.retrieval_model === RETRIEVE_TYPE.multiWay && !config.reranking_model) {
+      config.reranking_model = {
+        reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
+        reranking_model_name: rerankDefaultModel?.model_name,
+      } as any
+    }
+    setDatasetConfigs(config)
     setOpen(false)
   }
 
@@ -114,7 +149,22 @@ const ParamsConfig: FC = () => {
               <>
                 <div className='mt-6'>
                   <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-                  <div>Rerank Model 站位</div>
+                  <div>
+                    <ModelSelector
+                      popClassName='!max-w-[100%] !w-full'
+                      value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
+                      modelType={ModelType.reranking}
+                      onChange={(v) => {
+                        setTempDataSetConfigs({
+                          ...tempDataSetConfigs,
+                          reranking_model: {
+                            reranking_provider_name: v.model_provider.provider_name,
+                            reranking_model_name: v.model_name,
+                          },
+                        })
+                      }}
+                    />
+                  </div>
                 </div>
                 <div className='mt-4 space-y-4'>
                   <TopKItem
@@ -123,9 +173,9 @@ const ParamsConfig: FC = () => {
                     enable={true}
                   />
                   <ScoreThresholdItem
-                    value={tempDataSetConfigs.score_threshold.value}
+                    value={tempDataSetConfigs.score_threshold}
                     onChange={handleParamChange}
-                    enable={tempDataSetConfigs.score_threshold.enable}
+                    enable={tempDataSetConfigs.score_threshold_enabled}
                     hasSwitch={true}
                     onSwitchChange={handleSwitch}
                   />

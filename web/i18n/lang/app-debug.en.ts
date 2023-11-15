@@ -314,6 +314,7 @@ const translation = {
       title: 'Multi-path retrieval',
       description: 'Based on user intent, queries across all datasets, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
     },
+    rerankModelRequired: 'Rerank model is required',
     params: 'Params',
     top_k: 'Top K',
     top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',

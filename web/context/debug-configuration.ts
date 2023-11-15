@@ -7,7 +7,7 @@ import type {
   CompletionParams,
   CompletionPromptConfig,
   ConversationHistoriesRole,
-  DatasetConfigsFromOldConfig,
+  DatasetConfigs,
   Inputs,
   ModelConfig,
   ModerationConfig,
@@ -78,8 +78,8 @@ type IDebugConfiguration = {
   setDataSets: (dataSet: DataSet[]) => void
   showSelectDataSet: () => void
   // dataset config
-  datasetConfigs: DatasetConfigsFromOldConfig
-  setDatasetConfigs: (config: DatasetConfigsFromOldConfig) => void
+  datasetConfigs: DatasetConfigs
+  setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
@@ -186,10 +186,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       reranking_model_name: '',
     },
     top_k: 2,
-    score_threshold: {
-      enable: false,
-      value: 0.7,
-    },
+    score_threshold_enabled: false,
+    score_threshold: 0.7,
   },
   setDatasetConfigs: () => {},
   hasSetContextVar: false,

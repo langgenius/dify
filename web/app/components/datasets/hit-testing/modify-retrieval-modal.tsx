@@ -4,18 +4,20 @@ import React, { useRef, useState } from 'react'
 import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { RETRIEVE_METHOD } from '@/types/app'
+import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import Button from '@/app/components/base/button'
 
 type Props = {
+  value: RetrievalConfig
   isShow: boolean
   onHide: () => void
-  onSave: () => void
+  onSave: (value: RetrievalConfig) => void
 }
 
 const ModifyRetrievalModal: FC<Props> = ({
+  value,
   isShow,
   onHide,
   onSave,
@@ -23,7 +25,7 @@ const ModifyRetrievalModal: FC<Props> = ({
   const ref = useRef(null)
   const { t } = useTranslation()
   const indexMethod = 'high_quality'
-  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
+  const [retrievalConfig, setRetrievalConfig] = useState(value)
 
   useClickAway(() => {
     if (ref)
@@ -66,14 +68,14 @@ const ModifyRetrievalModal: FC<Props> = ({
         {indexMethod === 'high_quality'
           ? (
             <RetrievalMethodConfig
-              value={retrievalMethod}
-              onChange={setRetrievalMethod}
+              value={retrievalConfig}
+              onChange={setRetrievalConfig}
             />
           )
           : (
             <EconomicalRetrievalMethodConfig
-              value={{}}
-              onChange={() => {}}
+              value={retrievalConfig}
+              onChange={setRetrievalConfig}
             />
           )}
       </div>
@@ -84,7 +86,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         }}
       >
         <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button type='primary' className='flex-shrink-0' onClick={onSave} >{t('common.operation.save')}</Button>
+        <Button type='primary' className='flex-shrink-0' onClick={() => onSave(retrievalConfig)} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )
