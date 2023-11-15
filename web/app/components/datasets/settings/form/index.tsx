@@ -19,9 +19,10 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
-import type { RetrievalConfig } from '@/types/app'
+import { type RetrievalConfig } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
-
+import { useProviderContext } from '@/context/provider-context'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 const rowClass = `
   flex justify-between py-4
 `
@@ -55,6 +56,11 @@ const Form = () => {
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
+
   const handleSave = async () => {
     if (loading)
       return
@@ -62,6 +68,22 @@ const Form = () => {
       notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
     }
+    if (
+      !isReRankModelSelected({
+        rerankDefaultModel,
+        isRerankDefaultModelVaild,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      return
+    }
+    const postRetrievalConfig = ensureRerankModelSelected({
+      rerankDefaultModel: rerankDefaultModel!,
+      retrievalConfig,
+      indexMethod,
+    })
     try {
       setLoading(true)
       await updateDatasetSetting({
@@ -71,7 +93,7 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
-          retrieval_model: retrievalConfig,
+          retrieval_model: postRetrievalConfig,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })

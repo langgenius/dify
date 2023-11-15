@@ -19,6 +19,7 @@ const ProviderContext = createContext<{
   speech2textDefaultModel?: BackendModel
   mutateSpeech2textDefaultModel: () => void
   rerankDefaultModel?: BackendModel
+  isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
 }>({
       textGenerationModelList: [],
@@ -34,6 +35,7 @@ const ProviderContext = createContext<{
       embeddingsDefaultModel: undefined,
       mutateEmbeddingsDefaultModel: () => {},
       rerankDefaultModel: undefined,
+      isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => {},
     })
 
@@ -57,6 +59,10 @@ export const ProviderContextProvider = ({
   const agentThoughtModelList = textGenerationModelList?.filter((item) => {
     return item.features?.includes(ModelFeature.agentThought)
   })
+
+  const isRerankDefaultModelVaild = !!rerankModelList?.find(
+    item => item.model_name === rerankDefaultModel?.model_name && item.model_provider.provider_name === rerankDefaultModel?.model_provider.provider_name,
+  )
 
   const updateModelList = (type: ModelType) => {
     if (type === ModelType.textGeneration)
@@ -84,6 +90,7 @@ export const ProviderContextProvider = ({
       speech2textDefaultModel,
       mutateSpeech2textDefaultModel,
       rerankDefaultModel,
+      isRerankDefaultModelVaild,
       mutateRerankDefaultModel,
     }}>
       {children}
