@@ -48,7 +48,7 @@ export const fetchDatasetDetail: Fetcher<DataSet, string> = (datasetId: string) 
   return get<DataSet>(`/datasets/${datasetId}`)
 }
 
-export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string; body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique'>> }> = ({ datasetId, body }) => {
+export const updateDatasetSetting: Fetcher<DataSet, { datasetId: string; body: Partial<Pick<DataSet, 'name' | 'description' | 'permission' | 'indexing_technique' | 'retrieval_model'>> }> = ({ datasetId, body }) => {
   return patch<DataSet>(`/datasets/${datasetId}`, { body })
 }
 

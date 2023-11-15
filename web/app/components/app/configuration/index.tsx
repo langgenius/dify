@@ -16,6 +16,7 @@ import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
   CompletionParams,
   DatasetConfigs,
+  DatasetConfigsFromOldConfig,
   Inputs,
   ModelConfig,
   ModerationConfig,
@@ -37,7 +38,7 @@ import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -126,7 +127,12 @@ const Configuration: FC = () => {
     dataSets: [],
   })
 
-  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
+  const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigsFromOldConfig>({
+    retrieval_model: RETRIEVE_TYPE.oneWay,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
     top_k: 2,
     score_threshold: {
       enable: false,
@@ -391,7 +397,10 @@ const Configuration: FC = () => {
 
       syncToPublishedConfig(config)
       setPublishedConfig(config)
-      setDatasetConfigs(modelConfig.dataset_configs)
+      setDatasetConfigs({
+        retrieval_model: RETRIEVE_TYPE.oneWay,
+        ...modelConfig.dataset_configs,
+      })
       setHasFetchedDetail(true)
     })
   }, [appId])
@@ -459,6 +468,11 @@ const Configuration: FC = () => {
       },
     }))
 
+    const formattedDatasetConfig: DatasetConfigs = produce(datasetConfigs, (draft: any) => {
+      draft.score_threshold_enabled = (datasetConfigs.score_threshold as any)?.enable
+      draft.score_threshold = (datasetConfigs.score_threshold as any)?.value
+    }) as unknown as DatasetConfigs
+
     // new model config data struct
     const data: BackendModelConfig = {
       // Simple Mode prompt
@@ -485,7 +499,7 @@ const Configuration: FC = () => {
         mode: modelConfig.mode,
         completion_params: completionParams as any,
       },
-      dataset_configs: datasetConfigs,
+      dataset_configs: formattedDatasetConfig,
       file_upload: {
         image: visionConfig,
       },

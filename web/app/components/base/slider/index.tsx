@@ -1,6 +1,7 @@
 import ReactSlider from 'react-slider'
 import cn from 'classnames'
 import './style.css'
+
 type ISliderProps = {
   className?: string
   value: number

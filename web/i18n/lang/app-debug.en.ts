@@ -305,6 +305,15 @@ const translation = {
   },
   result: 'Output Text',
   datasetConfig: {
+    settingTitle: 'Retrieve Settings',
+    retrieveOneWay: {
+      title: 'N-to-1 retrieval',
+      description: 'Based on user intent and dataset descriptions, the Agent autonomously selects the best dataset for querying. Best for applications with distinct, limited datasets.',
+    },
+    retrieveMultiWay: {
+      title: 'Multi-path retrieval',
+      description: 'Based on user intent, queries across all datasets, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
+    },
     params: 'Params',
     top_k: 'Top K',
     top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',

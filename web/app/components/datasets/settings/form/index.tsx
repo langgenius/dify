@@ -9,6 +9,8 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -17,6 +19,8 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
+import type { RetrievalConfig } from '@/types/app'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 
 const rowClass = `
@@ -51,6 +55,7 @@ const Form = () => {
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const handleSave = async () => {
     if (loading)
       return
@@ -67,6 +72,7 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
+          retrieval_model: retrievalConfig,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -88,6 +94,7 @@ const Form = () => {
   useInitialValue<DataSet['permission'] | undefined>(currentDataset?.permission, setPermission)
   useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
+  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
   return (
     <div className='w-[800px] px-16 py-6'>
       <div className={rowClass}>
@@ -172,6 +179,33 @@ const Form = () => {
           </div>
         </div>
       )}
+      {/* Retrieval Method Config */}
+      <div className={rowClass}>
+        <div className={labelClass}>
+          <div>
+            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            <div className='leading-[18px] text-xs font-normal text-gray-500'>
+              <a href='' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              {t('datasetSettings.form.retrievalSetting.description')}
+            </div>
+          </div>
+        </div>
+        <div className='w-[480px]'>
+          {indexMethod === 'high_quality'
+            ? (
+              <RetrievalMethodConfig
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
+              />
+            )
+            : (
+              <EconomicalRetrievalMethodConfig
+                value={{}}
+                onChange={() => {}}
+              />
+            )}
+        </div>
+      </div>
       {currentDataset?.embedding_available && (
         <div className={rowClass}>
           <div className={labelClass} />

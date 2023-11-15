@@ -105,7 +105,6 @@ const DatasetConfig: FC = () => {
           onChange={handleSelectContextVar}
         />
       )}
-
     </FeaturePanel>
   )
 }

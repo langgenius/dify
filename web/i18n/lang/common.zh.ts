@@ -223,6 +223,8 @@ const translation = {
     },
   },
   modelProvider: {
+    systemModelSettings: '系统模型设置',
+    systemModelSettingsLink: '为什么需要设置系统模型？',
     selectModel: '选择您的模型',
     setupModelFirst: '请先设置您的模型',
     systemReasoningModel: {
@@ -236,6 +238,10 @@ const translation = {
     speechToTextModel: {
       key: '语音转文本模型',
       tip: '设置对话中语音转文字输入的默认使用模型。',
+    },
+    rerankModel: {
+      key: 'Rerank 模型',
+      tip: '重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果',
     },
     quota: '额度',
     searchModel: '搜索模型',
@@ -351,7 +357,7 @@ const translation = {
   },
   datasetMenus: {
     documents: '文档',
-    hitTesting: '命中测试',
+    hitTesting: '召回测试',
     settings: '设置',
     emptyTip: ' 数据集尚未关联，请前往应用程序或插件完成关联。',
     viewDoc: '查看文档',
@@ -382,9 +388,9 @@ const translation = {
       title: '引用',
       linkToDataset: '跳转至数据集',
       characters: '字符：',
-      hitCount: '命中次数：',
+      hitCount: '召回次数：',
       vectorHash: '向量哈希：',
-      hitScore: '命中得分：',
+      hitScore: '召回得分：',
     },
   },
   promptEditor: {

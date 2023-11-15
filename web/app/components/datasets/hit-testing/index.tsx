@@ -11,12 +11,12 @@ import docStyle from '../documents/detail/completed/style.module.css'
 import Textarea from './textarea'
 import s from './style.module.css'
 import HitDetail from './hit-detail'
+import ModifyRetrievalModal from './modify-retrieval-modal'
 import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import Pagination from '@/app/components/base/pagination'
 import { fetchTestingRecords } from '@/service/datasets'
-
 const limit = 10
 
 type Props = {
@@ -55,6 +55,8 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
     setCurrParagraph({ paraInfo: detail, showModal: true })
   }
 
+  const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
+
   return (
     <div className={s.container}>
       <div className={s.leftDiv}>
@@ -70,6 +72,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           setLoading={setSubmitLoading}
           setText={setText}
           text={text}
+          onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
         />
         <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.recents')}</div>
         {(!recordsRes && !error)
@@ -178,6 +181,11 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }}
         />}
       </Modal>
+      <ModifyRetrievalModal
+        isShow={isShowModifyRetrievalModal}
+        onHide={() => setIsShowModifyRetrievalModal(false)}
+        onSave={() => {}}
+      />
     </div>
   )
 }
