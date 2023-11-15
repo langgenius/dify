@@ -27,6 +27,7 @@ import type {
   ApikeysListResponse,
   CreateApiKeyResponse,
 } from '@/models/app'
+import type { RetrievalConfig } from '@/types/app'
 
 // apis for documents in a dataset
 
@@ -182,8 +183,8 @@ export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_stat
 }
 
 // hit testing
-export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string }> = ({ datasetId, queryText }) => {
-  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText } })
+export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string; retrieval_model: RetrievalConfig }> = ({ datasetId, queryText, retrieval_model }) => {
+  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
 }
 
 export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {
