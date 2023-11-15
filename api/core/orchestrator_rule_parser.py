@@ -211,7 +211,7 @@ class OrchestratorRuleParser:
                 return None
             dataset_ids.append(dataset.id)
             if retrieval_model == 'single':
-                retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
+                retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
                 top_k = retrieval_model['top_k']
 
                 # dynamically adjust top_k when the remaining token number is not enough to support top_k
