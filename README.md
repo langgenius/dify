@@ -1,4 +1,4 @@
-![](./images/describe-en.png)
+[![](./images/describe-en.png)](https://dify.ai)
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |
@@ -6,7 +6,7 @@
   <a href="./README_ES.md">Español</a>
 </p>
 
-#### [Website](https://dify.ai) • [Docs](https://docs.dify.ai) • [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted) •  [FAQ](https://docs.dify.ai/getting-started/faq) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
+#### [![](https://dcbadge.vercel.app/api/server/FngNHpbcY7?style=flat&theme=clean&compact=true)](https://discord.gg/FngNHpbcY7) [![](https://img.shields.io/badge/Twitter-%231DA1F2.svg?logo=Twitter&logoColor=white)](https://twitter.com/dify_ai)  
 
 **Dify** is an LLM application development platform that has already seen over **100,000** applications built on Dify.AI. It integrates the concepts of Backend as a Service and LLMOps, covering the core tech stack required for building generative AI-native applications, including a built-in RAG engine. With Dify, **you can self-deploy capabilities similar to Assistants API and GPTs based on any LLMs.**
 
@@ -43,6 +43,12 @@ Dify features model neutrality and is a complete, engineered tech stack compared
 
 **5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.
 
+## Before You Start
+
+- [Website](https://dify.ai)
+- [Docs](https://docs.dify.ai)
+- [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted)
+- [FAQ](https://docs.dify.ai/getting-started/faq) 
 
 
 ## Install the Community Edition

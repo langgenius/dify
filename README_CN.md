@@ -1,4 +1,4 @@
-![](./images/describe-en.png)
+[![](./images/describe-en.png)](https://dify.ai)
 
 <p align="center">
   <a href="./README.md">English</a> |
@@ -7,8 +7,7 @@
   <a href="./README_ES.md">Español</a>
 </p>
 
-
-####  [官方网站](https://dify.ai) •  [使用文档](https://docs.dify.ai/v/zh-hans)  · [部署文档](https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted)  ·  [FAQ](https://docs.dify.ai/v/zh-hans/getting-started/faq) • [Twitter](https://twitter.com/dify_ai) •  [Discord](https://discord.gg/FngNHpbcY7)
+#### [![](https://dcbadge.vercel.app/api/server/FngNHpbcY7?style=flat&theme=clean&compact=true)](https://discord.gg/FngNHpbcY7) [![](https://img.shields.io/badge/Twitter-%231DA1F2.svg?logo=Twitter&logoColor=white)](https://twitter.com/dify_ai)  
 
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
@@ -41,6 +40,14 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 **4. Agent**：基于函数调用的 Agent框架，允许用户自定义配置，所见即所得。Dify 提供了基本的插件能力，如谷歌搜索。
 
 **5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
+
+## 在开始之前
+
+- [网站](https://dify.ai)
+- [文档](https://docs.dify.ai)
+- [部署文档](https://docs.dify.ai/getting-started/install-self-hosted)
+- [常见问题](https://docs.dify.ai/getting-started/faq)
+
 ## 安装社区版
 
 ### 系统要求
