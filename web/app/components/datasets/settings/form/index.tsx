@@ -220,8 +220,8 @@ const Form = () => {
             )
             : (
               <EconomicalRetrievalMethodConfig
-                value={{}}
-                onChange={() => {}}
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
               />
             )}
         </div>
