@@ -21,7 +21,7 @@ const translation = {
     embeddingModelTip: 'Change the embedded model, please go to ',
     embeddingModelTipLink: 'Settings',
     retrievalSetting: {
-      title: 'Retrieval Setting',
+      title: 'Retrieval setting',
       learnMore: 'Learn more',
       description: ' about retrieval method.',
       longDescription: ' about retrieval method, you can change this at any time in the dataset settings.',

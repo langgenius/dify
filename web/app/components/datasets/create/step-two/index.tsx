@@ -22,6 +22,7 @@ import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import { type RetrievalConfig } from '@/types/app'
 
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
@@ -82,7 +83,7 @@ const StepTwo = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
 
-  const { mutateDatasetRes } = useDatasetDetailContext()
+  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
@@ -267,6 +268,8 @@ const StepTwo = ({
         doc_form: docForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrieval_model: retrievalConfig,
       } as CreateDocumentReq
     }
     else {
@@ -281,6 +284,8 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrieval_model: retrievalConfig,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -445,7 +450,18 @@ const StepTwo = ({
     }
   }, [segmentationType, indexType])
 
-  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
+    },
+    top_k: 3,
+    score_threshold_enable: false,
+    score_threshold: 0.5,
+  } as RetrievalConfig)
+  console.log(retrievalConfig)
   const [isChangeRetrieval, setChangeRetrieval] = useState(false)
   return (
     <div className='flex w-full h-full'>
@@ -647,31 +663,37 @@ const StepTwo = ({
                 : (
                   <div className={cn(s.label, 'flex justify-between items-center')}>
                     <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                    {!isChangeRetrieval && <div className='text-xs font-medium text-[#155EEF] cursor-pointer' onClick={() => setChangeRetrieval(true)}>{t('dataset.retrieval.change')}</div>}
                   </div>
                 )}
 
               <div className='max-w-[640px]'>
-                {(!datasetId || (datasetId && isChangeRetrieval))
+                {!datasetId
                   ? (<>
                     {getIndexing_technique() === IndexingType.QUALIFIED
                       ? (
                         <RetrievalMethodConfig
-                          value={retrievalMethod}
-                          onChange={setRetrievalMethod}
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
                         />
                       )
                       : (
                         <EconomicalRetrievalMethodConfig
-                          value={{}}
-                          onChange={() => {}}
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
                         />
                       )}
                   </>)
-                  : (<RetrievalMethodInfo
-                    type={RETRIEVE_METHOD.semantic}
-                    value={{}}
-                  />)}
+                  : (
+                    <div>
+                      <RetrievalMethodInfo
+                        value={retrievalConfig}
+                      />
+                      <div className='mt-2 text-xs text-gray-500 font-medium'>
+                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
+                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                      </div>
+                    </div>
+                  )}
 
               </div>
             </div>

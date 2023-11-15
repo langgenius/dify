@@ -21,15 +21,15 @@ const translation = {
   datasets: 'DATASETS',
   datasetsApi: 'API',
   retrieval: {
-    semantic: {
+    semantic_search: {
       title: 'Semantic Search',
       description: 'Generate query embeddings and search for the text chunk most similar to its vector representation.',
     },
-    fullText: {
+    full_text_search: {
       title: 'Full-Text Search',
       description: 'Index all terms in the document, allowing users to search any term and retrieve relevant text chunk containing those terms.',
     },
-    hybrid: {
+    hybrid_search: {
       title: 'Hybrid Search',
       description: 'Execute keyword and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
       recommend: 'Recommend',

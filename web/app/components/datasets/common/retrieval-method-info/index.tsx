@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
 import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
@@ -9,8 +10,7 @@ import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/ve
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type Props = {
-  type: RETRIEVE_METHOD
-  value: any
+  value: RetrievalConfig
 }
 
 export const getIcon = (type: RETRIEVE_METHOD) => {
@@ -23,9 +23,11 @@ export const getIcon = (type: RETRIEVE_METHOD) => {
 }
 
 const EconomicalRetrievalMethodConfig: FC<Props> = ({
-  type,
+  // type,
+  value,
 }) => {
   const { t } = useTranslation()
+  const type = value.search_method
   const Icon = getIcon(type)
   return (
     <div className='space-y-2'>
@@ -37,19 +39,21 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
         chosenConfigWrapClassName='!pb-3'
         chosenConfig={
           <div className='flex flex-wrap leading-[18px] text-xs font-normal'>
-            <div className='mr-8 flex space-x-1'>
-              <div className='text-gray-500'>{t('common.modelProvider.rerankModel.key')}</div>
-              <div className='font-medium text-gray-800'>xxx</div>
-            </div>
+            {value.reranking_model.reranking_model_name && (
+              <div className='mr-8 flex space-x-1'>
+                <div className='text-gray-500'>{t('common.modelProvider.rerankModel.key')}</div>
+                <div className='font-medium text-gray-800'>{value.reranking_model.reranking_model_name}</div>
+              </div>
+            )}
 
             <div className='mr-8 flex space-x-1'>
               <div className='text-gray-500'>{t('appDebug.datasetConfig.top_k')}</div>
-              <div className='font-medium text-gray-800'>2</div>
+              <div className='font-medium text-gray-800'>{value.top_k}</div>
             </div>
 
             <div className='mr-8 flex space-x-1'>
               <div className='text-gray-500'>{t('appDebug.datasetConfig.score_threshold')}</div>
-              <div className='font-medium text-gray-800'>0.5</div>
+              <div className='font-medium text-gray-800'>{value.score_threshold}</div>
             </div>
           </div>
         }
