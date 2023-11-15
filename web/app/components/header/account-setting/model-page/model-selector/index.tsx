@@ -137,7 +137,7 @@ const ModelSelector: FC<Props> = ({
                           providerName={value.providerName}
                         />
                         <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
-                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
+                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name || value.modelName} />
                           {isShowModelModeType && (
                             <ModelModeTypeLabel className='ml-2' type={currModel?.model_mode as ModelModeType} />
                           )}

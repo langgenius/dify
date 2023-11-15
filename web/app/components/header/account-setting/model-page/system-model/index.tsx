@@ -53,7 +53,7 @@ const SystemModel = () => {
   }
   const handleChangeDefaultModel = async (type: ModelType, v: BackendModel) => {
     setSelectedModel({
-      ...selectedModel!,
+      ...selectedModel,
       [type]: {
         providerName: v.model_provider.provider_name,
         modelName: v.model_name,
