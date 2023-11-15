@@ -26,11 +26,11 @@ $difyClient = new DifyClient($apiKey);
 
 // Create a completion client
 $completionClient = new CompletionClient($apiKey);
-$response = $completionClient->create_completion_message($inputs, $query, $response_mode, $user);
+$response = $completionClient->create_completion_message($inputs, $response_mode, $user, $files);
 
 // Create a chat client
 $chatClient = new ChatClient($apiKey);
-$response = $chatClient->create_chat_message($inputs, $query, $user, $response_mode, $conversation_id);
+$response = $chatClient->create_chat_message($inputs, $query, $user, $response_mode, $conversation_id, $files);
 
 // Fetch application parameters
 $response = $difyClient->get_application_parameters($user);

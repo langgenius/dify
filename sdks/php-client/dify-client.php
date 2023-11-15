@@ -47,24 +47,25 @@ class DifyClient {
 }
 
 class CompletionClient extends DifyClient {
-    public function create_completion_message($inputs, $query, $response_mode, $user) {
+    public function create_completion_message($inputs, $response_mode, $user, $files = null) {
         $data = [
             'inputs' => $inputs,
-            'query' => $query,
             'response_mode' => $response_mode,
             'user' => $user,
+            'files' => $files,
         ];
         return $this->send_request('POST', 'completion-messages', $data, null, $response_mode === 'streaming');
     }
 }
 
 class ChatClient extends DifyClient {
-    public function create_chat_message($inputs, $query, $user, $response_mode = 'blocking', $conversation_id = null) {
+    public function create_chat_message($inputs, $query, $user, $response_mode = 'blocking', $conversation_id = null, $files = null) {
         $data = [
             'inputs' => $inputs,
             'query' => $query,
             'user' => $user,
             'response_mode' => $response_mode,
+            'files' => $files,
         ];
         if ($conversation_id) {
             $data['conversation_id'] = $conversation_id;
