@@ -1,4 +1,5 @@
-![](./images/describe-cn.jpg)
+![](./images/describe-en.png)
+
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |
@@ -9,40 +10,37 @@
 
 ####  [官方网站](https://dify.ai) •  [使用文档](https://docs.dify.ai/v/zh-hans)  · [部署文档](https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted)  ·  [FAQ](https://docs.dify.ai/v/zh-hans/getting-started/faq) • [Twitter](https://twitter.com/dify_ai) •  [Discord](https://discord.gg/FngNHpbcY7)
 
-**Dify** 是一个易用的 LLMOps 平台，基于不同的大型语言模型能力，让更多人可以简易地创建可持续运营的原生 AI 应用。Dify 提供多种类型应用的可视化编排，应用可开箱即用，也能以“后端即服务”的 API 提供服务。
+Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
-通过 Dify 创建的应用包含了：
-
-- 开箱即用的的 Web 站点，支持表单模式和聊天对话模式
-- 一套 API 即可包含插件、上下文增强等能力，替你省下了后端代码的编写工作
-- 可视化的对应用进行数据分析，查阅日志或进行标注
-
-https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e191da4d0f6
+![](./images/demo.png)
 
 ## 为什么选择Dify
 
-Dify具有模型中立性，并且是一个完整的、经过工程化的技术栈，与像LangChain这样的硬编码开发库相比。不同于OpenAI的助手API，Dify允许完全本地部署服务。
+Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
 
-| Feature | Dify.AI | Assistants API | LangChain |
-|---------|---------|----------------|-----------|
-| **Programming Approach** | API-oriented | API-oriented | Python Code-oriented |
-| **Ecosystem Strategy** | Open Source | Closed and Commercial | Open Source |
-| **RAG Engine** | Supported | Supported | Not Supported |
-| **Prompt IDE** | Included | Included | None |
-| **Supported LLMs** | Rich Variety | Only GPT | Rich Variety |
-| **Local Deployment** | Supported | Not Supported | Not Applicable |
+| 功能 | Dify.AI | Assistants API | LangChain |
+| --- | --- | --- | --- |
+| 编程方式 | 面向 API | 面向 API | 面向 Python 代码 |
+| 生态策略 | 开源 | 封闭且商用 | 开源 |
+| RAG 引擎 | 支持 | 支持 | 不支持 |
+| Prompt IDE | 包含 | 包含 | 没有 |
+| 支持的 LLMs | 丰富 | 仅 GPT | 丰富 |
+| 本地部署 | 支持 | 不支持 | 不适用 |
+
 
 ## 特点
 
-**1. LLM支持**：与OpenAI的GPT系列模型或开源的Llama2系列模型集成。事实上，Dify支持主流的商业模型和开源模型（本地部署或基于MaaS）。
+![](./images/models.png)
 
-**2. Prompt IDE**：基于LLM的应用和服务的可视化编排，与您的团队一起。
+**1. LLM支持**：与 OpenAI 的 GPT 系列模型集成,或者与开源的 Llama2 系列模型集成。事实上，Dify支持主流的商业模型和开源模型(本地部署或基于 MaaS)。
 
-**3. RAG引擎**：包括基于全文索引或向量数据库嵌入的各种RAG能力，允许直接上传PDF、TXT和其他文本格式。
+**2. Prompt IDE**：和团队一起在 Dify 协作，通过可视化的 Prompt 和应用编排工具开发 AI 应用。 支持无缝切换多种大型语言模型。
 
-**4. 代理**：基于函数调用的代理框架，允许用户配置所见即所得。Dify包括基本的插件功能，如Google搜索。
+**3. RAG引擎**：包括各种基于全文索引或向量数据库嵌入的 RAG 能力，允许直接上传 PDF、TXT 等各种文本格式。
 
-**5. 持续运营**：监控和分析应用日志和性能，使用生产数据不断改进提示、数据集或模型。
+**4. Agent**：基于函数调用的 Agent框架，允许用户自定义配置，所见即所得。Dify 提供了基本的插件能力，如谷歌搜索。
+
+**5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
 ## 安装社区版
 
 ### 系统要求
@@ -81,12 +79,12 @@ docker compose up -d
 
 我们欢迎您为 Dify 做出贡献，以帮助改善 Dify。包括：提交代码、问题、新想法，或分享您基于 Dify 创建的有趣且有用的 AI 应用程序。同时，我们也欢迎您在不同的活动、会议和社交媒体上分享 Dify。
 
-- [GitHub 问题](https://github.com/langgenius/dify/issues)。👉：使用 Dify.AI 时遇到的错误和问题，请参阅[贡献指南](CONTRIBUTING.md)。
+- [GitHub Issues](https://github.com/langgenius/dify/issues)。👉：使用 Dify.AI 时遇到的错误和问题，请参阅[贡献指南](CONTRIBUTING.md)。
 - [电子邮件支持](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。👉：关于使用 Dify.AI 的问题。
 - [Discord](https://discord.gg/FngNHpbcY7)。👉：分享您的应用程序并与社区交流。
 - [Twitter](https://twitter.com/dify_ai)。👉：分享您的应用程序并与社区交流。
 - [商业许可](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。👉：有关商业用途许可 Dify.AI 的商业咨询。
-## 安全
+## 安全问题
 
 为了保护您的隐私，请避免在 GitHub 上发布安全问题。发送问题至 security@dify.ai，我们将为您做更细致的解答。
 
