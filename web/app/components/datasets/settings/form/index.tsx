@@ -20,7 +20,6 @@ import type { ProviderEnum } from '@/app/components/header/account-setting/model
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
 
 const rowClass = `
@@ -94,7 +93,6 @@ const Form = () => {
   useInitialValue<DataSet['permission'] | undefined>(currentDataset?.permission, setPermission)
   useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
-  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
   return (
     <div className='w-[800px] px-16 py-6'>
       <div className={rowClass}>

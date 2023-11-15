@@ -331,6 +331,6 @@ export type RetrievalConfig = {
     reranking_model_name: string
   }
   top_k: number
-  score_threshold_enabled: boolean
+  score_threshold_enable: boolean
   score_threshold: number
 }

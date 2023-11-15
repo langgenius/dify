@@ -34,8 +34,8 @@ const RetrievalMethodConfig: FC<Props> = ({
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
-            value={{}}
-            onChange={() => {}}
+            value={value}
+            onChange={onChange}
           />
         }
       />
@@ -51,8 +51,8 @@ const RetrievalMethodConfig: FC<Props> = ({
         chosenConfig={
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
-            value={{}}
-            onChange={() => {}}
+            value={value}
+            onChange={onChange}
           />
         }
       />
@@ -74,7 +74,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}
             value={value}
-            onChange={() => {}}
+            onChange={onChange}
           />
         }
       />
