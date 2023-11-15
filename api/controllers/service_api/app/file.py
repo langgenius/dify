@@ -26,6 +26,9 @@ class FileApi(AppApiResource):
         if 'file' not in request.files:
             raise NoFileUploadedError()
 
+        if not file.mimetype:
+            raise UnsupportedFileTypeError()
+
         if len(request.files) > 1:
             raise TooManyFilesError()
 
