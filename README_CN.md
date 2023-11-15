@@ -8,7 +8,7 @@
 </p>
 
 
-####  [官方网站](https://dify.ai) •  [使用文档](https://docs.dify.ai/v/zh-hans)  •  [部署文档](https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted) •  [FAQ](https://docs.dify.ai/v/zh-hans/getting-started/faq)
+####  [官方网站](https://dify.ai) •  [使用文档](https://docs.dify.ai/v/zh-hans)  •  [部署文档](https://docs.dify.ai/v/zh-hans/getting-started/install-self-hosted) • [FAQ](https://docs.dify.ai/v/zh-hans/getting-started/faq)
 #### [![](https://dcbadge.vercel.app/api/server/FngNHpbcY7?style=flat&theme=clean&compact=true)](https://discord.gg/FngNHpbcY7) [![](https://img.shields.io/badge/Twitter-%231DA1F2.svg?logo=Twitter&logoColor=white)](https://twitter.com/dify_ai)  
 
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
