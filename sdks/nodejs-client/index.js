@@ -107,12 +107,12 @@ export class DifyClient {
 }
 
 export class CompletionClient extends DifyClient {
-  createCompletionMessage(inputs, query, user, stream = false) {
+  createCompletionMessage(inputs, user, stream = false, files = null) {
     const data = {
       inputs,
-      query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     return this.sendRequest(
       routes.createCompletionMessage.method,
@@ -130,13 +130,15 @@ export class ChatClient extends DifyClient {
     query,
     user,
     stream = false,
-    conversation_id = null
+    conversation_id = null,
+    files = null
   ) {
     const data = {
       inputs,
       query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     if (conversation_id) data.conversation_id = conversation_id;
 
