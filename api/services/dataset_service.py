@@ -488,7 +488,7 @@ class DocumentService:
                         'score_threshold_enable': False
                     }
 
-                    dataset.retrieval_model = json.dumps(document_data.get('retrieval_model') if document_data.get('retrieval_model') else default_retrieval_model)
+                    dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get('retrieval_model') else default_retrieval_model
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
@@ -759,7 +759,7 @@ class DocumentService:
             )
             dataset_collection_binding_id = dataset_collection_binding.id
             if 'retrieval_model' in document_data and document_data['retrieval_model']:
-                retrieval_model = json.dumps(document_data['retrieval_model'])
+                retrieval_model = document_data['retrieval_model']
             else:
                 default_retrieval_model = {
                     'search_method': 'semantic_search',
@@ -771,7 +771,7 @@ class DocumentService:
                     'top_k': 2,
                     'score_threshold_enable': False
                 }
-                retrieval_model = json.dumps(default_retrieval_model)
+                retrieval_model = default_retrieval_model
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
