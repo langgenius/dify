@@ -122,7 +122,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         <input ref={nameInputRef} className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('app.appNamePlaceholder') || ''}/>
       </div>
 
-      <div className='h-[247px] overflow-y-auto'>
+      <div className='overflow-y-auto'>
         <div className={style.newItemCaption}>
           <h3 className='inline'>{t('app.newApp.captionAppType')}</h3>
           {isWithTemplate && (
@@ -139,7 +139,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
         </div>
         {isWithTemplate
           ? (
-            <ul className='grid grid-cols-2 gap-4'>
+            <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
               {templates?.data?.map((template, index) => (
                 <li
                   key={index}
@@ -161,7 +161,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
           )
           : (
             <>
-              <ul className='grid grid-cols-2 gap-4'>
+              <ul className='grid grid-cols-1 md:grid-cols-2 gap-4'>
                 <li
                   className={classNames(style.listItem, style.selectable, newAppMode === 'chat' && style.selected)}
                   onClick={() => setNewAppMode('chat')}

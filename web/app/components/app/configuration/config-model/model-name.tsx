@@ -18,7 +18,7 @@ const ModelName: FC<IModelNameProps> = ({
   modelDisplayName,
 }) => {
   return (
-    <span title={modelDisplayName}>
+    <span className='text-ellipsis overflow-hidden whitespace-nowrap' title={modelDisplayName}>
       {modelDisplayName}
     </span>
   )

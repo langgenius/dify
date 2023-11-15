@@ -17,7 +17,11 @@ import { ArrowUpRight, ChevronDown } from '@/app/components/base/icons/src/vende
 import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 
-export default function AppSelector() {
+export type IAppSelecotr = {
+  isMobile: boolean
+}
+
+export default function AppSelector({ isMobile }: IAppSelecotr) {
   const itemClassName = `
     flex items-center w-full h-9 px-3 text-gray-700 text-[14px]
     rounded-lg font-normal hover:bg-gray-50 cursor-pointer
@@ -50,12 +54,15 @@ export default function AppSelector() {
                     inline-flex items-center
                     rounded-[20px] py-1 pr-2.5 pl-1 text-sm
                   text-gray-700 hover:bg-gray-200
+                    mobile:px-1
                     ${open && 'bg-gray-200'}
                   `}
                 >
-                  <Avatar name={userProfile.name} className='mr-2' size={32} />
-                  {userProfile.name}
-                  <ChevronDown className="w-3 h-3 ml-1 text-gray-700"/>
+                  <Avatar name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
+                  {!isMobile && <>
+                    {userProfile.name}
+                    <ChevronDown className="w-3 h-3 ml-1 text-gray-700"/>
+                  </>}
                 </Menu.Button>
               </div>
               <Transition

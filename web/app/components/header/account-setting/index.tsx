@@ -23,6 +23,7 @@ import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -42,6 +43,10 @@ export default function AccountSetting({
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const menuItems = [
     {
       key: 'workspace-group',
@@ -130,9 +135,9 @@ export default function AccountSetting({
       wrapperClassName='!z-20 pt-[60px]'
     >
       <div className='flex'>
-        <div className='w-[200px] p-4 border border-gray-100'>
-          <div className='mb-8 ml-2 text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
-          <div>
+        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-gray-100 shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
+          <div className='mb-8 ml-0 sm:ml-2 text-sm sm:text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
+          <div className='w-full'>
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-4'>
@@ -150,7 +155,7 @@ export default function AccountSetting({
                           onClick={() => setActiveMenu(item.key)}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
-                          <div className='truncate'>{item.name}</div>
+                          {!isMobile && <div className='truncate'>{item.name}</div>}
                         </div>
                       ))
                     }
@@ -167,7 +172,7 @@ export default function AccountSetting({
               <XClose className='w-4 h-4 text-gray-500' />
             </div>
           </div>
-          <div className='px-8 pt-2'>
+          <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}

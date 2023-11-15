@@ -96,7 +96,7 @@ const ModelModal: FC<ModelModalProps> = ({
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='w-full h-full z-[60]'>
         <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-2'>
                 <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
@@ -113,7 +113,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 onClearedChange={setCleared}
                 onValidating={handleValidating}
               />
-              <div className='flex justify-between items-center py-6'>
+              <div className='flex justify-between items-center py-6 flex-wrap gap-y-2'>
                 <a
                   href={modelModal?.link.href}
                   target='_blank'

@@ -234,10 +234,12 @@ const FileUploader = ({
       />
       <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
-        <div className='flex justify-center items-center h-6 mb-2'>
+        <div className='flex justify-center items-center min-h-6 mb-2'>
           <span className={s.uploadIcon}/>
-          <span>{t('datasetCreation.stepOne.uploader.button')}</span>
-          <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+          <span>
+            {t('datasetCreation.stepOne.uploader.button')}
+            <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+          </span>
         </div>
         <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', { size: fileUploadConfig.file_size_limit })}</div>
         {dragging && <div ref={dragRef} className={s.draggingCover}/>}

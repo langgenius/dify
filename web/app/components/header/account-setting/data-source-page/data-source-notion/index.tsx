@@ -76,7 +76,7 @@ const DataSourceNotion = ({
             : (
               <div
                 className={
-                  `flex items-center px-3 h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
+                  `flex items-center px-3 py-1 min-h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
                   ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
                 }
                 onClick={handleConnectNotion}
