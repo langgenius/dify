@@ -11,7 +11,6 @@ import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import { checkOrSetAccessToken } from '../utils'
 import useConversation from './hooks/use-conversation'
-import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
 import ConfigSence from '@/app/components/share/chat/config-scence'
@@ -683,7 +682,7 @@ const Main: FC<IMainProps> = ({
   }
 
   return (
-    <div className='bg-gray-100'>
+    <div className='bg-gray-100 h-full'>
       {!isInstalledApp && (
         <Header
           title={siteInfo.title}
@@ -720,7 +719,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)] tablet:h-screen',
+          isInstalledApp ? 'h-full' : 'h-[calc(100vh_-_3rem)] tablet:h-screen',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>

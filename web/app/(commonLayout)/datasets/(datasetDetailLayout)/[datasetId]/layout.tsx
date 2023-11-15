@@ -4,6 +4,7 @@ import React, { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import classNames from 'classnames'
 import {
   Cog8ToothIcon,
   // CommandLineIcon,
@@ -11,6 +12,7 @@ import {
   // eslint-disable-next-line sort-imports
   PuzzlePieceIcon,
   DocumentTextIcon,
+  PaperClipIcon,
 } from '@heroicons/react/24/outline'
 import {
   Cog8ToothIcon as Cog8ToothSolidIcon,
@@ -29,20 +31,29 @@ import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { datasetId: string }
 }
 
-const LikedItem: FC<{ type?: 'plugin' | 'app'; appStatus?: boolean; detail: RelatedApp }> = ({
+type ILikedItemProps = {
+  type?: 'plugin' | 'app'
+  appStatus?: boolean
+  detail: RelatedApp
+  isMobile: boolean
+}
+
+const LikedItem = ({
   type = 'app',
   appStatus = true,
   detail,
-}) => {
+  isMobile,
+}: ILikedItemProps) => {
   return (
-    <Link className={s.itemWrapper} href={`/app/${detail?.id}/overview`}>
-      <div className={s.iconWrapper}>
+    <Link className={classNames(s.itemWrapper, 'px-0 sm:px-3 justify-center sm:justify-start')} href={`/app/${detail?.id}/overview`}>
+      <div className={classNames(s.iconWrapper, 'mr-0 sm:mr-2')}>
         <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background}/>
         {type === 'app' && (
           <div className={s.statusPoint}>
@@ -50,7 +61,7 @@ const LikedItem: FC<{ type?: 'plugin' | 'app'; appStatus?: boolean; detail: Rela
           </div>
         )}
       </div>
-      <div className={s.appInfo}>{detail?.name || '--'}</div>
+      {!isMobile && <div className={s.appInfo}>{detail?.name || '--'}</div>}
     </Link>
   )
 }
@@ -91,6 +102,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = /documents\/create$/.test(pathname)
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
     url: 'fetchDatasetDetail',
     datasetId,
@@ -121,8 +136,12 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       {relatedApps?.data?.length
         ? (
           <>
-            <div className={s.subTitle}>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>
-            {relatedApps?.data?.map((item, index) => (<LikedItem key={index} detail={item} />))}
+            {!isMobile && <div className={s.subTitle}>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>}
+            {isMobile && <div className={classNames(s.subTitle, 'flex items-center justify-center !px-0 gap-1')}>
+              {relatedApps?.total || '--'}
+              <PaperClipIcon className='h-4 w-4 text-gray-700' />
+            </div>}
+            {relatedApps?.data?.map((item, index) => (<LikedItem key={index} isMobile={isMobile} detail={item} />))}
           </>
         )
         : (
@@ -153,7 +172,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return <Loading />
 
   return (
-    <div className='flex'>
+    <div className='flex overflow-hidden'>
       {!hideSideBar && <AppSideBar
         title={datasetRes?.name || '--'}
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
@@ -168,7 +187,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-white grow" style={{ minHeight: 'calc(100vh - 56px)' }}>{children}</div>
+        <div className="bg-white grow overflow-hidden" style={{ minHeight: 'calc(100vh - 56px)' }}>{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

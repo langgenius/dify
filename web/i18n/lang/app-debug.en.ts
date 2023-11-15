@@ -21,6 +21,7 @@ const translation = {
   operation: {
     applyConfig: 'Publish',
     resetConfig: 'Reset',
+    debugConfig: 'Debug',
     addFeature: 'Add Feature',
     automatic: 'Automatic',
     stopResponding: 'Stop responding',

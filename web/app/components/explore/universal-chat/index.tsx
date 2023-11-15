@@ -10,7 +10,6 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
-import s from './style.module.css'
 import Init from './init'
 import { ToastContext } from '@/app/components/base/toast'
 import Sidebar from '@/app/components/share/chat/sidebar'
@@ -721,10 +720,10 @@ const Main: FC<IMainProps> = () => {
     return <Loading type='app' />
 
   return (
-    <div className='bg-gray-100'>
+    <div className='bg-gray-100 h-full'>
       <div
         className={cn(
-          'flex rounded-t-2xl bg-white overflow-hidden rounded-b-2xl',
+          'flex rounded-t-2xl bg-white overflow-hidden rounded-b-2xl h-full',
         )}
         style={{
           boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
@@ -744,8 +743,7 @@ const Main: FC<IMainProps> = () => {
         )}
         {/* main */}
         <div className={cn(
-          s.installedApp,
-          'flex-grow flex flex-col overflow-y-auto',
+          'h-full flex-grow flex flex-col overflow-y-auto',
         )
         }>
           {(!isNewConversation || isResponsing || errorHappened) && (
