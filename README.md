@@ -42,61 +42,6 @@ Dify features model neutrality and is a complete, engineered tech stack compared
 **5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.
 
 
-## Compare Dify with other AI platforms
-
-<table>
-
-<tr>
-<td><b>Features</b></td>
-<td><b>Dify</b></td>
-<td><b>OpenAI</b></td>
-<td><b>LangChain</b></td>
-</tr>
-
-<td>Prompt playground</td>
-<td>✅</td>
-<td>✅</td>
-<td>✅</td>
-</tr>
-
-<tr>
-<td>RAG</td>
-<td>✅</td>
-<td>❌</td>
-<td>🚧</td>
-</tr>
-
-<tr>
-<td>Open Source</td>
-<td>✅</td>
-<td>❌</td>
-<td>✅</td>
-</tr>
-<tr>
-
-<tr>
-<td>Other Models</td>
-<td>✅</td>
-<td>❌</td>
-<td>✅</td>
-</tr>
-
-<tr>
-<td>Tracing</td>
-<td>✅</td>
-<td>❌</td>
-<td>✅</td>
-</tr>
-
-<tr>
-<td>Good Looking</td>
-<td>✅</td>
-<td>❌</td>
-<td>❌</td>
-</tr>
-
-</table>
-
 
 ## Install the Community Edition
 
