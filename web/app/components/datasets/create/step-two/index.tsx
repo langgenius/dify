@@ -23,7 +23,7 @@ import Loading from '@/app/components/base/loading'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { type RetrievalConfig } from '@/types/app'
-
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
@@ -36,6 +36,7 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
+import { useProviderContext } from '@/context/provider-context'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -259,7 +260,10 @@ const StepTwo = ({
       }
     }
   }
-
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
   const getCreationParams = () => {
     let params
     if (isSetting) {
@@ -269,10 +273,29 @@ const StepTwo = ({
         doc_language: docLanguage,
         process_rule: getProcessRule(),
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        retrieval_model: retrievalConfig,
+        retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
       } as CreateDocumentReq
     }
-    else {
+    else { // create
+      const indexMethod = getIndexing_technique()
+      if (
+        !isReRankModelSelected({
+          rerankDefaultModel,
+          isRerankDefaultModelVaild,
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          retrievalConfig,
+          indexMethod: indexMethod as string,
+        })
+      ) {
+        Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+        return
+      }
+      const postRetrievalConfig = ensureRerankModelSelected({
+        rerankDefaultModel: rerankDefaultModel!,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrievalConfig,
+        indexMethod: indexMethod as string,
+      })
       params = {
         data_source: {
           type: dataSourceType,
@@ -284,8 +307,8 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        retrieval_model: retrievalConfig,
+
+        retrieval_model: postRetrievalConfig,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -339,7 +362,7 @@ const StepTwo = ({
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -347,7 +370,7 @@ const StepTwo = ({
       else {
         res = await createDocument({
           datasetId,
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -454,15 +477,14 @@ const StepTwo = ({
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
     reranking_model: {
-      reranking_provider_name: '',
-      reranking_model_name: '',
+      reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
+      reranking_model_name: rerankDefaultModel?.model_name,
     },
     top_k: 3,
     score_threshold_enable: false,
     score_threshold: 0.5,
   } as RetrievalConfig)
-  console.log(retrievalConfig)
-  const [isChangeRetrieval, setChangeRetrieval] = useState(false)
+
   return (
     <div className='flex w-full h-full'>
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>

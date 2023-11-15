@@ -151,6 +151,7 @@ const ParamsConfig: FC = () => {
                   <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
                   <div>
                     <ModelSelector
+                      popClassName='!max-w-[100%] !w-full'
                       value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
                       modelType={ModelType.reranking}
                       onChange={(v) => {
