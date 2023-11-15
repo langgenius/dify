@@ -498,20 +498,24 @@ def add_qdrant_full_text_index():
             api_key=qdrant_api_key,  # For Qdrant Cloud, None for local instance
         )
         for bind in binds:
-            text_index_params = TextIndexParams(
-                type=TextIndexType.TEXT,
-                tokenizer=TokenizerType.MULTILINGUAL,
-                min_token_len=2,
-                max_token_len=20,
-                lowercase=True
-            )
-            client.create_payload_index(bind.collection_name, 'page_content',
-                                        field_schema=text_index_params)
-
+            try:
+                text_index_params = TextIndexParams(
+                    type=TextIndexType.TEXT,
+                    tokenizer=TokenizerType.MULTILINGUAL,
+                    min_token_len=2,
+                    max_token_len=20,
+                    lowercase=True
+                )
+                client.create_payload_index(bind.collection_name, 'page_content',
+                                            field_schema=text_index_params)
+            except Exception as e:
+                click.echo(
+                    click.style('Create full text index error: {} {}'.format(e.__class__.__name__, str(e)),
+                                fg='red'))
             click.echo(
-                click.style('Congratulations! add collection {} full text index successful.'.format(bind.collection_name),
-                            fg='green'))
-
+                click.style(
+                    'Congratulations! add collection {} full text index successful.'.format(bind.collection_name),
+                    fg='green'))
 
 
 def deal_dataset_vector(flask_app: Flask, dataset: Dataset, normalization_count: list):
@@ -677,10 +681,10 @@ def update_app_model_configs(batch_size):
 
             pbar.update(len(data_batch))
 
+
 @click.command('migrate_default_input_to_dataset_query_variable')
 @click.option("--batch-size", default=500, help="Number of records to migrate in each batch.")
 def migrate_default_input_to_dataset_query_variable(batch_size):
-
     click.secho("Starting...", fg='green')
 
     total_records = db.session.query(AppModelConfig) \
@@ -688,13 +692,13 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
         .filter(App.mode == 'completion') \
         .filter(AppModelConfig.dataset_query_variable == None) \
         .count()
-    
+
     if total_records == 0:
         click.secho("No data to migrate.", fg='green')
         return
 
     num_batches = (total_records + batch_size - 1) // batch_size
-    
+
     with tqdm(total=total_records, desc="Migrating Data") as pbar:
         for i in range(num_batches):
             offset = i * batch_size
@@ -727,14 +731,14 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
                     for form in user_input_form:
                         paragraph = form.get('paragraph')
                         if paragraph \
-                            and paragraph.get('variable') == 'query':
-                                data.dataset_query_variable = 'query'
-                                break
-                        
+                                and paragraph.get('variable') == 'query':
+                            data.dataset_query_variable = 'query'
+                            break
+
                         if paragraph \
-                            and paragraph.get('variable') == 'default_input':
-                                data.dataset_query_variable = 'default_input'
-                                break
+                                and paragraph.get('variable') == 'default_input':
+                            data.dataset_query_variable = 'default_input'
+                            break
 
                 db.session.commit()
 
@@ -742,7 +746,7 @@ def migrate_default_input_to_dataset_query_variable(batch_size):
                 click.secho(f"Error while migrating data: {e}, app_id: {data.app_id}, app_model_config_id: {data.id}",
                             fg='red')
                 continue
-            
+
             click.secho(f"Successfully migrated batch {i + 1}/{num_batches}.", fg='green')
 
             pbar.update(len(data_batch))
