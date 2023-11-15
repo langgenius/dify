@@ -59,7 +59,8 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
     setCurrParagraph({ paraInfo: detail, showModal: true })
   }
 
-  const { dataset: currentDataset, mutateDatasetRes: mutateDatasets } = useContext(DatasetDetailContext)
+  const { dataset: currentDataset } = useContext(DatasetDetailContext)
+
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
 
@@ -190,6 +191,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
       </Modal>
       {isShowModifyRetrievalModal && (
         <ModifyRetrievalModal
+          indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}
           isShow={isShowModifyRetrievalModal}
           onHide={() => setIsShowModifyRetrievalModal(false)}
