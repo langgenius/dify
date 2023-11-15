@@ -106,7 +106,7 @@ class Dataset(db.Model):
             'top_k': 2,
             'score_threshold_enable': False
         }
-        return json.loads(self.retrieval_model) if self.retrieval_model else default_retrieval_model
+        return self.retrieval_model if self.retrieval_model else default_retrieval_model
 
 
 class DatasetProcessRule(db.Model):

@@ -149,7 +149,7 @@ class DatasetMultiRetrieverTool(BaseTool):
             if not dataset:
                 return []
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = json.loads(dataset.retrieval_model) if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
