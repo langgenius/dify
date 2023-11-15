@@ -19,43 +19,30 @@
 
 https://github.com/langgenius/dify/assets/100913391/f6e658d5-31b3-4c16-a0af-9e191da4d0f6
 
-## 核心能力
-1. **模型支持：** 你可以在 Dify 上选择基于不同模型的能力来开发你的 AI 应用。Dify 兼容 Langchain，这意味着我们将逐步支持多种 LLMs ，目前支持的模型供应商：
+## 为什么选择Dify
 
-- [x] **OpenAI**：GPT4、GPT3.5-turbo、GPT3.5-turbo-16k、text-davinci-003 
-- [x] **Azure OpenAI Service**
-- [x] **Anthropic**：Claude2、Claude-instant
-- [x] **Replicate**
-- [x] **Hugging Face Hub**
-- [x] **ChatGLM**
-- [x] **Llama2**
-- [x] **MiniMax**
-- [x] **讯飞星火大模型**
-- [x] **文心一言**
-- [x] **通义千问**
+Dify具有模型中立性，并且是一个完整的、经过工程化的技术栈，与像LangChain这样的硬编码开发库相比。不同于OpenAI的助手API，Dify允许完全本地部署服务。
 
+| Feature | Dify.AI | Assistants API | LangChain |
+|---------|---------|----------------|-----------|
+| **Programming Approach** | API-oriented | API-oriented | Python Code-oriented |
+| **Ecosystem Strategy** | Open Source | Closed and Commercial | Open Source |
+| **RAG Engine** | Supported | Supported | Not Supported |
+| **Prompt IDE** | Included | Included | None |
+| **Supported LLMs** | Rich Variety | Only GPT | Rich Variety |
+| **Local Deployment** | Supported | Not Supported | Not Applicable |
 
-我们为所有注册云端版的用户免费提供以下资源（登录 [dify.ai](https://cloud.dify.ai) 即可使用）：
-* 200 次 OpenAI 模型的消息调用额度，用于创建基于 OpenAI 模型的 AI 应用
-* 300 万 讯飞星火大模型 Token 的调用额度，用于创建基于讯飞星火大模型的 AI 应用
-* 100 万 MiniMax Token 的调用额度，用于创建基于 MiniMax 模型的 AI 应用
-2. **可视化编排 Prompt：** 通过界面化编写 prompt 并调试，只需几分钟即可发布一个 AI 应用。
-3. **文本 Embedding 处理（数据集）**：全自动完成文本预处理，使用你的数据作为上下文，无需理解晦涩的概念和技术处理。支持 PDF、txt 等文件格式，支持从 Notion、网页、API 同步数据。
-4. **基于 API 开发：** 后端即服务。您可以直接访问网页应用，也可以接入 API 集成到您的应用中，无需关注复杂的后端架构和部署过程。
-5. **插件能力：** Dify 「智聊」平台已支持网页浏览、Google 搜索、Wikipedia 查询等第一方插件，可在对话中实现联网搜索、分析网页内容、展示 AI 的推理过程。
-6. **团队 Workspace：** 团队成员可加入 Workspace 编辑、管理和使用团队内的 AI 应用。
-6. **数据标注与改进：** 可视化查阅 AI 应用日志并对数据进行改进标注，观测 AI 的推理过程，不断提高其性能。（Coming soon）
- -----------------------------
- ## Use cases
- * [几分钟创建一个带有业务数据的官网 AI 智能客服](https://docs.dify.ai/v/zh-hans/use-cases/create-an-ai-chatbot-with-business-data-in-minutes)
- * [构建一个 Notion AI 助手](https://docs.dify.ai/v/zh-hans/use-cases/build-an-notion-ai-assistant)
- * [创建 Midjoureny 提示词机器人](https://docs.dify.ai/v/zh-hans/use-cases/create-a-midjoureny-prompt-word-robot-with-zero-code)
+## 特点
 
+**1. LLM支持**：与OpenAI的GPT系列模型或开源的Llama2系列模型集成。事实上，Dify支持主流的商业模型和开源模型（本地部署或基于MaaS）。
 
-## 使用云服务
+**2. Prompt IDE**：基于LLM的应用和服务的可视化编排，与您的团队一起。
 
-访问 [Dify.ai](https://cloud.dify.ai) 使用云端版。
+**3. RAG引擎**：包括基于全文索引或向量数据库嵌入的各种RAG能力，允许直接上传PDF、TXT和其他文本格式。
 
+**4. 代理**：基于函数调用的代理框架，允许用户配置所见即所得。Dify包括基本的插件功能，如Google搜索。
+
+**5. 持续运营**：监控和分析应用日志和性能，使用生产数据不断改进提示、数据集或模型。
 ## 安装社区版
 
 ### 系统要求
@@ -83,79 +70,25 @@ docker compose up -d
 
 ### 配置
 
-需要自定义配置，请参考我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件中的注释，并手动设置环境配置，修改完毕后，请再次执行 `docker-compose up -d`。
-
-## Roadmap
-
-我们正在开发中的功能：
-
-- **数据集**，支持更多的数据集，通过网页、API 同步内容。用户可以根据自己的数据源构建 AI 应用程序。
-- **插件**，我们将发布符合 ChatGPT 标准的插件，支持更多 Dify 自己的插件，支持用户自定义插件能力，以在应用程序中启用更多功能，例如以支持以目标为导向的分解推理任务。
-
-## Q&A
-
-**Q: 我能用 Dify 做什么？**
-
-A: Dify 是一个简单且能力丰富的 LLM 开发和运营工具。你可以用它搭建商用级应用，个人助理。如果你想自己开发应用，Dify 也能为你省下接入 OpenAI 的后端工作，使用我们逐步提供的可视化运营能力，你可以持续的改进和训练你的 GPT 模型。
-
-**Q: 如何使用 Dify “训练”自己的模型？**
-
-A: 一个有价值的应用由 Prompt Engineering、上下文增强和 Fine-tune 三个环节组成。我们创造了一种 Prompt 结合编程语言的 Hybrid 编程方式（类似一个模版引擎），你可以轻松的完成长文本嵌入，或抓取用户输入的一个 Youtube 视频的字幕——这些都将作为上下文提交给 LLMs 进行计算。我们十分注重应用的可运营性，你的用户在使用 App 期间产生的数据，可进行分析、标记和持续训练。以上环节如果没有好的工具支持，可能会消耗你大量的时间。
-
-**Q: 如果要创建一个自己的应用，我需要准备什么？**
-
-A: 我们假定你已经有了 OpenAI 或 Claude 等模型的 API Key，如果没有请去注册一个。如果你已经有了一些内容可以作为训练上下文，就太好了。
-
-**Q: 提供哪些界面语言？**
-
-A:  支持英文、中文，你可以为我们贡献语言包并提供维护支持。
+如果您需要自定义配置，请参考我们的 [docker-compose.yml](docker/docker-compose.yaml) 文件中的注释，并手动设置环境配置。更改后，请再次运行 `docker-compose up -d`。您可以在我们的[文档](https://docs.dify.ai/getting-started/install-self-hosted/environments)中查看所有环境变量的完整列表。
 
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
 
-## 贡献
+## 社区与支持
 
-我们欢迎你为 Dify 作出贡献帮助 Dify 变得更好。我们欢迎各种方式的贡献，提交代码、问题、新想法、或者分享你基于 Dify 创建出的各种有趣有用的 AI 应用。同时，我们也欢迎你在不同的活动、研讨会、社交媒体上分享 Dify。
+我们欢迎您为 Dify 做出贡献，以帮助改善 Dify。包括：提交代码、问题、新想法，或分享您基于 Dify 创建的有趣且有用的 AI 应用程序。同时，我们也欢迎您在不同的活动、会议和社交媒体上分享 Dify。
 
-### 贡献代码
-为了确保正确审查，所有代码贡献 - 包括来自具有直接提交更改权限的贡献者 - 都必须提交 PR 请求并在合并分支之前得到核心开发人员的批准。
-
-我们欢迎所有人提交 PR！如果您愿意提供帮助，可以在 [贡献指南](CONTRIBUTING_CN.md) 中了解有关如何为项目做出代码贡献的更多信息。
-
-### 提交问题或想法
-你可以通过 Dify 代码仓库新增 issues 来提交你的问题或想法。如遇到问题，请尽可能描述你遇到问题的操作步骤，以便我们更好地发现它。如果你对我们的产品有任何新想法，也欢迎向我们反馈，请尽可能多地分享你的见解，以便我们在社区中获得更多反馈和进一步讨论。
-
-### 分享你的应用
-我们鼓励所有社区成员分享他们基于 Dify 创造出的 AI 应用，它们可以是应用于不同情景或不同用户，这将有助于为希望基于 AI 能力创造的人们提供强大灵感！你可以通过 [Dify-user-case 仓库项目提交 issue](https://github.com/langgenius/dify-user-case) 来分享你的应用案例。
-
-### 向别人分享 Dify
-我们鼓励社区贡献者们积极展示你使用 Dify 的不同角度。你可以通过线下研讨会、博客或社交媒体上谈论或分享你使用 Dify 的任意功能，相信你独特的使用分享会给别人带来非常大的帮助！如果你需要任何指导帮助，欢迎联系我们 support@dify.ai ,你也可以在 twitter @Dify.AI 或在 [Discord 社区](https://discord.gg/FngNHpbcY7)交流来帮助你传播信息。
-
-### 帮助别人
-你还可以在 Discord、GitHub issues或其他社交平台上帮助需要帮助的人，指导别人解决使用过程中遇到的问题和分享使用经验。这也是个非常了不起的贡献！如果你希望成为 Dify 社区的维护者，请通过[Discord 社区](https://discord.gg/FngNHpbcY7) 联系官方团队或邮件联系我们 support@dify.ai.
-
-
-## 联系我们
-
-如果您有任何问题、建议或合作意向，欢迎通过以下方式联系我们：
-
-- 在我们的 [GitHub Repo](https://github.com/langgenius/dify) 上提交 Issue 或 PR
-- 在我们的 [Discord 社区](https://discord.gg/FngNHpbcY7) 上加入讨论
-- 发送邮件至 hello@dify.ai
-
+- [GitHub 问题](https://github.com/langgenius/dify/issues)。👉：使用 Dify.AI 时遇到的错误和问题，请参阅[贡献指南](CONTRIBUTING.md)。
+- [电子邮件支持](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify)。👉：关于使用 Dify.AI 的问题。
+- [Discord](https://discord.gg/FngNHpbcY7)。👉：分享您的应用程序并与社区交流。
+- [Twitter](https://twitter.com/dify_ai)。👉：分享您的应用程序并与社区交流。
+- [商业许可](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。👉：有关商业用途许可 Dify.AI 的商业咨询。
 ## 安全
 
 为了保护您的隐私，请避免在 GitHub 上发布安全问题。发送问题至 security@dify.ai，我们将为您做更细致的解答。
-
-## Citation
-
-本软件使用了以下开源软件：
-
-- Chase, H. (2022). LangChain [Computer software]. https://github.com/hwchase17/langchain
-
-更多信息，请参考相应软件的官方网站或许可证文本。
 
 ## License
 

@@ -41,6 +41,8 @@ Dify features model neutrality and is a complete, engineered tech stack compared
 
 **5. Continuous Operations**: Monitor and analyze application logs and performance, continuously improving Prompts, datasets, or models using production data.
 
+
+
 ## Install the Community Edition
 
 ### System Requirements
@@ -68,52 +70,27 @@ You can go to https://github.com/BorisPolonsky/dify-helm for deployment informat
 
 ### Configuration
 
-If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run 'docker-compose up -d' again.
+If you need to customize the configuration, please refer to the comments in our [docker-compose.yml](docker/docker-compose.yaml) file and manually set the environment configuration. After making the changes, please run `docker-compose up -d` again. You can see the full list of environment variables in our [docs](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 
 ## Star History
 
 [![Star History Chart](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
-## Contributing 
 
-We welcome you to contribute to Dify to help make Dify better. We welcome contributions in various ways, submitting code, issues, new ideas, or sharing the interesting and useful AI applications you have created based on Dify. At the same time, we also welcome you to share Dify at different events, conferences, and social media.
+## Community & Support
 
-### Submit a Pull Request 
+We welcome you to contribute to Dify to help make Dify better in various ways, submitting code, issues, new ideas, or sharing the interesting and useful AI applications you have created based on Dify. At the same time, we also welcome you to share Dify at different events, conferences, and social media.
 
-To ensure proper review, all code contributions, including from contributors with direct commit access, must be submitted as PR requests and approved by core developers before merging branches. 
-We welcome PRs from everyone! If you're willing to help out, you can learn more about how to contribute code to the project in the [Contribution Guide](CONTRIBUTING.md).  
+- [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs and errors you encounter using Dify.AI, see the [Contribution Guide](CONTRIBUTING.md).
+- [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
+- [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
+- [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+- [Business License](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry). Best for: business inquiries of licensing Dify.AI for commercial use.
 
-### Submit issues or ideas  
-
-You can submit your issues or ideas by adding issues to the Dify repository. If you encounter issues, please describe the steps you took to encounter the issue as much as possible so we can better discover it. If you have any new ideas for our product, we also welcome your feedback. Please share your insights as much as possible so we can get more feedback and further discussion in the community.  
-
-### Share your applications
-
-We encourage all community members to share their AI applications built on Dify, which can be applied to different scenarios or different users. This will provide powerful inspiration for people who want to create AI capabilities! You can share your experience by [submitting an issue in the Dify-user-case repository](https://github.com/langgenius/dify-user-case/issues).  
-
-### Share Dify with others
-
-We encourage community contributors to actively demonstrate different aspects of using Dify. You can talk or share any feature of using Dify at  meetups and conferences, blogs or social media. We believe your unique sharing will be of great help to others!  Mention @Dify.AI on Twitter and/or communicate on [Discord](https://discord.gg/FngNHpbcY7) so we can give pointers and tips and help you spread the word by promoting your content on the different Dify communication channels.
-
-### Help others 
-You can also help people in need of help on Discord, GitHub issues or other social platforms, guide others to solve problems encountered during use and share usage experiences. This is also a great contribution! If you want to become a maintainer of the Dify community, please contact the official team via [Discord](https://discord.gg/FngNHpbcY7) or email us at support@dify.ai. 
-
-
-## Contact Us
-
-If you have any questions, suggestions, or partnership inquiries, feel free to contact us through the following channels:
-
-- Submit an Issue or PR on our GitHub Repo
-- Join the discussion in our [Discord](https://discord.gg/FngNHpbcY7) Community
-- Send an email to hello@dify.ai
-
-We're eager to assist you and together create more fun and useful AI applications!
-
-## Security
+## Security Disclosure
 
 To protect your privacy, please avoid posting security issues on GitHub. Instead, send your questions to security@dify.ai and we will provide you with a more detailed answer.
-
 
 ## License
 
