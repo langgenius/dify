@@ -15,7 +15,6 @@ Write your code with sdk:
 - completion generate with `blocking` response_mode
 
 ```
-import json
 from dify_client import CompletionClient
 
 api_key = "your_api_key"
@@ -24,11 +23,11 @@ api_key = "your_api_key"
 completion_client = CompletionClient(api_key)
 
 # Create Completion Message using CompletionClient
-completion_response = completion_client.create_completion_message(inputs={}, query="Hello", response_mode="blocking", user="user_id")
+completion_response = completion_client.create_completion_message(inputs={"query": "What's the weather like today?"},
+                                                                  response_mode="blocking", user="user_id")
 completion_response.raise_for_status()
 
-result = completion_response.text
-result = json.loads(result)
+result = completion_response.json()
 
 print(result.get('answer'))
 ```
@@ -58,7 +57,6 @@ for line in chat_response.iter_lines(decode_unicode=True):
 - Others
 
 ```
-import json
 from dify_client import ChatClient
 
 api_key = "your_api_key"
@@ -69,32 +67,29 @@ client = ChatClient(api_key)
 # Get App parameters
 parameters = client.get_application_parameters(user="user_id")
 parameters.raise_for_status()
-parameters = json.loads(parameters.text)
 
 print('[parameters]')
-print(parameters)
+print(parameters.json())
 
 # Get Conversation List (only for chat)
 conversations = client.get_conversations(user="user_id")
 conversations.raise_for_status()
-conversations = json.loads(conversations.text)
 
 print('[conversations]')
-print(conversations)
+print(conversations.json())
 
 # Get Message List (only for chat)
 messages = client.get_conversation_messages(user="user_id", conversation_id="conversation_id")
 messages.raise_for_status()
-messages = json.loads(messages.text)
 
 print('[messages]')
-print(messages)
+print(messages.json())
 
 # Rename Conversation (only for chat)
-rename_conversation_response = client.rename_conversation(conversation_id="conversation_id", name="new_name", user="user_id")
+rename_conversation_response = client.rename_conversation(conversation_id="conversation_id",
+                                                          name="new_name", user="user_id")
 rename_conversation_response.raise_for_status()
-rename_conversation_result = json.loads(rename_conversation_response.text)
 
 print('[rename result]')
-print(rename_conversation_result)
+print(rename_conversation_response.json())
 ```
