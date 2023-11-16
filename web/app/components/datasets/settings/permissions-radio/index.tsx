@@ -13,12 +13,14 @@ const radioClass = `
 type IPermissionsRadioProps = {
   value?: DataSet['permission']
   onChange: (v?: DataSet['permission']) => void
+  itemClassName?: string
   disable?: boolean
 }
 
 const PermissionsRadio = ({
   value,
   onChange,
+  itemClassName,
   disable,
 }: IPermissionsRadioProps) => {
   const { t } = useTranslation()
@@ -41,6 +43,7 @@ const PermissionsRadio = ({
             key={option.key}
             className={classNames(
               itemClass,
+              itemClassName,
               s.item,
               option.key === value && s['item-active'],
               disable && s.disable,

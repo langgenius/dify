@@ -21,6 +21,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import { useProviderContext } from '@/context/provider-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import PermissionsRadio from '@/app/components/datasets/settings/permissions-radio'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -91,12 +92,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
     })
     try {
       setLoading(true)
-      const { id, name, description } = localeCurrentDataset
+      const { id, name, description, permission } = localeCurrentDataset
       await updateDatasetSetting({
         datasetId: id,
         body: {
           name,
           description,
+          permission,
           indexing_technique: indexMethod,
           retrieval_model: postRetrievalConfig,
         },
@@ -168,6 +170,20 @@ const SettingsModal: FC<SettingsModalProps> = ({
             </a>
           </div>
         </div>
+        <div className={rowClass}>
+          <div className={labelClass}>
+            <div>{t('datasetSettings.form.permissions')}</div>
+          </div>
+          <div className='w-[480px]'>
+            <PermissionsRadio
+              disable={!localeCurrentDataset?.embedding_available}
+              value={localeCurrentDataset.permission}
+              onChange={v => handleValueChange('permission', v!)}
+              itemClassName='!w-[227px]'
+            />
+          </div>
+        </div>
+        <div className="w-full h-0 border-b-[0.5px] border-b-gray-200 my-2"></div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
             {t('datasetSettings.form.indexMethod')}
