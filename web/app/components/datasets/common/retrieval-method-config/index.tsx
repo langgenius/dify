@@ -64,7 +64,7 @@ const RetrievalMethodConfig: FC<Props> = ({
             <div className='flex h-full items-center px-1.5 rounded-md border border-[#E0EAFF] text-xs font-medium text-[#444CE7]'>{t('dataset.retrieval.hybrid_search.recommend')}</div>
           </div>
         }
-        description={t('dataset.retrieval.hybrid.description')}
+        description={t('dataset.retrieval.hybrid_search.description')}
         isChosen={value.search_method === RETRIEVE_METHOD.hybrid}
         onChosen={() => onChange({
           ...value,

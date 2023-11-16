@@ -11,8 +11,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
-import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 
 type Props = {
   datasetId: string
@@ -24,6 +23,7 @@ type Props = {
   setText: (v: string) => void
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
+  isEconomy: boolean
 }
 
 const TextAreaWithButton: FC<Props> = ({
@@ -36,6 +36,7 @@ const TextAreaWithButton: FC<Props> = ({
   setText,
   onClickRetrievalMethod,
   retrievalConfig,
+  isEconomy,
 }) => {
   const { t } = useTranslation()
   const { indexingTechnique } = useContext(DatasetDetailContext)
@@ -56,7 +57,7 @@ const TextAreaWithButton: FC<Props> = ({
     setLoading(false)
   }
 
-  const retrievalMethod = RETRIEVE_METHOD.semantic
+  const retrievalMethod = isEconomy ? RETRIEVE_METHOD.invertedIndex : retrievalConfig.search_method
   const Icon = getIcon(retrievalMethod)
   return (
     <>
@@ -81,7 +82,7 @@ const TextAreaWithButton: FC<Props> = ({
           </div>
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
-        <div className='px-4'>
+        <div className='px-4 pb-11'>
           <textarea
             value={text}
             onChange={handleTextChange}

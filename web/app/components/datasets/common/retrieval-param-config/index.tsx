@@ -74,6 +74,7 @@ const RetrievalParamConfig: FC<Props> = ({
           </div>
           <div>
             <ModelSelector
+              whenEmptyGoToSetting
               popClassName='!max-w-[100%] !w-full'
               value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
               modelType={ModelType.reranking}

@@ -250,6 +250,8 @@ const translation = {
     showMoreModelProvider: 'Show more model provider',
     selector: {
       tip: 'This model has been removed. Please add a model or select another model.',
+      emptyTip: 'No available models',
+      emptySetting: 'Please go to settings to configure',
     },
     card: {
       quota: 'QUOTA',

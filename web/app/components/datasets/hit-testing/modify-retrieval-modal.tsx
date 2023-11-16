@@ -10,6 +10,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import Button from '@/app/components/base/button'
 
 type Props = {
+  indexMethod: string
   value: RetrievalConfig
   isShow: boolean
   onHide: () => void
@@ -17,6 +18,7 @@ type Props = {
 }
 
 const ModifyRetrievalModal: FC<Props> = ({
+  indexMethod,
   value,
   isShow,
   onHide,
@@ -24,7 +26,6 @@ const ModifyRetrievalModal: FC<Props> = ({
 }) => {
   const ref = useRef(null)
   const { t } = useTranslation()
-  const indexMethod = 'high_quality'
   const [retrievalConfig, setRetrievalConfig] = useState(value)
 
   useClickAway(() => {
