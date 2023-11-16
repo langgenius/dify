@@ -127,7 +127,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
         <div className='flex flex-col text-base font-semibold text-gray-900'>
           <div className='leading-6'>{t('datasetSettings.title')}</div>
-          <a href='' className='leading-[18px] text-xs font-medium text-[#155eef]'>{localeCurrentDataset.name}</a>
         </div>
         <div className='flex items-center'>
           <div
