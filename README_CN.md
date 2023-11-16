@@ -91,6 +91,9 @@ docker compose up -d
 - [Discord](https://discord.gg/FngNHpbcY7)。👉：分享您的应用程序并与社区交流。
 - [Twitter](https://twitter.com/dify_ai)。👉：分享您的应用程序并与社区交流。
 - [商业许可](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)。👉：有关商业用途许可 Dify.AI 的商业咨询。
+ - [微信]() 👉：扫描下方二维码，添加微信好友，备注 Dify，我们将邀请您加入 Dify 社区。  
+<img src="./images/wechat.png" alt="wechat" width="100"/>
+
 ## 安全问题
 
 为了保护您的隐私，请避免在 GitHub 上发布安全问题。发送问题至 security@dify.ai，我们将为您做更细致的解答。
