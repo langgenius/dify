@@ -19,6 +19,13 @@ class DifyClient {
                 'Content-Type' => 'application/json',
             ],
         ]);
+        $this->file_client = new Client([
+            'base_uri' => $this->base_url,
+            'headers' => [
+                'Authorization' => 'Bearer ' . $this->api_key,
+                'Content-Type' => 'multipart/form-data',
+            ],
+        ]);
     }
 
     protected function send_request($method, $endpoint, $data = null, $params = null, $stream = false) {
@@ -43,6 +50,35 @@ class DifyClient {
     public function get_application_parameters($user) {
         $params = ['user' => $user];
         return $this->send_request('GET', 'parameters', null, $params);
+    }
+
+    public function file_upload($user, $files) {
+        $data = ['user' => $user];
+        $options = [
+            'multipart' => $this->prepareMultipart($data, $files)
+        ];
+
+        return $this->file_client->request('POST', 'files/upload', $options);
+    }
+
+    protected function prepareMultipart($data, $files) {
+        $multipart = [];
+        foreach ($data as $key => $value) {
+            $multipart[] = [
+                'name' => $key,
+                'contents' => $value
+            ];
+        }
+
+        foreach ($files as $file) {
+            $multipart[] = [
+                'name' => 'file',
+                'contents' => fopen($file['tmp_name'], 'r'),
+                'filename' => $file['name']
+            ];
+        }
+
+        return $multipart;
     }
 }
 

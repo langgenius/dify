@@ -54,6 +54,17 @@ $response = $completionClient->create_completion_message(array("query" => "Descr
 // Create a chat client with vision model like gpt-4-vision
 $response = $chatClient->create_chat_message(array(), "Describe this image.", "user_id", "blocking", $conversation_id, $fileForVision);
 
+// File Upload
+$fileForUpload = [
+    [
+        'tmp_name' => '/path/to/file/filename.jpg',
+        'name' => 'filename.jpg'
+    ]
+];
+$response = $difyClient->file_upload("user_id", $fileForUpload);
+$result = json_decode($response->getBody(), true);
+echo 'upload_file_id: ' . $result['id'];
+
 // Fetch application parameters
 $response = $difyClient->get_application_parameters("user_id");
 
