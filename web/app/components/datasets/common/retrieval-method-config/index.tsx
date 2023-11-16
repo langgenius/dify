@@ -21,7 +21,6 @@ const RetrievalMethodConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { supportRetrievalMethods } = useProviderContext()
-  console.log(supportRetrievalMethods)
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
