@@ -104,7 +104,11 @@ const SettingsModal: FC<SettingsModalProps> = ({
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      onSave(localeCurrentDataset)
+      onSave({
+        ...localeCurrentDataset,
+        indexing_technique: indexMethod,
+        retrieval_model_dict: postRetrievalConfig,
+      })
     }
     catch (e) {
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
@@ -196,28 +200,31 @@ const SettingsModal: FC<SettingsModalProps> = ({
             />
           </div>
         </div>
-        <div className={cn(rowClass)}>
-          <div className={labelClass}>
-            {t('datasetSettings.form.embeddingModel')}
-          </div>
-          <div className='grow'>
-            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-              <ModelSelector
-                readonly
-                value={{
-                  providerName: localeCurrentDataset.embedding_model_provider as ProviderEnum,
-                  modelName: localeCurrentDataset.embedding_model,
-                }}
-                modelType={ModelType.embeddings}
-                onChange={() => {}}
-              />
+        {indexMethod === 'high_quality' && (
+          <div className={cn(rowClass)}>
+            <div className={labelClass}>
+              {t('datasetSettings.form.embeddingModel')}
             </div>
-            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-              {t('datasetSettings.form.embeddingModelTip')}
-              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+            <div className='grow'>
+              <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
+                <ModelSelector
+                  readonly
+                  value={{
+                    providerName: localeCurrentDataset.embedding_model_provider as ProviderEnum,
+                    modelName: localeCurrentDataset.embedding_model,
+                  }}
+                  modelType={ModelType.embeddings}
+                  onChange={() => {}}
+                />
+              </div>
+              <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
+                {t('datasetSettings.form.embeddingModelTip')}
+                <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
+
         {/* Retrieval Method Config */}
         <div className={rowClass}>
           <div className={labelClass}>
