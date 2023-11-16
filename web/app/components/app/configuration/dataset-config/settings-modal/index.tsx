@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useRef, useState } from 'react'
 import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
+import { isEqual } from 'lodash-es'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
@@ -17,7 +18,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { useProviderContext } from '@/context/provider-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void
@@ -44,10 +45,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
       onCancel()
   }, ref)
 
-  const indexMethod = currentDataset.indexing_technique
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
+  const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
 
   const {
@@ -58,6 +59,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const handleValueChange = (type: string, value: string) => {
     setLocaleCurrentDataset({ ...localeCurrentDataset, [type]: value })
   }
+  const [isHideChangedTip, setIsHideChangedTip] = useState(false)
+  const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
 
   const handleSave = async () => {
     if (loading)
@@ -84,13 +87,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
     })
     try {
       setLoading(true)
-      const { id, name, description, indexing_technique } = localeCurrentDataset
+      const { id, name, description } = localeCurrentDataset
       await updateDatasetSetting({
         datasetId: id,
         body: {
           name,
           description,
-          indexing_technique,
+          indexing_technique: indexMethod,
           retrieval_model: postRetrievalConfig,
         },
       })
@@ -110,7 +113,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       className='fixed top-16 right-2 flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
       style={{
         zIndex: 11,
-        width: 632,
+        width: 700,
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
@@ -165,8 +168,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div>
             <IndexMethodRadio
               disable={!localeCurrentDataset?.embedding_available}
-              value={localeCurrentDataset.indexing_technique}
-              onChange={v => handleValueChange('indexing_technique', v!)}
+              value={indexMethod}
+              onChange={v => setIndexMethod(v!)}
               itemClassName='!w-[282px]'
             />
           </div>
@@ -219,6 +222,22 @@ const SettingsModal: FC<SettingsModalProps> = ({
           </div>
         </div>
       </div>
+      {isRetrievalChanged && !isHideChangedTip && (
+        <div className='absolute z-10 left-[30px] right-[30px] bottom-[76px] flex h-10 items-center px-3 rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] shadow-lg justify-between'>
+          <div className='flex items-center'>
+            <AlertTriangle className='mr-1 w-3 h-3 text-[#F79009]' />
+            <div className='leading-[18px] text-xs font-medium text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
+          </div>
+          <div className='p-1 cursor-pointer' onClick={(e) => {
+            setIsHideChangedTip(true)
+            e.stopPropagation()
+            e.nativeEvent.stopImmediatePropagation()
+          }}>
+            <XClose className='w-4 h-4 text-gray-500 ' />
+          </div>
+        </div>
+      )}
+
       <div
         className='absolute z-10 bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
         style={{
