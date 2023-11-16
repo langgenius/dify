@@ -3,6 +3,8 @@ import { useRef, useState } from 'react'
 import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
+import cn from 'classnames'
+import { BookOpenIcon } from '@heroicons/react/24/outline'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
@@ -19,6 +21,7 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import { useProviderContext } from '@/context/provider-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+
 type SettingsModalProps = {
   currentDataset: DataSet
   onCancel: () => void
@@ -28,8 +31,9 @@ type SettingsModalProps = {
 const rowClass = `
   flex justify-between py-4
 `
+
 const labelClass = `
-  flex items-start w-[168px]
+  flex w-[168px] shrink-0
 `
 
 const SettingsModal: FC<SettingsModalProps> = ({
@@ -121,7 +125,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       <div className='shrink-0 flex justify-between items-center pl-6 pr-5 h-14 border-b border-b-gray-100'>
         <div className='flex flex-col text-base font-semibold text-gray-900'>
           <div className='leading-6'>{t('datasetSettings.title')}</div>
-          <a href='' className='leading-[18px] text-xs font-medium text-[#155eef]'>{'Current dataset name'}</a>
+          <a href='' className='leading-[18px] text-xs font-medium text-[#155eef]'>{localeCurrentDataset.name}</a>
         </div>
         <div className='flex items-center'>
           <div
@@ -133,11 +137,11 @@ const SettingsModal: FC<SettingsModalProps> = ({
         </div>
       </div>
       {/* Body */}
-      <div className='p-6 border-b overflow-y-auto pb-[68px]' style={{
+      <div className='p-6 pt-5 border-b overflow-y-auto pb-[68px]' style={{
         borderBottom: 'rgba(0, 0, 0, 0.05)',
       }}>
-        <div className='py-2'>
-          <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className={cn(rowClass, 'items-center')}>
+          <div className={labelClass}>
             {t('datasetSettings.form.name')}
           </div>
           <input
@@ -147,51 +151,56 @@ const SettingsModal: FC<SettingsModalProps> = ({
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
-        <div className='py-2'>
-          <div className='flex justify-between items-center mb-1 h-5 text-sm font-medium text-gray-900'>
+        <div className={cn(rowClass)}>
+          <div className={labelClass}>
             {t('datasetSettings.form.desc')}
           </div>
-          <div className='mb-2 text-xs text-gray-500'>
-            {t('datasetSettings.form.descInfo')}<a href='/' className='text-primary-600'>{t('common.operation.learnMore')}</a>
+          <div className='grow'>
+            <textarea
+              value={localeCurrentDataset.description || ''}
+              onChange={e => handleValueChange('description', e.target.value)}
+              className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
+              placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+            />
+            <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/advanced/datasets#how-to-write-a-good-dataset-description" target='_blank'>
+              <BookOpenIcon className='w-3 h-[18px] mr-1' />
+              {t('datasetSettings.form.descWrite')}
+            </a>
           </div>
-          <textarea
-            value={localeCurrentDataset.description || ''}
-            onChange={e => handleValueChange('description', e.target.value)}
-            className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
-            placeholder={t('datasetSettings.form.descPlaceholder') || ''}
-          />
         </div>
-        <div className='py-2'>
-          <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className={cn(rowClass)}>
+          <div className={labelClass}>
             {t('datasetSettings.form.indexMethod')}
           </div>
-          <div>
+          <div className='grow'>
             <IndexMethodRadio
               disable={!localeCurrentDataset?.embedding_available}
               value={indexMethod}
               onChange={v => setIndexMethod(v!)}
-              itemClassName='!w-[282px]'
+              itemClassName='!w-[227px]'
             />
           </div>
         </div>
-        <div className='py-2'>
-          <div className='leading-9 text-sm font-medium text-gray-900'>
+        <div className={cn(rowClass)}>
+          <div className={labelClass}>
             {t('datasetSettings.form.embeddingModel')}
           </div>
-          <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-            <ModelSelector
-              readonly
-              value={{
-                providerName: localeCurrentDataset.embedding_model_provider as ProviderEnum,
-                modelName: localeCurrentDataset.embedding_model,
-              }}
-              modelType={ModelType.embeddings}
-              onChange={() => {}}
-            />
-          </div>
-          <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
-            {t('datasetSettings.form.embeddingModelTip')}
-            <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+          <div className='grow'>
+            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
+              <ModelSelector
+                readonly
+                value={{
+                  providerName: localeCurrentDataset.embedding_model_provider as ProviderEnum,
+                  modelName: localeCurrentDataset.embedding_model,
+                }}
+                modelType={ModelType.embeddings}
+                onChange={() => {}}
+              />
+            </div>
+            <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
+              {t('datasetSettings.form.embeddingModelTip')}
+              <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+            </div>
           </div>
         </div>
         {/* Retrieval Method Config */}
