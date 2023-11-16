@@ -1,4 +1,4 @@
-[![](./images/describe-en.png)](https://dify.ai)
+[![](./images/describe.png)](https://dify.ai)
 
 <p align="center">
   <a href="./README.md">English</a> |
