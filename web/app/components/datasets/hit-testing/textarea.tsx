@@ -11,7 +11,7 @@ import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
-import type { RetrievalConfig } from '@/types/app'
+import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 
 type Props = {
   datasetId: string
@@ -23,6 +23,7 @@ type Props = {
   setText: (v: string) => void
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
+  isEconomy: boolean
 }
 
 const TextAreaWithButton: FC<Props> = ({
@@ -35,6 +36,7 @@ const TextAreaWithButton: FC<Props> = ({
   setText,
   onClickRetrievalMethod,
   retrievalConfig,
+  isEconomy,
 }) => {
   const { t } = useTranslation()
   const { indexingTechnique } = useContext(DatasetDetailContext)
@@ -55,7 +57,7 @@ const TextAreaWithButton: FC<Props> = ({
     setLoading(false)
   }
 
-  const retrievalMethod = retrievalConfig.search_method
+  const retrievalMethod = isEconomy ? RETRIEVE_METHOD.invertedIndex : retrievalConfig.search_method
   const Icon = getIcon(retrievalMethod)
   return (
     <>

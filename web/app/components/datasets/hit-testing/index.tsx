@@ -81,6 +81,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           text={text}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
+          isEconomy={currentDataset?.indexing_technique === 'economy'}
         />
         <div className={cn(s.title, 'mt-8 mb-2')}>{t('datasetHitTesting.recents')}</div>
         {(!recordsRes && !error)
