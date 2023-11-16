@@ -12,9 +12,11 @@ import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useModalContext } from '@/context/modal-context'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { RETRIEVE_METHOD } from '@/types/app'
+import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import { useProviderContext } from '@/context/provider-context'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -42,12 +44,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
       onCancel()
   }, ref)
 
-  const indexMethod = 'high_quality'
-  const [retrievalMethod, setRetrievalMethod] = useState(RETRIEVE_METHOD.semantic)
-
+  const indexMethod = currentDataset.indexing_technique
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const [localeCurrentDataset, setLocaleCurrentDataset] = useState({ ...currentDataset })
+  const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
+
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
 
   const handleValueChange = (type: string, value: string) => {
     setLocaleCurrentDataset({ ...localeCurrentDataset, [type]: value })
@@ -60,6 +66,22 @@ const SettingsModal: FC<SettingsModalProps> = ({
       notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
     }
+    if (
+      !isReRankModelSelected({
+        rerankDefaultModel,
+        isRerankDefaultModelVaild,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      return
+    }
+    const postRetrievalConfig = ensureRerankModelSelected({
+      rerankDefaultModel: rerankDefaultModel!,
+      retrievalConfig,
+      indexMethod,
+    })
     try {
       setLoading(true)
       const { id, name, description, indexing_technique } = localeCurrentDataset
@@ -69,6 +91,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           name,
           description,
           indexing_technique,
+          retrieval_model: postRetrievalConfig,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -168,7 +191,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
           </div>
         </div>
-        {/* Retrieval */}
+        {/* Retrieval Method Config */}
         <div className={rowClass}>
           <div className={labelClass}>
             <div>
@@ -183,14 +206,14 @@ const SettingsModal: FC<SettingsModalProps> = ({
             {indexMethod === 'high_quality'
               ? (
                 <RetrievalMethodConfig
-                  value={retrievalMethod}
-                  onChange={setRetrievalMethod}
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
                 />
               )
               : (
                 <EconomicalRetrievalMethodConfig
-                  value={{}}
-                  onChange={() => {}}
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
                 />
               )}
           </div>
