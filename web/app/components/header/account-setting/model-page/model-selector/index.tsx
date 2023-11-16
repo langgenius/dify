@@ -34,6 +34,7 @@ type Props = {
   popClassName?: string
   readonly?: boolean
   triggerIconSmall?: boolean
+  whenEmptyGoToSetting?: boolean
 }
 
 type ModelOption = {
@@ -57,6 +58,7 @@ const ModelSelector: FC<Props> = ({
   popClassName,
   readonly,
   triggerIconSmall,
+  whenEmptyGoToSetting,
 }) => {
   const { t } = useTranslation()
   const { setShowAccountSettingModal } = useModalContext()
@@ -123,7 +125,7 @@ const ModelSelector: FC<Props> = ({
   return (
     <div className=''>
       <Popover className='relative'>
-        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
+        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto bg-gray-100 opacity-50' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
           {
             ({ open }) => (
               <>
@@ -244,7 +246,22 @@ const ModelSelector: FC<Props> = ({
                   return null
                 })
               }
-              {(search && filteredModelList.length === 0) && (
+              {
+                whenEmptyGoToSetting && modelList.length === 0 && (
+                  <div className='pt-6'>
+                    <div className='flex items-center justify-center mx-auto mb-2 w-12 h-12 rounded-[10px] border border-[#EAECF5]'>
+                      <CubeOutline className='w-6 h-6 text-gray-500' />
+                    </div>
+                    <div className='mb-1 text-center text-[13px] font-medium text-gray-500'>
+                      {t('common.modelProvider.selector.emptyTip')}
+                    </div>
+                    <div className='mb-6 text-center text-xs text-primary-500'>
+                      <span onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('common.modelProvider.selector.emptySetting')}</span>
+                    </div>
+                  </div>
+                )
+              }
+              {modelList.length !== 0 && (search && filteredModelList.length === 0) && (
                 <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound', { model: search })}</div>
               )}
 

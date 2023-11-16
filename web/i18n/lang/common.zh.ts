@@ -250,6 +250,8 @@ const translation = {
     showMoreModelProvider: '显示更多模型提供商',
     selector: {
       tip: '该模型已被删除。请添模型或选择其他模型。',
+      emptyTip: '无可用模型',
+      emptySetting: '请前往设置进行配置',
     },
     card: {
       quota: '额度',
