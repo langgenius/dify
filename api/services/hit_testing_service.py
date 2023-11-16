@@ -74,7 +74,7 @@ class HitTestingService:
             embedding_thread.start()
 
         # retrieval source with full text
-        if retrieval_model['search_method'] == 'full_text-search' or retrieval_model['search_method'] == 'hybrid_search':
+        if retrieval_model['search_method'] == 'full_text_search' or retrieval_model['search_method'] == 'hybrid_search':
             full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset': dataset,
