@@ -148,7 +148,7 @@ class HitTestingService:
 
             record = {
                 "segment": segment,
-                "score": document.metadata['score'],
+                "score": document.metadata.get('score', None),
                 "tsne_position": tsne_position_data[i]
             }
 
