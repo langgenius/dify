@@ -27,7 +27,6 @@ const RetrievalParamConfig: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const canToggleRerankModalEnable = type !== RETRIEVE_METHOD.hybrid
-  // const isScoreThresholdDisabled = type === RETRIEVE_METHOD.fullText && !value.reranking_enable
   const isEconomical = type === RETRIEVE_METHOD.invertedIndex
   const {
     rerankDefaultModel,
@@ -105,7 +104,7 @@ const RetrievalParamConfig: FC<Props> = ({
           }}
           enable={true}
         />
-        {!isEconomical && (
+        {(!isEconomical && !(value.search_method === RETRIEVE_METHOD.fullText && !value.reranking_enable)) && (
           <ScoreThresholdItem
             className='grow'
             value={value.score_threshold}
