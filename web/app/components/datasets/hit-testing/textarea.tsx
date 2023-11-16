@@ -80,7 +80,7 @@ const TextAreaWithButton: FC<Props> = ({
           </div>
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
-        <div className='px-4'>
+        <div className='px-4 pb-11'>
           <textarea
             value={text}
             onChange={handleTextChange}
