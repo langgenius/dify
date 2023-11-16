@@ -12,7 +12,6 @@ import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
 
 type Props = {
   datasetId: string
@@ -56,7 +55,7 @@ const TextAreaWithButton: FC<Props> = ({
     setLoading(false)
   }
 
-  const retrievalMethod = RETRIEVE_METHOD.semantic
+  const retrievalMethod = retrievalConfig.search_method
   const Icon = getIcon(retrievalMethod)
   return (
     <>
