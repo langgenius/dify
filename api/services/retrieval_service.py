@@ -73,7 +73,7 @@ class RetrievalService:
                 top_k=top_k
             )
             if documents:
-                if reranking_model and search_method == 'full_text-search':
+                if reranking_model and search_method == 'full_text_search':
                     rerank = ModelFactory.get_reranking_model(
                         tenant_id=dataset.tenant_id,
                         model_provider_name=reranking_model['reranking_provider_name'],
