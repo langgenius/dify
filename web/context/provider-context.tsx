@@ -2,9 +2,10 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
-import { fetchDefaultModal, fetchModelList } from '@/service/common'
+import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -21,6 +22,7 @@ const ProviderContext = createContext<{
   rerankDefaultModel?: BackendModel
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
+  supportRetrievalMethods: RETRIEVE_METHOD[]
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -37,6 +39,7 @@ const ProviderContext = createContext<{
       rerankDefaultModel: undefined,
       isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => {},
+      supportRetrievalMethods: [],
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -56,6 +59,8 @@ export const ProviderContextProvider = ({
   const { data: embeddingsModelList, mutate: mutateEmbeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.embeddings}`, fetchModelList)
   const { data: speech2textModelList, mutate: mutateSpeech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.speech2text}`, fetchModelList)
   const { data: rerankModelList, mutate: mutateRerankModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelType.reranking}`, fetchModelList)
+  const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
+
   const agentThoughtModelList = textGenerationModelList?.filter((item) => {
     return item.features?.includes(ModelFeature.agentThought)
   })
@@ -92,6 +97,7 @@ export const ProviderContextProvider = ({
       rerankDefaultModel,
       isRerankDefaultModelVaild,
       mutateRerankDefaultModel,
+      supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
     }}>
       {children}
     </ProviderContext.Provider>

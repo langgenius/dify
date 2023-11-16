@@ -27,6 +27,7 @@ import type {
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
 import type { BackendModel, ProviderMap } from '@/app/components/header/account-setting/model-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { data: string }>
@@ -236,4 +237,11 @@ export const fetchCodeBasedExtensionList: Fetcher<CodeBasedExtension, string> = 
 
 export const moderate = (url: string, body: { app_id: string; text: string }) => {
   return post(url, { body }) as Promise<ModerateResponse>
+}
+
+type RetrievalMethodsRes = {
+  'retrieval_method': RETRIEVE_METHOD[]
+}
+export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
+  return get<RetrievalMethodsRes>(url)
 }

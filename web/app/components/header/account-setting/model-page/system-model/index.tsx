@@ -16,7 +16,6 @@ import { updateDefaultModel } from '@/service/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 
 const SystemModel = () => {
   const { t } = useTranslation()
@@ -196,16 +195,6 @@ const SystemModel = () => {
             >
               {t('common.operation.save')}
             </Button>
-          </div>
-          <div className='flex items-center justify-center h-[42px] bg-gray-50 text-xs text-gray-500 border-t-[0.5px] border-t-black/5 rounded-b-xl'>
-            <a
-              href={t('common.modelProvider.systemModelSettingsLink') || '/'}
-              target='_blank'
-              className='group flex items-center text-xs text-gray-500 hover:text-primary-600'
-            >
-              <BookOpen01 className='mr-1 w-3 h-3 text-gray-500 group-hover:text-primary-600' />
-              {t('common.modelProvider.systemModelSettingsLink')}
-            </a>
           </div>
         </div>
       </PortalToFollowElemContent>

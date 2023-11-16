@@ -153,7 +153,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return <Loading />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
+    <div className='flex'>
       {!hideSideBar && <AppSideBar
         title={datasetRes?.name || '--'}
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
@@ -168,7 +168,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-white grow">{children}</div>
+        <div className="bg-white grow" style={{ minHeight: 'calc(100vh - 56px)' }}>{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )
