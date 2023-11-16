@@ -7,7 +7,6 @@ import DatasetNav from './dataset-nav'
 import EnvNav from './env-nav'
 import ExploreNav from './explore-nav'
 import GithubStar from './github-star'
-import PluginNav from './plugin-nav'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
@@ -31,7 +30,6 @@ const Header = () => {
       <div className='flex items-center'>
         <ExploreNav className={navClassName} />
         <AppNav />
-        <PluginNav className={navClassName} />
         {isCurrentWorkspaceManager && <DatasetNav />}
       </div>
       <div className='flex items-center flex-shrink-0'>
