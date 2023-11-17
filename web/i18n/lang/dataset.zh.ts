@@ -22,7 +22,7 @@ const translation = {
   datasetsApi: 'API',
   retrieval: {
     semantic_search: {
-      title: '语义检索',
+      title: '向量检索',
       description: '通过生成查询嵌入并查询与其向量表示最相似的文本分段',
     },
     full_text_search: {
