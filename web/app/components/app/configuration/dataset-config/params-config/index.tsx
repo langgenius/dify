@@ -26,7 +26,6 @@ const ParamsConfig: FC = () => {
   } = useContext(ConfigContext)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
 
-  console.log(tempDataSetConfigs)
   const type = tempDataSetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     setTempDataSetConfigs({
