@@ -313,6 +313,7 @@ export type ImageFile = {
   progress: number
   url: string
   base64Url?: string
+  deleted?: boolean
 }
 
 export type VisionFile = {

@@ -1,4 +1,4 @@
-![](./images/describe-en.png)
+[![](./images/describe.png)](https://dify.ai)
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |

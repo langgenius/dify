@@ -446,6 +446,7 @@ const translation = {
     pasteImageLink: 'Paste image link',
     pasteImageLinkInputPlaceholder: 'Paste image link here',
     pasteImageLinkInvalid: 'Invalid image link',
+    imageUpload: 'Image Upload',
   },
 }
 
