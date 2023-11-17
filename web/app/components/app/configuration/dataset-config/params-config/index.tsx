@@ -157,8 +157,8 @@ const ParamsConfig: FC = () => {
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
         <div className='w-[240px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
           {PARAMS_KEY.map((key: string) => {
-            const currentValue = key === 'top_k' ? datasetConfigs[key] : (datasetConfigs as any)[key].value
-            const currentEnableState = key === 'top_k' ? true : (datasetConfigs as any)[key].enable
+            const currentValue = key === 'top_k' ? datasetConfigs[key] : (datasetConfigs as any)[key]?.value
+            const currentEnableState = key === 'top_k' ? true : (datasetConfigs as any)[key]?.enable
             return (
               <ParamItem
                 key={key}
