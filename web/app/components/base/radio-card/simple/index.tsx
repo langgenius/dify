@@ -11,6 +11,7 @@ type Props = {
   isChosen: boolean
   onChosen: () => void
   chosenConfig?: React.ReactNode
+  icon?: JSX.Element
 }
 
 const RadioCard: FC<Props> = ({
@@ -18,17 +19,21 @@ const RadioCard: FC<Props> = ({
   description,
   isChosen,
   onChosen,
+  icon,
 }) => {
   return (
     <div
-      className={cn(s.item, isChosen && s.active)}
+      className={cn(s.item, isChosen && s.active, 'flex')}
       onClick={onChosen}
     >
-      <div className='flex justify-between items-center'>
-        <div className='leading-5 text-sm font-medium text-gray-900'>{title}</div>
-        <div className={s.radio}></div>
+      {icon}
+      <div>
+        <div className='flex justify-between items-center'>
+          <div className='leading-5 text-sm font-medium text-gray-900'>{title}</div>
+          <div className={s.radio}></div>
+        </div>
+        <div className='leading-[18px] text-xs font-normal text-gray-500'>{description}</div>
       </div>
-      <div className='leading-[18px] text-xs font-normal text-gray-500'>{description}</div>
     </div>
   )
 }

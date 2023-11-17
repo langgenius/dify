@@ -17,6 +17,11 @@ import { useProviderContext } from '@/context/provider-context'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import Toast from '@/app/components/base/toast'
 import { DATASET_DEFAULT } from '@/config'
+import {
+  MultiPathRetrieval,
+  NTo1Retrieval,
+} from '@/app/components/base/icons/src/public/common'
+
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -138,12 +143,14 @@ const ParamsConfig: FC = () => {
           >
             <div className='mt-2 space-y-3'>
               <RadioCard
+                icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
                 title={t('appDebug.datasetConfig.retrieveOneWay.title')}
                 description={t('appDebug.datasetConfig.retrieveOneWay.description')}
                 isChosen={type === RETRIEVE_TYPE.oneWay}
                 onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}
               />
               <RadioCard
+                icon={<MultiPathRetrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
                 title={t('appDebug.datasetConfig.retrieveMultiWay.title')}
                 description={t('appDebug.datasetConfig.retrieveMultiWay.description')}
                 isChosen={type === RETRIEVE_TYPE.multiWay}
