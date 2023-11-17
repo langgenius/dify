@@ -24,7 +24,7 @@ Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Di
 
 ![](./images/demo.png)
 
-## 为什么选择Dify
+## 为什么选择 Dify
 
 Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
 
