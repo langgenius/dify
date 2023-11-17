@@ -14,6 +14,7 @@ from pydantic import root_validator
 from core.model_providers.models.entity.message import to_prompt_messages
 from core.model_providers.models.llm.base import BaseLLM
 from core.third_party.langchain.llms.fake import FakeLLM
+from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
 class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
@@ -59,6 +60,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
             return AgentFinish(return_values={"output": ''}, log='')
         elif len(self.tools) == 1:
             tool = next(iter(self.tools))
+            tool = cast(DatasetRetrieverTool, tool)
             rst = tool.run(tool_input={'query': kwargs['input']})
             # output = ''
             # rst_json = json.loads(rst)

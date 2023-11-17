@@ -191,3 +191,21 @@ class QdrantVectorIndex(BaseVectorIndex):
                 return True
 
         return False
+
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        from qdrant_client.http import models
+        return vector_store.similarity_search_by_bm25(models.Filter(
+            must=[
+                models.FieldCondition(
+                    key="group_id",
+                    match=models.MatchValue(value=self.dataset.id),
+                ),
+                models.FieldCondition(
+                    key="page_content",
+                    match=models.MatchText(text=query),
+                )
+            ],
+        ), kwargs.get('top_k', 2))
