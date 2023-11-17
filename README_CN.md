@@ -18,8 +18,6 @@
             alt="follow on Twitter"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
-    <a href="https://github.com/langgenius/dify" target="_blank">
-        <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/langgenius/dify"></a>
 </p>
 
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。

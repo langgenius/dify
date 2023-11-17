@@ -17,8 +17,6 @@
             alt="follow on Twitter"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
-    <a href="https://github.com/langgenius/dify" target="_blank">
-        <img alt="GitHub contributors" src="https://img.shields.io/github/contributors/langgenius/dify"></a>
 </p>
 
 **Dify** is an LLM application development platform that has already seen over **100,000** applications built on Dify.AI. It integrates the concepts of Backend as a Service and LLMOps, covering the core tech stack required for building generative AI-native applications, including a built-in RAG engine. With Dify, **you can self-deploy capabilities similar to Assistants API and GPTs based on any LLMs.**
