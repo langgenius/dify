@@ -3,7 +3,6 @@ import threading
 from typing import Type, Optional, List
 
 from flask import current_app, Flask
-from flask_login import current_user
 from langchain.tools import BaseTool
 from pydantic import Field, BaseModel
 
@@ -11,7 +10,6 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.conversation_message_task import ConversationMessageTask
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
-from core.index.vector_index.vector_index import VectorIndex
 from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
@@ -36,7 +34,7 @@ class DatasetMultiRetrieverToolInput(BaseModel):
 
 class DatasetMultiRetrieverTool(BaseTool):
     """Tool for querying multi dataset."""
-    name: str = "multi_datasets"
+    name: str = "dataset-"
     args_schema: Type[BaseModel] = DatasetMultiRetrieverToolInput
     description: str = "dataset multi retriever and rerank. "
     tenant_id: str
@@ -50,11 +48,11 @@ class DatasetMultiRetrieverTool(BaseTool):
     retriever_from: str
 
     @classmethod
-    def from_dataset(cls, dataset_ids: List[str], **kwargs):
+    def from_dataset(cls, dataset_ids: List[str], tenant_id: str, **kwargs):
         return cls(
-            name=f'multi_datasets-{current_user.current_tenant_id}',
-            tenant_id=current_user.current_tenant_id,
-            dataset_id=dataset_ids,
+            name=f'dataset-{tenant_id}',
+            tenant_id=tenant_id,
+            dataset_ids=dataset_ids,
             **kwargs
         )
 
@@ -69,6 +67,9 @@ class DatasetMultiRetrieverTool(BaseTool):
                 'all_documents': all_documents
             })
             threads.append(retrieval_thread)
+            retrieval_thread.start()
+        for thread in threads:
+            thread.join()
         # do rerank for searched documents
         rerank = ModelFactory.get_reranking_model(
             tenant_id=self.tenant_id,
@@ -184,7 +185,7 @@ class DatasetMultiRetrieverTool(BaseTool):
                     # retrieval_model source with semantic
                     if retrieval_model['search_method'] == 'semantic_search' or retrieval_model[
                         'search_method'] == 'hybrid_search':
-                        embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
+                        embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                             'flask_app': current_app._get_current_object(),
                             'dataset': dataset,
                             'query': query,

@@ -460,6 +460,28 @@ class DatasetRetrievalSettingApi(Resource):
             raise ValueError("Unsupported vector db type.")
 
 
+class DatasetRetrievalSettingMockApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, vector_type):
+
+        if vector_type == 'milvus':
+            return {
+                'retrieval_method': [
+                    'semantic_search'
+                ]
+            }
+        elif vector_type == 'qdrant' or vector_type == 'weaviate':
+            return {
+                'retrieval_method': [
+                    'semantic_search', 'full_text_search', 'hybrid_search'
+                ]
+            }
+        else:
+            raise ValueError("Unsupported vector db type.")
+
+
 api.add_resource(DatasetListApi, '/datasets')
 api.add_resource(DatasetApi, '/datasets/<uuid:dataset_id>')
 api.add_resource(DatasetQueryApi, '/datasets/<uuid:dataset_id>/queries')
@@ -470,3 +492,4 @@ api.add_resource(DatasetApiKeyApi, '/datasets/api-keys')
 api.add_resource(DatasetApiDeleteApi, '/datasets/api-keys/<uuid:api_key_id>')
 api.add_resource(DatasetApiBaseUrlApi, '/datasets/api-base-info')
 api.add_resource(DatasetRetrievalSettingApi, '/datasets/retrieval-setting')
+api.add_resource(DatasetRetrievalSettingMockApi, '/datasets/retrieval-setting/<string:vector_type>')
