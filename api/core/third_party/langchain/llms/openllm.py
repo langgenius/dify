@@ -51,7 +51,8 @@ class OpenLLM(LLM):
     ) -> str:
         params = {
             "prompt": prompt,
-            "llm_config": self.llm_kwargs
+            "llm_config": self.llm_kwargs,
+            "stop": stop,
         }
 
         headers = {"Content-Type": "application/json"}
@@ -65,11 +66,11 @@ class OpenLLM(LLM):
             raise ValueError(f"OpenLLM HTTP {response.status_code} error: {response.text}")
 
         json_response = response.json()
-        completion = json_response["responses"][0]
+        completion = json_response["outputs"][0]['text']
         completion = completion.lstrip(prompt)
 
-        if stop is not None:
-            completion = enforce_stop_tokens(completion, stop)
+        # if stop is not None:
+        #     completion = enforce_stop_tokens(completion, stop)
 
         return completion
 
