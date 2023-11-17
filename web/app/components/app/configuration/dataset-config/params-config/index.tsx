@@ -16,7 +16,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import { useProviderContext } from '@/context/provider-context'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import Toast from '@/app/components/base/toast'
-
+import { DATASET_DEFAULT } from '@/config'
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -25,6 +25,8 @@ const ParamsConfig: FC = () => {
     setDatasetConfigs,
   } = useContext(ConfigContext)
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
+
+  console.log(tempDataSetConfigs)
   const type = tempDataSetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     setTempDataSetConfigs({
@@ -111,7 +113,11 @@ const ParamsConfig: FC = () => {
       <div
         className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}
         onClick={() => {
-          setTempDataSetConfigs(datasetConfigs)
+          setTempDataSetConfigs({
+            ...datasetConfigs,
+            top_k: datasetConfigs.top_k || DATASET_DEFAULT.top_k,
+            score_threshold: datasetConfigs.score_threshold || DATASET_DEFAULT.score_threshold,
+          })
           setOpen(true)
         }}
       >
