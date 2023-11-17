@@ -49,13 +49,13 @@ class IndexingRunner:
                 if not dataset:
                     raise ValueError("no dataset found")
 
-                # load file
-                text_docs = self._load_data(dataset_document)
-
                 # get the process rule
                 processing_rule = db.session.query(DatasetProcessRule). \
                     filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
                     first()
+
+                # load file
+                text_docs = self._load_data(dataset_document)
 
                 # get splitter
                 splitter = self._get_splitter(processing_rule)
@@ -380,7 +380,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def _load_data(self, dataset_document: DatasetDocument) -> List[Document]:
+    def _load_data(self, dataset_document: DatasetDocument, automatic: bool = False) -> List[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
             return []
@@ -396,7 +396,7 @@ class IndexingRunner:
                 one_or_none()
 
             if file_detail:
-                text_docs = FileExtractor.load(file_detail)
+                text_docs = FileExtractor.load(file_detail, is_automatic=False)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
             text_docs = loader.load()

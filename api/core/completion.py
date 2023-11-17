@@ -127,6 +127,7 @@ class Completion:
                 memory=memory,
                 rest_tokens=rest_tokens_for_context_and_memory,
                 chain_callback=chain_callback,
+                tenant_id=app.tenant_id,
                 retriever_from=retriever_from
             )
 

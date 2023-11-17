@@ -51,7 +51,7 @@ class OrchestratorRuleParser:
         self.app_model_config = app_model_config
 
     def to_agent_executor(self, conversation_message_task: ConversationMessageTask, memory: Optional[BaseChatMemory],
-                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler,
+                          rest_tokens: int, chain_callback: MainChainGatherCallbackHandler, tenant_id: str,
                           retriever_from: str = 'dev') -> Optional[AgentExecutor]:
         if not self.app_model_config.agent_mode_dict:
             return None
@@ -118,7 +118,8 @@ class OrchestratorRuleParser:
                 rest_tokens=rest_tokens,
                 return_resource=return_resource,
                 retriever_from=retriever_from,
-                dataset_configs=dataset_configs
+                dataset_configs=dataset_configs,
+                tenant_id=tenant_id
             )
 
             if len(tools) == 0:
@@ -140,7 +141,7 @@ class OrchestratorRuleParser:
 
         return chain
 
-    def to_tools(self, tool_configs: list, callbacks: Callbacks = None, **kwargs) -> list[BaseTool]:
+    def to_tools(self, tool_configs: list, callbacks: Callbacks = None,  **kwargs) -> list[BaseTool]:
         """
         Convert app agent tool configs to tools
 
@@ -197,11 +198,12 @@ class OrchestratorRuleParser:
         retrieval_model = dataset_configs.get('retrieval_model', 'single')
         tools = []
         dataset_ids = []
+        tenant_id = None
         for tool_config in tool_configs:
             # get dataset from dataset id
             dataset = db.session.query(Dataset).filter(
                 Dataset.tenant_id == self.tenant_id,
-                Dataset.id == tool_config.get("id")
+                Dataset.id == tool_config.get('dataset').get("id")
             ).first()
 
             if not dataset:
@@ -235,6 +237,7 @@ class OrchestratorRuleParser:
         if retrieval_model == 'multiple':
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=dataset_ids,
+                tenant_id=kwargs['tenant_id'],
                 top_k=dataset_configs.get('top_k', 2),
                 score_threshold=dataset_configs.get('score_threshold', 0.5) if dataset_configs.get('score_threshold_enable', False) else None,
                 callbacks=[DatasetToolCallbackHandler(conversation_message_task)],

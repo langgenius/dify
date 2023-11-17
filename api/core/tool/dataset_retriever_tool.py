@@ -104,7 +104,7 @@ class DatasetRetrieverTool(BaseTool):
             if self.top_k > 0:
                 # retrieval source with semantic
                 if retrieval_model['search_method'] == 'semantic_search' or retrieval_model['search_method'] == 'hybrid_search':
-                    embedding_thread = threading.Thread(target=RetrivalService.embedding_search, kwargs={
+                    embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                         'flask_app': current_app._get_current_object(),
                         'dataset': dataset,
                         'query': query,

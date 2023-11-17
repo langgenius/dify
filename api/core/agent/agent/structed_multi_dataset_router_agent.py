@@ -89,7 +89,6 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
             return AgentFinish(return_values={"output": ''}, log='')
         elif len(self.dataset_tools) == 1:
             tool = next(iter(self.dataset_tools))
-            tool = cast(DatasetRetrieverTool, tool)
             rst = tool.run(tool_input={'query': kwargs['input']})
             return AgentFinish(return_values={"output": rst}, log=rst)
 
