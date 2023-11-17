@@ -22,7 +22,7 @@ const translation = {
   datasetsApi: 'API',
   retrieval: {
     semantic_search: {
-      title: 'Semantic Search',
+      title: 'Vector Search',
       description: 'Generate query embeddings and search for the text chunk most similar to its vector representation.',
     },
     full_text_search: {
