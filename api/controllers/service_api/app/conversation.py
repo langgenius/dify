@@ -67,7 +67,7 @@ class ConversationRenameApi(AppApiResource):
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=False, location='json')
         parser.add_argument('user', type=str, location='json')
-        parser.add_argument('auto_generate', type=bool, required=False, default='False', location='json')
+        parser.add_argument('auto_generate', type=bool, required=False, default=False, location='json')
         args = parser.parse_args()
 
         if end_user is None and args['user'] is not None:

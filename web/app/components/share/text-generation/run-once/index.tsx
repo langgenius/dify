@@ -82,7 +82,7 @@ const RunOnce: FC<IRunOnceProps> = ({
           {
             visionConfig?.enabled && (
               <div className="w-full mt-4">
-                <div className="text-gray-900 text-sm font-medium">Image Upload</div>
+                <div className="text-gray-900 text-sm font-medium">{t('common.imageUploader.imageUpload')}</div>
                 <div className='mt-2'>
                   <TextGenerationImageUploader
                     settings={visionConfig}
