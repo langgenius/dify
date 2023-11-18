@@ -155,7 +155,7 @@ class ModelFactory:
         :param model_name:
         :return:
         """
-        if model_provider_name is None and model_name is None:
+        if (model_provider_name is None or len(model_provider_name) == 0) and (model_name is None or len(model_name) == 0):
             default_model = cls.get_default_model(tenant_id, ModelType.RERANKING)
 
             if not default_model:
