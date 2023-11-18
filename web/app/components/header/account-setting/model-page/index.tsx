@@ -3,46 +3,34 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type {
-  BackendModel,
   FormValue,
   ProviderConfigModal,
   ProviderEnum,
 } from './declarations'
-import ModelSelector from './model-selector'
 import ModelCard from './model-card'
 import ModelItem from './model-item'
 import ModelModal from './model-modal'
+import SystemModel from './system-model'
 import config from './configs'
 import { ConfigurableProviders } from './utils'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import {
   changeModelProviderPriority,
   deleteModelProvider,
   deleteModelProviderModel,
-  fetchDefaultModal,
   fetchModelProviders,
   setModelProvider,
-  updateDefaultModel,
 } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import Confirm from '@/app/components/base/confirm/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
-import Tooltip from '@/app/components/base/tooltip'
 import I18n from '@/context/i18n'
 
 const MODEL_CARD_LIST = [
   config.openai,
   config.anthropic,
 ]
-
-const titleClassName = `
-flex items-center h-9 text-sm font-medium text-gray-900
-`
-const tipClassName = `
-ml-0.5 w-[14px] h-[14px] text-gray-400
-`
 
 type DeleteModel = {
   model_name: string
@@ -54,13 +42,8 @@ const ModelPage = () => {
   const { locale } = useContext(I18n)
   const {
     updateModelList,
-    embeddingsDefaultModel,
-    mutateEmbeddingsDefaultModel,
-    speech2textDefaultModel,
-    mutateSpeech2textDefaultModel,
   } = useProviderContext()
   const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
-  const { data: textGenerationDefaultModel, mutate: mutateTextGenerationDefaultModel } = useSWR('/workspaces/current/default-model?model_type=text-generation', fetchDefaultModal)
   const [showModal, setShowModal] = useState(false)
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -76,6 +59,7 @@ const ModelPage = () => {
       config.azure_openai,
       config.replicate,
       config.huggingface_hub,
+      config.cohere,
       config.zhipuai,
       config.baichuan,
       config.spark,
@@ -91,6 +75,7 @@ const ModelPage = () => {
   else {
     modelList = [
       config.huggingface_hub,
+      config.cohere,
       config.zhipuai,
       config.spark,
       config.baichuan,
@@ -127,6 +112,7 @@ const ModelPage = () => {
     updateModelList(ModelType.textGeneration)
     updateModelList(ModelType.embeddings)
     updateModelList(ModelType.speech2text)
+    updateModelList(ModelType.reranking)
     mutateProviders()
   }
   const handleSave = async (originValue?: FormValue) => {
@@ -210,95 +196,12 @@ const ModelPage = () => {
     }
   }
 
-  const mutateDefaultModel = (type: ModelType) => {
-    if (type === ModelType.textGeneration)
-      mutateTextGenerationDefaultModel()
-    if (type === ModelType.embeddings)
-      mutateEmbeddingsDefaultModel()
-    if (type === ModelType.speech2text)
-      mutateSpeech2textDefaultModel()
-  }
-  const handleChangeDefaultModel = async (type: ModelType, v: BackendModel) => {
-    const res = await updateDefaultModel({
-      url: '/workspaces/current/default-model',
-      body: {
-        model_type: type,
-        provider_name: v.model_provider.provider_name,
-        model_name: v.model_name,
-      },
-    })
-    if (res.result === 'success') {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutateDefaultModel(type)
-    }
-  }
-
   return (
     <div className='relative pt-1 -mt-2'>
-      <div className='grid grid-cols-3 gap-4 mb-5'>
-        <div className='w-full'>
-          <div className={titleClassName}>
-            {t('common.modelProvider.systemReasoningModel.key')}
-            <Tooltip
-              selector='model-page-system-reasoning-model-tip'
-              htmlContent={
-                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
-              }
-            >
-              <HelpCircle className={tipClassName} />
-            </Tooltip>
-          </div>
-          <div>
-            <ModelSelector
-              value={textGenerationDefaultModel && { providerName: textGenerationDefaultModel.model_provider.provider_name, modelName: textGenerationDefaultModel.model_name }}
-              modelType={ModelType.textGeneration}
-              onChange={v => handleChangeDefaultModel(ModelType.textGeneration, v)}
-            />
-          </div>
-        </div>
-        <div className='w-full'>
-          <div className={titleClassName}>
-            {t('common.modelProvider.embeddingModel.key')}
-            <Tooltip
-              selector='model-page-system-embedding-model-tip'
-              htmlContent={
-                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
-              }
-            >
-              <HelpCircle className={tipClassName} />
-            </Tooltip>
-          </div>
-          <div>
-            <ModelSelector
-              value={embeddingsDefaultModel && { providerName: embeddingsDefaultModel.model_provider.provider_name, modelName: embeddingsDefaultModel.model_name }}
-              modelType={ModelType.embeddings}
-              onChange={v => handleChangeDefaultModel(ModelType.embeddings, v)}
-            />
-          </div>
-        </div>
-        <div className='w-full'>
-          <div className={titleClassName}>
-            {t('common.modelProvider.speechToTextModel.key')}
-            <Tooltip
-              selector='model-page-system-speechToText-model-tip'
-              htmlContent={
-                <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
-              }
-            >
-              <HelpCircle className={tipClassName} />
-            </Tooltip>
-          </div>
-          <div>
-            <ModelSelector
-              value={speech2textDefaultModel && { providerName: speech2textDefaultModel.model_provider.provider_name, modelName: speech2textDefaultModel.model_name }}
-              modelType={ModelType.speech2text}
-              onChange={v => handleChangeDefaultModel(ModelType.speech2text, v)}
-            />
-          </div>
-        </div>
+      <div className='flex items-center justify-between mb-2 h-8'>
+        <div className='text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
+        <SystemModel />
       </div>
-      <div className='mb-5 h-[0.5px] bg-gray-100' />
-      <div className='mb-3 text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
       <div className='grid grid-cols-2 gap-4 mb-6'>
         {
           MODEL_CARD_LIST.map((model, index) => (

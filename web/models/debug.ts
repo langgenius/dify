@@ -1,4 +1,4 @@
-import type { ModelModeType } from '@/types/app'
+import type { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -107,9 +107,16 @@ export type DatasetConfigItem = {
   enable: boolean
   value: number
 }
+
 export type DatasetConfigs = {
+  retrieval_model: RETRIEVE_TYPE
+  reranking_model: {
+    reranking_provider_name: string
+    reranking_model_name: string
+  }
   top_k: number
-  score_threshold: DatasetConfigItem
+  score_threshold_enabled: boolean
+  score_threshold: number
 }
 
 export type DebugRequestBody = {

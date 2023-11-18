@@ -7,6 +7,7 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
+import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -19,7 +20,10 @@ import {
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import { type RetrievalConfig } from '@/types/app'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
@@ -31,6 +35,8 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { useProviderContext } from '@/context/provider-context'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -78,7 +84,7 @@ const StepTwo = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
 
-  const { mutateDatasetRes } = useDatasetDetailContext()
+  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
@@ -254,7 +260,10 @@ const StepTwo = ({
       }
     }
   }
-
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
   const getCreationParams = () => {
     let params
     if (isSetting) {
@@ -263,9 +272,30 @@ const StepTwo = ({
         doc_form: docForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
       } as CreateDocumentReq
     }
-    else {
+    else { // create
+      const indexMethod = getIndexing_technique()
+      if (
+        !isReRankModelSelected({
+          rerankDefaultModel,
+          isRerankDefaultModelVaild,
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          retrievalConfig,
+          indexMethod: indexMethod as string,
+        })
+      ) {
+        Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+        return
+      }
+      const postRetrievalConfig = ensureRerankModelSelected({
+        rerankDefaultModel: rerankDefaultModel!,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrievalConfig,
+        indexMethod: indexMethod as string,
+      })
       params = {
         data_source: {
           type: dataSourceType,
@@ -277,6 +307,8 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
+
+        retrieval_model: postRetrievalConfig,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -330,7 +362,7 @@ const StepTwo = ({
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -338,7 +370,7 @@ const StepTwo = ({
       else {
         res = await createDocument({
           datasetId,
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -440,6 +472,18 @@ const StepTwo = ({
       setPreviewSwitched(false)
     }
   }, [segmentationType, indexType])
+
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_model: {
+      reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
+      reranking_model_name: rerankDefaultModel?.model_name,
+    },
+    top_k: 3,
+    score_threshold_enable: false,
+    score_threshold: 0.5,
+  } as RetrievalConfig)
 
   return (
     <div className='flex w-full h-full'>
@@ -626,6 +670,56 @@ const StepTwo = ({
                 )}
               </div>
             )}
+            {/* Retrieval Method Config */}
+            <div>
+              {!datasetId
+                ? (
+                  <div className={s.label}>
+                    {t('datasetSettings.form.retrievalSetting.title')}
+                    <div className='leading-[18px] text-xs font-normal text-gray-500'>
+                      <a target='_blank' href='https://docs.dify.ai/v/zh-hans/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      {t('datasetSettings.form.retrievalSetting.longDescription')}
+                    </div>
+                  </div>
+                )
+                : (
+                  <div className={cn(s.label, 'flex justify-between items-center')}>
+                    <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  </div>
+                )}
+
+              <div className='max-w-[640px]'>
+                {!datasetId
+                  ? (<>
+                    {getIndexing_technique() === IndexingType.QUALIFIED
+                      ? (
+                        <RetrievalMethodConfig
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
+                        />
+                      )
+                      : (
+                        <EconomicalRetrievalMethodConfig
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
+                        />
+                      )}
+                  </>)
+                  : (
+                    <div>
+                      <RetrievalMethodInfo
+                        value={retrievalConfig}
+                      />
+                      <div className='mt-2 text-xs text-gray-500 font-medium'>
+                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
+                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                      </div>
+                    </div>
+                  )}
+
+              </div>
+            </div>
+
             <div className={s.source}>
               <div className={s.sourceContent}>
                 {dataSourceType === DataSourceType.FILE && (

@@ -9,6 +9,8 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionsRadio from '../permissions-radio'
 import IndexMethodRadio from '../index-method-radio'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -17,8 +19,10 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import DatasetDetailContext from '@/context/dataset-detail'
+import { type RetrievalConfig } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
-
+import { useProviderContext } from '@/context/provider-context'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 const rowClass = `
   flex justify-between py-4
 `
@@ -51,6 +55,12 @@ const Form = () => {
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
+
   const handleSave = async () => {
     if (loading)
       return
@@ -58,6 +68,22 @@ const Form = () => {
       notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
     }
+    if (
+      !isReRankModelSelected({
+        rerankDefaultModel,
+        isRerankDefaultModelVaild,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      return
+    }
+    const postRetrievalConfig = ensureRerankModelSelected({
+      rerankDefaultModel: rerankDefaultModel!,
+      retrievalConfig,
+      indexMethod,
+    })
     try {
       setLoading(true)
       await updateDatasetSetting({
@@ -67,6 +93,7 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
+          retrieval_model: postRetrievalConfig,
         },
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -172,6 +199,33 @@ const Form = () => {
           </div>
         </div>
       )}
+      {/* Retrieval Method Config */}
+      <div className={rowClass}>
+        <div className={labelClass}>
+          <div>
+            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            <div className='leading-[18px] text-xs font-normal text-gray-500'>
+              <a target='_blank' href='https://docs.dify.ai/v/zh-hans/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+              {t('datasetSettings.form.retrievalSetting.description')}
+            </div>
+          </div>
+        </div>
+        <div className='w-[480px]'>
+          {indexMethod === 'high_quality'
+            ? (
+              <RetrievalMethodConfig
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
+              />
+            )
+            : (
+              <EconomicalRetrievalMethodConfig
+                value={retrievalConfig}
+                onChange={setRetrievalConfig}
+              />
+            )}
+        </div>
+      </div>
       {currentDataset?.embedding_available && (
         <div className={rowClass}>
           <div className={labelClass} />

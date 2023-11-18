@@ -20,6 +20,27 @@ const translation = {
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'DATASETS',
   datasetsApi: 'API',
+  retrieval: {
+    semantic_search: {
+      title: 'Vector Search',
+      description: 'Generate query embeddings and search for the text chunk most similar to its vector representation.',
+    },
+    full_text_search: {
+      title: 'Full-Text Search',
+      description: 'Index all terms in the document, allowing users to search any term and retrieve relevant text chunk containing those terms.',
+    },
+    hybrid_search: {
+      title: 'Hybrid Search',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIis necessary.',
+      recommend: 'Recommend',
+    },
+    invertedIndex: {
+      title: 'Inverted Index',
+      description: 'Inverted Index is a structure used for efficient retrieval. Organized by terms, each term points to documents or web pages containing it.',
+    },
+    change: 'Change',
+    changeRetrievalMethod: 'Change retrieval method',
+  },
 }
 
 export default translation
