@@ -20,8 +20,8 @@
   @apply text-sm font-normal text-gray-500;
 }
 .textarea {
-  min-height: 96px;
-  @apply border-none resize-none font-normal caret-primary-600 text-gray-700 text-sm w-full bg-gray-25 focus-visible:outline-none placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal !important;
+  height: 220px;
+  @apply border-none resize-none font-normal caret-primary-600 text-gray-700 text-sm w-full  focus-visible:outline-none placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal !important;
 }
 .table {
   @apply text-[13px] text-gray-500;
@@ -46,7 +46,7 @@
 }
 
 .wrapper {
-  @apply relative border border-primary-600 min-h-[200px] rounded-xl pt-3 pb-14 px-4 bg-gray-25;
+  @apply relative border border-primary-600 rounded-xl;
 }
 
 .cardWrapper {

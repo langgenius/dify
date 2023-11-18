@@ -141,3 +141,8 @@ export const VAR_ITEM_TEMPLATE = {
 export const appDefaultIconBackground = '#D5F5F6'
 
 export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
+
+export const DATASET_DEFAULT = {
+  top_k: 2,
+  score_threshold: 0.5,
+}

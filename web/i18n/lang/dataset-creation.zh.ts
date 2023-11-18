@@ -101,6 +101,7 @@ const translation = {
     previewSwitchTipEnd: '消耗额外的 token',
     characters: '字符',
     indexSettedTip: '要更改索引方法，请转到',
+    retrivalSettedTip: '要更改检索方法，请转到',
     datasetSettingLink: '数据集设置。',
   },
   stepThree: {

@@ -37,7 +37,7 @@ import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
@@ -127,11 +127,14 @@ const Configuration: FC = () => {
   })
 
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
-    top_k: 2,
-    score_threshold: {
-      enable: false,
-      value: 0.7,
+    retrieval_model: RETRIEVE_TYPE.oneWay,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
     },
+    top_k: 2,
+    score_threshold_enabled: false,
+    score_threshold: 0.7,
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -391,7 +394,10 @@ const Configuration: FC = () => {
 
       syncToPublishedConfig(config)
       setPublishedConfig(config)
-      setDatasetConfigs(modelConfig.dataset_configs)
+      setDatasetConfigs({
+        retrieval_model: RETRIEVE_TYPE.oneWay,
+        ...modelConfig.dataset_configs,
+      })
       setHasFetchedDetail(true)
     })
   }, [appId])
