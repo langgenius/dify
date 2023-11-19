@@ -60,7 +60,8 @@ DEFAULTS = {
     'UPLOAD_FILE_BATCH_LIMIT': 5,
     'UPLOAD_IMAGE_FILE_SIZE_LIMIT': 10,
     'OUTPUT_MODERATION_BUFFER_SIZE': 300,
-    'MULTIMODAL_SEND_IMAGE_FORMAT': 'base64'
+    'MULTIMODAL_SEND_IMAGE_FORMAT': 'base64',
+    'INVITE_EXPIRY_HOURS': 72
 }
 
 
@@ -218,6 +219,11 @@ class Config:
         self.MAIL_TYPE = get_env('MAIL_TYPE')
         self.MAIL_DEFAULT_SEND_FROM = get_env('MAIL_DEFAULT_SEND_FROM')
         self.RESEND_API_KEY = get_env('RESEND_API_KEY')
+        
+        # ------------------------
+        # Workpace Configurations.
+        # ------------------------
+        self.INVITE_EXPIRY_HOURS = int(get_env('INVITE_EXPIRY_HOURS'))
 
         # ------------------------
         # Sentry Configurations.
