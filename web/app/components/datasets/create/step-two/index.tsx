@@ -263,6 +263,7 @@ const StepTwo = ({
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
   const getCreationParams = () => {
     let params
@@ -282,6 +283,7 @@ const StepTwo = ({
         !isReRankModelSelected({
           rerankDefaultModel,
           isRerankDefaultModelVaild,
+          rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,

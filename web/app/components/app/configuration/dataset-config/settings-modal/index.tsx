@@ -59,6 +59,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
 
   const handleValueChange = (type: string, value: string) => {
@@ -78,6 +79,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       !isReRankModelSelected({
         rerankDefaultModel,
         isRerankDefaultModelVaild,
+        rerankModelList,
         retrievalConfig,
         indexMethod,
       })
