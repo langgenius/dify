@@ -34,6 +34,10 @@ export const routes = {
     method: "DELETE",
     url: (conversation_id) => `/conversations/${conversation_id}`,
   },
+  fileUpload: {
+    method: "POST",
+    url: () => `/files/upload`,
+  }
 };
 
 export class DifyClient {
@@ -51,11 +55,15 @@ export class DifyClient {
     endpoint,
     data = null,
     params = null,
-    stream = false
+    stream = false,
+    headerParams = {}
   ) {
     const headers = {
-      Authorization: `Bearer ${this.apiKey}`,
-      "Content-Type": "application/json",
+      ...{
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      ...headerParams
     };
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -102,6 +110,19 @@ export class DifyClient {
       routes.application.url(),
       null,
       params
+    );
+  }
+
+  fileUpload(data) {
+    return this.sendRequest(
+      routes.fileUpload.method,
+      routes.fileUpload.url(),
+      data,
+      null,
+      false,
+      {
+        "Content-Type": 'multipart/form-data'
+      }
     );
   }
 }
