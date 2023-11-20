@@ -34,6 +34,10 @@ export const routes = {
     method: "DELETE",
     url: (conversation_id) => `/conversations/${conversation_id}`,
   },
+  fileUpload: {
+    method: "POST",
+    url: () => `/files/upload`,
+  }
 };
 
 export class DifyClient {
@@ -51,11 +55,15 @@ export class DifyClient {
     endpoint,
     data = null,
     params = null,
-    stream = false
+    stream = false,
+    headerParams = {}
   ) {
     const headers = {
-      Authorization: `Bearer ${this.apiKey}`,
-      "Content-Type": "application/json",
+      ...{
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      ...headerParams
     };
 
     const url = `${this.baseUrl}${endpoint}`;
@@ -104,15 +112,28 @@ export class DifyClient {
       params
     );
   }
+
+  fileUpload(data) {
+    return this.sendRequest(
+      routes.fileUpload.method,
+      routes.fileUpload.url(),
+      data,
+      null,
+      false,
+      {
+        "Content-Type": 'multipart/form-data'
+      }
+    );
+  }
 }
 
 export class CompletionClient extends DifyClient {
-  createCompletionMessage(inputs, query, user, stream = false) {
+  createCompletionMessage(inputs, user, stream = false, files = null) {
     const data = {
       inputs,
-      query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     return this.sendRequest(
       routes.createCompletionMessage.method,
@@ -130,13 +151,15 @@ export class ChatClient extends DifyClient {
     query,
     user,
     stream = false,
-    conversation_id = null
+    conversation_id = null,
+    files = null
   ) {
     const data = {
       inputs,
       query,
       user,
       response_mode: stream ? "streaming" : "blocking",
+      files,
     };
     if (conversation_id) data.conversation_id = conversation_id;
 
