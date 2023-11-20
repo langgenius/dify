@@ -67,7 +67,7 @@ class HitTestingApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
+                f"No Embedding Model or Reranking Model available. Please configure a valid provider "
                 f"in the Settings -> Model Provider.")
         except ValueError as e:
             raise ValueError(str(e))
