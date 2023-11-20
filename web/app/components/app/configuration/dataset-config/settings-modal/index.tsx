@@ -272,7 +272,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       )}
 
       <div
-        className='absolute z-10 bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
+        className='absolute z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
         style={{
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}
