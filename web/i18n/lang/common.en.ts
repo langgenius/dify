@@ -95,7 +95,7 @@ const translation = {
     settings: 'Settings',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
-    helpCenter: 'Help Document',
+    helpCenter: 'Help',
     about: 'About',
     logout: 'Log out',
   },

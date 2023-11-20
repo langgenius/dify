@@ -1,19 +1,30 @@
 [![](./images/describe.png)](https://dify.ai)
-
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |
   <a href="./README_JA.md">日本語</a> |
-  <a href="./README_ES.md">Español</a>
+  <a href="./README_ES.md">Español</a> |
+  <a href="./README_KL.md">Klingon</a>
 </p>
 
-#### [![](https://dcbadge.vercel.app/api/server/FngNHpbcY7?style=flat&theme=clean&compact=true)](https://discord.gg/FngNHpbcY7) [![](https://img.shields.io/badge/Twitter-%231DA1F2.svg?logo=Twitter&logoColor=white)](https://twitter.com/dify_ai)  
+<p align="center">
+    <a href="https://dify.ai" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/AI-Dify?logo=AI&logoColor=%20%23f5f5f5&label=Dify&labelColor=%20%23155EEF&color=%23EAECF0"></a>
+    <a href="https://discord.gg/FngNHpbcY7" target="_blank">
+        <img src="https://img.shields.io/discord/1082486657678311454?logo=discord"
+            alt="chat on Discord"></a>
+    <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
+        <img src="https://img.shields.io/twitter/follow/dify_ai?style=social&logo=X"
+            alt="follow on Twitter"></a>
+    <a href="https://hub.docker.com/u/langgenius" target="_blank">
+        <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
+</p>
 
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
 ![](./images/demo.png)
 
-## 为什么选择Dify
+## 为什么选择 Dify
 
 Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
 

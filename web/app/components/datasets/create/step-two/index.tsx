@@ -263,6 +263,7 @@ const StepTwo = ({
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
   const getCreationParams = () => {
     let params
@@ -282,6 +283,7 @@ const StepTwo = ({
         !isReRankModelSelected({
           rerankDefaultModel,
           isRerankDefaultModelVaild,
+          rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,
@@ -359,6 +361,9 @@ const StepTwo = ({
     try {
       let res
       const params = getCreationParams()
+      if (!params)
+        return false
+
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
@@ -677,7 +682,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     {t('datasetSettings.form.retrievalSetting.title')}
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' href='https://docs.dify.ai/v/zh-hans/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' href='https://docs.dify.ai/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>
