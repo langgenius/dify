@@ -223,6 +223,7 @@ const translation = {
     },
   },
   modelProvider: {
+    notConfigured: '系统模型尚未完全配置，部分功能可能无法使用。',
     systemModelSettings: '系统模型设置',
     systemModelSettingsLink: '为什么需要设置系统模型？',
     selectModel: '选择您的模型',
@@ -252,6 +253,7 @@ const translation = {
       tip: '该模型已被删除。请添模型或选择其他模型。',
       emptyTip: '无可用模型',
       emptySetting: '请前往设置进行配置',
+      rerankTip: '请设置 Rerank 模型',
     },
     card: {
       quota: '额度',

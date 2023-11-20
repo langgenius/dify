@@ -223,6 +223,7 @@ const translation = {
     },
   },
   modelProvider: {
+    notConfigured: 'The system model has not yet been fully configured, and some functions may be unavailable.',
     systemModelSettings: 'System Model Settings',
     systemModelSettingsLink: 'Why is it necessary to set up a system model?',
     selectModel: 'Select your model',
@@ -252,6 +253,7 @@ const translation = {
       tip: 'This model has been removed. Please add a model or select another model.',
       emptyTip: 'No available models',
       emptySetting: 'Please go to settings to configure',
+      rerankTip: 'Please set up the Rerank model',
     },
     card: {
       quota: 'QUOTA',
