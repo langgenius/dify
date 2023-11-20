@@ -26,7 +26,7 @@ export const isReRankModelSelected = ({
 
   if (
     indexMethod === 'high_quality'
-    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.fullText)
+    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
     && !rerankModelSelected
   )
     return false

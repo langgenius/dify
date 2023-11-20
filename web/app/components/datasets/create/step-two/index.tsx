@@ -361,6 +361,9 @@ const StepTwo = ({
     try {
       let res
       const params = getCreationParams()
+      if (!params)
+        return false
+
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
