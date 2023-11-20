@@ -1,5 +1,6 @@
 import type { FC } from 'react'
-import React, { Fragment, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
@@ -23,7 +24,7 @@ import type { ModelModeType } from '@/types/app'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { useModalContext } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { setModelProvider } from '@/service/common'
+import { fetchDefaultModal, setModelProvider } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 
 type Props = {
@@ -76,7 +77,6 @@ const ModelSelector: FC<Props> = ({
     rerankModelList,
     agentThoughtModelList,
     updateModelList,
-    mutateRerankDefaultModel,
   } = useProviderContext()
   const [search, setSearch] = useState('')
   const modelList = supportAgentThought
@@ -132,7 +132,9 @@ const ModelSelector: FC<Props> = ({
   })()
   const { eventEmitter } = useEventEmitterContextContext()
   const [showRerankModal, setShowRerankModal] = useState(false)
+  const [shouldFetchRerankDefaultModel, setShouldFetchRerankDefaultModel] = useState(false)
   const { notify } = useToastContext()
+  const { data: rerankDefaultModel } = useSWR(shouldFetchRerankDefaultModel ? '/workspaces/current/default-model?model_type=reranking' : null, fetchDefaultModal)
   const handleOpenRerankModal = (e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
     setShowRerankModal(true)
@@ -150,8 +152,8 @@ const ModelSelector: FC<Props> = ({
         if (res.result === 'success') {
           notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
           updateModelList(ModelType.reranking)
-          mutateRerankDefaultModel()
           setShowRerankModal(false)
+          setShouldFetchRerankDefaultModel(true)
           if (onUpdate)
             onUpdate()
         }
@@ -162,6 +164,11 @@ const ModelSelector: FC<Props> = ({
       }
     }
   }
+
+  useEffect(() => {
+    if (rerankDefaultModel && whenEmptyGoToSetting)
+      onChange(rerankDefaultModel)
+  }, [rerankDefaultModel])
 
   return (
     <div className=''>

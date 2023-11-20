@@ -165,6 +165,7 @@ const SystemModel: FC<SystemModelProps> = ({
                 modelType={ModelType.reranking}
                 onChange={v => handleChangeDefaultModel(ModelType.reranking, v)}
                 whenEmptyGoToSetting
+                onUpdate={onUpdate}
               />
             </div>
           </div>
@@ -185,7 +186,6 @@ const SystemModel: FC<SystemModelProps> = ({
                 value={selectedModel[ModelType.speech2text]}
                 modelType={ModelType.speech2text}
                 onChange={v => handleChangeDefaultModel(ModelType.speech2text, v)}
-                onUpdate={onUpdate}
               />
             </div>
           </div>
