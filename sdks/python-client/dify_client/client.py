@@ -6,14 +6,24 @@ class DifyClient:
         self.api_key = api_key
         self.base_url = "https://api.dify.ai/v1"
 
-    def _send_request(self, method, endpoint, data=None, params=None, stream=False):
+    def _send_request(self, method, endpoint, json=None, params=None, stream=False):
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(method, url, json=data, params=params, headers=headers, stream=stream)
+        response = requests.request(method, url, json=json, params=params, headers=headers, stream=stream)
+
+        return response
+
+    def _send_request_with_files(self, method, endpoint, data, files):
+        headers = {
+            "Authorization": f"Bearer {self.api_key}"
+        }
+
+        url = f"{self.base_url}{endpoint}"
+        response = requests.request(method, url, data=data, headers=headers, files=files)
 
         return response
 
@@ -28,30 +38,39 @@ class DifyClient:
         params = {"user": user}
         return self._send_request("GET", "/parameters", params=params)
 
-
-class CompletionClient(DifyClient):
-    def create_completion_message(self, inputs, query, response_mode, user):
+    def file_upload(self, user, files):
         data = {
-            "inputs": inputs,
-            "query": query,
-            "response_mode": response_mode,
             "user": user
         }
-        return self._send_request("POST", "/completion-messages", data, stream=True if response_mode == "streaming" else False)
+        return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
+
+
+class CompletionClient(DifyClient):
+    def create_completion_message(self, inputs, response_mode, user, files=None):
+        data = {
+            "inputs": inputs,
+            "response_mode": response_mode,
+            "user": user,
+            "files": files
+        }
+        return self._send_request("POST", "/completion-messages", data,
+                                  stream=True if response_mode == "streaming" else False)
 
 
 class ChatClient(DifyClient):
-    def create_chat_message(self, inputs, query, user, response_mode="blocking", conversation_id=None):
+    def create_chat_message(self, inputs, query, user, response_mode="blocking", conversation_id=None, files=None):
         data = {
             "inputs": inputs,
             "query": query,
             "user": user,
-            "response_mode": response_mode
+            "response_mode": response_mode,
+            "files": files
         }
         if conversation_id:
             data["conversation_id"] = conversation_id
 
-        return self._send_request("POST", "/chat-messages", data, stream=True if response_mode == "streaming" else False)
+        return self._send_request("POST", "/chat-messages", data,
+                                  stream=True if response_mode == "streaming" else False)
 
     def get_conversation_messages(self, user, conversation_id=None, first_id=None, limit=None):
         params = {"user": user}
