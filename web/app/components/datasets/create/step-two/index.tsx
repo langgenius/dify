@@ -263,6 +263,7 @@ const StepTwo = ({
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
   const getCreationParams = () => {
     let params
@@ -282,6 +283,7 @@ const StepTwo = ({
         !isReRankModelSelected({
           rerankDefaultModel,
           isRerankDefaultModelVaild,
+          rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,
@@ -359,6 +361,9 @@ const StepTwo = ({
     try {
       let res
       const params = getCreationParams()
+      if (!params)
+        return false
+
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({

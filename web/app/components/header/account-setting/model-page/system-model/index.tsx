@@ -1,3 +1,4 @@
+import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelSelector from '../model-selector'
@@ -17,7 +18,12 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 
-const SystemModel = () => {
+type SystemModelProps = {
+  onUpdate: () => void
+}
+const SystemModel: FC<SystemModelProps> = ({
+  onUpdate,
+}) => {
   const { t } = useTranslation()
   const {
     textGenerationDefaultModel,
@@ -91,7 +97,7 @@ const SystemModel = () => {
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={`
-          flex items-center px-2 h-6 text-xs text-gray-700 cursor-pointer rounded-md border-[0.5px] border-gray-200 shadow-xs
+          flex items-center px-2 h-6 text-xs text-gray-700 cursor-pointer bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs
           hover:bg-gray-100 hover:shadow-none
           ${open && 'bg-gray-100 shadow-none'}
         `}>
@@ -158,6 +164,8 @@ const SystemModel = () => {
                 value={selectedModel[ModelType.reranking]}
                 modelType={ModelType.reranking}
                 onChange={v => handleChangeDefaultModel(ModelType.reranking, v)}
+                whenEmptyGoToSetting
+                onUpdate={onUpdate}
               />
             </div>
           </div>

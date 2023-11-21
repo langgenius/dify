@@ -59,6 +59,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
 
   const handleValueChange = (type: string, value: string) => {
@@ -78,6 +79,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       !isReRankModelSelected({
         rerankDefaultModel,
         isRerankDefaultModelVaild,
+        rerankModelList,
         retrievalConfig,
         indexMethod,
       })
@@ -270,7 +272,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       )}
 
       <div
-        className='absolute z-10 bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
+        className='absolute z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
         style={{
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}
