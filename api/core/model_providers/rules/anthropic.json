@@ -12,6 +12,9 @@
         "quota_limit": 0
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation"
+    ],
     "price_config": {
         "claude-instant-1": {
             "prompt": "1.63",

@@ -11,6 +11,12 @@
         "quota_limit": 200
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation",
+        "embeddings",
+        "speech2text",
+        "moderation"
+    ],
     "price_config": {
         "gpt-4": {
             "prompt": "0.03",
