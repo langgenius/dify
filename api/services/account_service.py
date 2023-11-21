@@ -489,9 +489,10 @@ class RegisterService:
             'email': account.email,
             'workspace_id': tenant.id,
         }
+        expiryHours = current_app.config['INVITE_EXPIRY_HOURS']
         redis_client.setex(
             cls._get_invitation_token_key(token),
-            3600,
+            expiryHours * 60 * 60,
             json.dumps(invitation_data)
         )
         return token
