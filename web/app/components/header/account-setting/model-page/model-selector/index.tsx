@@ -107,7 +107,7 @@ const ModelSelector: FC<Props> = ({
     })
     : modelList
 
-  const hasRemoved = value && !modelList.find(({ model_name, model_provider }) => model_name === value.modelName && model_provider.provider_name === value.providerName)
+  const hasRemoved = (value && value.modelName && value.providerName) && !modelList.find(({ model_name, model_provider }) => model_name === value.modelName && model_provider.provider_name === value.providerName)
 
   const modelOptions: ModelOption[] = (() => {
     const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
@@ -178,7 +178,7 @@ const ModelSelector: FC<Props> = ({
             ({ open }) => (
               <>
                 {
-                  value
+                  (value && value.modelName && value.providerName)
                     ? (
                       <>
                         <ModelIcon
@@ -226,7 +226,7 @@ const ModelSelector: FC<Props> = ({
                   )
                 }
                 {
-                  whenEmptyGoToSetting && value && (
+                  whenEmptyGoToSetting && (value && value.modelName && value.providerName) && (
                     <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />
                   )
                 }
