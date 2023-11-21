@@ -7,5 +7,5 @@ export enum Plan {
 
 export type PlanInfo = {
   vectorSpace: number
-  buildApp: number
+  buildApps: number
 }

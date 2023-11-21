@@ -4,6 +4,7 @@ import React from 'react'
 import cn from 'classnames'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
+import UpgradeBtn from '../upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 const typeStyle = {
   [Plan.sandbox]: {
@@ -11,16 +12,16 @@ const typeStyle = {
     bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #EAECF0',
   },
   [Plan.professional]: {
-    textClassNames: 'text-gray-900',
-    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #EAECF0',
+    textClassNames: 'text-[#026AA2]',
+    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #E0F2FE',
   },
   [Plan.team]: {
-    textClassNames: 'text-gray-900',
-    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #EAECF0',
+    textClassNames: 'text-[#3538CD]',
+    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #E0EAFF',
   },
   [Plan.enterprise]: {
-    textClassNames: 'text-gray-900',
-    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #EAECF0',
+    textClassNames: 'text-[#DC6803]',
+    bg: 'linear-gradient(113deg, rgba(255, 255, 255, 0.51) 3.51%, rgba(255, 255, 255, 0.00) 111.71%), #FFEED3',
   },
 }
 
@@ -34,22 +35,28 @@ const PlanComp: FC = () => {
 
   return (
     <div
-      className='rounded-lg'
+      className='rounded-xl border border-white'
       style={{
         background: typeStyle[type].bg,
+        boxShadow: '5px 7px 12px 0px rgba(0, 0, 0, 0.06)',
       }}
     >
       <div className='flex justify-between px-6 py-5 items-center'>
         <div>
-          <div>Current Plan</div>
+          <div className='leading-[18px] text-xs font-normal text-black opacity-70'>Current Plan</div>
           <div className={cn(typeStyle[type].textClassNames, 'leading-[125%] text-lg font-semibold uppercase')}>{type}</div>
         </div>
-        <div>Upgrade Plan</div>
+        <UpgradeBtn
+          className='flex-shrink-0'
+          isPlain={type !== Plan.sandbox}
+          onClick={() => { }}
+        />
       </div>
 
       {/* Plan detail */}
-      <div>
+      <div className='rounded-xl bg-white px-6 py-3'>
         <UsageInfo
+          className='py-3'
           icon={<div></div>}
           name={'x'}
           tooltip={'xx'}
@@ -58,6 +65,7 @@ const PlanComp: FC = () => {
           unit='MB'
         />
         <UsageInfo
+          className='py-3'
           icon={<div></div>}
           name={'x'}
           tooltip={'xx'}

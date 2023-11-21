@@ -33,6 +33,8 @@ import datasetCreationEn from './lang/dataset-creation.en'
 import datasetCreationZh from './lang/dataset-creation.zh'
 import exploreEn from './lang/explore.en'
 import exploreZh from './lang/explore.zh'
+import billingEn from './lang/billing.en'
+import billingZh from './lang/billing.zh'
 
 const resources = {
   'en': {
@@ -55,6 +57,8 @@ const resources = {
       datasetSettings: datasetSettingsEn,
       datasetCreation: datasetCreationEn,
       explore: exploreEn,
+      // billing
+      billing: billingEn,
     },
   },
   'zh-Hans': {
@@ -77,6 +81,7 @@ const resources = {
       datasetSettings: datasetSettingsZh,
       datasetCreation: datasetCreationZh,
       explore: exploreZh,
+      billing: billingZh,
     },
   },
 }
