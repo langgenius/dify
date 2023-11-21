@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import Toast from '../../base/toast'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
@@ -31,10 +30,10 @@ const ModifyRetrievalModal: FC<Props> = ({
   const { t } = useTranslation()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
 
-  useClickAway(() => {
-    if (ref)
-      onHide()
-  }, ref)
+  // useClickAway(() => {
+  //   if (ref)
+  //     onHide()
+  // }, ref)
 
   const {
     rerankDefaultModel,
