@@ -53,10 +53,12 @@ class FileExtractor:
             loader = UnstructuredFileLoader(
                 file_path, strategy="hi_res", mode="elements"
             )
-            # loader = UnstructuredAPIFileLoader(
-            #     file_path=filenames[0],
-            #     api_key="FAKE_API_KEY",
-            # )
+            loader = UnstructuredAPIFileLoader(
+                file_path=file_path,
+                url="http://127.0.0.1:8000/general/v0/general",
+                mode='elements',
+                strategy='hi_res'
+            )
         else:
             if file_extension == '.xlsx':
                 loader = ExcelLoader(file_path)
