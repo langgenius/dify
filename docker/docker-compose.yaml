@@ -280,7 +280,7 @@ services:
 #  (if uncommented, you need to comment out the weaviate service above,
 #  and set VECTOR_STORE to qdrant in the api & worker service.)
 #  qdrant:
-#    image: qdrant/qdrant:latest
+#    image: langgenius/qdrant:latest
 #    restart: always
 #    volumes:
 #      - ./volumes/qdrant:/qdrant/storage
