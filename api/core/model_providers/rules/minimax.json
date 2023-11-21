@@ -10,6 +10,10 @@
         "quota_unit": "tokens"
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation",
+        "embeddings"
+    ],
     "price_config": {
         "abab5.5-chat": {
             "prompt": "0.015",
