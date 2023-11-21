@@ -37,8 +37,12 @@ from libs.passport import PassportService
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
 
-os.environ['TZ'] = 'UTC'
-time.tzset()
+# fix windows platform
+if os.name == "nt":
+    os.system('tzutil /s "UTC"')    
+else:
+    os.environ['TZ'] = 'UTC'
+    time.tzset()
 
 
 class DifyApp(Flask):

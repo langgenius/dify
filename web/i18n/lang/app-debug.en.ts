@@ -305,7 +305,7 @@ const translation = {
   },
   result: 'Output Text',
   datasetConfig: {
-    settingTitle: 'Retrieve Settings',
+    settingTitle: 'Retrieval settings',
     retrieveOneWay: {
       title: 'N-to-1 retrieval',
       description: 'Based on user intent and dataset descriptions, the Agent autonomously selects the best dataset for querying. Best for applications with distinct, limited datasets.',

@@ -4,7 +4,7 @@ const translation = {
   appCount: ' linked apps',
   createDataset: 'Create Dataset',
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
-  deleteDatasetConfirmTitle: 'Delete this app?',
+  deleteDatasetConfirmTitle: 'Delete this dataset?',
   deleteDatasetConfirmContent:
     'Deleting the dataset is irreversible. Users will no longer be able to access your dataset, and all prompt configurations and logs will be permanently deleted.',
   datasetDeleted: 'Dataset deleted',

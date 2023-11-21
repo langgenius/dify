@@ -668,7 +668,7 @@ const Main: FC<IMainProps> = ({
         onUnpin={handleUnpin}
         controlUpdateList={controlUpdateConversationList}
         onDelete={handleDelete}
-        onStartChat={handleStartChat}
+        onStartChat={() => handleConversationIdChange('-1')}
       />
     )
   }

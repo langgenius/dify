@@ -3,5 +3,8 @@
         "custom"
     ],
     "system_config": null,
-    "model_flexibility": "fixed"
+    "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation"
+    ]
 }
