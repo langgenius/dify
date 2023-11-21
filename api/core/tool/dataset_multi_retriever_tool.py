@@ -80,6 +80,9 @@ class DatasetMultiRetrieverTool(BaseTool):
 
         hit_callback = DatasetIndexToolCallbackHandler(self.conversation_message_task)
         hit_callback.on_tool_end(all_documents)
+        document_score_list = {}
+        for item in all_documents:
+            document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
         document_context_list = []
         index_node_ids = [document.metadata['doc_id'] for document in all_documents]
@@ -120,8 +123,10 @@ class DatasetMultiRetrieverTool(BaseTool):
                             'document_name': document.name,
                             'data_source_type': document.data_source_type,
                             'segment_id': segment.id,
-                            'retriever_from': self.retriever_from
+                            'retriever_from': self.retriever_from,
+                            'score': document_score_list.get(segment.index_node_id, None)
                         }
+
                         if self.retriever_from == 'dev':
                             source['hit_count'] = segment.hit_count
                             source['word_count'] = segment.word_count
