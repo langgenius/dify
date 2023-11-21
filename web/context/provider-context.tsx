@@ -6,6 +6,7 @@ import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from 
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Plan, type PlanInfo } from '@/app/components/billing/type'
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -23,6 +24,11 @@ const ProviderContext = createContext<{
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
   supportRetrievalMethods: RETRIEVE_METHOD[]
+  plan: {
+    type: Plan
+    usage: PlanInfo
+    total: PlanInfo
+  }
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -40,6 +46,17 @@ const ProviderContext = createContext<{
       isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => {},
       supportRetrievalMethods: [],
+      plan: {
+        type: Plan.sandbox,
+        usage: {
+          vectorSpace: 32,
+          buildApps: 12,
+        },
+        total: {
+          vectorSpace: 200,
+          buildApps: 50,
+        },
+      },
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -80,6 +97,18 @@ export const ProviderContextProvider = ({
       mutateRerankModelList()
   }
 
+  const plan = {
+    type: Plan.sandbox,
+    usage: {
+      vectorSpace: 32,
+      buildApps: 12,
+    },
+    total: {
+      vectorSpace: 200,
+      buildApps: 50,
+    },
+  }
+
   return (
     <ProviderContext.Provider value={{
       textGenerationModelList: textGenerationModelList || [],
@@ -98,6 +127,7 @@ export const ProviderContextProvider = ({
       isRerankDefaultModelVaild,
       mutateRerankDefaultModel,
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
+      plan,
     }}>
       {children}
     </ProviderContext.Provider>
