@@ -57,7 +57,7 @@ class FileExtractor:
                 file_path=file_path,
                 url="http://127.0.0.1:8000/general/v0/general",
                 mode='elements',
-                strategy='hi_res'
+                strategy='auto'
             )
         else:
             if file_extension == '.xlsx':

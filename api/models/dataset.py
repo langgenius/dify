@@ -135,7 +135,7 @@ class DatasetProcessRule(db.Model):
         ],
         'segmentation': {
             'delimiter': '\n',
-            'max_tokens': 512
+            'max_tokens': 1000
         }
     }
 
