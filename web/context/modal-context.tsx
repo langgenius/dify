@@ -1,7 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
@@ -87,6 +87,10 @@ export const ModalContextProvider = ({
     return true
   }
 
+  const [isShowBilling, setIsShowBilling] = useState<boolean>(false)
+  useEffect(() => {
+    setIsShowBilling(true)
+  }, [])
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
@@ -104,6 +108,14 @@ export const ModalContextProvider = ({
             />
           )
         }
+        {/* TODO: for dev */}
+        {isShowBilling && (
+          <AccountSetting
+            activeTab={'billing'}
+            onCancel={() => {}}
+          />
+        )}
+
         {
           !!showApiBasedExtensionModal && (
             <ApiBasedExtensionModal

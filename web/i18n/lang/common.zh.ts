@@ -104,6 +104,7 @@ const translation = {
     workplaceGroup: '工作空间',
     account: '我的账户',
     members: '成员',
+    billing: '账单',
     integrations: '集成',
     language: '语言',
     provider: '模型供应商',
