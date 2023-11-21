@@ -4,6 +4,9 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
+// import sparklesIcon from './icons/sparkles.svg'
+import { Sparkles } from '../../base/icons/src/public/billing'
+
 // import S
 type Props = {
   className?: string
@@ -60,6 +63,9 @@ const UpgradeBtn: FC<Props> = ({
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
       <div className='text-xs font-normal'>{t('billing.upgradeBtn.encourage')}</div>
+      <Sparkles
+        className='absolute -right-1 -top-2  w-4 h-5 bg-cover'
+      />
     </div>
   )
 }

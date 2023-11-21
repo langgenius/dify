@@ -2,10 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import UpgradeBtn from '../upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
+
 const typeStyle = {
   [Plan.sandbox]: {
     textClassNames: 'text-gray-900',
@@ -26,6 +28,7 @@ const typeStyle = {
 }
 
 const PlanComp: FC = () => {
+  const { t } = useTranslation()
   const { plan } = useProviderContext()
   const {
     type,
@@ -43,7 +46,14 @@ const PlanComp: FC = () => {
     >
       <div className='flex justify-between px-6 py-5 items-center'>
         <div>
-          <div className='leading-[18px] text-xs font-normal text-black opacity-70'>Current Plan</div>
+          <div
+            className='leading-[18px] text-xs font-normal opacity-70'
+            style={{
+              color: 'rgba(0, 0, 0, 0.64)',
+            }}
+          >
+            {t('billing.currentPlan')}
+          </div>
           <div className={cn(typeStyle[type].textClassNames, 'leading-[125%] text-lg font-semibold uppercase')}>{type}</div>
         </div>
         <UpgradeBtn
