@@ -17,8 +17,8 @@ const config: ProviderConfig = {
       'zh-Hans': <CohereText className='w-[120px] h-6' />,
     },
     hit: {
-      'en': 'Rerank Model',
-      'zh-Hans': 'Rerank 模型',
+      'en': 'Rerank Model Supported',
+      'zh-Hans': '支持 Rerank 模型',
     },
   },
   modal: {
