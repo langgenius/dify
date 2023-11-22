@@ -54,7 +54,9 @@ const PlanComp: FC = () => {
           >
             {t('billing.currentPlan')}
           </div>
-          <div className={cn(typeStyle[type].textClassNames, 'leading-[125%] text-lg font-semibold uppercase')}>{type}</div>
+          <div className={cn(typeStyle[type].textClassNames, 'leading-[125%] text-lg font-semibold uppercase')}>
+            {t(`billing.plans.${type}.name`)}
+          </div>
         </div>
         <UpgradeBtn
           className='flex-shrink-0'

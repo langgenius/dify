@@ -16,19 +16,15 @@ type Props = {
   onClick: () => void
 }
 
-// const SparkleIcon = () => (
-
-// )
-
 const PlainBtn = ({ className, onClick }: Props) => {
   const { t } = useTranslation()
 
   return (
     <div
-      className={cn(className)}
+      className={cn(className, 'flex items-center h-8 px-3 rounded-lg border border-gray-200 bg-white shadow-sm cursor-pointer')}
       onClick={onClick}
     >
-      <div className='text-sm font-semibold'>
+      <div className='leading-[18px] text-[13px] font-medium text-gray-700'>
         {t('billing.upgradeBtn.plain')}
       </div>
     </div>
