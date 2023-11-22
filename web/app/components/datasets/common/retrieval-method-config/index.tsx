@@ -16,11 +16,23 @@ type Props = {
 }
 
 const RetrievalMethodConfig: FC<Props> = ({
-  value,
+  value: passValue,
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { supportRetrievalMethods } = useProviderContext()
+  const { supportRetrievalMethods, rerankDefaultModel } = useProviderContext()
+  const value = (() => {
+    if (!passValue.reranking_model.reranking_model_name) {
+      return {
+        ...passValue,
+        reranking_model: {
+          reranking_provider_name: rerankDefaultModel?.model_provider.provider_name || '',
+          reranking_model_name: rerankDefaultModel?.model_name || '',
+        },
+      }
+    }
+    return passValue
+  })()
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (

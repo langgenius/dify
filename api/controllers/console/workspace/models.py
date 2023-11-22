@@ -1,3 +1,5 @@
+import logging
+
 from flask_login import current_user
 from libs.login import login_required
 from flask_restful import Resource, reqparse
@@ -77,12 +79,15 @@ class DefaultModelApi(Resource):
         provider_service = ProviderService()
         model_settings = args['model_settings']
         for model_setting in model_settings:
-            provider_service.update_default_model_of_model_type(
-                tenant_id=current_user.current_tenant_id,
-                model_type=model_setting['model_type'],
-                provider_name=model_setting['provider_name'],
-                model_name=model_setting['model_name']
-            )
+            try:
+                provider_service.update_default_model_of_model_type(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=model_setting['model_type'],
+                    provider_name=model_setting['provider_name'],
+                    model_name=model_setting['model_name']
+                )
+            except Exception:
+                logging.warning(f"{model_setting['model_type']} save error")
 
         return {'result': 'success'}
 

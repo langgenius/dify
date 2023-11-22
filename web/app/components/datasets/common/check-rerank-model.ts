@@ -5,18 +5,29 @@ export const isReRankModelSelected = ({
   rerankDefaultModel,
   isRerankDefaultModelVaild,
   retrievalConfig,
+  rerankModelList,
   indexMethod,
 }: {
   rerankDefaultModel?: BackendModel
   isRerankDefaultModelVaild: boolean
   retrievalConfig: RetrievalConfig
+  rerankModelList: BackendModel[]
   indexMethod?: string
 }) => {
-  const rerankModel = (retrievalConfig.reranking_model?.reranking_model_name ? retrievalConfig.reranking_model : undefined) || (isRerankDefaultModelVaild ? rerankDefaultModel : undefined)
+  const rerankModelSelected = (() => {
+    if (retrievalConfig.reranking_model?.reranking_model_name)
+      return !!rerankModelList.find(({ model_name }) => model_name === retrievalConfig.reranking_model?.reranking_model_name)
+
+    if (isRerankDefaultModelVaild)
+      return !!rerankDefaultModel
+
+    return false
+  })()
+
   if (
     indexMethod === 'high_quality'
-    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.fullText)
-    && !rerankModel
+    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
+    && !rerankModelSelected
   )
     return false
 
@@ -35,7 +46,7 @@ export const ensureRerankModelSelected = ({
   const rerankModel = retrievalConfig.reranking_model?.reranking_model_name ? retrievalConfig.reranking_model : undefined
   if (
     indexMethod === 'high_quality'
-    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.fullText)
+    && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
     && !rerankModel
   ) {
     return {

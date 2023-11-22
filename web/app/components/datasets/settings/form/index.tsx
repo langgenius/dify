@@ -59,6 +59,7 @@ const Form = () => {
   const {
     rerankDefaultModel,
     isRerankDefaultModelVaild,
+    rerankModelList,
   } = useProviderContext()
 
   const handleSave = async () => {
@@ -72,6 +73,7 @@ const Form = () => {
       !isReRankModelSelected({
         rerankDefaultModel,
         isRerankDefaultModelVaild,
+        rerankModelList,
         retrievalConfig,
         indexMethod,
       })

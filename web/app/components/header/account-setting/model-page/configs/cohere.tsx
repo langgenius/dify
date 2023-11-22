@@ -16,12 +16,16 @@ const config: ProviderConfig = {
       'en': <CohereText className='w-[120px] h-6' />,
       'zh-Hans': <CohereText className='w-[120px] h-6' />,
     },
+    hit: {
+      'en': 'Rerank Model Supported',
+      'zh-Hans': '支持 Rerank 模型',
+    },
   },
   modal: {
     key: ProviderEnum.cohere,
     title: {
-      'en': 'cohere',
-      'zh-Hans': 'cohere',
+      'en': 'Rerank Model',
+      'zh-Hans': 'Rerank 模型',
     },
     icon: <Cohere className='w-6 h-6' />,
     link: {

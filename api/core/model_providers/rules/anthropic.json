@@ -12,6 +12,9 @@
         "quota_limit": 0
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation"
+    ],
     "price_config": {
         "claude-instant-1": {
             "prompt": "1.63",
@@ -20,8 +23,14 @@
             "currency": "USD"
         },
         "claude-2": {
-            "prompt": "11.02",
-            "completion": "32.68",
+            "prompt": "8.00",
+            "completion": "24.00",
+            "unit": "0.000001",
+            "currency": "USD"
+        },
+        "claude-2.1": {
+            "prompt": "8.00",
+            "completion": "24.00",
             "unit": "0.000001",
             "currency": "USD"
         }

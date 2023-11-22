@@ -196,10 +196,10 @@ class DatasetRetrieverTool(BaseTool):
                                 'document_name': document.name,
                                 'data_source_type': document.data_source_type,
                                 'segment_id': segment.id,
-                                'retriever_from': self.retriever_from
+                                'retriever_from': self.retriever_from,
+                                'score': document_score_list.get(segment.index_node_id, None)
+
                             }
-                            if dataset.indexing_technique != "economy":
-                                source['score'] = document_score_list.get(segment.index_node_id)
                             if self.retriever_from == 'dev':
                                 source['hit_count'] = segment.hit_count
                                 source['word_count'] = segment.word_count

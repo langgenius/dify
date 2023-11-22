@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
+import Toast from '../../base/toast'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { RetrievalConfig } from '@/types/app'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import Button from '@/app/components/base/button'
+import { useProviderContext } from '@/context/provider-context'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 
 type Props = {
   indexMethod: string
@@ -28,10 +30,36 @@ const ModifyRetrievalModal: FC<Props> = ({
   const { t } = useTranslation()
   const [retrievalConfig, setRetrievalConfig] = useState(value)
 
-  useClickAway(() => {
-    if (ref)
-      onHide()
-  }, ref)
+  // useClickAway(() => {
+  //   if (ref)
+  //     onHide()
+  // }, ref)
+
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+    rerankModelList,
+  } = useProviderContext()
+
+  const handleSave = () => {
+    if (
+      !isReRankModelSelected({
+        rerankDefaultModel,
+        isRerankDefaultModelVaild,
+        rerankModelList,
+        retrievalConfig,
+        indexMethod,
+      })
+    ) {
+      Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      return
+    }
+    onSave(ensureRerankModelSelected({
+      rerankDefaultModel: rerankDefaultModel!,
+      retrievalConfig,
+      indexMethod,
+    }))
+  }
 
   if (!isShow)
     return null
@@ -87,7 +115,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         }}
       >
         <Button className='mr-2 flex-shrink-0' onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button type='primary' className='flex-shrink-0' onClick={() => onSave(retrievalConfig)} >{t('common.operation.save')}</Button>
+        <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
       </div>
     </div>
   )
