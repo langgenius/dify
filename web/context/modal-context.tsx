@@ -109,12 +109,12 @@ export const ModalContextProvider = ({
           )
         }
         {/* TODO: for dev */}
-        {isShowBilling && (
+        {/* {isShowBilling && (
           <AccountSetting
             activeTab={'billing'}
             onCancel={() => {}}
           />
-        )}
+        )} */}
 
         {
           !!showApiBasedExtensionModal && (

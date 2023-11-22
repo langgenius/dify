@@ -4,6 +4,7 @@ const translation = {
     plain: '升级套餐',
     encourage: '立即升级',
   },
+  viewBilling: '查看账单信息',
   plansCommon: {
     mostPopular: '最受欢迎',
     month: '月',

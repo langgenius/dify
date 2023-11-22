@@ -4,6 +4,7 @@ const translation = {
     plain: 'Upgrade Plan',
     encourage: 'Upgrade Now',
   },
+  viewBilling: 'View billing information',
   plansCommon: {
     mostPopular: 'Most Popular',
     month: 'month',
