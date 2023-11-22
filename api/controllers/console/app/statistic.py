@@ -62,11 +62,10 @@ class DailyConversationStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -124,11 +123,10 @@ class DailyTerminalsStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
+            rs = conn.execute(db.text(sql_query), arg_dict)            
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -187,11 +185,10 @@ class DailyTokenCostStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -256,11 +253,10 @@ LEFT JOIN conversations c on c.id=subquery.conversation_id
 GROUP BY date
 ORDER BY date"""
 
+        response_data = []
+        
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -320,11 +316,10 @@ class UserSatisfactionRateStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -383,11 +378,10 @@ class AverageResponseTimeStatistic(Resource):
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
+            rs = conn.execute(db.text(sql_query), arg_dict)            
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
@@ -447,11 +441,10 @@ WHERE app_id = :app_id'''
 
         sql_query += ' GROUP BY date order by date'
 
+        response_data = []
+
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-
-            response_data = []
-
             for i in rs:
                 response_data.append({
                     'date': str(i.date),
