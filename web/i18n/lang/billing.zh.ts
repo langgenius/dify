@@ -7,6 +7,8 @@ const translation = {
   },
   viewBilling: '查看账单信息',
   plansCommon: {
+    title: '选择适合您的套餐',
+    yearlyTip: '订阅年度计划可免费获得 2个月！',
     mostPopular: '最受欢迎',
     month: '月',
     free: '免费',

@@ -7,6 +7,8 @@ const translation = {
   },
   viewBilling: 'View billing information',
   plansCommon: {
+    title: 'Choose a plan that’s right for you',
+    yearlyTip: 'Get 2 months for free by subscribing yearly!',
     mostPopular: 'Most Popular',
     month: 'month',
     free: 'Free',
