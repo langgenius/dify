@@ -101,7 +101,7 @@ export const ProviderContextProvider = ({
     type: Plan.enterprise,
     usage: {
       vectorSpace: 32,
-      buildApps: 12,
+      buildApps: 50,
     },
     total: {
       vectorSpace: 200,

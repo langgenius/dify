@@ -6,8 +6,9 @@ import { useTranslation } from 'react-i18next'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import UpgradeBtn from '../upgrade-btn'
+import { ArtificialBrain } from '../../base/icons/src/vender/line/development'
+import { ChatBot } from '../../base/icons/src/vender/line/communication'
 import { useProviderContext } from '@/context/provider-context'
-
 const typeStyle = {
   [Plan.sandbox]: {
     textClassNames: 'text-gray-900',
@@ -69,18 +70,17 @@ const PlanComp: FC = () => {
       <div className='rounded-xl bg-white px-6 py-3'>
         <UsageInfo
           className='py-3'
-          icon={<div></div>}
-          name={'x'}
-          tooltip={'xx'}
+          Icon={ArtificialBrain}
+          name={t('billing.plansCommon.vectorSpace')}
+          tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
           usage={usage.vectorSpace}
           total={total.vectorSpace}
           unit='MB'
         />
         <UsageInfo
           className='py-3'
-          icon={<div></div>}
-          name={'x'}
-          tooltip={'xx'}
+          Icon={ChatBot}
+          name={t('billing.plansCommon.buildApps')}
           usage={usage.buildApps}
           total={total.buildApps}
         />

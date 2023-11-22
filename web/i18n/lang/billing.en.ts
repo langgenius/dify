@@ -14,6 +14,7 @@ const translation = {
     teamMembers: 'Team Members',
     buildApps: 'Build Apps',
     vectorSpace: 'Vector Space',
+    vectorSpaceTooltip: 'Vector Space is the long-term memory system required for LLMs  to comprehend your data.',
     documentProcessingPriority: 'Document Processing Priority',
     priority: {
       standard: 'Standard',

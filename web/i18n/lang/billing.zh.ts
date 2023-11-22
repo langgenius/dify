@@ -14,6 +14,7 @@ const translation = {
     teamMembers: '团队成员',
     buildApps: '构建应用程序',
     vectorSpace: '向量空间',
+    vectorSpaceTooltip: '向量空间是 LLMs 理解您的数据所需的长期记忆系统。',
     documentProcessingPriority: '文档处理优先级',
     priority: {
       standard: '标准',
