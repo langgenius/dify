@@ -207,10 +207,10 @@ class OrchestratorRuleParser:
             ).first()
 
             if not dataset:
-                return None
+                continue
 
             if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
-                return None
+                continue
             dataset_ids.append(dataset.id)
             if retrieval_model == 'single':
                 retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
