@@ -35,7 +35,7 @@ docx2txt==0.8
 pypdfium2==4.16.0
 resend~=0.5.1
 pyjwt~=2.6.0
-anthropic~=0.3.4
+anthropic~=0.7.2
 newspaper3k==0.2.8
 google-api-python-client==2.90.0
 wikipedia==1.4.0

@@ -23,8 +23,14 @@
             "currency": "USD"
         },
         "claude-2": {
-            "prompt": "11.02",
-            "completion": "32.68",
+            "prompt": "8.00",
+            "completion": "24.00",
+            "unit": "0.000001",
+            "currency": "USD"
+        },
+        "claude-2.1": {
+            "prompt": "8.00",
+            "completion": "24.00",
             "unit": "0.000001",
             "currency": "USD"
         }
