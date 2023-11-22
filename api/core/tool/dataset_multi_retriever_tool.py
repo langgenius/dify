@@ -192,7 +192,7 @@ class DatasetMultiRetrieverTool(BaseTool):
                         'search_method'] == 'hybrid_search':
                         embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                             'flask_app': current_app._get_current_object(),
-                            'dataset': dataset,
+                            'dataset_id': str(dataset.id),
                             'query': query,
                             'top_k': self.top_k,
                             'score_threshold': self.score_threshold,
@@ -210,7 +210,7 @@ class DatasetMultiRetrieverTool(BaseTool):
                         full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search,
                                                                   kwargs={
                                                                       'flask_app': current_app._get_current_object(),
-                                                                      'dataset': dataset,
+                                                                      'dataset_id': str(dataset.id),
                                                                       'query': query,
                                                                       'search_method': 'hybrid_search',
                                                                       'embeddings': embeddings,

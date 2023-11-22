@@ -106,7 +106,7 @@ class DatasetRetrieverTool(BaseTool):
                 if retrieval_model['search_method'] == 'semantic_search' or retrieval_model['search_method'] == 'hybrid_search':
                     embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                         'flask_app': current_app._get_current_object(),
-                        'dataset': dataset,
+                        'dataset_id': str(dataset.id),
                         'query': query,
                         'top_k': self.top_k,
                         'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
@@ -124,7 +124,7 @@ class DatasetRetrieverTool(BaseTool):
                 if retrieval_model['search_method'] == 'full_text_search' or retrieval_model['search_method'] == 'hybrid_search':
                     full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
                         'flask_app': current_app._get_current_object(),
-                        'dataset': dataset,
+                        'dataset_id': str(dataset.id),
                         'query': query,
                         'search_method': retrieval_model['search_method'],
                         'embeddings': embeddings,
