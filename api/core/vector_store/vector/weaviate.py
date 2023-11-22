@@ -60,7 +60,7 @@ def _create_weaviate_client(**kwargs: Any) -> Any:
 
 
 def _default_score_normalizer(val: float) -> float:
-    return 1 - 1 / (1 + np.exp(val))
+    return 1 - val
 
 
 def _json_serializable(value: Any) -> Any:
@@ -243,7 +243,8 @@ class Weaviate(VectorStore):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         if kwargs.get("additional"):
             query_obj = query_obj.with_additional(kwargs.get("additional"))
-        result = query_obj.with_bm25(query=content).with_limit(k).do()
+        properties = ['text', 'dataset_id', 'doc_hash', 'doc_id', 'document_id']
+        result = query_obj.with_bm25(query=query, properties=properties).with_limit(k).do()
         if "errors" in result:
             raise ValueError(f"Error during query: {result['errors']}")
         docs = []
@@ -380,14 +381,14 @@ class Weaviate(VectorStore):
             result = (
                 query_obj.with_near_vector(vector)
                 .with_limit(k)
-                .with_additional("vector")
+                .with_additional(["vector", "distance"])
                 .do()
             )
         else:
             result = (
                 query_obj.with_near_text(content)
                 .with_limit(k)
-                .with_additional("vector")
+                .with_additional(["vector", "distance"])
                 .do()
             )
 
@@ -397,7 +398,7 @@ class Weaviate(VectorStore):
         docs_and_scores = []
         for res in result["data"]["Get"][self._index_name]:
             text = res.pop(self._text_key)
-            score = np.dot(res["_additional"]["vector"], embedded_query)
+            score = res["_additional"]["distance"]
             docs_and_scores.append((Document(page_content=text, metadata=res), score))
         return docs_and_scores
 
