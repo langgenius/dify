@@ -28,7 +28,13 @@ const typeStyle = {
   },
 }
 
-const PlanComp: FC = () => {
+type Props = {
+  loc?: string
+}
+
+const PlanComp: FC<Props> = ({
+  loc,
+}) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const {
@@ -37,9 +43,14 @@ const PlanComp: FC = () => {
     total,
   } = plan
 
+  const isInHeader = loc === 'header'
+  const showBilling = () => {
+
+  }
+
   return (
     <div
-      className='rounded-xl border border-white'
+      className='rounded-xl border border-white select-none'
       style={{
         background: typeStyle[type].bg,
         boxShadow: '5px 7px 12px 0px rgba(0, 0, 0, 0.06)',
@@ -59,11 +70,13 @@ const PlanComp: FC = () => {
             {t(`billing.plans.${type}.name`)}
           </div>
         </div>
-        <UpgradeBtn
-          className='flex-shrink-0'
-          isPlain={type !== Plan.sandbox}
-          onClick={() => { }}
-        />
+        {(!isInHeader || (isInHeader && type !== Plan.sandbox)) && (
+          <UpgradeBtn
+            className='flex-shrink-0'
+            isPlain={type !== Plan.sandbox}
+            onClick={showBilling}
+          />
+        )}
       </div>
 
       {/* Plan detail */}
@@ -84,6 +97,14 @@ const PlanComp: FC = () => {
           usage={usage.buildApps}
           total={total.buildApps}
         />
+        {isInHeader && type === Plan.sandbox && (
+          <UpgradeBtn
+            className='flex-shrink-0 my-3'
+            isFull
+            isPlain={type !== Plan.sandbox}
+            onClick={showBilling}
+          />
+        )}
       </div>
     </div>
   )

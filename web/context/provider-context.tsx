@@ -98,7 +98,7 @@ export const ProviderContextProvider = ({
   }
 
   const plan = {
-    type: Plan.enterprise,
+    type: Plan.professional,
     usage: {
       vectorSpace: 32,
       buildApps: 50,

@@ -3,6 +3,7 @@ const translation = {
   upgradeBtn: {
     plain: 'Upgrade Plan',
     encourage: 'Upgrade Now',
+    encourageShort: 'Upgrade',
   },
   viewBilling: 'View billing information',
   plansCommon: {

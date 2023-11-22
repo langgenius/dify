@@ -3,6 +3,7 @@ const translation = {
   upgradeBtn: {
     plain: '升级套餐',
     encourage: '立即升级',
+    encourageShort: '升级',
   },
   viewBilling: '查看账单信息',
   plansCommon: {
