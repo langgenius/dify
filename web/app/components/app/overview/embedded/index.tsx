@@ -9,8 +9,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
 
-// const isDevelopment = process.env.NODE_ENV === 'development'
-
 type Props = {
   isShow: boolean
   onClose: () => void
@@ -47,6 +45,9 @@ const OPTION_MAP = {
  defer>
 </script>`,
   },
+  chromePlugin: {
+    getContent: (url: string, token: string) => `ChatBot URL: ${url}/chatbot/${token}`,
+  },
 }
 const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
 
@@ -55,17 +56,25 @@ type Option = keyof typeof OPTION_MAP
 type OptionStatus = {
   iframe: boolean
   scripts: boolean
+  chromePlugin: boolean
 }
 
 const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
   const { t } = useTranslation()
   const [option, setOption] = useState<Option>('iframe')
-  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false })
+  const [isCopied, setIsCopied] = useState<OptionStatus>({ iframe: false, scripts: false, chromePlugin: false })
 
   const { langeniusVersionInfo } = useAppContext()
   const isTestEnv = langeniusVersionInfo.current_env === 'TESTING' || langeniusVersionInfo.current_env === 'DEVELOPMENT'
   const onClickCopy = () => {
-    copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+    if (option === 'chromePlugin') {
+      const splitUrl = OPTION_MAP[option].getContent(appBaseUrl, accessToken).split(': ')
+      if (splitUrl.length > 1)
+        copy(splitUrl[1])
+    }
+    else {
+      copy(OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv))
+    }
     setIsCopied({ ...isCopied, [option]: true })
   }
 
@@ -76,6 +85,10 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       cache[key as keyof OptionStatus] = false
     })
     setIsCopied(cache)
+  }
+
+  const navigateToChromeUrl = () => {
+    window.open('https://chrome.google.com/webstore/detail/dify-chatbot/ceehdapohffmjmkdcifjofadiaoeggaf', '_blank')
   }
 
   useEffect(() => {
@@ -93,7 +106,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       <div className="mb-4 mt-8 text-gray-900 text-[14px] font-medium leading-tight">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
-      <div className="flex gap-4 items-center">
+      <div className="flex items-center justify-between">
         {Object.keys(OPTION_MAP).map((v, index) => {
           return (
             <div
@@ -111,7 +124,17 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
           )
         })}
       </div>
-      <div className="mt-6 w-full bg-gray-100 rounded-lg flex-col justify-start items-start inline-flex">
+      {option === 'chromePlugin' && (
+        <div className="mt-6 w-full">
+          <div className={cn('gap-2 py-3 justify-center items-center inline-flex w-full rounded-lg',
+            'bg-primary-600 hover:bg-primary-600/75 hover:shadow-md cursor-pointer text-white hover:shadow-sm flex-shrink-0')}>
+            <div className={`w-4 h-4 relative ${style.pluginInstallIcon}`}></div>
+            <div className="text-white text-sm font-medium font-['Inter'] leading-tight" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
+          </div>
+        </div>
+      )}
+      <div className={cn('w-full bg-gray-100 rounded-lg flex-col justify-start items-start inline-flex',
+        'mt-6')}>
         <div className="self-stretch pl-3 pr-1 py-1 bg-gray-50 rounded-tl-lg rounded-tr-lg border border-black border-opacity-5 justify-start items-center gap-2 inline-flex">
           <div className="grow shrink basis-0 text-slate-700 text-[13px] font-medium leading-none">
             {t(`${prefixEmbedded}.${option}`)}

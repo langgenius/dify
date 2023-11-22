@@ -4,96 +4,23 @@ import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import cn from 'classnames'
-import { HelpCircle, Settings04 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Tooltip from '@/app/components/base/tooltip-plus'
-import Slider from '@/app/components/base/slider'
-import Switch from '@/app/components/base/switch'
+import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
-
-// TODO
-const PARAMS_KEY = [
-  'top_k',
-  'score_threshold',
-]
-const PARAMS = {
-  top_k: {
-    default: 2,
-    step: 1,
-    min: 1,
-    max: 10,
-  },
-  score_threshold: {
-    default: 0.7,
-    step: 0.01,
-    min: 0,
-    max: 1,
-  },
-} as any
-
-export type IParamItemProps = {
-  id: string
-  name: string
-  tip: string
-  value: number
-  enable: boolean
-  step?: number
-  min?: number
-  max: number
-  onChange: (key: string, value: number) => void
-  onSwitchChange: (key: string, enable: boolean) => void
-}
-
-const ParamItem: FC<IParamItemProps> = ({ id, name, tip, step = 0.1, min = 0, max, value, enable, onChange, onSwitchChange }) => {
-  return (
-    <div>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center">
-          {id === 'score_threshold' && (
-            <Switch
-              size='md'
-              defaultValue={enable}
-              onChange={async (val) => {
-                onSwitchChange(id, val)
-              }}
-            />
-          )}
-          <span className="mx-1 text-gray-800 text-[13px] leading-[18px] font-medium">{name}</span>
-          <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
-            <HelpCircle className='w-[14px] h-[14px] text-gray-400' />
-          </Tooltip>
-        </div>
-        <div className="flex items-center"></div>
-      </div>
-      <div className="mt-2 flex items-center justify-between">
-        <div className="flex items-center h-7">
-          <div className="w-[148px]">
-            <Slider
-              disabled={!enable}
-              value={max < 5 ? value * 100 : value}
-              min={min < 1 ? min * 100 : min}
-              max={max < 5 ? max * 100 : max}
-              onChange={value => onChange(id, value / (max < 5 ? 100 : 1))}
-            />
-          </div>
-        </div>
-        <div className="flex items-center">
-          <input disabled={!enable} type="number" min={min} max={max} step={step} className="block w-[48px] h-7 text-xs leading-[18px] rounded-lg border-0 pl-1 pl py-1.5 bg-gray-50 text-gray-900  placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-primary-600 disabled:opacity-60" value={value} onChange={(e) => {
-            const value = parseFloat(e.target.value)
-            if (value < min || value > max)
-              return
-
-            onChange(id, value)
-          }} />
-        </div>
-      </div>
-    </div>
-  )
-}
+import TopKItem from '@/app/components/base/param-item/top-k-item'
+import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
+import Modal from '@/app/components/base/modal'
+import Button from '@/app/components/base/button'
+import RadioCard from '@/app/components/base/radio-card/simple'
+import { RETRIEVE_TYPE } from '@/types/app'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import { useProviderContext } from '@/context/provider-context'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import Toast from '@/app/components/base/toast'
+import { DATASET_DEFAULT } from '@/config'
+import {
+  MultiPathRetrieval,
+  NTo1Retrieval,
+} from '@/app/components/base/icons/src/public/common'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()
@@ -102,24 +29,47 @@ const ParamsConfig: FC = () => {
     datasetConfigs,
     setDatasetConfigs,
   } = useContext(ConfigContext)
+  const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
+
+  const type = tempDataSetConfigs.retrieval_model
+  const setType = (value: RETRIEVE_TYPE) => {
+    setTempDataSetConfigs({
+      ...tempDataSetConfigs,
+      retrieval_model: value,
+    })
+  }
+
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+  } = useProviderContext()
+
+  const rerankModel = (() => {
+    if (tempDataSetConfigs.reranking_model) {
+      return {
+        provider_name: tempDataSetConfigs.reranking_model.reranking_provider_name,
+        model_name: tempDataSetConfigs.reranking_model.reranking_model_name,
+      }
+    }
+    else if (rerankDefaultModel) {
+      return {
+        provider_name: rerankDefaultModel.model_provider.provider_name,
+        model_name: rerankDefaultModel.model_name,
+      }
+    }
+  })()
 
   const handleParamChange = (key: string, value: number) => {
-    let notOutRangeValue = parseFloat(value.toFixed(2))
-    notOutRangeValue = Math.max(PARAMS[key].min, notOutRangeValue)
-    notOutRangeValue = Math.min(PARAMS[key].max, notOutRangeValue)
     if (key === 'top_k') {
-      setDatasetConfigs({
-        ...datasetConfigs,
-        top_k: notOutRangeValue,
+      setTempDataSetConfigs({
+        ...tempDataSetConfigs,
+        top_k: value,
       })
     }
     else if (key === 'score_threshold') {
-      setDatasetConfigs({
-        ...datasetConfigs,
-        [key]: {
-          enable: datasetConfigs.score_threshold.enable,
-          value: notOutRangeValue,
-        },
+      setTempDataSetConfigs({
+        ...tempDataSetConfigs,
+        score_threshold: value,
       })
     }
   }
@@ -128,54 +78,133 @@ const ParamsConfig: FC = () => {
     if (key === 'top_k')
       return
 
-    setDatasetConfigs({
-      ...datasetConfigs,
-      [key]: {
-        enable,
-        value: (datasetConfigs as any)[key].value,
-      },
+    setTempDataSetConfigs({
+      ...tempDataSetConfigs,
+      score_threshold_enabled: enable,
     })
+  }
+  const isValid = () => {
+    let errMsg = ''
+    if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
+      if (!tempDataSetConfigs.reranking_model?.reranking_model_name && (!rerankDefaultModel && isRerankDefaultModelVaild))
+        errMsg = t('appDebug.datasetConfig.rerankModelRequired')
+    }
+    if (errMsg) {
+      Toast.notify({
+        type: 'error',
+        message: errMsg,
+      })
+    }
+    return !errMsg
+  }
+  const handleSave = () => {
+    if (!isValid())
+      return
+
+    const config = { ...tempDataSetConfigs }
+    if (config.retrieval_model === RETRIEVE_TYPE.multiWay && !config.reranking_model) {
+      config.reranking_model = {
+        reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
+        reranking_model_name: rerankDefaultModel?.model_name,
+      } as any
+    }
+    setDatasetConfigs(config)
+    setOpen(false)
   }
 
   return (
-    <PortalToFollowElem
-      open={open}
-      onOpenChange={setOpen}
-      placement='bottom-end'
-      offset={{
-        mainAxis: 4,
-      }}
-    >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <div className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
-          <Settings04 className="w-[14px] h-[14px]" />
-          <div className='text-xs font-medium'>
-            {t('appDebug.datasetConfig.params')}
-          </div>
+    <div>
+      <div
+        className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}
+        onClick={() => {
+          setTempDataSetConfigs({
+            ...datasetConfigs,
+            top_k: datasetConfigs.top_k || DATASET_DEFAULT.top_k,
+            score_threshold: datasetConfigs.score_threshold || DATASET_DEFAULT.score_threshold,
+          })
+          setOpen(true)
+        }}
+      >
+        <Settings04 className="w-[14px] h-[14px]" />
+        <div className='text-xs font-medium'>
+          {t('appDebug.datasetConfig.params')}
         </div>
-      </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-[240px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
-          {PARAMS_KEY.map((key: string) => {
-            const currentValue = key === 'top_k' ? datasetConfigs[key] : (datasetConfigs as any)[key].value
-            const currentEnableState = key === 'top_k' ? true : (datasetConfigs as any)[key].enable
-            return (
-              <ParamItem
-                key={key}
-                id={key}
-                name={t(`appDebug.datasetConfig.${key}`)}
-                tip={t(`appDebug.datasetConfig.${key}Tip`)}
-                {...PARAMS[key]}
-                value={currentValue}
-                enable={currentEnableState}
-                onChange={handleParamChange}
-                onSwitchChange={handleSwitch}
+      </div>
+      {
+        open && (
+          <Modal
+            isShow={open}
+            onClose={() => {
+              setOpen(false)
+            }}
+            className='min-w-[528px]'
+            wrapperClassName='z-50'
+            title={t('appDebug.datasetConfig.settingTitle')}
+          >
+            <div className='mt-2 space-y-3'>
+              <RadioCard
+                icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
+                title={t('appDebug.datasetConfig.retrieveOneWay.title')}
+                description={t('appDebug.datasetConfig.retrieveOneWay.description')}
+                isChosen={type === RETRIEVE_TYPE.oneWay}
+                onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}
               />
-            )
-          })}
-        </div>
-      </PortalToFollowElemContent>
-    </PortalToFollowElem>
+              <RadioCard
+                icon={<MultiPathRetrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
+                title={t('appDebug.datasetConfig.retrieveMultiWay.title')}
+                description={t('appDebug.datasetConfig.retrieveMultiWay.description')}
+                isChosen={type === RETRIEVE_TYPE.multiWay}
+                onChosen={() => { setType(RETRIEVE_TYPE.multiWay) }}
+              />
+            </div>
+            {type === RETRIEVE_TYPE.multiWay && (
+              <>
+                <div className='mt-6'>
+                  <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div>
+                    <ModelSelector
+                      popClassName='!max-w-[100%] !w-full'
+                      value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
+                      modelType={ModelType.reranking}
+                      onChange={(v) => {
+                        setTempDataSetConfigs({
+                          ...tempDataSetConfigs,
+                          reranking_model: {
+                            reranking_provider_name: v.model_provider.provider_name,
+                            reranking_model_name: v.model_name,
+                          },
+                        })
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className='mt-4 space-y-4'>
+                  <TopKItem
+                    value={tempDataSetConfigs.top_k}
+                    onChange={handleParamChange}
+                    enable={true}
+                  />
+                  <ScoreThresholdItem
+                    value={tempDataSetConfigs.score_threshold}
+                    onChange={handleParamChange}
+                    enable={tempDataSetConfigs.score_threshold_enabled}
+                    hasSwitch={true}
+                    onSwitchChange={handleSwitch}
+                  />
+                </div>
+              </>
+            )}
+            <div className='mt-6 flex justify-end'>
+              <Button className='mr-2 flex-shrink-0' onClick={() => {
+                setOpen(false)
+              }}>{t('common.operation.cancel')}</Button>
+              <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+            </div>
+          </Modal>
+        )
+      }
+
+    </div>
   )
 }
 export default memo(ParamsConfig)

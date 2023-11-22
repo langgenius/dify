@@ -98,6 +98,26 @@ const translation = {
         deleteContextVarTip: '该变量已被设置为上下文查询变量，删除该变量将影响数据集的正常使用。 如果您仍需要删除它，请在上下文部分中重新选择它。',
       },
     },
+    tools: {
+      title: '工具',
+      tips: '工具提供了一个标准的 API 调用方式，将用户输入或变量作为 API 的请求参数，用于查询外部数据作为上下文。',
+      toolsInUse: '{{count}} 工具使用中',
+      modal: {
+        title: '工具',
+        toolType: {
+          title: '工具类型',
+          placeholder: '请选择工具类型',
+        },
+        name: {
+          title: '名称',
+          placeholder: '请填写名称',
+        },
+        variableName: {
+          title: '变量名称',
+          placeholder: '请填写变量名称',
+        },
+      },
+    },
     conversationHistory: {
       title: '对话历史',
       description: '设置对话角色的前缀名称',
@@ -107,6 +127,47 @@ const translation = {
         title: '编辑对话角色名称',
         userPrefix: '用户前缀',
         assistantPrefix: '助手前缀',
+      },
+    },
+    toolbox: {
+      title: '工具箱',
+    },
+    moderation: {
+      title: '内容审查',
+      description: '您可以调用审查 API 或者维护敏感词库来使模型更安全地输出。',
+      allEnabled: '审查输入/审查输出 内容已启用',
+      inputEnabled: '审查输入内容已启用',
+      outputEnabled: '审查输出内容已启用',
+      modal: {
+        title: '内容审查设置',
+        provider: {
+          title: '类别',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation 需要在',
+            suffix: '中配置 OpenAI API 密钥。',
+          },
+          keywords: '关键词',
+        },
+        keywords: {
+          tip: '每行一个，用换行符分隔。每行最多 100 个字符。',
+          placeholder: '每行一个，用换行符分隔',
+          line: '行',
+        },
+        content: {
+          input: '审查输入内容',
+          output: '审查输出内容',
+          preset: '预设回复',
+          placeholder: '这里预设回复内容',
+          condition: '审查输入内容和审查输出内容至少启用一项',
+          fromApi: '预设回复通过 API 返回',
+          errorMessage: '预设回复不能为空',
+          supportMarkdown: '支持 Markdown',
+        },
+        openaiNotConfig: {
+          before: 'OpenAI 内容审查需要在',
+          after: '中配置 OpenAI API 密钥。',
+        },
       },
     },
   },
@@ -138,6 +199,7 @@ const translation = {
     waitForResponse: '请等待上条信息响应完成',
     waitForBatchResponse: '请等待批量任务完成',
     notSelectModel: '请选择模型',
+    waitForImgUpload: '请等待图片上传完成',
   },
   chatSubTitle: '对话前提示词',
   completionSubTitle: '前缀提示词',
@@ -184,6 +246,25 @@ const translation = {
     options: '选项',
     addOption: '添加选项',
   },
+  vision: {
+    name: '视觉',
+    description: '开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题',
+    settings: '设置',
+    visionSettings: {
+      title: '视觉设置',
+      resolution: '分辨率',
+      resolutionTooltip: `低分辨率模式将使模型接收图像的低分辨率版本，尺寸为512 x 512，并使用65 Tokens 来表示图像。这样可以使API更快地返回响应，并在不需要高细节的用例中消耗更少的输入。
+      \n
+      高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建512像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为129 Tokens。`,
+      high: '高',
+      low: '低',
+      uploadMethod: '上传方式',
+      both: '两者',
+      localUpload: '本地上传',
+      url: 'URL',
+      uploadLimit: '上传数量限制',
+    },
+  },
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',
@@ -199,6 +280,10 @@ const translation = {
     model: '语言模型',
     setTone: '模型设置',
     title: '模型及参数',
+    modeType: {
+      chat: '对话型',
+      completion: '补全型',
+    },
   },
   inputs: {
     title: '调试与预览',
@@ -214,11 +299,22 @@ const translation = {
   },
   result: '结果',
   datasetConfig: {
+    settingTitle: '召回设置',
+    retrieveOneWay: {
+      title: 'N选1召回',
+      description: '根据用户意图和数据集描述，由 Agent 自主判断选择最匹配的单个数据集来查询相关文本，适合数据集区分度大且数据集数量偏少的应用。',
+    },
+    retrieveMultiWay: {
+      title: '多路召回',
+      description: '根据用户意图同时匹配所有数据集，从多路数据集查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API。',
+    },
+    rerankModelRequired: '请选择 Rerank 模型',
     params: '参数设置',
     top_k: 'Top K',
     top_kTip: '用于筛选与用户问题相似度最高的文本片段。系统同时会根据选用模型上下文窗口大小动态调整分段数量。',
     score_threshold: 'Score 阈值',
     score_thresholdTip: '用于设置文本片段筛选的相似度阈值。',
+    retrieveChangeTip: '修改索引模式和检索模式可能会影响与该数据集关联的应用程序。',
   },
 }
 

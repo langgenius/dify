@@ -3,8 +3,10 @@ const translation = {
   desc: '在这里您可以修改数据集的工作方式以及其它设置。',
   form: {
     name: '数据集名称',
+    namePlaceholder: '请输入数据集名称',
     nameError: '名称不能为空',
     desc: '数据集描述',
+    descInfo: '请写出清楚的文字描述来概述数据集的内容。当从多个数据集中进行选择匹配时，该描述将用作匹配的基础。',
     descPlaceholder: '描述这个数据集中的内容。详细的描述可以让 AI 及时访问数据集的内容。如果为空，Dify 将使用默认的命中策略。',
     descWrite: '了解如何编写更好的数据集描述。',
     permissions: '可见权限',
@@ -18,6 +20,12 @@ const translation = {
     embeddingModel: 'Embedding 模型',
     embeddingModelTip: '修改 Embedding 模型，请去',
     embeddingModelTipLink: '设置',
+    retrievalSetting: {
+      title: '检索设置',
+      learnMore: '了解更多',
+      description: '关于检索方法。',
+      longDescription: '关于检索方法，您可以随时在数据集设置中更改此设置。',
+    },
     save: '保存',
   },
 }

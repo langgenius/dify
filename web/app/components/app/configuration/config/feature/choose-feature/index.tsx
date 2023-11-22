@@ -9,12 +9,14 @@ import Modal from '@/app/components/base/modal'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
+import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
   suggestedQuestionsAfterAnswer: boolean
   speechToText: boolean
   citation: boolean
+  moderation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -114,6 +116,18 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
             </>
           </FeatureGroup>
         )}
+        <FeatureGroup title={t('appDebug.feature.toolbox.title')}>
+          <>
+            <FeatureItem
+              icon={<FileSearch02 className='w-4 h-4 text-[#039855]' />}
+              previewImgClassName=''
+              title={t('appDebug.feature.moderation.title')}
+              description={t('appDebug.feature.moderation.description')}
+              value={config.moderation}
+              onChange={value => onChange('moderation', value)}
+            />
+          </>
+        </FeatureGroup>
       </div>
 
     </Modal>

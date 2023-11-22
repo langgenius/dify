@@ -23,7 +23,6 @@ boto3==1.28.17
 tenacity==8.2.2
 cachetools~=5.3.0
 weaviate-client~=3.21.0
-qdrant_client~=1.1.6
 mailchimp-transactional~=1.0.50
 scikit-learn==1.2.2
 sentry-sdk[flask]~=1.21.1
@@ -36,7 +35,7 @@ docx2txt==0.8
 pypdfium2==4.16.0
 resend~=0.5.1
 pyjwt~=2.6.0
-anthropic~=0.3.4
+anthropic~=0.7.2
 newspaper3k==0.2.8
 google-api-python-client==2.90.0
 wikipedia==1.4.0
@@ -54,3 +53,5 @@ safetensors==0.3.2
 zhipuai==1.0.7
 werkzeug==2.3.7
 pymilvus==2.3.0
+qdrant-client==1.6.4
+cohere~=4.32

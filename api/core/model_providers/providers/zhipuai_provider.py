@@ -27,6 +27,11 @@ class ZhipuAIProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
+                    'id': 'chatglm_turbo',
+                    'name': 'chatglm_turbo',
+                    'mode': ModelMode.CHAT.value,
+                },
+                {
                     'id': 'chatglm_pro',
                     'name': 'chatglm_pro',
                     'mode': ModelMode.CHAT.value,

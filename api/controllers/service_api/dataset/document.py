@@ -2,6 +2,7 @@ import json
 
 from flask import request
 from flask_restful import reqparse, marshal
+from flask_login import current_user
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
@@ -34,6 +35,8 @@ class DocumentAddByTextApi(DatasetApiResource):
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
                             location='json')
         parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
@@ -93,6 +96,8 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         parser.add_argument('process_rule', type=dict, required=False, nullable=True, location='json')
         parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
         parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
         dataset_id = str(dataset_id)
@@ -173,7 +178,7 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
-        upload_file = FileService.upload_file(file)
+        upload_file = FileService.upload_file(file, current_user)
         data_source = {
             'type': 'upload_file',
             'info_list': {
@@ -235,7 +240,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if len(request.files) > 1:
                 raise TooManyFilesError()
 
-            upload_file = FileService.upload_file(file)
+            upload_file = FileService.upload_file(file, current_user)
             data_source = {
                 'type': 'upload_file',
                 'info_list': {

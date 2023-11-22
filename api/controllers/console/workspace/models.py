@@ -1,3 +1,5 @@
+import logging
+
 from flask_login import current_user
 from libs.login import login_required
 from flask_restful import Resource, reqparse
@@ -19,7 +21,7 @@ class DefaultModelApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='args')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='args')
         args = parser.parse_args()
 
         tenant_id = current_user.current_tenant_id
@@ -71,19 +73,21 @@ class DefaultModelApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('model_name', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='json')
-        parser.add_argument('provider_name', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_settings', type=list, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
         provider_service = ProviderService()
-        provider_service.update_default_model_of_model_type(
-            tenant_id=current_user.current_tenant_id,
-            model_type=args['model_type'],
-            provider_name=args['provider_name'],
-            model_name=args['model_name']
-        )
+        model_settings = args['model_settings']
+        for model_setting in model_settings:
+            try:
+                provider_service.update_default_model_of_model_type(
+                    tenant_id=current_user.current_tenant_id,
+                    model_type=model_setting['model_type'],
+                    provider_name=model_setting['provider_name'],
+                    model_name=model_setting['model_name']
+                )
+            except Exception:
+                logging.warning(f"{model_setting['model_type']} save error")
 
         return {'result': 'success'}
 

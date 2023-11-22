@@ -7,22 +7,21 @@ import { useContext } from 'use-context-selector'
 import Progress from './progress'
 import Button from '@/app/components/base/button'
 import { LinkExternal02, XClose } from '@/app/components/base/icons/src/vender/line/general'
-import AccountSetting from '@/app/components/header/account-setting'
 import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import { formatNumber } from '@/utils/format'
 import I18n from '@/context/i18n'
 import ProviderConfig from '@/app/components/header/account-setting/model-page/configs'
+import { useModalContext } from '@/context/modal-context'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION
   const { locale } = useContext(I18n)
 
   const { textGenerationModelList } = useProviderContext()
+  const { setShowAccountSettingModal } = useModalContext()
 
   const { t } = useTranslation()
-
-  const [showSetAPIKeyModal, setShowSetAPIKeyModal] = useState(false)
 
   const [isShow, setIsShow] = useState(true)
 
@@ -101,9 +100,7 @@ const APIKeyInfoPanel: FC = () => {
       <Button
         type='primary'
         className='space-x-2'
-        onClick={() => {
-          setShowSetAPIKeyModal(true)
-        }}
+        onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
       >
         <div className='text-sm font-medium'>{t('appOverview.apiKeyInfo.setAPIBtn')}</div>
         <LinkExternal02 className='w-4 h-4' />
@@ -123,14 +120,6 @@ const APIKeyInfoPanel: FC = () => {
         className='absolute right-4 top-4 flex items-center justify-center w-8 h-8 cursor-pointer '>
         <XClose className='w-4 h-4 text-gray-500' />
       </div>
-
-      {
-        showSetAPIKeyModal && (
-          <AccountSetting activeTab="provider" onCancel={async () => {
-            setShowSetAPIKeyModal(false)
-          }} />
-        )
-      }
     </div>
   )
 }

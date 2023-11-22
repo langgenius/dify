@@ -1,30 +1,39 @@
+import concurrent
+import json
 import logging
-from typing import Optional, List, Union
+from concurrent.futures import ThreadPoolExecutor
+from typing import Optional, List, Union, Tuple
 
+from flask import current_app, Flask
 from requests.exceptions import ChunkedEncodingError
 
 from core.agent.agent_executor import AgentExecuteResult, PlanningStrategy
 from core.callback_handler.main_chain_gather_callback_handler import MainChainGatherCallbackHandler
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
-from core.chain.sensitive_word_avoidance_chain import SensitiveWordAvoidanceError
-from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException
+from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
+    ConversationTaskInterruptException
+from core.external_data_tool.factory import ExternalDataToolFactory
+from core.file.file_obj import FileObj
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
 from core.model_providers.model_factory import ModelFactory
-from core.model_providers.models.entity.message import PromptMessage
+from core.model_providers.models.entity.message import PromptMessage, PromptMessageFile
 from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
 from models.model import App, AppModelConfig, Account, Conversation, EndUser
+from core.moderation.base import ModerationException, ModerationAction
+from core.moderation.factory import ModerationFactory
 
 
 class Completion:
     @classmethod
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
-                 user: Union[Account, EndUser], conversation: Optional[Conversation], streaming: bool,
-                 is_override: bool = False, retriever_from: str = 'dev'):
+                 files: List[FileObj], user: Union[Account, EndUser], conversation: Optional[Conversation],
+                 streaming: bool, is_override: bool = False, retriever_from: str = 'dev',
+                 auto_generate_name: bool = True):
         """
         errors: ProviderTokenNotInitError
         """
@@ -57,16 +66,21 @@ class Completion:
             is_override=is_override,
             inputs=inputs,
             query=query,
+            files=files,
             streaming=streaming,
-            model_instance=final_model_instance
+            model_instance=final_model_instance,
+            auto_generate_name=auto_generate_name
         )
+
+        prompt_message_files = [file.prompt_message_file for file in files]
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
             mode=app.mode,
             model_instance=final_model_instance,
             app_model_config=app_model_config,
             query=query,
-            inputs=inputs
+            inputs=inputs,
+            files=prompt_message_files
         )
 
         # init orchestrator rule parser
@@ -76,26 +90,36 @@ class Completion:
         )
 
         try:
-            # parse sensitive_word_avoidance_chain
             chain_callback = MainChainGatherCallbackHandler(conversation_message_task)
-            sensitive_word_avoidance_chain = orchestrator_rule_parser.to_sensitive_word_avoidance_chain(
-                final_model_instance, [chain_callback])
-            if sensitive_word_avoidance_chain:
-                try:
-                    query = sensitive_word_avoidance_chain.run(query)
-                except SensitiveWordAvoidanceError as ex:
-                    cls.run_final_llm(
-                        model_instance=final_model_instance,
-                        mode=app.mode,
-                        app_model_config=app_model_config,
-                        query=query,
-                        inputs=inputs,
-                        agent_execute_result=None,
-                        conversation_message_task=conversation_message_task,
-                        memory=memory,
-                        fake_response=ex.message
-                    )
-                    return
+
+            try:
+                # process sensitive_word_avoidance
+                inputs, query = cls.moderation_for_inputs(app.id, app.tenant_id, app_model_config, inputs, query)
+            except ModerationException as e:
+                cls.run_final_llm(
+                    model_instance=final_model_instance,
+                    mode=app.mode,
+                    app_model_config=app_model_config,
+                    query=query,
+                    inputs=inputs,
+                    files=prompt_message_files,
+                    agent_execute_result=None,
+                    conversation_message_task=conversation_message_task,
+                    memory=memory,
+                    fake_response=str(e)
+                )
+                return
+
+            # fill in variable inputs from external data tools if exists
+            external_data_tools = app_model_config.external_data_tools_list
+            if external_data_tools:
+                inputs = cls.fill_in_inputs_from_external_data_tools(
+                    tenant_id=app.tenant_id,
+                    app_id=app.id,
+                    external_data_tools=external_data_tools,
+                    inputs=inputs,
+                    query=query
+                )
 
             # get agent executor
             agent_executor = orchestrator_rule_parser.to_agent_executor(
@@ -103,6 +127,7 @@ class Completion:
                 memory=memory,
                 rest_tokens=rest_tokens_for_context_and_memory,
                 chain_callback=chain_callback,
+                tenant_id=app.tenant_id,
                 retriever_from=retriever_from
             )
 
@@ -130,29 +155,119 @@ class Completion:
                 app_model_config=app_model_config,
                 query=query,
                 inputs=inputs,
+                files=prompt_message_files,
                 agent_execute_result=agent_execute_result,
                 conversation_message_task=conversation_message_task,
                 memory=memory,
                 fake_response=fake_response
             )
-        except ConversationTaskStoppedException:
+        except (ConversationTaskInterruptException, ConversationTaskStoppedException):
             return
         except ChunkedEncodingError as e:
             # Interrupt by LLM (like OpenAI), handle it.
             logging.warning(f'ChunkedEncodingError: {e}')
             conversation_message_task.end()
             return
-        
+
+    @classmethod
+    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
+        if not app_model_config.sensitive_word_avoidance_dict['enabled']:
+            return inputs, query
+
+        type = app_model_config.sensitive_word_avoidance_dict['type']
+
+        moderation = ModerationFactory(type, app_id, tenant_id, app_model_config.sensitive_word_avoidance_dict['config'])
+        moderation_result = moderation.moderation_for_inputs(inputs, query)
+
+        if not moderation_result.flagged:
+            return inputs, query
+
+        if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
+            raise ModerationException(moderation_result.preset_response)
+        elif moderation_result.action == ModerationAction.OVERRIDED:
+            inputs = moderation_result.inputs
+            query = moderation_result.query
+
+        return inputs, query
+
+    @classmethod
+    def fill_in_inputs_from_external_data_tools(cls, tenant_id: str, app_id: str, external_data_tools: list[dict],
+                                                inputs: dict, query: str) -> dict:
+        """
+        Fill in variable inputs from external data tools if exists.
+
+        :param tenant_id: workspace id
+        :param app_id: app id
+        :param external_data_tools: external data tools configs
+        :param inputs: the inputs
+        :param query: the query
+        :return: the filled inputs
+        """
+        # Group tools by type and config
+        grouped_tools = {}
+        for tool in external_data_tools:
+            if not tool.get("enabled"):
+                continue
+
+            tool_key = (tool.get("type"), json.dumps(tool.get("config"), sort_keys=True))
+            grouped_tools.setdefault(tool_key, []).append(tool)
+
+        results = {}
+        with ThreadPoolExecutor() as executor:
+            futures = {}
+            for tool in external_data_tools:
+                if not tool.get("enabled"):
+                    continue
+
+                future = executor.submit(
+                    cls.query_external_data_tool, current_app._get_current_object(), tenant_id, app_id, tool,
+                    inputs, query
+                )
+
+                futures[future] = tool
+
+            for future in concurrent.futures.as_completed(futures):
+                tool_variable, result = future.result()
+                results[tool_variable] = result
+
+        inputs.update(results)
+        return inputs
+
+    @classmethod
+    def query_external_data_tool(cls, flask_app: Flask, tenant_id: str, app_id: str, external_data_tool: dict,
+                                 inputs: dict, query: str) -> Tuple[Optional[str], Optional[str]]:
+        with flask_app.app_context():
+            tool_variable = external_data_tool.get("variable")
+            tool_type = external_data_tool.get("type")
+            tool_config = external_data_tool.get("config")
+
+            external_data_tool_factory = ExternalDataToolFactory(
+                name=tool_type,
+                tenant_id=tenant_id,
+                app_id=app_id,
+                variable=tool_variable,
+                config=tool_config
+            )
+
+            # query external data tool
+            result = external_data_tool_factory.query(
+                inputs=inputs,
+                query=query
+            )
+
+            return tool_variable, result
+
     @classmethod
     def get_query_for_agent(cls, app: App, app_model_config: AppModelConfig, query: str, inputs: dict) -> str:
         if app.mode != 'completion':
             return query
-        
+
         return inputs.get(app_model_config.dataset_query_variable, "")
 
     @classmethod
     def run_final_llm(cls, model_instance: BaseLLM, mode: str, app_model_config: AppModelConfig, query: str,
                       inputs: dict,
+                      files: List[PromptMessageFile],
                       agent_execute_result: Optional[AgentExecuteResult],
                       conversation_message_task: ConversationMessageTask,
                       memory: Optional[ReadOnlyConversationTokenDBBufferSharedMemory],
@@ -162,10 +277,11 @@ class Completion:
         # get llm prompt
         if app_model_config.prompt_type == 'simple':
             prompt_messages, stop_words = prompt_transform.get_prompt(
-                mode=mode,
+                app_mode=mode,
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=agent_execute_result.output if agent_execute_result else None,
                 memory=memory,
                 model_instance=model_instance
@@ -176,6 +292,7 @@ class Completion:
                 app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=agent_execute_result.output if agent_execute_result else None,
                 memory=memory,
                 model_instance=model_instance
@@ -233,7 +350,7 @@ class Completion:
 
     @classmethod
     def get_validate_rest_tokens(cls, mode: str, model_instance: BaseLLM, app_model_config: AppModelConfig,
-                                 query: str, inputs: dict) -> int:
+                                 query: str, inputs: dict, files: List[PromptMessageFile]) -> int:
         model_limited_tokens = model_instance.model_rules.max_tokens.max
         max_tokens = model_instance.get_model_kwargs().max_tokens
 
@@ -244,15 +361,15 @@ class Completion:
             max_tokens = 0
 
         prompt_transform = PromptTransform()
-        prompt_messages = []
 
         # get prompt without memory and context
         if app_model_config.prompt_type == 'simple':
             prompt_messages, _ = prompt_transform.get_prompt(
-                mode=mode,
+                app_mode=mode,
                 pre_prompt=app_model_config.pre_prompt,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=None,
                 memory=None,
                 model_instance=model_instance
@@ -263,6 +380,7 @@ class Completion:
                 app_model_config=app_model_config,
                 inputs=inputs,
                 query=query,
+                files=files,
                 context=None,
                 memory=None,
                 model_instance=model_instance

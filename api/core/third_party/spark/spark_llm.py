@@ -17,12 +17,32 @@ import websocket
 
 class SparkLLMClient:
     def __init__(self, model_name: str, app_id: str, api_key: str, api_secret: str, api_domain: Optional[str] = None):
+        domain = 'spark-api.xf-yun.com'
+        endpoint = 'chat'
+        if api_domain:
+            domain = api_domain
+            if model_name == 'spark-v3':
+                endpoint = 'multimodal'
 
-        domain = 'spark-api.xf-yun.com' if not api_domain else api_domain
-        api_version = 'v2.1' if model_name == 'spark-v2' else 'v1.1'
+        model_api_configs = {
+            'spark': {
+                'version': 'v1.1',
+                'chat_domain': 'general'
+            },
+            'spark-v2': {
+                'version': 'v2.1',
+                'chat_domain': 'generalv2'
+            },
+            'spark-v3': {
+                'version': 'v3.1',
+                'chat_domain': 'generalv3'
+            }
+        }
 
-        self.chat_domain = 'generalv2' if model_name == 'spark-v2' else 'general'
-        self.api_base = f"wss://{domain}/{api_version}/chat"
+        api_version = model_api_configs[model_name]['version']
+
+        self.chat_domain = model_api_configs[model_name]['chat_domain']
+        self.api_base = f"wss://{domain}/{api_version}/{endpoint}"
         self.app_id = app_id
         self.ws_url = self.create_url(
             urlparse(self.api_base).netloc,

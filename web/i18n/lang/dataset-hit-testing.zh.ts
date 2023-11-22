@@ -1,13 +1,13 @@
 const translation = {
-  title: '命中测试',
-  desc: '基于给定的查询文本测试数据集的命中效果。',
+  title: '召回测试',
+  desc: '基于给定的查询文本测试数据集的召回效果。',
   dateTimeFormat: 'YYYY-MM-DD HH:mm',
   recents: '最近查询',
   table: {
     header: {
-      source: "数据源",
-      text: "文本",
-      time: "时间",
+      source: '数据源',
+      text: '文本',
+      time: '时间',
     },
   },
   input: {
@@ -18,8 +18,8 @@ const translation = {
     testing: '测试',
   },
   hit: {
-    title: "命中段落",
-    emptyTip: '命中测试结果将展示在这里',
+    title: '召回段落',
+    emptyTip: '召回测试结果将展示在这里',
   },
   noRecentTip: '最近无查询结果',
   viewChart: '查看向量图表',

@@ -1,5 +1,6 @@
 import type { AppMode } from './app'
 import type { DataSourceNotionPage } from './common'
+import type { RetrievalConfig } from '@/types/app'
 
 export enum DataSourceType {
   FILE = 'upload_file',
@@ -25,6 +26,8 @@ export type DataSet = {
   embedding_model: string
   embedding_model_provider: string
   embedding_available: boolean
+  retrieval_model_dict: RetrievalConfig
+  retrieval_model: RetrievalConfig
 }
 
 export type CustomFile = File & {
@@ -193,6 +196,7 @@ export type DocumentReq = {
 
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
+  retrieval_model: RetrievalConfig
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {

@@ -10,6 +10,9 @@
         "quota_unit": "tokens"
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation"
+    ],
     "price_config": {
         "spark": {
             "prompt": "0.18",
@@ -18,6 +21,12 @@
             "currency": "RMB"
         },
         "spark-v2": {
+            "prompt": "0.36",
+            "completion": "0.36",
+            "unit": "0.0001",
+            "currency": "RMB"
+        },
+        "spark-v3": {
             "prompt": "0.36",
             "completion": "0.36",
             "unit": "0.0001",

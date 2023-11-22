@@ -92,7 +92,7 @@ export type Provider = {
     is_valid: boolean
     is_enabled: boolean
     last_used: string
-    token?: ProviderTokenType[Name]
+    token?: string | ProviderAzureToken | ProviderAnthropicToken
   }
 }[ProviderName]
 
@@ -176,6 +176,7 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   file_size_limit: number
   batch_count_limit: number
+  image_file_size_limit?: number | string
 }
 
 export type DocumentsLimitResponse = {
@@ -196,3 +197,61 @@ export type InvitationResult = {
 export type InvitationResponse = CommonResponse & {
   invitation_results: InvitationResult[]
 }
+
+export type ApiBasedExtension = {
+  id?: string
+  name?: string
+  api_endpoint?: string
+  api_key?: string
+}
+
+export type I18nText = {
+  'en-US': string
+  'zh-Hans': string
+}
+
+export type CodeBasedExtensionForm = {
+  type: string
+  label: I18nText
+  variable: string
+  required: boolean
+  options: { label: I18nText; value: string }[]
+  default: string
+  placeholder: string
+  max_length?: number
+}
+
+export type CodeBasedExtensionItem = {
+  name: string
+  label: I18nText
+  form_schema: CodeBasedExtensionForm[]
+}
+export type CodeBasedExtension = {
+  module: string
+  data: CodeBasedExtensionItem[]
+}
+
+export type ExternalDataTool = {
+  type?: string
+  label?: string
+  icon?: string
+  icon_background?: string
+  variable?: string
+  enabled?: boolean
+  config?: {
+    api_based_extension_id?: string
+  } & Partial<Record<string, any>>
+}
+
+export type ModerateResponse = {
+  flagged: boolean
+  text: string
+}
+
+export type ModerationService = (
+  url: string,
+  body: {
+    app_id: string
+    text: string
+  }
+) => Promise<ModerateResponse>

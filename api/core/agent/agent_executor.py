@@ -18,6 +18,7 @@ from langchain.agents import AgentExecutor as LCAgentExecutor
 from core.helper import moderation
 from core.model_providers.error import LLMError
 from core.model_providers.models.llm.base import BaseLLM
+from core.tool.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 
@@ -78,7 +79,7 @@ class AgentExecutor:
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:
-            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
+            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool) or isinstance(t, DatasetMultiRetrieverTool)]
             agent = MultiDatasetRouterAgent.from_llm_and_tools(
                 model_instance=self.configuration.model_instance,
                 tools=self.configuration.tools,
@@ -86,7 +87,7 @@ class AgentExecutor:
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.REACT_ROUTER:
-            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool)]
+            self.configuration.tools = [t for t in self.configuration.tools if isinstance(t, DatasetRetrieverTool) or isinstance(t, DatasetMultiRetrieverTool)]
             agent = StructuredMultiDatasetRouterAgent.from_llm_and_tools(
                 model_instance=self.configuration.model_instance,
                 tools=self.configuration.tools,

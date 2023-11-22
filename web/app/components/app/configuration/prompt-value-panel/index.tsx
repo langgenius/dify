@@ -7,25 +7,33 @@ import {
   PlayIcon,
 } from '@heroicons/react/24/solid'
 import ConfigContext from '@/context/debug-configuration'
-import type { PromptVariable } from '@/models/debug'
+import type { Inputs, PromptVariable } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
 import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import Tooltip from '@/app/components/base/tooltip-plus'
+import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
+import type { VisionFile, VisionSettings } from '@/types/app'
 
 export type IPromptValuePanelProps = {
   appType: AppType
   onSend?: () => void
+  inputs: Inputs
+  visionConfig: VisionSettings
+  onVisionFilesChange: (files: VisionFile[]) => void
 }
 
 const PromptValuePanel: FC<IPromptValuePanelProps> = ({
   appType,
   onSend,
+  inputs,
+  visionConfig,
+  onVisionFilesChange,
 }) => {
   const { t } = useTranslation()
-  const { modelModeType, modelConfig, inputs, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
+  const { modelModeType, modelConfig, setInputs, mode, isAdvancedMode, completionPromptConfig, chatPromptConfig } = useContext(ConfigContext)
   const [userInputFieldCollapse, setUserInputFieldCollapse] = useState(false)
   const promptVariables = modelConfig.configs.prompt_variables.filter(({ key, name }) => {
     return key && key?.trim() && name && name?.trim()
@@ -149,6 +157,24 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 : (
                   <div className='text-xs text-gray-500'>{t('appDebug.inputs.noVar')}</div>
                 )
+            }
+            {
+              appType === AppType.completion && visionConfig?.enabled && (
+                <div className="mt-3 xl:flex justify-between">
+                  <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-gray-900">{t('common.imageUploader.imageUpload')}</div>
+                  <div className='grow'>
+                    <TextGenerationImageUploader
+                      settings={visionConfig}
+                      onFilesChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
+                        type: 'image',
+                        transfer_method: fileItem.type,
+                        url: fileItem.url,
+                        upload_file_id: fileItem.fileId,
+                      })))}
+                    />
+                  </div>
+                </div>
+              )
             }
           </>
         )

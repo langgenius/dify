@@ -1,25 +1,31 @@
 import type { FC } from 'react'
-import { Fragment, useState } from 'react'
+import React, { Fragment, useEffect, useState } from 'react'
+import useSWR from 'swr'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
 import _ from 'lodash-es'
 import cn from 'classnames'
+import ModelModal from '../model-modal'
+import cohereConfig from '../configs/cohere'
 import s from './style.module.css'
-import type { BackendModel, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import type { BackendModel, FormValue, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Check, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
+import { Check, LinkExternal01, SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
-import ModelName, { supportI18nModelName } from '@/app/components/app/configuration/config-model/model-name'
+import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import type { ModelModeType } from '@/types/app'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import AccountSetting from '@/app/components/header/account-setting'
+import { useModalContext } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { fetchDefaultModal, setModelProvider } from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 type Props = {
   value: {
@@ -34,6 +40,8 @@ type Props = {
   popClassName?: string
   readonly?: boolean
   triggerIconSmall?: boolean
+  whenEmptyGoToSetting?: boolean
+  onUpdate?: () => void
 }
 
 type ModelOption = {
@@ -57,9 +65,19 @@ const ModelSelector: FC<Props> = ({
   popClassName,
   readonly,
   triggerIconSmall,
+  whenEmptyGoToSetting,
+  onUpdate,
 }) => {
   const { t } = useTranslation()
-  const { textGenerationModelList, embeddingsModelList, speech2textModelList, agentThoughtModelList } = useProviderContext()
+  const { setShowAccountSettingModal } = useModalContext()
+  const {
+    textGenerationModelList,
+    embeddingsModelList,
+    speech2textModelList,
+    rerankModelList,
+    agentThoughtModelList,
+    updateModelList,
+  } = useProviderContext()
   const [search, setSearch] = useState('')
   const modelList = supportAgentThought
     ? agentThoughtModelList
@@ -67,6 +85,7 @@ const ModelSelector: FC<Props> = ({
       [ModelType.textGeneration]: textGenerationModelList,
       [ModelType.embeddings]: embeddingsModelList,
       [ModelType.speech2text]: speech2textModelList,
+      [ModelType.reranking]: rerankModelList,
     })[modelType]
   const currModel = modelList.find(item => item.model_name === value?.modelName && item.model_provider.provider_name === value.providerName)
   const allModelNames = (() => {
@@ -74,8 +93,8 @@ const ModelSelector: FC<Props> = ({
       return {}
 
     const res: Record<string, string> = {}
-    modelList.forEach(({ model_name }) => {
-      res[model_name] = supportI18nModelName.includes(model_name) ? t(`common.modelName.${model_name}`) : model_name
+    modelList.forEach(({ model_name, model_display_name }) => {
+      res[model_name] = model_display_name
     })
     return res
   })()
@@ -88,7 +107,7 @@ const ModelSelector: FC<Props> = ({
     })
     : modelList
 
-  const hasRemoved = value && !modelList.find(({ model_name, model_provider }) => model_name === value.modelName && model_provider.provider_name === value.providerName)
+  const hasRemoved = (value && value.modelName && value.providerName) && !modelList.find(({ model_name, model_provider }) => model_name === value.modelName && model_provider.provider_name === value.providerName)
 
   const modelOptions: ModelOption[] = (() => {
     const providers = _.uniq(filteredModelList.map(item => item.model_provider.provider_name))
@@ -111,18 +130,55 @@ const ModelSelector: FC<Props> = ({
     })
     return res
   })()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const [showRerankModal, setShowRerankModal] = useState(false)
+  const [shouldFetchRerankDefaultModel, setShouldFetchRerankDefaultModel] = useState(false)
+  const { notify } = useToastContext()
+  const { data: rerankDefaultModel } = useSWR(shouldFetchRerankDefaultModel ? '/workspaces/current/default-model?model_type=reranking' : null, fetchDefaultModal)
+  const handleOpenRerankModal = (e: React.MouseEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    setShowRerankModal(true)
+  }
+  const handleRerankModalSave = async (originValue?: FormValue) => {
+    if (originValue) {
+      try {
+        eventEmitter?.emit('provider-save')
+        const res = await setModelProvider({
+          url: `/workspaces/current/model-providers/${cohereConfig.modal.key}`,
+          body: {
+            config: originValue,
+          },
+        })
+        if (res.result === 'success') {
+          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+          updateModelList(ModelType.reranking)
+          setShowRerankModal(false)
+          setShouldFetchRerankDefaultModel(true)
+          if (onUpdate)
+            onUpdate()
+        }
+        eventEmitter?.emit('')
+      }
+      catch (e) {
+        eventEmitter?.emit('')
+      }
+    }
+  }
 
-  const [showSettingModal, setShowSettingModal] = useState(false)
+  useEffect(() => {
+    if (rerankDefaultModel && whenEmptyGoToSetting)
+      onChange(rerankDefaultModel)
+  }, [rerankDefaultModel])
 
   return (
     <div className=''>
       <Popover className='relative'>
-        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
+        <Popover.Button className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto bg-gray-100 opacity-50' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
           {
             ({ open }) => (
               <>
                 {
-                  value
+                  (value && value.modelName && value.providerName)
                     ? (
                       <>
                         <ModelIcon
@@ -131,16 +187,26 @@ const ModelSelector: FC<Props> = ({
                           providerName={value.providerName}
                         />
                         <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
-                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name} />
+                          <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name || value.modelName} />
                           {isShowModelModeType && (
                             <ModelModeTypeLabel className='ml-2' type={currModel?.model_mode as ModelModeType} />
                           )}
                         </div>
                       </>
                     )
-                    : (
-                      <div className='grow text-left text-sm text-gray-800 opacity-60'>{t('common.modelProvider.selectModel')}</div>
-                    )
+                    : whenEmptyGoToSetting
+                      ? (
+                        <div className='grow flex items-center h-9 justify-between' onClick={handleOpenRerankModal}>
+                          <div className='flex items-center text-[13px] font-medium text-primary-500'>
+                            <CubeOutline className='mr-1.5 w-4 h-4' />
+                            {t('common.modelProvider.selector.rerankTip')}
+                          </div>
+                          <LinkExternal01 className='w-3 h-3 text-gray-500' />
+                        </div>
+                      )
+                      : (
+                        <div className='grow text-left text-sm text-gray-800 opacity-60'>{t('common.modelProvider.selectModel')}</div>
+                      )
                 }
                 {
                   hasRemoved && (
@@ -154,7 +220,16 @@ const ModelSelector: FC<Props> = ({
                     </Tooltip>
                   )
                 }
-                {!readonly && <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />}
+                {
+                  !readonly && !whenEmptyGoToSetting && (
+                    <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />
+                  )
+                }
+                {
+                  whenEmptyGoToSetting && (value && value.modelName && value.providerName) && (
+                    <ChevronDown className={`w-4 h-4 text-gray-700 ${open ? 'opacity-100' : 'opacity-60'}`} />
+                  )
+                }
               </>
             )
           }
@@ -238,7 +313,7 @@ const ModelSelector: FC<Props> = ({
                   return null
                 })
               }
-              {(search && filteredModelList.length === 0) && (
+              {modelList.length !== 0 && (search && filteredModelList.length === 0) && (
                 <div className='px-3 pt-1.5 h-[30px] text-center text-xs text-gray-500'>{t('common.modelProvider.noModelFound', { model: search })}</div>
               )}
 
@@ -248,9 +323,7 @@ const ModelSelector: FC<Props> = ({
                   style={{
                     borderColor: 'rgba(0, 0, 0, 0.05)',
                   }}
-                  onClick={() => {
-                    setShowSettingModal(true)
-                  }}
+                  onClick={() => setShowAccountSettingModal({ payload: 'provider' })}
                 >
                   <CubeOutline className='w-4 h-4 mr-2' />
                   <div>{t('common.model.addMoreModel')}</div>
@@ -260,14 +333,13 @@ const ModelSelector: FC<Props> = ({
           </Transition>
         )}
       </Popover>
-
-      {
-        showSettingModal && (
-          <AccountSetting activeTab="provider" onCancel={async () => {
-            setShowSettingModal(false)
-          }} />
-        )
-      }
+      <ModelModal
+        isShow={showRerankModal}
+        modelModal={cohereConfig.modal}
+        onCancel={() => setShowRerankModal(false)}
+        onSave={handleRerankModalSave}
+        mode={'add'}
+      />
     </div>
   )
 }

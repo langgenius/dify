@@ -49,13 +49,13 @@ class IndexingRunner:
                 if not dataset:
                     raise ValueError("no dataset found")
 
-                # load file
-                text_docs = self._load_data(dataset_document)
-
                 # get the process rule
                 processing_rule = db.session.query(DatasetProcessRule). \
                     filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id). \
                     first()
+
+                # load file
+                text_docs = self._load_data(dataset_document)
 
                 # get splitter
                 splitter = self._get_splitter(processing_rule)
@@ -88,22 +88,6 @@ class IndexingRunner:
                 dataset_document.error = str(e)
                 dataset_document.stopped_at = datetime.datetime.utcnow()
                 db.session.commit()
-
-    def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
-        matches = re.findall(regex, text, re.MULTILINE)
-
-        result = []
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
 
     def run_in_splitting_status(self, dataset_document: DatasetDocument):
         """Run the indexing process when the index_status is splitting."""
@@ -396,7 +380,7 @@ class IndexingRunner:
             "preview": preview_texts
         }
 
-    def _load_data(self, dataset_document: DatasetDocument) -> List[Document]:
+    def _load_data(self, dataset_document: DatasetDocument, automatic: bool = False) -> List[Document]:
         # load file
         if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
             return []
@@ -412,7 +396,7 @@ class IndexingRunner:
                 one_or_none()
 
             if file_detail:
-                text_docs = FileExtractor.load(file_detail)
+                text_docs = FileExtractor.load(file_detail, is_automatic=False)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
             text_docs = loader.load()
@@ -647,21 +631,16 @@ class IndexingRunner:
         return text
 
     def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"  # 匹配Q和A的正则表达式
-        matches = re.findall(regex, text, re.MULTILINE)  # 获取所有匹配到的结果
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
+        matches = re.findall(regex, text, re.MULTILINE)
 
-        result = []  # 存储最终的结果
-        for match in matches:
-            q = match[0]
-            a = match[1]
-            if q and a:
-                # 如果Q和A都存在，就将其添加到结果中
-                result.append({
-                    "question": q,
-                    "answer": re.sub(r"\n\s*", "\n", a.strip())
-                })
-
-        return result
+        return [
+            {
+                "question": q,
+                "answer": re.sub(r"\n\s*", "\n", a.strip())
+            }
+            for q, a in matches if q and a
+        ]
 
     def _build_index(self, dataset: Dataset, dataset_document: DatasetDocument, documents: List[Document]) -> None:
         """

@@ -1,4 +1,4 @@
-import type { ModelModeType } from '@/types/app'
+import type { ModelModeType, RETRIEVE_TYPE } from '@/types/app'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -73,6 +73,20 @@ export type SpeechToTextConfig = MoreLikeThisConfig
 
 export type CitationConfig = MoreLikeThisConfig
 
+export type ModerationContentConfig = {
+  enabled: boolean
+  preset_response?: string
+}
+export type ModerationConfig = MoreLikeThisConfig & {
+  type?: string
+  config?: {
+    keywords?: string
+    api_based_extension_id?: string
+    inputs_config?: ModerationContentConfig
+    outputs_config?: ModerationContentConfig
+  } & Partial<Record<string, any>>
+}
+
 export type RetrieverResourceConfig = MoreLikeThisConfig
 
 // frontend use. Not the same as backend
@@ -86,15 +100,23 @@ export type ModelConfig = {
   suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
   speech_to_text: SpeechToTextConfig | null
   retriever_resource: RetrieverResourceConfig | null
+  sensitive_word_avoidance: ModerationConfig | null
   dataSets: any[]
 }
 export type DatasetConfigItem = {
   enable: boolean
   value: number
 }
+
 export type DatasetConfigs = {
+  retrieval_model: RETRIEVE_TYPE
+  reranking_model: {
+    reranking_provider_name: string
+    reranking_model_name: string
+  }
   top_k: number
-  score_threshold: DatasetConfigItem
+  score_threshold_enabled: boolean
+  score_threshold: number
 }
 
 export type DebugRequestBody = {

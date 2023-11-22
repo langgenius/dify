@@ -8,3 +8,4 @@ class ProviderQuotaUnit(Enum):
 
 class ModelFeature(Enum):
     AGENT_THOUGHT = 'agent_thought'
+    VISION = 'vision'

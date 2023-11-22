@@ -12,6 +12,8 @@ import type { Feedbacktype } from '@/app/components/app/chat/type'
 import Loading from '@/app/components/base/loading'
 import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
+import type { ModerationService } from '@/models/common'
+import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean
@@ -29,6 +31,10 @@ export type IResultProps = {
   handleSaveMessage: (messageId: string) => void
   taskId?: number
   onCompleted: (completionRes: string, taskId?: number, success?: boolean) => void
+  enableModeration?: boolean
+  moderationService?: (text: string) => ReturnType<ModerationService>
+  visionConfig: VisionSettings
+  completionFiles: VisionFile[]
 }
 
 const Result: FC<IResultProps> = ({
@@ -48,6 +54,8 @@ const Result: FC<IResultProps> = ({
   handleSaveMessage,
   taskId,
   onCompleted,
+  visionConfig,
+  completionFiles,
 }) => {
   const [isResponsing, { setTrue: setResponsingTrue, setFalse: setResponsingFalse }] = useBoolean(false)
   useEffect(() => {
@@ -105,6 +113,11 @@ const Result: FC<IResultProps> = ({
       logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
       return false
     }
+
+    if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      return false
+    }
     return !hasEmptyInput
   }
 
@@ -117,8 +130,19 @@ const Result: FC<IResultProps> = ({
     if (!checkCanSend())
       return
 
-    const data = {
+    const data: Record<string, any> = {
       inputs,
+    }
+    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
+      data.files = completionFiles.map((item) => {
+        if (item.transfer_method === TransferMethod.local_file) {
+          return {
+            ...item,
+            url: '',
+          }
+        }
+        return item
+      })
     }
 
     setMessageId(null)
@@ -127,7 +151,7 @@ const Result: FC<IResultProps> = ({
     })
     setCompletionRes('')
 
-    const res: string[] = []
+    let res: string[] = []
     let tempMessageId = ''
 
     if (!isPC)
@@ -142,7 +166,6 @@ const Result: FC<IResultProps> = ({
         setResponsingFalse()
         onCompleted(getCompletionRes(), taskId, false)
         isTimeout = true
-        console.log(`[#${taskId}]: timeout`)
       }
     }, 1000)
     sendCompletionMessage(data, {
@@ -159,6 +182,10 @@ const Result: FC<IResultProps> = ({
         setMessageId(tempMessageId)
         onCompleted(getCompletionRes(), taskId, true)
         clearInterval(runId)
+      },
+      onMessageReplace: (messageReplace) => {
+        res = [messageReplace.answer]
+        setCompletionRes(res.join(''))
       },
       onError() {
         if (isTimeout)

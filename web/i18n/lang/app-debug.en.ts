@@ -98,6 +98,26 @@ const translation = {
         deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
       },
     },
+    tools: {
+      title: 'Tools',
+      tips: 'Tools provide a standard API call method, taking user input or variables as request parameters for querying external data as context.',
+      toolsInUse: '{{count}} tools in use',
+      modal: {
+        title: 'Tool',
+        toolType: {
+          title: 'Tool Type',
+          placeholder: 'Please select the tool type',
+        },
+        name: {
+          title: 'Name',
+          placeholder: 'Please enter the name',
+        },
+        variableName: {
+          title: 'Variable Name',
+          placeholder: 'Please enter the variable name',
+        },
+      },
+    },
     conversationHistory: {
       title: 'Conversation History',
       description: 'Set prefix names for conversation roles',
@@ -107,6 +127,47 @@ const translation = {
         title: 'Edit Conversation Role Names',
         userPrefix: 'User prefix',
         assistantPrefix: 'Assistant prefix',
+      },
+    },
+    toolbox: {
+      title: 'TOOLBOX',
+    },
+    moderation: {
+      title: 'Content moderation',
+      description: 'Secure model output by using moderation API or maintaining a sensitive word list.',
+      allEnabled: 'INPUT/OUTPUT Content Enabled',
+      inputEnabled: 'INPUT Content Enabled',
+      outputEnabled: 'OUTPUT Content Enabled',
+      modal: {
+        title: 'Content moderation settings',
+        provider: {
+          title: 'Provider',
+          openai: 'OpenAI Moderation',
+          openaiTip: {
+            prefix: 'OpenAI Moderation requires an OpenAI API key configured in the ',
+            suffix: '.',
+          },
+          keywords: 'Keywords',
+        },
+        keywords: {
+          tip: 'One per line, separated by line breaks. Up to 100 characters per line.',
+          placeholder: 'One per line, separated by line breaks',
+          line: 'Line',
+        },
+        content: {
+          input: 'Moderate INPUT Content',
+          output: 'Moderate OUTPUT Content',
+          preset: 'Preset replies',
+          placeholder: 'Preset replies content here',
+          condition: 'Moderate INPUT and OUTPUT Content enabled at least one',
+          fromApi: 'Preset replies are returned by API',
+          errorMessage: 'Preset replies cannot be empty',
+          supportMarkdown: 'Markdown supported',
+        },
+        openaiNotConfig: {
+          before: 'OpenAI Moderation requires an OpenAI API key configured in the',
+          after: '',
+        },
       },
     },
   },
@@ -141,6 +202,7 @@ const translation = {
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
+    waitForImgUpload: 'Please wait for the image to upload',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',
@@ -188,6 +250,25 @@ const translation = {
     options: 'Options',
     addOption: 'Add option',
   },
+  vision: {
+    name: 'Vision',
+    description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    settings: 'Settings',
+    visionSettings: {
+      title: 'Vision Settings',
+      resolution: 'Resolution',
+      resolutionTooltip: `low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.
+      \n
+      high res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.`,
+      high: 'High',
+      low: 'Low',
+      uploadMethod: 'Upload Method',
+      both: 'Both',
+      localUpload: 'Local Upload',
+      url: 'URL',
+      uploadLimit: 'Upload Limit',
+    },
+  },
   openingStatement: {
     title: 'Opening remarks',
     add: 'Add',
@@ -224,11 +305,22 @@ const translation = {
   },
   result: 'Output Text',
   datasetConfig: {
+    settingTitle: 'Retrieval settings',
+    retrieveOneWay: {
+      title: 'N-to-1 retrieval',
+      description: 'Based on user intent and dataset descriptions, the Agent autonomously selects the best dataset for querying. Best for applications with distinct, limited datasets.',
+    },
+    retrieveMultiWay: {
+      title: 'Multi-path retrieval',
+      description: 'Based on user intent, queries across all datasets, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
+    },
+    rerankModelRequired: 'Rerank model is required',
     params: 'Params',
     top_k: 'Top K',
     top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
     score_threshold: 'Score Threshold',
     score_thresholdTip: 'Used to set the similarity threshold for segment filtering.',
+    retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this dataset.',
   },
 }
 
