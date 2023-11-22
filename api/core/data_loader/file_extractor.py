@@ -50,13 +50,13 @@ class FileExtractor:
         delimiter = '\n'
         file_extension = input_file.suffix.lower()
         if is_automatic:
-            loader = UnstructuredFileLoader(
-                file_path, strategy="hi_res", mode="elements"
-            )
+            # loader = UnstructuredFileLoader(
+            #     file_path, strategy="hi_res", mode="elements"
+            # )
             loader = UnstructuredAPIFileLoader(
                 file_path=file_path,
                 url="http://127.0.0.1:8000/general/v0/general",
-                mode='elements',
+                mode='single',
                 strategy='auto'
             )
         else:
