@@ -212,7 +212,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-white grow overflow-hidden" style={{ minHeight: 'calc(100vh - 56px)' }}>{children}</div>
+        <div className="bg-white grow overflow-hidden">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )
