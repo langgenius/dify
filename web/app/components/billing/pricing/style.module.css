@@ -1,0 +1,15 @@
+.bg {
+  background: linear-gradient(180deg, #FFF 0%, rgba(217, 217, 217, 0.00) 40.06%) #fff;
+}
+
+.bg::before {
+  content: '';
+  position: absolute;
+  z-index: -1;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: url(./bg.png) #fff no-repeat;
+  background-repeat: repeat-x;
+}

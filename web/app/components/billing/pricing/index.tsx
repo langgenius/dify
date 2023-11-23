@@ -3,9 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import { Plan } from '../type'
 import SelectPlanRange, { PlanRange } from './select-plan-range'
 import PlanItem from './plan-item'
+import s from './style.module.css'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useProviderContext } from '@/context/provider-context'
 type Props = {
@@ -20,7 +22,10 @@ const Pricing: FC<Props> = ({
 
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
   return createPortal(
-    <div className='fixed inset-0 p-6 flex justify-center bg-white z-[1000] overflow-auto' onClick={e => e.stopPropagation()}>
+    <div
+      className={cn(s.bg, 'fixed inset-0 p-6 flex justify-center bg-white z-[1000] overflow-auto')}
+      onClick={e => e.stopPropagation()}
+    >
       <div className='mt-6 flex w-full flex-col items-center'>
         <div className='mb-3 leading-[38px] text-[30px] font-semibold text-gray-900'>
           {t('billing.plansCommon.title')}
@@ -29,7 +34,7 @@ const Pricing: FC<Props> = ({
           value={planRange}
           onChange={setPlanRange}
         />
-        <div className='mt-8 flex space-x-3'>
+        <div className='mt-8 pb-6 flex space-x-3'>
           <PlanItem
             currentPlan={plan.type}
             plan={Plan.sandbox}
