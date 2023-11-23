@@ -14,3 +14,9 @@ export type PlanInfo = {
 }
 
 export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps'>
+
+export enum DocumentProcessingPriority {
+  standard = 'standard',
+  priority = 'priority',
+  topPriority = 'topPriority',
+}

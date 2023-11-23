@@ -15,6 +15,7 @@ import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import PriorityLabel from '@/app/components/billing/priority-label'
 
 type Props = {
   datasetId: string
@@ -202,7 +203,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             {isSourceEmbedding(indexingStatusDetail) && (
               <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
             )}
-            <div className={s.info}>
+            <div className={`${s.info} grow`}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
                 <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])}/>
               )}
@@ -213,7 +214,8 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className={s.name}>{getSourceName(indexingStatusDetail.id)}</div>
+              <div className={`${s.name} truncate`} title={getSourceName(indexingStatusDetail.id)}>{getSourceName(indexingStatusDetail.id)}</div>
+              <PriorityLabel />
             </div>
             <div className='shrink-0'>
               {isSourceEmbedding(indexingStatusDetail) && (
