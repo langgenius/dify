@@ -51,10 +51,12 @@ const ProviderContext = createContext<{
         usage: {
           vectorSpace: 32,
           buildApps: 12,
+          teamMembers: 1,
         },
         total: {
           vectorSpace: 200,
           buildApps: 50,
+          teamMembers: 1,
         },
       },
     })
@@ -97,15 +99,18 @@ export const ProviderContextProvider = ({
       mutateRerankModelList()
   }
 
+  // TODO: Get from server
   const plan = {
-    type: Plan.professional,
+    type: Plan.team,
     usage: {
       vectorSpace: 32,
       buildApps: 50,
+      teamMembers: 5,
     },
     total: {
       vectorSpace: 200,
       buildApps: 50,
+      teamMembers: 20,
     },
   }
 

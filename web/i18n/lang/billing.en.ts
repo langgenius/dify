@@ -51,6 +51,8 @@ const translation = {
       customIntegration: 'Custom integration and support',
     },
     comingSoon: 'Coming soon',
+    member: 'Member',
+    memberAfter: 'Member',
   },
   plans: {
     sandbox: {

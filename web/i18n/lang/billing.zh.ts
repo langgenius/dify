@@ -51,6 +51,8 @@ const translation = {
       customIntegration: '自定义集成和支持',
     },
     comingSoon: '即将推出',
+    member: '成员',
+    memberAfter: '个成员',
   },
   plans: {
     sandbox: {

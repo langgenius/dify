@@ -20,7 +20,7 @@ export type PlanInfo = {
   logHistory: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps'>
+export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers'>
 
 export enum DocumentProcessingPriority {
   standard = 'standard',
