@@ -104,8 +104,6 @@ export const ModalContextProvider = ({
             />
           )
         }
-        {/* TODO for dev */}
-        {/* <Pricing onCancel={() => {}}></Pricing> */}
 
         {
           !!showApiBasedExtensionModal && (
