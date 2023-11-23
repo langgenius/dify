@@ -79,11 +79,11 @@ const Header = () => {
         </div>
       </div>
       {(isMobile && isShowNavMenu) && (
-        <>
+        <div className='w-full flex flex-col p-2 gap-y-1'>
           <ExploreNav className={navClassName} />
           <AppNav />
           {isCurrentWorkspaceManager && <DatasetNav />}
-        </>
+        </div>
       )}
     </>
   )
