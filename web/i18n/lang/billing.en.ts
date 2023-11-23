@@ -76,6 +76,10 @@ const translation = {
       includesTitle: 'Everything in Team plan, plus:',
     },
   },
+  vectorSpace: {
+    fullTip: 'Vector Space is full.',
+    fullSolution: 'Upgrade your plan to get more space.',
+  },
 }
 
 export default translation
