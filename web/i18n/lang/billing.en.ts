@@ -10,6 +10,10 @@ const translation = {
     title: 'Choose a plan that’s right for you',
     yearlyTip: 'Get 2 months for free by subscribing yearly!',
     mostPopular: 'Most Popular',
+    planRange: {
+      monthly: 'Monthly',
+      yearly: 'Yearly',
+    },
     month: 'month',
     free: 'Free',
     startForFree: 'Start for free',

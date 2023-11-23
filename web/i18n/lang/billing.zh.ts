@@ -10,6 +10,10 @@ const translation = {
     title: '选择适合您的套餐',
     yearlyTip: '订阅年度计划可免费获得 2个月！',
     mostPopular: '最受欢迎',
+    planRange: {
+      monthly: '按月',
+      yearly: '按年',
+    },
     month: '月',
     free: '免费',
     startForFree: '免费开始',
