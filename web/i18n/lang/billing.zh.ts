@@ -30,6 +30,7 @@ const translation = {
     vectorSpaceTooltip: '向量空间是 LLMs 理解您的数据所需的长期记忆系统。',
     documentProcessingPriority: '文档处理优先级',
     documentProcessingPriorityTip: '如需更高的文档处理优先级，请升级您的套餐',
+    documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
       standard: '标准',
       priority: '优先',

@@ -16,6 +16,8 @@ import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimat
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
+import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 
 type Props = {
   datasetId: string
@@ -176,7 +178,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
         <div className={s.cost}>
-          {indexingType === 'high_quaility' && (
+          {indexingType === 'high_quality' && (
             <div className='flex items-center'>
               <div className={cn(s.commonIcon, s.highIcon)} />
               {t('datasetDocuments.embedding.highQuality')} · {t('datasetDocuments.embedding.estimate')}
@@ -192,6 +194,15 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             </div>
           )}
         </div>
+      </div>
+      <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
+        <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
+          <ZapFast className='w-4 h-4 text-[#FB6514]' />
+        </div>
+        <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
+          {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+        </div>
+        <UpgradeBtn onClick={() => {}} />
       </div>
       <div className={s.progressContainer}>
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
