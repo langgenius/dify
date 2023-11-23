@@ -15,7 +15,7 @@
   @apply box-border pb-[30px];
 }
 .cardWrapper {
-  @apply grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 w-full xl:min-w-[902px] last:mb-[30px];
+  @apply grid gap-4 grid-cols-3 min-w-[902px] last:mb-[30px];
 }
 .segWrapper {
   @apply box-border h-[180px] w-full xl:min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col text-opacity-50 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;

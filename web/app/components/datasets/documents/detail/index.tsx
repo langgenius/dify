@@ -169,7 +169,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
             ? <Loading type='app' />
-            : <div className={`box-border h-full w-full overflow-y-scroll ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 px-6'}`}>
+            : <div className={`h-full w-full flex flex-col ${embedding ? 'px-6 py-3 sm:py-12 sm:px-16' : 'pb-[30px] pt-3 px-6'}`}>
               {embedding
                 ? <Embedding detail={documentDetail} detailUpdate={detailMutate} />
                 : <Completed
