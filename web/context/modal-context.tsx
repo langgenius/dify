@@ -12,7 +12,6 @@ import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
-import Pricing from '@/app/components/billing/pricing'
 
 export type ModalState<T> = {
   payload: T
@@ -106,7 +105,7 @@ export const ModalContextProvider = ({
           )
         }
         {/* TODO for dev */}
-        <Pricing onCancel={() => {}}></Pricing>
+        {/* <Pricing onCancel={() => {}}></Pricing> */}
 
         {
           !!showApiBasedExtensionModal && (

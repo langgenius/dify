@@ -6,6 +6,11 @@ export enum Plan {
 }
 
 export type PlanInfo = {
-  vectorSpace: number
+  price: number
+  modelProviders: string
+  teamMembers: number
   buildApps: number
+  vectorSpace: number
 }
+
+export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps'>

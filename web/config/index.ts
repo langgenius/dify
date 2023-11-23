@@ -1,4 +1,5 @@
 /* eslint-disable import/no-mutable-exports */
+import type { Plan, PlanInfo } from '@/app/components/billing/type'
 import { AppType, ProviderType } from '@/types/app'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
@@ -146,4 +147,35 @@ export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
 export const DATASET_DEFAULT = {
   top_k: 2,
   score_threshold: 0.5,
+}
+
+export const ALL_PLANS: Record<Plan, PlanInfo> = {
+  sandbox: {
+    price: 0,
+    modelProviders: 'OpenAI/Anthropic/Azure OpenAI/Llama2/Hugging Face/Replicate',
+    teamMembers: 1,
+    buildApps: 1,
+    vectorSpace: 1,
+  },
+  professional: {
+    price: 59,
+    modelProviders: 'OpenAI/Anthropic/Azure OpenAI/Llama2/Hugging Face/Replicate',
+    teamMembers: 1,
+    buildApps: 1,
+    vectorSpace: 1,
+  },
+  team: {
+    price: 159,
+    modelProviders: 'OpenAI/Anthropic/Azure OpenAI/Llama2/Hugging Face/Replicate',
+    teamMembers: 1,
+    buildApps: 1,
+    vectorSpace: 1,
+  },
+  enterprise: {
+    price: 0,
+    modelProviders: 'OpenAI/Anthropic/Azure OpenAI/Llama2/Hugging Face/Replicate',
+    teamMembers: 1,
+    buildApps: 1,
+    vectorSpace: 1,
+  },
 }

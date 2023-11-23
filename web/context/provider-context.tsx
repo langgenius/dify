@@ -6,7 +6,7 @@ import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from 
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Plan, type PlanInfo } from '@/app/components/billing/type'
+import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -26,8 +26,8 @@ const ProviderContext = createContext<{
   supportRetrievalMethods: RETRIEVE_METHOD[]
   plan: {
     type: Plan
-    usage: PlanInfo
-    total: PlanInfo
+    usage: UsagePlanInfo
+    total: UsagePlanInfo
   }
 }>({
       textGenerationModelList: [],

@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next'
 import PlanComp from '../plan'
 import { ReceiptList } from '../../base/icons/src/vender/line/financeAndECommerce'
 import { LinkExternal01 } from '../../base/icons/src/vender/line/general'
+import { useProviderContext } from '@/context/provider-context'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
+  const { plan } = useProviderContext()
 
   return (
     <div>
