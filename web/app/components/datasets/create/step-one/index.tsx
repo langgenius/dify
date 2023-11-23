@@ -93,8 +93,9 @@ const StepOne = ({
 
   const { plan } = useProviderContext()
   const allFileLoaded = (files.length > 0 && files.every(file => file.file.id))
+  const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = allFileLoaded && isVectorSpaceFull && IS_CLOUD_EDITION
+  const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && IS_CLOUD_EDITION
 
   const nextDisabled = useMemo(() => {
     if (!files.length)
