@@ -115,7 +115,7 @@ class ModelProviderModelValidateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='json')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='json')
         parser.add_argument('config', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
@@ -155,7 +155,7 @@ class ModelProviderModelUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='json')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='json')
         parser.add_argument('config', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
@@ -184,7 +184,7 @@ class ModelProviderModelUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='args')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='args')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='args')
         args = parser.parse_args()
 
         provider_service = ProviderService()
