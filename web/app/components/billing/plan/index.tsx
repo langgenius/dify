@@ -3,13 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
 import { Plan } from '../type'
 import UsageInfo from '../usage-info'
 import UpgradeBtn from '../upgrade-btn'
 import { ArtificialBrain } from '../../base/icons/src/vender/line/development'
 import { ChatBot } from '../../base/icons/src/vender/line/communication'
-import Pricing from '../pricing'
 import { useProviderContext } from '@/context/provider-context'
 
 const typeStyle = {
@@ -47,7 +45,6 @@ const PlanComp: FC<Props> = ({
   } = plan
 
   const isInHeader = loc === 'header'
-  const [isShowPricing, { setTrue: showPricing, setFalse: hidePricing }] = useBoolean(false)
 
   return (
     <div
@@ -75,7 +72,6 @@ const PlanComp: FC<Props> = ({
           <UpgradeBtn
             className='flex-shrink-0'
             isPlain={type !== Plan.sandbox}
-            onClick={showPricing}
           />
         )}
       </div>
@@ -103,16 +99,10 @@ const PlanComp: FC<Props> = ({
             className='flex-shrink-0 my-3'
             isFull
             isPlain={type !== Plan.sandbox}
-            onClick={showPricing}
           />
         )}
       </div>
 
-      {
-        isShowPricing && (
-          <Pricing onCancel={hidePricing} />
-        )
-      }
     </div>
   )
 }

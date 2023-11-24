@@ -18,7 +18,7 @@ const HeaderBillingBtn: FC<Props> = ({
     type,
   } = plan
   if (type === Plan.sandbox)
-    return <UpgradeBtn isShort onClick={onClick} />
+    return <UpgradeBtn isShort />
   const name = (() => {
     if (type === Plan.professional)
       return 'pro'

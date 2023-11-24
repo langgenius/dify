@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
 import { Sparkles } from '../../base/icons/src/public/billing'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   className?: string
@@ -12,10 +13,9 @@ type Props = {
   size?: 'md' | 'lg'
   isPlain?: boolean
   isShort?: boolean
-  onClick: () => void
 }
 
-const PlainBtn = ({ className, onClick }: Props) => {
+const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => {} }) => {
   const { t } = useTranslation()
 
   return (
@@ -36,12 +36,12 @@ const UpgradeBtn: FC<Props> = ({
   isFull = false,
   isShort = false,
   size = 'md',
-  onClick,
 }) => {
   const { t } = useTranslation()
+  const { setShowPricingModal } = useModalContext()
 
   if (isPlain)
-    return <PlainBtn onClick={onClick} className={className} />
+    return <PlainBtn onClick={setShowPricingModal as any} className={className} />
 
   return (
     <div
@@ -55,7 +55,7 @@ const UpgradeBtn: FC<Props> = ({
         background: 'linear-gradient(99deg, rgba(255, 255, 255, 0.12) 7.16%, rgba(255, 255, 255, 0.00) 85.47%), linear-gradient(280deg, #00B2FF 12.96%, #132BFF 90.95%)',
         boxShadow: '0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(0, 162, 253, 0.12)',
       }}
-      onClick={onClick}
+      onClick={setShowPricingModal}
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
       <div className='text-xs font-normal'>{t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}</div>

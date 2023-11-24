@@ -7,6 +7,7 @@ import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
+import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig } from '@/models/debug'
 import type {
   ApiBasedExtension,
@@ -25,11 +26,13 @@ const ModalContext = createContext<{
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
+  setShowPricingModal: Dispatch<SetStateAction<any>>
 }>({
   setShowAccountSettingModal: () => {},
   setShowApiBasedExtensionModal: () => {},
   setShowModerationSettingModal: () => {},
   setShowExternalDataToolModal: () => {},
+  setShowPricingModal: () => {},
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -44,6 +47,7 @@ export const ModalContextProvider = ({
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
+  const [showPricingModal, setShowPricingModal] = useState(false)
 
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
@@ -93,6 +97,7 @@ export const ModalContextProvider = ({
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
+      setShowPricingModal: () => setShowPricingModal(true),
     }}>
       <>
         {children}
@@ -131,6 +136,12 @@ export const ModalContextProvider = ({
               onSave={handleSaveExternalDataTool}
               onValidateBeforeSave={handleValidateBeforeSaveExternalDataTool}
             />
+          )
+        }
+
+        {
+          !!showPricingModal && (
+            <Pricing onCancel={() => setShowPricingModal(false)} />
           )
         }
       </>
