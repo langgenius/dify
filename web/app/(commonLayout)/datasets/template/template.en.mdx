@@ -1,7 +1,7 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
 
-# Knowledge API
+# Knowledge base API
 
 <div>
   ### Authentication
@@ -30,12 +30,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing knowledge and creates a new document through text based on this knowledge.
+    This api is based on an existing knowledge base and creates a new document through text based on this knowledge base.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
     </Properties>
 
@@ -133,12 +133,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing knowledge and creates a new document through a file based on this knowledge.
+    This api is based on an existing knowledge base and creates a new document through a file based on this knowledge base.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
     </Properties>
 
@@ -228,7 +228,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='POST'
-  title='Create an empty knowledge'
+  title='Create an empty knowledge base'
   name='#create_empty_dataset'
 />
 <Row>
@@ -236,7 +236,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        Knowledge name
+        Knowledge base name
       </Property>
     </Properties>
   </Col>
@@ -287,7 +287,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='GET'
-  title='Knowledge list'
+  title='Knowledge base list'
   name='#dataset_list'
 />
 <Row>
@@ -355,12 +355,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing knowledge and updates the document through text based on this knowledge.
+    This api is based on an existing knowledge base and updates the document through text based on this knowledge base.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -452,12 +452,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing knowledge, and updates documents through files based on this knowledge
+    This api is based on an existing knowledge base, and updates documents through files based on this knowledge base
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -549,7 +549,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='batch' type='string' key='batch'>
         Batch number of uploaded documents
@@ -604,7 +604,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -638,7 +638,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents'
   method='GET'
-  title='Knowledge document list'
+  title='Knowledge base document list'
   name='#dataset_document_list'
 />
 <Row>
@@ -646,7 +646,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
     </Properties>
 
@@ -721,7 +721,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -807,7 +807,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -885,7 +885,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
@@ -928,7 +928,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### POST
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Knowledge ID
+        Knowledge base ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
