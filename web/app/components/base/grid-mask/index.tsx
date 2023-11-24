@@ -15,7 +15,6 @@ const GridMask: FC<GridMaskProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const ctxRef = useRef<CanvasRenderingContext2D | null>(null)
-  const animateId = useRef<number | null>(null)
   const initCanvas = () => {
     const dpr = window.devicePixelRatio || 1
 
@@ -35,7 +34,6 @@ const GridMask: FC<GridMaskProps> = ({
   }
 
   const drawRecord = useCallback(() => {
-    animateId.current = requestAnimationFrame(drawRecord)
     const canvas = canvasRef.current!
     const ctx = ctxRef.current!
     const rowNumber = parseInt(`${canvas.width / 24}`)
@@ -71,7 +69,6 @@ const GridMask: FC<GridMaskProps> = ({
     }
     ctx.stroke()
     ctx.closePath()
-    cancelAnimationFrame(animateId.current!)
   }, [])
 
   const handleStartDraw = () => {
