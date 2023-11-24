@@ -108,7 +108,7 @@ const PlanItem: FC<Props> = ({
     }
   })()
   return (
-    <div className={cn(isMostPopularPlan ? 'bg-[#444CE7] p-0.5' : 'pt-7', 'flex flex-col w-[290px] h-[712px] rounded-xl')}>
+    <div className={cn(isMostPopularPlan ? 'bg-[#444CE7] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] h-[712px] rounded-xl')}>
       {isMostPopularPlan && (
         <div className='flex items-center h-7 justify-center leading-[12px] text-xs font-medium text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
       )}
