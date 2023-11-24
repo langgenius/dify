@@ -25,26 +25,26 @@ class ChatGLMProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'chatglm3-6b-32k',
-                    'name': 'ChatGLM3-6B-32K',
-                    'mode': ModelMode.COMPLETION.value,
-                },
-                {
                     'id': 'chatglm3-6b',
                     'name': 'ChatGLM3-6B',
-                    'mode': ModelMode.COMPLETION.value,
+                    'mode': ModelMode.CHAT.value,
+                },
+                {
+                    'id': 'chatglm3-6b-32k',
+                    'name': 'ChatGLM3-6B-32K',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
                     'id': 'chatglm2-6b',
                     'name': 'ChatGLM2-6B',
-                    'mode': ModelMode.COMPLETION.value,
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
             return []
 
     def _get_text_generation_model_mode(self, model_name) -> str:
-        return ModelMode.COMPLETION.value
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
