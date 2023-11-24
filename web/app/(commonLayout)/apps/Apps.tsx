@@ -8,9 +8,10 @@ import NewAppCard from './NewAppCard'
 import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { IS_CLOUD_EDITION, NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
-
+import { useProviderContext } from '@/context/provider-context'
+import AppsFull from '@/app/components/billing/apps-full'
 const getKey = (pageIndex: number, previousPageData: AppListResponse) => {
   if (!pageIndex || previousPageData.has_more)
     return { url: 'apps', params: { page: pageIndex + 1, limit: 30 } }
@@ -30,6 +31,8 @@ const Apps = () => {
       mutate()
     }
   }, [mutate, t])
+  const { plan } = useProviderContext()
+  const isAppsFull = IS_CLOUD_EDITION && plan.usage.buildApps >= plan.total.buildApps
 
   useEffect(() => {
     let observer: IntersectionObserver | undefined
@@ -45,7 +48,8 @@ const Apps = () => {
 
   return (
     <><nav className='grid content-start grid-cols-1 gap-4 px-12 pt-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
-      { isCurrentWorkspaceManager
+      {isAppsFull && <AppsFull />}
+      { !isAppsFull && isCurrentWorkspaceManager
       && <NewAppCard onSuccess={mutate} />}
       {data?.map(({ data: apps }) => apps.map(app => (
         <AppCard key={app.id} app={app} onRefresh={mutate} />

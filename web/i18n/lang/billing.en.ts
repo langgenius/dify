@@ -80,6 +80,10 @@ const translation = {
     fullTip: 'Vector Space is full.',
     fullSolution: 'Upgrade your plan to get more space.',
   },
+  apps: {
+    fullTipLine1: 'Upgrade your plan to',
+    fullTipLine2: 'build more apps.',
+  },
 }
 
 export default translation

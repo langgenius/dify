@@ -75,10 +75,14 @@ const translation = {
       description: '获得大规模关键任务系统的完整功能和支持。',
       includesTitle: 'Team 计划中的一切，加上：',
     },
-    vectorSpace: {
-      fullTip: '向量空间已满。',
-      fullSolution: '升级您的套餐以获得更多空间。',
-    },
+  },
+  vectorSpace: {
+    fullTip: '向量空间已满。',
+    fullSolution: '升级您的套餐以获得更多空间。',
+  },
+  apps: {
+    fullTipLine1: '升级您的套餐以',
+    fullTipLine2: '构建更多的程序。',
   },
 }
 
