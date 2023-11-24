@@ -3,6 +3,7 @@
 import type { Dispatch, SetStateAction } from 'react'
 import { useState } from 'react'
 import { createContext, useContext } from 'use-context-selector'
+import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
@@ -47,7 +48,9 @@ export const ModalContextProvider = ({
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
-  const [showPricingModal, setShowPricingModal] = useState(false)
+  const searchParams = useSearchParams()
+  const router = useRouter()
+  const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
 
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
@@ -141,7 +144,12 @@ export const ModalContextProvider = ({
 
         {
           !!showPricingModal && (
-            <Pricing onCancel={() => setShowPricingModal(false)} />
+            <Pricing onCancel={() => {
+              if (searchParams.get('show-pricing') === '1')
+                router.push(location.pathname, { forceOptimisticNavigation: true })
+
+              setShowPricingModal(false)
+            }} />
           )
         }
       </>
