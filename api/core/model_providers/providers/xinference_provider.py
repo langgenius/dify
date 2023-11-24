@@ -7,6 +7,7 @@ from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
 from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType, ModelMode
 from core.model_providers.models.llm.xinference_model import XinferenceModel
+from core.model_providers.models.reranking.xinference_reranking import XinferenceReranking
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
 from core.model_providers.models.base import BaseProviderModel
@@ -40,6 +41,8 @@ class XinferenceProvider(BaseModelProvider):
             model_class = XinferenceModel
         elif model_type == ModelType.EMBEDDINGS:
             model_class = XinferenceEmbedding
+        elif model_type == ModelType.RERANKING:
+            model_class = XinferenceReranking
         else:
             raise NotImplementedError
 
@@ -113,6 +116,12 @@ class XinferenceProvider(BaseModelProvider):
                 )
 
                 embedding.embed_query("ping")
+            elif model_type == ModelType.RERANKING:
+                embedding = XinferenceReranking(
+                    **credential_kwargs
+                )
+
+                embedding.rerank("ping", [], None, None)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
