@@ -2,6 +2,7 @@ import json
 from typing import Type
 
 import requests
+from xinference_client.client.restful.restful_client import Client
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
@@ -117,11 +118,9 @@ class XinferenceProvider(BaseModelProvider):
 
                 embedding.embed_query("ping")
             elif model_type == ModelType.RERANKING:
-                embedding = XinferenceReranking(
-                    **credential_kwargs
-                )
-
-                embedding.rerank("ping", [], None, None)
+                rerank_client = Client(credential_kwargs['server_url'])
+                model = rerank_client.get_model(credential_kwargs['model_uid'])
+                model.rerank(query="ping", documents=["ping", "pong"], top_n=2)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
