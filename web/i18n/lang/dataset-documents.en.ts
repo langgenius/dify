@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Documents',
-    desc: 'All files of the dataset are shown here, and the entire dataset can be linked to Dify citations or indexed via the Chat plugin.',
+    desc: 'All files of the knowledge are shown here, and the entire knowledge can be linked to Dify citations or indexed via the Chat plugin.',
     addFile: 'add file',
     addPages: 'Add Pages',
     table: {

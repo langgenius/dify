@@ -86,10 +86,10 @@ const translation = {
     apps: 'Build Apps',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
-    datasets: 'Datasets',
+    datasets: 'Knowledge',
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
     newApp: 'New App',
-    newDataset: 'Create dataset',
+    newDataset: 'Create knowledge',
   },
   userProfile: {
     settings: 'Settings',
@@ -234,7 +234,7 @@ const translation = {
     },
     embeddingModel: {
       key: 'Embedding Model',
-      tip: 'Set the default model for document embedding processing of the dataset, both retrieval and import of the dataset use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported dataset and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
+      tip: 'Set the default model for document embedding processing of the knowledge, both retrieval and import of the knowledge use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported knowledge and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
     },
     speechToTextModel: {
       key: 'Speech-to-Text Model',
@@ -286,7 +286,7 @@ const translation = {
     connect: 'Connect',
     notion: {
       title: 'Notion',
-      description: 'Using Notion as a data source for the dataset.',
+      description: 'Using Notion as a data source for the knowledge.',
       connectedWorkspace: 'Connected workspace',
       addWorkspace: 'Add workspace',
       connected: 'Connected',
@@ -390,7 +390,7 @@ const translation = {
     conversationNameCanNotEmpty: 'Conversation name required',
     citation: {
       title: 'CITATIONS',
-      linkToDataset: 'Link to dataset',
+      linkToDataset: 'Link to knowledge',
       characters: 'Characters:',
       hitCount: 'Retrieval count:',
       vectorHash: 'Vector hash:',
@@ -405,7 +405,7 @@ const translation = {
         desc: 'Insert context template',
       },
       modal: {
-        title: '{{num}} Datasets in Context',
+        title: '{{num}} knowledges in Context',
         add: 'Add Context ',
         footer: 'You can manage contexts in the Context section below.',
       },
