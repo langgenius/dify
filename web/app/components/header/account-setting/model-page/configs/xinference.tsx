@@ -80,6 +80,13 @@ const config: ProviderConfig = {
               'zh-Hans': 'Embeddings',
             },
           },
+          {
+            key: 'reranking',
+            label: {
+              'en': 'Rerank',
+              'zh-Hans': 'Rerank',
+            },
+          },
         ],
       },
       {
