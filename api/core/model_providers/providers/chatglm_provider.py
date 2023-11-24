@@ -25,13 +25,18 @@ class ChatGLMProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'chatglm2-6b',
-                    'name': 'ChatGLM2-6B',
+                    'id': 'chatglm3-6b-32k',
+                    'name': 'ChatGLM3-6B-32K',
                     'mode': ModelMode.COMPLETION.value,
                 },
                 {
-                    'id': 'chatglm-6b',
-                    'name': 'ChatGLM-6B',
+                    'id': 'chatglm3-6b',
+                    'name': 'ChatGLM3-6B',
+                    'mode': ModelMode.COMPLETION.value,
+                },
+                {
+                    'id': 'chatglm2-6b',
+                    'name': 'ChatGLM2-6B',
                     'mode': ModelMode.COMPLETION.value,
                 }
             ]
@@ -64,8 +69,9 @@ class ChatGLMProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
-            'chatglm-6b': 2000,
-            'chatglm2-6b': 32000,
+            'chatglm3-6b-32k': 32000,
+            'chatglm3-6b': 8000,
+            'chatglm2-6b': 8000,
         }
 
         return ModelKwargsRules(
