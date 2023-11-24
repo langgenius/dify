@@ -89,7 +89,7 @@ const translation = {
     datasets: 'Knowledge',
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
     newApp: 'New App',
-    newDataset: 'Create knowledge',
+    newDataset: 'Create knowledge base',
   },
   userProfile: {
     settings: 'Settings',
@@ -234,7 +234,7 @@ const translation = {
     },
     embeddingModel: {
       key: 'Embedding Model',
-      tip: 'Set the default model for document embedding processing of the knowledge, both retrieval and import of the knowledge use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported knowledge and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
+      tip: 'Set the default model for document embedding processing of the knowledge base, both retrieval and import of the knowledge base use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported knowledge base and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
     },
     speechToTextModel: {
       key: 'Speech-to-Text Model',
@@ -286,7 +286,7 @@ const translation = {
     connect: 'Connect',
     notion: {
       title: 'Notion',
-      description: 'Using Notion as a data source for the knowledge.',
+      description: 'Using Notion as a data source for the knowledge base.',
       connectedWorkspace: 'Connected workspace',
       addWorkspace: 'Add workspace',
       connected: 'Connected',
@@ -390,7 +390,7 @@ const translation = {
     conversationNameCanNotEmpty: 'Conversation name required',
     citation: {
       title: 'CITATIONS',
-      linkToDataset: 'Link to knowledge',
+      linkToDataset: 'Link to knowledge base',
       characters: 'Characters:',
       hitCount: 'Retrieval count:',
       vectorHash: 'Vector hash:',
@@ -405,7 +405,7 @@ const translation = {
         desc: 'Insert context template',
       },
       modal: {
-        title: '{{num}} knowledges in Context',
+        title: '{{num}} knowledge bases in Context',
         add: 'Add Context ',
         footer: 'You can manage contexts in the Context section below.',
       },

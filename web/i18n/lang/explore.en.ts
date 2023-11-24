@@ -69,7 +69,7 @@ const translation = {
         },
         google: 'Searching Google {{query}}',
         wikipedia: 'Searching Wikipedia {{query}}',
-        dataset: 'Retrieving knowledge {datasetName}',
+        dataset: 'Retrieving knowledge base {datasetName}',
         date: 'Searching date',
       },
     },
