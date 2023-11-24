@@ -18,6 +18,7 @@ import type { InvitationResult } from '@/models/common'
 import LogoEmbededChatHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 dayjs.extend(relativeTime)
 
 const MembersPage = () => {
@@ -37,6 +38,7 @@ const MembersPage = () => {
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
   const { plan } = useProviderContext()
   const isNotUnlimitedMemberPlan = plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isMemberFull = isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
 
   return (
     <>
@@ -63,11 +65,14 @@ const MembersPage = () => {
                 )}
             </div>
           </div>
+          {isMemberFull && (
+            <UpgradeBtn className='mr-2' />
+          )}
           <div className={
             `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200
             text-[13px] font-medium text-primary-600 bg-white
-            shadow-xs rounded-lg ${isCurrentWorkspaceManager ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
-          } onClick={() => isCurrentWorkspaceManager && setInviteModalVisible(true)}>
+            shadow-xs rounded-lg ${(isCurrentWorkspaceManager && !isMemberFull) ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+          } onClick={() => (isCurrentWorkspaceManager && !isMemberFull) && setInviteModalVisible(true)}>
             <UserPlusIcon className='w-4 h-4 mr-2 ' />
             {t('common.members.invite')}
           </div>

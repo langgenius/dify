@@ -101,7 +101,7 @@ export const ProviderContextProvider = ({
 
   // TODO: Get from server
   const plan = {
-    type: Plan.team,
+    type: Plan.sandbox,
     usage: {
       vectorSpace: 200,
       buildApps: 50,
@@ -110,7 +110,7 @@ export const ProviderContextProvider = ({
     total: {
       vectorSpace: 200,
       buildApps: 50,
-      teamMembers: 20,
+      teamMembers: 8,
     },
   }
 

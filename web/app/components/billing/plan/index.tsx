@@ -102,7 +102,6 @@ const PlanComp: FC<Props> = ({
           />
         )}
       </div>
-
     </div>
   )
 }
