@@ -75,12 +75,14 @@ class ChatGLMProvider(BaseModelProvider):
             'chatglm2-6b': 8000,
         }
 
+        max_tokens_alias = 'max_length' if model_name == 'chatglm2-6b' else 'max_tokens'
+
         return ModelKwargsRules(
             temperature=KwargRule[float](min=0, max=2, default=1, precision=2),
             top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
+            max_tokens=KwargRule[int](alias=max_tokens_alias, min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
         )
 
     @classmethod

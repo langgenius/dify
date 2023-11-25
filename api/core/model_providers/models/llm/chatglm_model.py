@@ -23,6 +23,9 @@ class ChatGLMModel(BaseLLM):
             'top_p': provider_model_kwargs.get('top_p')
         }
 
+        if provider_model_kwargs.get('max_length') is not None:
+            extra_model_kwargs['max_length'] = provider_model_kwargs.get('max_length')
+
         client = EnhanceChatOpenAI(
             model_name=self.name,
             temperature=provider_model_kwargs.get('temperature'),
