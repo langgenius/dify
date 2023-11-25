@@ -213,16 +213,16 @@ class OrchestratorRuleParser:
                 continue
             dataset_ids.append(dataset.id)
             if retrieval_model == 'single':
-                retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
-                top_k = retrieval_model['top_k']
+                retrieval_model_config = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+                top_k = retrieval_model_config['top_k']
 
                 # dynamically adjust top_k when the remaining token number is not enough to support top_k
                 # top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
 
                 score_threshold = None
-                score_threshold_enable = retrieval_model.get("score_threshold_enable")
+                score_threshold_enable = retrieval_model_config.get("score_threshold_enable")
                 if score_threshold_enable:
-                    score_threshold = retrieval_model.get("score_threshold")
+                    score_threshold = retrieval_model_config.get("score_threshold")
 
                 tool = DatasetRetrieverTool.from_dataset(
                     dataset=dataset,
