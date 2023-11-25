@@ -2,7 +2,9 @@ import pytest
 from unittest.mock import patch
 import json
 
+import requests
 from langchain.schema import LLMResult, Generation, AIMessage, ChatResult, ChatGeneration
+from requests import Response
 
 from core.model_providers.providers.base import CredentialsValidateFailedError
 from core.model_providers.providers.chatglm_provider import ChatGLMProvider
@@ -26,8 +28,11 @@ def decrypt_side_effect(tenant_id, encrypted_key):
 
 
 def test_is_provider_credentials_valid_or_raise_valid(mocker):
-    mocker.patch('langchain.llms.chatglm.ChatGLM._call',
-                 return_value="abc")
+    mock_response = Response()
+    mock_response.status_code = 200
+    mock_response._content = json.dumps({'models': []}).encode('utf-8')
+    mocker.patch('requests.get',
+                 return_value=mock_response)
 
     MODEL_PROVIDER_CLASS.is_provider_credentials_valid_or_raise(VALIDATE_CREDENTIAL)
 
