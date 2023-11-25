@@ -150,10 +150,11 @@ const Form: FC<FormProps> = ({
 
     if (field.type === 'radio') {
       const options = typeof field.options === 'function' ? field.options(value) : field.options
+
       return (
         <div key={field.key} className='py-3'>
           <div className={nameClassName}>{field.label[locale]}</div>
-          <div className='grid grid-cols-2 gap-3'>
+          <div className={`grid grid-cols-${options?.length} gap-3`}>
             {
               options?.map(option => (
                 <div
