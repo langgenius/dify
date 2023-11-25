@@ -2,6 +2,7 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+import requests
 from langchain.llms import ChatGLM
 
 from core.helper import encrypter
@@ -79,7 +80,7 @@ class ChatGLMProvider(BaseModelProvider):
             top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
+            max_tokens=KwargRule[int](min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
         )
 
     @classmethod
@@ -91,16 +92,10 @@ class ChatGLMProvider(BaseModelProvider):
             raise CredentialsValidateFailedError('ChatGLM Endpoint URL must be provided.')
 
         try:
-            credential_kwargs = {
-                'endpoint_url': credentials['api_base']
-            }
+            response = requests.get(f"{credentials['api_base']}/v1/models", timeout=5)
 
-            llm = ChatGLM(
-                max_token=10,
-                **credential_kwargs
-            )
-
-            llm("ping")
+            if response.status_code != 200:
+                raise Exception('ChatGLM Endpoint URL is invalid.')
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
