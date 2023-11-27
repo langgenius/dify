@@ -42,7 +42,7 @@ const Header = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSegment])
   return (
-    <>
+    <div className='flex flex-1 items-center justify-between px-4'>
       <div className='flex items-center'>
         {isMobile && <div
           className='flex items-center justify-center h-8 w-8 cursor-pointer'
@@ -98,7 +98,7 @@ const Header = () => {
           {isCurrentWorkspaceManager && <DatasetNav />}
         </div>
       )}
-    </>
+    </div>
   )
 }
 export default Header
