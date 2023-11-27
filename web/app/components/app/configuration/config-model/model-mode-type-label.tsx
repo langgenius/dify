@@ -20,7 +20,7 @@ const ModelModeTypeLabel: FC<Props> = ({
 
   return (
     <div
-      className={cn(className, isHighlight ? 'border-indigo-300 text-indigo-600' : 'border-gray-300 text-gray-500', 'flex items-center h-4 px-1 border  rounded text-xs font-semibold uppercase')}
+      className={cn(className, isHighlight ? 'border-indigo-300 text-indigo-600' : 'border-gray-300 text-gray-500', 'flex items-center h-4 px-1 border rounded text-xs font-semibold uppercase text-ellipsis overflow-hidden whitespace-nowrap')}
     >
       {t(`appDebug.modelConfig.modeType.${type}`)}
     </div>

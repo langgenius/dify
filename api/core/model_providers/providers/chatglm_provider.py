@@ -2,6 +2,7 @@ import json
 from json import JSONDecodeError
 from typing import Type
 
+import requests
 from langchain.llms import ChatGLM
 
 from core.helper import encrypter
@@ -25,21 +26,26 @@ class ChatGLMProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'chatglm2-6b',
-                    'name': 'ChatGLM2-6B',
-                    'mode': ModelMode.COMPLETION.value,
+                    'id': 'chatglm3-6b',
+                    'name': 'ChatGLM3-6B',
+                    'mode': ModelMode.CHAT.value,
                 },
                 {
-                    'id': 'chatglm-6b',
-                    'name': 'ChatGLM-6B',
-                    'mode': ModelMode.COMPLETION.value,
+                    'id': 'chatglm3-6b-32k',
+                    'name': 'ChatGLM3-6B-32K',
+                    'mode': ModelMode.CHAT.value,
+                },
+                {
+                    'id': 'chatglm2-6b',
+                    'name': 'ChatGLM2-6B',
+                    'mode': ModelMode.CHAT.value,
                 }
             ]
         else:
             return []
 
     def _get_text_generation_model_mode(self, model_name) -> str:
-        return ModelMode.COMPLETION.value
+        return ModelMode.CHAT.value
 
     def get_model_class(self, model_type: ModelType) -> Type[BaseProviderModel]:
         """
@@ -64,16 +70,19 @@ class ChatGLMProvider(BaseModelProvider):
         :return:
         """
         model_max_tokens = {
-            'chatglm-6b': 2000,
-            'chatglm2-6b': 32000,
+            'chatglm3-6b-32k': 32000,
+            'chatglm3-6b': 8000,
+            'chatglm2-6b': 8000,
         }
+
+        max_tokens_alias = 'max_length' if model_name == 'chatglm2-6b' else 'max_tokens'
 
         return ModelKwargsRules(
             temperature=KwargRule[float](min=0, max=2, default=1, precision=2),
             top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias='max_token', min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
+            max_tokens=KwargRule[int](alias=max_tokens_alias, min=10, max=model_max_tokens.get(model_name), default=2048, precision=0),
         )
 
     @classmethod
@@ -85,16 +94,10 @@ class ChatGLMProvider(BaseModelProvider):
             raise CredentialsValidateFailedError('ChatGLM Endpoint URL must be provided.')
 
         try:
-            credential_kwargs = {
-                'endpoint_url': credentials['api_base']
-            }
+            response = requests.get(f"{credentials['api_base']}/v1/models", timeout=5)
 
-            llm = ChatGLM(
-                max_token=10,
-                **credential_kwargs
-            )
-
-            llm("ping")
+            if response.status_code != 200:
+                raise Exception('ChatGLM Endpoint URL is invalid.')
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 

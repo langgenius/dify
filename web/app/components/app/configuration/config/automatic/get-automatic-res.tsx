@@ -16,6 +16,7 @@ import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 // type
 import type { AutomaticRes } from '@/service/debug'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const noDataIcon = (
   <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -46,6 +47,9 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
 
   const [audiences, setAudiences] = React.useState<string>('')
   const [hopingToSolve, setHopingToSolve] = React.useState<string>('')
@@ -103,15 +107,36 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
 
   const [showConfirmOverwrite, setShowConfirmOverwrite] = React.useState(false)
 
+  const isShowAutoPromptInput = () => {
+    if (isMobile) {
+      // hide prompt panel on mobile if it is loading or has had result
+      if (isLoading || res)
+        return false
+      return true
+    }
+
+    // alway display prompt panel on desktop mode
+    return true
+  }
+
+  const isShowAutoPromptResPlaceholder = () => {
+    if (isMobile) {
+      // hide placeholder panel on mobile
+      return false
+    }
+
+    return !isLoading && !res
+  }
+
   return (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='min-w-[1120px] !p-0'
+      className='!p-0 sm:min-w-[768px] xl:min-w-[1120px]'
       closable
     >
-      <div className='flex h-[680px]'>
-        <div className='w-[480px] shrink-0 px-8 py-6 h-full overflow-y-auto border-r border-gray-100'>
+      <div className='flex h-[680px] flex-wrap gap-y-4 overflow-y-auto'>
+        {isShowAutoPromptInput() && <div className='w-full sm:w-[360px] xl:w-[480px] shrink-0 px-8 py-6 h-full overflow-y-auto border-r border-gray-100'>
           <div>
             <div className='mb-1 text-xl font-semibold text-primary-600'>{t('appDebug.automatic.title')}</div>
             <div className='text-[13px] font-normal text-gray-500'>{t('appDebug.automatic.description')}</div>
@@ -139,7 +164,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
               </Button>
             </div>
           </div>
-        </div>
+        </div>}
 
         {(!isLoading && res) && (
           <div className='grow px-8 pt-6 h-full overflow-y-auto'>
@@ -180,7 +205,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           </div>
         )}
         {isLoading && renderLoading}
-        {(!isLoading && !res) && renderNoData}
+        {isShowAutoPromptResPlaceholder() && renderNoData}
         {showConfirmOverwrite && (
           <Confirm
             title={t('appDebug.automatic.overwriteTitle')}

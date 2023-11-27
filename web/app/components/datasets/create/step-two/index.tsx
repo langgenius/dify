@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
@@ -20,6 +21,7 @@ import {
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
+import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { type RetrievalConfig } from '@/types/app'
@@ -37,6 +39,8 @@ import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -83,6 +87,9 @@ const StepTwo = ({
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
 
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
@@ -467,7 +474,7 @@ const StepTwo = ({
   useEffect(() => {
     if (segmentationType === SegmentType.AUTO) {
       setAutomaticFileIndexingEstimate(null)
-      setShowPreview()
+      !isMobile && setShowPreview()
       fetchFileIndexingEstimate()
       setPreviewSwitched(false)
     }
@@ -493,8 +500,23 @@ const StepTwo = ({
   return (
     <div className='flex w-full h-full'>
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
-        <div className={cn(s.pageHeader, scrolled && s.fixed)}>{t('datasetCreation.steps.two')}</div>
-        <div className={cn(s.form)}>
+        <div className={cn(s.pageHeader, scrolled && s.fixed, isMobile && '!px-6')}>
+          <span>{t('datasetCreation.steps.two')}</span>
+          {isMobile && (
+            <Button
+              className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
+              onClick={setShowPreview}
+            >
+              <Tooltip selector='data-preview-toggle'>
+                <div className="flex flex-row items-center">
+                  <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
+                  <span className="text-[13px]">{t('datasetCreation.stepTwo.previewTitleButton')}</span>
+                </div>
+              </Tooltip>
+            </Button>
+          )}
+        </div>
+        <div className={cn(s.form, isMobile && '!px-4')}>
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>
           <div className='max-w-[640px]'>
             <div
@@ -554,7 +576,7 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formRow}>
-                    <div className='w-full'>
+                    <div className='w-full flex flex-col gap-1'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.rules')}</div>
                       {rules.map(rule => (
                         <div key={rule.id} className={s.ruleItem}>
@@ -574,7 +596,7 @@ const StepTwo = ({
           </div>
           <div className={s.label}>{t('datasetCreation.stepTwo.indexMode')}</div>
           <div className='max-w-[640px]'>
-            <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-3 flex-wrap sm:flex-nowrap'>
               {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
                 <div
                   className={cn(
@@ -797,68 +819,69 @@ const StepTwo = ({
           </div>
         </div>
       </div>
-      {(showPreview)
-        ? (
-          <div ref={previewScrollRef} className={cn(s.previewWrap, 'relativeh-full overflow-y-scroll border-l border-[#F2F4F7]')}>
-            <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
-              <div className='flex items-center justify-between px-8'>
-                <div className='grow flex items-center'>
-                  <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
-                  {docForm === DocForm.QA && !previewSwitched && (
-                    <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
-                  )}
-                </div>
-                <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
-                  <XMarkIcon className='h-4 w-4'></XMarkIcon>
-                </div>
+      <FloatRightContainer isMobile={isMobile} isOpen={showPreview} onClose={hidePreview} footer={null}>
+        {showPreview && <div ref={previewScrollRef} className={cn(s.previewWrap, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}>
+          <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
+            <div className='flex items-center justify-between px-8'>
+              <div className='grow flex items-center'>
+                <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
+                {docForm === DocForm.QA && !previewSwitched && (
+                  <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                )}
               </div>
-              {docForm === DocForm.QA && !previewSwitched && (
-                <div className='px-8 pr-12 text-xs text-gray-500'>
-                  <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
-                  <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
-                </div>
-              )}
+              <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+                <XMarkIcon className='h-4 w-4'></XMarkIcon>
+              </div>
             </div>
-            <div className='my-4 px-8 space-y-4'>
-              {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
-                <>
-                  {fileIndexingEstimate?.qa_preview.map((item, index) => (
-                    <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
-                  ))}
-                </>
-              )}
-              {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
-                <>
-                  {fileIndexingEstimate?.preview.map((item, index) => (
-                    <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
-                  ))}
-                </>
-              )}
-              {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
-                <div className='flex items-center justify-center h-[200px]'>
-                  <Loading type='area' />
-                </div>
-              )}
-              {!previewSwitched && !fileIndexingEstimate?.preview && (
-                <div className='flex items-center justify-center h-[200px]'>
-                  <Loading type='area' />
-                </div>
-              )}
+            {docForm === DocForm.QA && !previewSwitched && (
+              <div className='px-8 pr-12 text-xs text-gray-500'>
+                <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
+                <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
+              </div>
+            )}
+          </div>
+          <div className='my-4 px-8 space-y-4'>
+            {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
+              <>
+                {fileIndexingEstimate?.qa_preview.map((item, index) => (
+                  <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
+                ))}
+              </>
+            )}
+            {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
+              <>
+                {fileIndexingEstimate?.preview.map((item, index) => (
+                  <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
+                ))}
+              </>
+            )}
+            {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
+              <div className='flex items-center justify-center h-[200px]'>
+                <Loading type='area' />
+              </div>
+            )}
+            {!previewSwitched && !fileIndexingEstimate?.preview && (
+              <div className='flex items-center justify-center h-[200px]'>
+                <Loading type='area' />
+              </div>
+            )}
+          </div>
+        </div>}
+        {!showPreview && (
+          <div className={cn(s.sideTip)}>
+            <div className={s.tipCard}>
+              <span className={s.icon} />
+              <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
+              <div className={s.content}>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
+                <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
+              </div>
             </div>
           </div>
-        )
-        : (<div className={cn(s.sideTip)}>
-          <div className={s.tipCard}>
-            <span className={s.icon} />
-            <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
-            <div className={s.content}>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
-              <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
-            </div>
-          </div>
-        </div>)}
+        )}
+      </FloatRightContainer>
     </div>
   )
 }

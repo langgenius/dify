@@ -1,4 +1,3 @@
-import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
@@ -13,7 +12,7 @@ import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 
-type Props = {
+type TextAreaWithButtonIProps = {
   datasetId: string
   onUpdateList: () => void
   setHitResult: (res: HitTestingResponse) => void
@@ -24,9 +23,10 @@ type Props = {
   onClickRetrievalMethod: () => void
   retrievalConfig: RetrievalConfig
   isEconomy: boolean
+  onSubmit?: () => void
 }
 
-const TextAreaWithButton: FC<Props> = ({
+const TextAreaWithButton = ({
   datasetId,
   onUpdateList,
   setHitResult,
@@ -37,7 +37,8 @@ const TextAreaWithButton: FC<Props> = ({
   onClickRetrievalMethod,
   retrievalConfig,
   isEconomy,
-}) => {
+  onSubmit: _onSubmit,
+}: TextAreaWithButtonIProps) => {
   const { t } = useTranslation()
   const { indexingTechnique } = useContext(DatasetDetailContext)
 
@@ -55,6 +56,7 @@ const TextAreaWithButton: FC<Props> = ({
       onUpdateList?.()
     }
     setLoading(false)
+    _onSubmit && _onSubmit()
   }
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.invertedIndex : retrievalConfig.search_method

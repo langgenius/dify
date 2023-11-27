@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
 import cn from 'classnames'
@@ -30,7 +29,7 @@ type SettingsModalProps = {
 }
 
 const rowClass = `
-  flex justify-between py-4
+  flex justify-between py-4 flex-wrap gap-y-2
 `
 
 const labelClass = `
@@ -45,10 +44,6 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const ref = useRef(null)
-  useClickAway(() => {
-    if (ref)
-      onCancel()
-  }, ref)
 
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
@@ -122,10 +117,8 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='fixed top-16 right-2 flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl z-10'
+      className='overflow-hidden w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
       style={{
-        zIndex: 11,
-        width: 700,
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
@@ -179,12 +172,12 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             <div>{t('datasetSettings.form.permissions')}</div>
           </div>
-          <div className='w-[480px]'>
+          <div className='w-full sm:w-[480px]'>
             <PermissionsRadio
               disable={!localeCurrentDataset?.embedding_available}
               value={localeCurrentDataset.permission}
               onChange={v => handleValueChange('permission', v!)}
-              itemClassName='!w-[227px]'
+              itemClassName='sm:!w-[227px]'
             />
           </div>
         </div>
@@ -198,7 +191,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               disable={!localeCurrentDataset?.embedding_available}
               value={indexMethod}
               onChange={v => setIndexMethod(v!)}
-              itemClassName='!w-[227px]'
+              itemClassName='sm:!w-[227px]'
             />
           </div>
         </div>
@@ -272,7 +265,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
       )}
 
       <div
-        className='absolute z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
+        className='sticky z-[5] bottom-0 w-full flex justify-end py-4 px-6 border-t bg-white '
         style={{
           borderColor: 'rgba(0, 0, 0, 0.05)',
         }}

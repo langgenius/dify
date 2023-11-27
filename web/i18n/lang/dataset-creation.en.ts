@@ -96,6 +96,7 @@ const translation = {
     sideTipP3: 'Cleaning removes unnecessary characters and formats, making Knowledge base cleaner and easier to parse.',
     sideTipP4: 'Proper chunk and cleaning improve model performance, providing more accurate and valuable results.',
     previewTitle: 'Preview',
+    previewTitleButton: 'Preview',
     previewButton: 'Switching to Q&A format',
     previewSwitchTipStart: 'The current chunk preview is in text format, switching to a question-and-answer format preview will',
     previewSwitchTipEnd: ' consume additional tokens',

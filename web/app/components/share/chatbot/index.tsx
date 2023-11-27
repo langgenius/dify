@@ -10,7 +10,6 @@ import { useBoolean, useGetState } from 'ahooks'
 import { checkOrSetAccessToken } from '../utils'
 import AppUnavailable from '../../base/app-unavailable'
 import useConversation from './hooks/use-conversation'
-import s from './style.module.css'
 import { ToastContext } from '@/app/components/base/toast'
 import ConfigScene from '@/app/components/share/chatbot/config-scence'
 import Header from '@/app/components/share/header'
@@ -561,7 +560,7 @@ const Main: FC<IMainProps> = ({
 
       <div className={'flex bg-white overflow-hidden'}>
         <div className={cn(
-          isInstalledApp ? s.installedApp : 'h-[calc(100vh_-_3rem)]',
+          isInstalledApp ? 'h-full' : 'h-[calc(100vh_-_3rem)]',
           'flex-grow flex flex-col overflow-y-auto',
         )
         }>
