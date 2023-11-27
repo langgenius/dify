@@ -40,7 +40,7 @@ default_retrieval_model = {
         'reranking_model_name': ''
     },
     'top_k': 2,
-    'score_threshold_enable': False
+    'score_threshold_enabled': False
 }
 
 class OrchestratorRuleParser:
@@ -220,8 +220,8 @@ class OrchestratorRuleParser:
                 # top_k = self._dynamic_calc_retrieve_k(dataset=dataset, top_k=top_k, rest_tokens=rest_tokens)
 
                 score_threshold = None
-                score_threshold_enable = retrieval_model_config.get("score_threshold_enable")
-                if score_threshold_enable:
+                score_threshold_enabled = retrieval_model_config.get("score_threshold_enabled")
+                if score_threshold_enabled:
                     score_threshold = retrieval_model_config.get("score_threshold")
 
                 tool = DatasetRetrieverTool.from_dataset(
@@ -239,7 +239,7 @@ class OrchestratorRuleParser:
                 dataset_ids=dataset_ids,
                 tenant_id=kwargs['tenant_id'],
                 top_k=dataset_configs.get('top_k', 2),
-                score_threshold=dataset_configs.get('score_threshold', 0.5) if dataset_configs.get('score_threshold_enable', False) else None,
+                score_threshold=dataset_configs.get('score_threshold', 0.5) if dataset_configs.get('score_threshold_enabled', False) else None,
                 callbacks=[DatasetToolCallbackHandler(conversation_message_task)],
                 conversation_message_task=conversation_message_task,
                 return_resource=return_resource,

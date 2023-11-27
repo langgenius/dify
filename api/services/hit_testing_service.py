@@ -25,7 +25,7 @@ default_retrieval_model = {
         'reranking_model_name': ''
     },
     'top_k': 2,
-    'score_threshold_enable': False
+    'score_threshold_enabled': False
 }
 
 class HitTestingService:
@@ -64,7 +64,7 @@ class HitTestingService:
                 'dataset_id': str(dataset.id),
                 'query': query,
                 'top_k': retrieval_model['top_k'],
-                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
                 'reranking_model': retrieval_model['reranking_model'] if retrieval_model['reranking_enable'] else None,
                 'all_documents': all_documents,
                 'search_method': retrieval_model['search_method'],
@@ -81,7 +81,7 @@ class HitTestingService:
                 'query': query,
                 'search_method': retrieval_model['search_method'],
                 'embeddings': embeddings,
-                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                'score_threshold': retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
                 'top_k': retrieval_model['top_k'],
                 'reranking_model': retrieval_model['reranking_model'] if retrieval_model['reranking_enable'] else None,
                 'all_documents': all_documents
@@ -99,7 +99,7 @@ class HitTestingService:
                 model_name=retrieval_model['reranking_model']['reranking_model_name']
             )
             all_documents = hybrid_rerank.rerank(query, all_documents,
-                                                 retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                                                 retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
                                                  retrieval_model['top_k'])
 
         end = time.perf_counter()
