@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
 import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
+import { GoldCoin as GoldCoinOutLine } from '../../base/icons/src/vender/line/financeAndECommerce'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
@@ -72,7 +73,7 @@ export default function AccountSetting({
         // Use key false to hide this item
         key: IS_CLOUD_EDITION ? 'billing' : false,
         name: t('common.settings.billing'),
-        icon: <GoldCoin className={iconClassName} />,
+        icon: <GoldCoinOutLine className={iconClassName} />,
         activeIcon: <GoldCoin className={iconClassName} />,
       },
       {
