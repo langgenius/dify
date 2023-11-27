@@ -28,18 +28,22 @@ const style = {
   [Plan.sandbox]: {
     bg: 'bg-[#F2F4F7]',
     title: 'text-gray-900',
+    hoverAndActive: '',
   },
   [Plan.professional]: {
     bg: 'bg-[#E0F2FE]',
     title: 'text-[#026AA2]',
+    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#0086C9] hover:!border-[#026AA2] active:!text-white active:!bg-[#026AA2] active:!border-[#026AA2]',
   },
   [Plan.team]: {
     bg: 'bg-[#E0EAFF]',
     title: 'text-[#3538CD]',
+    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#444CE7] hover:!border-[#3538CD] active:!text-white active:!bg-[#3538CD] active:!border-[#3538CD]',
   },
   [Plan.enterprise]: {
     bg: 'bg-[#FFEED3]',
     title: 'text-[#DC6803]',
+    hoverAndActive: 'hover:shadow-lg hover:!text-white hover:!bg-[#F79009] hover:!border-[#DC6803] active:!text-white active:!bg-[#DC6803] active:!border-[#DC6803]',
   },
 }
 const PlanItem: FC<Props> = ({
@@ -63,7 +67,7 @@ const PlanItem: FC<Props> = ({
 
     return ({
       [Plan.sandbox]: t('billing.plansCommon.startForFree'),
-      [Plan.professional]: <>{t('billing.plansCommon.getStartedWith')}<span className='capitalize'>{plan}</span></>,
+      [Plan.professional]: <>{t('billing.plansCommon.getStartedWith')}<span className='capitalize'>&nbsp;{plan}</span></>,
       [Plan.team]: <>{t('billing.plansCommon.getStartedWith')}<span className='capitalize'>&nbsp;{plan}</span></>,
       [Plan.enterprise]: t('billing.plansCommon.talkToSales'),
     })[plan]
@@ -108,7 +112,7 @@ const PlanItem: FC<Props> = ({
     }
   })()
   return (
-    <div className={cn(isMostPopularPlan ? 'bg-[#444CE7] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] h-[712px] rounded-xl')}>
+    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] h-[712px] rounded-xl')}>
       {isMostPopularPlan && (
         <div className='flex items-center h-7 justify-center leading-[12px] text-xs font-medium text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
       )}
@@ -134,7 +138,7 @@ const PlanItem: FC<Props> = ({
         )}
 
         <div
-          className={cn(isMostPopularPlan && !isCurrent && '!bg-[#444CE7] !text-white !border !border-[#3538CD] shadow-sm', isPlanDisabled ? 'opacity-30' : 'cursor-pointer', 'mt-4 flex h-11 items-center justify-center border-[2px] border-gray-900 rounded-3xl text-sm font-semibold text-gray-900')}
+          className={cn(isMostPopularPlan && !isCurrent && '!bg-[#444CE7] !text-white !border !border-[#3538CD] shadow-sm', isPlanDisabled ? 'opacity-30' : `${style[plan].hoverAndActive} cursor-pointer`, 'mt-4 flex h-11 items-center justify-center border-[2px] border-gray-900 rounded-3xl text-sm font-semibold text-gray-900')}
           onClick={() => {
             if (isPlanDisabled)
               return

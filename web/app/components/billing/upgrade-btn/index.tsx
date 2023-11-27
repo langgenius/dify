@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
 import { Sparkles } from '../../base/icons/src/public/billing'
+import s from './style.module.css'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {
@@ -46,15 +47,12 @@ const UpgradeBtn: FC<Props> = ({
   return (
     <div
       className={cn(
+        s.upgradeBtn,
         className,
         isFull ? 'justify-center' : 'px-3',
         size === 'lg' ? 'h-10' : 'h-9',
         'relative flex items-center cursor-pointer border rounded-[20px] border-[#0096EA] text-white',
       )}
-      style={{
-        background: 'linear-gradient(99deg, rgba(255, 255, 255, 0.12) 7.16%, rgba(255, 255, 255, 0.00) 85.47%), linear-gradient(280deg, #00B2FF 12.96%, #132BFF 90.95%)',
-        boxShadow: '0px 2px 4px -2px rgba(16, 24, 40, 0.06), 0px 4px 8px -2px rgba(0, 162, 253, 0.12)',
-      }}
       onClick={setShowPricingModal}
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
