@@ -485,7 +485,7 @@ class DocumentService:
                             'reranking_model_name': ''
                         },
                         'top_k': 2,
-                        'score_threshold_enable': False
+                        'score_threshold_enabled': False
                     }
 
                     dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get('retrieval_model') else default_retrieval_model
@@ -769,7 +769,7 @@ class DocumentService:
                         'reranking_model_name': ''
                     },
                     'top_k': 2,
-                    'score_threshold_enable': False
+                    'score_threshold_enabled': False
                 }
                 retrieval_model = default_retrieval_model
         # save dataset

@@ -21,6 +21,7 @@ const translation = {
   operation: {
     applyConfig: '发布',
     resetConfig: '重置',
+    debugConfig: '调试',
     addFeature: '添加功能',
     automatic: '自动编排',
     stopResponding: '停止响应',

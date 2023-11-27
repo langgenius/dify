@@ -194,7 +194,7 @@ const Answer: FC<IAnswerProps> = ({
             </div>
           )
         }
-        <div className={cn(s.answerWrapWrap, 'chat-answer-container')}>
+        <div className={cn(s.answerWrapWrap, 'chat-answer-container group')}>
           <div className={`${s.answerWrap} ${showEdit ? 'w-full' : ''}`}>
             <div className={`${s.answer} relative text-sm text-gray-900`}>
               <div className={'ml-2 py-3 px-4 bg-gray-100 rounded-tr-2xl rounded-b-2xl'}>
@@ -280,7 +280,7 @@ const Answer: FC<IAnswerProps> = ({
                 {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
               </div>
             </div>
-            {more && <MoreInfo more={more} isQuestion={false} />}
+            {more && <MoreInfo className='hidden group-hover:block' more={more} isQuestion={false} />}
           </div>
         </div>
       </div>

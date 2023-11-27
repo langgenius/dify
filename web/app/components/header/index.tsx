@@ -1,7 +1,9 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { useClickAway } from 'ahooks'
+import { useBoolean, useClickAway } from 'ahooks'
+import { useSelectedLayoutSegment } from 'next/navigation'
+import { Bars3Icon } from '@heroicons/react/20/solid'
 import HeaderBillingBtn from '../billing/header-billing-btn'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
@@ -14,33 +16,62 @@ import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import PlanComp from '@/app/components/billing/plan'
 import { IS_CLOUD_EDITION } from '@/config'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const navClassName = `
-  flex items-center relative mr-3 px-3 h-8 rounded-xl
+  flex items-center relative mr-3 px-3 h-9 rounded-xl
   font-medium text-sm
   cursor-pointer
 `
 
 const Header = () => {
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceManager, langeniusVersionInfo } = useAppContext()
   const [showUpgradePanel, setShowUpgradePanel] = useState(false)
   const upgradeBtnRef = useRef<HTMLElement>(null)
   useClickAway(() => {
     setShowUpgradePanel(false)
   }, upgradeBtnRef)
+
+  const selectedSegment = useSelectedLayoutSegment()
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false)
+
+  useEffect(() => {
+    hideNavMenu()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSegment])
   return (
     <>
       <div className='flex items-center'>
-        <Link href="/apps" className='flex items-center mr-4'>
-          <LogoSite />
-        </Link>
-        <GithubStar />
+        {isMobile && <div
+          className='flex items-center justify-center h-8 w-8 cursor-pointer'
+          onClick={toggle}
+        >
+          <Bars3Icon className="h-4 w-4 text-gray-500" />
+        </div>}
+        {!isMobile && <>
+          <Link href="/apps" className='flex items-center mr-4'>
+            <LogoSite />
+          </Link>
+          <GithubStar />
+        </>}
       </div>
-      <div className='flex items-center'>
-        <ExploreNav className={navClassName} />
-        <AppNav />
-        {isCurrentWorkspaceManager && <DatasetNav />}
-      </div>
+      {isMobile && (
+        <div className='flex'>
+          <Link href="/apps" className='flex items-center mr-4'>
+            <LogoSite />
+          </Link>
+          <GithubStar />
+        </div>
+      )}
+      {!isMobile && (
+        <div className='flex items-center'>
+          <ExploreNav className={navClassName} />
+          <AppNav />
+          {isCurrentWorkspaceManager && <DatasetNav />}
+        </div>
+      )}
       <div className='flex items-center flex-shrink-0'>
         <EnvNav />
         {IS_CLOUD_EDITION && (
@@ -57,9 +88,16 @@ const Header = () => {
           </div>
         )}
         <WorkspaceProvider>
-          <AccountDropdown />
+          <AccountDropdown isMobile={isMobile}/>
         </WorkspaceProvider>
       </div>
+      {(isMobile && isShowNavMenu) && (
+        <div className='w-full flex flex-col p-2 gap-y-1'>
+          <ExploreNav className={navClassName} />
+          <AppNav />
+          {isCurrentWorkspaceManager && <DatasetNav />}
+        </div>
+      )}
     </>
   )
 }

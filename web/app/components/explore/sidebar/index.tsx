@@ -11,6 +11,7 @@ import Item from './app-nav-item'
 import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus } from '@/service/explore'
 import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const SelectedDiscoveryIcon = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -36,9 +37,11 @@ const ChatIcon = () => (
   </svg>
 )
 
-const SideBar: FC<{
+export type IExploreSideBarProps = {
   controlUpdateInstalledApps: number
-}> = ({
+}
+
+const SideBar: FC<IExploreSideBarProps> = ({
   controlUpdateInstalledApps,
 }) => {
   const { t } = useTranslation()
@@ -47,6 +50,9 @@ const SideBar: FC<{
   const isDiscoverySelected = lastSegment === 'apps'
   const isChatSelected = lastSegment === 'chat'
   const { installedApps, setInstalledApps } = useContext(ExploreContext)
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
 
   const fetchInstalledAppList = async () => {
     const { installed_apps }: any = await doFetchInstalledAppList()
@@ -84,28 +90,28 @@ const SideBar: FC<{
   }, [controlUpdateInstalledApps])
 
   return (
-    <div className='w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
+    <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
       <div>
         <Link
           href='/explore/apps'
-          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium', 'flex items-center h-9 pl-3 space-x-2 rounded-lg')}
+          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
-          <div className='text-sm'>{t('explore.sidebar.discovery')}</div>
+          {!isMobile && <div className='text-sm'>{t('explore.sidebar.discovery')}</div>}
         </Link>
         <Link
           href='/explore/chat'
-          className={cn(isChatSelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium', 'flex items-center h-9 pl-3 space-x-2 rounded-lg')}
+          className={cn(isChatSelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isChatSelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isChatSelected ? <SelectedChatIcon /> : <ChatIcon />}
-          <div className='text-sm'>{t('explore.sidebar.chat')}</div>
+          {!isMobile && <div className='text-sm'>{t('explore.sidebar.chat')}</div>}
         </Link>
       </div>
       {installedApps.length > 0 && (
         <div className='mt-10'>
-          <div className='pl-2 text-xs text-gray-500 font-medium uppercase'>{t('explore.sidebar.workspace')}</div>
+          <p className='pl-2 mobile:px-0 text-xs text-gray-500 break-all font-medium uppercase'>{t('explore.sidebar.workspace')}</p>
           <div className='mt-3 space-y-1 overflow-y-auto overflow-x-hidden'
             style={{
               height: 'calc(100vh - 250px)',
@@ -115,6 +121,7 @@ const SideBar: FC<{
               return (
                 <Item
                   key={id}
+                  isMobile={isMobile}
                   name={name}
                   icon={icon}
                   icon_background={icon_background}
