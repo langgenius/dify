@@ -2,11 +2,13 @@ import json
 from typing import Type
 
 import requests
+from xinference_client.client.restful.restful_client import Client
 
 from core.helper import encrypter
 from core.model_providers.models.embedding.xinference_embedding import XinferenceEmbedding
 from core.model_providers.models.entity.model_params import KwargRule, ModelKwargsRules, ModelType, ModelMode
 from core.model_providers.models.llm.xinference_model import XinferenceModel
+from core.model_providers.models.reranking.xinference_reranking import XinferenceReranking
 from core.model_providers.providers.base import BaseModelProvider, CredentialsValidateFailedError
 
 from core.model_providers.models.base import BaseProviderModel
@@ -40,6 +42,8 @@ class XinferenceProvider(BaseModelProvider):
             model_class = XinferenceModel
         elif model_type == ModelType.EMBEDDINGS:
             model_class = XinferenceEmbedding
+        elif model_type == ModelType.RERANKING:
+            model_class = XinferenceReranking
         else:
             raise NotImplementedError
 
@@ -113,6 +117,10 @@ class XinferenceProvider(BaseModelProvider):
                 )
 
                 embedding.embed_query("ping")
+            elif model_type == ModelType.RERANKING:
+                rerank_client = Client(credential_kwargs['server_url'])
+                model = rerank_client.get_model(credential_kwargs['model_uid'])
+                model.rerank(query="ping", documents=["ping", "pong"], top_n=2)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 

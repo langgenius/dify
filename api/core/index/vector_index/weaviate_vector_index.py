@@ -111,7 +111,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
         if self._vector_store:
             return self._vector_store
 
-        attributes = ['doc_id', 'dataset_id', 'document_id']
+        attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
         if self._is_origin():
             attributes = ['doc_id']
 
