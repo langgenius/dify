@@ -34,7 +34,7 @@ const ModelItem: FC<ModelItemProps> = ({
 
   return (
     <div className='mb-2 bg-gray-50 rounded-xl'>
-      <div className='flex justify-between items-center px-4 h-14'>
+      <div className='flex justify-between items-center p-4 min-h-[56px] flex-wrap gap-y-1'>
         <div className='flex items-center'>
           {modelItem.titleIcon[locale]}
           {

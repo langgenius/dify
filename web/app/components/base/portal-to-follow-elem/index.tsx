@@ -17,7 +17,7 @@ import {
 
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 
-type PortalToFollowElemOptions = {
+export type PortalToFollowElemOptions = {
   /*
   * top, bottom, left, right
   * start, end. Default is middle

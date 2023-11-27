@@ -39,10 +39,10 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const navigation = useMemo(() => {
     const navs = [
       { name: t('common.appMenus.overview'), href: `/app/${appId}/overview`, icon: ChartBarSquareIcon, selectedIcon: ChartBarSquareSolidIcon },
-      isCurrentWorkspaceManager ? { name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon } : false,
+      ...(isCurrentWorkspaceManager ? [{ name: t('common.appMenus.promptEng'), href: `/app/${appId}/configuration`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon }] : []),
       { name: t('common.appMenus.apiAccess'), href: `/app/${appId}/develop`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
       { name: t('common.appMenus.logAndAnn'), href: `/app/${appId}/logs`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
-    ].filter(nav => !!nav)
+    ]
     return navs
   }, [appId, isCurrentWorkspaceManager, t])
 
@@ -56,7 +56,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   return (
     <div className={cn(s.app, 'flex', 'overflow-hidden')}>
       <AppSideBar title={response.name} icon={response.icon} icon_background={response.icon_background} desc={appModeName} navigation={navigation} />
-      <div className="bg-white grow">{children}</div>
+      <div className="bg-white grow overflow-hidden">{children}</div>
     </div>
   )
 }

@@ -26,7 +26,7 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   }
 
   return (
-    <div className='h-full p-2'>
+    <div className='h-full py-2 pl-0 pr-2 sm:p-2'>
       {installedApp?.app.mode === 'chat'
         ? (
           <ChatApp isInstalledApp installedAppInfo={installedApp} />
