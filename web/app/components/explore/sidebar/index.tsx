@@ -94,7 +94,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
       <div>
         <Link
           href='/explore/apps'
-          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium', 'flex items-center mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
+          className={cn(isDiscoverySelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
@@ -102,7 +102,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
         </Link>
         <Link
           href='/explore/chat'
-          className={cn(isChatSelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium', 'flex items-center mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
+          className={cn(isChatSelected ? 'text-primary-600  bg-white font-semibold' : 'text-gray-700 font-medium hover:bg-gray-200', 'flex items-center pc:justify-start pc:w-full mobile:justify-center mobile:w-fit h-9 px-3 mobile:px-2 gap-2 rounded-lg')}
           style={isChatSelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isChatSelected ? <SelectedChatIcon /> : <ChatIcon />}
