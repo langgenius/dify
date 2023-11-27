@@ -493,7 +493,7 @@ const StepTwo = ({
       reranking_model_name: rerankDefaultModel?.model_name,
     },
     top_k: 3,
-    score_threshold_enable: false,
+    score_threshold_enabled: false,
     score_threshold: 0.5,
   } as RetrievalConfig)
 
