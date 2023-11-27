@@ -106,7 +106,7 @@ const StepOne = ({
         <div className={s.form}>
           {
             shouldShowDataSourceTypeList && (
-              <div className={s.dataSourceTypeList}>
+              <div className='flex items-center mb-8 flex-wrap gap-y-4'>
                 <div
                   className={cn(
                     s.dataSourceItem,

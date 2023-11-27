@@ -65,8 +65,8 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo, vectorInfo }) => {
   }
 
   return (
-    <div className={'flex flex-row'}>
-      <div className="flex-1 bg-gray-25 p-6">
+    <div className='flex flex-row overflow-x-auto'>
+      <div className="flex-1 bg-gray-25 p-6 min-w-[300px]">
         <div className="flex items-center">
           <SegmentIndexTag
             positionId={segInfo?.position || ''}

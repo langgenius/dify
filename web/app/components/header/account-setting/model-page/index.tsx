@@ -218,7 +218,7 @@ const ModelPage = () => {
         }
         <SystemModel onUpdate={() => mutateProviders()} />
       </div>
-      <div className='grid grid-cols-2 gap-4 mb-6'>
+      <div className='grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6'>
         {
           MODEL_CARD_LIST.map((model, index) => (
             <ModelCard

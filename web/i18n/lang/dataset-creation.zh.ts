@@ -96,6 +96,7 @@ const translation = {
     sideTipP3: '清洗则是对文本进行预处理，删除不必要的字符、符号或格式，使数据集更加干净、整洁，便于模型解析。',
     sideTipP4: '通过对数据集进行适当的分段和清洗，可以提高模型在实际应用中的表现，从而为用户提供更准确、更有价值的结果。',
     previewTitle: '分段预览',
+    previewTitleButton: '预览',
     previewButton: '切换至 Q&A 形式',
     previewSwitchTipStart: '当前分段预览是文本模式，切换到 Q&A 模式将会',
     previewSwitchTipEnd: '消耗额外的 token',

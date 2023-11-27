@@ -49,7 +49,7 @@ const ParamItem: FC<IParamIteProps> = ({ id, name, tip, step = 0.1, min = 0, max
       onChange(id, getFitPrecisionValue(value, precision))
   }, [value, precision])
   return (
-    <div className="flex items-center justify-between">
+    <div className="flex items-center justify-between flex-wrap gap-y-2">
       <div className="flex flex-col flex-shrink-0">
         <div className="flex items-center">
           <span className="mr-[6px] text-gray-500 text-[13px] font-medium">{name}</span>

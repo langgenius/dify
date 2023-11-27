@@ -27,6 +27,7 @@ import Loading from '@/app/components/base/loading'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { ModelType, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { useProviderContext } from '@/context/provider-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { ModelModeType } from '@/types/app'
 export type IConfigModelProps = {
   isAdvancedMode: boolean
@@ -54,6 +55,10 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
   const currModel = textGenerationModelList.find(item => item.model_name === modelId)
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   // Cache loaded model param
   const [allParams, setAllParams, getAllParams] = useGetState<Record<string, Record<string, any>>>({})
   const currParams = allParams[provider]?.[modelId]
@@ -288,7 +293,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
       </div>
       {isShowConfig && (
         <Panel
-          className='absolute z-20 top-8 right-0 !w-[496px] bg-white !overflow-visible shadow-md'
+          className='absolute z-20 top-8 left-0 sm:left-[unset] sm:right-0 !w-fit sm:!w-[496px] bg-white !overflow-visible shadow-md'
           keepUnFold
           headerIcon={
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -340,7 +345,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
                       <div className='grow flex items-center' key={tone.id}>
                         <Radio
                           value={tone.id}
-                          className={cn(tone.id === toneId && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-2 !justify-center text-[13px] font-medium')}
+                          className={cn(tone.id === toneId && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-1 sm:!px-2 !justify-center text-[13px] font-medium')}
                           labelClassName={cn(tone.id === toneId
                             ? ({
                               1: 'text-[#6938EF]',
@@ -351,7 +356,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
                         >
                           <>
                             {getToneIcon(tone.id)}
-                            <div>{t(`common.model.tone.${tone.name}`) as string}</div>
+                            {!isMobile && <div>{t(`common.model.tone.${tone.name}`) as string}</div>}
                             <div className=""></div>
                           </>
                         </Radio>
@@ -361,12 +366,12 @@ const ConfigModel: FC<IConfigModelProps> = ({
                   </>
                   <Radio
                     value={TONE_LIST[3].id}
-                    className={cn(toneId === 4 && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-2 !justify-center text-[13px] font-medium')}
+                    className={cn(toneId === 4 && 'rounded-md border border-gray-200 shadow-md', '!mr-0 grow !px-1 sm:!px-2 !justify-center text-[13px] font-medium')}
                     labelClassName={cn('flex items-center space-x-2 ', toneId === 4 ? 'text-[#155EEF]' : 'text-[#667085]')}
                   >
                     <>
                       {getToneIcon(TONE_LIST[3].id)}
-                      <div>{t(`common.model.tone.${TONE_LIST[3].name}`) as string}</div>
+                      {!isMobile && <div>{t(`common.model.tone.${TONE_LIST[3].name}`) as string}</div>}
                     </>
                   </Radio>
                 </Radio.Group>
