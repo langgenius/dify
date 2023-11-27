@@ -69,7 +69,7 @@ const PlanItem: FC<Props> = ({
     })[plan]
   })()
   const comingSoon = (
-    <div className='leading-[12px] text-[9px] font-semibold text-[#3538CD]'>{t('billing.plansCommon.comingSoon')}</div>
+    <div className='leading-[12px] text-[9px] font-semibold text-[#3538CD] uppercase'>{t('billing.plansCommon.comingSoon')}</div>
   )
   const supportContent = (() => {
     switch (plan) {
