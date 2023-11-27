@@ -21,8 +21,8 @@ body:
     multiple: true
     options:
       - Cloud
-      - Self Hosted
-      - Other (please specify in "Steps to Reproduce")
+      - Self Hosted (Docker)
+      - Self Hosted (Source)
   validations:
     required: true
 
