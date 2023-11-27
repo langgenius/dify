@@ -52,7 +52,7 @@ const PlanItem: FC<Props> = ({
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
   const isEnterprisePlan = plan === Plan.enterprise
-  const isMostPopularPlan = plan === Plan.team
+  const isMostPopularPlan = plan === Plan.professional
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
