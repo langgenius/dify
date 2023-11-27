@@ -57,16 +57,16 @@ export default function AccountSetting({
   const workplaceGroupItems = (() => {
     return [
       {
-        key: 'members',
-        name: t('common.settings.members'),
-        icon: <Users01 className={iconClassName} />,
-        activeIcon: <Users01Solid className={iconClassName} />,
-      },
-      {
         key: 'provider',
         name: t('common.settings.provider'),
         icon: <CubeOutline className={iconClassName} />,
         activeIcon: <CubeOutline className={iconClassName} />,
+      },
+      {
+        key: 'members',
+        name: t('common.settings.members'),
+        icon: <Users01 className={iconClassName} />,
+        activeIcon: <Users01Solid className={iconClassName} />,
       },
       {
         // Use key false to hide this item

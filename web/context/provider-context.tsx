@@ -103,7 +103,7 @@ export const ProviderContextProvider = ({
   const plan = {
     type: Plan.sandbox,
     usage: {
-      vectorSpace: 200,
+      vectorSpace: 20,
       buildApps: 50,
       teamMembers: 5,
     },
