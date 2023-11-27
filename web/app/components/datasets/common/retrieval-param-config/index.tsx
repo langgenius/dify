@@ -114,12 +114,12 @@ const RetrievalParamConfig: FC<Props> = ({
                 score_threshold: v,
               })
             }}
-            enable={value.score_threshold_enable}
+            enable={value.score_threshold_enabled}
             hasSwitch={true}
             onSwitchChange={(_key, v) => {
               onChange({
                 ...value,
-                score_threshold_enable: v,
+                score_threshold_enabled: v,
               })
             }}
           />
