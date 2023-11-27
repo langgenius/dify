@@ -1,6 +1,6 @@
 const translation = {
   title: 'Retrieval Testing',
-  desc: 'Test the hitting effect of the dataset based on the given query text.',
+  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   recents: 'Recents',
   table: {
@@ -14,7 +14,7 @@ const translation = {
     title: 'Source text',
     placeholder: 'Please enter a text, a short declarative sentence is recommended.',
     countWarning: 'Up to 200 characters.',
-    indexWarning: 'High quality dataset only.',
+    indexWarning: 'High quality Knowledge only.',
     testing: 'Testing',
   },
   hit: {

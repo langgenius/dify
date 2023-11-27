@@ -1,7 +1,7 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
 
-# Dataset API
+# Knowledge API
 
 <div>
   ### Authentication
@@ -30,12 +30,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing dataset and creates a new document through text based on this dataset.
+    This api is based on an existing Knowledge and creates a new document through text based on this Knowledge.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
     </Properties>
 
@@ -133,12 +133,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing dataset and creates a new document through a file based on this dataset.
+    This api is based on an existing Knowledge and creates a new document through a file based on this Knowledge.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
     </Properties>
 
@@ -228,7 +228,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='POST'
-  title='Create an empty dataset'
+  title='Create an empty Knowledge'
   name='#create_empty_dataset'
 />
 <Row>
@@ -236,7 +236,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        Dataset name
+        Knowledge name
       </Property>
     </Properties>
   </Col>
@@ -287,7 +287,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='GET'
-  title='Dataset list'
+  title='Knowledge list'
   name='#dataset_list'
 />
 <Row>
@@ -355,12 +355,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing dataset and updates the document through text based on this dataset.
+    This api is based on an existing Knowledge and updates the document through text based on this Knowledge.
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -452,12 +452,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    This api is based on an existing dataset, and updates documents through files based on this dataset
+    This api is based on an existing Knowledge, and updates documents through files based on this Knowledge
 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -549,7 +549,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='batch' type='string' key='batch'>
         Batch number of uploaded documents
@@ -604,7 +604,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -638,7 +638,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents'
   method='GET'
-  title='Dataset document list'
+  title='Knowledge document list'
   name='#dataset_document_list'
 />
 <Row>
@@ -646,7 +646,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
     </Properties>
 
@@ -721,7 +721,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Params
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -732,7 +732,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) Text content/question content, required
-        - <code>answer</code> (text) Answer content, if the mode of the data set is qa mode, pass the value(optional)
+        - <code>answer</code> (text) Answer content, if the mode of the Knowledge is qa mode, pass the value(optional)
         - <code>keywords</code> (list) Keywords(optional)
       </Property>
     </Properties>
@@ -807,7 +807,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         Document ID
@@ -885,7 +885,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
@@ -928,7 +928,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### POST
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        Dataset ID
+        Knowledge ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
@@ -939,7 +939,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) text content/question content，required
-        - <code>answer</code> (text) Answer content, not required, passed if the data set is in qa mode
+        - <code>answer</code> (text) Answer content, not required, passed if the Knowledge is in qa mode
         - <code>keywords</code> (list) keyword, not required
         - <code>enabled</code> (bool) false/true, not required
       </Property>
@@ -1036,72 +1036,72 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <table className="max-w-auto border-collapse border border-slate-400" style={{ maxWidth: 'none', width: 'auto' }}>
   <thead style={{ background: '#f9fafc' }}>
     <tr>
-      <th class="p-2 border border-slate-300">code</th>
-      <th class="p-2 border border-slate-300">status</th>
-      <th class="p-2 border border-slate-300">message</th>
+      <th className="p-2 border border-slate-300">code</th>
+      <th className="p-2 border border-slate-300">status</th>
+      <th className="p-2 border border-slate-300">message</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td class="p-2 border border-slate-300">no_file_uploaded</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Please upload your file.</td>
+      <td className="p-2 border border-slate-300">no_file_uploaded</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Please upload your file.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">too_many_files</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Only one file is allowed.</td>
+      <td className="p-2 border border-slate-300">too_many_files</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Only one file is allowed.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">file_too_large</td>
-      <td class="p-2 border border-slate-300">413</td>
-      <td class="p-2 border border-slate-300">File size exceeded.</td>
+      <td className="p-2 border border-slate-300">file_too_large</td>
+      <td className="p-2 border border-slate-300">413</td>
+      <td className="p-2 border border-slate-300">File size exceeded.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">unsupported_file_type</td>
-      <td class="p-2 border border-slate-300">415</td>
-      <td class="p-2 border border-slate-300">File type not allowed.</td>
+      <td className="p-2 border border-slate-300">unsupported_file_type</td>
+      <td className="p-2 border border-slate-300">415</td>
+      <td className="p-2 border border-slate-300">File type not allowed.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">high_quality_dataset_only</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
+      <td className="p-2 border border-slate-300">high_quality_dataset_only</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">dataset_not_initialized</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
+      <td className="p-2 border border-slate-300">dataset_not_initialized</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">archived_document_immutable</td>
-      <td class="p-2 border border-slate-300">403</td>
-      <td class="p-2 border border-slate-300">The archived document is not editable.</td>
+      <td className="p-2 border border-slate-300">archived_document_immutable</td>
+      <td className="p-2 border border-slate-300">403</td>
+      <td className="p-2 border border-slate-300">The archived document is not editable.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">dataset_name_duplicate</td>
-      <td class="p-2 border border-slate-300">409</td>
-      <td class="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
+      <td className="p-2 border border-slate-300">dataset_name_duplicate</td>
+      <td className="p-2 border border-slate-300">409</td>
+      <td className="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">invalid_action</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Invalid action.</td>
+      <td className="p-2 border border-slate-300">invalid_action</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Invalid action.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">document_already_finished</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
+      <td className="p-2 border border-slate-300">document_already_finished</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">document_indexing</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
+      <td className="p-2 border border-slate-300">document_indexing</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">invalid_metadata</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
+      <td className="p-2 border border-slate-300">invalid_metadata</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
     </tr>
   </tbody>
 </table>
-<div class="pb-4" />
+<div className="pb-4" />
