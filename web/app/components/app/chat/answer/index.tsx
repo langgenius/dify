@@ -280,7 +280,7 @@ const Answer: FC<IAnswerProps> = ({
                 {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
               </div>
             </div>
-            {more && <MoreInfo className='hidden group-hover:block' more={more} isQuestion={false} />}
+            {more && <MoreInfo className='invisible group-hover:visible' more={more} isQuestion={false} />}
           </div>
         </div>
       </div>
