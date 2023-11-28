@@ -17,6 +17,7 @@ import ModifyRetrievalModal from './modify-retrieval-modal'
 import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import { fetchTestingRecords } from '@/service/datasets'
@@ -206,7 +207,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }}
         />}
       </Modal>
-      {isShowModifyRetrievalModal && (
+      <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}
@@ -217,7 +218,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             setIsShowModifyRetrievalModal(false)
           }}
         />
-      )}
+      </Drawer>
     </div>
   )
 }
