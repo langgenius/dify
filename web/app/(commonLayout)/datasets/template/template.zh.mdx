@@ -1,7 +1,7 @@
 import { CodeGroup } from '@/app/components/develop/code.tsx'
 import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
 
-# 数据集 API
+# 知识库 API
 
 <div>
   ### 鉴权
@@ -30,12 +30,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文本创建新的文档
+    此接口基于已存在知识库，在此知识库的基础上通过文本创建新的文档
 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
     </Properties>
 
@@ -133,12 +133,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文件创建新的文档
+    此接口基于已存在知识库，在此知识库的基础上通过文件创建新的文档
 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
     </Properties>
 
@@ -228,7 +228,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='POST'
-  title='创建空数据集'
+  title='创建空知识库'
   name='#create_empty_dataset'
 />
 <Row>
@@ -236,7 +236,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        数据集名称
+        知识库名称
       </Property>
     </Properties>
   </Col>
@@ -287,7 +287,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets'
   method='GET'
-  title='数据集列表'
+  title='知识库列表'
   name='#dataset_list'
 />
 <Row>
@@ -320,7 +320,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       "data": [
         {
           "id": "",
-          "name": "数据集名称",
+          "name": "知识库名称",
           "description": "描述信息",
           "permission": "only_me",
           "data_source_type": "upload_file",
@@ -355,12 +355,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文本更新文档
+    此接口基于已存在知识库，在此知识库的基础上通过文本更新文档
 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         文档 ID
@@ -452,12 +452,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 />
 <Row>
   <Col>
-    此接口基于已存在数据集，在此数据集的基础上通过文件更新文档的操作。
+    此接口基于已存在知识库，在此知识库的基础上通过文件更新文档的操作。
 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         文档 ID
@@ -549,7 +549,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='batch' type='string' key='batch'>
         上传文档的批次号
@@ -604,7 +604,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         文档 ID
@@ -638,7 +638,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/datasets/{dataset_id}/documents'
   method='GET'
-  title='数据集文档列表'
+  title='知识库文档列表'
   name='#dataset_document_list'
 />
 <Row>
@@ -646,7 +646,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
     </Properties>
 
@@ -721,7 +721,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         文档 ID
@@ -732,7 +732,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果数据集的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
         - <code>keywords</code> (list) 关键字，非必填
       </Property>
     </Properties>
@@ -807,7 +807,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='document_id' type='string' key='document_id'>
         文档 ID
@@ -885,7 +885,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Path
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         文档分段ID
@@ -928,7 +928,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### POST
     <Properties>
       <Property name='dataset_id' type='string' key='dataset_id'>
-        数据集 ID
+        知识库 ID
       </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         文档分段ID
@@ -939,7 +939,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果数据集的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
         - <code>keywords</code> (list) 关键字，非必填
         - <code>enabled</code> (bool) false/true，非必填
       </Property>
@@ -1037,72 +1037,72 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <table className="max-w-auto border-collapse border border-slate-400" style={{ maxWidth: 'none', width: 'auto' }}>
   <thead style={{ background: '#f9fafc' }}>
     <tr>
-      <th class="p-2 border border-slate-300">code</th>
-      <th class="p-2 border border-slate-300">status</th>
-      <th class="p-2 border border-slate-300">message</th>
+      <th className="p-2 border border-slate-300">code</th>
+      <th className="p-2 border border-slate-300">status</th>
+      <th className="p-2 border border-slate-300">message</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td class="p-2 border border-slate-300">no_file_uploaded</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Please upload your file.</td>
+      <td className="p-2 border border-slate-300">no_file_uploaded</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Please upload your file.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">too_many_files</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Only one file is allowed.</td>
+      <td className="p-2 border border-slate-300">too_many_files</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Only one file is allowed.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">file_too_large</td>
-      <td class="p-2 border border-slate-300">413</td>
-      <td class="p-2 border border-slate-300">File size exceeded.</td>
+      <td className="p-2 border border-slate-300">file_too_large</td>
+      <td className="p-2 border border-slate-300">413</td>
+      <td className="p-2 border border-slate-300">File size exceeded.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">unsupported_file_type</td>
-      <td class="p-2 border border-slate-300">415</td>
-      <td class="p-2 border border-slate-300">File type not allowed.</td>
+      <td className="p-2 border border-slate-300">unsupported_file_type</td>
+      <td className="p-2 border border-slate-300">415</td>
+      <td className="p-2 border border-slate-300">File type not allowed.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">high_quality_dataset_only</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
+      <td className="p-2 border border-slate-300">high_quality_dataset_only</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">dataset_not_initialized</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
+      <td className="p-2 border border-slate-300">dataset_not_initialized</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">archived_document_immutable</td>
-      <td class="p-2 border border-slate-300">403</td>
-      <td class="p-2 border border-slate-300">The archived document is not editable.</td>
+      <td className="p-2 border border-slate-300">archived_document_immutable</td>
+      <td className="p-2 border border-slate-300">403</td>
+      <td className="p-2 border border-slate-300">The archived document is not editable.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">dataset_name_duplicate</td>
-      <td class="p-2 border border-slate-300">409</td>
-      <td class="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
+      <td className="p-2 border border-slate-300">dataset_name_duplicate</td>
+      <td className="p-2 border border-slate-300">409</td>
+      <td className="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">invalid_action</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">Invalid action.</td>
+      <td className="p-2 border border-slate-300">invalid_action</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Invalid action.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">document_already_finished</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
+      <td className="p-2 border border-slate-300">document_already_finished</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">document_indexing</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
+      <td className="p-2 border border-slate-300">document_indexing</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
     </tr>
     <tr>
-      <td class="p-2 border border-slate-300">invalid_metadata</td>
-      <td class="p-2 border border-slate-300">400</td>
-      <td class="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
+      <td className="p-2 border border-slate-300">invalid_metadata</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
     </tr>
   </tbody>
 </table>
-<div class="pb-4" />
+<div className="pb-4" />
