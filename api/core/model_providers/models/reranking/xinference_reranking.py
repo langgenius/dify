@@ -1,12 +1,11 @@
 import logging
-from typing import Optional, List
-
-from langchain.schema import Document
-from xinference_client.client.restful.restful_client import Client
+from typing import List, Optional
 
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.models.reranking.base import BaseReranking
 from core.model_providers.providers.base import BaseModelProvider
+from langchain.schema import Document
+from xinference_client.client.restful.restful_client import Client
 
 
 class XinferenceReranking(BaseReranking):
@@ -48,7 +47,7 @@ class XinferenceReranking(BaseReranking):
             )
             # score threshold check
             if score_threshold is not None:
-                if result.relevance_score >= score_threshold:
+                if result['relevance_score'] >= score_threshold:
                     rerank_documents.append(rerank_document)
             else:
                 rerank_documents.append(rerank_document)
