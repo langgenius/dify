@@ -40,7 +40,7 @@ def decode_jwt_token():
     site = db.session.query(Site).filter(Site.code == app_code).first()
     if not app_model:
         raise NotFound()
-    if not app_code and not site:
+    if not app_code or not site:
         raise Unauthorized('Site URL is no longer valid.')
     if app_model.enable_site is False:
         raise Unauthorized('Site is disabled.')
