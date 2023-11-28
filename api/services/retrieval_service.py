@@ -15,7 +15,7 @@ default_retrieval_model = {
         'reranking_model_name': ''
     },
     'top_k': 2,
-    'score_threshold_enable': False
+    'score_threshold_enabled': False
 }
 
 

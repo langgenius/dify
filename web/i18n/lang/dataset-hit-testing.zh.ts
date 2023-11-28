@@ -1,6 +1,6 @@
 const translation = {
   title: '召回测试',
-  desc: '基于给定的查询文本测试数据集的召回效果。',
+  desc: '基于给定的查询文本测试知识库的召回效果。',
   dateTimeFormat: 'YYYY-MM-DD HH:mm',
   recents: '最近查询',
   table: {
@@ -14,7 +14,7 @@ const translation = {
     title: '源文本',
     placeholder: '请输入文本，建议使用简短的陈述句。',
     countWarning: '不超过 200 个字符',
-    indexWarning: '仅支持高质量模式数据集',
+    indexWarning: '仅支持高质量模式知识库',
     testing: '测试',
   },
   hit: {
