@@ -2,11 +2,14 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
+import { fetchCurrentPlanInfo } from '@/service/billing'
+import { parseCurrentPlan } from '@/app/components/billing/utils'
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -100,19 +103,26 @@ export const ProviderContextProvider = ({
   }
 
   // TODO: Get from server
-  const plan = {
+  const [plan, setPlan] = useState({
     type: Plan.sandbox,
     usage: {
-      vectorSpace: 20,
-      buildApps: 50,
-      teamMembers: 5,
+      vectorSpace: 10,
+      buildApps: 10,
+      teamMembers: 1,
     },
     total: {
-      vectorSpace: 200,
-      buildApps: 50,
-      teamMembers: 8,
+      vectorSpace: 10,
+      buildApps: 10,
+      teamMembers: 1,
     },
-  }
+  })
+
+  useEffect(() => {
+    (async () => {
+      const data = await fetchCurrentPlanInfo()
+      setPlan(parseCurrentPlan(data))
+    })()
+  }, [])
 
   return (
     <ProviderContext.Provider value={{

@@ -33,9 +33,9 @@ const translation = {
     documentProcessingPriorityTip: '如需更高的文档处理优先级，请升级您的套餐',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
     priority: {
-      standard: '标准',
-      priority: '优先',
-      topPriority: '最高优先级',
+      'standard': '标准',
+      'priority': '优先',
+      'top-priority': '最高优先级',
     },
     logsHistory: '日志历史',
     days: '天',

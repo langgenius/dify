@@ -33,9 +33,9 @@ const translation = {
     documentProcessingPriorityTip: 'For higher document processing priority, please upgrade your plan.',
     documentProcessingPriorityUpgrade: 'Process more data with higher accuracy at faster speeds.',
     priority: {
-      standard: 'Standard',
-      priority: 'Priority',
-      topPriority: 'Top Priority',
+      'standard': 'Standard',
+      'priority': 'Priority',
+      'top-priority': 'Top Priority',
     },
     logsHistory: 'Logs history',
     days: 'days',

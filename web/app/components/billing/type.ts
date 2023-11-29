@@ -4,6 +4,7 @@ export enum Plan {
   team = 'team',
   enterprise = 'enterprise',
 }
+
 export enum Priority {
   standard = 'standard',
   priority = 'priority',
@@ -25,5 +26,24 @@ export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMe
 export enum DocumentProcessingPriority {
   standard = 'standard',
   priority = 'priority',
-  topPriority = 'topPriority',
+  topPriority = 'top-priority',
+}
+
+export type CurrentPlanInfoBackend = {
+  subscription: {
+    plan: Plan
+  }
+  members: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  apps: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  vector_space: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  docs_processing: DocumentProcessingPriority
 }
