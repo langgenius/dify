@@ -6,6 +6,7 @@ const translation = {
     encourageShort: '升级',
   },
   viewBilling: '查看账单信息',
+  buyPermissionDeniedTip: '请联系企业管理员订阅',
   plansCommon: {
     title: '选择适合您的套餐',
     yearlyTip: '订阅年度计划可免费获得 2个月！',

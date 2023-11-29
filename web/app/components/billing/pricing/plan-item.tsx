@@ -4,8 +4,10 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { Plan } from '../type'
+import Toast from '../../base/toast'
 import { PlanRange } from './select-plan-range'
 import { ALL_PLANS, NUM_INFINITE } from '@/config'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   currentPlan: Plan
@@ -61,6 +63,8 @@ const PlanItem: FC<Props> = ({
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
   const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
+  const { isCurrentWorkspaceManager } = useAppContext()
+
   const btnText = (() => {
     if (isCurrent)
       return t('billing.plansCommon.currentPlan')
@@ -142,7 +146,15 @@ const PlanItem: FC<Props> = ({
           onClick={() => {
             if (isPlanDisabled)
               return
-
+            // Only workspace manager can buy plan
+            if (!isCurrentWorkspaceManager) {
+              Toast.notify({
+                type: 'error',
+                message: t('billing.buyPermissionDeniedTip'),
+                className: 'z-[1001]',
+              })
+              return
+            }
             window.open(link, '_blank')
           }}
         >
