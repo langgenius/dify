@@ -65,6 +65,7 @@ const ModelPage = () => {
       config.replicate,
       config.huggingface_hub,
       config.cohere,
+      config.jina,
       config.zhipuai,
       config.baichuan,
       config.spark,
@@ -81,6 +82,7 @@ const ModelPage = () => {
     modelList = [
       config.huggingface_hub,
       config.cohere,
+      config.jina,
       config.zhipuai,
       config.spark,
       config.baichuan,
