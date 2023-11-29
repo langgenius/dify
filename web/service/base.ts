@@ -237,29 +237,24 @@ const baseFetch = <T>(
             switch (res.status) {
               case 401: {
                 if (isPublicAPI) {
-                  Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return bodyJson.then((data: T) => Promise.reject(data))
+                  return bodyJson.then((data: ResponseError) => {
+                    Toast.notify({ type: 'error', message: data.message })
+                    return Promise.reject(data)
+                  })
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
-                if (IS_CE_EDITION) {
-                  bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'not_setup') {
-                      globalThis.location.href = `${globalThis.location.origin}/install`
-                    }
-                    else {
-                      if (location.pathname === '/signin') {
-                        bodyJson.then((data: ResponseError) => {
-                          Toast.notify({ type: 'error', message: data.message })
-                        })
-                      }
-                      else {
-                        globalThis.location.href = loginUrl
-                      }
-                    }
-                  })
-                  return Promise.reject(Error('Unauthorized'))
-                }
-                globalThis.location.href = loginUrl
+                bodyJson.then((data: ResponseError) => {
+                  if (data.code === 'not_setup' && IS_CE_EDITION)
+                    globalThis.location.href = `${globalThis.location.origin}/install`
+                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
+                    globalThis.location.href = loginUrl
+                  else
+                    Toast.notify({ type: 'error', message: data.message })
+                }).catch(() => {
+                  // Handle any other errors
+                  globalThis.location.href = loginUrl
+                })
+
                 break
               }
               case 403:
