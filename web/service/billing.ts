@@ -4,7 +4,7 @@ import type { CurrentPlanInfoBackend, SubscriptionUrlsBackend } from '@/app/comp
 export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
   return Promise.resolve({
     subscription: {
-      plan: Plan.sandbox,
+      plan: Plan.professional,
     },
     members: {
       size: 5,
@@ -12,7 +12,7 @@ export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
     },
     apps: {
       size: 6,
-      limit: 0,
+      limit: 10,
     },
     vector_space: {
       size: 7,

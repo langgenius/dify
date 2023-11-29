@@ -17,8 +17,7 @@ const HeaderBillingBtn: FC<Props> = ({
   const {
     type,
   } = plan
-  if (type === Plan.sandbox)
-    return <UpgradeBtn isShort />
+
   const name = (() => {
     if (type === Plan.professional)
       return 'pro'
@@ -31,6 +30,9 @@ const HeaderBillingBtn: FC<Props> = ({
       return 'border-[#E0EAFF] hover:border-[#C7D7FE] bg-[#E0EAFF] text-[#3538CD]'
     return ''
   })()
+  if (type === Plan.sandbox)
+    return <UpgradeBtn onClick={onClick} isShort />
+
   return (
     <div onClick={onClick} className={cn(classNames, 'flex items-center h-[22px] px-2 rounded-md border text-xs font-semibold uppercase cursor-pointer')}>
       {name}

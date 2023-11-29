@@ -14,6 +14,7 @@ type Props = {
   size?: 'md' | 'lg'
   isPlain?: boolean
   isShort?: boolean
+  onClick?: () => void
 }
 
 const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => {} }) => {
@@ -37,12 +38,13 @@ const UpgradeBtn: FC<Props> = ({
   isFull = false,
   isShort = false,
   size = 'md',
+  onClick,
 }) => {
   const { t } = useTranslation()
   const { setShowPricingModal } = useModalContext()
 
   if (isPlain)
-    return <PlainBtn onClick={setShowPricingModal as any} className={className} />
+    return <PlainBtn onClick={onClick || setShowPricingModal as any} className={className} />
 
   return (
     <div
@@ -53,7 +55,7 @@ const UpgradeBtn: FC<Props> = ({
         size === 'lg' ? 'h-10' : 'h-9',
         'relative flex items-center cursor-pointer border rounded-[20px] border-[#0096EA] text-white',
       )}
-      onClick={setShowPricingModal}
+      onClick={onClick || setShowPricingModal}
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
       <div className='text-xs font-normal'>{t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}</div>

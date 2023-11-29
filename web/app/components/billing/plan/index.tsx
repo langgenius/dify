@@ -39,8 +39,6 @@ const PlanComp: FC<Props> = ({
   const { plan } = useProviderContext()
   const {
     type,
-    usage,
-    total,
   } = plan
 
   const isInHeader = loc === 'header'
@@ -83,6 +81,7 @@ const PlanComp: FC<Props> = ({
           <UpgradeBtn
             className='flex-shrink-0 my-3'
             isFull
+            size='lg'
             isPlain={type !== Plan.sandbox}
           />
         )}
