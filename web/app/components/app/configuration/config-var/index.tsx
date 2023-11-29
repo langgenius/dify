@@ -186,7 +186,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
       {hasVar && (
         <div className='rounded-lg border border-gray-200 bg-white overflow-x-auto'>
-          <table className={`${s.table} min-w-[440px] max-w-full border-collapse border-0 rounded-lg text-sm`}>
+          <table className={`${s.table} min-w-[440px] w-full max-w-full border-collapse border-0 rounded-lg text-sm`}>
             <thead className="border-b  border-gray-200 text-gray-500 text-xs font-medium">
               <tr className='uppercase'>
                 <td>{t('appDebug.variableTable.key')}</td>
