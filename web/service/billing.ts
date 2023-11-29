@@ -46,3 +46,7 @@ export const fetchSubscriptionUrls = (): Promise<SubscriptionUrlsBackend> => {
     ],
   } as SubscriptionUrlsBackend)
 }
+
+export const fetchBillingUrl = (): Promise<string> => {
+  return Promise.resolve('https://ttt/billing')
+}
