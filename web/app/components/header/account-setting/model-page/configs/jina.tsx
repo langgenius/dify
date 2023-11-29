@@ -29,7 +29,7 @@ const config: ProviderConfig = {
     },
     icon: <Jina className='w-6 h-6' />,
     link: {
-      href: 'https://dashboard.cohere.com/api-keys',
+      href: 'https://jina.ai/embeddings/',
       label: {
         'en': 'Get your API key from Jina',
         'zh-Hans': '从 Jina 获取 API Key',
