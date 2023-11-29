@@ -4,8 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
-import { ArtificialBrain } from '../../base/icons/src/vender/line/development'
-import UsageInfo from '../usage-info'
+import VectorSpaceInfo from '../usage-info/vector-space-info'
 import s from './style.module.css'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
@@ -25,15 +24,7 @@ const VectorSpaceFull: FC = () => {
           </div>
           <UpgradeBtn />
         </div>
-        <UsageInfo
-          className='pt-4'
-          Icon={ArtificialBrain}
-          name={t('billing.plansCommon.vectorSpace')}
-          tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
-          usage={total.vectorSpace}
-          total={total.vectorSpace}
-          unit='MB'
-        />
+        <VectorSpaceInfo className='pt-4' />
       </div>
     </GridMask>
   )

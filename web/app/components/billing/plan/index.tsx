@@ -4,10 +4,9 @@ import React from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '../type'
-import UsageInfo from '../usage-info'
+import VectorSpaceInfo from '../usage-info/vector-space-info'
+import AppsInfo from '../usage-info/apps-info'
 import UpgradeBtn from '../upgrade-btn'
-import { ArtificialBrain } from '../../base/icons/src/vender/line/development'
-import { ChatBot } from '../../base/icons/src/vender/line/communication'
 import { useProviderContext } from '@/context/provider-context'
 
 const typeStyle = {
@@ -78,22 +77,8 @@ const PlanComp: FC<Props> = ({
 
       {/* Plan detail */}
       <div className='rounded-xl bg-white px-6 py-3'>
-        <UsageInfo
-          className='py-3'
-          Icon={ArtificialBrain}
-          name={t('billing.plansCommon.vectorSpace')}
-          tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
-          usage={usage.vectorSpace}
-          total={total.vectorSpace}
-          unit='MB'
-        />
-        <UsageInfo
-          className='py-3'
-          Icon={ChatBot}
-          name={t('billing.plansCommon.buildApps')}
-          usage={usage.buildApps}
-          total={total.buildApps}
-        />
+        <VectorSpaceInfo className='py-3' />
+        <AppsInfo className='py-3' />
         {isInHeader && type === Plan.sandbox && (
           <UpgradeBtn
             className='flex-shrink-0 my-3'
