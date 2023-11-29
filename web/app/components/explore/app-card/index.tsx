@@ -30,7 +30,7 @@ const AppCard = ({
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   return (
-    <div className='col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'>
+    <div className={cn(s.wrap, 'col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg')}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <AppIcon size='small' icon={app.app.icon} background={app.app.icon_background} />
         <div className='relative h-8 text-sm font-medium leading-8 grow'>
