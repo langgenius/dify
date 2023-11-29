@@ -2,7 +2,9 @@ import { Plan, type PlanInfo, Priority } from '@/app/components/billing/type'
 
 const supportModelProviders = 'OpenAI/Anthropic/Azure OpenAI/  Llama2/Hugging Face/Replicate'
 
-export const NUM_INFINITE = 999999
+export const NUM_INFINITE = 99999999
+
+export const contactSalesUrl = 'https://xxx/contact-sales'
 
 export const ALL_PLANS: Record<Plan, PlanInfo> = {
   sandbox: {

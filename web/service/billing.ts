@@ -1,9 +1,10 @@
 import { Plan } from '@/app/components/billing/type'
-import type { CurrentPlanInfoBackend } from '@/app/components/billing/type'
+import type { CurrentPlanInfoBackend, SubscriptionUrlsBackend } from '@/app/components/billing/type'
+
 export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
   return Promise.resolve({
     subscription: {
-      plan: Plan.team,
+      plan: Plan.sandbox,
     },
     members: {
       size: 5,
@@ -19,4 +20,29 @@ export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
     },
     docs_processing: 'standard',
   } as CurrentPlanInfoBackend)
+}
+
+export const fetchSubscriptionUrls = (): Promise<SubscriptionUrlsBackend> => {
+  return Promise.resolve({
+    monthly: [
+      {
+        plan: Plan.professional,
+        url: 'https://ttt/subscribe/professional/monthly',
+      },
+      {
+        plan: Plan.team,
+        url: 'https://ttt/subscribe/team/monthly',
+      },
+    ],
+    yearly: [
+      {
+        plan: Plan.professional,
+        url: 'https://ttt/subscribe/professional/yearly',
+      },
+      {
+        plan: Plan.team,
+        url: 'https://ttt/subscribe/team/yearly',
+      },
+    ],
+  } as SubscriptionUrlsBackend)
 }

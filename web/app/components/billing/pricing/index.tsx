@@ -1,14 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import { Plan } from '../type'
+import type { SubscriptionUrlsBackend } from '../type'
+import { contactSalesUrl } from '../config'
 import SelectPlanRange, { PlanRange } from './select-plan-range'
 import PlanItem from './plan-item'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
+import { fetchSubscriptionUrls } from '@/service/billing'
+
 type Props = {
   onCancel: () => void
 }
@@ -18,8 +22,21 @@ const Pricing: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
+  const [subscriptionUrls, setSubscriptionUrls] = React.useState<SubscriptionUrlsBackend | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      const urls = await fetchSubscriptionUrls()
+      setSubscriptionUrls(urls)
+    })()
+  }, [])
 
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
+  const getSubscriptionUrl = (plan: Plan) => {
+    if (!subscriptionUrls || !subscriptionUrls[planRange])
+      return ''
+    return subscriptionUrls[planRange].find(item => item.plan === plan)?.url || ''
+  }
   return createPortal(
     <div
       className='fixed inset-0 flex bg-white z-[1000] overflow-auto'
@@ -39,25 +56,25 @@ const Pricing: FC<Props> = ({
               currentPlan={plan.type}
               plan={Plan.sandbox}
               planRange={planRange}
-              link='https://todo'
+              link=''
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.professional}
               planRange={planRange}
-              link='https://todo'
+              link={getSubscriptionUrl(Plan.professional)}
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.team}
               planRange={planRange}
-              link='https://todo'
+              link={getSubscriptionUrl(Plan.team)}
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.enterprise}
               planRange={planRange}
-              link='https://todo'
+              link={contactSalesUrl}
             />
           </div>
         </div>

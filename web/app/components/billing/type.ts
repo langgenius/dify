@@ -47,3 +47,13 @@ export type CurrentPlanInfoBackend = {
   }
   docs_processing: DocumentProcessingPriority
 }
+
+export type SubscriptionItem = {
+  plan: Plan
+  url: string
+}
+
+export type SubscriptionUrlsBackend = {
+  monthly: SubscriptionItem[]
+  yearly: SubscriptionItem[]
+}
