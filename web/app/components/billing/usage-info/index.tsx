@@ -1,8 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { InfoCircle } from '../../base/icons/src/vender/line/general'
 import ProgressBar from '../progress-bar'
+import { NUM_INFINITE } from '../config'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -27,6 +29,8 @@ const UsageInfo: FC<Props> = ({
   total,
   unit = '',
 }) => {
+  const { t } = useTranslation()
+
   const percent = usage / total * 100
   const color = (() => {
     if (percent < LOW)
@@ -56,7 +60,7 @@ const UsageInfo: FC<Props> = ({
             color: percent < LOW ? '#344054' : color,
           }}>{usage}{unit}</div>
           <div className='mx-1 text-gray-300'>/</div>
-          <div className='text-gray-500'>{total}{unit}</div>
+          <div className='text-gray-500'>{total === NUM_INFINITE ? t('billing.plansCommon.unlimited') : `${total}${unit}`}</div>
         </div>
       </div>
       <div className='mt-2'>

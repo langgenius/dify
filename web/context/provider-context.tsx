@@ -10,6 +10,8 @@ import type { RETRIEVE_METHOD } from '@/types/app'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
+import { defaultPlan } from '@/app/components/billing/config'
+
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -102,20 +104,7 @@ export const ProviderContextProvider = ({
       mutateRerankModelList()
   }
 
-  // TODO: Get from server
-  const [plan, setPlan] = useState({
-    type: Plan.sandbox,
-    usage: {
-      vectorSpace: 10,
-      buildApps: 10,
-      teamMembers: 1,
-    },
-    total: {
-      vectorSpace: 10,
-      buildApps: 10,
-      teamMembers: 1,
-    },
-  })
+  const [plan, setPlan] = useState(defaultPlan)
 
   useEffect(() => {
     (async () => {

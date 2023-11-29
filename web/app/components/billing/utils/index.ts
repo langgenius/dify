@@ -1,4 +1,13 @@
 import type { CurrentPlanInfoBackend } from '../type'
+import { NUM_INFINITE } from '@/app/components/billing/config'
+
+const parseLimit = (limit: number) => {
+  if (limit === 0)
+    return NUM_INFINITE
+
+  return limit
+}
+
 export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   return {
     type: data.subscription.plan,
@@ -8,9 +17,9 @@ export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
       teamMembers: data.members.size,
     },
     total: {
-      vectorSpace: data.vector_space.limit,
-      buildApps: data.apps.limit,
-      teamMembers: data.members.limit,
+      vectorSpace: parseLimit(data.vector_space.limit),
+      buildApps: parseLimit(data.apps.limit),
+      teamMembers: parseLimit(data.members.limit),
     },
   }
 }

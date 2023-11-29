@@ -1,5 +1,4 @@
 /* eslint-disable import/no-mutable-exports */
-import { type Plan, type PlanInfo, Priority } from '@/app/components/billing/type'
 import { AppType, ProviderType } from '@/types/app'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
@@ -147,49 +146,4 @@ export const NEED_REFRESH_APP_LIST_KEY = 'needRefreshAppList'
 export const DATASET_DEFAULT = {
   top_k: 2,
   score_threshold: 0.5,
-}
-
-const supportModelProviders = 'OpenAI/Anthropic/Azure OpenAI/  Llama2/Hugging Face/Replicate'
-export const NUM_INFINITE = 999999
-export const ALL_PLANS: Record<Plan, PlanInfo> = {
-  sandbox: {
-    level: 1,
-    price: 0,
-    modelProviders: supportModelProviders,
-    teamMembers: 1,
-    buildApps: 10,
-    vectorSpace: 10,
-    documentProcessingPriority: Priority.standard,
-    logHistory: 30,
-  },
-  professional: {
-    level: 2,
-    price: 59,
-    modelProviders: supportModelProviders,
-    teamMembers: 3,
-    buildApps: 50,
-    vectorSpace: 200,
-    documentProcessingPriority: Priority.priority,
-    logHistory: NUM_INFINITE,
-  },
-  team: {
-    level: 3,
-    price: 159,
-    modelProviders: supportModelProviders,
-    teamMembers: NUM_INFINITE,
-    buildApps: NUM_INFINITE,
-    vectorSpace: 1000,
-    documentProcessingPriority: Priority.topPriority,
-    logHistory: NUM_INFINITE,
-  },
-  enterprise: {
-    level: 4,
-    price: 0,
-    modelProviders: supportModelProviders,
-    teamMembers: NUM_INFINITE,
-    buildApps: NUM_INFINITE,
-    vectorSpace: NUM_INFINITE,
-    documentProcessingPriority: Priority.topPriority,
-    logHistory: NUM_INFINITE,
-  },
 }

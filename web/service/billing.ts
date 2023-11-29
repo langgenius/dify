@@ -3,19 +3,19 @@ import type { CurrentPlanInfoBackend } from '@/app/components/billing/type'
 export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
   return Promise.resolve({
     subscription: {
-      plan: Plan.sandbox,
+      plan: Plan.team,
     },
     members: {
       size: 5,
-      limit: 20,
+      limit: 0,
     },
     apps: {
       size: 6,
-      limit: 30,
+      limit: 0,
     },
     vector_space: {
       size: 7,
-      limit: 40,
+      limit: 0,
     },
     docs_processing: 'standard',
   } as CurrentPlanInfoBackend)

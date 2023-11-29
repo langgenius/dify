@@ -6,7 +6,7 @@ import cn from 'classnames'
 import { Plan } from '../type'
 import Toast from '../../base/toast'
 import { PlanRange } from './select-plan-range'
-import { ALL_PLANS, NUM_INFINITE } from '@/config'
+import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
 import { useAppContext } from '@/context/app-context'
 
 type Props = {
