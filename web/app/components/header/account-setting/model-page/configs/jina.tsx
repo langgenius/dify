@@ -1,6 +1,6 @@
 import { ProviderEnum } from '../declarations'
 import type { ProviderConfig } from '../declarations'
-import { JinaText } from '@/app/components/base/icons/src/public/llm'
+import { Jina, JinaText } from '@/app/components/base/icons/src/public/llm'
 
 const config: ProviderConfig = {
   selector: {
@@ -8,7 +8,7 @@ const config: ProviderConfig = {
       'en': 'Jina AI',
       'zh-Hans': 'Jina AI',
     },
-    icon: <JinaText className='w-full h-full' />,
+    icon: <Jina className='w-full h-full' />,
   },
   item: {
     key: ProviderEnum.jina,

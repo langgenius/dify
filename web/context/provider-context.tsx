@@ -2,10 +2,17 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
+import { useEffect, useState } from 'react'
 import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
 import { ModelFeature, ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
+import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
+import { fetchCurrentPlanInfo } from '@/service/billing'
+import { parseCurrentPlan } from '@/app/components/billing/utils'
+import { defaultPlan } from '@/app/components/billing/config'
+import { IS_CLOUD_EDITION } from '@/config'
+
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
   embeddingsModelList: BackendModel[]
@@ -23,6 +30,12 @@ const ProviderContext = createContext<{
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
   supportRetrievalMethods: RETRIEVE_METHOD[]
+  plan: {
+    type: Plan
+    usage: UsagePlanInfo
+    total: UsagePlanInfo
+  }
+  isFetchedPlan: boolean
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -40,6 +53,20 @@ const ProviderContext = createContext<{
       isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => {},
       supportRetrievalMethods: [],
+      plan: {
+        type: Plan.sandbox,
+        usage: {
+          vectorSpace: 32,
+          buildApps: 12,
+          teamMembers: 1,
+        },
+        total: {
+          vectorSpace: 200,
+          buildApps: 50,
+          teamMembers: 1,
+        },
+      },
+      isFetchedPlan: false,
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -80,6 +107,18 @@ export const ProviderContextProvider = ({
       mutateRerankModelList()
   }
 
+  const [plan, setPlan] = useState(defaultPlan)
+  const [isFetchedPlan, setIsFetchedPlan] = useState(false)
+  useEffect(() => {
+    if (!IS_CLOUD_EDITION)
+      return
+    (async () => {
+      const data = await fetchCurrentPlanInfo()
+      setPlan(parseCurrentPlan(data))
+      setIsFetchedPlan(true)
+    })()
+  }, [])
+
   return (
     <ProviderContext.Provider value={{
       textGenerationModelList: textGenerationModelList || [],
@@ -98,6 +137,8 @@ export const ProviderContextProvider = ({
       isRerankDefaultModelVaild,
       mutateRerankDefaultModel,
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
+      plan,
+      isFetchedPlan,
     }}>
       {children}
     </ProviderContext.Provider>

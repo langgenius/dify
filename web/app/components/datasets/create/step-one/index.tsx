@@ -15,6 +15,9 @@ import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { fetchDocumentsLimit } from '@/service/common'
+import { useProviderContext } from '@/context/provider-context'
+import { IS_CLOUD_EDITION } from '@/config'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 
 type IStepOneProps = {
   datasetId?: string
@@ -88,11 +91,20 @@ const StepOne = ({
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
 
+  const { plan } = useProviderContext()
+  const allFileLoaded = (files.length > 0 && files.every(file => file.file.id))
+  const hasNotin = notionPages.length > 0
+  const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
+  const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && IS_CLOUD_EDITION
+
   const nextDisabled = useMemo(() => {
     if (!files.length)
       return true
     if (files.some(file => !file.file.id))
       return true
+    if (isShowVectorSpaceFull)
+      return true
+
     return false
   }, [files])
   return (
@@ -164,6 +176,11 @@ const StepOne = ({
                 countLimit={limitsData.documents_limit}
                 countUsed={limitsData.documents_count}
               />
+              {isShowVectorSpaceFull && (
+                <div className='max-w-[640px] mb-4'>
+                  <VectorSpaceFull />
+                </div>
+              )}
               <Button disabled={nextDisabled} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
             </>
           )}
@@ -181,7 +198,12 @@ const StepOne = ({
                       countUsed={limitsData.documents_count}
                     />
                   </div>
-                  <Button disabled={!notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                  {isShowVectorSpaceFull && (
+                    <div className='max-w-[640px] mb-4'>
+                      <VectorSpaceFull />
+                    </div>
+                  )}
+                  <Button disabled={isShowVectorSpaceFull || !notionPages.length} className={s.submitButton} type='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
                 </>
               )}
             </>
