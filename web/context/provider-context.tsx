@@ -35,6 +35,7 @@ const ProviderContext = createContext<{
     usage: UsagePlanInfo
     total: UsagePlanInfo
   }
+  isFetchedPlan: boolean
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -65,6 +66,7 @@ const ProviderContext = createContext<{
           teamMembers: 1,
         },
       },
+      isFetchedPlan: false,
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -106,12 +108,14 @@ export const ProviderContextProvider = ({
   }
 
   const [plan, setPlan] = useState(defaultPlan)
+  const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   useEffect(() => {
     if (!IS_CLOUD_EDITION)
       return
     (async () => {
       const data = await fetchCurrentPlanInfo()
       setPlan(parseCurrentPlan(data))
+      setIsFetchedPlan(true)
     })()
   }, [])
 
@@ -134,6 +138,7 @@ export const ProviderContextProvider = ({
       mutateRerankDefaultModel,
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
+      isFetchedPlan,
     }}>
       {children}
     </ProviderContext.Provider>
