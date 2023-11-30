@@ -1,3 +1,7 @@
+.wrap {
+  display: flex;
+}
+
 .mode {
   display: flex;
   height: 28px;
