@@ -25,7 +25,7 @@ class BillingInfo(Resource):
                 "size": 2,
                 "limit": 3
             },
-            "app": {
+            "apps": {
                 "size": 20,
                 "limit": 50
             },
