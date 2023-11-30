@@ -19,7 +19,6 @@ import LogoEmbededChatHeader from '@/app/components/base/logo/logo-embeded-chat-
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { IS_CLOUD_EDITION } from '@/config'
 import { NUM_INFINITE } from '@/app/components/billing/config'
 
 dayjs.extend(relativeTime)
@@ -39,9 +38,9 @@ const MembersPage = () => {
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
   const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
-  const { plan } = useProviderContext()
-  const isNotUnlimitedMemberPlan = IS_CLOUD_EDITION && plan.type !== Plan.team && plan.type !== Plan.enterprise
-  const isMemberFull = IS_CLOUD_EDITION && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
+  const { plan, enableBilling } = useProviderContext()
+  const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
+  const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
 
   return (
     <>
@@ -50,7 +49,7 @@ const MembersPage = () => {
           <LogoEmbededChatHeader className='!w-10 !h-10' />
           <div className='grow mx-2'>
             <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
-            {IS_CLOUD_EDITION && (
+            {enableBilling && (
               <div className='text-xs text-gray-500'>
                 {isNotUnlimitedMemberPlan
                   ? (

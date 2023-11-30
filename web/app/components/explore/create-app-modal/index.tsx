@@ -8,7 +8,6 @@ import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 export type CreateAppModalProps = {
@@ -35,8 +34,8 @@ const CreateAppModal = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
 
-  const { plan } = useProviderContext()
-  const isAppsFull = (IS_CLOUD_EDITION && plan.usage.buildApps >= plan.total.buildApps)
+  const { plan, enableBilling } = useProviderContext()
+  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const submit = () => {
     if (!name.trim()) {

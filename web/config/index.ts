@@ -38,7 +38,6 @@ export const PUBLIC_API_PREFIX: string = publicApiPrefix
 
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition')
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
-export const IS_CLOUD_EDITION = EDITION !== 'SELF_HOSTED'
 
 export const MODEL_LIST = [
   { id: 'gpt-3.5-turbo', name: 'gpt-3.5-turbo', type: AppType.chat },

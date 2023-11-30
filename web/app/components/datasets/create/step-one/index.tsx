@@ -16,7 +16,6 @@ import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { fetchDocumentsLimit } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
-import { IS_CLOUD_EDITION } from '@/config'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 
 type IStepOneProps = {
@@ -91,11 +90,11 @@ const StepOne = ({
 
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
 
-  const { plan } = useProviderContext()
+  const { plan, enableBilling } = useProviderContext()
   const allFileLoaded = (files.length > 0 && files.every(file => file.file.id))
   const hasNotin = notionPages.length > 0
   const isVectorSpaceFull = plan.usage.vectorSpace >= plan.total.vectorSpace
-  const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && IS_CLOUD_EDITION
+  const isShowVectorSpaceFull = (allFileLoaded || hasNotin) && isVectorSpaceFull && enableBilling
 
   const nextDisabled = useMemo(() => {
     if (!files.length)

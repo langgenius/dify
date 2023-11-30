@@ -15,8 +15,8 @@ import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import PlanComp from '@/app/components/billing/plan'
-import { IS_CLOUD_EDITION } from '@/config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useProviderContext } from '@/context/provider-context'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-9 rounded-xl
@@ -36,6 +36,7 @@ const Header = () => {
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
   const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false)
+  const { enableBilling } = useProviderContext()
 
   useEffect(() => {
     hideNavMenu()
@@ -74,7 +75,7 @@ const Header = () => {
       )}
       <div className='flex items-center flex-shrink-0'>
         <EnvNav />
-        {IS_CLOUD_EDITION && (
+        {enableBilling && (
           <div className='mr-3 select-none'>
             <HeaderBillingBtn onClick={() => setShowUpgradePanel(true)} />
             {showUpgradePanel && (

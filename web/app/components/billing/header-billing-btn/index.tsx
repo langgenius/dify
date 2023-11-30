@@ -5,7 +5,7 @@ import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
 import { Plan } from '../type'
 import { useProviderContext } from '@/context/provider-context'
-import { IS_CLOUD_EDITION } from '@/config'
+
 type Props = {
   onClick: () => void
 }
@@ -13,7 +13,7 @@ type Props = {
 const HeaderBillingBtn: FC<Props> = ({
   onClick,
 }) => {
-  const { plan, isFetchedPlan } = useProviderContext()
+  const { plan, enableBilling, isFetchedPlan } = useProviderContext()
   const {
     type,
   } = plan
@@ -31,7 +31,7 @@ const HeaderBillingBtn: FC<Props> = ({
     return ''
   })()
 
-  if (!IS_CLOUD_EDITION || !isFetchedPlan)
+  if (!enableBilling || !isFetchedPlan)
     return null
 
   if (type === Plan.sandbox)
