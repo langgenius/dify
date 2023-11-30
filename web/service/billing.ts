@@ -11,7 +11,7 @@ export const fetchCurrentPlanInfo = (): Promise<CurrentPlanInfoBackend> => {
       limit: 0,
     },
     apps: {
-      size: 6,
+      size: 16,
       limit: 10,
     },
     vector_space: {

@@ -11,7 +11,7 @@ const ProgressBar = ({
       <div
         className='h-2 rounded-[4px]'
         style={{
-          width: `${percent}%`,
+          width: `${Math.min(percent, 100)}%`,
           backgroundColor: color,
         }}
       />
