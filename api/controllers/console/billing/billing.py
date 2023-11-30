@@ -17,9 +17,9 @@ class BillingInfo(Resource):
     @only_edition_cloud
     def get(self):
         return {
+            "enabled": True,
             "subscription": {
-                "plan": "professional",
-                "duration": "yearly"
+                "plan": "professional"
             },
             "members": {
                 "size": 2,
@@ -34,8 +34,7 @@ class BillingInfo(Resource):
                 "limit": 200
             },
             "docs_processing": "top_priority",
-            "can_replace_logo": True,
-            "logs_history_days": 0
+            "can_replace_logo": True
         }
 
         # return BillingService.get_info(current_user.current_tenant_id)
