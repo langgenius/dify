@@ -18,6 +18,7 @@ import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   datasetId: string
@@ -81,6 +82,7 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) =>
 
 const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType }) => {
   const { t } = useTranslation()
+  const { enableBilling } = useProviderContext()
 
   const getFirstDocument = documents[0]
 
@@ -118,14 +120,14 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }, [])
 
   // get rule
-  const { data: ruleDetail, error: ruleError } = useSWR({
+  const { data: ruleDetail } = useSWR({
     action: 'fetchProcessRule',
     params: { documentId: getFirstDocument.id },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
   // get cost
-  const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
+  const { data: indexingEstimateDetail } = useSWR({
     action: 'fetchIndexingEstimateBatch',
     datasetId,
     batchId,
@@ -195,15 +197,19 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           )}
         </div>
       </div>
-      <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
-        <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
-          <ZapFast className='w-4 h-4 text-[#FB6514]' />
-        </div>
-        <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
-          {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
-        </div>
-        <UpgradeBtn />
-      </div>
+      {
+        enableBilling && (
+          <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
+            <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
+              <ZapFast className='w-4 h-4 text-[#FB6514]' />
+            </div>
+            <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
+              {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+            </div>
+            <UpgradeBtn />
+          </div>
+        )
+      }
       <div className={s.progressContainer}>
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
           <div key={indexingStatusDetail.id} className={cn(
@@ -226,7 +232,11 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 />
               )}
               <div className={`${s.name} truncate`} title={getSourceName(indexingStatusDetail.id)}>{getSourceName(indexingStatusDetail.id)}</div>
-              <PriorityLabel />
+              {
+                enableBilling && (
+                  <PriorityLabel />
+                )
+              }
             </div>
             <div className='shrink-0'>
               {isSourceEmbedding(indexingStatusDetail) && (
