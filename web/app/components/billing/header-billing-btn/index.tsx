@@ -5,7 +5,7 @@ import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
 import { Plan } from '../type'
 import { useProviderContext } from '@/context/provider-context'
-
+import { IS_CLOUD_EDITION } from '@/config'
 type Props = {
   onClick: () => void
 }
@@ -13,7 +13,7 @@ type Props = {
 const HeaderBillingBtn: FC<Props> = ({
   onClick,
 }) => {
-  const { plan } = useProviderContext()
+  const { plan, isFetchedPlan } = useProviderContext()
   const {
     type,
   } = plan
@@ -30,6 +30,10 @@ const HeaderBillingBtn: FC<Props> = ({
       return 'border-[#E0EAFF] hover:border-[#C7D7FE] bg-[#E0EAFF] text-[#3538CD]'
     return ''
   })()
+
+  if (!IS_CLOUD_EDITION || !isFetchedPlan)
+    return null
+
   if (type === Plan.sandbox)
     return <UpgradeBtn onClick={onClick} isShort />
 
