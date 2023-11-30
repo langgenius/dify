@@ -50,6 +50,6 @@ export const fetchSubscriptionUrls = () => {
 }
 
 export const fetchBillingUrl = () => {
-  return get<Promise<string>>('/billing/invoices')
+  return get<Promise<{ url: string }>>('/billing/invoices')
   // return Promise.resolve('https://ttt/billing')
 }

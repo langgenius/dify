@@ -17,7 +17,7 @@ const Billing: FC = () => {
     if (!IS_CLOUD_EDITION && !isCurrentWorkspaceManager)
       return
     (async () => {
-      const url = await fetchBillingUrl()
+      const { url } = await fetchBillingUrl()
       setBillingUrl(url)
     })()
   }, [isCurrentWorkspaceManager])

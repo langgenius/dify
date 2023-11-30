@@ -106,7 +106,6 @@ export const ProviderContextProvider = ({
   }
 
   const [plan, setPlan] = useState(defaultPlan)
-
   useEffect(() => {
     if (!IS_CLOUD_EDITION)
       return
