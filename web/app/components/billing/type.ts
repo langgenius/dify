@@ -30,6 +30,7 @@ export enum DocumentProcessingPriority {
 }
 
 export type CurrentPlanInfoBackend = {
+  enabled: boolean
   subscription: {
     plan: Plan
   }

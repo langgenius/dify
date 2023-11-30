@@ -11,7 +11,6 @@ import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
-import { IS_CLOUD_EDITION } from '@/config'
 
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
@@ -36,6 +35,7 @@ const ProviderContext = createContext<{
     total: UsagePlanInfo
   }
   isFetchedPlan: boolean
+  enableBilling: boolean
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -67,6 +67,7 @@ const ProviderContext = createContext<{
         },
       },
       isFetchedPlan: false,
+      enableBilling: false,
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -109,13 +110,16 @@ export const ProviderContextProvider = ({
 
   const [plan, setPlan] = useState(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
+  const [enableBilling, setEnableBilling] = useState(true)
   useEffect(() => {
-    if (!IS_CLOUD_EDITION)
-      return
     (async () => {
       const data = await fetchCurrentPlanInfo()
-      setPlan(parseCurrentPlan(data))
-      setIsFetchedPlan(true)
+      const enabled = data.enabled
+      setEnableBilling(enabled)
+      if (enabled) {
+        setPlan(parseCurrentPlan(data))
+        setIsFetchedPlan(true)
+      }
     })()
   }, [])
 
@@ -139,6 +143,7 @@ export const ProviderContextProvider = ({
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
       isFetchedPlan,
+      enableBilling,
     }}>
       {children}
     </ProviderContext.Provider>

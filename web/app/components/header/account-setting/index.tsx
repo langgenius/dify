@@ -26,8 +26,8 @@ import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import { IS_CLOUD_EDITION } from '@/config'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useProviderContext } from '@/context/provider-context'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -55,6 +55,8 @@ export default function AccountSetting({
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
+  const { enableBilling } = useProviderContext()
+
   const workplaceGroupItems = (() => {
     return [
       {
@@ -71,7 +73,7 @@ export default function AccountSetting({
       },
       {
         // Use key false to hide this item
-        key: IS_CLOUD_EDITION ? 'billing' : false,
+        key: enableBilling ? 'billing' : false,
         name: t('common.settings.billing'),
         icon: <GoldCoinOutLine className={iconClassName} />,
         activeIcon: <GoldCoin className={iconClassName} />,

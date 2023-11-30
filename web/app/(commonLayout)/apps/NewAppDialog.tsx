@@ -17,7 +17,6 @@ import { createApp, fetchAppTemplates } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
 import EmojiPicker from '@/app/components/base/emoji-picker'
-import { IS_CLOUD_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 
@@ -56,8 +55,8 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
     }
   }, [mutateTemplates, show])
 
-  const { plan } = useProviderContext()
-  const isAppsFull = (IS_CLOUD_EDITION && plan.usage.buildApps >= plan.total.buildApps)
+  const { plan, enableBilling } = useProviderContext()
+  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
   const onCreate: MouseEventHandler = useCallback(async () => {
