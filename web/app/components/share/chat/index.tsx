@@ -682,7 +682,7 @@ const Main: FC<IMainProps> = ({
   }
 
   return (
-    <div className='bg-gray-100 h-full'>
+    <div className='bg-gray-100 h-full flex flex-col'>
       {!isInstalledApp && (
         <Header
           title={siteInfo.title}
@@ -719,8 +719,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          isInstalledApp ? 'h-full' : 'h-[calc(100vh_-_3rem)] tablet:h-screen',
-          'flex-grow flex flex-col overflow-y-auto',
+          'h-full flex-grow flex flex-col overflow-y-auto',
         )
         }>
           <ConfigSence

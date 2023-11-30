@@ -19,7 +19,7 @@ import LogoSite from '@/app/components/base/logo/logo-site'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const navClassName = `
-  flex items-center relative mr-3 px-3 h-9 rounded-xl
+  flex items-center relative mr-0 sm:mr-3 px-3 h-9 rounded-xl
   font-medium text-sm
   cursor-pointer
 `

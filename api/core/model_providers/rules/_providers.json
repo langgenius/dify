@@ -14,5 +14,6 @@
   "xinference",
   "openllm",
   "localai",
-  "cohere"
+  "cohere",
+  "jina"
 ]

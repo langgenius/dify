@@ -141,7 +141,7 @@ export default function AccountSetting({
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-4'>
-                  <div className='px-2 mb-[6px] text-xs font-medium text-gray-500'>{menuItem.name}</div>
+                  <div className='px-2 mb-[6px] text-[10px] sm:text-xs font-medium text-gray-500'>{menuItem.name}</div>
                   <div>
                     {
                       menuItem.items.map(item => (
