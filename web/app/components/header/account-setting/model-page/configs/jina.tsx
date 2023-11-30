@@ -5,8 +5,8 @@ import { Jina, JinaText } from '@/app/components/base/icons/src/public/llm'
 const config: ProviderConfig = {
   selector: {
     name: {
-      'en': 'Jina',
-      'zh-Hans': 'Jina',
+      'en': 'Jina AI',
+      'zh-Hans': 'Jina AI',
     },
     icon: <Jina className='w-full h-full' />,
   },
@@ -27,12 +27,12 @@ const config: ProviderConfig = {
       'en': 'Embedding Model',
       'zh-Hans': 'Embedding 模型',
     },
-    icon: <Jina className='w-6 h-6' />,
+    icon: <JinaText className='w-[58px] h-6' />,
     link: {
       href: 'https://jina.ai/embeddings/',
       label: {
-        'en': 'Get your API key from Jina',
-        'zh-Hans': '从 Jina 获取 API Key',
+        'en': 'Get your API key from Jina AI',
+        'zh-Hans': '从 Jina AI 获取 API Key',
       },
     },
     validateKeys: ['api_key'],
