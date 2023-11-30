@@ -155,7 +155,7 @@ const PlanItem: FC<Props> = ({
               })
               return
             }
-            window.open(link, '_blank')
+            window.open(link, '_self')
           }}
         >
           {btnText}
