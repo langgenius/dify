@@ -52,8 +52,8 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
 export const defaultPlan = {
   type: Plan.sandbox,
   usage: {
-    vectorSpace: 10,
-    buildApps: 10,
+    vectorSpace: 1,
+    buildApps: 1,
     teamMembers: 1,
   },
   total: {

@@ -11,6 +11,7 @@ import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
+import { IS_CLOUD_EDITION } from '@/config'
 
 const ProviderContext = createContext<{
   textGenerationModelList: BackendModel[]
@@ -107,6 +108,8 @@ export const ProviderContextProvider = ({
   const [plan, setPlan] = useState(defaultPlan)
 
   useEffect(() => {
+    if (!IS_CLOUD_EDITION)
+      return
     (async () => {
       const data = await fetchCurrentPlanInfo()
       setPlan(parseCurrentPlan(data))

@@ -12,6 +12,7 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
 import { fetchSubscriptionUrls } from '@/service/billing'
+import { IS_CLOUD_EDITION } from '@/config'
 
 type Props = {
   onCancel: () => void
@@ -26,6 +27,9 @@ const Pricing: FC<Props> = ({
 
   useEffect(() => {
     (async () => {
+      if (!IS_CLOUD_EDITION)
+        return
+
       const urls = await fetchSubscriptionUrls()
       setSubscriptionUrls(urls)
     })()

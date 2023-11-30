@@ -6,21 +6,26 @@ import PlanComp from '../plan'
 import { ReceiptList } from '../../base/icons/src/vender/line/financeAndECommerce'
 import { LinkExternal01 } from '../../base/icons/src/vender/line/general'
 import { fetchBillingUrl } from '@/service/billing'
+import { useAppContext } from '@/context/app-context'
+import { IS_CLOUD_EDITION } from '@/config'
 
 const Billing: FC = () => {
   const { t } = useTranslation()
+  const { isCurrentWorkspaceManager } = useAppContext()
   const [billingUrl, setBillingUrl] = React.useState('')
   useEffect(() => {
+    if (!IS_CLOUD_EDITION && !isCurrentWorkspaceManager)
+      return
     (async () => {
       const url = await fetchBillingUrl()
       setBillingUrl(url)
     })()
-  }, [])
+  }, [isCurrentWorkspaceManager])
 
   return (
     <div>
       <PlanComp />
-      {billingUrl && (
+      {IS_CLOUD_EDITION && isCurrentWorkspaceManager && billingUrl && (
         <a className='mt-5 flex px-6 justify-between h-12 items-center bg-gray-50 rounded-xl cursor-pointer' href={billingUrl} target='_blank'>
           <div className='flex items-center'>
             <ReceiptList className='w-4 h-4 text-gray-700' />
