@@ -4,16 +4,16 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { Plan } from '../type'
+import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
 import Toast from '../../base/toast'
 import { PlanRange } from './select-plan-range'
-import { ALL_PLANS, NUM_INFINITE } from '@/app/components/billing/config'
 import { useAppContext } from '@/context/app-context'
+import { fetchSubscriptionUrls } from '@/service/billing'
 
 type Props = {
   currentPlan: Plan
   plan: Plan
   planRange: PlanRange
-  link: string
 }
 
 const KeyValue = ({ label, value }: { label: string; value: string | number | JSX.Element }) => {
@@ -52,9 +52,9 @@ const PlanItem: FC<Props> = ({
   plan,
   currentPlan,
   planRange,
-  link,
 }) => {
   const { t } = useTranslation()
+  const [loading, setLoading] = React.useState(false)
   const i18nPrefix = `billing.plans.${plan}`
   const isFreePlan = plan === Plan.sandbox
   const isEnterprisePlan = plan === Plan.enterprise
@@ -115,6 +115,39 @@ const PlanItem: FC<Props> = ({
         return ''
     }
   })()
+  const handleGetPayUrl = async () => {
+    if (loading)
+      return
+
+    if (isPlanDisabled)
+      return
+
+    if (isFreePlan)
+      return
+
+    if (isEnterprisePlan) {
+      window.location.href = contactSalesUrl
+      return
+    }
+    // Only workspace manager can buy plan
+    if (!isCurrentWorkspaceManager) {
+      Toast.notify({
+        type: 'error',
+        message: t('billing.buyPermissionDeniedTip'),
+        className: 'z-[1001]',
+      })
+      return
+    }
+    setLoading(true)
+    try {
+      const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
+
+      window.location.href = res.url
+    }
+    finally {
+      setLoading(false)
+    }
+  }
   return (
     <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] h-[712px] rounded-xl')}>
       {isMostPopularPlan && (
@@ -143,20 +176,7 @@ const PlanItem: FC<Props> = ({
 
         <div
           className={cn(isMostPopularPlan && !isCurrent && '!bg-[#444CE7] !text-white !border !border-[#3538CD] shadow-sm', isPlanDisabled ? 'opacity-30' : `${style[plan].hoverAndActive} cursor-pointer`, 'mt-4 flex h-11 items-center justify-center border-[2px] border-gray-900 rounded-3xl text-sm font-semibold text-gray-900')}
-          onClick={() => {
-            if (isPlanDisabled)
-              return
-            // Only workspace manager can buy plan
-            if (!isCurrentWorkspaceManager) {
-              Toast.notify({
-                type: 'error',
-                message: t('billing.buyPermissionDeniedTip'),
-                className: 'z-[1001]',
-              })
-              return
-            }
-            window.open(link, '_self')
-          }}
+          onClick={handleGetPayUrl}
         >
           {btnText}
         </div>

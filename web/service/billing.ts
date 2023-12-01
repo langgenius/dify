@@ -5,8 +5,8 @@ export const fetchCurrentPlanInfo = () => {
   return get<Promise<CurrentPlanInfoBackend>>('/billing/info')
 }
 
-export const fetchSubscriptionUrls = () => {
-  return get<Promise<SubscriptionUrlsBackend>>('/billing/subscription')
+export const fetchSubscriptionUrls = (plan: string, interval: string) => {
+  return get<Promise<SubscriptionUrlsBackend>>(`/billing/subscription?plan=${plan}&interval=${interval}`)
 }
 
 export const fetchBillingUrl = () => {
