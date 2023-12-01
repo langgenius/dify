@@ -297,6 +297,8 @@ export enum TransferMethod {
   remote_url = 'remote_url',
 }
 
+export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
+
 export type VisionSettings = {
   enabled: boolean
   number_limits: number
