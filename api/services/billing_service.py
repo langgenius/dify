@@ -12,10 +12,13 @@ class BillingService:
         return cls._send_request('GET', '/info', params=params)
 
     @classmethod
-    def get_subscription(cls, prefilled_email: str = '', user_name: str = ''):
+    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = '', user_name: str = '', tenant_id: str = ''):
         params = {
+            'plan': plan,
+            'interval': interval,
             'prefilled_email': prefilled_email,
-            'user_name': user_name
+            'user_name': user_name,
+            'tenant_id': tenant_id
         }
         return cls._send_request('GET', '/subscription', params=params)
 

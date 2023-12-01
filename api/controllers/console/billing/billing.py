@@ -1,4 +1,4 @@
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from flask_login import current_user
 
 from controllers.console import api
@@ -48,31 +48,16 @@ class Subscription(Resource):
     @only_edition_cloud
     def get(self):
         prefilled_email = current_user.email
-
         return {
-            "monthly": [
-                {
-                    "plan": "professional",
-                    "url": f'https://buy.stripe.com/test_7sI1615L60FH4SYbII?prefilled_email={prefilled_email}'
-                },
-                {
-                    "plan": "team",
-                    "url": f'https://buy.stripe.com/test_7sI7upflGdst99eeUW?prefilled_email={prefilled_email}'
-                }
-            ],
-            "yearly": [
-                {
-                    "plan": "professional",
-                    "url": f'https://buy.stripe.com/test_bIY01X2yUfABety8wx?prefilled_email={prefilled_email}'
-                },
-                {
-                    "plan": "team",
-                    "url": f'https://buy.stripe.com/test_fZeaGB7Te2NPgBGeUX?prefilled_email={prefilled_email}'
-                }
-            ]
+            "url": f'https://buy.stripe.com/test_fZeaGB7Te2NPgBGeUX?prefilled_email={prefilled_email}'
         }
 
-        # return BillingService.get_subscription(current_user.email, current_user.name)
+        # parser = reqparse.RequestParser()
+        # parser.add_argument('plan', type=str, required=True, location='args', choices=['professional', 'team'])
+        # parser.add_argument('interval', type=str, required=True, location='args', choices=['month', 'year'])
+        # args = parser.parse_args()
+        #
+        # return BillingService.get_subscription(args['plan'], args['interval'], current_user.email, current_user.name, current_user.current_tenant_id)
 
 
 class Invoices(Resource):
