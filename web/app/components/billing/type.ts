@@ -8,7 +8,7 @@ export enum Plan {
 export enum Priority {
   standard = 'standard',
   priority = 'priority',
-  topPriority = 'topPriority',
+  topPriority = 'top-priority',
 }
 export type PlanInfo = {
   level: number
