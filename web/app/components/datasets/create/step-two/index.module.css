@@ -1,5 +1,5 @@
 .pageHeader {
-  @apply px-16;
+  @apply px-16 flex justify-between items-center;
   position: sticky;
   top: 0;
   left: 0;
@@ -251,7 +251,7 @@
 }
 
 .ruleItem {
-  @apply flex items-center h-7;
+  @apply flex items-center;
 }
 
 .formFooter {
@@ -382,7 +382,7 @@
 
 .previewWrap {
   flex-shrink: 0;
-  width: 524px;
+  max-width: 524px;
 }
 
 .previewHeader {

@@ -198,7 +198,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         <p className={s.desc}>{t('datasetDocuments.list.desc')}</p>
       </div>
       <div className='flex flex-col px-6 py-4 flex-1'>
-        <div className='flex items-center justify-between'>
+        <div className='flex items-center justify-between flex-wrap gap-y-2 '>
           <Input
             showPrefix
             wrapperClassName='!w-[200px]'
@@ -207,7 +207,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             value={searchValue}
           />
           {embeddingAvailable && (
-            <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px]'>
+            <Button type='primary' onClick={routeToDocCreate} className='!h-8 !text-[13px] !shrink-0'>
               <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
               {isDataSourceNotion && t('datasetDocuments.list.addPages')}
               {!isDataSourceNotion && t('datasetDocuments.list.addFile')}

@@ -31,7 +31,7 @@ const ParamsConfig: FC = () => {
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-[412px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
+        <div className='w-80 sm:w-[412px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
           <ParamConfigContent />
         </div>
       </PortalToFollowElemContent>

@@ -8,6 +8,7 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import cn from 'classnames'
 import { clone, isEqual } from 'lodash-es'
+import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
@@ -44,6 +45,8 @@ import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import Drawer from '@/app/components/base/drawer'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -63,6 +66,10 @@ const Configuration: FC = () => {
   const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] = useBoolean(false)
 
   const [introduction, setIntroduction] = useState<string>('')
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
@@ -600,7 +607,7 @@ const Configuration: FC = () => {
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex items-center justify-between px-6 shrink-0 h-14'>
+          <div className='flex items-center justify-between px-6 shrink-0 py-3 flex-wrap gap-y-2'>
             <div className='flex items-end'>
               <div className={s.promptTitle}></div>
               <div className='flex items-center h-[14px] space-x-1 text-xs'>
@@ -630,7 +637,7 @@ const Configuration: FC = () => {
               </div>
             </div>
 
-            <div className='flex items-center'>
+            <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
               {/* Model and Parameters */}
               <ConfigModel
                 isAdvancedMode={isAdvancedMode}
@@ -644,22 +651,28 @@ const Configuration: FC = () => {
                 }}
                 disabled={!hasSetAPIKEY}
               />
-              <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
+              <div className='w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
+              {isMobile && (
+                <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                  <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                  <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+                </Button>
+              )}
               <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-1/2 min-w-[560px] shrink-0">
+            <div className="w-full sm:w-1/2 shrink-0">
               <Config />
             </div>
-            <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+            {!isMobile && <div className="relative w-1/2 grow h-full overflow-y-auto py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               <Debug
                 hasSetAPIKEY={hasSetAPIKEY}
                 onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
                 inputs={inputs}
               />
-            </div>
+            </div>}
           </div>
         </div>
         {showConfirm && (
@@ -706,6 +719,15 @@ const Configuration: FC = () => {
               hideHistoryModal()
             }}
           />
+        )}
+        {isMobile && (
+          <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null} panelClassname='!bg-gray-50'>
+            <Debug
+              hasSetAPIKEY={hasSetAPIKEY}
+              onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+              inputs={inputs}
+            />
+          </Drawer>
         )}
       </>
     </ConfigContext.Provider>

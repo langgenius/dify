@@ -159,7 +159,7 @@ const Form: FC<FormProps> = ({
               options?.map(option => (
                 <div
                   className={`
-                    flex items-center px-3 h-9 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
+                    flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
                     ${value?.[field.key] === option.key && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
                   `}
                   onClick={() => handleFormChange(field.key, option.key)}

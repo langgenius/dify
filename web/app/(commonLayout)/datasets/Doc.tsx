@@ -15,7 +15,7 @@ const Doc: FC<DocProps> = ({
   const { locale } = useContext(I18n)
 
   return (
-    <article className='mx-12 pt-16 bg-white rounded-t-xl prose prose-xl'>
+    <article className='mx-1 px-4 sm:mx-12 pt-16 bg-white rounded-t-xl prose prose-xl'>
       {
         locale === 'en'
           ? <TemplateEn apiBaseUrl={apiBaseUrl} />

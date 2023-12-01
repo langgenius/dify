@@ -106,7 +106,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
       <div className="mb-4 mt-8 text-gray-900 text-[14px] font-medium leading-tight">
         {t(`${prefixEmbedded}.explanation`)}
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-y-2">
         {Object.keys(OPTION_MAP).map((v, index) => {
           return (
             <div
@@ -150,7 +150,7 @@ const Embedded = ({ isShow, onClose, appBaseUrl, accessToken }: Props) => {
             </Tooltip>
           </div>
         </div>
-        <div className="self-stretch p-3 justify-start items-start gap-2 inline-flex">
+        <div className="p-3 justify-start items-start gap-2 flex overflow-x-auto w-full">
           <div className="grow shrink basis-0 text-slate-700 text-[13px] leading-tight font-mono">
             <pre className='select-text'>{OPTION_MAP[option].getContent(appBaseUrl, accessToken, isTestEnv)}</pre>
           </div>

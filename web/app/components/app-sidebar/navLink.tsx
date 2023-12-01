@@ -18,12 +18,14 @@ export type NavLinkProps = {
     selected: NavIcon
     normal: NavIcon
   }
+  mode?: 'expand' | 'collapse'
 }
 
 export default function NavLink({
   name,
   href,
   iconMap,
+  mode = 'expand',
 }: NavLinkProps) {
   const segment = useSelectedLayoutSegment()
   const isActive = href.toLowerCase().split('/')?.pop() === segment?.toLowerCase()
@@ -45,7 +47,7 @@ export default function NavLink({
         )}
         aria-hidden="true"
       />
-      {name}
+      {mode === 'expand' && name}
     </Link>
   )
 }

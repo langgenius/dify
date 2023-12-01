@@ -25,7 +25,7 @@ default_retrieval_model = {
         'reranking_model_name': ''
     },
     'top_k': 2,
-    'score_threshold_enable': False
+    'score_threshold_enabled': False
 }
 
 
@@ -110,7 +110,7 @@ class DatasetRetrieverTool(BaseTool):
                         'query': query,
                         'top_k': self.top_k,
                         'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
-                            'score_threshold_enable'] else None,
+                            'score_threshold_enabled'] else None,
                         'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
                             'reranking_enable'] else None,
                         'all_documents': documents,
@@ -129,7 +129,7 @@ class DatasetRetrieverTool(BaseTool):
                         'search_method': retrieval_model['search_method'],
                         'embeddings': embeddings,
                         'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
-                            'score_threshold_enable'] else None,
+                            'score_threshold_enabled'] else None,
                         'top_k': self.top_k,
                         'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
                             'reranking_enable'] else None,
@@ -148,7 +148,7 @@ class DatasetRetrieverTool(BaseTool):
                         model_name=retrieval_model['reranking_model']['reranking_model_name']
                     )
                     documents = hybrid_rerank.rerank(query, documents,
-                                                     retrieval_model['score_threshold'] if retrieval_model['score_threshold_enable'] else None,
+                                                     retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
                                                      self.top_k)
             else:
                 documents = []

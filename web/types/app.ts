@@ -297,6 +297,8 @@ export enum TransferMethod {
   remote_url = 'remote_url',
 }
 
+export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
+
 export type VisionSettings = {
   enabled: boolean
   number_limits: number
@@ -332,6 +334,6 @@ export type RetrievalConfig = {
     reranking_model_name: string
   }
   top_k: number
-  score_threshold_enable: boolean
+  score_threshold_enabled: boolean
   score_threshold: number
 }

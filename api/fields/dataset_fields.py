@@ -22,7 +22,7 @@ dataset_retrieval_model_fields = {
     'reranking_enable': fields.Boolean,
     'reranking_model': fields.Nested(reranking_model_fields),
     'top_k': fields.Integer,
-    'score_threshold_enable': fields.Boolean,
+    'score_threshold_enabled': fields.Boolean,
     'score_threshold': fields.Float
 }
 

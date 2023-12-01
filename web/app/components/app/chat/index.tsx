@@ -23,7 +23,7 @@ import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { useImageFiles } from '@/app/components/base/image-uploader/hooks'
+import { useClipboardUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -101,6 +101,7 @@ const Chat: FC<IChatProps> = ({
     onImageLinkLoadSuccess,
     onClear,
   } = useImageFiles()
+  const { onPaste } = useClipboardUploader({ onUpload, visionConfig, files })
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -305,6 +306,7 @@ const Chat: FC<IChatProps> = ({
                 onChange={handleContentChange}
                 onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
+                onPaste={onPaste}
                 autoSize
               />
               <div className="absolute bottom-2 right-2 flex items-center h-8">
