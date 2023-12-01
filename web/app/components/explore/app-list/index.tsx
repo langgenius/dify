@@ -97,7 +97,7 @@ const Apps: FC = () => {
         value={currCategory}
         onChange={setCurrCategory}
       />
-      <div className='flex flex-1 mt-6 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'>
+      <div className='relative flex flex-1 mt-6 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow'>
         <nav
           className={`${s.appList} grid content-start gap-4 px-6 sm:px-12 shrink-0`}>
           {currList.map(app => (

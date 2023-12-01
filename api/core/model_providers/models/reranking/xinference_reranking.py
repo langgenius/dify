@@ -23,11 +23,14 @@ class XinferenceReranking(BaseReranking):
     def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float], top_k: Optional[int]) -> Optional[List[Document]]:
         docs = []
         doc_id = []
+        unique_documents = []
         for document in documents:
             if document.metadata['doc_id'] not in doc_id:
                 doc_id.append(document.metadata['doc_id'])
                 docs.append(document.page_content)
-
+                unique_documents.append(document)
+        documents = unique_documents
+        
         model = self.client.get_model(self.credentials['model_uid'])
         response = model.rerank(query=query, documents=docs, top_n=top_k)
         rerank_documents = []
