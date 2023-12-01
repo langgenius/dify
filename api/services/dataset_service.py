@@ -234,6 +234,7 @@ class DatasetService:
                                                           Dataset.tenant_id == tenant_id).all()
         if not dataset_ids:
             return 0
+        dataset_ids = [result[0] for result in dataset_ids]
         document_ids = db.session.query(Document.id).filter(Document.dataset_id in dataset_ids,
                                                             Document.tenant_id == tenant_id,
                                                             Document.completed_at.isnot(None),
@@ -242,6 +243,7 @@ class DatasetService:
                                                             ).all()
         if not document_ids:
             return 0
+        document_ids = [result[0] for result in document_ids]
         document_segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id in document_ids,
                                                                      DocumentSegment.tenant_id == tenant_id,
                                                                      DocumentSegment.completed_at.isnot(None),
