@@ -23,7 +23,7 @@ import type { DataSet } from '@/models/datasets'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { useClipboardUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
+import { useClipboardUploader, useDraggableUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
 
 export type IChatProps = {
   configElem?: React.ReactNode
@@ -102,6 +102,7 @@ const Chat: FC<IChatProps> = ({
     onClear,
   } = useImageFiles()
   const { onPaste } = useClipboardUploader({ onUpload, visionConfig, files })
+  const { onDragEnter, onDragLeave, onDragOver, onDrop, isDragActive } = useDraggableUploader<HTMLTextAreaElement>({ onUpload, files, visionConfig })
   const isUseInputMethod = useRef(false)
 
   const [query, setQuery] = React.useState('')
@@ -273,7 +274,7 @@ const Chat: FC<IChatProps> = ({
                   </div>
                 </div>)
             }
-            <div className='p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto'>
+            <div className={cn('p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600')}>
               {
                 visionConfig?.enabled && (
                   <>
@@ -307,6 +308,10 @@ const Chat: FC<IChatProps> = ({
                 onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
                 onPaste={onPaste}
+                onDragEnter={onDragEnter}
+                onDragLeave={onDragLeave}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
                 autoSize
               />
               <div className="absolute bottom-2 right-2 flex items-center h-8">
