@@ -55,6 +55,5 @@ export type SubscriptionItem = {
 }
 
 export type SubscriptionUrlsBackend = {
-  monthly: SubscriptionItem[]
-  yearly: SubscriptionItem[]
+  url: string
 }
