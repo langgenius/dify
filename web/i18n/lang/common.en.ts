@@ -104,6 +104,7 @@ const translation = {
     workplaceGroup: 'WORKPLACE',
     account: 'My account',
     members: 'Members',
+    billing: 'Billing',
     integrations: 'Integrations',
     language: 'Language',
     provider: 'Model Provider',

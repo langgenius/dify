@@ -2,6 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
+import { GoldCoin as GoldCoinOutLine } from '../../base/icons/src/vender/line/financeAndECommerce'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
@@ -11,6 +13,7 @@ import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelPage from './model-page'
 import s from './index.module.css'
+import BillingPage from '@/app/components/billing/billing-page'
 import Modal from '@/app/components/base/modal'
 import {
   Database03,
@@ -24,6 +27,7 @@ import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTrav
 import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useProviderContext } from '@/context/provider-context'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -37,12 +41,63 @@ type IAccountSettingProps = {
   onCancel: () => void
   activeTab?: string
 }
+
+type GroupItem = {
+  key: string
+  name: string
+  icon: JSX.Element
+  activeIcon: JSX.Element
+}
+
 export default function AccountSetting({
   onCancel,
   activeTab = 'account',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
+  const { enableBilling } = useProviderContext()
+
+  const workplaceGroupItems = (() => {
+    return [
+      {
+        key: 'provider',
+        name: t('common.settings.provider'),
+        icon: <CubeOutline className={iconClassName} />,
+        activeIcon: <CubeOutline className={iconClassName} />,
+      },
+      {
+        key: 'members',
+        name: t('common.settings.members'),
+        icon: <Users01 className={iconClassName} />,
+        activeIcon: <Users01Solid className={iconClassName} />,
+      },
+      {
+        // Use key false to hide this item
+        key: enableBilling ? 'billing' : false,
+        name: t('common.settings.billing'),
+        icon: <GoldCoinOutLine className={iconClassName} />,
+        activeIcon: <GoldCoin className={iconClassName} />,
+      },
+      {
+        key: 'data-source',
+        name: t('common.settings.dataSource'),
+        icon: <Database03 className={iconClassName} />,
+        activeIcon: <Database03Solid className={iconClassName} />,
+      },
+      {
+        key: 'plugin',
+        name: t('common.settings.plugin'),
+        icon: <PuzzlePiece01 className={iconClassName} />,
+        activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
+      },
+      {
+        key: 'api-based-extension',
+        name: t('common.settings.apiBasedExtension'),
+        icon: <Webhooks className={iconClassName} />,
+        activeIcon: <Webhooks className={iconClassName} />,
+      },
+    ].filter(item => !!item.key) as GroupItem[]
+  })()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -51,38 +106,7 @@ export default function AccountSetting({
     {
       key: 'workspace-group',
       name: t('common.settings.workplaceGroup'),
-      items: [
-        {
-          key: 'members',
-          name: t('common.settings.members'),
-          icon: <Users01 className={iconClassName} />,
-          activeIcon: <Users01Solid className={iconClassName} />,
-        },
-        {
-          key: 'provider',
-          name: t('common.settings.provider'),
-          icon: <CubeOutline className={iconClassName} />,
-          activeIcon: <CubeOutline className={iconClassName} />,
-        },
-        {
-          key: 'data-source',
-          name: t('common.settings.dataSource'),
-          icon: <Database03 className={iconClassName} />,
-          activeIcon: <Database03Solid className={iconClassName} />,
-        },
-        {
-          key: 'plugin',
-          name: t('common.settings.plugin'),
-          icon: <PuzzlePiece01 className={iconClassName} />,
-          activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
-        },
-        {
-          key: 'api-based-extension',
-          name: t('common.settings.apiBasedExtension'),
-          icon: <Webhooks className={iconClassName} />,
-          activeIcon: <Webhooks className={iconClassName} />,
-        },
-      ],
+      items: workplaceGroupItems,
     },
     {
       key: 'account-group',
@@ -175,6 +199,7 @@ export default function AccountSetting({
           <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
+            {activeMenu === 'billing' && <BillingPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelPage />}

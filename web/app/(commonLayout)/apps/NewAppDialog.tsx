@@ -16,8 +16,9 @@ import { ToastContext } from '@/app/components/base/toast'
 import { createApp, fetchAppTemplates } from '@/service/apps'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsContext from '@/context/app-context'
-
 import EmojiPicker from '@/app/components/base/emoji-picker'
+import { useProviderContext } from '@/context/provider-context'
+import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 
 type NewAppDialogProps = {
   show: boolean
@@ -53,6 +54,9 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
       setIsWithTemplate(false)
     }
   }, [mutateTemplates, show])
+
+  const { plan, enableBilling } = useProviderContext()
+  const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
   const isCreatingRef = useRef(false)
   const onCreate: MouseEventHandler = useCallback(async () => {
@@ -111,7 +115,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
       footer={
         <>
           <Button onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-          <Button type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
+          <Button disabled={isAppsFull} type="primary" onClick={onCreate}>{t('app.newApp.Create')}</Button>
         </>
       }
     >
@@ -208,6 +212,7 @@ const NewAppDialog = ({ show, onSuccess, onClose }: NewAppDialogProps) => {
             </>
           )}
       </div>
+      {isAppsFull && <AppsFull />}
     </Dialog>
   </>
 }
