@@ -10,7 +10,7 @@ from services.conversation_service import ConversationService
 
 class WebConversationService:
     @classmethod
-    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
+    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int, pinned: Optional[bool] = None,
                               exclude_debug_conversation: bool = False) -> InfiniteScrollPagination:
         include_ids = None
@@ -38,7 +38,7 @@ class WebConversationService:
         )
 
     @classmethod
-    def pin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
+    def pin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         pinned_conversation = db.session.query(PinnedConversation).filter(
             PinnedConversation.app_id == app_model.id,
             PinnedConversation.conversation_id == conversation_id,
@@ -66,7 +66,7 @@ class WebConversationService:
         db.session.commit()
 
     @classmethod
-    def unpin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
+    def unpin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         pinned_conversation = db.session.query(PinnedConversation).filter(
             PinnedConversation.app_id == app_model.id,
             PinnedConversation.conversation_id == conversation_id,

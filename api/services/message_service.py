@@ -16,7 +16,7 @@ from services.errors.message import FirstMessageNotExistsError, MessageNotExists
 
 class MessageService:
     @classmethod
-    def pagination_by_first_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
+    def pagination_by_first_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                                conversation_id: str, first_id: Optional[str], limit: int) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
@@ -68,7 +68,7 @@ class MessageService:
         )
 
     @classmethod
-    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
+    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int, conversation_id: Optional[str] = None,
                               include_ids: Optional[list] = None) -> InfiniteScrollPagination:
         if not user:
@@ -119,7 +119,7 @@ class MessageService:
         )
 
     @classmethod
-    def create_feedback(cls, app_model: App, message_id: str, user: Optional[Union[Account | EndUser]],
+    def create_feedback(cls, app_model: App, message_id: str, user: Optional[Union[Account, EndUser]],
                         rating: Optional[str]) -> MessageFeedback:
         if not user:
             raise ValueError('user cannot be None')
@@ -155,7 +155,7 @@ class MessageService:
         return feedback
 
     @classmethod
-    def get_message(cls, app_model: App, user: Optional[Union[Account | EndUser]], message_id: str):
+    def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         message = db.session.query(Message).filter(
             Message.id == message_id,
             Message.app_id == app_model.id,
@@ -170,7 +170,7 @@ class MessageService:
         return message
 
     @classmethod
-    def get_suggested_questions_after_answer(cls, app_model: App, user: Optional[Union[Account | EndUser]],
+    def get_suggested_questions_after_answer(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                                              message_id: str, check_enabled: bool = True) -> List[Message]:
         if not user:
             raise ValueError('user cannot be None')
