@@ -20,7 +20,7 @@ class CacheEmbedding(Embeddings):
         # use doc embedding cache or store if not exists
         text_embeddings = [None for _ in range(len(texts))]
         embedding_queue_indices = []
-        for text in texts:
+        for i, text in enumerate(texts):
             hash = helper.generate_text_hash(text)
             embedding = db.session.query(Embedding).filter_by(model_name=self._embeddings.name, hash=hash).first()
             if embedding:
