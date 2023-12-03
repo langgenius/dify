@@ -10,7 +10,7 @@ from services.message_service import MessageService
 
 class SavedMessageService:
     @classmethod
-    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
+    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int) -> InfiniteScrollPagination:
         saved_messages = db.session.query(SavedMessage).filter(
             SavedMessage.app_id == app_model.id,
@@ -28,7 +28,7 @@ class SavedMessageService:
         )
 
     @classmethod
-    def save(cls, app_model: App, user: Optional[Union[Account | EndUser]], message_id: str):
+    def save(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         saved_message = db.session.query(SavedMessage).filter(
             SavedMessage.app_id == app_model.id,
             SavedMessage.message_id == message_id,
@@ -56,7 +56,7 @@ class SavedMessageService:
         db.session.commit()
 
     @classmethod
-    def delete(cls, app_model: App, user: Optional[Union[Account | EndUser]], message_id: str):
+    def delete(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
         saved_message = db.session.query(SavedMessage).filter(
             SavedMessage.app_id == app_model.id,
             SavedMessage.message_id == message_id,

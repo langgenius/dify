@@ -150,7 +150,7 @@ class ChatStopApi(AppApiResource):
         return {'result': 'success'}, 200
 
 
-def compact_response(response: Union[dict | Generator]) -> Response:
+def compact_response(response: Union[dict, Generator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
