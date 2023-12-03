@@ -27,6 +27,7 @@ const VectorSpaceInfo: FC<Props> = ({
       tooltip={t('billing.plansCommon.vectorSpaceTooltip') as string}
       usage={usage.vectorSpace}
       total={total.vectorSpace}
+      unit='MB'
     />
   )
 }

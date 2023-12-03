@@ -4,7 +4,7 @@ const supportModelProviders = 'OpenAI/Anthropic/Azure OpenAI/  Llama2/Hugging Fa
 
 export const NUM_INFINITE = 99999999
 
-export const contactSalesUrl = 'https://xxx/contact-sales'
+export const contactSalesUrl = 'mailto:business@dify.ai'
 
 export const ALL_PLANS: Record<Plan, PlanInfo> = {
   sandbox: {
