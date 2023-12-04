@@ -14,8 +14,9 @@ class BillingService:
 
         billing_info = cls._send_request('GET', '/info', params=params)
 
-        vector_size = DatasetService.get_tenant_datasets_usage(tenant_id) / 1024
-        billing_info['vector_space']['size'] = int(vector_size)
+        vector_size = DatasetService.get_tenant_datasets_usage(tenant_id)
+        # Convert bytes to MB
+        billing_info['vector_space']['size'] = int(vector_size / 1024 / 1024)
 
         return billing_info
 
