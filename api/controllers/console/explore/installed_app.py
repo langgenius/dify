@@ -14,6 +14,7 @@ from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from models.model import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
+from controllers.console.wraps import cloud_edition_billing_resource_check
 
 
 class InstalledAppsListApi(Resource):
@@ -47,6 +48,7 @@ class InstalledAppsListApi(Resource):
 
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('apps')
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('app_id', type=str, required=True, help='Invalid app_id')
