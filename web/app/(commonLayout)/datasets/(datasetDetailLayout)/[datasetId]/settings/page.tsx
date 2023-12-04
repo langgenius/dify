@@ -11,6 +11,7 @@ const Settings = async ({
   params: { datasetId },
 }: Props) => {
   const locale = getLocaleOnServer()
+  // eslint-disable-next-line react-hooks/rules-of-hooks
   const { t } = await useTranslation(locale, 'dataset-settings')
 
   return (

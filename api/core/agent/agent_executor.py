@@ -59,7 +59,7 @@ class AgentExecutor:
         self.configuration = configuration
         self.agent = self._init_agent()
 
-    def _init_agent(self) -> Union[BaseSingleActionAgent | BaseMultiActionAgent]:
+    def _init_agent(self) -> Union[BaseSingleActionAgent, BaseMultiActionAgent]:
         if self.configuration.strategy == PlanningStrategy.REACT:
             agent = AutoSummarizingStructuredChatAgent.from_llm_and_tools(
                 model_instance=self.configuration.model_instance,

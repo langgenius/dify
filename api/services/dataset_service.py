@@ -227,6 +227,36 @@ class DatasetService:
         return AppDatasetJoin.query.filter(AppDatasetJoin.dataset_id == dataset_id) \
             .order_by(db.desc(AppDatasetJoin.created_at)).all()
 
+    @staticmethod
+    def get_tenant_datasets_usage(tenant_id):
+        # get the high_quality datasets
+        dataset_ids = db.session.query(Dataset.id).filter(Dataset.indexing_technique == 'high_quality',
+                                                          Dataset.tenant_id == tenant_id).all()
+        if not dataset_ids:
+            return 0
+        dataset_ids = [result[0] for result in dataset_ids]
+        document_ids = db.session.query(Document.id).filter(Document.dataset_id.in_(dataset_ids),
+                                                            Document.tenant_id == tenant_id,
+                                                            Document.completed_at.isnot(None),
+                                                            Document.enabled == True,
+                                                            Document.archived == False
+                                                            ).all()
+        if not document_ids:
+            return 0
+        document_ids = [result[0] for result in document_ids]
+        document_segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id.in_(document_ids),
+                                                                     DocumentSegment.tenant_id == tenant_id,
+                                                                     DocumentSegment.completed_at.isnot(None),
+                                                                     DocumentSegment.enabled == True,
+                                                                     ).all()
+        if not document_segments:
+            return 0
+
+        total_words_size = sum(document_segment.word_count * 3 for document_segment in document_segments)
+        total_vector_size = 1536 * 4 * len(document_segments)
+
+        return total_words_size + total_vector_size
+
 
 class DocumentService:
     DEFAULT_RULES = {
@@ -488,7 +518,8 @@ class DocumentService:
                         'score_threshold_enabled': False
                     }
 
-                    dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get('retrieval_model') else default_retrieval_model
+                    dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get(
+                        'retrieval_model') else default_retrieval_model
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
