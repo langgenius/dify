@@ -851,21 +851,6 @@ class DocumentRecoverApi(DocumentResource):
         return {'result': 'success'}, 204
 
 
-class DocumentLimitApi(DocumentResource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        """get document limit"""
-        documents_count = DocumentService.get_tenant_documents_count()
-        tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-
-        return {
-            'documents_count': documents_count,
-            'documents_limit': tenant_document_count
-                }, 200
-
-
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
                  '/datasets/<uuid:dataset_id>/documents')
@@ -891,4 +876,3 @@ api.add_resource(DocumentStatusApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/status/<string:action>')
 api.add_resource(DocumentPauseApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause')
 api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume')
-api.add_resource(DocumentLimitApi, '/datasets/limit')
