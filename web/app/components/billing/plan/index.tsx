@@ -69,6 +69,7 @@ const PlanComp: FC<Props> = ({
           <UpgradeBtn
             className='flex-shrink-0'
             isPlain={type !== Plan.sandbox}
+            gaEventName='click_header_upgrade_btn'
           />
         )}
       </div>
@@ -83,6 +84,7 @@ const PlanComp: FC<Props> = ({
             isFull
             size='lg'
             isPlain={type !== Plan.sandbox}
+            gaEventName='click_header_upgrade_btn'
           />
         )}
       </div>
