@@ -179,11 +179,6 @@ export type FileUploadConfigResponse = {
   image_file_size_limit?: number | string
 }
 
-export type DocumentsLimitResponse = {
-  documents_count: number
-  documents_limit: number
-}
-
 export type InvitationResult = {
   status: 'success'
   email: string
