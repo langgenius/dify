@@ -14,7 +14,6 @@ from controllers.console.wraps import account_initialization_required
 from fields.file_fields import upload_config_fields, file_fields
 
 from services.file_service import FileService
-from controllers.console.wraps import cloud_edition_billing_resource_check
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -39,7 +38,6 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(file_fields)
-    @cloud_edition_billing_resource_check('vector_space')
     def post(self):
 
         # get file from request
