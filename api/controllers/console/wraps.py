@@ -47,6 +47,7 @@ def only_edition_self_hosted(view):
 def cloud_edition_billing_resource_check(resource: str,
                                          error_msg: str = "You have reached the limit of your subscription."):
     def interceptor(view):
+        @wraps(view)
         def decorated(*args, **kwargs):
             if current_app.config['EDITION'] == 'CLOUD':
                 tenant_id = current_user.current_tenant_id
