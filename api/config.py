@@ -54,7 +54,6 @@ DEFAULTS = {
     'HOSTED_ANTHROPIC_PAID_MAX_QUANTITY': 100,
     'HOSTED_MODERATION_ENABLED': 'False',
     'HOSTED_MODERATION_PROVIDERS': '',
-    'TENANT_DOCUMENT_COUNT': 100,
     'CLEAN_DAY_SETTING': 30,
     'UPLOAD_FILE_SIZE_LIMIT': 15,
     'UPLOAD_FILE_BATCH_LIMIT': 5,
@@ -240,7 +239,6 @@ class Config:
         self.MULTIMODAL_SEND_IMAGE_FORMAT = get_env('MULTIMODAL_SEND_IMAGE_FORMAT')
 
         # Dataset Configurations.
-        self.TENANT_DOCUMENT_COUNT = get_env('TENANT_DOCUMENT_COUNT')
         self.CLEAN_DAY_SETTING = get_env('CLEAN_DAY_SETTING')
 
         # File upload Configurations.
