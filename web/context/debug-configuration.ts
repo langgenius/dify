@@ -2,6 +2,7 @@ import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
   BlockStatus,
+  CacheReplyConfig,
   ChatPromptConfig,
   CitationConfig,
   CompletionParams,
@@ -58,6 +59,8 @@ type IDebugConfiguration = {
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
+  cacheReplyConfig: CacheReplyConfig
+  setCacheReplyConfig: (cacheReplyConfig: CacheReplyConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
   externalDataToolsConfig: ExternalDataTool[]
@@ -142,6 +145,12 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   moderationConfig: {
     enabled: false,
   },
+  cacheReplyConfig: {
+    enabled: false,
+    threshold: 0.8,
+    matchVar: '',
+  },
+  setCacheReplyConfig: () => {},
   setModerationConfig: () => {},
   externalDataToolsConfig: [],
   setExternalDataToolsConfig: () => {},

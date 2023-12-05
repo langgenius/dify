@@ -73,6 +73,12 @@ export type SpeechToTextConfig = MoreLikeThisConfig
 
 export type CitationConfig = MoreLikeThisConfig
 
+export type CacheReplyConfig = {
+  enabled: boolean
+  threshold: number
+  matchVar?: string
+}
+
 export type ModerationContentConfig = {
   enabled: boolean
   preset_response?: string

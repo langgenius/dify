@@ -75,6 +75,11 @@ const translation = {
       description: 'Once enabled, show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
+    cacheReply: {
+      title: 'Cache Reply',
+      description: 'You can manually add high-quality reply to the cache for prioritized matching with similar user questions.',
+      resDes: 'Cache Reply is enabled',
+    },
     dataSet: {
       title: 'Context',
       noData: 'You can import Knowledge as context',

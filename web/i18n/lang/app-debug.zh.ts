@@ -75,6 +75,11 @@ const translation = {
       description: '启用后，显示源文档和生成内容的归属部分。',
       resDes: '引用和归属已启用',
     },
+    cacheReply: {
+      title: '缓存回复',
+      description: '启用后，将缓存用户的回复，以便在用户重复提问时快速响应。',
+      resDes: '缓存回复已启用',
+    },
     dataSet: {
       title: '上下文',
       noData: '您可以导入知识库作为上下文',

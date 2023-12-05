@@ -18,7 +18,7 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { PromptVariable } from '@/models/debug'
+import type { CacheReplyConfig, CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -45,6 +45,8 @@ const Config: FC = () => {
     setSpeechToTextConfig,
     citationConfig,
     setCitationConfig,
+    cacheReplyConfig,
+    setCacheReplyConfig,
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
@@ -56,7 +58,7 @@ const Config: FC = () => {
   const promptVariables = modelConfig.configs.prompt_variables
   // simple mode
   const handlePromptChange = (newTemplate: string, newVariables: PromptVariable[]) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.configs.prompt_template = newTemplate
       draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...newVariables]
     })
@@ -70,7 +72,7 @@ const Config: FC = () => {
 
   const handlePromptVariablesNameChange = (newVariables: PromptVariable[]) => {
     setPrevPromptConfig(modelConfig.configs)
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.configs.prompt_variables = newVariables
     })
     setModelConfig(newModelConfig)
@@ -85,31 +87,37 @@ const Config: FC = () => {
     setIntroduction,
     moreLikeThis: moreLikeThisConfig.enabled,
     setMoreLikeThis: (value) => {
-      setMoreLikeThisConfig(produce(moreLikeThisConfig, (draft) => {
+      setMoreLikeThisConfig(produce(moreLikeThisConfig, (draft: MoreLikeThisConfig) => {
         draft.enabled = value
       }))
     },
     suggestedQuestionsAfterAnswer: suggestedQuestionsAfterAnswerConfig.enabled,
     setSuggestedQuestionsAfterAnswer: (value) => {
-      setSuggestedQuestionsAfterAnswerConfig(produce(suggestedQuestionsAfterAnswerConfig, (draft) => {
+      setSuggestedQuestionsAfterAnswerConfig(produce(suggestedQuestionsAfterAnswerConfig, (draft: SuggestedQuestionsAfterAnswerConfig) => {
         draft.enabled = value
       }))
     },
     speechToText: speechToTextConfig.enabled,
     setSpeechToText: (value) => {
-      setSpeechToTextConfig(produce(speechToTextConfig, (draft) => {
+      setSpeechToTextConfig(produce(speechToTextConfig, (draft: SpeechToTextConfig) => {
         draft.enabled = value
       }))
     },
     citation: citationConfig.enabled,
     setCitation: (value) => {
-      setCitationConfig(produce(citationConfig, (draft) => {
+      setCitationConfig(produce(citationConfig, (draft: CitationConfig) => {
+        draft.enabled = value
+      }))
+    },
+    cacheReply: cacheReplyConfig.enabled,
+    setCacheReply: (value) => {
+      setCacheReplyConfig(produce(cacheReplyConfig, (draft: CacheReplyConfig) => {
         draft.enabled = value
       }))
     },
     moderation: moderationConfig.enabled,
     setModeration: (value) => {
-      setModerationConfig(produce(moderationConfig, (draft) => {
+      setModerationConfig(produce(moderationConfig, (draft: ModerationConfig) => {
         draft.enabled = value
       }))
       if (value && !moderationConfig.type) {
@@ -127,7 +135,7 @@ const Config: FC = () => {
           },
           onSaveCallback: setModerationConfig,
           onCancelCallback: () => {
-            setModerationConfig(produce(moderationConfig, (draft) => {
+            setModerationConfig(produce(moderationConfig, (draft: ModerationConfig) => {
               draft.enabled = false
               showChooseFeatureTrue()
             }))
@@ -138,7 +146,7 @@ const Config: FC = () => {
     },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation || featureConfig.cacheReply)
   const hasToolbox = false
 
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -218,6 +226,7 @@ const Config: FC = () => {
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
               isShowSpeechText={featureConfig.speechToText && !!speech2textDefaultModel}
               isShowCitation={featureConfig.citation}
+              isShowCacheReply={featureConfig.cacheReply}
             />
           )
         }

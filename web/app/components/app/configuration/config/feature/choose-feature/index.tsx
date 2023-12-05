@@ -10,6 +10,7 @@ import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuratio
 import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
@@ -17,6 +18,7 @@ type IConfig = {
   speechToText: boolean
   citation: boolean
   moderation: boolean
+  cacheReply: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -96,6 +98,13 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 description={t('appDebug.feature.citation.description')}
                 value={config.citation}
                 onChange={value => onChange('citation', value)}
+              />
+              <FeatureItem
+                icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
+                title={t('appDebug.feature.cacheReply.title')}
+                description={t('appDebug.feature.cacheReply.description')}
+                value={config.cacheReply}
+                onChange={value => onChange('cacheReply', value)}
               />
             </>
           </FeatureGroup>

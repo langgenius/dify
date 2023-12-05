@@ -21,6 +21,7 @@ type ChatGroupProps = {
   isShowSuggestedQuestionsAfterAnswer: boolean
   isShowSpeechText: boolean
   isShowCitation: boolean
+  isShowCacheReply: boolean
 }
 const ChatGroup: FC<ChatGroupProps> = ({
   isShowOpeningStatement,
@@ -28,6 +29,7 @@ const ChatGroup: FC<ChatGroupProps> = ({
   isShowSuggestedQuestionsAfterAnswer,
   isShowSpeechText,
   isShowCitation,
+  isShowCacheReply,
 }) => {
   const { t } = useTranslation()
 
@@ -35,6 +37,9 @@ const ChatGroup: FC<ChatGroupProps> = ({
     <div className='mt-7'>
       <GroupName name={t('appDebug.feature.groupChat.title')} />
       <div className='space-y-3'>
+        {isShowCacheReply && (
+          <div>cache reply</div>
+        )}
         {isShowOpeningStatement && (
           <OpeningStatement {...openingStatementConfig} />
         )}

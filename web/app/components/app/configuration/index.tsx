@@ -15,6 +15,7 @@ import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
+  CacheReplyConfig,
   CompletionParams,
   DatasetConfigs,
   Inputs,
@@ -88,6 +89,11 @@ const Configuration: FC = () => {
   })
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
+  })
+  const [cacheReplyConfig, setCacheReplyConfig] = useState<CacheReplyConfig>({
+    enabled: false,
+    threshold: 0.8,
+    matchVar: '',
   })
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
@@ -167,7 +173,7 @@ const Configuration: FC = () => {
 
     setFormattingChanged(true)
     if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft) => {
+      const newSelected = produce(data, (draft: any) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database
             const newItem = dataSets.find(i => i.id === item.id)
@@ -230,7 +236,7 @@ const Configuration: FC = () => {
     if (hasFetchedDetail && !modelModeType) {
       const mode = textGenerationModelList.find(({ model_name }) => model_name === modelConfig.model_id)?.model_mode
       if (mode) {
-        const newModelConfig = produce(modelConfig, (draft) => {
+        const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
           draft.mode = mode
         })
         setModelConfig(newModelConfig)
@@ -302,7 +308,7 @@ const Configuration: FC = () => {
           await migrateToDefaultPrompt(true, ModelModeType.chat)
       }
     }
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.provider = provider
       draft.model_id = modelId
       draft.mode = modeMode
@@ -368,6 +374,8 @@ const Configuration: FC = () => {
 
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
+
+      // TODO: set cache reply
 
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
@@ -580,6 +588,8 @@ const Configuration: FC = () => {
       setSpeechToTextConfig,
       citationConfig,
       setCitationConfig,
+      cacheReplyConfig,
+      setCacheReplyConfig,
       moderationConfig,
       setModerationConfig,
       externalDataToolsConfig,
