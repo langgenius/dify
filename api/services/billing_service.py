@@ -1,8 +1,6 @@
 import os
 import requests
 
-from services.dataset_service import DatasetService
-
 
 class BillingService:
     base_url = os.environ.get('BILLING_API_URL', 'BILLING_API_URL')
@@ -14,14 +12,14 @@ class BillingService:
 
         billing_info = cls._send_request('GET', '/info', params=params)
 
-        vector_size = DatasetService.get_tenant_datasets_usage(tenant_id)
-        # Convert bytes to MB
-        billing_info['vector_space']['size'] = int(vector_size / 1024 / 1024)
-
         return billing_info
 
     @classmethod
-    def get_subscription(cls, plan: str, interval: str, prefilled_email: str = '', user_name: str = '', tenant_id: str = ''):
+    def get_subscription(cls, plan: str,
+                         interval: str,
+                         prefilled_email: str = '',
+                         user_name: str = '',
+                         tenant_id: str = ''):
         params = {
             'plan': plan,
             'interval': interval,
