@@ -15,9 +15,10 @@ type Props = {
   isPlain?: boolean
   isShort?: boolean
   onClick?: () => void
+  gaEventName?: string
 }
 
-const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => {} }) => {
+const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => void }) => {
   const { t } = useTranslation()
 
   return (
@@ -38,13 +39,22 @@ const UpgradeBtn: FC<Props> = ({
   isFull = false,
   isShort = false,
   size = 'md',
-  onClick,
+  onClick: _onClick,
+  gaEventName,
 }) => {
   const { t } = useTranslation()
   const { setShowPricingModal } = useModalContext()
+  const onClick = () => {
+    if (gaEventName)
+      (window as any).dataLayer.push({ event: gaEventName })
+    if (_onClick)
+      _onClick()
+    else
+      (setShowPricingModal as any)()
+  }
 
   if (isPlain)
-    return <PlainBtn onClick={onClick || setShowPricingModal as any} className={className} />
+    return <PlainBtn onClick={onClick} className={className} />
 
   return (
     <div
@@ -55,7 +65,7 @@ const UpgradeBtn: FC<Props> = ({
         size === 'lg' ? 'h-10' : 'h-9',
         'relative flex items-center cursor-pointer border rounded-[20px] border-[#0096EA] text-white',
       )}
-      onClick={onClick || setShowPricingModal}
+      onClick={onClick}
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
       <div className='text-xs font-normal'>{t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}</div>
