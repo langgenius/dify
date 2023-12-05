@@ -15,7 +15,7 @@ type Props = {
   isPlain?: boolean
   isShort?: boolean
   onClick?: () => void
-  gaEventName?: string
+  loc?: string
 }
 
 const PlainBtn = ({ className, onClick }: { className?: string; onClick: () => void }) => {
@@ -40,17 +40,26 @@ const UpgradeBtn: FC<Props> = ({
   isShort = false,
   size = 'md',
   onClick: _onClick,
-  gaEventName,
+  loc,
 }) => {
   const { t } = useTranslation()
   const { setShowPricingModal } = useModalContext()
-  const onClick = () => {
-    if (gaEventName)
-      (window as any).dataLayer.push({ event: gaEventName })
+  const handleClick = () => {
     if (_onClick)
       _onClick()
     else
       (setShowPricingModal as any)()
+  }
+  const onClick = () => {
+    if (loc && (window as any).gtag) {
+      (window as any).gtag('event', 'click_upgrade_btn', {
+        loc,
+        event_callback: handleClick,
+      })
+    }
+    else {
+      handleClick()
+    }
   }
 
   if (isPlain)
