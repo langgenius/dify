@@ -26,7 +26,7 @@ const Billing: FC = () => {
 
   return (
     <div>
-      <PlanComp />
+      <PlanComp loc={'billing-page'} />
       {enableBilling && isCurrentWorkspaceManager && billingUrl && (
         <a className='mt-5 flex px-6 justify-between h-12 items-center bg-gray-50 rounded-xl cursor-pointer' href={billingUrl} target='_blank'>
           <div className='flex items-center'>

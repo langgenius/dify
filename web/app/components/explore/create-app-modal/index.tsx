@@ -68,7 +68,7 @@ const CreateAppModal = ({
               className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
             />
           </div>
-          {isAppsFull && <AppsFull />}
+          {isAppsFull && <AppsFull loc='app-explore-create'/>}
         </div>
         <div className='flex flex-row-reverse'>
           <Button disabled={isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{t('common.operation.create')}</Button>

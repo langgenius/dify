@@ -206,7 +206,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
               {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
             </div>
-            <UpgradeBtn />
+            <UpgradeBtn loc='knowledge-speed-up' />
           </div>
         )
       }
