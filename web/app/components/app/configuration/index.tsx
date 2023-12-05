@@ -91,8 +91,8 @@ const Configuration: FC = () => {
     enabled: false,
   })
   const [cacheReplyConfig, setCacheReplyConfig] = useState<CacheReplyConfig>({
-    enabled: false,
-    threshold: 0.8,
+    enabled: true,
+    threshold: 0.9,
     matchVar: '',
   })
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({

@@ -147,7 +147,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   cacheReplyConfig: {
     enabled: false,
-    threshold: 0.8,
+    threshold: 0.9,
     matchVar: '',
   },
   setCacheReplyConfig: () => {},
