@@ -1,11 +1,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import {
-  ArrowPathIcon,
   Bars3Icon,
   PencilSquareIcon,
 } from '@heroicons/react/24/solid'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import { ReplayIcon } from '@/app/components/app/chat/icon-component'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type IHeaderProps = {
   title: string
@@ -27,6 +29,7 @@ const Header: FC<IHeaderProps> = ({
   onShowSideBar,
   onCreateNewChat,
 }) => {
+  const { t } = useTranslation()
   if (!isMobile)
     return null
 
@@ -46,11 +49,17 @@ const Header: FC<IHeaderProps> = ({
             {title}
           </div>
         </div>
-        <div className='flex cursor-pointer' onClick={() => {
-          onCreateNewChat?.()
-        }}>
-          <ArrowPathIcon className="h-4 w-4 text-sm font-bold text-white" />
-        </div>
+        <Tooltip
+          selector={'embed-scene-restart-button'}
+          htmlContent={t('share.chat.newChatDefaultName')}
+          position='top'
+        >
+          <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
+            onCreateNewChat?.()
+          }}>
+            <ReplayIcon className="h-4 w-4 text-sm font-bold text-white" />
+          </div>
+        </Tooltip>
       </div>
     )
   }
