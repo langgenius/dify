@@ -94,6 +94,8 @@ const translation = {
       cached: '已标注',
       remove: '移除',
       removeConfirm: '删除这个标注？',
+      add: '添加标注',
+      edit: '编辑标注',
     },
     dataSet: {
       title: '上下文',

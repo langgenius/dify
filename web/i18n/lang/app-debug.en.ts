@@ -94,6 +94,8 @@ const translation = {
       cached: 'Annotationed',
       remove: 'Remove',
       removeConfirm: 'Delete this annotation ?',
+      add: 'Add annotation',
+      edit: 'Edit annotation',
     },
     dataSet: {
       title: 'Context',

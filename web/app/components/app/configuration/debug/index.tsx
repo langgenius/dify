@@ -503,7 +503,7 @@ const Debug: FC<IDebug> = ({
         />
       </div>
       <AnnotationCtrlBtn
-        cached={true}
+        cached={false}
         onAdd={() => { }}
         onEdit={() => { }}
         onRemove={() => { }}

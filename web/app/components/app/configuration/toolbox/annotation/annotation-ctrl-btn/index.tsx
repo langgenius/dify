@@ -8,6 +8,7 @@ import { MessageCheckRemove, MessageFastPlus } from '@/app/components/base/icons
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
   cached: boolean
@@ -52,19 +53,28 @@ const CacheCtrlBtn: FC<Props> = ({
             </div>
           )
           : (
-            <div
-              className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
-              onClick={onAdd}
+            <TooltipPlus
+              popupContent={t('appDebug.feature.annotation.add') as string}
             >
-              <MessageFastPlus className='w-4 h-4' />
-            </div>
+              <div
+                className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
+                onClick={onAdd}
+              >
+                <MessageFastPlus className='w-4 h-4' />
+              </div>
+            </TooltipPlus>
           )}
-        <div
-          className='p-1 cursor-pointer rounded-md hover:bg-black/5'
-          onClick={onEdit}
+        <TooltipPlus
+          popupContent={t('appDebug.feature.annotation.edit') as string}
         >
-          <Edit04 className='w-4 h-4' />
-        </div>
+          <div
+            className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+            onClick={onEdit}
+          >
+            <Edit04 className='w-4 h-4' />
+          </div>
+        </TooltipPlus>
+
       </div>
       <DeleteConfirmModal
         isShow={showModal}
