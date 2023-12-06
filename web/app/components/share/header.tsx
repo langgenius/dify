@@ -51,7 +51,7 @@ const Header: FC<IHeaderProps> = ({
         </div>
         <Tooltip
           selector={'embed-scene-restart-button'}
-          htmlContent={t('share.chat.newChatDefaultName')}
+          htmlContent={t('share.chat.resetChat')}
           position='top'
         >
           <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
