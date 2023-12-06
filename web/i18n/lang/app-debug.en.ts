@@ -90,6 +90,7 @@ const translation = {
         description: 'TODO：The variable used to match the cache reply.',
         choosePlaceholder: 'Choose match variable',
       },
+      cacheManagement: 'Cache Management',
     },
     dataSet: {
       title: 'Context',

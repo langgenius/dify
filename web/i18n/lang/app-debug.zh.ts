@@ -90,6 +90,7 @@ const translation = {
         description: 'TODO：设置缓存回复的匹配变量，只有匹配到该变量的回复才会被缓存。',
         choosePlaceholder: '请选择变量',
       },
+      cacheManagement: '缓存管理',
     },
     dataSet: {
       title: '上下文',

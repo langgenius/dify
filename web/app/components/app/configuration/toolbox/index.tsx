@@ -14,7 +14,6 @@ export type ToolboxProps = {
 
 const Toolbox: FC<ToolboxProps> = ({ showModerationSettings, showCacheReply }) => {
   const { t } = useTranslation()
-  console.log(showCacheReply)
 
   return (
     <div className='mt-7'>

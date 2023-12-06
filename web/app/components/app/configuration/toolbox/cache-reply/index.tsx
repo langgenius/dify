@@ -3,12 +3,13 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { usePathname, useRouter } from 'next/navigation'
 import VarPicker from '../../dataset-config/context-var/var-picker'
 import ScoreSlider from './score-slider'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import { AppType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 
@@ -38,6 +39,10 @@ const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
 
 const CacheReplyConfig: FC<Props> = () => {
   const { t } = useTranslation()
+  const router = useRouter()
+  const pathname = usePathname()
+  const matched = pathname.match(/\/app\/([^/]+)/)
+  const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const {
     mode,
     modelConfig,
@@ -57,6 +62,14 @@ const CacheReplyConfig: FC<Props> = () => {
         <MessageFast className='w-4 h-4 text-[#444CE7]' />
       }
       title={t('appDebug.feature.cacheReply.title')}
+      headerRight={
+        <div className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={() => {
+          router.push(`/app/${appId}/cache-management`)
+        }}>
+          <div>{t('appDebug.feature.cacheReply.cacheManagement')}</div>
+          <LinkExternal02 className='w-3.5 h-3.5' />
+        </div>
+      }
     >
       <div className='p-4 pt-3 rounded-lg border border-gray-200 bg-white space-y-2'>
         <Item
