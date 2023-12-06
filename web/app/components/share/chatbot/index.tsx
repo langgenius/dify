@@ -556,6 +556,7 @@ const Main: FC<IMainProps> = ({
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
         isMobile={isMobile}
+        onCreateNewChat={handleReload}
       />
 
       <div className={'flex bg-white overflow-hidden'}>

@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import {
+  ArrowPathIcon,
   Bars3Icon,
   PencilSquareIcon,
 } from '@heroicons/react/24/solid'
@@ -37,7 +38,6 @@ const Header: FC<IHeaderProps> = ({
           bg-gradient-to-r from-blue-600 to-sky-500
         `}
       >
-        <div></div>
         <div className="flex items-center space-x-2">
           {customerIcon || <AppIcon size="small" icon={icon} background={icon_background} />}
           <div
@@ -46,7 +46,11 @@ const Header: FC<IHeaderProps> = ({
             {title}
           </div>
         </div>
-        <div></div>
+        <div className='flex cursor-pointer' onClick={() => {
+          onCreateNewChat?.()
+        }}>
+          <ArrowPathIcon className="h-4 w-4 text-sm font-bold text-white" />
+        </div>
       </div>
     )
   }
