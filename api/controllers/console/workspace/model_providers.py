@@ -9,8 +9,8 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import CredentialsValidateFailedError
-from services.provider_checkout_service import ProviderCheckoutService
 from services.provider_service import ProviderService
+from services.billing_service import BillingService
 
 
 class ModelProviderListApi(Resource):
@@ -264,16 +264,13 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_name: str):
-        provider_service = ProviderCheckoutService()
-        provider_checkout = provider_service.create_checkout(
-            tenant_id=current_user.current_tenant_id,
-            provider_name=provider_name,
-            account=current_user
-        )
+        if provider_name != 'anthropic':
+            raise ValueError(f'provider name {provider_name} is invalid')
 
-        return {
-            'url': provider_checkout.get_checkout_url()
-        }
+        data = BillingService.get_model_provider_payment_link(provider_name=provider_name,
+                                                              tenant_id=current_user.current_tenant_id,
+                                                              account_id=current_user.id)
+        return data
 
 
 class ModelProviderFreeQuotaSubmitApi(Resource):
