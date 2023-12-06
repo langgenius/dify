@@ -27,7 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
-import CacheCtrlBtn from '@/app/components/app/configuration/toolbox/cache-reply/cache-ctrl-btn'
+import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -502,7 +502,7 @@ const Debug: FC<IDebug> = ({
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
-      <CacheCtrlBtn
+      <AnnotationCtrlBtn
         cached={true}
         onAdd={() => { }}
         onEdit={() => { }}

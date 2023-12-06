@@ -90,7 +90,7 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [cacheReplyConfig, setCacheReplyConfig] = useState<CacheReplyConfig>({
+  const [annotationConfig, setAnnotationConfig] = useState<CacheReplyConfig>({
     enabled: true,
     threshold: 0.9,
     matchVar: '',
@@ -375,7 +375,7 @@ const Configuration: FC = () => {
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
 
-      // TODO: set cache reply
+      // TODO: set annotation
 
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
@@ -588,8 +588,8 @@ const Configuration: FC = () => {
       setSpeechToTextConfig,
       citationConfig,
       setCitationConfig,
-      cacheReplyConfig,
-      setCacheReplyConfig,
+      annotationConfig,
+      setAnnotationConfig,
       moderationConfig,
       setModerationConfig,
       externalDataToolsConfig,
@@ -638,7 +638,7 @@ const Configuration: FC = () => {
                         onClick={() => setPromptMode(PromptMode.simple)}
                         className='flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
                       >
-                        <FlipBackward className='w-3 h-3 text-white'/>
+                        <FlipBackward className='w-3 h-3 text-white' />
                         <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
                       </div>
                     )}

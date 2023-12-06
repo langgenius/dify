@@ -18,7 +18,7 @@ type IConfig = {
   speechToText: boolean
   citation: boolean
   moderation: boolean
-  cacheReply: boolean
+  annotation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -132,8 +132,8 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
               icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
               title={t('appDebug.feature.cacheReply.title')}
               description={t('appDebug.feature.cacheReply.description')}
-              value={config.cacheReply}
-              onChange={value => onChange('cacheReply', value)}
+              value={config.annotation}
+              onChange={value => onChange('annotation', value)}
             />
           </>
         </FeatureGroup>

@@ -11,8 +11,8 @@ function useFeature({
   setSpeechToText,
   citation,
   setCitation,
-  cacheReply,
-  setCacheReply,
+  annotation,
+  setAnnotation,
   moderation,
   setModeration,
 }: {
@@ -26,8 +26,8 @@ function useFeature({
   setSpeechToText: (speechToText: boolean) => void
   citation: boolean
   setCitation: (citation: boolean) => void
-  cacheReply: boolean
-  setCacheReply: (cacheReply: boolean) => void
+  annotation: boolean
+  setAnnotation: (annotation: boolean) => void
   moderation: boolean
   setModeration: (moderation: boolean) => void
 }) {
@@ -49,7 +49,7 @@ function useFeature({
     suggestedQuestionsAfterAnswer,
     speechToText,
     citation,
-    cacheReply,
+    annotation,
     moderation,
   }
   const handleFeatureChange = (key: string, value: boolean) => {
@@ -72,8 +72,8 @@ function useFeature({
       case 'citation':
         setCitation(value)
         break
-      case 'cacheReply':
-        setCacheReply(value)
+      case 'annotation':
+        setAnnotation(value)
         break
       case 'moderation':
         setModeration(value)

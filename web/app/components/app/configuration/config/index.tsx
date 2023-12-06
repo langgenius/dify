@@ -45,8 +45,8 @@ const Config: FC = () => {
     setSpeechToTextConfig,
     citationConfig,
     setCitationConfig,
-    cacheReplyConfig,
-    setCacheReplyConfig,
+    annotationConfig,
+    setAnnotationConfig,
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
@@ -109,9 +109,9 @@ const Config: FC = () => {
         draft.enabled = value
       }))
     },
-    cacheReply: cacheReplyConfig.enabled,
-    setCacheReply: (value) => {
-      setCacheReplyConfig(produce(cacheReplyConfig, (draft: CacheReplyConfig) => {
+    annotation: annotationConfig.enabled,
+    setAnnotation: (value) => {
+      setAnnotationConfig(produce(annotationConfig, (draft: CacheReplyConfig) => {
         draft.enabled = value
       }))
     },
@@ -147,7 +147,7 @@ const Config: FC = () => {
   })
 
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
-  const hasToolbox = moderationConfig.enabled || featureConfig.cacheReply
+  const hasToolbox = moderationConfig.enabled || featureConfig.annotation
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const wrapScroll = useScroll(wrapRef)
@@ -240,7 +240,7 @@ const Config: FC = () => {
           hasToolbox && (
             <Toolbox
               showModerationSettings={moderationConfig.enabled}
-              showCacheReply={featureConfig.cacheReply}
+              showAnnotation={featureConfig.annotation}
             />
           )
         }

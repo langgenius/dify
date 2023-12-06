@@ -59,8 +59,8 @@ type IDebugConfiguration = {
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
-  cacheReplyConfig: CacheReplyConfig
-  setCacheReplyConfig: (cacheReplyConfig: CacheReplyConfig) => void
+  annotationConfig: CacheReplyConfig
+  setAnnotationConfig: (annotationConfig: CacheReplyConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
   externalDataToolsConfig: ExternalDataTool[]
@@ -141,19 +141,19 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   citationConfig: {
     enabled: false,
   },
-  setCitationConfig: () => {},
+  setCitationConfig: () => { },
   moderationConfig: {
     enabled: false,
   },
-  cacheReplyConfig: {
+  annotationConfig: {
     enabled: false,
     threshold: 0.9,
     matchVar: '',
   },
-  setCacheReplyConfig: () => {},
-  setModerationConfig: () => {},
+  setAnnotationConfig: () => { },
+  setModerationConfig: () => { },
   externalDataToolsConfig: [],
-  setExternalDataToolsConfig: () => {},
+  setExternalDataToolsConfig: () => { },
   formattingChanged: false,
   setFormattingChanged: () => { },
   inputs: {},
@@ -198,7 +198,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     score_threshold_enabled: false,
     score_threshold: 0.7,
   },
-  setDatasetConfigs: () => {},
+  setDatasetConfigs: () => { },
   hasSetContextVar: false,
   isShowVisionConfig: false,
   visionConfig: {
@@ -207,7 +207,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     detail: Resolution.low,
     transfer_methods: [TransferMethod.remote_url],
   },
-  setVisionConfig: () => {},
+  setVisionConfig: () => { },
 })
 
 export default DebugConfigurationContext
