@@ -27,7 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
-
+import CacheCtrlBtn from '@/app/components/app/configuration/toolbox/cache-reply/cache-ctrl-btn'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -502,6 +502,12 @@ const Debug: FC<IDebug> = ({
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
+      <CacheCtrlBtn
+        cached={true}
+        onAdd={() => { }}
+        onEdit={() => { }}
+        onRemove={() => { }}
+      />
       <div className="flex flex-col grow">
         {/* Chat */}
         {mode === AppType.chat && (

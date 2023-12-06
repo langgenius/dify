@@ -91,6 +91,9 @@ const translation = {
         choosePlaceholder: 'Choose match variable',
       },
       cacheManagement: 'Cache Management',
+      cached: 'Cached',
+      remove: 'Remove',
+      removeConfirm: 'Delete this annotations ?',
     },
     dataSet: {
       title: 'Context',

@@ -91,6 +91,9 @@ const translation = {
         choosePlaceholder: '请选择变量',
       },
       cacheManagement: '缓存管理',
+      cached: '已缓存',
+      remove: '移除',
+      removeConfirm: '删除这个标注？',
     },
     dataSet: {
       title: '上下文',
