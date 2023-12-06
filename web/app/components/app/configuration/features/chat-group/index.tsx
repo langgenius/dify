@@ -8,7 +8,7 @@ import OpeningStatement from './opening-statement'
 import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
-
+import CacheReply from './cache-reply'
 /*
 * Include
 * 1. Conversation Opener
@@ -38,7 +38,7 @@ const ChatGroup: FC<ChatGroupProps> = ({
       <GroupName name={t('appDebug.feature.groupChat.title')} />
       <div className='space-y-3'>
         {isShowCacheReply && (
-          <div>cache reply</div>
+          <CacheReply />
         )}
         {isShowOpeningStatement && (
           <OpeningStatement {...openingStatementConfig} />
