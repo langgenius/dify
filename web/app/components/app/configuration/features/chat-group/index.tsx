@@ -8,7 +8,6 @@ import OpeningStatement from './opening-statement'
 import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
-import CacheReply from './cache-reply'
 /*
 * Include
 * 1. Conversation Opener
@@ -21,7 +20,6 @@ type ChatGroupProps = {
   isShowSuggestedQuestionsAfterAnswer: boolean
   isShowSpeechText: boolean
   isShowCitation: boolean
-  isShowCacheReply: boolean
 }
 const ChatGroup: FC<ChatGroupProps> = ({
   isShowOpeningStatement,
@@ -29,7 +27,6 @@ const ChatGroup: FC<ChatGroupProps> = ({
   isShowSuggestedQuestionsAfterAnswer,
   isShowSpeechText,
   isShowCitation,
-  isShowCacheReply,
 }) => {
   const { t } = useTranslation()
 
@@ -37,9 +34,6 @@ const ChatGroup: FC<ChatGroupProps> = ({
     <div className='mt-7'>
       <GroupName name={t('appDebug.feature.groupChat.title')} />
       <div className='space-y-3'>
-        {isShowCacheReply && (
-          <CacheReply />
-        )}
         {isShowOpeningStatement && (
           <OpeningStatement {...openingStatementConfig} />
         )}

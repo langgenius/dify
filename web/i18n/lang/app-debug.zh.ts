@@ -79,6 +79,17 @@ const translation = {
       title: '缓存回复',
       description: '启用后，将缓存用户的回复，以便在用户重复提问时快速响应。',
       resDes: '缓存回复已启用',
+      scoreThreshold: {
+        title: '分数阈值',
+        description: 'TODO：设置缓存回复的分数阈值，低于该阈值的回复将不会被缓存。',
+        easyMatch: '模糊匹配',
+        accurateMatch: '精准匹配',
+      },
+      matchVariable: {
+        title: '匹配变量',
+        description: 'TODO：设置缓存回复的匹配变量，只有匹配到该变量的回复才会被缓存。',
+        choosePlaceholder: '请选择变量',
+      },
     },
     dataSet: {
       title: '上下文',

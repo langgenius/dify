@@ -99,13 +99,6 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
                 value={config.citation}
                 onChange={value => onChange('citation', value)}
               />
-              <FeatureItem
-                icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
-                title={t('appDebug.feature.cacheReply.title')}
-                description={t('appDebug.feature.cacheReply.description')}
-                value={config.cacheReply}
-                onChange={value => onChange('cacheReply', value)}
-              />
             </>
           </FeatureGroup>
         )}
@@ -134,6 +127,13 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
               description={t('appDebug.feature.moderation.description')}
               value={config.moderation}
               onChange={value => onChange('moderation', value)}
+            />
+            <FeatureItem
+              icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
+              title={t('appDebug.feature.cacheReply.title')}
+              description={t('appDebug.feature.cacheReply.description')}
+              value={config.cacheReply}
+              onChange={value => onChange('cacheReply', value)}
             />
           </>
         </FeatureGroup>

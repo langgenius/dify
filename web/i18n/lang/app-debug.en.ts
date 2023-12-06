@@ -79,6 +79,17 @@ const translation = {
       title: 'Cache Reply',
       description: 'You can manually add high-quality reply to the cache for prioritized matching with similar user questions.',
       resDes: 'Cache Reply is enabled',
+      scoreThreshold: {
+        title: 'Score Threshold',
+        description: 'TODO：The score threshold for the cache reply to be returned.',
+        easyMatch: 'Easy Match',
+        accurateMatch: 'Accurate Match',
+      },
+      matchVariable: {
+        title: 'Match Variable',
+        description: 'TODO：The variable used to match the cache reply.',
+        choosePlaceholder: 'Choose match variable',
+      },
     },
     dataSet: {
       title: 'Context',

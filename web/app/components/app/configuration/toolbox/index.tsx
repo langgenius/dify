@@ -5,13 +5,16 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GroupName from '../base/group-name'
 import Moderation from './moderation'
+import CacheReply from './cache-reply'
 
 export type ToolboxProps = {
   showModerationSettings: boolean
+  showCacheReply: boolean
 }
 
-const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
+const Toolbox: FC<ToolboxProps> = ({ showModerationSettings, showCacheReply }) => {
   const { t } = useTranslation()
+  console.log(showCacheReply)
 
   return (
     <div className='mt-7'>
@@ -19,6 +22,11 @@ const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
       {
         showModerationSettings && (
           <Moderation />
+        )
+      }
+      {
+        showCacheReply && (
+          <CacheReply />
         )
       }
     </div>

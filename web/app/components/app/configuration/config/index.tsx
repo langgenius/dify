@@ -146,8 +146,8 @@ const Config: FC = () => {
     },
   })
 
-  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation || featureConfig.cacheReply)
-  const hasToolbox = false
+  const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
+  const hasToolbox = moderationConfig.enabled || featureConfig.cacheReply
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const wrapScroll = useScroll(wrapRef)
@@ -226,7 +226,6 @@ const Config: FC = () => {
               isShowSuggestedQuestionsAfterAnswer={featureConfig.suggestedQuestionsAfterAnswer}
               isShowSpeechText={featureConfig.speechToText && !!speech2textDefaultModel}
               isShowCitation={featureConfig.citation}
-              isShowCacheReply={featureConfig.cacheReply}
             />
           )
         }
@@ -238,8 +237,11 @@ const Config: FC = () => {
 
         {/* Toolbox */}
         {
-          moderationConfig.enabled && (
-            <Toolbox showModerationSettings />
+          hasToolbox && (
+            <Toolbox
+              showModerationSettings={moderationConfig.enabled}
+              showCacheReply={featureConfig.cacheReply}
+            />
           )
         }
       </div>
