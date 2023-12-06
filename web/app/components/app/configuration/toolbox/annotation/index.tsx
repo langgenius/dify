@@ -61,20 +61,20 @@ const CacheReplyConfig: FC<Props> = () => {
       headerIcon={
         <MessageFast className='w-4 h-4 text-[#444CE7]' />
       }
-      title={t('appDebug.feature.cacheReply.title')}
+      title={t('appDebug.feature.annotation.title')}
       headerRight={
         <div className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={() => {
           router.push(`/app/${appId}/annotation`)
         }}>
-          <div>{t('appDebug.feature.cacheReply.cacheManagement')}</div>
+          <div>{t('appDebug.feature.annotation.cacheManagement')}</div>
           <LinkExternal02 className='w-3.5 h-3.5' />
         </div>
       }
     >
       <div className='p-4 pt-3 rounded-lg border border-gray-200 bg-white space-y-2'>
         <Item
-          title={t('appDebug.feature.cacheReply.scoreThreshold.title')}
-          tooltip={t('appDebug.feature.cacheReply.scoreThreshold.description')}
+          title={t('appDebug.feature.annotation.scoreThreshold.title')}
+          tooltip={t('appDebug.feature.annotation.scoreThreshold.description')}
         >
           <ScoreSlider
             className='mt-1'
@@ -84,8 +84,8 @@ const CacheReplyConfig: FC<Props> = () => {
         </Item>
         {mode === AppType.completion && (
           <Item
-            title={t('appDebug.feature.cacheReply.matchVariable.title')}
-            tooltip={t('appDebug.feature.cacheReply.matchVariable.description')}
+            title={t('appDebug.feature.annotation.matchVariable.title')}
+            tooltip={t('appDebug.feature.annotation.matchVariable.description')}
           >
             <VarPicker
               triggerClassName='mt-2 w-full'
@@ -93,7 +93,7 @@ const CacheReplyConfig: FC<Props> = () => {
               value={matchVariable}
               options={promptVariablesToSelect}
               onChange={setMatchVariable}
-              notSelectedVarTip={t('appDebug.feature.cacheReply.matchVariable.choosePlaceholder')}
+              notSelectedVarTip={t('appDebug.feature.annotation.matchVariable.choosePlaceholder')}
             />
           </Item>
         )}

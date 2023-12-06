@@ -75,10 +75,10 @@ const translation = {
       description: 'Once enabled, show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
-    cacheReply: {
-      title: 'Cache Reply',
+    annotation: {
+      title: 'Annotation Reply',
       description: 'You can manually add high-quality reply to the cache for prioritized matching with similar user questions.',
-      resDes: 'Cache Reply is enabled',
+      resDes: 'Annotation Reply is enabled',
       scoreThreshold: {
         title: 'Score Threshold',
         description: 'TODO：The score threshold for the cache reply to be returned.',
@@ -90,10 +90,10 @@ const translation = {
         description: 'TODO：The variable used to match the cache reply.',
         choosePlaceholder: 'Choose match variable',
       },
-      cacheManagement: 'Cache Management',
-      cached: 'Cached',
+      cacheManagement: 'Annotation',
+      cached: 'Annotationed',
       remove: 'Remove',
-      removeConfirm: 'Delete this annotations ?',
+      removeConfirm: 'Delete this annotation ?',
     },
     dataSet: {
       title: 'Context',

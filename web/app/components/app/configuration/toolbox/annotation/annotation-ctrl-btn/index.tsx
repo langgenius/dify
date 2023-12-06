@@ -41,12 +41,12 @@ const CacheCtrlBtn: FC<Props> = ({
                   ? (
                     <>
                       <MessageFast className='w-4 h-4' />
-                      <div>{t('appDebug.feature.cacheReply.cached')}</div>
+                      <div>{t('appDebug.feature.annotation.cached')}</div>
                     </>
                   )
                   : <>
                     <MessageCheckRemove className='w-4 h-4' />
-                    <div>{t('appDebug.feature.cacheReply.remove')}</div>
+                    <div>{t('appDebug.feature.annotation.remove')}</div>
                   </>}
               </div>
             </div>
@@ -70,7 +70,7 @@ const CacheCtrlBtn: FC<Props> = ({
         isShow={showModal}
         onHide={() => setShowModal(false)}
         onRemove={onRemove}
-        text={t('appDebug.feature.cacheReply.removeConfirm') as string}
+        text={t('appDebug.feature.annotation.removeConfirm') as string}
       />
     </div>
   )

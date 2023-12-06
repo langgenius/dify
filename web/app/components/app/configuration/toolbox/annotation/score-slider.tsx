@@ -33,12 +33,12 @@ const ScoreSlider: FC<Props> = ({
         <div className='flex space-x-1 text-[#00A286]'>
           <div>0.8</div>
           <div>·</div>
-          <div>{t('appDebug.feature.cacheReply.scoreThreshold.easyMatch')}</div>
+          <div>{t('appDebug.feature.annotation.scoreThreshold.easyMatch')}</div>
         </div>
         <div className='flex space-x-1 text-[#0057D8]'>
           <div>1.0</div>
           <div>·</div>
-          <div>{t('appDebug.feature.cacheReply.scoreThreshold.accurateMatch')}</div>
+          <div>{t('appDebug.feature.annotation.scoreThreshold.accurateMatch')}</div>
         </div>
       </div>
     </div>
