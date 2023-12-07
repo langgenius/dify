@@ -10,7 +10,7 @@ const Logs = async ({
   params: { appId },
 }: IProps) => {
   return (
-    <Main pageType={PageType.log} appId={appId} />
+    <Main pageType={PageType.annotation} appId={appId} />
   )
 }
 

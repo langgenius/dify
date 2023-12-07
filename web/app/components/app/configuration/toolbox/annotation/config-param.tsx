@@ -64,7 +64,7 @@ const AnnotationReplyConfig: FC<Props> = () => {
       title={t('appDebug.feature.annotation.title')}
       headerRight={
         <div className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-gray-700 cursor-pointer' onClick={() => {
-          router.push(`/app/${appId}/annotation`)
+          router.push(`/app/${appId}/annotations`)
         }}>
           <div>{t('appDebug.feature.annotation.cacheManagement')}</div>
           <LinkExternal02 className='w-3.5 h-3.5' />
