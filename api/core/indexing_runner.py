@@ -106,7 +106,8 @@ class IndexingRunner:
                 document_id=dataset_document.id
             ).all()
 
-            db.session.delete(document_segments)
+            for document_segment in document_segments:
+                db.session.delete(document_segment)
             db.session.commit()
 
             # load file
