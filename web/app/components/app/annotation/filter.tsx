@@ -16,12 +16,14 @@ type IFilterProps = {
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  children: JSX.Element
 }
 
 const Filter: FC<IFilterProps> = ({
   appId,
   queryParams,
   setQueryParams,
+  children,
 }) => {
   // TODO: change fetch list api
   const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
@@ -29,7 +31,7 @@ const Filter: FC<IFilterProps> = ({
   if (!data)
     return null
   return (
-    <div className='flex flex-row flex-wrap gap-y-2 gap-x-4 items-center mb-4 text-gray-900 text-base'>
+    <div className='flex justify-between flex-row flex-wrap gap-y-2 gap-x-4 items-center mb-4 text-gray-900 text-base'>
       <div className="relative">
         <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
           <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -45,6 +47,7 @@ const Filter: FC<IFilterProps> = ({
           }}
         />
       </div>
+      {children}
     </div>
   )
 }

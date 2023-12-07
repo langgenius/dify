@@ -9,7 +9,7 @@ import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
 import mockList from './mock-list'
-
+import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -42,7 +42,13 @@ const Annotation: FC<Props> = ({
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
-        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
+          <HeaderOpts
+            onAdd={() => { }}
+            onExport={() => { }}
+            onClearAll={() => { }}
+          />
+        </Filter>
         {total === undefined
           ? <Loading type='app' />
           : total > 0
