@@ -10,8 +10,9 @@ from services.conversation_service import ConversationService
 
 class WebConversationService:
     @classmethod
-    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account | EndUser]],
-                              last_id: Optional[str], limit: int, pinned: Optional[bool] = None) -> InfiniteScrollPagination:
+    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
+                              last_id: Optional[str], limit: int, pinned: Optional[bool] = None,
+                              exclude_debug_conversation: bool = False) -> InfiniteScrollPagination:
         include_ids = None
         exclude_ids = None
         if pinned is not None:
@@ -32,11 +33,12 @@ class WebConversationService:
             last_id=last_id,
             limit=limit,
             include_ids=include_ids,
-            exclude_ids=exclude_ids
+            exclude_ids=exclude_ids,
+            exclude_debug_conversation=exclude_debug_conversation
         )
 
     @classmethod
-    def pin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
+    def pin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         pinned_conversation = db.session.query(PinnedConversation).filter(
             PinnedConversation.app_id == app_model.id,
             PinnedConversation.conversation_id == conversation_id,
@@ -64,7 +66,7 @@ class WebConversationService:
         db.session.commit()
 
     @classmethod
-    def unpin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account | EndUser]]):
+    def unpin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
         pinned_conversation = db.session.query(PinnedConversation).filter(
             PinnedConversation.app_id == app_model.id,
             PinnedConversation.conversation_id == conversation_id,

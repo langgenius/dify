@@ -44,6 +44,7 @@ const translation = {
       annotationPlaceholder: '输入你希望 AI 回复的预期答案，这在今后可用于模型微调，持续改进文本生成质量。',
     },
     variables: '变量',
+    uploadImages: '上传的图片',
   },
   filter: {
     period: {

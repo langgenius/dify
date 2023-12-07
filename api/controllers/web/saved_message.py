@@ -8,6 +8,8 @@ from controllers.web.wraps import WebApiResource
 from libs.helper import uuid_value, TimestampField
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
+from fields.conversation_fields import message_file_fields
+
 
 feedback_fields = {
     'rating': fields.String
@@ -18,6 +20,7 @@ message_fields = {
     'inputs': fields.Raw,
     'query': fields.String,
     'answer': fields.String,
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
     'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
     'created_at': TimestampField
 }

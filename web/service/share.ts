@@ -80,6 +80,10 @@ export const renameConversation = async (isInstalledApp: boolean, installedAppId
   return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { name } })
 }
 
+export const generationConversationName = async (isInstalledApp: boolean, installedAppId = '', id: string) => {
+  return getAction('post', isInstalledApp)(getUrl(`conversations/${id}/name`, isInstalledApp, installedAppId), { body: { auto_generate: true } })
+}
+
 export const fetchChatList = async (conversationId: string, isInstalledApp: boolean, installedAppId = '') => {
   return getAction('get', isInstalledApp)(getUrl('messages', isInstalledApp, installedAppId), { params: { conversation_id: conversationId, limit: 20, last_id: '' } })
 }

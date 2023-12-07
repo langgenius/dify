@@ -3,6 +3,7 @@ from typing import Any, List, Dict
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.schema import get_buffer_string, BaseMessage
 
+from core.file.message_file_parser import MessageFileParser
 from core.model_providers.models.entity.message import PromptMessage, MessageType, to_lc_messages
 from core.model_providers.models.llm.base import BaseLLM
 from extensions.ext_database import db
@@ -21,6 +22,8 @@ class ReadOnlyConversationTokenDBBufferSharedMemory(BaseChatMemory):
     @property
     def buffer(self) -> List[BaseMessage]:
         """String buffer of memory."""
+        app_model = self.conversation.app
+
         # fetch limited messages desc, and return reversed
         messages = db.session.query(Message).filter(
             Message.conversation_id == self.conversation.id,
@@ -28,10 +31,25 @@ class ReadOnlyConversationTokenDBBufferSharedMemory(BaseChatMemory):
         ).order_by(Message.created_at.desc()).limit(self.message_limit).all()
 
         messages = list(reversed(messages))
+        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=self.conversation.app_id)
 
         chat_messages: List[PromptMessage] = []
         for message in messages:
-            chat_messages.append(PromptMessage(content=message.query, type=MessageType.USER))
+            files = message.message_files
+            if files:
+                file_objs = message_file_parser.transform_message_files(
+                    files, message.app_model_config
+                )
+
+                prompt_message_files = [file_obj.prompt_message_file for file_obj in file_objs]
+                chat_messages.append(PromptMessage(
+                    content=message.query,
+                    type=MessageType.USER,
+                    files=prompt_message_files
+                ))
+            else:
+                chat_messages.append(PromptMessage(content=message.query, type=MessageType.USER))
+
             chat_messages.append(PromptMessage(content=message.answer, type=MessageType.ASSISTANT))
 
         if not chat_messages:

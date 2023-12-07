@@ -1,16 +1,22 @@
 .card {
   box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
-  width: calc(50% - 4px);
+  width: 100%;
 }
 
 .card:hover {
   box-shadow: 0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06);
 }
 
-.deleteBtn {
+.btnWrap {
+  padding-left: 64px;
   visibility: hidden;
+  background: linear-gradient(270deg, #FFF 49.99%, rgba(255, 255, 255, 0.00) 98.1%);
 }
 
-.card:hover .deleteBtn {
+.card:hover .btnWrap {
   visibility: visible;
+}
+
+.settingBtn:hover {
+  background-color: rgba(0, 0, 0, 0.05);
 }

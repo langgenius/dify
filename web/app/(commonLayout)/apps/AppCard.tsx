@@ -138,6 +138,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     <>
       <div
         onClick={(e) => {
+          if (showSettingsModal)
+            return
           e.preventDefault()
           push(`/app/${app.id}/overview`)
         }}

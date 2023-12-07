@@ -1,6 +1,7 @@
 from flask_restful import fields
 
 from libs.helper import TimestampField
+from fields.conversation_fields import message_file_fields
 
 feedback_fields = {
     'rating': fields.String
@@ -31,6 +32,7 @@ message_fields = {
     'inputs': fields.Raw,
     'query': fields.String,
     'answer': fields.String,
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
     'feedback': fields.Nested(feedback_fields, attribute='user_feedback', allow_null=True),
     'retriever_resources': fields.List(fields.Nested(retriever_resource_fields)),
     'created_at': TimestampField

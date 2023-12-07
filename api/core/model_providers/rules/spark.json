@@ -10,6 +10,9 @@
         "quota_unit": "tokens"
     },
     "model_flexibility": "fixed",
+    "supported_model_types": [
+        "text-generation"
+    ],
     "price_config": {
         "spark": {
             "prompt": "0.18",

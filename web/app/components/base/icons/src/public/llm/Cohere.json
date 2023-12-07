@@ -1,0 +1,112 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "22",
+			"height": "22",
+			"viewBox": "0 0 22 22",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Clip path group"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "mask",
+						"attributes": {
+							"id": "mask0_13224_9519",
+							"style": "mask-type:luminance",
+							"maskUnits": "userSpaceOnUse",
+							"x": "0",
+							"y": "0",
+							"width": "22",
+							"height": "22"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "g",
+								"attributes": {
+									"id": "clip0_2207_90691"
+								},
+								"children": [
+									{
+										"type": "element",
+										"name": "path",
+										"attributes": {
+											"id": "Vector",
+											"d": "M21.5 0.5H0.5V21.5H21.5V0.5Z",
+											"fill": "white"
+										},
+										"children": []
+									}
+								]
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "g",
+						"attributes": {
+							"mask": "url(#mask0_13224_9519)"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "g",
+								"attributes": {
+									"id": "Group"
+								},
+								"children": [
+									{
+										"type": "element",
+										"name": "path",
+										"attributes": {
+											"id": "Vector_2",
+											"fill-rule": "evenodd",
+											"clip-rule": "evenodd",
+											"d": "M7.30367 13.0035C7.8689 13.0035 8.99327 12.9725 10.5474 12.3326C12.3585 11.587 15.9617 10.2334 18.561 8.84305C20.3788 7.8706 21.1757 6.58448 21.1757 4.85248C21.1757 2.44869 19.2271 0.5 16.8233 0.5H6.75176C3.299 0.5 0.5 3.299 0.5 6.75176C0.5 10.2045 3.12069 13.0035 7.30367 13.0035Z",
+											"fill": "#39594D"
+										},
+										"children": []
+									},
+									{
+										"type": "element",
+										"name": "path",
+										"attributes": {
+											"id": "Vector_3",
+											"fill-rule": "evenodd",
+											"clip-rule": "evenodd",
+											"d": "M9.00732 17.3086C9.00732 15.6162 10.0262 14.0902 11.5894 13.4414L14.7612 12.1251C17.9694 10.7936 21.5006 13.1513 21.5006 16.6249C21.5006 19.316 19.3185 21.4974 16.6273 21.4967L13.1933 21.4958C10.8813 21.4952 9.00732 19.6207 9.00732 17.3086Z",
+											"fill": "#D18EE2"
+										},
+										"children": []
+									},
+									{
+										"type": "element",
+										"name": "path",
+										"attributes": {
+											"id": "Vector_4",
+											"d": "M4.10396 13.8277C2.11358 13.8277 0.5 15.4411 0.5 17.4315V17.8984C0.5 19.8887 2.11352 21.5022 4.1039 21.5022C6.09428 21.5022 7.70785 19.8887 7.70785 17.8984V17.4315C7.70785 15.4411 6.09434 13.8277 4.10396 13.8277Z",
+											"fill": "#FF7759"
+										},
+										"children": []
+									}
+								]
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Cohere"
+}

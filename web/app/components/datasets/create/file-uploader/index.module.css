@@ -15,10 +15,10 @@
   color: #667085;
 }
 .uploader {
-  @apply relative box-border flex justify-center items-center mb-2;
+  @apply relative box-border flex justify-center items-center mb-2 p-3;
   flex-direction: column;
   max-width: 640px;
-  height: 80px;
+  min-height: 80px;
   background: #F9FAFB;
   border: 1px dashed #EAECF0;
   border-radius: 12px;

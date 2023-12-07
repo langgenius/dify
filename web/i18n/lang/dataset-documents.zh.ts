@@ -1,14 +1,14 @@
 const translation = {
   list: {
     title: '文档',
-    desc: '数据集的所有文件都在这里显示，整个数据集都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
+    desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
     addFile: '添加文件',
     addPages: '添加页面',
     table: {
       header: {
         fileName: '文件名',
         words: '字符数',
-        hitCount: '命中次数',
+        hitCount: '召回次数',
         uploadTime: '上传时间',
         status: '状态',
         action: '操作',
@@ -215,7 +215,7 @@ const translation = {
         segmentLength: '段落长度',
         avgParagraphLength: '平均段落长度',
         paragraphs: '段落数量',
-        hitCount: '命中次数',
+        hitCount: '召回次数',
         embeddingTime: '嵌入时间',
         embeddedSpend: '嵌入花费',
       },
@@ -331,7 +331,7 @@ const translation = {
     addKeyWord: '添加关键词',
     keywordError: '关键词最大长度为 20',
     characters: '字符',
-    hitCount: '命中次数',
+    hitCount: '召回次数',
     vectorHash: '向量哈希：',
     questionPlaceholder: '在这里添加问题',
     questionEmpty: '问题不能为空',

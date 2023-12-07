@@ -237,29 +237,24 @@ const baseFetch = <T>(
             switch (res.status) {
               case 401: {
                 if (isPublicAPI) {
-                  Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return bodyJson.then((data: T) => Promise.reject(data))
+                  return bodyJson.then((data: ResponseError) => {
+                    Toast.notify({ type: 'error', message: data.message })
+                    return Promise.reject(data)
+                  })
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
-                if (IS_CE_EDITION) {
-                  bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'not_setup') {
-                      globalThis.location.href = `${globalThis.location.origin}/install`
-                    }
-                    else {
-                      if (location.pathname === '/signin') {
-                        bodyJson.then((data: ResponseError) => {
-                          Toast.notify({ type: 'error', message: data.message })
-                        })
-                      }
-                      else {
-                        globalThis.location.href = loginUrl
-                      }
-                    }
-                  })
-                  return Promise.reject(Error('Unauthorized'))
-                }
-                globalThis.location.href = loginUrl
+                bodyJson.then((data: ResponseError) => {
+                  if (data.code === 'not_setup' && IS_CE_EDITION)
+                    globalThis.location.href = `${globalThis.location.origin}/install`
+                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
+                    globalThis.location.href = loginUrl
+                  else
+                    Toast.notify({ type: 'error', message: data.message })
+                }).catch(() => {
+                  // Handle any other errors
+                  globalThis.location.href = loginUrl
+                })
+
                 break
               }
               case 403:
@@ -297,12 +292,30 @@ const baseFetch = <T>(
   ]) as Promise<T>
 }
 
-export const upload = (options: any): Promise<any> => {
+export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
+  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let token = ''
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    token = accessTokenJson[sharedToken]
+  }
+  else {
+    const accessToken = localStorage.getItem('console_token') || ''
+    token = accessToken
+  }
   const defaultOptions = {
     method: 'POST',
-    url: `${API_PREFIX}/files/upload`,
+    url: `${urlPrefix}/files/upload`,
     headers: {
-      Authorization: `Bearer ${localStorage.getItem('console_token') || ''}`,
+      Authorization: `Bearer ${token}`,
     },
     data: {},
   }

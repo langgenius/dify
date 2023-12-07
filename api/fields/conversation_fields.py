@@ -28,6 +28,12 @@ annotation_fields = {
     'created_at': TimestampField
 }
 
+message_file_fields = {
+    'id': fields.String,
+    'type': fields.String,
+    'url': fields.String,
+}
+
 message_detail_fields = {
     'id': fields.String,
     'conversation_id': fields.String,
@@ -43,7 +49,8 @@ message_detail_fields = {
     'from_account_id': fields.String,
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
     'annotation': fields.Nested(annotation_fields, allow_null=True),
-    'created_at': TimestampField
+    'created_at': TimestampField,
+    'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
 }
 
 feedback_stat_fields = {
@@ -109,11 +116,6 @@ conversation_message_detail_fields = {
     'created_at': TimestampField,
     'model_config': fields.Nested(model_config_fields),
     'message': fields.Nested(message_detail_fields, attribute='first_message'),
-}
-
-simple_model_config_fields = {
-    'model': fields.Raw(attribute='model_dict'),
-    'pre_prompt': fields.String,
 }
 
 conversation_with_summary_fields = {

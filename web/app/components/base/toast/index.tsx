@@ -17,6 +17,7 @@ export type IToastProps = {
   message: string
   children?: ReactNode
   onClose?: () => void
+  className?: string
 }
 type IToastContext = {
   notify: (props: IToastProps) => void
@@ -30,12 +31,14 @@ const Toast = ({
   duration,
   message,
   children,
+  className,
 }: IToastProps) => {
   // sometimes message is react node array. Not handle it.
   if (typeof message !== 'string')
     return null
 
   return <div className={classNames(
+    className,
     'fixed rounded-md p-4 my-4 mx-8 z-50',
     'top-0',
     'right-0',
@@ -115,12 +118,13 @@ Toast.notify = ({
   type,
   message,
   duration,
-}: Pick<IToastProps, 'type' | 'message' | 'duration'>) => {
+  className,
+}: Pick<IToastProps, 'type' | 'message' | 'duration' | 'className'>) => {
   if (typeof window === 'object') {
     const holder = document.createElement('div')
     const root = createRoot(holder)
 
-    root.render(<Toast type={type} message={message} duration={duration} />)
+    root.render(<Toast type={type} message={message} duration={duration} className={className} />)
     document.body.appendChild(holder)
     setTimeout(() => {
       if (holder)

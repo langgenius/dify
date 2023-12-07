@@ -315,6 +315,9 @@ class AppModelConfigService:
         # moderation validation
         cls.is_moderation_valid(tenant_id, config)
 
+        # file upload validation
+        cls.is_file_upload_valid(config)
+
         # Filter out extra parameters
         filtered_config = {
             "opening_statement": config["opening_statement"],
@@ -338,7 +341,8 @@ class AppModelConfigService:
             "prompt_type": config["prompt_type"],
             "chat_prompt_config": config["chat_prompt_config"],
             "completion_prompt_config": config["completion_prompt_config"],
-            "dataset_configs": config["dataset_configs"]
+            "dataset_configs": config["dataset_configs"],
+            "file_upload": config["file_upload"]
         }
 
         return filtered_config
@@ -370,6 +374,34 @@ class AppModelConfigService:
             tenant_id=tenant_id,
             config=config
         )
+
+    @classmethod
+    def is_file_upload_valid(cls, config: dict):
+        if 'file_upload' not in config or not config["file_upload"]:
+            config["file_upload"] = {}
+
+        if not isinstance(config["file_upload"], dict):
+            raise ValueError("file_upload must be of dict type")
+
+        # check image config
+        if 'image' not in config["file_upload"] or not config["file_upload"]["image"]:
+            config["file_upload"]["image"] = {"enabled": False}
+
+        if config['file_upload']['image']['enabled']:
+            number_limits = config['file_upload']['image']['number_limits']
+            if number_limits < 1 or number_limits > 6:
+                raise ValueError("number_limits must be in [1, 6]")
+
+            detail = config['file_upload']['image']['detail']
+            if detail not in ['high', 'low']:
+                raise ValueError("detail must be in ['high', 'low']")
+
+            transfer_methods = config['file_upload']['image']['transfer_methods']
+            if not isinstance(transfer_methods, list):
+                raise ValueError("transfer_methods must be of list type")
+            for method in transfer_methods:
+                if method not in ['remote_url', 'local_file']:
+                    raise ValueError("transfer_methods must be in ['remote_url', 'local_file']")
 
     @classmethod
     def is_external_data_tools_valid(cls, tenant_id: str, config: dict):
@@ -438,7 +470,16 @@ class AppModelConfigService:
 
         # dataset_configs
         if 'dataset_configs' not in config or not config["dataset_configs"]:
-            config["dataset_configs"] = {"top_k": 2, "score_threshold": {"enable": False}}
+            config["dataset_configs"] = {'retrieval_model': 'single'}
+
+        if not isinstance(config["dataset_configs"], dict):
+            raise ValueError("dataset_configs must be of object type")
+
+        if config["dataset_configs"]['retrieval_model'] == 'multiple':
+            if not config["dataset_configs"]['reranking_model']:
+                raise ValueError("reranking_model has not been set")
+            if not isinstance(config["dataset_configs"]['reranking_model'], dict):
+                raise ValueError("reranking_model must be of object type")
 
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")

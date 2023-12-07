@@ -176,11 +176,7 @@ export type PluginProvider = {
 export type FileUploadConfigResponse = {
   file_size_limit: number
   batch_count_limit: number
-}
-
-export type DocumentsLimitResponse = {
-  documents_count: number
-  documents_limit: number
+  image_file_size_limit?: number | string
 }
 
 export type InvitationResult = {

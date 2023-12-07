@@ -1,5 +1,5 @@
 .wrap {
-  min-width: 312px;
+  display: flex;
 }
 
 .mode {

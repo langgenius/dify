@@ -129,7 +129,7 @@ function AppCard({
 
   return (
     <div
-      className={`min-w-max shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
+      className={`shadow-xs border-[0.5px] rounded-lg border-gray-200 ${
         className ?? ''
       }`}
     >
@@ -163,8 +163,8 @@ function AppCard({
                 : t('appOverview.overview.apiInfo.accessibleAddress')}
             </div>
             <div className="w-full h-9 pl-2 pr-0.5 py-0.5 bg-black bg-opacity-[0.02] rounded-lg border border-black border-opacity-5 justify-start items-center inline-flex">
-              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1">
-                <div className="text-gray-700 text-xs font-medium">
+              <div className="h-4 px-2 justify-start items-start gap-2 flex flex-1 min-w-0">
+                <div className="text-gray-700 text-xs font-medium text-ellipsis overflow-hidden whitespace-nowrap">
                   {isApp ? appUrl : apiUrl}
                 </div>
               </div>
@@ -196,7 +196,7 @@ function AppCard({
             </div>
           </div>
         </div>
-        <div className={'pt-2 flex flex-row items-center'}>
+        <div className={'pt-2 flex flex-row items-center flex-wrap gap-y-2'}>
           {!isApp && <SecretKeyButton className='flex-shrink-0 !h-8 bg-white mr-2' textCls='!text-gray-700 font-medium' iconCls='stroke-[1.2px]' appId={appInfo.id} />}
           {OPERATIONS_MAP[cardType].map((op) => {
             const disabled

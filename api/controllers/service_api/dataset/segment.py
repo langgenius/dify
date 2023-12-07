@@ -3,7 +3,7 @@ from flask_restful import reqparse, marshal
 from werkzeug.exceptions import NotFound
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
-from controllers.service_api.wraps import DatasetApiResource
+from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
@@ -14,6 +14,8 @@ from services.dataset_service import DatasetService, DocumentService, SegmentSer
 
 class SegmentApi(DatasetApiResource):
     """Resource for segments."""
+
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Create single segment."""
         # check dataset
@@ -144,6 +146,7 @@ class DatasetSegmentApi(DatasetApiResource):
         SegmentService.delete_segment(segment, document, dataset)
         return {'result': 'success'}, 200
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)

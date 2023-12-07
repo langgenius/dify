@@ -10,6 +10,7 @@ if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
         import grpc.experimental.gevent
         grpc.experimental.gevent.init_gevent()
 
+import time
 import logging
 import json
 import threading
@@ -35,6 +36,13 @@ from libs.passport import PassportService
 
 import warnings
 warnings.simplefilter("ignore", ResourceWarning)
+
+# fix windows platform
+if os.name == "nt":
+    os.system('tzutil /s "UTC"')    
+else:
+    os.environ['TZ'] = 'UTC'
+    time.tzset()
 
 
 class DifyApp(Flask):
@@ -126,6 +134,7 @@ def register_blueprints(app):
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
     from controllers.console import bp as console_app_bp
+    from controllers.files import bp as files_bp
 
     CORS(service_api_bp,
          allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
@@ -154,6 +163,12 @@ def register_blueprints(app):
          )
 
     app.register_blueprint(console_app_bp)
+
+    CORS(files_bp,
+         allow_headers=['Content-Type'],
+         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         )
+    app.register_blueprint(files_bp)
 
 
 # create app

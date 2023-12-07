@@ -8,6 +8,7 @@ import produce from 'immer'
 import { useBoolean, useGetState } from 'ahooks'
 import cn from 'classnames'
 import { clone, isEqual } from 'lodash-es'
+import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
 import Loading from '../../base/loading'
 import s from './style.module.css'
@@ -25,25 +26,27 @@ import type {
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
-import type { ModelConfig as BackendModelConfig } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionSettings } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
-import { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelFeature, ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
 import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
-import { AppType, ModelModeType } from '@/types/app'
+import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import Drawer from '@/app/components/base/drawer'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -63,6 +66,10 @@ const Configuration: FC = () => {
   const [publishedConfig, setPublishedConfig] = useState<PublichConfig | null>(null)
 
   const [conversationId, setConversationId] = useState<string | null>('')
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+  const [isShowDebugPanel, { setTrue: showDebugPanel, setFalse: hideDebugPanel }] = useBoolean(false)
 
   const [introduction, setIntroduction] = useState<string>('')
   const [controlClearChatMessage, setControlClearChatMessage] = useState(0)
@@ -127,11 +134,14 @@ const Configuration: FC = () => {
   })
 
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
-    top_k: 2,
-    score_threshold: {
-      enable: false,
-      value: 0.7,
+    retrieval_model: RETRIEVE_TYPE.oneWay,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
     },
+    top_k: 2,
+    score_threshold_enabled: false,
+    score_threshold: 0.7,
   })
 
   const setModelConfig = (newModelConfig: ModelConfig) => {
@@ -198,6 +208,7 @@ const Configuration: FC = () => {
   }
 
   const { textGenerationModelList } = useProviderContext()
+  const currModel = textGenerationModelList.find(item => item.model_name === modelConfig.model_id)
   const hasSetCustomAPIKEY = !!textGenerationModelList?.find(({ model_provider: provider }) => {
     if (provider.provider_type === 'system' && provider.quota_type === 'paid')
       return true
@@ -271,7 +282,8 @@ const Configuration: FC = () => {
     id: modelId,
     provider,
     mode: modeMode,
-  }: { id: string; provider: ProviderEnum; mode: ModelModeType }) => {
+    features,
+  }: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => {
     if (isAdvancedMode) {
       const appMode = mode
 
@@ -297,10 +309,31 @@ const Configuration: FC = () => {
     })
 
     setModelConfig(newModelConfig)
+    const supportVision = features && features.includes(ModelFeature.vision)
+    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    setVisionConfig({
+      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      ...visionConfig,
+      enabled: supportVision,
+    }, true)
+  }
+
+  const isShowVisionConfig = !!currModel?.features.includes(ModelFeature.vision)
+  const [visionConfig, doSetVisionConfig] = useState({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+
+  const setVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
+    doSetVisionConfig(config)
+    if (!notNoticeFormattingChanged)
+      setFormattingChanged(true)
   }
 
   useEffect(() => {
-    fetchAppDetail({ url: '/apps', id: appId }).then(async (res) => {
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
       setMode(res.mode)
       const modelConfig = res.model_config
       const promptMode = modelConfig.prompt_type === PromptMode.advanced ? PromptMode.advanced : PromptMode.simple
@@ -362,9 +395,16 @@ const Configuration: FC = () => {
         },
         completionParams: model.completion_params,
       }
+
+      if (modelConfig.file_upload)
+        setVisionConfig(modelConfig.file_upload.image, true)
+
       syncToPublishedConfig(config)
       setPublishedConfig(config)
-      setDatasetConfigs(modelConfig.dataset_configs)
+      setDatasetConfigs({
+        retrieval_model: RETRIEVE_TYPE.oneWay,
+        ...modelConfig.dataset_configs,
+      })
       setHasFetchedDetail(true)
     })
   }, [appId])
@@ -459,6 +499,9 @@ const Configuration: FC = () => {
         completion_params: completionParams as any,
       },
       dataset_configs: datasetConfigs,
+      file_upload: {
+        image: visionConfig,
+      },
     }
 
     if (isAdvancedMode) {
@@ -557,11 +600,14 @@ const Configuration: FC = () => {
       datasetConfigs,
       setDatasetConfigs,
       hasSetContextVar,
+      isShowVisionConfig,
+      visionConfig,
+      setVisionConfig,
     }}
     >
       <>
         <div className="flex flex-col h-full">
-          <div className='flex items-center justify-between px-6 shrink-0 h-14'>
+          <div className='flex items-center justify-between px-6 shrink-0 py-3 flex-wrap gap-y-2'>
             <div className='flex items-end'>
               <div className={s.promptTitle}></div>
               <div className='flex items-center h-[14px] space-x-1 text-xs'>
@@ -591,7 +637,7 @@ const Configuration: FC = () => {
               </div>
             </div>
 
-            <div className='flex items-center'>
+            <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
               {/* Model and Parameters */}
               <ConfigModel
                 isAdvancedMode={isAdvancedMode}
@@ -605,22 +651,28 @@ const Configuration: FC = () => {
                 }}
                 disabled={!hasSetAPIKEY}
               />
-              <div className='mx-3 w-[1px] h-[14px] bg-gray-200'></div>
+              <div className='w-[1px] h-[14px] bg-gray-200'></div>
               <Button onClick={() => setShowConfirm(true)} className='shrink-0 mr-2 w-[70px] !h-8 !text-[13px] font-medium'>{t('appDebug.operation.resetConfig')}</Button>
+              {isMobile && (
+                <Button className='!h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
+                  <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                  <CodeBracketIcon className="h-4 w-4 text-gray-500" />
+                </Button>
+              )}
               <Button type='primary' onClick={() => handlePublish(false)} className={cn(cannotPublish && '!bg-primary-200 !cursor-not-allowed', 'shrink-0 w-[70px] !h-8 !text-[13px] font-medium')}>{t('appDebug.operation.applyConfig')}</Button>
             </div>
           </div>
           <div className='flex grow h-[200px]'>
-            <div className="w-1/2 min-w-[560px] shrink-0">
+            <div className="w-full sm:w-1/2 shrink-0">
               <Config />
             </div>
-            <div className="relative w-1/2  grow h-full overflow-y-auto  py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+            {!isMobile && <div className="relative w-1/2 grow h-full overflow-y-auto py-4 px-6 bg-gray-50 flex flex-col rounded-tl-2xl border-t border-l" style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
               <Debug
                 hasSetAPIKEY={hasSetAPIKEY}
                 onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
                 inputs={inputs}
               />
-            </div>
+            </div>}
           </div>
         </div>
         {showConfirm && (
@@ -667,6 +719,15 @@ const Configuration: FC = () => {
               hideHistoryModal()
             }}
           />
+        )}
+        {isMobile && (
+          <Drawer showClose isOpen={isShowDebugPanel} onClose={hideDebugPanel} mask footer={null} panelClassname='!bg-gray-50'>
+            <Debug
+              hasSetAPIKEY={hasSetAPIKEY}
+              onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
+              inputs={inputs}
+            />
+          </Drawer>
         )}
       </>
     </ConfigContext.Provider>

@@ -1,3 +1,5 @@
+import type { VisionFile } from '@/types/app'
+
 // Log type contains key:string conversation_id:string created_at:string quesiton:string answer:string
 export type Conversation = {
   id: string
@@ -78,6 +80,7 @@ export type MessageContent = {
     from_source?: 'admin' | 'user'
     from_end_user_id?: string
   }>
+  message_files: VisionFile[]
 }
 
 export type CompletionConversationGeneralDetail = {

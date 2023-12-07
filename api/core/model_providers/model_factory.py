@@ -9,6 +9,7 @@ from core.model_providers.models.embedding.base import BaseEmbedding
 from core.model_providers.models.entity.model_params import ModelKwargs, ModelType
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.moderation.base import BaseModeration
+from core.model_providers.models.reranking.base import BaseReranking
 from core.model_providers.models.speech2text.base import BaseSpeech2Text
 from extensions.ext_database import db
 from models.provider import TenantDefaultModel
@@ -135,6 +136,44 @@ class ModelFactory:
 
         # init embedding model
         model_class = model_provider.get_model_class(model_type=ModelType.EMBEDDINGS)
+        return model_class(
+            model_provider=model_provider,
+            name=model_name
+        )
+
+
+    @classmethod
+    def get_reranking_model(cls,
+                            tenant_id: str,
+                            model_provider_name: Optional[str] = None,
+                            model_name: Optional[str] = None) -> Optional[BaseReranking]:
+        """
+        get reranking model.
+
+        :param tenant_id: a string representing the ID of the tenant.
+        :param model_provider_name:
+        :param model_name:
+        :return:
+        """
+        if (model_provider_name is None or len(model_provider_name) == 0) and (model_name is None or len(model_name) == 0):
+            default_model = cls.get_default_model(tenant_id, ModelType.RERANKING)
+
+            if not default_model:
+                raise LLMBadRequestError(f"Default model is not available. "
+                                         f"Please configure a Default Reranking Model "
+                                         f"in the Settings -> Model Provider.")
+
+            model_provider_name = default_model.provider_name
+            model_name = default_model.model_name
+
+        # get model provider
+        model_provider = ModelProviderFactory.get_preferred_model_provider(tenant_id, model_provider_name)
+
+        if not model_provider:
+            raise ProviderTokenNotInitError(f"Model {model_name} provider credentials is not initialized.")
+
+        # init reranking model
+        model_class = model_provider.get_model_class(model_type=ModelType.RERANKING)
         return model_class(
             model_provider=model_provider,
             name=model_name

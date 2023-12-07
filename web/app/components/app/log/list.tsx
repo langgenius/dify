@@ -33,7 +33,7 @@ import { TONE_LIST } from '@/config'
 import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
-import { ModelModeType } from '@/types/app'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -81,6 +81,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
       log: item.message as any,
+      message_files: item.message_files,
     })
 
     newChatList.push({
@@ -174,9 +175,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     const itemContent = item[Object.keys(item)[0]]
     return {
       label: itemContent.variable,
-      value: varValues[itemContent.variable],
+      value: varValues[itemContent.variable] || detail.message?.inputs?.[itemContent.variable],
     }
   })
+  const message_files = (!isChatMode && detail.message.message_files && detail.message.message_files.length > 0)
+    ? detail.message.message_files.map((item: any) => item.url)
+    : []
 
   const getParamValue = (param: string) => {
     const value = detail?.model_config.model?.completion_params?.[param] || '-'
@@ -197,7 +201,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
         <div className='text-gray-700 text-[13px] leading-[18px]'>{isChatMode ? detail.id?.split('-').slice(-1)[0] : dayjs.unix(detail.created_at).format(t('appLog.dateTimeFormat') as string)}</div>
       </div>
-      <div className='flex items-center'>
+      <div className='flex items-center flex-wrap gap-y-1 justify-end'>
         <div
           className={cn('mr-2 flex items-center border h-8 px-2 space-x-2 rounded-lg bg-indigo-25 border-[#2A87F5]')}
         >
@@ -209,7 +213,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <div className='text-[13px] text-gray-900 font-medium'>
             <ModelName modelId={modelName} modelDisplayName={modelName} />
           </div>
-          <ModelModeTypeLabel type={ModelModeType.chat} isHighlight />
+          <ModelModeTypeLabel type={detail?.model_config.model.mode as any} isHighlight />
         </div>
         <Popover
           position='br'
@@ -239,11 +243,15 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
     </div>
     {/* Panel Body */}
-    {varList.length > 0 && (
+    {(varList.length > 0 || (!isChatMode && message_files.length > 0)) && (
       <div className='px-6 pt-4 pb-2'>
-        <VarPanel varList={varList} />
+        <VarPanel
+          varList={varList}
+          message_files={message_files}
+        />
       </div>
     )}
+
     {!isChatMode
       ? <div className="px-2.5 py-4">
         <Chat
@@ -405,6 +413,10 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
  */
 const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail?.mode === 'chat' // Whether the app is a chat app
@@ -438,17 +450,17 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return <Loading />
 
   return (
-    <>
-      <table className={`w-full border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
-        <thead className="h-8 leading-8 border-b  border-gray-200 text-gray-500 font-bold">
+    <div className='overflow-x-auto'>
+      <table className={`w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
+        <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
           <tr>
-            <td className='w-[1.375rem]'></td>
-            <td>{t('appLog.table.header.time')}</td>
-            <td>{t('appLog.table.header.endUser')}</td>
-            <td>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td>{t('appLog.table.header.userRate')}</td>
-            <td>{t('appLog.table.header.adminRate')}</td>
+            <td className='w-[1.375rem] whitespace-nowrap'></td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
+            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
           </tr>
         </thead>
         <tbody className="text-gray-500">
@@ -497,9 +509,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Drawer
         isOpen={showDrawer}
         onClose={onCloseDrawer}
-        mask={false}
+        mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mr-2 mb-3 !p-0 !max-w-[640px] rounded-b-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,
@@ -511,7 +523,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           }
         </DrawerContext.Provider>
       </Drawer>
-    </>
+    </div>
   )
 }
 

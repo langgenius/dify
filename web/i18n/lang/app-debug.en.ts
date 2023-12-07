@@ -21,6 +21,7 @@ const translation = {
   operation: {
     applyConfig: 'Publish',
     resetConfig: 'Reset',
+    debugConfig: 'Debug',
     addFeature: 'Add Feature',
     automatic: 'Automatic',
     stopResponding: 'Stop responding',
@@ -76,26 +77,26 @@ const translation = {
     },
     dataSet: {
       title: 'Context',
-      noData: 'You can import datasets as context',
+      noData: 'You can import Knowledge as context',
       words: 'Words',
       textBlocks: 'Text Blocks',
-      selectTitle: 'Select reference dataset',
-      selected: 'Datasets selected',
-      noDataSet: 'No dataset found',
+      selectTitle: 'Select reference Knowledge',
+      selected: 'Knowledge selected',
+      noDataSet: 'No Knowledge found',
       toCreate: 'Go to create',
-      notSupportSelectMulti: 'Currently only support one dataset',
+      notSupportSelectMulti: 'Currently only support one Knowledge',
       queryVariable: {
         title: 'Query variable',
         tip: 'This variable will be used as the query input for context retrieval, obtaining context information related to the input of this variable.',
         choosePlaceholder: 'Choose query variable',
         noVar: 'No variables',
         noVarTip: 'please create a variable under the Variables section',
-        unableToQueryDataSet: 'Unable to query the dataset',
-        unableToQueryDataSetTip: 'Unable to query the dataset successfully, please choose a context query variable in the context section.',
+        unableToQueryDataSet: 'Unable to query the Knowledge',
+        unableToQueryDataSetTip: 'Unable to query the Knowledge successfully, please choose a context query variable in the context section.',
         ok: 'OK',
         contextVarNotEmpty: 'context query variable can not be empty',
         deleteContextVarTitle: 'Delete variable “{{varName}}”?',
-        deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the dataset. If you still need to delete it, please reselect it in the context section.',
+        deleteContextVarTip: 'This variable has been set as a context query variable, and removing it will impact the normal use of the Knowledge. If you still need to delete it, please reselect it in the context section.',
       },
     },
     tools: {
@@ -202,6 +203,7 @@ const translation = {
     waitForBatchResponse:
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
+    waitForImgUpload: 'Please wait for the image to upload',
   },
   chatSubTitle: 'Pre Prompt',
   completionSubTitle: 'Prefix Prompt',
@@ -249,6 +251,25 @@ const translation = {
     options: 'Options',
     addOption: 'Add option',
   },
+  vision: {
+    name: 'Vision',
+    description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    settings: 'Settings',
+    visionSettings: {
+      title: 'Vision Settings',
+      resolution: 'Resolution',
+      resolutionTooltip: `low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.
+      \n
+      high res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.`,
+      high: 'High',
+      low: 'Low',
+      uploadMethod: 'Upload Method',
+      both: 'Both',
+      localUpload: 'Local Upload',
+      url: 'URL',
+      uploadLimit: 'Upload Limit',
+    },
+  },
   openingStatement: {
     title: 'Opening remarks',
     add: 'Add',
@@ -285,11 +306,22 @@ const translation = {
   },
   result: 'Output Text',
   datasetConfig: {
+    settingTitle: 'Retrieval settings',
+    retrieveOneWay: {
+      title: 'N-to-1 retrieval',
+      description: 'Based on user intent and Knowledge descriptions, the Agent autonomously selects the best Knowledge for querying. Best for applications with distinct, limited Knowledge.',
+    },
+    retrieveMultiWay: {
+      title: 'Multi-path retrieval',
+      description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
+    },
+    rerankModelRequired: 'Rerank model is required',
     params: 'Params',
     top_k: 'Top K',
-    top_kTip: 'Used to filter segments that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
+    top_kTip: 'Used to filter chunks that are most similar to user questions. The system will also dynamically adjust the value of Top K, according to max_tokens of the selected model.',
     score_threshold: 'Score Threshold',
-    score_thresholdTip: 'Used to set the similarity threshold for segment filtering.',
+    score_thresholdTip: 'Used to set the similarity threshold for chunks filtering.',
+    retrieveChangeTip: 'Modifying the index mode and retrieval mode may affect applications associated with this Knowledge.',
   },
 }
 

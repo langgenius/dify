@@ -17,7 +17,7 @@ class ModelType(enum.Enum):
     IMAGE = 'image'
     VIDEO = 'video'
     MODERATION = 'moderation'
-
+    RERANKING = 'reranking'
     @staticmethod
     def value_of(value):
         for member in ModelType:

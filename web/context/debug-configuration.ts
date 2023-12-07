@@ -19,7 +19,8 @@ import type {
 } from '@/models/debug'
 import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
-import { ModelModeType } from '@/types/app'
+import type { VisionSettings } from '@/types/app'
+import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type IDebugConfiguration = {
@@ -80,6 +81,9 @@ type IDebugConfiguration = {
   datasetConfigs: DatasetConfigs
   setDatasetConfigs: (config: DatasetConfigs) => void
   hasSetContextVar: boolean
+  isShowVisionConfig: boolean
+  visionConfig: VisionSettings
+  setVisionConfig: (visionConfig: VisionSettings) => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -176,14 +180,25 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   showSelectDataSet: () => { },
   setDataSets: () => { },
   datasetConfigs: {
-    top_k: 2,
-    score_threshold: {
-      enable: false,
-      value: 0.7,
+    retrieval_model: RETRIEVE_TYPE.oneWay,
+    reranking_model: {
+      reranking_provider_name: '',
+      reranking_model_name: '',
     },
+    top_k: 2,
+    score_threshold_enabled: false,
+    score_threshold: 0.7,
   },
   setDatasetConfigs: () => {},
   hasSetContextVar: false,
+  isShowVisionConfig: false,
+  visionConfig: {
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.remote_url],
+  },
+  setVisionConfig: () => {},
 })
 
 export default DebugConfigurationContext

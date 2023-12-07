@@ -148,7 +148,7 @@ const Select: FC<ISelectProps> = ({
 
 const SimpleSelect: FC<ISelectProps> = ({
   className,
-  wrapperClassName,
+  wrapperClassName = '',
   items = defaultItems,
   defaultValue = 1,
   disabled = false,
