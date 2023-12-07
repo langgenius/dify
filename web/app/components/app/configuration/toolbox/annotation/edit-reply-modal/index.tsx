@@ -43,6 +43,7 @@ const EditReplyModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
+        maxWidthClassName='!max-w-[480px]'
         title={t('appDebug.feature.annotation.editModal.title') as string}
         body={(
           <div className='p-6 pb-4 space-y-6'>

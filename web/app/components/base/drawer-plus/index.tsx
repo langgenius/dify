@@ -8,6 +8,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 type Props = {
   isShow: boolean
   onHide: () => void
+  maxWidthClassName?: string
   height?: number | string
   title: string | JSX.Element
   body: JSX.Element
@@ -17,6 +18,7 @@ type Props = {
 const DrawerPlus: FC<Props> = ({
   isShow,
   onHide,
+  maxWidthClassName = '!max-w-[640px]',
   height = 'calc(100vh - 72px)',
   title,
   body,
@@ -31,7 +33,7 @@ const DrawerPlus: FC<Props> = ({
 
   return (
     // clickOutsideNotOpen to fix confirm modal click cause drawer close
-    <Drawer isOpen={isShow} clickOutsideNotOpen onClose={onHide} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+    <Drawer isOpen={isShow} clickOutsideNotOpen onClose={onHide} footer={null} mask={isMobile} panelClassname={`mt-16 mx-2 sm:mr-2 mb-3 !p-0 ${maxWidthClassName} rounded-xl`}>
       <div
         className='w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
         style={{
