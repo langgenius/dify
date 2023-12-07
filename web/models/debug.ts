@@ -73,7 +73,7 @@ export type SpeechToTextConfig = MoreLikeThisConfig
 
 export type CitationConfig = MoreLikeThisConfig
 
-export type CacheReplyConfig = {
+export type AnnotationReplyConfig = {
   enabled: boolean
   threshold: number
   matchVar?: string

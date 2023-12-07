@@ -15,7 +15,7 @@ import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
-  CacheReplyConfig,
+  AnnotationReplyConfig,
   CompletionParams,
   DatasetConfigs,
   Inputs,
@@ -90,7 +90,7 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [annotationConfig, setAnnotationConfig] = useState<CacheReplyConfig>({
+  const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
     enabled: true,
     threshold: 0.9,
     matchVar: '',

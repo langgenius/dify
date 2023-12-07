@@ -18,7 +18,7 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { CacheReplyConfig, CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { AnnotationReplyConfig, CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -111,7 +111,7 @@ const Config: FC = () => {
     },
     annotation: annotationConfig.enabled,
     setAnnotation: (value) => {
-      setAnnotationConfig(produce(annotationConfig, (draft: CacheReplyConfig) => {
+      setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = value
       }))
     },

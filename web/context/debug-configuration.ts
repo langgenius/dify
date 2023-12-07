@@ -1,8 +1,8 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
+  AnnotationReplyConfig,
   BlockStatus,
-  CacheReplyConfig,
   ChatPromptConfig,
   CitationConfig,
   CompletionParams,
@@ -59,8 +59,8 @@ type IDebugConfiguration = {
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
-  annotationConfig: CacheReplyConfig
-  setAnnotationConfig: (annotationConfig: CacheReplyConfig) => void
+  annotationConfig: AnnotationReplyConfig
+  setAnnotationConfig: (annotationConfig: AnnotationReplyConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
   externalDataToolsConfig: ExternalDataTool[]

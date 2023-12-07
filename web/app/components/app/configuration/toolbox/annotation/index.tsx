@@ -37,7 +37,7 @@ const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
   )
 }
 
-const CacheReplyConfig: FC<Props> = () => {
+const AnnotationReplyConfig: FC<Props> = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const pathname = usePathname()
@@ -102,4 +102,4 @@ const CacheReplyConfig: FC<Props> = () => {
     </Panel>
   )
 }
-export default React.memo(CacheReplyConfig)
+export default React.memo(AnnotationReplyConfig)
