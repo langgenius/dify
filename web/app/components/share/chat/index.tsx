@@ -719,7 +719,7 @@ const Main: FC<IMainProps> = ({
         )}
         {/* main */}
         <div className={cn(
-          'h-full flex-grow flex flex-col overflow-y-auto',
+          'flex-grow flex flex-col overflow-y-auto',
         )
         }>
           <ConfigSence
