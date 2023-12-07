@@ -26,15 +26,16 @@ const LogAnnotation: FC<Props> = ({
   ]
 
   return (
-    <div className='pt-4 px-6'>
+    <div className='pt-4 px-6 h-full flex flex-col'>
       <TabSlider
+        className='shrink-0'
         value={pageType}
         onChange={(value) => {
           router.push(`/app/${appId}/${value === PageType.log ? 'logs' : 'annotations'}`)
         }}
         options={options}
       />
-      <div className='mt-3'>
+      <div className='mt-3 grow'>
         {pageType === PageType.log && (<Log appId={appId} />)}
         {pageType === PageType.annotation && (<Annotation appId={appId} />)}
       </div>
