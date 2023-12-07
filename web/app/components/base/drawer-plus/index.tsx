@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useRef } from 'react'
-import { useClickAway } from 'ahooks'
 import Drawer from '@/app/components/base/drawer'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -27,16 +26,12 @@ const DrawerPlus: FC<Props> = ({
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
-  useClickAway(() => {
-    if (ref)
-      onHide()
-  }, ref)
-
   if (!isShow)
     return null
 
   return (
-    <Drawer isOpen={isShow} onClose={onHide} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
+    // clickOutsideNotOpen to fix confirm modal click cause drawer close
+    <Drawer isOpen={isShow} clickOutsideNotOpen onClose={onHide} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
       <div
         className='w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl'
         style={{

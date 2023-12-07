@@ -40,7 +40,7 @@ const Debug: FC<IDebug> = ({
   onSetting,
   inputs,
 }) => {
-  const [isShowReplyModal, setIsShowReplyModal] = useState(true)
+  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const { t } = useTranslation()
   const {
     appId,
@@ -518,8 +518,8 @@ const Debug: FC<IDebug> = ({
         onSave={(query, answer) => {
           console.log(query, answer)
         }}
-        id=''
-        createdAt=''
+        id='1'
+        createdAt='2023-03-21 10:00'
         onRemove={() => { }}
       />
       <div className="flex flex-col grow">

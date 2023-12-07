@@ -1,9 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
+import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
+import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -33,35 +36,55 @@ const EditReplyModal: FC<Props> = ({
     else
       onSave(query, editedContent)
   }
+  const [showModal, setShowModal] = useState(false)
+
   return (
-    <Drawer
-      isShow={isShow}
-      onHide={onHide}
-      title={t('appDebug.feature.annotation.editModal.title') as string}
-      body={(
-        <div className='p-6 pb-4 space-y-6'>
-          <EditItem
-            type={EditItemType.Query}
-            content={query}
-            onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
-          />
-          <EditItem
-            type={EditItemType.Answer}
-            content={answer}
-            onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
-          />
-        </div>
-      )}
-      foot={id
-        ? (
-          <div className='flex justify-between'>
-            <div>Remove</div>
-            <div>{createdAt}</div>
+    <div>
+      <Drawer
+        isShow={isShow}
+        onHide={onHide}
+        title={t('appDebug.feature.annotation.editModal.title') as string}
+        body={(
+          <div className='p-6 pb-4 space-y-6'>
+            <EditItem
+              type={EditItemType.Query}
+              content={query}
+              onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
+            />
+            <EditItem
+              type={EditItemType.Answer}
+              content={answer}
+              onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
+            />
           </div>
-        )
-        : undefined}
-    >
-    </Drawer>
+        )}
+        foot={id
+          ? (
+            <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+              <div
+                className='flex items-center pl-3 space-x-2 cursor-pointer'
+                onClick={() => setShowModal(true)}
+              >
+                <MessageCheckRemove />
+                <div>{t('appDebug.feature.annotation.editModal.removeThisCache')}</div>
+              </div>
+              <div>{t('appDebug.feature.annotation.editModal.createdAt')}&nbsp;{createdAt}</div>
+            </div>
+          )
+          : undefined}
+      >
+      </Drawer>
+      <DeleteConfirmModal
+        isShow={showModal}
+        onHide={() => setShowModal(false)}
+        onRemove={() => {
+          onRemove()
+          setShowModal(false)
+        }}
+        text={t('appDebug.feature.annotation.removeConfirm') as string}
+      />
+    </div>
+
   )
 }
 export default React.memo(EditReplyModal)

@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -30,10 +31,15 @@ const DeleteConfirmModal: FC<Props> = ({
     <Modal
       isShow={isShow}
       onClose={onHide}
-      className={s.delModal}
+      wrapperClassName='z-50'
+      className={cn(s.delModal, 'z-50')}
       closable
     >
-      <div>
+      <div onClick={(e) => {
+        e.stopPropagation()
+        e.stopPropagation()
+        e.nativeEvent.stopImmediatePropagation()
+      }}>
         <div className={s.warningWrapper}>
           <AlertCircle className='w-6 h-6 text-red-600' />
         </div>

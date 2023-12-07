@@ -104,6 +104,8 @@ const translation = {
         answerPlaceholder: 'Type your answer here',
         yourQuery: 'Your Answer',
         queryPlaceholder: 'Type your query here',
+        removeThisCache: 'Remove this Cache',
+        createdAt: 'Created At',
       },
     },
     dataSet: {
