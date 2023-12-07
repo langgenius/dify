@@ -100,6 +100,10 @@ const translation = {
         title: '编辑标注回复',
         queryName: '用户提问',
         answerName: '机器回复',
+        yourAnswer: '您的回复',
+        answerPlaceholder: '在这里输入您的回复',
+        yourQuery: '您的提问',
+        queryPlaceholder: '在这里输入您的提问',
       },
     },
     dataSet: {

@@ -100,6 +100,10 @@ const translation = {
         title: 'Edit Annotated Response',
         queryName: 'User Query',
         answerName: 'Storyteller Bot',
+        yourAnswer: 'Your Query',
+        answerPlaceholder: 'Type your answer here',
+        yourQuery: 'Your Answer',
+        queryPlaceholder: 'Type your query here',
       },
     },
     dataSet: {
