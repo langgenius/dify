@@ -71,7 +71,7 @@ const MembersPage = () => {
 
           </div>
           {isMemberFull && (
-            <UpgradeBtn className='mr-2' />
+            <UpgradeBtn className='mr-2' loc='member-invite' />
           )}
           <div className={
             `shrink-0 flex items-center py-[7px] px-3 border-[0.5px] border-gray-200

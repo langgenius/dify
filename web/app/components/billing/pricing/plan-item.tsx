@@ -141,8 +141,18 @@ const PlanItem: FC<Props> = ({
     setLoading(true)
     try {
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
-
-      window.location.href = res.url
+      if ((window as any).gtag) {
+        (window as any).gtag('event', 'click_pay_btn', {
+          plan,
+          interval: isYear ? 'year' : 'month',
+          event_callback: () => {
+            window.location.href = res.url
+          },
+        })
+      }
+      else {
+        window.location.href = res.url
+      }
     }
     finally {
       setLoading(false)

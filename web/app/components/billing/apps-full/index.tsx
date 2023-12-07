@@ -18,7 +18,7 @@ const AppsFull: FC = () => {
           <div>{t('billing.apps.fullTipLine2')}</div>
         </div>
         <div className='flex mt-8'>
-          <UpgradeBtn />
+          <UpgradeBtn loc='app-create' />
         </div>
       </div>
     </GridMask>

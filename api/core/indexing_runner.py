@@ -15,7 +15,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
-from core.docstore.dataset_docstore import DatesetDocumentStore
+from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
 from core.model_providers.error import ProviderTokenNotInitError
@@ -106,7 +106,8 @@ class IndexingRunner:
                 document_id=dataset_document.id
             ).all()
 
-            db.session.delete(document_segments)
+            for document_segment in document_segments:
+                db.session.delete(document_segment)
             db.session.commit()
 
             # load file
@@ -474,7 +475,7 @@ class IndexingRunner:
         )
 
         # save node to document segment
-        doc_store = DatesetDocumentStore(
+        doc_store = DatasetDocumentStore(
             dataset=dataset,
             user_id=dataset_document.created_by,
             document_id=dataset_document.id
