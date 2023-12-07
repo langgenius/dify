@@ -8,6 +8,7 @@ import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
+import mockList from './mock-list'
 
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
@@ -30,7 +31,7 @@ const Annotation: FC<Props> = ({
     ...{ queryParams },
   }
 
-  const list: any[] = []
+  const list = mockList
 
   // TODO: fetch use query
   console.log(query)
