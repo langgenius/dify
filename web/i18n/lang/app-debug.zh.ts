@@ -97,6 +97,7 @@ const translation = {
       add: '添加标注',
       edit: '编辑标注',
       editModal: {
+        title: '编辑标注回复',
         queryName: '用户提问',
         answerName: '机器回复',
       },

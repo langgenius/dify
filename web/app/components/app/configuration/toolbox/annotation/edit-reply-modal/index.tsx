@@ -37,9 +37,9 @@ const EditReplyModal: FC<Props> = ({
     <Drawer
       isShow={isShow}
       onHide={onHide}
-      title={t('appDebug.annotation.editReply') as string}
+      title={t('appDebug.feature.annotation.editModal.title') as string}
       body={(
-        <div className='space-y-2'>
+        <div className='p-6 pb-4 space-y-6'>
           <EditItem
             type={EditItemType.Query}
             content={query}
@@ -47,7 +47,7 @@ const EditReplyModal: FC<Props> = ({
           />
           <EditItem
             type={EditItemType.Answer}
-            content={query}
+            content={answer}
             onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
           />
         </div>

@@ -97,6 +97,7 @@ const translation = {
       add: 'Add annotation',
       edit: 'Edit annotation',
       editModal: {
+        title: 'Edit Annotated Response',
         queryName: 'User Query',
         answerName: 'Storyteller Bot',
       },
