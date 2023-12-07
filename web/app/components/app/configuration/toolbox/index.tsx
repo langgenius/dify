@@ -5,7 +5,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GroupName from '../base/group-name'
 import Moderation from './moderation'
-import Annotation from './annotation'
+import Annotation from './annotation/config-param'
 
 export type ToolboxProps = {
   showModerationSettings: boolean

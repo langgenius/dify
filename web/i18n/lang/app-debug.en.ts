@@ -96,6 +96,10 @@ const translation = {
       removeConfirm: 'Delete this annotation ?',
       add: 'Add annotation',
       edit: 'Edit annotation',
+      editModal: {
+        queryName: 'User Query',
+        answerName: 'Storyteller Bot',
+      },
     },
     dataSet: {
       title: 'Context',

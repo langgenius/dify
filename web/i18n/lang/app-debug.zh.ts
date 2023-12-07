@@ -96,6 +96,10 @@ const translation = {
       removeConfirm: '删除这个标注？',
       add: '添加标注',
       edit: '编辑标注',
+      editModal: {
+        queryName: '用户提问',
+        answerName: '机器回复',
+      },
     },
     dataSet: {
       title: '上下文',
