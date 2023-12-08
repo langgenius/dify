@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next'
 import { MessageCheckRemove, MessageFastPlus } from '@/app/components/base/icons/src/vender/line/communication'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
-import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove-annotation-confirm-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
@@ -76,11 +76,10 @@ const CacheCtrlBtn: FC<Props> = ({
         </TooltipPlus>
 
       </div>
-      <DeleteConfirmModal
+      <RemoveAnnotationConfirmModal
         isShow={showModal}
         onHide={() => setShowModal(false)}
         onRemove={onRemove}
-        text={t('appDebug.feature.annotation.removeConfirm') as string}
       />
     </div>
   )

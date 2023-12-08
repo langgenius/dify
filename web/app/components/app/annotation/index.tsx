@@ -38,6 +38,10 @@ const Annotation: FC<Props> = ({
 
   const total = 10
 
+  const handleRemove = (id: string) => {
+    console.log(`remove ${id}`)
+  }
+
   return (
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
@@ -56,7 +60,10 @@ const Annotation: FC<Props> = ({
         {total === undefined
           ? <Loading type='app' />
           : total > 0
-            ? <List list={list} />
+            ? <List
+              list={list}
+              onRemove={handleRemove}
+            />
             : <div className='grow flex h-full items-center justify-center'><EmptyElement /></div>
         }
         {/* Show Pagination only if the total is more than the limit */}

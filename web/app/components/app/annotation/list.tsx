@@ -4,19 +4,23 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import dayjs from 'dayjs'
-
 import { Edit02, Trash03 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 import type { AnnotationItem } from './type'
+import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 
 type Props = {
   list: AnnotationItem[]
+  onRemove: (id: string) => void
 }
 
 const List: FC<Props> = ({
   list,
+  onRemove,
 }) => {
   const { t } = useTranslation()
+  const [currId, setCurrId] = React.useState<string | null>(null)
+  const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
   return (
     <div className='overflow-x-auto'>
       <table className={cn(s.logTable, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
@@ -45,7 +49,13 @@ const List: FC<Props> = ({
                   <div className='p-1 cursor-pointer rounded-md hover:bg-black/5'>
                     <Edit02 className='w-4 h-4' />
                   </div>
-                  <div className='p-1 cursor-pointer rounded-md hover:bg-black/5'>
+                  <div
+                    className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+                    onClick={() => {
+                      setCurrId(item.id)
+                      setShowConfirmDelete(true)
+                    }}
+                  >
                     <Trash03 className='w-4 h-4' />
                   </div>
                 </div>
@@ -54,6 +64,14 @@ const List: FC<Props> = ({
           ))}
         </tbody>
       </table>
+      <RemoveAnnotationConfirmModal
+        isShow={showConfirmDelete}
+        onHide={() => setShowConfirmDelete(false)}
+        onRemove={() => {
+          onRemove(currId as string)
+          setShowConfirmDelete(false)
+        }}
+      />
     </div>
   )
 }
