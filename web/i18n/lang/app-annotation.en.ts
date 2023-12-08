@@ -40,6 +40,16 @@ const translation = {
     answerRequired: 'Answer is required',
     queryRequired: 'Question is required',
   },
+  viewModal: {
+    annotatedResponse: 'Annotated Response',
+    hitHistory: 'Hit History',
+  },
+  hitHistoryTable: {
+    question: 'Question',
+    source: 'Source',
+    score: 'Score',
+    time: 'Time',
+  },
 }
 
 export default translation

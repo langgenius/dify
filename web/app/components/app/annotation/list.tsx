@@ -41,8 +41,14 @@ const List: FC<Props> = ({
               key={item.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
             >
-              <td>{item.question}</td>
-              <td>{item.answer}</td>
+              <td
+                className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                title={item.question}
+              >{item.question}</td>
+              <td
+                className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                title={item.answer}
+              >{item.answer}</td>
               <td>{dayjs(item.created_at).format('YYYY-MM-DD hh:mm')}</td>
               <td>{item.hit_count}</td>
               <td className='w-[96px]'>

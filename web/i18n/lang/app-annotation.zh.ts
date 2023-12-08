@@ -40,6 +40,16 @@ const translation = {
     answerRequired: '回复不能为空',
     queryRequired: '提问不能为空',
   },
+  viewModal: {
+    annotatedResponse: '标注回复',
+    hitHistory: '命中历史',
+  },
+  hitHistoryTable: {
+    question: '问题',
+    source: '来源',
+    score: '分数',
+    time: '时间',
+  },
 }
 
 export default translation

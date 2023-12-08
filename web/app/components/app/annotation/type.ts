@@ -10,3 +10,11 @@ export type AnnotationItem = {
   created_at: string
   hit_count: number
 }
+
+export type HitHistoryItem = {
+  id: string
+  question: string
+  source: string
+  score: number
+  created_at: string
+}

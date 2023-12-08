@@ -2,13 +2,16 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from 'classnames'
+import dayjs from 'dayjs'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem } from '../type'
+import { hitHistoryList } from '../mock-data'
+import s from './style.module.css'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -32,10 +35,10 @@ const ViewAnnotationModal: FC<Props> = ({
   const { id, question, answer, created_at: createdAt } = item
   const { t } = useTranslation()
   const tabs = [
-    { value: TabType.annotation, text: t('appLog.title') },
-    { value: TabType.hitHistory, text: t('appAnnotation.title') },
+    { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
+    { value: TabType.hitHistory, text: t('appAnnotation.viewModal.hitHistory') },
   ]
-  const [activeTab, setActiveTab] = useState(TabType.annotation)
+  const [activeTab, setActiveTab] = useState(TabType.hitHistory)
   const handleSave = (type: EditItemType, editedContent: string) => {
     if (type === EditItemType.Query)
       onSave(editedContent, answer)
@@ -45,7 +48,8 @@ const ViewAnnotationModal: FC<Props> = ({
   const [showModal, setShowModal] = useState(false)
 
   const annotationTab = (
-    <div className='p-6 pb-4 space-y-6'>
+    <>
+
       <EditItem
         type={EditItemType.Query}
         content={question}
@@ -56,18 +60,43 @@ const ViewAnnotationModal: FC<Props> = ({
         content={answer}
         onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
       />
-    </div>
+    </>
   )
 
   const hitHistoryTab = (
-    <div>Hit Histroy</div>
+    <table className={cn(s.table, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
+      <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
+        <tr className='uppercase'>
+          <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.question')}</td>
+          <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
+          <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
+          <td className='whitespace-nowrap w-[140px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
+        </tr>
+      </thead>
+      <tbody className="text-gray-500">
+        {hitHistoryList.map(item => (
+          <tr
+            key={item.id}
+            className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+          >
+            <td
+              className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+              title={item.question}
+            >{item.question}</td>
+            <td>{item.source}</td>
+            <td>{item.score}</td>
+            <td>{dayjs(item.created_at).format('YYYY-MM-DD hh:mm')}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
   )
   return (
     <div>
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName='!max-w-[480px]'
+        maxWidthClassName='!max-w-[640px]'
         // t('appAnnotation.editModal.title') as string
         title={
           <TabSlider
@@ -80,7 +109,9 @@ const ViewAnnotationModal: FC<Props> = ({
           />
         }
         body={(
-          activeTab === TabType.annotation ? annotationTab : hitHistoryTab
+          <div className='p-6 pb-4 space-y-6'>
+            {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+          </div>
         )}
         foot={id
           ? (
