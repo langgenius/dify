@@ -45,6 +45,7 @@ const translation = {
     hitHistory: 'Hit History',
     hit: 'Hit',
     hits: 'Hits',
+    noHitHistory: 'No hit history',
   },
   hitHistoryTable: {
     question: 'Question',

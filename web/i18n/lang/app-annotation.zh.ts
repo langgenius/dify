@@ -45,6 +45,7 @@ const translation = {
     hitHistory: '命中历史',
     hit: '次命中',
     hits: '次命中',
+    noHitHistory: '没有命中历史',
   },
   hitHistoryTable: {
     question: '问题',
