@@ -91,7 +91,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.3.32"
+        self.CURRENT_VERSION = "0.3.33"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -149,7 +149,7 @@ class Config:
         # ------------------------
         db_credentials = {
             key: get_env(key) for key in
-            ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET'']
+            ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
 
         self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}?client_encoding={db_credentials['DB_CHARSET']}"
