@@ -43,6 +43,8 @@ const translation = {
   viewModal: {
     annotatedResponse: '标注回复',
     hitHistory: '命中历史',
+    hit: '次命中',
+    hits: '次命中',
   },
   hitHistoryTable: {
     question: '问题',

@@ -36,9 +36,21 @@ const ViewAnnotationModal: FC<Props> = ({
   const { t } = useTranslation()
   const tabs = [
     { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
-    { value: TabType.hitHistory, text: t('appAnnotation.viewModal.hitHistory') },
+    {
+      value: TabType.hitHistory,
+      text: (
+        hitHistoryList.length > 0
+          ? (
+            <div className='flex items-center space-x-1'>
+              <div>{t('appAnnotation.viewModal.hitHistory')}</div>
+              <div className='flex px-1.5 item-center rounded-md border border-black/[8%] h-5 text-xs font-medium text-gray-500'>{hitHistoryList.length} {t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}</div>
+            </div>
+          )
+          : t('appAnnotation.viewModal.hitHistory')
+      ),
+    },
   ]
-  const [activeTab, setActiveTab] = useState(TabType.hitHistory)
+  const [activeTab, setActiveTab] = useState(TabType.annotation)
   const handleSave = (type: EditItemType, editedContent: string) => {
     if (type === EditItemType.Query)
       onSave(editedContent, answer)

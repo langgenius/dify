@@ -44,7 +44,7 @@ const Annotation: FC<Props> = ({
   }
 
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(list[0])
-  const [isShowViewModal, setIsShowViewModal] = useState(true)
+  const [isShowViewModal, setIsShowViewModal] = useState(false)
   const handleView = (item: AnnotationItem) => {
     setCurrItem(item)
     setIsShowViewModal(true)

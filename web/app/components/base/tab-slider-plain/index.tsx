@@ -5,7 +5,7 @@ import cn from 'classnames'
 
 type Option = {
   value: string
-  text: string
+  text: string | JSX.Element
 }
 
 type ItemProps = {
