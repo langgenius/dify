@@ -15,7 +15,7 @@ DEFAULTS = {
     'DB_HOST': 'localhost',
     'DB_PORT': '5432',
     'DB_DATABASE': 'dify',
-    'DB_CHARSET': 'utf8mb4',
+    'DB_CHARSET': '',
     'REDIS_HOST': 'localhost',
     'REDIS_PORT': '6379',
     'REDIS_DB': '0',
@@ -152,7 +152,9 @@ class Config:
             ['DB_USERNAME', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_DATABASE', 'DB_CHARSET']
         }
 
-        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}?client_encoding={db_credentials['DB_CHARSET']}"
+        db_extras = f"?client_encoding={db_credentials['DB_CHARSET']}" if db_credentials['DB_CHARSET'] else ""
+
+        self.SQLALCHEMY_DATABASE_URI = f"postgresql://{db_credentials['DB_USERNAME']}:{db_credentials['DB_PASSWORD']}@{db_credentials['DB_HOST']}:{db_credentials['DB_PORT']}/{db_credentials['DB_DATABASE']}{db_extras}"
         self.SQLALCHEMY_ENGINE_OPTIONS = {
             'pool_size': int(get_env('SQLALCHEMY_POOL_SIZE')),
             'pool_recycle': int(get_env('SQLALCHEMY_POOL_RECYCLE'))
