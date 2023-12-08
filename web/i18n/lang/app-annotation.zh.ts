@@ -34,6 +34,7 @@ const translation = {
     answerName: '回复',
     answerPlaceholder: '输入回复',
     queryPlaceholder: '输入提问',
+    createNext: '添加下一个标注回复',
   },
   errorMessage: {
     answerRequired: '回复不能为空',

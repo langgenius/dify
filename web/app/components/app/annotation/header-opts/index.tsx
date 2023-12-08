@@ -8,11 +8,9 @@ import { Plus } from '../../../base/icons/src/vender/line/general'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
 import s from './style.module.css'
-import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 // import Divider from '@/app/components/base/divider'
 import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
-import Toast from '@/app/components/base/toast'
 
 type Props = {
   onAdd: (payload: AnnotationItemBasic) => void
@@ -27,7 +25,7 @@ const HeaderOptions: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const Operations = (props: HtmlContentProps) => {
+  const Operations = () => {
     const handleExport = () => {
       onExport()
     }
@@ -64,15 +62,7 @@ const HeaderOptions: FC<Props> = ({
   }
 
   const [showAddModal, setShowAddModal] = React.useState(true)
-  const isValid = (payload: AnnotationItemBasic) => {
-    if (!payload.question)
-      return t('appAnnotation.errorMessage.queryRequired')
 
-    if (!payload.answer)
-      return t('appAnnotation.errorMessage.answerRequired')
-
-    return true
-  }
   return (
     <div className='flex space-x-2'>
       <Button type='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
@@ -98,17 +88,7 @@ const HeaderOptions: FC<Props> = ({
         <AddAnnotationModal
           isShow={showAddModal}
           onHide={() => setShowAddModal(false)}
-          onAdd={(payload) => {
-            if (isValid(payload) !== true) {
-              Toast.notify({
-                type: 'error',
-                message: isValid(payload) as string,
-              })
-              return
-            }
-            onAdd(payload)
-            setShowAddModal(false)
-          }}
+          onAdd={onAdd}
         />
       )}
     </div>

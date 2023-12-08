@@ -34,6 +34,7 @@ const translation = {
     answerName: 'Answer',
     answerPlaceholder: 'Type answer here',
     queryPlaceholder: 'Type query here',
+    createNext: 'Add another annotated response',
   },
   errorMessage: {
     answerRequired: 'Answer is required',
