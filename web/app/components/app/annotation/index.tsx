@@ -44,9 +44,13 @@ const Annotation: FC<Props> = ({
       <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <HeaderOpts
-            onAdd={() => { }}
-            onExport={() => { }}
-            onClearAll={() => { }}
+            onAdd={() => {
+              console.log('add')
+            }}
+            onExport={() => {
+              console.log('export')
+            }}
+          // onClearAll={() => { }}
           />
         </Filter>
         {total === undefined

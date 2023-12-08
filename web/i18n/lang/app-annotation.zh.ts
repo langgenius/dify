@@ -11,6 +11,10 @@ const translation = {
       createdAt: '创建时间',
       hits: '命中次数',
       actions: '操作',
+      addAnnotation: '添加标注',
+      bulkImport: '批量导入',
+      bulkExport: '批量导出',
+      clearAll: '删除所有标注',
     },
   },
 }

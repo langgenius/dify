@@ -11,6 +11,10 @@ const translation = {
       createdAt: 'created at',
       hits: 'hits',
       actions: 'actions',
+      addAnnotation: 'Add Annotation',
+      bulkImport: 'Bulk Import',
+      bulkExport: 'Bulk Export',
+      clearAll: 'Clear All Annotation',
     },
   },
 }
