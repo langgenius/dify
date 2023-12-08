@@ -61,7 +61,7 @@ const HeaderOptions: FC<Props> = ({
     )
   }
 
-  const [showAddModal, setShowAddModal] = React.useState(true)
+  const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
     <div className='flex space-x-2'>

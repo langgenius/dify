@@ -42,10 +42,10 @@ const List: FC<Props> = ({
               <td className='w-[96px]'>
                 {/* Actions */}
                 <div className='flex space-x-2 text-gray-500'>
-                  <div className='p-1 cursor-pointer'>
+                  <div className='p-1 cursor-pointer rounded-md hover:bg-black/5'>
                     <Edit02 className='w-4 h-4' />
                   </div>
-                  <div className='p-1 cursor-pointer'>
+                  <div className='p-1 cursor-pointer rounded-md hover:bg-black/5'>
                     <Trash03 className='w-4 h-4' />
                   </div>
                 </div>
