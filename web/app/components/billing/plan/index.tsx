@@ -29,7 +29,7 @@ const typeStyle = {
 }
 
 type Props = {
-  loc?: string
+  loc: string
 }
 
 const PlanComp: FC<Props> = ({
@@ -69,6 +69,7 @@ const PlanComp: FC<Props> = ({
           <UpgradeBtn
             className='flex-shrink-0'
             isPlain={type !== Plan.sandbox}
+            loc={loc}
           />
         )}
       </div>
@@ -83,6 +84,7 @@ const PlanComp: FC<Props> = ({
             isFull
             size='lg'
             isPlain={type !== Plan.sandbox}
+            loc={loc}
           />
         )}
       </div>

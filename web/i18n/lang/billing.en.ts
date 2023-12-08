@@ -19,7 +19,7 @@ const translation = {
     year: 'year',
     save: 'Save ',
     free: 'Free',
-    currentPlan: 'current plan',
+    currentPlan: 'Current Plan',
     startForFree: 'Start for free',
     getStartedWith: 'Get started with ',
     contactSales: 'Contact Sales',

@@ -12,7 +12,7 @@ from constants.model_template import model_templates, demo_model_templates
 from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.model_provider_factory import ModelProviderFactory
@@ -57,6 +57,7 @@ class AppListApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(app_detail_fields)
+    @cloud_edition_billing_resource_check('apps')
     def post(self):
         """Create app"""
         parser = reqparse.RequestParser()

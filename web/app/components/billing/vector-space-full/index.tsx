@@ -22,7 +22,7 @@ const VectorSpaceFull: FC = () => {
             <div>{t('billing.vectorSpace.fullTip')}</div>
             <div>{t('billing.vectorSpace.fullSolution')}</div>
           </div>
-          <UpgradeBtn />
+          <UpgradeBtn loc='knowledge-add-file' />
         </div>
         <VectorSpaceInfo className='pt-4' />
       </div>

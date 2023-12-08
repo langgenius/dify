@@ -534,6 +534,19 @@ const Main: FC<IMainProps> = ({
     createNewChat()
   }
 
+  const handleConversationIdChange = (id: string) => {
+    if (id === '-1') {
+      createNewChat()
+      setConversationIdChangeBecauseOfNew(true)
+    }
+    else {
+      setConversationIdChangeBecauseOfNew(false)
+    }
+    // trigger handleConversationSwitch
+    setCurrConversationId(id, appId)
+    setIsShowSuggestion(false)
+  }
+
   const difyIcon = (
     <LogoHeader />
   )
@@ -556,6 +569,7 @@ const Main: FC<IMainProps> = ({
         icon_background={siteInfo.icon_background}
         isEmbedScene={true}
         isMobile={isMobile}
+        onCreateNewChat={() => handleConversationIdChange('-1')}
       />
 
       <div className={'flex bg-white overflow-hidden'}>

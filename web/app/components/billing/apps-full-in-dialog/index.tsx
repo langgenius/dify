@@ -8,7 +8,9 @@ import AppsInfo from '../usage-info/apps-info'
 import s from './style.module.css'
 import GridMask from '@/app/components/base/grid-mask'
 
-const AppsFull: FC = () => {
+const AppsFull: FC<{ loc: string }> = ({
+  loc,
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -20,7 +22,7 @@ const AppsFull: FC = () => {
             <div>{t('billing.apps.fullTipLine2')}</div>
           </div>
           <div className='flex'>
-            <UpgradeBtn />
+            <UpgradeBtn loc={loc} />
           </div>
         </div>
         <AppsInfo className='mt-4' />
