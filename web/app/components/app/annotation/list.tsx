@@ -12,10 +12,12 @@ import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 type Props = {
   list: AnnotationItem[]
   onRemove: (id: string) => void
+  onView: (item: AnnotationItem) => void
 }
 
 const List: FC<Props> = ({
   list,
+  onView,
   onRemove,
 }) => {
   const { t } = useTranslation()
@@ -46,7 +48,14 @@ const List: FC<Props> = ({
               <td className='w-[96px]'>
                 {/* Actions */}
                 <div className='flex space-x-2 text-gray-500'>
-                  <div className='p-1 cursor-pointer rounded-md hover:bg-black/5'>
+                  <div
+                    className='p-1 cursor-pointer rounded-md hover:bg-black/5'
+                    onClick={
+                      () => {
+                        onView(item)
+                      }
+                    }
+                  >
                     <Edit02 className='w-4 h-4' />
                   </div>
                   <div

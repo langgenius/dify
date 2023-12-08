@@ -36,13 +36,13 @@ const EditItem: FC<Props> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
-  const [newContent, setNewContent] = useState(content)
+  const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
   const avatar = type === EditItemType.Query ? <User className='w-6 h-6' /> : <Robot className='w-6 h-6' />
   const name = type === EditItemType.Query ? t('appAnnotation.editModal.queryName') : t('appAnnotation.editModal.answerName')
   const editTitle = type === EditItemType.Query ? t('appAnnotation.editModal.yourQuery') : t('appAnnotation.editModal.yourAnswer')
   const placeholder = type === EditItemType.Query ? t('appAnnotation.editModal.queryPlaceholder') : t('appAnnotation.editModal.answerPlaceholder')
-  const [isEdit, setIsEdit] = useState(type !== EditItemType.Query)
+  const [isEdit, setIsEdit] = useState(false)
 
   const handleSave = () => {
     onSave(newContent)
@@ -50,7 +50,7 @@ const EditItem: FC<Props> = ({
   }
 
   const handleCancel = () => {
-    setNewContent(content)
+    setNewContent('')
     setIsEdit(false)
   }
 

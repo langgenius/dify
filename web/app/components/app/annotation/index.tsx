@@ -11,6 +11,8 @@ import EmptyElement from './empty-element'
 import mockList from './mock-list'
 import HeaderOpts from './header-opts'
 import s from './style.module.css'
+import type { AnnotationItem } from './type'
+import ViewAnnotationModal from './view-annotation-modal'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 
@@ -24,7 +26,6 @@ const Annotation: FC<Props> = ({
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = React.useState<number>(0)
-
   const query = {
     page: currPage + 1,
     APP_PAGE_LIMIT,
@@ -40,6 +41,22 @@ const Annotation: FC<Props> = ({
 
   const handleRemove = (id: string) => {
     console.log(`remove ${id}`)
+  }
+
+  const [currItem, setCurrItem] = useState<AnnotationItem | null>(list[0])
+  const [isShowViewModal, setIsShowViewModal] = useState(true)
+  const handleView = (item: AnnotationItem) => {
+    setCurrItem(item)
+    setIsShowViewModal(true)
+  }
+
+  const handleSave = (question: string, answer: string) => {
+    const payload = {
+      ...(currItem as AnnotationItem),
+      question,
+      answer,
+    }
+    console.log(payload)
   }
 
   return (
@@ -63,6 +80,7 @@ const Annotation: FC<Props> = ({
             ? <List
               list={list}
               onRemove={handleRemove}
+              onView={handleView}
             />
             : <div className='grow flex h-full items-center justify-center'><EmptyElement /></div>
         }
@@ -99,6 +117,18 @@ const Annotation: FC<Props> = ({
             </Pagination.NextButton>
           </Pagination>
           : null}
+
+        {isShowViewModal && (
+          <ViewAnnotationModal
+            isShow={isShowViewModal}
+            onHide={() => setIsShowViewModal(false)}
+            onRemove={() => {
+              handleRemove((currItem as AnnotationItem)?.id)
+            }}
+            item={currItem as AnnotationItem}
+            onSave={handleSave}
+          />
+        )}
       </div>
     </div>
   )

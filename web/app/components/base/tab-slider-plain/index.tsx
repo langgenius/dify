@@ -9,11 +9,13 @@ type Option = {
 }
 
 type ItemProps = {
+  className?: string
   isActive: boolean
   onClick: (v: string) => void
   option: Option
 }
 const Item: FC<ItemProps> = ({
+  className,
   isActive,
   onClick,
   option,
@@ -21,7 +23,7 @@ const Item: FC<ItemProps> = ({
   return (
     <div
       key={option.value}
-      className={cn(!isActive && 'cursor-pointer', 'relative pb-2.5  leading-6 text-base font-semibold')}
+      className={cn(className, !isActive && 'cursor-pointer', 'relative pb-2.5  leading-6 text-base font-semibold')}
       onClick={() => !isActive && onClick(option.value)}
     >
       <div className={cn(isActive ? 'text-gray-900' : 'text-gray-600')}>{option.text}</div>
@@ -37,6 +39,8 @@ type Props = {
   value: string
   onChange: (v: string) => void
   options: Option[]
+  noBorderBottom?: boolean
+  itemClassName?: string
 }
 
 const TabSlider: FC<Props> = ({
@@ -44,15 +48,18 @@ const TabSlider: FC<Props> = ({
   value,
   onChange,
   options,
+  noBorderBottom,
+  itemClassName,
 }) => {
   return (
-    <div className={cn(className, 'flex border-b border-[#EAECF0] space-x-6')}>
+    <div className={cn(className, !noBorderBottom && 'border-b border-[#EAECF0]', 'flex  space-x-6')}>
       {options.map(option => (
         <Item
           isActive={option.value === value}
           option={option}
           onClick={onChange}
           key={option.value}
+          className={itemClassName}
         />
       ))}
     </div>
