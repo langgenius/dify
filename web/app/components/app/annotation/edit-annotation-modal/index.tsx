@@ -18,7 +18,7 @@ type Props = {
   onRemove: () => void
 }
 
-const EditReplyModal: FC<Props> = ({
+const EditAnnotationModal: FC<Props> = ({
   isShow,
   onHide,
   query,
@@ -44,7 +44,7 @@ const EditReplyModal: FC<Props> = ({
         isShow={isShow}
         onHide={onHide}
         maxWidthClassName='!max-w-[480px]'
-        title={t('appDebug.feature.annotation.editModal.title') as string}
+        title={t('appAnnotation.editModal.title') as string}
         body={(
           <div className='p-6 pb-4 space-y-6'>
             <EditItem
@@ -67,9 +67,9 @@ const EditReplyModal: FC<Props> = ({
                 onClick={() => setShowModal(true)}
               >
                 <MessageCheckRemove />
-                <div>{t('appDebug.feature.annotation.editModal.removeThisCache')}</div>
+                <div>{t('appAnnotation.editModal.removeThisCache')}</div>
               </div>
-              <div>{t('appDebug.feature.annotation.editModal.createdAt')}&nbsp;{createdAt}</div>
+              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{createdAt}</div>
             </div>
           )
           : undefined}
@@ -88,4 +88,4 @@ const EditReplyModal: FC<Props> = ({
 
   )
 }
-export default React.memo(EditReplyModal)
+export default React.memo(EditAnnotationModal)

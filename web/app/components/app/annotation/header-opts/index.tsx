@@ -5,15 +5,17 @@ import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import Button from '../../../base/button'
 import { Plus } from '../../../base/icons/src/vender/line/general'
+import AddAnnotationModal from '../add-annotation-modal'
+import type { AnnotationItemBasic } from '../type'
 import s from './style.module.css'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 // import Divider from '@/app/components/base/divider'
-
 import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
-  onAdd: () => void
+  onAdd: (payload: AnnotationItemBasic) => void
   onExport: () => void
   // onClearAll: () => void
 }
@@ -60,9 +62,20 @@ const HeaderOptions: FC<Props> = ({
       </div>
     )
   }
+
+  const [showAddModal, setShowAddModal] = React.useState(true)
+  const isValid = (payload: AnnotationItemBasic) => {
+    if (!payload.question)
+      return t('appAnnotation.errorMessage.queryRequired')
+
+    if (!payload.answer)
+      return t('appAnnotation.errorMessage.answerRequired')
+
+    return true
+  }
   return (
     <div className='flex space-x-2'>
-      <Button type='primary' onClick={onAdd} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
+      <Button type='primary' onClick={() => setShowAddModal(true)} className='flex items-center !h-8 !px-3 !text-[13px] space-x-2'>
         <Plus className='w-4 h-4' />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
@@ -81,6 +94,23 @@ const HeaderOptions: FC<Props> = ({
         className={'!w-[130px] h-fit !z-20'}
         manualClose
       />
+      {showAddModal && (
+        <AddAnnotationModal
+          isShow={showAddModal}
+          onHide={() => setShowAddModal(false)}
+          onAdd={(payload) => {
+            if (isValid(payload) !== true) {
+              Toast.notify({
+                type: 'error',
+                message: isValid(payload) as string,
+              })
+              return
+            }
+            onAdd(payload)
+            setShowAddModal(false)
+          }}
+        />
+      )}
     </div>
   )
 }

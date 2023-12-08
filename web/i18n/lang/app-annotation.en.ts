@@ -17,6 +17,28 @@ const translation = {
       clearAll: 'Clear All Annotation',
     },
   },
+  editModal: {
+    title: 'Edit Annotated Response',
+    queryName: 'User Query',
+    answerName: 'Storyteller Bot',
+    yourAnswer: 'Your Query',
+    answerPlaceholder: 'Type your answer here',
+    yourQuery: 'Your Answer',
+    queryPlaceholder: 'Type your query here',
+    removeThisCache: 'Remove this Annotation',
+    createdAt: 'Created At',
+  },
+  addModal: {
+    title: 'Add Annotated Response',
+    queryName: 'Question',
+    answerName: 'Answer',
+    answerPlaceholder: 'Type answer here',
+    queryPlaceholder: 'Type query here',
+  },
+  errorMessage: {
+    answerRequired: 'Answer is required',
+    queryRequired: 'Question is required',
+  },
 }
 
 export default translation

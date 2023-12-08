@@ -1,3 +1,8 @@
+export type AnnotationItemBasic = {
+  question: string
+  answer: string
+}
+
 export type AnnotationItem = {
   id: string
   question: string

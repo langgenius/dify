@@ -96,17 +96,6 @@ const translation = {
       removeConfirm: 'Delete this annotation ?',
       add: 'Add annotation',
       edit: 'Edit annotation',
-      editModal: {
-        title: 'Edit Annotated Response',
-        queryName: 'User Query',
-        answerName: 'Storyteller Bot',
-        yourAnswer: 'Your Query',
-        answerPlaceholder: 'Type your answer here',
-        yourQuery: 'Your Answer',
-        queryPlaceholder: 'Type your query here',
-        removeThisCache: 'Remove this Cache',
-        createdAt: 'Created At',
-      },
     },
     dataSet: {
       title: 'Context',

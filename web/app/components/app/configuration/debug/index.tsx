@@ -28,7 +28,7 @@ import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
-import EditReplyModal from '@/app/components/app/configuration/toolbox/annotation/edit-reply-modal'
+import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void

@@ -39,9 +39,9 @@ const EditItem: FC<Props> = ({
   const [newContent, setNewContent] = useState(content)
   const showNewContent = newContent && newContent !== content
   const avatar = type === EditItemType.Query ? <User className='w-6 h-6' /> : <Robot className='w-6 h-6' />
-  const name = type === EditItemType.Query ? t('appDebug.feature.annotation.editModal.queryName') : t('appDebug.feature.annotation.editModal.answerName')
-  const editTitle = type === EditItemType.Query ? t('appDebug.feature.annotation.editModal.yourQuery') : t('appDebug.feature.annotation.editModal.yourAnswer')
-  const placeholder = type === EditItemType.Query ? t('appDebug.feature.annotation.editModal.queryPlaceholder') : t('appDebug.feature.annotation.editModal.answerPlaceholder')
+  const name = type === EditItemType.Query ? t('appAnnotation.editModal.queryName') : t('appAnnotation.editModal.answerName')
+  const editTitle = type === EditItemType.Query ? t('appAnnotation.editModal.yourQuery') : t('appAnnotation.editModal.yourAnswer')
+  const placeholder = type === EditItemType.Query ? t('appAnnotation.editModal.queryPlaceholder') : t('appAnnotation.editModal.answerPlaceholder')
   const [isEdit, setIsEdit] = useState(type !== EditItemType.Query)
 
   const handleSave = () => {
