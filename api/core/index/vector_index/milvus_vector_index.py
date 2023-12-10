@@ -121,6 +121,16 @@ class MilvusVectorIndex(BaseVectorIndex):
                 'filter': f'id in {ids}'
             })
 
+    def delete_by_metadata_field(self, key: str, value: str):
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+        ids = vector_store.get_ids_by_metadata_field(key, value)
+        if ids:
+            vector_store.del_texts({
+                'filter': f'id in {ids}'
+            })
+
     def delete_by_ids(self, doc_ids: list[str]) -> None:
 
         vector_store = self._get_vector_store()

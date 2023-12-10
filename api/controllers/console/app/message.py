@@ -22,6 +22,7 @@ from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
 from models.model import MessageAnnotation, Conversation, Message, MessageFeedback
+from services.annotation_service import AppAnnotationService
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -154,39 +155,12 @@ class MessageAnnotationApi(Resource):
     def post(self, app_id):
         app_id = str(app_id)
 
-        # get app info
-        app = _get_app(app_id)
-
         parser = reqparse.RequestParser()
         parser.add_argument('message_id', required=True, type=uuid_value, location='json')
-        parser.add_argument('content', type=str, location='json')
+        parser.add_argument('question', required=True, type=str, location='json')
+        parser.add_argument('content', required=True, type=str, location='json')
         args = parser.parse_args()
-
-        message_id = str(args['message_id'])
-
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app.id
-        ).first()
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        annotation = message.annotation
-
-        if annotation:
-            annotation.content = args['content']
-        else:
-            annotation = MessageAnnotation(
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                content=args['content'],
-                account_id=current_user.id
-            )
-            db.session.add(annotation)
-
-        db.session.commit()
+        AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
 
         return {'result': 'success'}
 

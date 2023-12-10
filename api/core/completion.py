@@ -12,8 +12,10 @@ from core.callback_handler.main_chain_gather_callback_handler import MainChainGa
 from core.callback_handler.llm_callback_handler import LLMCallbackHandler
 from core.conversation_message_task import ConversationMessageTask, ConversationTaskStoppedException, \
     ConversationTaskInterruptException
+from core.embedding.cached_embedding import CacheEmbedding
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.file.file_obj import FileObj
+from core.index.vector_index.vector_index import VectorIndex
 from core.model_providers.error import LLMBadRequestError
 from core.memory.read_only_conversation_token_db_buffer_shared_memory import \
     ReadOnlyConversationTokenDBBufferSharedMemory
@@ -23,9 +25,12 @@ from core.model_providers.models.llm.base import BaseLLM
 from core.orchestrator_rule_parser import OrchestratorRuleParser
 from core.prompt.prompt_template import PromptTemplateParser
 from core.prompt.prompt_transform import PromptTransform
+from models.dataset import Dataset
 from models.model import App, AppModelConfig, Account, Conversation, EndUser
 from core.moderation.base import ModerationException, ModerationAction
 from core.moderation.factory import ModerationFactory
+from services.annotation_service import AppAnnotationService
+from services.dataset_service import DatasetCollectionBindingService
 
 
 class Completion:
@@ -33,7 +38,7 @@ class Completion:
     def generate(cls, task_id: str, app: App, app_model_config: AppModelConfig, query: str, inputs: dict,
                  files: List[FileObj], user: Union[Account, EndUser], conversation: Optional[Conversation],
                  streaming: bool, is_override: bool = False, retriever_from: str = 'dev',
-                 auto_generate_name: bool = True):
+                 auto_generate_name: bool = True, from_source: str = 'console'):
         """
         errors: ProviderTokenNotInitError
         """
@@ -71,6 +76,8 @@ class Completion:
             model_instance=final_model_instance,
             auto_generate_name=auto_generate_name
         )
+        # check annotation reply
+        cls.query_app_annotations_to_reply(conversation_message_task, from_source)
 
         prompt_message_files = [file.prompt_message_file for file in files]
 
@@ -166,7 +173,7 @@ class Completion:
         except ChunkedEncodingError as e:
             # Interrupt by LLM (like OpenAI), handle it.
             logging.warning(f'ChunkedEncodingError: {e}')
-            conversation_message_task.end()
+            conversation_message_task.annotation_end()
             return
 
     @classmethod
@@ -323,6 +330,68 @@ class Completion:
         memory_key = memory.memory_variables[0]
         external_context = memory.load_memory_variables({})
         return external_context[memory_key]
+
+
+    @classmethod
+    def query_app_annotations_to_reply(cls, conversation_message_task: ConversationMessageTask, from_source: str):
+        """Get memory messages."""
+        app_model_config = conversation_message_task.app_model_config
+        app = conversation_message_task.app
+        annotation_reply = app_model_config.annotation_reply_dict
+        if annotation_reply['enabled']:
+            score_threshold = annotation_reply.get('score_threshold', 1)
+            embedding_provider_name = annotation_reply['embedding_model']['embedding_provider_name']
+            embedding_model_name = annotation_reply['embedding_model']['embedding_model_name']
+            # get embedding model
+            embedding_model = ModelFactory.get_embedding_model(
+                tenant_id=app.tenant_id,
+                model_provider_name=embedding_provider_name,
+                model_name=embedding_model_name
+            )
+            embeddings = CacheEmbedding(embedding_model)
+
+            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                embedding_provider_name,
+                embedding_model_name
+            )
+
+            dataset = Dataset(
+                id=app.id,
+                tenant_id=app.tenant_id,
+                indexing_technique='high_quality',
+                embedding_model_provider=embedding_provider_name,
+                embedding_model=embedding_model_name,
+                collection_binding_id=dataset_collection_binding.id
+            )
+
+            vector_index = VectorIndex(
+                dataset=dataset,
+                config=current_app.config,
+                embeddings=embeddings
+            )
+
+            documents = vector_index.search(
+                conversation_message_task.query,
+                search_type='similarity_score_threshold',
+                search_kwargs={
+                    'k': 1,
+                    'score_threshold': score_threshold,
+                    'filter': {
+                        'group_id': [dataset.id]
+                    }
+                }
+            )
+            if documents:
+                annotation_id = documents[0].metadata['annotation_id']
+                annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
+                if annotation:
+                    conversation_message_task.annotation_end(annotation.content)
+                    # insert annotation history
+                    AppAnnotationService.add_annotation_history(annotation.id,
+                                                                app.id,
+                                                                conversation_message_task.query,
+                                                                conversation_message_task.user.id,
+                                                                from_source)
 
     @classmethod
     def get_memory_from_conversation(cls, tenant_id: str, app_model_config: AppModelConfig,

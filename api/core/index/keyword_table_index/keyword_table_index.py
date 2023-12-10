@@ -107,6 +107,9 @@ class KeywordTableIndex(BaseIndex):
 
         self._save_dataset_keyword_table(keyword_table)
 
+    def delete_by_metadata_field(self, key: str, value: str):
+        pass
+
     def get_retriever(self, **kwargs: Any) -> BaseRetriever:
         return KeywordTableRetriever(index=self, **kwargs)
 

@@ -99,6 +99,7 @@ class AppModelConfig(db.Model):
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
+    annotation_reply = db.Column(db.Text)
 
     @property
     def app(self):
@@ -126,6 +127,11 @@ class AppModelConfig(db.Model):
     @property
     def retriever_resource_dict(self) -> dict:
         return json.loads(self.retriever_resource) if self.retriever_resource \
+            else {"enabled": False}
+
+    @property
+    def annotation_reply_dict(self) -> dict:
+        return json.loads(self.annotation_reply) if self.annotation_reply \
             else {"enabled": False}
 
     @property
@@ -170,7 +176,9 @@ class AppModelConfig(db.Model):
 
     @property
     def file_upload_dict(self) -> dict:
-        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False, "number_limits": 3, "detail": "high", "transfer_methods": ["remote_url", "local_file"]}}
+        return json.loads(self.file_upload) if self.file_upload else {
+            "image": {"enabled": False, "number_limits": 3, "detail": "high",
+                      "transfer_methods": ["remote_url", "local_file"]}}
 
     def to_dict(self) -> dict:
         return {
@@ -182,6 +190,7 @@ class AppModelConfig(db.Model):
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
             "retriever_resource": self.retriever_resource_dict,
+            "annotation_reply": self.annotation_reply_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "external_data_tools": self.external_data_tools_list,
@@ -227,6 +236,8 @@ class AppModelConfig(db.Model):
             if model_config.get('dataset_configs') else None
         self.file_upload = json.dumps(model_config.get('file_upload')) \
             if model_config.get('file_upload') else None
+        self.annotation_reply = json.dumps(model_config.get('annotation_reply')) \
+            if model_config.get('annotation_reply') else None
         return self
 
     def copy(self):
@@ -616,12 +627,37 @@ class MessageAnnotation(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=False)
-    message_id = db.Column(UUID, nullable=False)
+    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=True)
+    message_id = db.Column(UUID, nullable=True)
+    question = db.Column(db.Text, nullable=False, default="")
     content = db.Column(db.Text, nullable=False)
+    hit_count = db.Column(db.Integer, nullable=False, default=0)
     account_id = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+
+class AppAnnotationHitHistory(db.Model):
+    __tablename__ = 'app_annotation_hit_histories'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_hit_histories_pkey'),
+        db.Index('app_annotation_hit_histories_app_idx', 'app_id'),
+        db.Index('app_annotation_hit_histories_account_idx', 'account_id'),
+        db.Index('app_annotation_hit_histories_annotation_idx', 'annotation_id'),
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(UUID, nullable=False)
+    annotation_id = db.Column(db.UUID, nullable=False)
+    source = db.Column(db.Text, nullable=False)
+    question = db.Column(db.Text, nullable=False)
+    account_id = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     @property
     def account(self):
