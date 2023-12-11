@@ -53,6 +53,10 @@ const translation = {
     score: 'Score',
     time: 'Time',
   },
+  initSetup: {
+    title: 'Annotated Response Initial Setup',
+    confirmBtn: 'Save & Enable',
+  },
 }
 
 export default translation

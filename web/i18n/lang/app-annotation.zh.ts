@@ -53,6 +53,10 @@ const translation = {
     score: '分数',
     time: '时间',
   },
+  initSetup: {
+    title: '标注回复初始设置',
+    confirmBtn: '保存并启用',
+  },
 }
 
 export default translation

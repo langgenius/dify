@@ -15,7 +15,7 @@ import ConfigContext from '@/context/debug-configuration'
 
 type Props = {}
 
-const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
+export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
   title,
   tooltip,
   children,
