@@ -1,6 +1,6 @@
 import React from 'react'
 import { getLocaleOnServer } from '@/i18n/server'
-import { useTranslation } from '@/i18n/i18next-serverside-config'
+import { useTranslation as translate } from '@/i18n/i18next-serverside-config'
 import Form from '@/app/components/datasets/settings/form'
 
 type Props = {
@@ -11,8 +11,7 @@ const Settings = async ({
   params: { datasetId },
 }: Props) => {
   const locale = getLocaleOnServer()
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  const { t } = await useTranslation(locale, 'dataset-settings')
+  const { t } = await translate(locale, 'dataset-settings')
 
   return (
     <div className='bg-white h-full overflow-y-auto'>

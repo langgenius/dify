@@ -82,7 +82,8 @@ class DatasetMultiRetrieverTool(BaseTool):
         hit_callback.on_tool_end(all_documents)
         document_score_list = {}
         for item in all_documents:
-            document_score_list[item.metadata['doc_id']] = item.metadata['score']
+            if 'score' in item.metadata and item.metadata['score']:
+                document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
         document_context_list = []
         index_node_ids = [document.metadata['doc_id'] for document in all_documents]
