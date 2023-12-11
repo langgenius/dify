@@ -51,14 +51,11 @@ const UpgradeBtn: FC<Props> = ({
       (setShowPricingModal as any)()
   }
   const onClick = () => {
+    handleClick()
     if (loc && (window as any).gtag) {
       (window as any).gtag('event', 'click_upgrade_btn', {
         loc,
-        event_callback: handleClick,
       })
-    }
-    else {
-      handleClick()
     }
   }
 
