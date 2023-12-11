@@ -271,6 +271,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           supportFeedback
           feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
           onFeedback={feedback => onFeedback(detail.message.id, feedback)}
+          supportAnnotation
         />
       </div>
       : items.length < 8

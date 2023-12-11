@@ -19,6 +19,8 @@ import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { fetchTextGenerationMessge } from '@/service/debug'
+import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
+import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 
 const MAX_DEPTH = 3
 export type IGenerationItemProps = {
@@ -42,6 +44,7 @@ export type IGenerationItemProps = {
   taskId?: string
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
+  supportAnnotation?: boolean
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -84,6 +87,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   taskId,
   controlClearMoreLikeThis,
   supportFeedback,
+  supportAnnotation,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -101,6 +105,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
     setChildFeedback(childFeedback)
   }
+
+  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
 
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
@@ -317,6 +323,33 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     {ratingContent}
                   </>
                 )}
+
+                {supportAnnotation && (
+                  <>
+                    <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
+                    <AnnotationCtrlBtn
+                      className='ml-1'
+                      cached={false}
+                      onAdd={() => { }}
+                      onEdit={() => setIsShowReplyModal(true)}
+                      onRemove={() => { }}
+                    />
+                  </>
+                )}
+
+                <EditReplyModal
+                  isShow={isShowReplyModal}
+                  onHide={() => setIsShowReplyModal(false)}
+                  query="Let's play a decryption game today. You go first."
+                  answer='Lara, the Caesar cipher is a simple substitution encryption technique, where each letter in the alphabet is shifted forward or backward a fixed number of positions. Please try shifting the letters back 13 positions.'
+                  onSave={(query, answer) => {
+                    console.log(query, answer)
+                  }}
+                  id='1'
+                  createdAt='2023-03-21 10:00'
+                  onRemove={() => { }}
+                />
+
                 {supportFeedback && (
                   <div className='ml-1'>
                     {ratingContent}

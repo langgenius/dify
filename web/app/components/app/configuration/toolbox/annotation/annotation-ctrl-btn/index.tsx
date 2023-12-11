@@ -11,6 +11,7 @@ import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
+  className?: string
   cached: boolean
   onAdd: () => void
   onEdit: () => void
@@ -18,6 +19,7 @@ type Props = {
 }
 
 const CacheCtrlBtn: FC<Props> = ({
+  className,
   cached,
   onAdd,
   onEdit,
@@ -28,7 +30,7 @@ const CacheCtrlBtn: FC<Props> = ({
   const cachedBtnRef = useRef<HTMLDivElement>(null)
   const isCachedBtnHovering = useHover(cachedBtnRef)
   return (
-    <div className='inline-block'>
+    <div className={cn(className, 'inline-block')}>
       <div className='inline-flex p-0.5 space-x-0.5 rounded-lg bg-white border border-gray-100 shadow-md text-gray-500 cursor-pointer'>
         {cached
           ? (
