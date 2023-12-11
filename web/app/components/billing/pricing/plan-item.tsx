@@ -141,18 +141,8 @@ const PlanItem: FC<Props> = ({
     setLoading(true)
     try {
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
-      if ((window as any).gtag) {
-        (window as any).gtag('event', 'click_pay_btn', {
-          plan,
-          interval: isYear ? 'year' : 'month',
-          event_callback: () => {
-            window.location.href = res.url
-          },
-        })
-      }
-      else {
-        window.location.href = res.url
-      }
+      // Adb Block additional tracking block the gtag, so we need to redirect directly
+      window.location.href = res.url
     }
     finally {
       setLoading(false)
