@@ -9,7 +9,7 @@ api = ExternalApi(bp)
 from . import extension, setup, version, apikey, admin
 
 # Import app controllers
-from .app import advanced_prompt_template, app, site, completion, model_config, statistic, conversation, message, generator, audio
+from .app import advanced_prompt_template, app, site, completion, model_config, statistic, conversation, message, generator, audio, annotation
 
 # Import auth controllers
 from .auth import login, oauth, data_source_oauth, activate
