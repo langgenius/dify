@@ -141,6 +141,16 @@ class WeaviateVectorIndex(BaseVectorIndex):
             "valueText": document_id
         })
 
+    def delete_by_group_id(self, group_id: str):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+            return
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.delete()
+
     def _is_origin(self):
         if self.dataset.index_struct_dict:
             class_prefix: str = self.dataset.index_struct_dict['vector_store']['class_prefix']
