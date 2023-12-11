@@ -3,6 +3,12 @@ description: Propose something new. [please use English :）]
 labels:
 - enhancement
 body:
+- type: checkboxes
+  attributes:
+    label: Self Checks
+    description: "To make sure we get to you in time, please check the following :)"
+      - label: I confirm that I am using English to file this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+        required: true
 - type: textarea
   attributes: 
     label: Description of the new feature / enhancement
