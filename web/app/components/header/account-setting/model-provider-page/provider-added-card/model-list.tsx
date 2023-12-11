@@ -4,8 +4,9 @@ import type { Model, ModelProvider } from '../declarations'
 import { languageMaps } from '../utils'
 import ModelBadge from '../model-badge'
 import Tab from './tab'
+import AddModelButton from './add-model-button'
 import Indicator from '@/app/components/header/indicator'
-import { Plus, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import I18n from '@/context/i18n'
 
@@ -26,23 +27,23 @@ const ModelList: FC<ModelListProps> = ({
     <div className='px-2 pb-2 rounded-b-xl'>
       <div className='py-1 bg-white rounded-lg'>
         <div className='flex items-center pl-1 pr-[3px]'>
-          <span className='group shrink-0 flex items-center ml-1 mr-1.5'>
-            <span className='group-hover:hidden'>2 Models</span>
+          <span className='group shrink-0 flex items-center mr-2'>
+            <span className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>2 Models</span>
             <span
-              className='hidden group-hover:inline-block h-[18px] bg-gray-50 text-xs font-medium text-gray-500 cursor-pointer'
+              className={`
+                hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 bg-gray-50 
+                text-xs font-medium text-gray-500 cursor-pointer rounded-lg
+              `}
               onClick={() => onCollapse()}
             >
-              <ChevronDownDouble className='mr-0.5 w-3 h-3' />
+              <ChevronDownDouble className='mr-0.5 w-3 h-3 rotate-180' />
               Collapse
             </span>
           </span>
           <span className='grow flex items-center'>
             <Tab active='all' onSelect={() => {}} />
           </span>
-          <span className='shrink-0 flex items-center px-1.5 h-6 text-xs font-medium text-gray-500'>
-            <Plus className='mr-1 w-3 h-3' />
-            Add Model
-          </span>
+          <AddModelButton onClick={() => {}} />
         </div>
         {
           models.map(model => (

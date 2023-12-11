@@ -1,3 +1,5 @@
+export type FormValue = Record<string, string>
+
 export type TypeWithI18N<T = string> = {
   'en_US': T
   'zh_Hans': T
@@ -52,17 +54,23 @@ export type CredentialFormSchemaMap = {
   [FormTypeEnum.textInput]: { max_length: number; placeholder: TypeWithI18N }
   [FormTypeEnum.select]: { options: FormOption[] }
   [FormTypeEnum.radio]: { options: FormOption[] }
-  [FormTypeEnum.secretInput]: {}
+  [FormTypeEnum.secretInput]: { placeholder: TypeWithI18N }
 }
 
-export type CredentialFormSchema = {
+export type CredentialFormSchemaBase = {
   variable: string
   label: TypeWithI18N
   type: FormTypeEnum
   required: boolean
   default: string
   show_on: FormShowOnObject[]
-} & CredentialFormSchemaMap[FormTypeEnum]
+}
+
+export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length: number; placeholder: TypeWithI18N }
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[] }
+export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
+export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder: TypeWithI18N }
+export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
 
 export type Model = {
   model: string
@@ -103,11 +111,12 @@ export type ModelProvider = {
   label: TypeWithI18N
   description?: TypeWithI18N
   help_url: TypeWithI18N
+  help_text: TypeWithI18N
   icon_small: TypeWithI18N
   icon_large: TypeWithI18N
   background?: string
   supported_models_types: ModelTypeEnum[]
-  configurate_method: ConfigurateMethodEnum
+  configurate_methods: ConfigurateMethodEnum[]
   provider_credential_schema: {
     credential_form_schemas: CredentialFormSchema[]
   }
@@ -119,6 +128,9 @@ export type ModelProvider = {
     crenential_form_schemas: CredentialFormSchema[]
   }
   preferred_provider_type: PreferredProviderTypeEnum
+  custom_configuration: {
+    status: 'active' | 'no_configure'
+  }
   system_configuration: {
     enabled: boolean
     current_system_quota_type: CurrentSystemQuotaTypeEnum
