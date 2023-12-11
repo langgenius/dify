@@ -48,6 +48,9 @@ export const checkKeys = (keys: string[], canBeEmpty?: boolean) => {
 
 const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g
 export const getVars = (value: string) => {
+  if (!value)
+    return []
+
   const keys = value.match(varRegex)?.filter((item) => {
     return ![CONTEXT_PLACEHOLDER_TEXT, HISTORY_PLACEHOLDER_TEXT, QUERY_PLACEHOLDER_TEXT, PRE_PROMPT_PLACEHOLDER_TEXT].includes(item)
   }).map((item) => {
