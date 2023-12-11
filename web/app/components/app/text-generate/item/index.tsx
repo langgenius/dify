@@ -329,7 +329,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
                     <AnnotationCtrlBtn
                       className='ml-1'
-                      cached={false}
+                      cached={true}
                       onAdd={() => { }}
                       onEdit={() => setIsShowReplyModal(true)}
                       onRemove={() => { }}

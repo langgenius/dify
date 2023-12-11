@@ -283,6 +283,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             onSubmitAnnotation={onSubmitAnnotation}
             displayScene='console'
             isShowPromptLog
+            supportAnnotation
           />
         </div>
         : <div

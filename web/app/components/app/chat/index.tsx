@@ -59,6 +59,7 @@ export type IChatProps = {
   isShowCitationHitInfo?: boolean
   isShowPromptLog?: boolean
   visionConfig?: VisionSettings
+  supportAnnotation?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -89,6 +90,7 @@ const Chat: FC<IChatProps> = ({
   isShowCitationHitInfo,
   isShowPromptLog,
   visionConfig,
+  supportAnnotation,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -212,6 +214,7 @@ const Chat: FC<IChatProps> = ({
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
+              supportAnnotation={supportAnnotation}
             />
           }
           return (

@@ -38,7 +38,8 @@
   background: url(./icons/answer.svg) no-repeat;
 }
 
-.copyBtn {
+.copyBtn,
+.annotationBtn {
   display: none;
 }
 
@@ -63,7 +64,8 @@
   max-width: 100%;
 }
 
-.answerWrap:hover .copyBtn {
+.answerWrap:hover .copyBtn,
+.answerWrap:hover .annotationBtn {
   display: block;
 }
 

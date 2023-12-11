@@ -22,6 +22,8 @@ import { Markdown } from '@/app/components/base/markdown'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
 import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
+import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
+import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -52,6 +54,7 @@ export type IAnswerProps = {
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
+  supportAnnotation?: boolean
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -69,6 +72,7 @@ const Answer: FC<IAnswerProps> = ({
   dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
+  supportAnnotation,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
   const [showEdit, setShowEdit] = useState(false)
@@ -78,6 +82,9 @@ const Answer: FC<IAnswerProps> = ({
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
   const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
+
+  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
+
   /**
  * Render feedback results (distinguish between users and administrators)
  * User reviews cannot be cancelled in Console
@@ -273,6 +280,28 @@ const Answer: FC<IAnswerProps> = ({
                     className={cn(s.copyBtn, 'mr-1')}
                   />
                 )}
+                {supportAnnotation && (
+                  <AnnotationCtrlBtn
+                    className={cn(s.annotationBtn, 'ml-1')}
+                    cached={true}
+                    onAdd={() => { }}
+                    onEdit={() => setIsShowReplyModal(true)}
+                    onRemove={() => { }}
+                  />
+                )}
+
+                <EditReplyModal
+                  isShow={isShowReplyModal}
+                  onHide={() => setIsShowReplyModal(false)}
+                  query="Let's play a decryption game today. You go first."
+                  answer='Lara, the Caesar cipher is a simple substitution encryption technique, where each letter in the alphabet is shifted forward or backward a fixed number of positions. Please try shifting the letters back 13 positions.'
+                  onSave={(query, answer) => {
+                    console.log(query, answer)
+                  }}
+                  id='1'
+                  createdAt='2023-03-21 10:00'
+                  onRemove={() => { }}
+                />
                 {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
                 {/* Admin feedback is displayed only in the background. */}
                 {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}

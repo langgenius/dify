@@ -27,8 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
-import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
-import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -40,7 +39,6 @@ const Debug: FC<IDebug> = ({
   onSetting,
   inputs,
 }) => {
-  const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const { t } = useTranslation()
   const {
     appId,
@@ -504,24 +502,6 @@ const Debug: FC<IDebug> = ({
           onVisionFilesChange={setCompletionFiles}
         />
       </div>
-      <AnnotationCtrlBtn
-        cached={false}
-        onAdd={() => { }}
-        onEdit={() => setIsShowReplyModal(true)}
-        onRemove={() => { }}
-      />
-      <EditReplyModal
-        isShow={isShowReplyModal}
-        onHide={() => setIsShowReplyModal(false)}
-        query="Let's play a decryption game today. You go first."
-        answer='Lara, the Caesar cipher is a simple substitution encryption technique, where each letter in the alphabet is shifted forward or backward a fixed number of positions. Please try shifting the letters back 13 positions.'
-        onSave={(query, answer) => {
-          console.log(query, answer)
-        }}
-        id='1'
-        createdAt='2023-03-21 10:00'
-        onRemove={() => { }}
-      />
       <div className="flex flex-col grow">
         {/* Chat */}
         {mode === AppType.chat && (
