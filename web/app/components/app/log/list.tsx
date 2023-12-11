@@ -34,6 +34,7 @@ import ModelIcon from '@/app/components/app/configuration/config-model/model-ico
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import TextGeneration from '@/app/components/app/text-generate/item'
 
 type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
@@ -253,14 +254,23 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     )}
 
     {!isChatMode
-      ? <div className="px-2.5 py-4">
-        <Chat
-          chatList={getFormattedChatList([detail.message])}
-          isHideSendInput={true}
-          onFeedback={onFeedback}
-          onSubmitAnnotation={onSubmitAnnotation}
-          displayScene='console'
-          isShowPromptLog
+      ? <div className="px-6 py-4">
+        <div className='flex h-[18px] items-center space-x-3'>
+          <div className='leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appLog.table.header.output')}</div>
+          <div className='grow h-[1px]' style={{
+            background: 'linear-gradient(270deg, rgba(243, 244, 246, 0) 0%, rgb(243, 244, 246) 100%)',
+          }}></div>
+        </div>
+        <TextGeneration
+          className='mt-2'
+          content={detail.message.answer}
+          messageId={detail.message.id}
+          isError={false}
+          onRetry={() => { }}
+          isInstalledApp={false}
+          supportFeedback
+          feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
+          onFeedback={feedback => onFeedback(detail.message.id, feedback)}
         />
       </div>
       : items.length < 8

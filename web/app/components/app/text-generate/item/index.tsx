@@ -41,6 +41,7 @@ export type IGenerationItemProps = {
   installedAppId?: string
   taskId?: string
   controlClearMoreLikeThis?: number
+  supportFeedback?: boolean
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -82,6 +83,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   installedAppId,
   taskId,
   controlClearMoreLikeThis,
+  supportFeedback,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -168,6 +170,57 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     setModal(true)
   }
 
+  const ratingContent = (
+    <>
+      {!isError && messageId && !feedback?.rating && (
+        <SimpleBtn className="!px-0">
+          <>
+            <div
+              onClick={() => {
+                onFeedback?.({
+                  rating: 'like',
+                })
+              }}
+              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+              <HandThumbUpIcon width={16} height={16} />
+            </div>
+            <div
+              onClick={() => {
+                onFeedback?.({
+                  rating: 'dislike',
+                })
+              }}
+              className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
+              <HandThumbDownIcon width={16} height={16} />
+            </div>
+          </>
+        </SimpleBtn>
+      )}
+      {!isError && messageId && feedback?.rating === 'like' && (
+        <div
+          onClick={() => {
+            onFeedback?.({
+              rating: null,
+            })
+          }}
+          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
+          <HandThumbUpIcon width={16} height={16} />
+        </div>
+      )}
+      {!isError && messageId && feedback?.rating === 'dislike' && (
+        <div
+          onClick={() => {
+            onFeedback?.({
+              rating: null,
+            })
+          }}
+          className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
+          <HandThumbDownIcon width={16} height={16} />
+        </div>
+      )}
+    </>
+  )
+
   return (
     <div ref={ref} className={cn(className, isTop ? `rounded-xl border ${!isError ? 'border-gray-200 bg-white' : 'border-[#FECDCA] bg-[#FEF3F2]'} ` : 'rounded-br-xl !mt-0')}
       style={isTop
@@ -196,7 +249,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 {isError
                   ? <div className='text-gray-400 text-sm'>{t('share.generation.batchFailed.outputPlaceholder')}</div>
                   : (
-                    <Markdown content={ content } />
+                    <Markdown content={content} />
                   )}
 
               </div>
@@ -214,7 +267,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                         showModal => (
                           <SimpleBtn
                             isDisabled={isError || !messageId}
-                            className={cn(isMobile && '!px-1.5', 'space-x-1 mr-2')}
+                            className={cn(isMobile && '!px-1.5', 'space-x-1 mr-1')}
                             onClick={() => handleOpenLogModal(showModal)}>
                             <File02 className='w-3.5 h-3.5' />
                             {!isMobile && <div>{t('common.operation.log')}</div>}
@@ -261,54 +314,15 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                       {!isMobile && <div>{t('share.generation.batchFailed.retry')}</div>}
                     </SimpleBtn>}
                     {!isError && messageId && <div className="mx-3 w-[1px] h-[14px] bg-gray-200"></div>}
-                    {!isError && messageId && !feedback?.rating && (
-                      <SimpleBtn className="!px-0">
-                        <>
-                          <div
-                            onClick={() => {
-                              onFeedback?.({
-                                rating: 'like',
-                              })
-                            }}
-                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                            <HandThumbUpIcon width={16} height={16} />
-                          </div>
-                          <div
-                            onClick={() => {
-                              onFeedback?.({
-                                rating: 'dislike',
-                              })
-                            }}
-                            className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
-                            <HandThumbDownIcon width={16} height={16} />
-                          </div>
-                        </>
-                      </SimpleBtn>
-                    )}
-                    {!isError && messageId && feedback?.rating === 'like' && (
-                      <div
-                        onClick={() => {
-                          onFeedback?.({
-                            rating: null,
-                          })
-                        }}
-                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
-                        <HandThumbUpIcon width={16} height={16} />
-                      </div>
-                    )}
-                    {!isError && messageId && feedback?.rating === 'dislike' && (
-                      <div
-                        onClick={() => {
-                          onFeedback?.({
-                            rating: null,
-                          })
-                        }}
-                        className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
-                        <HandThumbDownIcon width={16} height={16} />
-                      </div>
-                    )}
+                    {ratingContent}
                   </>
                 )}
+                {supportFeedback && (
+                  <div className='ml-1'>
+                    {ratingContent}
+                  </div>
+                )
+                }
               </div>
               <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
             </div>
