@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import { useContext } from 'use-context-selector'
@@ -39,6 +39,9 @@ const HeaderOptions: FC<Props> = ({
     const res = await fetchAnnotationList(appId, {})
     setList(res as AnnotationItemBasic[])
   }
+
+  useEffect(() => {
+  }, [])
 
   const Operations = () => {
     // const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {

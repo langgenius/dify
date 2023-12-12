@@ -3,3 +3,7 @@
   box-sizing: border-box;
   max-width: 200px;
 }
+
+.pagination li {
+  list-style: none;
+}

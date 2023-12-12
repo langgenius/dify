@@ -13,7 +13,7 @@ import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
-import { addAnnotation, delAnnotation, fetchAnnotationList } from '@/service/annotation'
+import { addAnnotation, delAnnotation, editAnnotation, fetchAnnotationList } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 
@@ -36,7 +36,7 @@ const Annotation: FC<Props> = ({
   }
 
   const [list, setList] = useState<AnnotationItem[]>(mockList)
-  const total = 10
+  const [total, setTotal] = useState(10)
 
   const [isLoading, setIsLoading] = useState(false)
   const fetchList = async (page = 1) => {
@@ -47,6 +47,8 @@ const Annotation: FC<Props> = ({
         page,
       })
       setList(res as AnnotationItem[])
+      // TODO: fetch total from api
+      setTotal(10)
     }
     catch (e) {
 
@@ -79,13 +81,12 @@ const Annotation: FC<Props> = ({
     setIsShowViewModal(true)
   }
 
-  const handleSave = (question: string, answer: string) => {
-    const payload = {
-      ...(currItem as AnnotationItem),
+  const handleSave = async (question: string, answer: string) => {
+    await editAnnotation(appId, (currItem as AnnotationItem).id, {
       question,
       answer,
-    }
-    console.log(payload)
+    })
+    fetchList()
   }
 
   return (
@@ -94,6 +95,7 @@ const Annotation: FC<Props> = ({
       <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <HeaderOpts
+            appId={appId}
             onAdd={handleAdd}
           // onClearAll={() => { }}
           />
@@ -144,6 +146,7 @@ const Annotation: FC<Props> = ({
 
         {isShowViewModal && (
           <ViewAnnotationModal
+            appId={appId}
             isShow={isShowViewModal}
             onHide={() => setIsShowViewModal(false)}
             onRemove={() => {
