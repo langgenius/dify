@@ -631,7 +631,7 @@ class MessageAnnotation(db.Model):
     message_id = db.Column(UUID, nullable=True)
     question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)
-    hit_count = db.Column(db.Integer, nullable=False, default=0)
+    hit_count = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     account_id = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
