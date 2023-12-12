@@ -97,7 +97,6 @@ const ViewAnnotationModal: FC<Props> = ({
 
   const annotationTab = (
     <>
-
       <EditItem
         type={EditItemType.Query}
         content={question}

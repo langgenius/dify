@@ -35,9 +35,9 @@ const Annotation: FC<Props> = ({
     // ...{ queryParams },
   }
 
+  const [controlUpdateList, setControlUpdateList] = useState(0)
   const [list, setList] = useState<AnnotationItem[]>(mockList)
   const [total, setTotal] = useState(10)
-
   const [isLoading, setIsLoading] = useState(false)
   const fetchList = async (page = 1) => {
     setIsLoading(true)
@@ -49,6 +49,7 @@ const Annotation: FC<Props> = ({
       setList(res as AnnotationItem[])
       // TODO: fetch total from api
       setTotal(10)
+      setControlUpdateList(Date.now())
     }
     catch (e) {
 
@@ -96,6 +97,7 @@ const Annotation: FC<Props> = ({
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <HeaderOpts
             appId={appId}
+            controlUpdateList={controlUpdateList}
             onAdd={handleAdd}
           // onClearAll={() => { }}
           />

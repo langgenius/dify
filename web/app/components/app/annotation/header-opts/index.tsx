@@ -16,13 +16,14 @@ import CustomPopover from '@/app/components/base/popover'
 // import Divider from '@/app/components/base/divider'
 import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
 import I18n from '@/context/i18n'
-import { fetchAnnotationList } from '@/service/annotation'
+import { fetchExportAnnotationList } from '@/service/annotation'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
 type Props = {
   appId: string
   onAdd: (payload: AnnotationItemBasic) => void
+  controlUpdateList: number
   // onClearAll: () => void
 }
 
@@ -30,18 +31,24 @@ const HeaderOptions: FC<Props> = ({
   appId,
   onAdd,
   // onClearAll,
+  controlUpdateList,
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const fetchList = async () => {
-    const res = await fetchAnnotationList(appId, {})
+    const res = await fetchExportAnnotationList(appId)
     setList(res as AnnotationItemBasic[])
   }
 
   useEffect(() => {
+    fetchList()
   }, [])
+  useEffect(() => {
+    if (controlUpdateList)
+      fetchList()
+  }, [controlUpdateList])
 
   const Operations = () => {
     // const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
@@ -98,7 +105,7 @@ const HeaderOptions: FC<Props> = ({
         htmlContent={<Operations />}
         position="br"
         trigger="click"
-        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} onClick={fetchList} />}
+        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
         btnClassName={open =>
           cn(
             open ? 'border-gray-300 !bg-gray-100 !shadow-none' : 'border-gray-200',

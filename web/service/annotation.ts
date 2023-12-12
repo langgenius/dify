@@ -5,8 +5,8 @@ export const fetchAnnotationList = (appId: string, params: Record<string, any>) 
   return get(`apps/${appId}/annotations`, { params })
 }
 
-export const fetchExportAnnotationList = (appId: string, params: Record<string, any>) => {
-  return get(`apps/${appId}/annotations/list`, { params })
+export const fetchExportAnnotationList = (appId: string) => {
+  return get(`apps/${appId}/annotations/export`)
 }
 
 export const addAnnotation = (appId: string, body: AnnotationItemBasic) => {
