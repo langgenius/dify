@@ -1,6 +1,7 @@
 const translation = {
   api: {
     success: '成功',
+    actionSuccess: '操作成功',
     saved: '已保存',
     create: '已创建',
     remove: '已移除',

@@ -11,6 +11,7 @@ import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import HistoryPanel from '../config-prompt/conversation-histroy/history-panel'
 import ConfigVision from '../config-vision'
+import useAnnotationConfig from '../toolbox/annotation/use-annotation-config'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
@@ -18,7 +19,7 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { AnnotationReplyConfig, CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
+import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -80,8 +81,6 @@ const Config: FC = () => {
     setModelConfig(newModelConfig)
   }
 
-  const [isShowAnnotationConfigInit, setIsShowAnnotationConfigInit] = React.useState(false)
-
   const [showChooseFeature, {
     setTrue: showChooseFeatureTrue,
     setFalse: showChooseFeatureFalse,
@@ -115,10 +114,8 @@ const Config: FC = () => {
     },
     annotation: annotationConfig.enabled,
     setAnnotation: (value) => {
-      setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
-        draft.enabled = value
-      }))
       if (value)
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         setIsShowAnnotationConfigInit(true)
     },
     moderation: moderationConfig.enabled,
@@ -150,6 +147,19 @@ const Config: FC = () => {
         showChooseFeatureFalse()
       }
     },
+  })
+
+  const {
+    handleEnableAnnotation,
+    handleDisableAnnotation,
+    isShowAnnotationConfigInit,
+    setIsShowAnnotationConfigInit,
+  } = useAnnotationConfig({
+    appId,
+    annotationConfig,
+    setAnnotationConfig,
+    showChooseFeatureTrue,
+    handleFeatureChange,
   })
 
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
@@ -257,13 +267,9 @@ const Config: FC = () => {
           onHide={() => {
             setIsShowAnnotationConfigInit(false)
             showChooseFeatureTrue()
-            handleFeatureChange('annotation', false)
           }}
-          onSave={(embeddingModel) => {
-            handleFeatureChange('annotation', true)
-            setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
-              draft.embedding_model = embeddingModel
-            }))
+          onSave={async (embeddingModel) => {
+            await handleEnableAnnotation(embeddingModel)
             setIsShowAnnotationConfigInit(false)
           }}
         />

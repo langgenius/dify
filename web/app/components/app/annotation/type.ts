@@ -19,6 +19,11 @@ export type HitHistoryItem = {
   created_at: string
 }
 
+export type EmbeddingModelConfig = {
+  embedding_provider_name: string
+  embedding_model_name: string
+}
+
 export enum AnnotationEnableStatus {
   enable = 'enable',
   disable = 'disable',

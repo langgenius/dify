@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
@@ -58,13 +59,23 @@ const Annotation: FC<Props> = ({
   }, [currPage])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
-    await addAnnotation(appId, payload)
+    await addAnnotation(appId, {
+      ...payload,
+    })
+    Toast.notify({
+      message: t('common.api.actionSuccess'),
+      type: 'success',
+    })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appId, id)
+    Toast.notify({
+      message: t('common.api.actionSuccess'),
+      type: 'success',
+    })
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -80,6 +91,10 @@ const Annotation: FC<Props> = ({
     await editAnnotation(appId, (currItem as AnnotationItem).id, {
       question,
       answer,
+    })
+    Toast.notify({
+      message: t('common.api.actionSuccess'),
+      type: 'success',
     })
     fetchList()
     setControlUpdateList(Date.now())

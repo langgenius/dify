@@ -1,6 +1,7 @@
 const translation = {
   api: {
     success: 'Success',
+    actionSuccess: 'Action succeeded',
     saved: 'Saved',
     create: 'Created',
     remove: 'Removed',

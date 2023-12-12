@@ -120,7 +120,10 @@ const HeaderOptions: FC<Props> = ({
         <AddAnnotationModal
           isShow={showAddModal}
           onHide={() => setShowAddModal(false)}
-          onAdd={onAdd}
+          onAdd={async (value) => {
+            await onAdd(value)
+            setShowAddModal(false)
+          }}
         />
       )}
     </div>
