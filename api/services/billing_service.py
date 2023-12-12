@@ -10,7 +10,7 @@ class BillingService:
     def get_info(cls, tenant_id: str):
         params = {'tenant_id': tenant_id}
 
-        billing_info = cls._send_request('GET', '/info', params=params)
+        billing_info = cls._send_request('GET', '/subscription/info', params=params)
 
         return billing_info
 
@@ -18,16 +18,26 @@ class BillingService:
     def get_subscription(cls, plan: str,
                          interval: str,
                          prefilled_email: str = '',
-                         user_name: str = '',
                          tenant_id: str = ''):
         params = {
             'plan': plan,
             'interval': interval,
             'prefilled_email': prefilled_email,
-            'user_name': user_name,
             'tenant_id': tenant_id
         }
-        return cls._send_request('GET', '/subscription', params=params)
+        return cls._send_request('GET', '/subscription/payment-link', params=params)
+
+    @classmethod
+    def get_model_provider_payment_link(cls,
+                                        provider_name: str,
+                                        tenant_id: str,
+                                        account_id: str):
+        params = {
+            'provider_name': provider_name,
+            'tenant_id': tenant_id,
+            'account_id': account_id
+        }
+        return cls._send_request('GET', '/model-provider/payment-link', params=params)
 
     @classmethod
     def get_invoices(cls, prefilled_email: str = ''):
@@ -45,10 +55,3 @@ class BillingService:
         response = requests.request(method, url, json=json, params=params, headers=headers)
 
         return response.json()
-
-    @classmethod
-    def process_event(cls, event: dict):
-        json = {
-            "content": event,
-        }
-        return cls._send_request('POST', '/webhook/stripe', json=json)
