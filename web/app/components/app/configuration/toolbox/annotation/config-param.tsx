@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname, useRouter } from 'next/navigation'
@@ -10,6 +10,9 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle, LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 
 type Props = {}
 
@@ -42,16 +45,10 @@ const AnnotationReplyConfig: FC<Props> = () => {
   const matched = pathname.match(/\/app\/([^/]+)/)
   const appId = (matched?.length && matched[1]) ? matched[1] : ''
   const {
-    mode,
-    modelConfig,
+    annotationConfig,
+    setAnnotationConfig,
   } = useContext(ConfigContext)
-  const promptVariables = modelConfig.configs.prompt_variables
-  const promptVariablesToSelect = promptVariables.map(item => ({
-    name: item.name,
-    type: item.type,
-    value: item.key,
-  }))
-  const [scoreThreshold, setScoreThreshold] = useState(90)
+
   return (
     <Panel
       className="mt-4"
@@ -75,27 +72,38 @@ const AnnotationReplyConfig: FC<Props> = () => {
         >
           <ScoreSlider
             className='mt-1'
-            value={scoreThreshold}
-            onChange={setScoreThreshold}
+            value={annotationConfig.score_threshold * 100}
+            onChange={(val) => {
+              setAnnotationConfig({
+                ...annotationConfig,
+                score_threshold: val / 100,
+              })
+            }}
           />
         </Item>
-        {/* {
-{mode === AppType.completion && (
-          <Item
-            title={t('appDebug.feature.annotation.matchVariable.title')}
-            tooltip={t('appDebug.feature.annotation.matchVariable.description')}
-          >
-            <VarPicker
-              triggerClassName='mt-2 w-full'
-              className='!justify-between'
-              value={matchVariable}
-              options={promptVariablesToSelect}
-              onChange={setMatchVariable}
-              notSelectedVarTip={t('appDebug.feature.annotation.matchVariable.choosePlaceholder')}
+        <Item
+          title={t('common.modelProvider.embeddingModel.key')}
+          tooltip={t('common.modelProvider.embeddingModel.tip')}
+        >
+          <div className='pt-1'>
+            <ModelSelector
+              value={{
+                providerName: annotationConfig.embedding_model.embedding_provider_name as ProviderEnum,
+                modelName: annotationConfig.embedding_model.embedding_model_name,
+              }}
+              modelType={ModelType.embeddings}
+              onChange={(val) => {
+                setAnnotationConfig({
+                  ...annotationConfig,
+                  embedding_model: {
+                    embedding_provider_name: val.model_provider.provider_name,
+                    embedding_model_name: val.model_name,
+                  },
+                })
+              }}
             />
-          </Item>
-        )}
-        } */}
+          </div>
+        </Item>
 
       </div>
     </Panel>

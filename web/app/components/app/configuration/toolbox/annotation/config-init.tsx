@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnnotationEnableStatus } from '../../../annotation/type'
 import { Item } from './config-param'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -10,8 +9,6 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
-import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
-import { sleep } from '@/utils'
 
 type Props = {
   appId: string
@@ -46,14 +43,6 @@ const ConfigInit: FC<Props> = ({
       doHide()
   }
 
-  const ensureJobCompleted = async (jobId: string) => {
-    let isCompleted = false
-    while (!isCompleted) {
-      const res: any = await queryAnnotationJobStatus(appId, AnnotationEnableStatus.enable, jobId)
-      isCompleted = res.status === 'completed'
-      await sleep(500)
-    }
-  }
   const handleSave = async () => {
     if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
       Toast.notify({
@@ -63,13 +52,10 @@ const ConfigInit: FC<Props> = ({
       return
     }
     setLoading(true)
-    onSave({
+    await onSave({
       embedding_provider_name: embeddingModel.providerName,
       embedding_model_name: embeddingModel.modelName,
     })
-
-    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.enable)
-    await ensureJobCompleted(jobId)
     setLoading(false)
   }
 

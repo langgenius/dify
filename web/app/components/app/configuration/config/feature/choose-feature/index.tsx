@@ -127,13 +127,15 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
               value={config.moderation}
               onChange={value => onChange('moderation', value)}
             />
-            <FeatureItem
-              icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
-              title={t('appDebug.feature.annotation.title')}
-              description={t('appDebug.feature.annotation.description')}
-              value={config.annotation}
-              onChange={value => onChange('annotation', value)}
-            />
+            {isChatApp && (
+              <FeatureItem
+                icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
+                title={t('appDebug.feature.annotation.title')}
+                description={t('appDebug.feature.annotation.description')}
+                value={config.annotation}
+                onChange={value => onChange('annotation', value)}
+              />
+            )}
           </>
         </FeatureGroup>
       </div>

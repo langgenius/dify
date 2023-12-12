@@ -113,10 +113,15 @@ const Config: FC = () => {
       }))
     },
     annotation: annotationConfig.enabled,
-    setAnnotation: (value) => {
-      if (value)
+    setAnnotation: async (value) => {
+      if (value) {
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         setIsShowAnnotationConfigInit(true)
+      }
+      else {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        await handleDisableAnnotation()
+      }
     },
     moderation: moderationConfig.enabled,
     setModeration: (value) => {
@@ -256,7 +261,7 @@ const Config: FC = () => {
           hasToolbox && (
             <Toolbox
               showModerationSettings={moderationConfig.enabled}
-              showAnnotation={featureConfig.annotation}
+              showAnnotation={isChatApp && featureConfig.annotation}
             />
           )
         }

@@ -27,7 +27,7 @@ const useAnnotationConfig = ({
     while (!isCompleted) {
       const res: any = await queryAnnotationJobStatus(appId, status, jobId)
       isCompleted = res.status === 'completed'
-      await sleep(500)
+      await sleep(2000)
     }
   }
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
