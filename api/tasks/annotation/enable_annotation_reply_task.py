@@ -52,19 +52,26 @@ def enable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
             embedding_model=embedding_model_name,
             collection_binding_id=dataset_collection_binding.id
         )
-        for annotation in annotations:
-            document = Document(
-                page_content=annotation.question,
-                metadata={
-                    "annotation_id": annotation.id,
-                    "app_id": app_id,
-                }
-            )
-            documents.append(document)
-        index = IndexBuilder.get_index(dataset, 'high_quality')
-        if index:
-            index.delete_by_metadata_field('app_id', app_id)
-            index.add_texts(documents)
+        if annotations:
+            for annotation in annotations:
+                document = Document(
+                    page_content=annotation.question,
+                    metadata={
+                        "annotation_id": annotation.id,
+                        "app_id": app_id,
+                        "doc_id": annotation.id
+                    }
+                )
+                documents.append(document)
+            index = IndexBuilder.get_index(dataset, 'high_quality')
+            if index:
+                try:
+                    index.delete_by_metadata_field('app_id', app_id)
+                except Exception as e:
+                    logging.info(
+                        click.style('Delete annotation index error: {}'.format(str(e)),
+                                    fg='red'))
+                index.add_texts(documents)
         end_at = time.perf_counter()
         logging.info(
             click.style('App annotations added to index: {} latency: {}'.format(app_id, end_at - start_at),

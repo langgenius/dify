@@ -126,8 +126,8 @@ class AnnotationUpdateDeleteApi(Resource):
     def delete(self, app_id, annotation_id):
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        annotation = AppAnnotationService.delete_app_annotation(app_id, annotation_id)
-        return annotation
+        AppAnnotationService.delete_app_annotation(app_id, annotation_id)
+        return {'result': 'success'}, 200
 
 
 class AnnotationBatchImportApi(Resource):

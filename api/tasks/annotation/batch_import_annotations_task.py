@@ -56,6 +56,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                     metadata={
                         "annotation_id": annotation.id,
                         "app_id": app_id,
+                        "doc_id": annotation.id
                     }
                 )
                 documents.append(document)
