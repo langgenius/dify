@@ -11,7 +11,7 @@ account_fields = {
 annotation_fields = {
     "id": fields.String,
     "question": fields.String,
-    "content": fields.String,
+    "answer": fields.Raw(attribute='content'),
     "hit_count": fields.Integer,
     "created_at": TimestampField,
     # 'account': fields.Nested(account_fields, allow_null=True)

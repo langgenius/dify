@@ -44,7 +44,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
             for content in content_list:
                 annotation = MessageAnnotation(
                     app_id=app.id,
-                    content=content['content'],
+                    content=content['answer'],
                     question=content['question'],
                     account_id=user_id
                 )

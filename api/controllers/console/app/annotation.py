@@ -98,7 +98,7 @@ class AnnotationCreateApi(Resource):
         app_id = str(app_id)
         parser = reqparse.RequestParser()
         parser.add_argument('question', required=True, type=str, location='json')
-        parser.add_argument('content', required=True, type=str, location='json')
+        parser.add_argument('answer', required=True, type=str, location='json')
         args = parser.parse_args()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_id)
         return annotation
@@ -114,7 +114,7 @@ class AnnotationUpdateDeleteApi(Resource):
         annotation_id = str(annotation_id)
         parser = reqparse.RequestParser()
         parser.add_argument('question', required=True, type=str, location='json')
-        parser.add_argument('content', required=True, type=str, location='json')
+        parser.add_argument('answer', required=True, type=str, location='json')
         args = parser.parse_args()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_id, annotation_id)
         return annotation

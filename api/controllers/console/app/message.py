@@ -158,7 +158,7 @@ class MessageAnnotationApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('message_id', required=False, type=uuid_value, location='json')
         parser.add_argument('question', required=True, type=str, location='json')
-        parser.add_argument('content', required=True, type=str, location='json')
+        parser.add_argument('answer', required=True, type=str, location='json')
         args = parser.parse_args()
         AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
 
