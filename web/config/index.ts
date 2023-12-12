@@ -148,3 +148,7 @@ export const DATASET_DEFAULT = {
 }
 
 export const APP_PAGE_LIMIT = 10
+
+export const ANNOTATION_DEFAULT = {
+  score_threshold: 0.9,
+}

@@ -22,7 +22,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
 import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type IDebugConfiguration = {
   appId: string
@@ -147,7 +147,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   },
   annotationConfig: {
     enabled: false,
-    score_threshold: 0.9,
+    score_threshold: ANNOTATION_DEFAULT.score_threshold,
     embedding_model: {
       embedding_model_name: '',
       embedding_provider_name: '',

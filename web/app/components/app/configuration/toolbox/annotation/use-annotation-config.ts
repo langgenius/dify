@@ -3,9 +3,9 @@ import produce from 'immer'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
-import { AnnotationEnableStatus } from '@/app/components/app/annotation/type'
+import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
 import { sleep } from '@/utils'
-
+import { ANNOTATION_DEFAULT } from '@/config'
 type Params = {
   appId: string
   annotationConfig: AnnotationReplyConfig
@@ -26,10 +26,14 @@ const useAnnotationConfig = ({
     let isCompleted = false
     while (!isCompleted) {
       const res: any = await queryAnnotationJobStatus(appId, status, jobId)
-      isCompleted = res.status === 'completed'
+      isCompleted = res.job_status === JobStatus.completed
+      if (isCompleted)
+        break
+
       await sleep(2000)
     }
   }
+
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
     if (annotationConfig.enabled)
       return
@@ -40,6 +44,8 @@ const useAnnotationConfig = ({
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = true
       draft.embedding_model = embeddingModel
+      if (!draft.score_threshold)
+        draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
     }))
   }
 

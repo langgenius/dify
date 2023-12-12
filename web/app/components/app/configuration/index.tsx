@@ -42,7 +42,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -91,8 +91,8 @@ const Configuration: FC = () => {
     enabled: false,
   })
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
-    enabled: true,
-    score_threshold: 0.9,
+    enabled: false,
+    score_threshold: ANNOTATION_DEFAULT.score_threshold,
     embedding_model: {
       embedding_provider_name: '',
       embedding_model_name: '',
@@ -523,9 +523,6 @@ const Configuration: FC = () => {
 
     if (mode === AppType.chat)
       data.annotation_reply = annotationConfig
-
-    // console.log(data)
-    // return
 
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body: data })
     const newModelConfig = produce(modelConfig, (draft: any) => {
