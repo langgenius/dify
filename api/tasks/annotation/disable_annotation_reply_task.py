@@ -15,7 +15,7 @@ from models.model import MessageAnnotation, App
 from services.dataset_service import DatasetCollectionBindingService
 
 
-@shared_task(queue='annotation')
+@shared_task(queue='dataset')
 def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
                                   embedding_provider_name: str, embedding_model_name: str):
     """

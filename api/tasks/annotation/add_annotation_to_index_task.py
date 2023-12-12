@@ -13,7 +13,7 @@ from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, Datase
 from services.dataset_service import DatasetCollectionBindingService
 
 
-@shared_task(queue='annotation')
+@shared_task(queue='dataset')
 def add_annotation_to_index_task(annotation_id: str, question: str, tenant_id: str, app_id: str,
                                  embedding_provider_name: str, embedding_model_name: str):
     """

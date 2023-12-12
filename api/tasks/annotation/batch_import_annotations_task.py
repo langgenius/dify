@@ -16,7 +16,7 @@ from models.model import MessageAnnotation, App
 from services.dataset_service import DatasetCollectionBindingService
 
 
-@shared_task(queue='annotation')
+@shared_task(queue='dataset')
 def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id: str, tenant_id: str,
                                   user_id: str):
     """

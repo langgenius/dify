@@ -5,8 +5,7 @@ from controllers.console.datasets.error import TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_redis import redis_client
-from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields
-from fields.conversation_fields import annotation_fields
+from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields, annotation_fields
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 from flask import request
@@ -67,7 +66,7 @@ class AnnotationListApi(Resource):
         app_id = str(app_id)
         annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
         response = {
-            'data': marshal(annotation_list, annotation_list_fields),
+            'data': marshal(annotation_list, annotation_fields),
             'has_more': len(annotation_list) == limit,
             'limit': limit,
             'total': total,
@@ -84,7 +83,7 @@ class AnnotationExportApi(Resource):
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response = {
-            'data': marshal(annotation_list, annotation_list_fields)
+            'data': marshal(annotation_list, annotation_fields)
         }
         return response, 200
 
