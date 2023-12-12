@@ -253,7 +253,7 @@ class AppAnnotationService:
             raise NotFound("Annotation not found")
 
         db.session.delete(annotation)
-
+        db.session.commit()
         # if annotation reply is enabled , delete annotation index
         app_model_config = app.app_model_config
         if app_model_config:
