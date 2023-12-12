@@ -23,6 +23,7 @@ const AddAnnotationModal: FC<Props> = ({
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [isCreateNext, setIsCreateNext] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
 
   const isValid = (payload: AnnotationItemBasic) => {
     if (!payload.question)
@@ -34,7 +35,7 @@ const AddAnnotationModal: FC<Props> = ({
     return true
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const payload = {
       question,
       answer,
@@ -46,7 +47,15 @@ const AddAnnotationModal: FC<Props> = ({
       })
       return
     }
-    onAdd(payload)
+
+    setIsSaving(true)
+    try {
+      await onAdd(payload)
+    }
+    catch (e) {
+    }
+    setIsSaving(false)
+
     if (isCreateNext) {
       setQuestion('')
       setAnswer('')
@@ -86,7 +95,7 @@ const AddAnnotationModal: FC<Props> = ({
                 <div>{t('appAnnotation.addModal.createNext')}</div>
               </div>
               <div className='mt-2 flex space-x-2'>
-                <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave} loading={isSaving}>{t('common.operation.save')}</Button>
                 <Button className='!h-7 !text-xs !font-medium' onClick={onHide}>{t('common.operation.cancel')}</Button>
               </div>
             </div>

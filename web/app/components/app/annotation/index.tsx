@@ -109,7 +109,6 @@ const Annotation: FC<Props> = ({
             appId={appId}
             controlUpdateList={controlUpdateList}
             onAdd={handleAdd}
-          // onClearAll={() => { }}
           />
         </Filter>
         {isLoading
