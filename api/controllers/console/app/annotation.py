@@ -1,4 +1,4 @@
-from flask_restful import Resource, reqparse, marshal_with
+from flask_restful import Resource, reqparse, marshal_with, marshal
 from controllers.console import api
 from controllers.console.app.error import NoFileUploadedError
 from controllers.console.datasets.error import TooManyFilesError
@@ -59,11 +59,34 @@ class AnnotationListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(annotation_list_fields)
+    def get(self, app_id):
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=20, type=int)
+        keyword = request.args.get('keyword', default=None, type=str)
+
+        app_id = str(app_id)
+        annotation_list, total = AppAnnotationService.get_annotation_list_by_app_id(app_id, page, limit, keyword)
+        response = {
+            'data': marshal(annotation_list, annotation_list_fields),
+            'has_more': len(annotation_list) == limit,
+            'limit': limit,
+            'total': total,
+            'page': page
+        }
+        return response, 200
+
+
+class AnnotationExportApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
     def get(self, app_id):
         app_id = str(app_id)
-        annotation_list = AppAnnotationService.get_annotation_list_by_app_id(app_id)
-        return annotation_list
+        annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
+        response = {
+            'data': marshal(annotation_list, annotation_list_fields)
+        }
+        return response, 200
 
 
 class AnnotationCreateApi(Resource):
@@ -164,8 +187,8 @@ api.add_resource(AnnotationReplyActionApi, '/apps/<uuid:app_id>/annotation-reply
 api.add_resource(AnnotationReplyActionStatusApi,
                  '/apps/<uuid:app_id>/annotation-reply/<string:action>/status/<uuid:job_id>')
 api.add_resource(AnnotationListApi, '/apps/<uuid:app_id>/annotations')
+api.add_resource(AnnotationExportApi, '/apps/<uuid:app_id>/annotations/export')
 api.add_resource(AnnotationUpdateDeleteApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>')
 api.add_resource(AnnotationBatchImportApi, '/apps/<uuid:app_id>/annotations/batch-import',
                  '/apps/{app_id}/annotations/batch-import-status/<uuid:job_id>')
 api.add_resource(AnnotationHitHistoryListApi, '/apps/<uuid:app_id>/annotations/{annotation_id}/hit-histories')
-

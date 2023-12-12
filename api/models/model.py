@@ -653,7 +653,7 @@ class AppAnnotationHitHistory(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    annotation_id = db.Column(db.UUID, nullable=False)
+    annotation_id = db.Column(UUID, nullable=False)
     source = db.Column(db.Text, nullable=False)
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(UUID, nullable=False)

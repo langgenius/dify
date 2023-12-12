@@ -3,6 +3,7 @@ import uuid
 
 import pandas as pd
 from flask_login import current_user
+from sqlalchemy import or_
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
@@ -114,7 +115,7 @@ class AppAnnotationService:
         }
 
     @classmethod
-    def get_annotation_list_by_app_id(cls, app_id):
+    def get_annotation_list_by_app_id(cls, app_id: str, page: int, limit: int, keyword: str):
         # get app info
         app = db.session.query(App).filter(
             App.id == app_id,
@@ -124,8 +125,38 @@ class AppAnnotationService:
 
         if not app:
             raise NotFound("App not found")
+        if keyword:
+            annotations = (db.session.query(MessageAnnotation)
+                           .filter(MessageAnnotation.app_id == app_id)
+                           .filter(
+                or_(
+                    Message.query.ilike('%{}%'.format(keyword)),
+                    Message.answer.ilike('%{}%'.format(keyword))
+                )
+            )
+                           .order_by(MessageAnnotation.created_at.desc())
+                           .paginate(page=page, per_page=limit, max_per_page=100, error_out=False))
+        else:
+            annotations = (db.session.query(MessageAnnotation)
+                           .filter(MessageAnnotation.app_id == app_id)
+                           .order_by(MessageAnnotation.created_at.desc())
+                           .paginate(page=page, per_page=limit, max_per_page=100, error_out=False))
+        return annotations.items, annotations.total
 
-        annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app_id).all()
+    @classmethod
+    def export_annotation_list_by_app_id(cls, app_id: str):
+        # get app info
+        app = db.session.query(App).filter(
+            App.id == app_id,
+            App.tenant_id == current_user.current_tenant_id,
+            App.status == 'normal'
+        ).first()
+
+        if not app:
+            raise NotFound("App not found")
+        annotations = (db.session.query(MessageAnnotation)
+                       .filter(MessageAnnotation.app_id == app_id)
+                       .order_by(MessageAnnotation.created_at.desc()).all())
         return annotations
 
     @classmethod
