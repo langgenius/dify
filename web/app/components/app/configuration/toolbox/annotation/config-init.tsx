@@ -6,7 +6,7 @@ import { Item } from './config-param'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
 import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
 
@@ -75,8 +75,8 @@ const ConfigInit: FC<Props> = ({
         tooltip={t('common.modelProvider.embeddingModel.tip')}
       >
         <div className='pt-1'>
-          {/* TODO: Potal */}
           <ModelSelector
+            widthSameToTrigger
             value={embeddingModel}
             modelType={ModelType.embeddings}
             onChange={(val) => {

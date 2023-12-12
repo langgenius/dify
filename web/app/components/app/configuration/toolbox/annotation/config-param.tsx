@@ -10,7 +10,7 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle, LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 
@@ -87,9 +87,10 @@ const AnnotationReplyConfig: FC<Props> = () => {
         >
           <div className='pt-1'>
             <ModelSelector
+              widthSameToTrigger
               value={{
-                providerName: annotationConfig.embedding_model.embedding_provider_name as ProviderEnum,
-                modelName: annotationConfig.embedding_model.embedding_model_name,
+                providerName: annotationConfig.embedding_model?.embedding_provider_name as ProviderEnum,
+                modelName: annotationConfig.embedding_model?.embedding_model_name,
               }}
               modelType={ModelType.embeddings}
               onChange={(val) => {

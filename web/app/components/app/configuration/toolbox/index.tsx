@@ -24,7 +24,7 @@ const Toolbox: FC<ToolboxProps> = ({ showModerationSettings, showAnnotation }) =
         )
       }
       {
-        showAnnotation && (
+        (showAnnotation || true) && (
           <Annotation />
         )
       }
