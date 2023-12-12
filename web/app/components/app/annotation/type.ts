@@ -7,7 +7,7 @@ export type AnnotationItem = {
   id: string
   question: string
   answer: string
-  created_at: string
+  created_at: number
   hit_count: number
 }
 

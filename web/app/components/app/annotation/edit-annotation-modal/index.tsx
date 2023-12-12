@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import dayjs from 'dayjs'
 import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
@@ -14,7 +15,7 @@ type Props = {
   answer: string
   onSave: (editedQuery: string, editedAnswer: string) => void
   id: string
-  createdAt: string
+  createdAt: number
   onRemove: () => void
 }
 
@@ -69,7 +70,7 @@ const EditAnnotationModal: FC<Props> = ({
                 <MessageCheckRemove />
                 <div>{t('appAnnotation.editModal.removeThisCache')}</div>
               </div>
-              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{createdAt}</div>
+              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>
             </div>
           )
           : undefined}
