@@ -11,9 +11,9 @@ import EmptyElement from './empty-element'
 // import mockList from './mock-data'
 import HeaderOpts from './header-opts'
 import s from './style.module.css'
-import type { AnnotationItem } from './type'
+import type { AnnotationItem, AnnotationItemBasic } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
-import { fetchAnnotationList } from '@/service/annotation'
+import { addAnnotation, fetchAnnotationList } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 
@@ -45,7 +45,6 @@ const Annotation: FC<Props> = ({
         ...query,
         page,
       })
-      // debugger
       setList(res as AnnotationItem[])
     }
     catch (e) {
@@ -61,6 +60,10 @@ const Annotation: FC<Props> = ({
   useEffect(() => {
     fetchList(currPage + 1)
   }, [currPage])
+
+  const handleAdd = async (payload: AnnotationItemBasic) => {
+    await addAnnotation(appId, payload)
+  }
 
   const handleRemove = (id: string) => {
     console.log(`remove ${id}`)
@@ -88,9 +91,7 @@ const Annotation: FC<Props> = ({
       <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <HeaderOpts
-            onAdd={(payload) => {
-              console.log(payload)
-            }}
+            onAdd={handleAdd}
             onExport={() => {
               console.log('export')
             }}
