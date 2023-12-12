@@ -1,8 +1,8 @@
 """add-annotation-reply
 
-Revision ID: 58733e7e01af
+Revision ID: e1901f623fd0
 Revises: fca025d3b60f
-Create Date: 2023-12-12 06:46:25.977118
+Create Date: 2023-12-12 06:58:41.054544
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision = '58733e7e01af'
+revision = 'e1901f623fd0'
 down_revision = 'fca025d3b60f'
 branch_labels = None
 depends_on = None
@@ -41,7 +41,7 @@ def upgrade():
 
     with op.batch_alter_table('message_annotations', schema=None) as batch_op:
         batch_op.add_column(sa.Column('question', sa.Text(), nullable=True))
-        batch_op.add_column(sa.Column('hit_count', sa.Integer(), nullable=False))
+        batch_op.add_column(sa.Column('hit_count', sa.Integer(), server_default=sa.text('0'), nullable=False))
         batch_op.alter_column('conversation_id',
                existing_type=postgresql.UUID(),
                nullable=True)
