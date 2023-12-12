@@ -17,6 +17,7 @@ class UniversalChatParameterApi(UniversalChatResource):
         'suggested_questions_after_answer': fields.Raw,
         'speech_to_text': fields.Raw,
         'retriever_resource': fields.Raw,
+        'annotation_reply': fields.Raw
     }
 
     @marshal_with(parameters_fields)
@@ -32,6 +33,7 @@ class UniversalChatParameterApi(UniversalChatResource):
             'suggested_questions_after_answer': app_model_config.suggested_questions_after_answer_dict,
             'speech_to_text': app_model_config.speech_to_text_dict,
             'retriever_resource': app_model_config.retriever_resource_dict,
+            'annotation_reply': app_model_config.annotation_reply_dict,
         }
 
 

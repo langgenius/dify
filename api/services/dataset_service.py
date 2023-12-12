@@ -1175,10 +1175,12 @@ class SegmentService:
 
 class DatasetCollectionBindingService:
     @classmethod
-    def get_dataset_collection_binding(cls, provider_name: str, model_name: str) -> DatasetCollectionBinding:
+    def get_dataset_collection_binding(cls, provider_name: str, model_name: str,
+                                       collection_type: str = 'dataset') -> DatasetCollectionBinding:
         dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
             filter(DatasetCollectionBinding.provider_name == provider_name,
-                   DatasetCollectionBinding.model_name == model_name). \
+                   DatasetCollectionBinding.model_name == model_name,
+                   DatasetCollectionBinding.type == collection_type). \
             order_by(DatasetCollectionBinding.created_at). \
             first()
 

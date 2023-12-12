@@ -165,7 +165,8 @@ class CompletionService:
             'streaming': streaming,
             'is_model_config_override': is_model_config_override,
             'retriever_from': args['retriever_from'] if 'retriever_from' in args else 'dev',
-            'auto_generate_name': auto_generate_name
+            'auto_generate_name': auto_generate_name,
+            'from_source': from_source
         })
 
         generate_worker_thread.start()
@@ -193,7 +194,7 @@ class CompletionService:
                         query: str, inputs: dict, files: List[PromptMessageFile],
                         detached_user: Union[Account, EndUser],
                         detached_conversation: Optional[Conversation], streaming: bool, is_model_config_override: bool,
-                        retriever_from: str = 'dev', auto_generate_name: bool = True):
+                        retriever_from: str = 'dev', auto_generate_name: bool = True, from_source: str = 'console'):
         with flask_app.app_context():
             # fixed the state of the model object when it detached from the original session
             user = db.session.merge(detached_user)
@@ -218,7 +219,8 @@ class CompletionService:
                     streaming=streaming,
                     is_override=is_model_config_override,
                     retriever_from=retriever_from,
-                    auto_generate_name=auto_generate_name
+                    auto_generate_name=auto_generate_name,
+                    from_source=from_source
                 )
             except (ConversationTaskInterruptException, ConversationTaskStoppedException):
                 pass

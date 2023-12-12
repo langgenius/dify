@@ -21,6 +21,8 @@ class XinferenceReranking(BaseReranking):
         super().__init__(model_provider, client, name)
 
     def rerank(self, query: str, documents: List[Document], score_threshold: Optional[float], top_k: Optional[int]) -> Optional[List[Document]]:
+        if not documents:
+            return []
         docs = []
         doc_id = []
         unique_documents = []
