@@ -25,6 +25,7 @@ const Annotation: FC<Props> = ({
   appId,
 }) => {
   const { t } = useTranslation()
+
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = React.useState<number>(0)
   const query = {
@@ -94,9 +95,6 @@ const Annotation: FC<Props> = ({
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <HeaderOpts
             onAdd={handleAdd}
-            onExport={() => {
-              console.log('export')
-            }}
           // onClearAll={() => { }}
           />
         </Filter>

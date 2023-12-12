@@ -1,8 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
+import { useContext } from 'use-context-selector'
+import {
+  useCSVDownloader,
+} from 'react-papaparse'
 import Button from '../../../base/button'
 import { Plus } from '../../../base/icons/src/vender/line/general'
 import AddAnnotationModal from '../add-annotation-modal'
@@ -11,24 +15,32 @@ import s from './style.module.css'
 import CustomPopover from '@/app/components/base/popover'
 // import Divider from '@/app/components/base/divider'
 import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
+import I18n from '@/context/i18n'
+import { fetchAnnotationList } from '@/service/annotation'
 
+const CSV_HEADER_QA_EN = ['Question', 'Answer']
+const CSV_HEADER_QA_CN = ['问题', '答案']
 type Props = {
+  appId: string
   onAdd: (payload: AnnotationItemBasic) => void
-  onExport: () => void
   // onClearAll: () => void
 }
 
 const HeaderOptions: FC<Props> = ({
+  appId,
   onAdd,
-  onExport,
   // onClearAll,
 }) => {
   const { t } = useTranslation()
+  const { locale } = useContext(I18n)
+  const { CSVDownloader, Type } = useCSVDownloader()
+  const [list, setList] = useState<AnnotationItemBasic[]>([])
+  const fetchList = async () => {
+    const res = await fetchAnnotationList(appId, {})
+    setList(res as AnnotationItemBasic[])
+  }
 
   const Operations = () => {
-    const handleExport = () => {
-      onExport()
-    }
     // const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
     //   e.stopPropagation()
     //   props.onClick?.()
@@ -42,10 +54,20 @@ const HeaderOptions: FC<Props> = ({
           <span className={s.actionName}>{t('appAnnotation.table.header.bulkImport')}</span>
         </button> */}
 
-        <button className={s.actionItem} onClick={handleExport}>
-          <FileDownload02 className={s.actionItemIcon} />
-          <span className={s.actionName}>{t('appAnnotation.table.header.bulkExport')}</span>
-        </button>
+        <CSVDownloader
+          type={Type.Link}
+          filename="annotations"
+          bom={true}
+          data={[
+            locale === 'en' ? CSV_HEADER_QA_EN : CSV_HEADER_QA_CN,
+            ...list.map(item => [item.question, item.answer]),
+          ]}
+        >
+          <button className={s.actionItem}>
+            <FileDownload02 className={s.actionItemIcon} />
+            <span className={s.actionName}>{t('appAnnotation.table.header.bulkExport')}</span>
+          </button>
+        </CSVDownloader>
 
         {/* <Divider className="!my-1" />
         <div
@@ -73,7 +95,7 @@ const HeaderOptions: FC<Props> = ({
         htmlContent={<Operations />}
         position="br"
         trigger="click"
-        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} />}
+        btnElement={<div className={cn(s.actionIcon, s.commonIcon)} onClick={fetchList} />}
         btnClassName={open =>
           cn(
             open ? 'border-gray-300 !bg-gray-100 !shadow-none' : 'border-gray-200',
