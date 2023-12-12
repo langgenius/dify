@@ -236,6 +236,7 @@ const translation = {
     embeddingModel: {
       key: 'Embedding Model',
       tip: 'Set the default model for document embedding processing of the Knowledge, both retrieval and import of the Knowledge use this Embedding model for vectorization processing. Switching will cause the vector dimension between the imported Knowledge and the question to be inconsistent, resulting in retrieval failure. To avoid retrieval failure, please do not switch this model at will.',
+      required: 'Embedding Model is required',
     },
     speechToTextModel: {
       key: 'Speech-to-Text Model',

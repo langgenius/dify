@@ -8,6 +8,7 @@ import Button from '@/app/components/base/button'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   isShow: boolean
@@ -23,6 +24,7 @@ const ConfigInit: FC<Props> = ({
   const { t } = useTranslation()
   const {
     embeddingsDefaultModel,
+    isEmbeddingsDefaultModelValid,
   } = useProviderContext()
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(embeddingsDefaultModel
@@ -36,6 +38,13 @@ const ConfigInit: FC<Props> = ({
       doHide()
   }
   const handleSave = () => {
+    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
+      Toast.notify({
+        message: t('common.modelProvider.embeddingModel.required'),
+        type: 'error',
+      })
+      return
+    }
     setLoading(true)
     // setTimeout(() => {
     onSave({})
