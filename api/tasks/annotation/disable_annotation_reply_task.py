@@ -55,6 +55,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
                 vector_index.delete_by_metadata_field('app_id', app_id)
             except Exception:
                 logging.exception("Delete doc index failed when dataset deleted.")
+        redis_client.setex(disable_app_annotation_job_key, 600, 'completed')
         end_at = time.perf_counter()
         logging.info(
             click.style('App annotations index deleted : {} latency: {}'.format(app_id, end_at - start_at),
