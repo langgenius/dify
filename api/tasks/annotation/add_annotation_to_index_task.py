@@ -50,6 +50,7 @@ def add_annotation_to_index_task(annotation_id: str, question: str, tenant_id: s
             metadata={
                 "annotation_id": annotation_id,
                 "app_id": app_id,
+                "doc_id": annotation_id
             }
         )
         index = IndexBuilder.get_index(dataset, 'high_quality')
