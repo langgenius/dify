@@ -4,6 +4,7 @@ from typing import Optional
 
 import requests
 
+from core.model_runtime.model_providers import model_provider_factory
 from models.provider import TenantDefaultModel
 
 
@@ -24,6 +25,7 @@ class ModelProviderService:
         :return:
         """
         # Get all providers from model runtime, only return pre-defined providers & models
+        providers = model_provider_factory.get_providers()
 
         # Get the provider hosting configuration and get the quota information hosted by the team
 
