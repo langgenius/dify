@@ -5,7 +5,8 @@ from controllers.console.datasets.error import TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_redis import redis_client
-from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields, annotation_fields
+from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields, annotation_fields, \
+    annotation_hit_history_fields
 from libs.login import login_required
 from services.annotation_service import AppAnnotationService
 from flask import request
@@ -174,12 +175,20 @@ class AnnotationHitHistoryListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(annotation_hit_history_list_fields)
     def get(self, app_id, annotation_id):
+        page = request.args.get('page', default=1, type=int)
+        limit = request.args.get('limit', default=20, type=int)
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        annotation_hit_history_list = AppAnnotationService.get_annotation_hit_histories(app_id, annotation_id)
-        return annotation_hit_history_list
+        annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(app_id, annotation_id, page, limit)
+        response = {
+            'data': marshal(annotation_hit_history_list, annotation_hit_history_fields),
+            'has_more': len(annotation_hit_history_list) == limit,
+            'limit': limit,
+            'total': total,
+            'page': page
+        }
+        return response
 
 
 api.add_resource(AnnotationReplyActionApi, '/apps/<uuid:app_id>/annotation-reply/<string:action>')
@@ -189,5 +198,5 @@ api.add_resource(AnnotationListApi, '/apps/<uuid:app_id>/annotations')
 api.add_resource(AnnotationExportApi, '/apps/<uuid:app_id>/annotations/export')
 api.add_resource(AnnotationUpdateDeleteApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>')
 api.add_resource(AnnotationBatchImportApi, '/apps/<uuid:app_id>/annotations/batch-import',
-                 '/apps/{app_id}/annotations/batch-import-status/<uuid:job_id>')
-api.add_resource(AnnotationHitHistoryListApi, '/apps/<uuid:app_id>/annotations/{annotation_id}/hit-histories')
+                 '/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>')
+api.add_resource(AnnotationHitHistoryListApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories')

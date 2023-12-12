@@ -30,32 +30,39 @@ class AppAnnotationService:
 
         if not app:
             raise NotFound("App not found")
+        if 'message_id' in args and args['message_id']:
+            message_id = str(args['message_id'])
+            # get message info
+            message = db.session.query(Message).filter(
+                Message.id == message_id,
+                Message.app_id == app.id
+            ).first()
 
-        message_id = str(args['message_id'])
-        # get message info
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app.id
-        ).first()
+            if not message:
+                raise NotFound("Message Not Exists.")
 
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        annotation = message.annotation
-        # save the message annotation
-        if annotation:
-            annotation.content = args['content']
-            annotation.question = args['question']
+            annotation = message.annotation
+            # save the message annotation
+            if annotation:
+                annotation.content = args['content']
+                annotation.question = args['question']
+            else:
+                annotation = MessageAnnotation(
+                    app_id=app.id,
+                    conversation_id=message.conversation_id,
+                    message_id=message.id,
+                    content=args['content'],
+                    question=args['question'],
+                    account_id=current_user.id
+                )
         else:
             annotation = MessageAnnotation(
                 app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
                 content=args['content'],
                 question=args['question'],
                 account_id=current_user.id
             )
-            db.session.add(annotation)
+        db.session.add(annotation)
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
         app_model_config = app.app_model_config
@@ -301,7 +308,7 @@ class AppAnnotationService:
         }
 
     @classmethod
-    def get_annotation_hit_histories(cls, app_id: str, annotation_id: str) -> list[AppAnnotationHitHistory]:
+    def get_annotation_hit_histories(cls, app_id: str, annotation_id: str, page, limit):
         # get app info
         app = db.session.query(App).filter(
             App.id == app_id,
@@ -321,8 +328,8 @@ class AppAnnotationService:
                                     .filter(AppAnnotationHitHistory.app_id == app_id,
                                             AppAnnotationHitHistory.annotation_id == annotation_id,
                                             )
-                                    .all())
-        return annotation_hit_histories
+                                    .paginate(page=page, per_page=limit, max_per_page=100, error_out=False))
+        return annotation_hit_histories.items, annotation_hit_histories.total
 
     @classmethod
     def get_annotation_by_id(cls, annotation_id: str) -> MessageAnnotation | None:
@@ -339,7 +346,7 @@ class AppAnnotationService:
             app_id=app_id,
             account_id=user_id,
             question=query,
-            source=from_source.id
+            source=from_source
         )
         db.session.add(annotation)
         db.session.commit()
