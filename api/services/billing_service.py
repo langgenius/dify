@@ -18,13 +18,11 @@ class BillingService:
     def get_subscription(cls, plan: str,
                          interval: str,
                          prefilled_email: str = '',
-                         user_name: str = '',
                          tenant_id: str = ''):
         params = {
             'plan': plan,
             'interval': interval,
             'prefilled_email': prefilled_email,
-            'user_name': user_name,
             'tenant_id': tenant_id
         }
         return cls._send_request('GET', '/subscription/payment-link', params=params)

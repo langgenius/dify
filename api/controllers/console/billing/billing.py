@@ -40,7 +40,6 @@ class Subscription(Resource):
         return BillingService.get_subscription(args['plan'],
                                                args['interval'],
                                                current_user.email,
-                                               current_user.name,
                                                current_user.current_tenant_id)
 
 
