@@ -629,7 +629,7 @@ class MessageAnnotation(db.Model):
     app_id = db.Column(UUID, nullable=False)
     conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=True)
     message_id = db.Column(UUID, nullable=True)
-    question = db.Column(db.Text, nullable=False, server_default=db.text(''))
+    question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)
     hit_count = db.Column(db.Integer, nullable=False, default=0)
     account_id = db.Column(UUID, nullable=False)
