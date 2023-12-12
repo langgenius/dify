@@ -378,7 +378,8 @@ const Configuration: FC = () => {
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
 
-      // TODO: set annotation
+      if (modelConfig.annotation_reply)
+        setAnnotationConfig(modelConfig.annotation_reply)
 
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
