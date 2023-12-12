@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
@@ -8,11 +8,12 @@ import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
-import mockList from './mock-data'
+// import mockList from './mock-data'
 import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import type { AnnotationItem } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
+import { fetchAnnotationList } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 
@@ -28,16 +29,38 @@ const Annotation: FC<Props> = ({
   const [currPage, setCurrPage] = React.useState<number>(0)
   const query = {
     page: currPage + 1,
-    APP_PAGE_LIMIT,
-    ...{ queryParams },
+    limit: APP_PAGE_LIMIT,
+    // TODO: fetch use query
+    // ...{ queryParams },
   }
 
-  const list = mockList
-
-  // TODO: fetch use query
-  console.log(query)
-
+  const [list, setList] = useState<AnnotationItem[]>([])
   const total = 10
+
+  const [isLoading, setIsLoading] = useState(false)
+  const fetchList = async (page = 1) => {
+    setIsLoading(true)
+    try {
+      const res = await fetchAnnotationList(appId, {
+        ...query,
+        page,
+      })
+      // debugger
+      setList(res as AnnotationItem[])
+    }
+    catch (e) {
+
+    }
+    setIsLoading(false)
+  }
+
+  useEffect(() => {
+    fetchList()
+  }, [])
+
+  useEffect(() => {
+    fetchList(currPage + 1)
+  }, [currPage])
 
   const handleRemove = (id: string) => {
     console.log(`remove ${id}`)
@@ -74,7 +97,7 @@ const Annotation: FC<Props> = ({
           // onClearAll={() => { }}
           />
         </Filter>
-        {total === undefined
+        {isLoading
           ? <Loading type='app' />
           : total > 0
             ? <List
