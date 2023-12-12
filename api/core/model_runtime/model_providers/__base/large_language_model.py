@@ -219,7 +219,7 @@ class LargeLanguageModel(AIModel):
         Here, the gpt2 tokenizer is used to calculate the number of tokens.
         This method can be executed offline, and the gpt2 tokenizer has been cached in the project.
 
-        :param text: prompt text
+        :param text: plain text of prompt. You need to convert the original message to plain text
         :return: number of tokens
         """
         base_path = os.path.abspath(__file__)
