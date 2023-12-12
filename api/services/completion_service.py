@@ -387,6 +387,9 @@ class CompletionService:
                         result = json.loads(result)
                         if result.get('error'):
                             cls.handle_error(result)
+                        if result['event'] == 'annotation' and 'data' in result:
+                            message_result['annotation'] = result.get('data')
+                            return cls.get_blocking_annotation_message_response_data(message_result)
                         if result['event'] == 'message' and 'data' in result:
                             message_result['message'] = result.get('data')
                         if result['event'] == 'message_end' and 'data' in result:
@@ -429,6 +432,9 @@ class CompletionService:
                             elif event == 'agent_thought':
                                 yield "data: " + json.dumps(
                                     cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
+                            elif event == 'annotation':
+                                yield "data: " + json.dumps(
+                                    cls.get_annotation_response_data(result.get('data'))) + "\n\n"
                             elif event == 'message_end':
                                 yield "data: " + json.dumps(
                                     cls.get_message_end_data(result.get('data'))) + "\n\n"
@@ -502,6 +508,23 @@ class CompletionService:
         return response_data
 
     @classmethod
+    def get_blocking_annotation_message_response_data(cls, data: dict):
+        message = data.get('annotation')
+        response_data = {
+            'event': 'annotation',
+            'task_id': message.get('task_id'),
+            'id': message.get('message_id'),
+            'answer': message.get('text'),
+            'metadata': {},
+            'created_at': int(time.time())
+        }
+
+        if message.get('mode') == 'chat':
+            response_data['conversation_id'] = message.get('conversation_id')
+
+        return response_data
+
+    @classmethod
     def get_message_end_data(cls, data: dict):
         response_data = {
             'event': 'message_end',
@@ -545,6 +568,21 @@ class CompletionService:
             'thought': data.get('thought'),
             'tool': data.get('tool'),
             'tool_input': data.get('tool_input'),
+            'created_at': int(time.time())
+        }
+
+        if data.get('mode') == 'chat':
+            response_data['conversation_id'] = data.get('conversation_id')
+
+        return response_data
+
+    @classmethod
+    def get_annotation_response_data(cls, data: dict):
+        response_data = {
+            'event': 'annotation',
+            'task_id': data.get('task_id'),
+            'id': data.get('message_id'),
+            'answer': data.get('text'),
             'created_at': int(time.time())
         }
 

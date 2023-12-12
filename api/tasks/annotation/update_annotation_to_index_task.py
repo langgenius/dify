@@ -33,7 +33,8 @@ def update_annotation_to_index_task(annotation_id: str, question: str, tenant_id
     try:
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
             embedding_provider_name,
-            embedding_model_name
+            embedding_model_name,
+            'annotation'
         )
 
         dataset = Dataset(
