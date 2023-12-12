@@ -8,12 +8,12 @@ import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
-// import mockList from './mock-data'
+import mockList from './mock-data'
 import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
-import { addAnnotation, fetchAnnotationList } from '@/service/annotation'
+import { addAnnotation, delAnnotation, fetchAnnotationList } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 
@@ -34,7 +34,7 @@ const Annotation: FC<Props> = ({
     // ...{ queryParams },
   }
 
-  const [list, setList] = useState<AnnotationItem[]>([])
+  const [list, setList] = useState<AnnotationItem[]>(mockList)
   const total = 10
 
   const [isLoading, setIsLoading] = useState(false)
@@ -63,10 +63,12 @@ const Annotation: FC<Props> = ({
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appId, payload)
+    fetchList()
   }
 
-  const handleRemove = (id: string) => {
-    console.log(`remove ${id}`)
+  const handleRemove = async (id: string) => {
+    await delAnnotation(appId, id)
+    fetchList()
   }
 
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(list[0])
