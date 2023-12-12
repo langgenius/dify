@@ -38,8 +38,8 @@ const HeaderOptions: FC<Props> = ({
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const fetchList = async () => {
-    const res = await fetchExportAnnotationList(appId)
-    setList(res as AnnotationItemBasic[])
+    const { data }: any = await fetchExportAnnotationList(appId)
+    setList(data as AnnotationItemBasic[])
   }
 
   useEffect(() => {

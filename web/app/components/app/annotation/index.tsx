@@ -8,7 +8,6 @@ import Filter from './filter'
 import type { QueryParam } from './filter'
 import List from './list'
 import EmptyElement from './empty-element'
-import mockList from './mock-data'
 import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import type { AnnotationItem, AnnotationItemBasic } from './type'
@@ -31,25 +30,22 @@ const Annotation: FC<Props> = ({
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    // TODO: fetch use query
-    // ...{ queryParams },
+    keyword: queryParams.keyword,
   }
 
-  const [controlUpdateList, setControlUpdateList] = useState(0)
-  const [list, setList] = useState<AnnotationItem[]>(mockList)
+  const [controlUpdateList, setControlUpdateList] = useState(Date.now())
+  const [list, setList] = useState<AnnotationItem[]>([])
   const [total, setTotal] = useState(10)
   const [isLoading, setIsLoading] = useState(false)
   const fetchList = async (page = 1) => {
     setIsLoading(true)
     try {
-      const res = await fetchAnnotationList(appId, {
+      const { data, total }: any = await fetchAnnotationList(appId, {
         ...query,
         page,
       })
-      setList(res as AnnotationItem[])
-      // TODO: fetch total from api
-      setTotal(10)
-      setControlUpdateList(Date.now())
+      setList(data as AnnotationItem[])
+      setTotal(total)
     }
     catch (e) {
 
@@ -58,21 +54,19 @@ const Annotation: FC<Props> = ({
   }
 
   useEffect(() => {
-    fetchList()
-  }, [])
-
-  useEffect(() => {
     fetchList(currPage + 1)
   }, [currPage])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appId, payload)
     fetchList()
+    setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appId, id)
     fetchList()
+    setControlUpdateList(Date.now())
   }
 
   const [currItem, setCurrItem] = useState<AnnotationItem | null>(list[0])
@@ -88,6 +82,7 @@ const Annotation: FC<Props> = ({
       answer,
     })
     fetchList()
+    setControlUpdateList(Date.now())
   }
 
   return (

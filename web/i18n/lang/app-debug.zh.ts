@@ -87,7 +87,6 @@ const translation = {
       },
       matchVariable: {
         title: '匹配变量',
-        description: 'TODO：设置标注回复的匹配变量，只有匹配到该变量的回复才会被标注。',
         choosePlaceholder: '请选择变量',
       },
       cacheManagement: '标注管理',

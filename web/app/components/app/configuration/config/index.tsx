@@ -26,6 +26,7 @@ import ConfigInit from '@/app/components/app/configuration/toolbox/annotation/co
 
 const Config: FC = () => {
   const {
+    appId,
     mode,
     isAdvancedMode,
     modelModeType,
@@ -251,15 +252,18 @@ const Config: FC = () => {
         }
 
         <ConfigInit
+          appId={appId}
           isShow={isShowAnnotationConfigInit}
           onHide={() => {
             setIsShowAnnotationConfigInit(false)
             showChooseFeatureTrue()
             handleFeatureChange('annotation', false)
           }}
-          onSave={() => {
-            // TODO: embedding model
+          onSave={(embeddingModel) => {
             handleFeatureChange('annotation', true)
+            setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
+              draft.embedding_model = embeddingModel
+            }))
             setIsShowAnnotationConfigInit(false)
           }}
         />

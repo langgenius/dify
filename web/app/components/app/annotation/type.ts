@@ -18,3 +18,14 @@ export type HitHistoryItem = {
   score: number
   created_at: string
 }
+
+export enum AnnotationEnableStatus {
+  enable = 'enable',
+  disable = 'disable',
+}
+
+export enum JobStatus {
+  waiting = 'waiting',
+  processing = 'processing',
+  completed = 'completed',
+}

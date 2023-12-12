@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { AnnotationEnableStatus } from '../../../annotation/type'
 import { Item } from './config-param'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -9,14 +10,21 @@ import { ModelType } from '@/app/components/header/account-setting/model-page/de
 import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
+import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
+import { sleep } from '@/utils'
 
 type Props = {
+  appId: string
   isShow: boolean
   onHide: () => void
-  onSave: (data: any) => void
+  onSave: (embeddingModel: {
+    embedding_provider_name: string
+    embedding_model_name: string
+  }) => void
 }
 
 const ConfigInit: FC<Props> = ({
+  appId,
   isShow,
   onHide: doHide,
   onSave,
@@ -37,7 +45,16 @@ const ConfigInit: FC<Props> = ({
     if (!isLoading)
       doHide()
   }
-  const handleSave = () => {
+
+  const ensureJobCompleted = async (jobId: string) => {
+    let isCompleted = false
+    while (!isCompleted) {
+      const res: any = await queryAnnotationJobStatus(appId, AnnotationEnableStatus.enable, jobId)
+      isCompleted = res.status === 'completed'
+      await sleep(500)
+    }
+  }
+  const handleSave = async () => {
     if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
       Toast.notify({
         message: t('common.modelProvider.embeddingModel.required'),
@@ -46,10 +63,14 @@ const ConfigInit: FC<Props> = ({
       return
     }
     setLoading(true)
-    // setTimeout(() => {
-    onSave({})
+    onSave({
+      embedding_provider_name: embeddingModel.providerName,
+      embedding_model_name: embeddingModel.modelName,
+    })
+
+    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.enable)
+    await ensureJobCompleted(jobId)
     setLoading(false)
-    // }, 3000)
   }
 
   return (

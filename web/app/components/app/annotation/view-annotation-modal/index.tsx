@@ -48,24 +48,22 @@ const ViewAnnotationModal: FC<Props> = ({
   const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
   const fetchHitHistory = async (page = 1) => {
     try {
-      const res: any = await fetchHitHistoryList(appId, id, {
+      const { data }: any = await fetchHitHistoryList(appId, id, {
         page,
         limit: 10,
       })
-      setHitHistoryList(res.data as HitHistoryItem[])
-      setTotal(10)
+      setHitHistoryList(data as HitHistoryItem[])
+      // TODO wait for paging
+      setTotal(data.length)
     }
     catch (e) {
     }
   }
 
   useEffect(() => {
-    fetchHitHistory()
-  }, [])
-
-  useEffect(() => {
     fetchHitHistory(currPage + 1)
   }, [currPage])
+
   const tabs = [
     { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
     {

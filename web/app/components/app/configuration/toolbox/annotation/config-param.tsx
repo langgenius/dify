@@ -4,13 +4,11 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname, useRouter } from 'next/navigation'
-import VarPicker from '../../dataset-config/context-var/var-picker'
 import ScoreSlider from './score-slider'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { HelpCircle, LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { AppType } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
 
 type Props = {}
@@ -54,7 +52,6 @@ const AnnotationReplyConfig: FC<Props> = () => {
     value: item.key,
   }))
   const [scoreThreshold, setScoreThreshold] = useState(90)
-  const [matchVariable, setMatchVariable] = useState('')
   return (
     <Panel
       className="mt-4"
@@ -82,7 +79,8 @@ const AnnotationReplyConfig: FC<Props> = () => {
             onChange={setScoreThreshold}
           />
         </Item>
-        {mode === AppType.completion && (
+        {/* {
+{mode === AppType.completion && (
           <Item
             title={t('appDebug.feature.annotation.matchVariable.title')}
             tooltip={t('appDebug.feature.annotation.matchVariable.description')}
@@ -97,6 +95,7 @@ const AnnotationReplyConfig: FC<Props> = () => {
             />
           </Item>
         )}
+        } */}
 
       </div>
     </Panel>

@@ -75,8 +75,11 @@ export type CitationConfig = MoreLikeThisConfig
 
 export type AnnotationReplyConfig = {
   enabled: boolean
-  threshold: number
-  matchVar?: string
+  score_threshold: number
+  embedding_model: {
+    embedding_provider_name: string
+    embedding_model_name: string
+  }
 }
 
 export type ModerationContentConfig = {

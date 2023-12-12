@@ -87,7 +87,6 @@ const translation = {
       },
       matchVariable: {
         title: 'Match Variable',
-        description: 'TODO：The variable used to match the cache reply.',
         choosePlaceholder: 'Choose match variable',
       },
       cacheManagement: 'Annotations',

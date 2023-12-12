@@ -92,8 +92,11 @@ const Configuration: FC = () => {
   })
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
     enabled: false,
-    threshold: 0.9,
-    matchVar: '',
+    score_threshold: 0.9,
+    embedding_model: {
+      embedding_provider_name: '',
+      embedding_model_name: '',
+    },
   })
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
