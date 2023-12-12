@@ -91,7 +91,7 @@ const Configuration: FC = () => {
     enabled: false,
   })
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
-    enabled: true,
+    enabled: false,
     threshold: 0.9,
     matchVar: '',
   })

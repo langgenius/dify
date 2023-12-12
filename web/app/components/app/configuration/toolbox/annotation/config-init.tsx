@@ -37,11 +37,10 @@ const ConfigInit: FC<Props> = ({
   }
   const handleSave = () => {
     setLoading(true)
-    setTimeout(() => {
-      onSave({})
-      setLoading(false)
-      onHide()
-    }, 3000)
+    // setTimeout(() => {
+    onSave({})
+    setLoading(false)
+    // }, 3000)
   }
 
   return (

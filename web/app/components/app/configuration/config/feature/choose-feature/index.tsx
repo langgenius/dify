@@ -45,7 +45,6 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
   showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
-
   return (
     <Modal
       isShow={isShow}
@@ -138,7 +137,6 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
           </>
         </FeatureGroup>
       </div>
-
     </Modal>
   )
 }

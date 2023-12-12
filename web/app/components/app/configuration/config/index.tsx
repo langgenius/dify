@@ -22,6 +22,7 @@ import type { AnnotationReplyConfig, CitationConfig, ModelConfig, ModerationConf
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
+import ConfigInit from '@/app/components/app/configuration/toolbox/annotation/config-init'
 
 const Config: FC = () => {
   const {
@@ -78,6 +79,8 @@ const Config: FC = () => {
     setModelConfig(newModelConfig)
   }
 
+  const [isShowAnnotationConfigInit, setIsShowAnnotationConfigInit] = React.useState(false)
+
   const [showChooseFeature, {
     setTrue: showChooseFeatureTrue,
     setFalse: showChooseFeatureFalse,
@@ -114,6 +117,8 @@ const Config: FC = () => {
       setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
         draft.enabled = value
       }))
+      if (value)
+        setIsShowAnnotationConfigInit(true)
     },
     moderation: moderationConfig.enabled,
     setModeration: (value) => {
@@ -244,6 +249,20 @@ const Config: FC = () => {
             />
           )
         }
+
+        <ConfigInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            showChooseFeatureTrue()
+            handleFeatureChange('annotation', false)
+          }}
+          onSave={() => {
+            // TODO: embedding model
+            handleFeatureChange('annotation', true)
+            setIsShowAnnotationConfigInit(false)
+          }}
+        />
       </div>
     </>
   )

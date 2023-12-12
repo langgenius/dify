@@ -12,7 +12,6 @@ import HasNotSetAPIKEY from '../base/warning-mask/has-not-set-api'
 import FormattingChanged from '../base/warning-mask/formatting-changed'
 import GroupName from '../base/group-name'
 import CannotQueryDataset from '../base/warning-mask/cannot-query-dataset'
-import ConfigInit from '../toolbox/annotation/config-init'
 import { AppType, ModelModeType, TransferMethod } from '@/types/app'
 import PromptValuePanel, { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { IChatItem } from '@/app/components/app/chat/type'
@@ -566,11 +565,6 @@ const Debug: FC<IDebug> = ({
           />
         )}
       </div>
-      <ConfigInit
-        isShow={false}
-        onHide={() => { }}
-        onSave={() => { }}
-      />
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )
