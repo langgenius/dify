@@ -44,21 +44,21 @@ class AppAnnotationService:
             annotation = message.annotation
             # save the message annotation
             if annotation:
-                annotation.content = args['content']
+                annotation.content = args['answer']
                 annotation.question = args['question']
             else:
                 annotation = MessageAnnotation(
                     app_id=app.id,
                     conversation_id=message.conversation_id,
                     message_id=message.id,
-                    content=args['content'],
+                    content=args['answer'],
                     question=args['question'],
                     account_id=current_user.id
                 )
         else:
             annotation = MessageAnnotation(
                 app_id=app.id,
-                content=args['content'],
+                content=args['answer'],
                 question=args['question'],
                 account_id=current_user.id
             )
@@ -180,7 +180,7 @@ class AppAnnotationService:
 
         annotation = MessageAnnotation(
             app_id=app.id,
-            content=args['content'],
+            content=args['answer'],
             question=args['question'],
             account_id=current_user.id
         )
@@ -217,7 +217,7 @@ class AppAnnotationService:
         if not annotation:
             raise NotFound("Annotation not found")
 
-        annotation.content = args['content']
+        annotation.content = args['answer']
         annotation.question = args['question']
 
         db.session.commit()
@@ -286,7 +286,7 @@ class AppAnnotationService:
             for index, row in df.iterrows():
                 content = {
                     'question': row[0],
-                    'content': row[1]
+                    'answer': row[1]
                 }
                 result.append(content)
             if len(result) == 0:
