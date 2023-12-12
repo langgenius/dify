@@ -114,11 +114,15 @@ class ModelProviderFactory:
         # call validate_credentials method of model type to validate credentials, raise exception if validation failed
         model_instance.validate_credentials(model, credentials)
 
-    def get_models(self, model_type: ModelType, provider_configs: Optional[list[ProviderConfig]] = None) \
+    def get_models(self,
+                   provider: Optional[str] = None,
+                   model_type: Optional[ModelType] = None,
+                   provider_configs: Optional[list[ProviderConfig]] = None) \
             -> list[SimpleProviderEntity]:
         """
         Get all models for given model type
 
+        :param provider: provider name
         :param model_type: model type
         :param provider_configs: list of provider configs
         :return: list of models
@@ -134,6 +138,10 @@ class ModelProviderFactory:
         # traverse all model_provider_extensions
         providers = []
         for name, model_provider_extension in model_provider_extensions.items():
+            # filter by provider if provider is present
+            if provider and name != provider:
+                continue
+
             # get model_provider instance
             provider_class = model_provider_extension.provider_class
             model_provider_instance = provider_class()
@@ -141,17 +149,25 @@ class ModelProviderFactory:
             # get provider schema
             provider_schema = model_provider_instance.get_provider_schema()
 
-            if model_type not in provider_schema.supported_model_types:
-                continue
+            model_types = provider_schema.supported_model_types
+            if model_type:
+                if model_type not in model_types:
+                    continue
 
-            # get predefined models for given model type
-            models = model_provider_instance.models(
-                model_type=model_type,
-                remote_model_fetch_credentials=provider_credentials_dict.get(name)
-            )
+                model_types = [model_type]
+
+            all_model_type_models = []
+            for model_type in model_types:
+                # get predefined models for given model type
+                models = model_provider_instance.models(
+                    model_type=model_type,
+                    remote_model_fetch_credentials=provider_credentials_dict.get(name)
+                )
+
+                all_model_type_models.extend(models)
 
             simple_provider_schema = provider_schema.to_simple_provider()
-            simple_provider_schema.models.extend(models)
+            simple_provider_schema.models.extend(all_model_type_models)
 
             providers.append(simple_provider_schema)
 
@@ -217,7 +233,7 @@ class ModelProviderFactory:
 
             # Dynamic loading {model_provider_name}.py file and find the subclass of ModelProvider
             py_path = os.path.join(model_provider_dir_path, model_provider_name + '.py')
-            spec = importlib.util.spec_from_file_location(f'lib.model_providers.{model_provider_name}.{model_provider_name}', py_path)
+            spec = importlib.util.spec_from_file_location(f'core.model_runtime.model_providers.{model_provider_name}.{model_provider_name}', py_path)
             mod = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(mod)
 

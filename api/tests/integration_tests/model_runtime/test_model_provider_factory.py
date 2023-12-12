@@ -21,7 +21,7 @@ def test_get_providers():
 
 def test_get_models():
     factory = ModelProviderFactory()
-    models = factory.get_models(
+    providers = factory.get_models(
         model_type=ModelType.LLM,
         provider_configs=[
             ProviderConfig(
@@ -33,10 +33,31 @@ def test_get_models():
         ]
     )
 
-    logger.debug(models)
+    logger.debug(providers)
 
-    assert len(models) >= 1
-    assert isinstance(models[0], SimpleProviderEntity)
+    assert len(providers) >= 1
+    assert isinstance(providers[0], SimpleProviderEntity)
+
+    # all provider models type equals to ModelType.LLM
+    for provider in providers:
+        for provider_model in provider.models:
+            assert provider_model.model_type == ModelType.LLM
+
+    providers = factory.get_models(
+        provider='openai',
+        provider_configs=[
+            ProviderConfig(
+                provider='openai',
+                credentials={
+                    'openai_api_key': os.environ.get('OPENAI_API_KEY')
+                }
+            )
+        ]
+    )
+
+    assert len(providers) == 1
+    assert isinstance(providers[0], SimpleProviderEntity)
+    assert providers[0].provider == 'openai'
 
 
 def test_provider_credentials_validate():
