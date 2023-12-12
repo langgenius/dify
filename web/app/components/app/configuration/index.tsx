@@ -57,6 +57,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
@@ -90,7 +91,7 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
-  const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig>({
+  const [annotationConfig, doSetAnnotationConfig] = useState<AnnotationReplyConfig>({
     enabled: false,
     score_threshold: ANNOTATION_DEFAULT.score_threshold,
     embedding_model: {
@@ -98,11 +99,16 @@ const Configuration: FC = () => {
       embedding_model_name: '',
     },
   })
+  const setAnnotationConfig = (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => {
+    doSetAnnotationConfig(config)
+    if (!notSetFormatChanged)
+      setFormattingChanged(true)
+  }
+
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
   })
   const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
-  const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<CompletionParams>({
@@ -379,7 +385,7 @@ const Configuration: FC = () => {
         setCitationConfig(modelConfig.retriever_resource)
 
       if (modelConfig.annotation_reply)
-        setAnnotationConfig(modelConfig.annotation_reply)
+        setAnnotationConfig(modelConfig.annotation_reply, true)
 
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
