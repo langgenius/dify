@@ -260,6 +260,7 @@ class AppModelConfig(db.Model):
             pre_prompt=self.pre_prompt,
             agent_mode=self.agent_mode,
             retriever_resource=self.retriever_resource,
+            annotation_reply=self.annotation_reply,
             prompt_type=self.prompt_type,
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,

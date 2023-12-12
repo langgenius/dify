@@ -39,7 +39,8 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
     try:
         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
             embedding_provider_name,
-            embedding_model_name
+            embedding_model_name,
+            'annotation'
         )
 
         dataset = Dataset(

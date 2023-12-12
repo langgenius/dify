@@ -69,7 +69,8 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
 
                         dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                             annotation_reply_config['embedding_model']['embedding_provider_name'],
-                            annotation_reply_config['embedding_model']['embedding_model_name']
+                            annotation_reply_config['embedding_model']['embedding_model_name'],
+                            'annotation'
                         )
 
                         dataset = Dataset(

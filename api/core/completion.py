@@ -77,8 +77,9 @@ class Completion:
             auto_generate_name=auto_generate_name
         )
         # check annotation reply
-        cls.query_app_annotations_to_reply(conversation_message_task, from_source)
-
+        annotation_reply = cls.query_app_annotations_to_reply(conversation_message_task, from_source)
+        if annotation_reply:
+            return
         prompt_message_files = [file.prompt_message_file for file in files]
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
@@ -333,7 +334,7 @@ class Completion:
 
 
     @classmethod
-    def query_app_annotations_to_reply(cls, conversation_message_task: ConversationMessageTask, from_source: str):
+    def query_app_annotations_to_reply(cls, conversation_message_task: ConversationMessageTask, from_source: str) -> bool:
         """Get memory messages."""
         app_model_config = conversation_message_task.app_model_config
         app = conversation_message_task.app
@@ -352,7 +353,8 @@ class Completion:
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                 embedding_provider_name,
-                embedding_model_name
+                embedding_model_name,
+                'annotation'
             )
 
             dataset = Dataset(
@@ -392,6 +394,8 @@ class Completion:
                                                                 conversation_message_task.query,
                                                                 conversation_message_task.user.id,
                                                                 from_source)
+                    return True
+        return False
 
     @classmethod
     def get_memory_from_conversation(cls, tenant_id: str, app_model_config: AppModelConfig,

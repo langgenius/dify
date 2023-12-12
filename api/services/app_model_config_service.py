@@ -340,6 +340,7 @@ class AppModelConfigService:
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
             "retriever_resource": config["retriever_resource"],
+            "annotation_reply": config["annotation_reply"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],
             "external_data_tools": config["external_data_tools"],
