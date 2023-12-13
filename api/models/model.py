@@ -518,6 +518,13 @@ class Message(db.Model):
         return annotation
 
     @property
+    def annotation_hit_history(self):
+        annotation_history = (db.session.query(AppAnnotationHitHistory)
+                              .filter(AppAnnotationHitHistory.message_id == self.id).first())
+        return annotation_history
+
+
+    @property
     def app_model_config(self):
         conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
         if conversation:
@@ -651,6 +658,7 @@ class AppAnnotationHitHistory(db.Model):
         db.Index('app_annotation_hit_histories_app_idx', 'app_id'),
         db.Index('app_annotation_hit_histories_account_idx', 'account_id'),
         db.Index('app_annotation_hit_histories_annotation_idx', 'annotation_id'),
+        db.Index('app_annotation_hit_histories_message_idx', 'message_id'),
     )
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
@@ -661,9 +669,17 @@ class AppAnnotationHitHistory(db.Model):
     account_id = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     score = db.Column(Float, nullable=False, server_default=db.text('0'))
+    message_id = db.Column(UUID, nullable=False)
 
     @property
     def account(self):
+        account = (db.session.query(Account)
+                   .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
+                   .filter(MessageAnnotation.id == self.annotation_id).first())
+        return account
+
+    @property
+    def annotation_create_account(self):
         account = db.session.query(Account).filter(Account.id == self.account_id).first()
         return account
 
