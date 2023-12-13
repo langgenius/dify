@@ -1,6 +1,5 @@
 'use client'
 import React, { useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import cn from 'classnames'
 import FilePreview from '../file-preview'
@@ -14,7 +13,6 @@ import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
-import { fetchDocumentsLimit } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 
@@ -63,7 +61,6 @@ const StepOne = ({
   notionPages = [],
   updateNotionPages,
 }: IStepOneProps) => {
-  const { data: limitsData } = useSWR('/datasets/limit', fetchDocumentsLimit)
   const { dataset } = useDatasetDetailContext()
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
@@ -163,7 +160,7 @@ const StepOne = ({
               </div>
             )
           }
-          {dataSourceType === DataSourceType.FILE && limitsData && (
+          {dataSourceType === DataSourceType.FILE && (
             <>
               <FileUploader
                 fileList={files}
@@ -172,8 +169,6 @@ const StepOne = ({
                 onFileListUpdate={updateFileList}
                 onFileUpdate={updateFile}
                 onPreview={updateCurrentFile}
-                countLimit={limitsData.documents_limit}
-                countUsed={limitsData.documents_count}
               />
               {isShowVectorSpaceFull && (
                 <div className='max-w-[640px] mb-4'>
@@ -186,15 +181,13 @@ const StepOne = ({
           {dataSourceType === DataSourceType.NOTION && (
             <>
               {!hasConnection && <NotionConnector onSetting={onSetting} />}
-              {hasConnection && limitsData && (
+              {hasConnection && (
                 <>
                   <div className='mb-8 w-[640px]'>
                     <NotionPageSelector
                       value={notionPages.map(page => page.page_id)}
                       onSelect={updateNotionPages}
                       onPreview={updateCurrentPage}
-                      countLimit={limitsData.documents_limit}
-                      countUsed={limitsData.documents_count}
                     />
                   </div>
                   {isShowVectorSpaceFull && (

@@ -16,6 +16,7 @@ import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimat
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
+import { Plan } from '@/app/components/billing/type'
 import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
@@ -82,7 +83,7 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) =>
 
 const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType }) => {
   const { t } = useTranslation()
-  const { enableBilling } = useProviderContext()
+  const { enableBilling, plan } = useProviderContext()
 
   const getFirstDocument = documents[0]
 
@@ -198,7 +199,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
         </div>
       </div>
       {
-        enableBilling && (
+        enableBilling && plan.type !== Plan.team && (
           <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
             <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
               <ZapFast className='w-4 h-4 text-[#FB6514]' />

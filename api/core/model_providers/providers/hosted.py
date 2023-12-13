@@ -13,8 +13,6 @@ class HostedOpenAI(BaseModel):
     quota_limit: int = 0
     """Quota limit for the openai hosted model. -1 means unlimited."""
     paid_enabled: bool = False
-    paid_stripe_price_id: str = None
-    paid_increase_quota: int = 1
 
 
 class HostedAzureOpenAI(BaseModel):
@@ -30,10 +28,6 @@ class HostedAnthropic(BaseModel):
     quota_limit: int = 0
     """Quota limit for the anthropic hosted model. -1 means unlimited."""
     paid_enabled: bool = False
-    paid_stripe_price_id: str = None
-    paid_increase_quota: int = 1000000
-    paid_min_quantity: int = 20
-    paid_max_quantity: int = 100
 
 
 class HostedModelProviders(BaseModel):
@@ -68,8 +62,6 @@ def init_app(app: Flask):
             api_key=app.config.get("HOSTED_OPENAI_API_KEY"),
             quota_limit=app.config.get("HOSTED_OPENAI_QUOTA_LIMIT"),
             paid_enabled=app.config.get("HOSTED_OPENAI_PAID_ENABLED"),
-            paid_stripe_price_id=app.config.get("HOSTED_OPENAI_PAID_STRIPE_PRICE_ID"),
-            paid_increase_quota=app.config.get("HOSTED_OPENAI_PAID_INCREASE_QUOTA"),
         )
 
     if app.config.get("HOSTED_AZURE_OPENAI_ENABLED"):
@@ -85,10 +77,6 @@ def init_app(app: Flask):
             api_key=app.config.get("HOSTED_ANTHROPIC_API_KEY"),
             quota_limit=app.config.get("HOSTED_ANTHROPIC_QUOTA_LIMIT"),
             paid_enabled=app.config.get("HOSTED_ANTHROPIC_PAID_ENABLED"),
-            paid_stripe_price_id=app.config.get("HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID"),
-            paid_increase_quota=app.config.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA"),
-            paid_min_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MIN_QUANTITY"),
-            paid_max_quantity=app.config.get("HOSTED_ANTHROPIC_PAID_MAX_QUANTITY"),
         )
 
     if app.config.get("HOSTED_MODERATION_ENABLED") and app.config.get("HOSTED_MODERATION_PROVIDERS"):

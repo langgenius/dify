@@ -20,7 +20,7 @@ from flask_cors import CORS
 
 from core.model_providers.providers import hosted
 from extensions import ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage, ext_mail, ext_stripe, ext_code_based_extension
+    ext_database, ext_storage, ext_mail, ext_code_based_extension
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
@@ -96,7 +96,6 @@ def initialize_extensions(app):
     ext_login.init_app(app)
     ext_mail.init_app(app)
     ext_sentry.init_app(app)
-    ext_stripe.init_app(app)
 
 
 # Flask-Login configuration

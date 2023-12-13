@@ -49,7 +49,6 @@ const translation = {
       confirmButton: '创建',
       failed: '创建失败',
     },
-    overCountLimit: '您的文件总数已超出限制 {{countLimit}}。',
   },
   stepTwo: {
     segmentation: '分段设置',

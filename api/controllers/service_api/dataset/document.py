@@ -11,7 +11,7 @@ from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import ArchivedDocumentImmutableError, DocumentIndexingError, \
     NoFileUploadedError, TooManyFilesError
-from controllers.service_api.wraps import DatasetApiResource
+from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
 from libs.login import current_user
 from core.model_providers.error import ProviderTokenNotInitError
 from extensions.ext_database import db
@@ -24,6 +24,7 @@ from services.file_service import FileService
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by text."""
         parser = reqparse.RequestParser()
@@ -88,6 +89,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by text."""
         parser = reqparse.RequestParser()
@@ -147,6 +149,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
 
 class DocumentAddByFileApi(DatasetApiResource):
     """Resource for documents."""
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id):
         """Create document by upload file."""
         args = {}
@@ -212,6 +215,7 @@ class DocumentAddByFileApi(DatasetApiResource):
 class DocumentUpdateByFileApi(DatasetApiResource):
     """Resource for update documents."""
 
+    @cloud_edition_billing_resource_check('vector_space', 'dataset')
     def post(self, tenant_id, dataset_id, document_id):
         """Update document by upload file."""
         args = {}
