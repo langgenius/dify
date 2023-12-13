@@ -178,13 +178,15 @@ class Completion:
             return
 
     @classmethod
-    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict, query: str):
+    def moderation_for_inputs(cls, app_id: str, tenant_id: str, app_model_config: AppModelConfig, inputs: dict,
+                              query: str):
         if not app_model_config.sensitive_word_avoidance_dict['enabled']:
             return inputs, query
 
         type = app_model_config.sensitive_word_avoidance_dict['type']
 
-        moderation = ModerationFactory(type, app_id, tenant_id, app_model_config.sensitive_word_avoidance_dict['config'])
+        moderation = ModerationFactory(type, app_id, tenant_id,
+                                       app_model_config.sensitive_word_avoidance_dict['config'])
         moderation_result = moderation.moderation_for_inputs(inputs, query)
 
         if not moderation_result.flagged:
@@ -332,9 +334,9 @@ class Completion:
         external_context = memory.load_memory_variables({})
         return external_context[memory_key]
 
-
     @classmethod
-    def query_app_annotations_to_reply(cls, conversation_message_task: ConversationMessageTask, from_source: str) -> bool:
+    def query_app_annotations_to_reply(cls, conversation_message_task: ConversationMessageTask,
+                                       from_source: str) -> bool:
         """Get memory messages."""
         app_model_config = conversation_message_task.app_model_config
         app = conversation_message_task.app

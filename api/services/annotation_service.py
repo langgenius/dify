@@ -137,8 +137,8 @@ class AppAnnotationService:
                            .filter(MessageAnnotation.app_id == app_id)
                            .filter(
                 or_(
-                    Message.query.ilike('%{}%'.format(keyword)),
-                    Message.answer.ilike('%{}%'.format(keyword))
+                    MessageAnnotation.question.ilike('%{}%'.format(keyword)),
+                    MessageAnnotation.content.ilike('%{}%'.format(keyword))
                 )
             )
                            .order_by(MessageAnnotation.created_at.desc())
@@ -328,6 +328,7 @@ class AppAnnotationService:
                                     .filter(AppAnnotationHitHistory.app_id == app_id,
                                             AppAnnotationHitHistory.annotation_id == annotation_id,
                                             )
+                                    .order_by(AppAnnotationHitHistory.created_at.desc())
                                     .paginate(page=page, per_page=limit, max_per_page=100, error_out=False))
         return annotation_hit_histories.items, annotation_hit_histories.total
 
@@ -341,6 +342,14 @@ class AppAnnotationService:
 
     @classmethod
     def add_annotation_history(cls, annotation_id: str, app_id: str, query: str, user_id: str, from_source: str):
+        # add hit count to annotation
+        db.session.query(MessageAnnotation).filter(
+            MessageAnnotation.id == annotation_id
+        ).update(
+            {MessageAnnotation.hit_count: MessageAnnotation.hit_count + 1},
+            synchronize_session=False
+        )
+
         annotation = AppAnnotationHitHistory(
             annotation_id=annotation_id,
             app_id=app_id,
