@@ -48,8 +48,7 @@ const useAnnotationConfig = ({
     if (!annotationConfig.enabled)
       return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
-    await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+    await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = false
     }))
