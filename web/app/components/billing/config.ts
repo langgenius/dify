@@ -13,9 +13,11 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     modelProviders: supportModelProviders,
     teamMembers: 1,
     buildApps: 10,
-    vectorSpace: 10,
+    vectorSpace: 5,
     documentProcessingPriority: Priority.standard,
     logHistory: 30,
+    messageRequest: 500,
+    annotatedResponse: 10,
   },
   professional: {
     level: 2,
@@ -26,6 +28,8 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: 200,
     documentProcessingPriority: Priority.priority,
     logHistory: NUM_INFINITE,
+    messageRequest: NUM_INFINITE,
+    annotatedResponse: 2000,
   },
   team: {
     level: 3,
@@ -36,6 +40,8 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: 1000,
     documentProcessingPriority: Priority.topPriority,
     logHistory: NUM_INFINITE,
+    messageRequest: NUM_INFINITE,
+    annotatedResponse: 5000,
   },
   enterprise: {
     level: 4,
@@ -46,6 +52,8 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     vectorSpace: NUM_INFINITE,
     documentProcessingPriority: Priority.topPriority,
     logHistory: NUM_INFINITE,
+    messageRequest: NUM_INFINITE,
+    annotatedResponse: NUM_INFINITE,
   },
 }
 
