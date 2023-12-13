@@ -28,6 +28,11 @@ annotation_fields = {
     'created_at': TimestampField
 }
 
+annotation_hit_history_fields = {
+    'annotation_id': fields.String,
+    'annotation_create_account': fields.Nested(account_fields, allow_null=True)
+}
+
 message_file_fields = {
     'id': fields.String,
     'type': fields.String,
@@ -49,6 +54,7 @@ message_detail_fields = {
     'from_account_id': fields.String,
     'feedbacks': fields.List(fields.Nested(feedback_fields)),
     'annotation': fields.Nested(annotation_fields, allow_null=True),
+    'annotation_hit_history': fields.Nested(annotation_hit_history_fields, allow_null=True),
     'created_at': TimestampField,
     'message_files': fields.List(fields.Nested(message_file_fields), attribute='files'),
 }

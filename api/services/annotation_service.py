@@ -342,7 +342,7 @@ class AppAnnotationService:
 
     @classmethod
     def add_annotation_history(cls, annotation_id: str, app_id: str, query: str,
-                               user_id: str, from_source: str, score: float):
+                               user_id: str, message_id: str, from_source: str, score: float):
         # add hit count to annotation
         db.session.query(MessageAnnotation).filter(
             MessageAnnotation.id == annotation_id
@@ -357,7 +357,8 @@ class AppAnnotationService:
             account_id=user_id,
             question=query,
             source=from_source,
-            score=score
+            score=score,
+            message_id=message_id
         )
         db.session.add(annotation)
         db.session.commit()

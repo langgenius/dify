@@ -76,10 +76,7 @@ class Completion:
             model_instance=final_model_instance,
             auto_generate_name=auto_generate_name
         )
-        # check annotation reply
-        annotation_reply = cls.query_app_annotations_to_reply(conversation_message_task, from_source)
-        if annotation_reply:
-            return
+
         prompt_message_files = [file.prompt_message_file for file in files]
 
         rest_tokens_for_context_and_memory = cls.get_validate_rest_tokens(
@@ -117,7 +114,10 @@ class Completion:
                     fake_response=str(e)
                 )
                 return
-
+            # check annotation reply
+            annotation_reply = cls.query_app_annotations_to_reply(conversation_message_task, from_source)
+            if annotation_reply:
+                return
             # fill in variable inputs from external data tools if exists
             external_data_tools = app_model_config.external_data_tools_list
             if external_data_tools:
@@ -389,12 +389,13 @@ class Completion:
                 score = documents[0].metadata['score']
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
                 if annotation:
-                    conversation_message_task.annotation_end(annotation.content)
+                    conversation_message_task.annotation_end(annotation.content, annotation.id, annotation.account.name)
                     # insert annotation history
                     AppAnnotationService.add_annotation_history(annotation.id,
                                                                 app.id,
                                                                 conversation_message_task.query,
                                                                 conversation_message_task.user.id,
+                                                                conversation_message_task.message.id,
                                                                 from_source,
                                                                 score)
                     return True

@@ -516,7 +516,9 @@ class CompletionService:
             'id': message.get('message_id'),
             'answer': message.get('text'),
             'metadata': {},
-            'created_at': int(time.time())
+            'created_at': int(time.time()),
+            'annotation_id': message.get('annotation_id'),
+            'annotation_author_name': message.get('annotation_author_name')
         }
 
         if message.get('mode') == 'chat':
@@ -583,7 +585,9 @@ class CompletionService:
             'task_id': data.get('task_id'),
             'id': data.get('message_id'),
             'answer': data.get('text'),
-            'created_at': int(time.time())
+            'created_at': int(time.time()),
+            'annotation_id': data.get('annotation_id'),
+            'annotation_author_name': data.get('annotation_author_name'),
         }
 
         if data.get('mode') == 'chat':
