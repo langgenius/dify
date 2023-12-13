@@ -44,17 +44,16 @@ const ViewAnnotationModal: FC<Props> = ({
   const [newAnswer, setNewAnswer] = useState(answer)
   const { t } = useTranslation()
   const [currPage, setCurrPage] = React.useState<number>(0)
-  const [total, setTotal] = useState(30)
+  const [total, setTotal] = useState(0)
   const [hitHistoryList, setHitHistoryList] = useState<HitHistoryItem[]>([])
   const fetchHitHistory = async (page = 1) => {
     try {
-      const { data }: any = await fetchHitHistoryList(appId, id, {
+      const { data, total }: any = await fetchHitHistoryList(appId, id, {
         page,
         limit: 10,
       })
       setHitHistoryList(data as HitHistoryItem[])
-      // TODO wait for paging
-      setTotal(data.length)
+      setTotal(total)
     }
     catch (e) {
     }
@@ -73,7 +72,7 @@ const ViewAnnotationModal: FC<Props> = ({
           ? (
             <div className='flex items-center space-x-1'>
               <div>{t('appAnnotation.viewModal.hitHistory')}</div>
-              <div className='flex px-1.5 item-center rounded-md border border-black/[8%] h-5 text-xs font-medium text-gray-500'>{hitHistoryList.length} {t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}</div>
+              <div className='flex px-1.5 item-center rounded-md border border-black/[8%] h-5 text-xs font-medium text-gray-500'>{total} {t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}</div>
             </div>
           )
           : t('appAnnotation.viewModal.hitHistory')
@@ -132,8 +131,8 @@ const ViewAnnotationModal: FC<Props> = ({
                   title={item.question}
                 >{item.question}</td>
                 <td>{item.source}</td>
-                <td>{item.score}</td>
-                <td>{dayjs(item.created_at).format('YYYY-MM-DD hh:mm')}</td>
+                <td>{item.score || '-'}</td>
+                <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
               </tr>
             ))}
           </tbody>

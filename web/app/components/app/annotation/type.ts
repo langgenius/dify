@@ -16,7 +16,7 @@ export type HitHistoryItem = {
   question: string
   source: string
   score: number
-  created_at: string
+  created_at: number
 }
 
 export type EmbeddingModelConfig = {
