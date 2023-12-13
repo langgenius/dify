@@ -53,13 +53,18 @@ class EnhanceAzureChatOpenAI(AzureChatOpenAI):
         }
 
     def _generate(
-        self,
-        messages: List[BaseMessage],
-        stop: Optional[List[str]] = None,
-        run_manager: Optional[CallbackManagerForLLMRun] = None,
-        **kwargs: Any,
+            self,
+            messages: List[BaseMessage],
+            stop: Optional[List[str]] = None,
+            run_manager: Optional[CallbackManagerForLLMRun] = None,
+            **kwargs: Any,
     ) -> ChatResult:
-        message_dicts, params = self._create_message_dicts(messages, stop)
+        params = self._client_params
+        if stop is not None:
+            if "stop" in params:
+                raise ValueError("`stop` found in both the input and default params.")
+            params["stop"] = stop
+        message_dicts = [self._convert_message_to_dict(m) for m in messages]
         params = {**params, **kwargs}
         if self.streaming:
             inner_completion = ""
@@ -67,7 +72,7 @@ class EnhanceAzureChatOpenAI(AzureChatOpenAI):
             params["stream"] = True
             function_call: Optional[dict] = None
             for stream_resp in self.completion_with_retry(
-                messages=message_dicts, **params
+                    messages=message_dicts, **params
             ):
                 if len(stream_resp["choices"]) > 0:
                     role = stream_resp["choices"][0]["delta"].get("role", role)
