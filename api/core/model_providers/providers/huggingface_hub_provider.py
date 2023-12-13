@@ -118,9 +118,9 @@ class HuggingfaceHubProvider(BaseModelProvider):
                 if 'inference' in model_info.cardData and not model_info.cardData['inference']:
                     raise ValueError(f'Inference API has been turned off for this model {model_name}.')
 
-                VALID_TASKS = ("text2text-generation", "text-generation", "feature-extraction")
+                VALID_TASKS = ("text2text-generation", "text-generation", "feature-extraction", "sentence-similarity")
                 if model_info.pipeline_tag not in VALID_TASKS:
-                    raise ValueError(f"Model {model_name} is not a valid task, "
+                    raise ValueError(f"Task {model_info.pipeline_tag} of model {model_name} is not valid, "
                                      f"must be one of {VALID_TASKS}.")
             except Exception as e:
                 raise CredentialsValidateFailedError(f"{e.__class__.__name__}:{str(e)}")
