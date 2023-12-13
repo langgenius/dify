@@ -1,9 +1,12 @@
+from flask_login import current_user
 from flask_restful import Resource, reqparse, marshal_with, marshal
+from werkzeug.exceptions import Forbidden
+
 from controllers.console import api
 from controllers.console.app.error import NoFileUploadedError
 from controllers.console.datasets.error import TooManyFilesError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_list_fields, annotation_hit_history_list_fields, annotation_fields, \
     annotation_hit_history_fields
@@ -16,7 +19,12 @@ class AnnotationReplyActionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     def post(self, app_id, action):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         parser = reqparse.RequestParser()
         parser.add_argument('embedding_provider_name', required=True, type=str, location='json')
@@ -35,7 +43,12 @@ class AnnotationReplyActionStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     def get(self, app_id, job_id, action):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         job_id = str(job_id)
         app_annotation_job_key = '{}_app_annotation_job_{}'.format(action, str(job_id))
         cache_result = redis_client.get(app_annotation_job_key)
@@ -60,6 +73,10 @@ class AnnotationListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=20, type=int)
         keyword = request.args.get('keyword', default=None, type=str)
@@ -81,6 +98,10 @@ class AnnotationExportApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         annotation_list = AppAnnotationService.export_annotation_list_by_app_id(app_id)
         response = {
@@ -93,8 +114,13 @@ class AnnotationCreateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     @marshal_with(annotation_fields)
     def post(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         parser = reqparse.RequestParser()
         parser.add_argument('question', required=True, type=str, location='json')
@@ -108,8 +134,13 @@ class AnnotationUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     @marshal_with(annotation_fields)
     def post(self, app_id, annotation_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         parser = reqparse.RequestParser()
@@ -122,8 +153,12 @@ class AnnotationUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(annotation_fields)
+    @cloud_edition_billing_resource_check('annotation')
     def delete(self, app_id, annotation_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_id, annotation_id)
@@ -134,7 +169,12 @@ class AnnotationBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     def post(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
         # get file from request
         file = request.files['file']
@@ -152,7 +192,12 @@ class AnnotationBatchImportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     def get(self, job_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         job_id = str(job_id)
         indexing_cache_key = 'app_annotation_batch_import_{}'.format(str(job_id))
         cache_result = redis_client.get(indexing_cache_key)
@@ -176,6 +221,10 @@ class AnnotationHitHistoryListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, app_id, annotation_id):
+        # The role of the current user in the table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         page = request.args.get('page', default=1, type=int)
         limit = request.args.get('limit', default=20, type=int)
         app_id = str(app_id)
