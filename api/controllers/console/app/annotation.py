@@ -153,7 +153,7 @@ class AnnotationUpdateDeleteApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @marshal_with(annotation_fields)
+    @cloud_edition_billing_resource_check('annotation')
     def delete(self, app_id, annotation_id):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:

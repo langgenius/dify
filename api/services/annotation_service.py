@@ -262,7 +262,7 @@ class AppAnnotationService:
                 if annotation_reply_config['enabled']:
                     delete_annotation_index_task.delay(annotation.id, app_id,
                                                        current_user.current_tenant_id,
-                                                       app_id, annotation_reply_config['embedding_model'][
+                                                       annotation_reply_config['embedding_model'][
                                                            'embedding_provider_name'],
                                                        annotation_reply_config['embedding_model'][
                                                            'embedding_model_name'])

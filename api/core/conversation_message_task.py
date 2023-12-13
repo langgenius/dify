@@ -461,6 +461,9 @@ class PubHandler:
                 'text': text
             }
         }
+        self._message.answer = text
+        db.session.commit()
+
         redis_client.publish(self._channel, json.dumps(content))
 
         if self._is_stopped():

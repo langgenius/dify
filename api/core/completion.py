@@ -174,7 +174,6 @@ class Completion:
         except ChunkedEncodingError as e:
             # Interrupt by LLM (like OpenAI), handle it.
             logging.warning(f'ChunkedEncodingError: {e}')
-            conversation_message_task.annotation_end()
             return
 
     @classmethod
