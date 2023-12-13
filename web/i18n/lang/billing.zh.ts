@@ -50,10 +50,21 @@ const translation = {
       personalizedSupport: '个性化支持',
       dedicatedAPISupport: '专用 API 支持',
       customIntegration: '自定义集成和支持',
+      ragAPIRequest: 'RAG API 请求',
+      agentModel: 'Agent 模型',
     },
     comingSoon: '即将推出',
     member: '成员',
     memberAfter: '个成员',
+    messageRequest: {
+      title: '信息限制',
+      unit: '条每天',
+      tooltip: '指每日应用会话调用 Dify API 的次数（而非 LLMs 的 API 资源调用），它包含你所有应用中通过 API 或者在 WebApp 会话中产生的消息数。',
+    },
+    annotatedResponse: {
+      title: '标注回复限制',
+      tooltip: '标注回复功能通过人工编辑标注为应用提供了可定制的高质量问答回复能力',
+    },
   },
   plans: {
     sandbox: {

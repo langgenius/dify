@@ -50,10 +50,21 @@ const translation = {
       personalizedSupport: 'Personalized support',
       dedicatedAPISupport: 'Dedicated API support',
       customIntegration: 'Custom integration and support',
+      ragAPIRequest: 'RAG API Requests',
+      agentModel: 'Agent Model',
     },
     comingSoon: 'Coming soon',
     member: 'Member',
     memberAfter: 'Member',
+    messageRequest: {
+      title: 'Message Requests',
+      unit: 'per day',
+      tooltip: 'Includes all messages from your apps, whether via APIs or web sessions. (Not LLM resource usage)',
+    },
+    annotatedResponse: {
+      title: 'Annotation Quota Limits',
+      tooltip: 'Manual editing and annotation of responses provides customizable high-quality question-answering abilities for apps. (Applicable only in chat apps)',
+    },
   },
   plans: {
     sandbox: {
