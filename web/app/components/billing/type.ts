@@ -19,6 +19,8 @@ export type PlanInfo = {
   vectorSpace: number
   documentProcessingPriority: Priority
   logHistory: number
+  messageRequest: number
+  annotatedResponse: number
 }
 
 export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers'>
