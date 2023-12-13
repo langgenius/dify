@@ -368,7 +368,10 @@ const Debug: FC<IDebug> = ({
             if (!draft.find(item => item.id === questionId))
               draft.push({ ...questionItem })
 
-            draft.push({ ...responseItem })
+            draft.push({
+              ...responseItem,
+              id: annotationReply.id,
+            })
           })
         setChatList(newListWithAnswer)
       },
