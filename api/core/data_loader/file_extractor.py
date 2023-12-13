@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Union, Optional
 
 import requests
-from langchain.document_loaders import TextLoader, Docx2txtLoader, UnstructuredFileLoader, UnstructuredAPIFileLoader
+from langchain.document_loaders import TextLoader, Docx2txtLoader, UnstructuredAPIFileLoader
 from langchain.schema import Document
 
 from core.data_loader.loader.csv_loader import CSVLoader
@@ -50,9 +50,21 @@ class FileExtractor:
         delimiter = '\n'
         file_extension = input_file.suffix.lower()
         if is_automatic:
-            # loader = UnstructuredFileLoader(
-            #     file_path, strategy="hi_res", mode="elements"
-            # )
+            if file_extension == '.xlsx':
+                loader = ExcelLoader(file_path)
+            elif file_extension == '.pdf':
+                loader = PdfLoader(file_path, upload_file=upload_file)
+            elif file_extension in ['.md', '.markdown']:
+                loader = MarkdownLoader(file_path, autodetect_encoding=True)
+            elif file_extension in ['.htm', '.html']:
+                loader = HTMLLoader(file_path)
+            elif file_extension == '.docx':
+                loader = Docx2txtLoader(file_path)
+            elif file_extension == '.csv':
+                loader = CSVLoader(file_path, autodetect_encoding=True)
+            else:
+                # txt
+                loader = TextLoader(file_path, autodetect_encoding=True)
             loader = UnstructuredAPIFileLoader(
                 file_path=file_path,
                 url="http://127.0.0.1:8000/general/v0/general",
