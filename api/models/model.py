@@ -2,6 +2,7 @@ import json
 
 from flask import current_app, request
 from flask_login import UserMixin
+from sqlalchemy import Float
 from sqlalchemy.dialects.postgresql import UUID
 
 from core.file.upload_file_parser import UploadFileParser
@@ -659,6 +660,7 @@ class AppAnnotationHitHistory(db.Model):
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    score = db.Column(Float, nullable=False, server_default=db.text('0'))
 
     @property
     def account(self):
