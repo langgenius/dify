@@ -6,7 +6,9 @@ import cn from 'classnames'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
 import Toast from '../../base/toast'
+import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 
@@ -16,10 +18,21 @@ type Props = {
   planRange: PlanRange
 }
 
-const KeyValue = ({ label, value }: { label: string; value: string | number | JSX.Element }) => {
+const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | JSX.Element; tooltip?: string }) => {
   return (
     <div className='mt-3.5 leading-[125%] text-[13px] font-medium'>
-      <div className='text-gray-500'>{label}</div>
+      <div className='flex items-center text-gray-500 space-x-1'>
+        <div>{label}</div>
+        {tooltip && (
+          <TooltipPlus
+            popupContent={
+              <div className='w-[200px]'>{tooltip}</div>
+            }
+          >
+            <HelpCircle className='w-3 h-3 text-gray-400' />
+          </TooltipPlus>
+        )}
+      </div>
       <div className='mt-0.5 text-gray-900'>{value}</div>
     </div>
   )
@@ -92,7 +105,17 @@ const PlanItem: FC<Props> = ({
               <div>{comingSoon}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
+              <div className='flex items-center'>
+                +
+                <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
+                <TooltipPlus
+                  popupContent={
+                    <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
+                  }
+                >
+                  <HelpCircle className='w-3 h-3 text-gray-400' />
+                </TooltipPlus>
+              </div>
               <div>{comingSoon}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
@@ -214,6 +237,7 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           label={t('billing.plansCommon.vectorSpace')}
           value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.vectorSpace >= 1000 ? `${planInfo.vectorSpace / 1000}G` : `${planInfo.vectorSpace}MB`)}
+          tooltip={t('billing.plansCommon.vectorSpaceBillingTooltip') as string}
         />
         <KeyValue
           label={t('billing.plansCommon.documentProcessingPriority')}
@@ -222,10 +246,12 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           label={t('billing.plansCommon.messageRequest.title')}
           value={planInfo.messageRequest === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.messageRequest} ${t('billing.plansCommon.messageRequest.unit')}`}
+          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
         />
         <KeyValue
           label={t('billing.plansCommon.annotatedResponse.title')}
           value={planInfo.annotatedResponse === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.annotatedResponse}`}
+          tooltip={t('billing.plansCommon.annotatedResponse.tooltip') as string}
         />
         <KeyValue
           label={t('billing.plansCommon.logsHistory')}

@@ -28,6 +28,7 @@ const translation = {
     teamMembers: 'Team Members',
     buildApps: 'Build Apps',
     vectorSpace: 'Vector Space',
+    vectorSpaceBillingTooltip: 'Each 1MB can store about 1.2million characters of vectorized data(estimated using OpenAI Embeddings, varies across models).',
     vectorSpaceTooltip: 'Vector Space is the long-term memory system required for LLMs  to comprehend your data.',
     documentProcessingPriority: 'Document Processing Priority',
     documentProcessingPriorityTip: 'For higher document processing priority, please upgrade your plan.',
@@ -65,6 +66,7 @@ const translation = {
       title: 'Annotation Quota Limits',
       tooltip: 'Manual editing and annotation of responses provides customizable high-quality question-answering abilities for apps. (Applicable only in chat apps)',
     },
+    ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of Dify.',
   },
   plans: {
     sandbox: {
