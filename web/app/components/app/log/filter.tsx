@@ -39,7 +39,7 @@ const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilte
   if (!data)
     return null
   return (
-    <div className='flex flex-row items-center mb-4 text-gray-900 text-base'>
+    <div className='flex flex-row flex-wrap gap-y-2 gap-x-4 items-center mb-4 text-gray-900 text-base'>
       <SimpleSelect
         items={TIME_PERIOD_LIST.map(item => ({ value: item.value, name: t(`appLog.filter.period.${item.name}`) }))}
         className='mt-0 !w-40'
@@ -47,7 +47,7 @@ const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilte
           setQueryParams({ ...queryParams, period: item.value })
         }}
         defaultValue={queryParams.period} />
-      <div className="relative ml-4 rounded-md mr-4">
+      <div className="relative rounded-md">
         <SimpleSelect
           defaultValue={'all'}
           className='!w-[300px]'

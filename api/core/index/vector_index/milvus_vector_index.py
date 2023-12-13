@@ -1,16 +1,14 @@
-from typing import Optional, cast
+from typing import cast, Any, List
 
 from langchain.embeddings.base import Embeddings
-from langchain.schema import Document, BaseRetriever
-from langchain.vectorstores import VectorStore, milvus
+from langchain.schema import Document
+from langchain.vectorstores import VectorStore
 from pydantic import BaseModel, root_validator
 
 from core.index.base import BaseIndex
 from core.index.vector_index.base import BaseVectorIndex
 from core.vector_store.milvus_vector_store import MilvusVectorStore
-from core.vector_store.weaviate_vector_store import WeaviateVectorStore
-from extensions.ext_database import db
-from models.dataset import Dataset, DatasetCollectionBinding
+from models.dataset import Dataset
 
 
 class MilvusConfig(BaseModel):
@@ -74,7 +72,7 @@ class MilvusVectorIndex(BaseVectorIndex):
         index_params = {
             'metric_type': 'IP',
             'index_type': "HNSW",
-            'params':  {"M": 8, "efConstruction": 64}
+            'params': {"M": 8, "efConstruction": 64}
         }
         self._vector_store = MilvusVectorStore.from_documents(
             texts,
@@ -152,3 +150,7 @@ class MilvusVectorIndex(BaseVectorIndex):
                 ),
             ],
         ))
+
+    def search_by_full_text_index(self, query: str, **kwargs: Any) -> List[Document]:
+        # milvus/zilliz doesn't support bm25 search
+        return []

@@ -42,19 +42,18 @@ class HitTestingApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('query', type=str, location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, location='json')
         args = parser.parse_args()
 
-        query = args['query']
-
-        if not query or len(query) > 250:
-            raise ValueError('Query is required and cannot exceed 250 characters')
+        HitTestingService.hit_testing_args_check(args)
 
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=query,
+                query=args['query'],
                 account=current_user,
-                limit=10,
+                retrieval_model=args['retrieval_model'],
+                limit=10
             )
 
             return {"query": response['query'], 'records': marshal(response['records'], hit_testing_record_fields)}
@@ -68,7 +67,7 @@ class HitTestingApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                f"No Embedding Model available. Please configure a valid provider "
+                f"No Embedding Model or Reranking Model available. Please configure a valid provider "
                 f"in the Settings -> Model Provider.")
         except ValueError as e:
             raise ValueError(str(e))

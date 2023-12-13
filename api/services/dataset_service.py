@@ -173,6 +173,9 @@ class DatasetService:
         filtered_data['updated_by'] = user.id
         filtered_data['updated_at'] = datetime.datetime.now()
 
+        # update Retrieval model
+        filtered_data['retrieval_model'] = data['retrieval_model']
+
         dataset.query.filter_by(id=dataset_id).update(filtered_data)
 
         db.session.commit()
@@ -447,11 +450,6 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
-                documents_count = DocumentService.get_tenant_documents_count()
-                total_count = documents_count + count
-                tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-                if total_count > tenant_document_count:
-                    raise ValueError(f"over document limit {tenant_document_count}.")
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
             dataset.data_source_type = document_data["data_source"]["type"]
@@ -473,7 +471,20 @@ class DocumentService:
                     embedding_model.name
                 )
                 dataset.collection_binding_id = dataset_collection_binding.id
+                if not dataset.retrieval_model:
+                    default_retrieval_model = {
+                        'search_method': 'semantic_search',
+                        'reranking_enable': False,
+                        'reranking_model': {
+                            'reranking_provider_name': '',
+                            'reranking_model_name': ''
+                        },
+                        'top_k': 2,
+                        'score_threshold_enabled': False
+                    }
 
+                    dataset.retrieval_model = document_data.get('retrieval_model') if document_data.get(
+                        'retrieval_model') else default_retrieval_model
 
         documents = []
         batch = time.strftime('%Y%m%d%H%M%S') + str(random.randint(100000, 999999))
@@ -724,15 +735,10 @@ class DocumentService:
             notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
             for notion_info in notion_info_list:
                 count = count + len(notion_info['pages'])
-        # check document limit
-        if current_app.config['EDITION'] == 'CLOUD':
-            documents_count = DocumentService.get_tenant_documents_count()
-            total_count = documents_count + count
-            tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-            if total_count > tenant_document_count:
-                raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
+
         embedding_model = None
         dataset_collection_binding_id = None
+        retrieval_model = None
         if document_data['indexing_technique'] == 'high_quality':
             embedding_model = ModelFactory.get_embedding_model(
                 tenant_id=tenant_id
@@ -742,6 +748,20 @@ class DocumentService:
                 embedding_model.name
             )
             dataset_collection_binding_id = dataset_collection_binding.id
+            if 'retrieval_model' in document_data and document_data['retrieval_model']:
+                retrieval_model = document_data['retrieval_model']
+            else:
+                default_retrieval_model = {
+                    'search_method': 'semantic_search',
+                    'reranking_enable': False,
+                    'reranking_model': {
+                        'reranking_provider_name': '',
+                        'reranking_model_name': ''
+                    },
+                    'top_k': 2,
+                    'score_threshold_enabled': False
+                }
+                retrieval_model = default_retrieval_model
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
@@ -751,7 +771,8 @@ class DocumentService:
             created_by=account.id,
             embedding_model=embedding_model.name if embedding_model else None,
             embedding_model_provider=embedding_model.model_provider.provider_name if embedding_model else None,
-            collection_binding_id=dataset_collection_binding_id
+            collection_binding_id=dataset_collection_binding_id,
+            retrieval_model=retrieval_model
         )
 
         db.session.add(dataset)
@@ -768,7 +789,7 @@ class DocumentService:
         return dataset, documents, batch
 
     @classmethod
-    def  document_create_args_validate(cls, args: dict):
+    def document_create_args_validate(cls, args: dict):
         if 'original_document_id' not in args or not args['original_document_id']:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)

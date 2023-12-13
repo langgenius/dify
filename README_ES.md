@@ -1,4 +1,4 @@
-![](./images/describe-en.png)
+[![](./images/describe.png)](https://dify.ai)
 <p align="center">
   <a href="./README.md">English</a> |
   <a href="./README_CN.md">简体中文</a> |
@@ -6,36 +6,71 @@
   <a href="./README_ES.md">Español</a>
 </p>
 
-[Sitio web](https://dify.ai) • [Documentación](https://docs.dify.ai) • [Twitter](https://twitter.com/dify_ai) • [Discord](https://discord.gg/FngNHpbcY7)
+<p align="center">
+    <a href="https://dify.ai" target="_blank">
+        <img alt="Static Badge" src="https://img.shields.io/badge/AI-Dify?logo=AI&logoColor=%20%23f5f5f5&label=Dify&labelColor=%20%23155EEF&color=%23EAECF0"></a>
+    <a href="https://discord.gg/FngNHpbcY7" target="_blank">
+        <img src="https://img.shields.io/discord/1082486657678311454?logo=discord"
+            alt="chat on Discord"></a>
+    <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
+        <img src="https://img.shields.io/twitter/follow/dify_ai?style=social&logo=X"
+            alt="follow on Twitter"></a>
+    <a href="https://hub.docker.com/u/langgenius" target="_blank">
+        <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
+</p>
 
-**Dify** es una plataforma LLMOps fácil de usar diseñada para capacitar a más personas para que creen aplicaciones sostenibles basadas en IA. Con orquestación visual para varios tipos de aplicaciones, Dify ofrece aplicaciones listas para usar que también pueden funcionar como APIs de Backend-as-a-Service. Unifica tu proceso de desarrollo con una API para la integración de complementos y conjuntos de datos, y agiliza tus operaciones utilizando una interfaz única para la ingeniería de indicaciones, análisis visual y mejora continua.
+**Dify** es una plataforma de desarrollo de aplicaciones para modelos de lenguaje de gran tamaño (LLM) que ya ha visto la creación de más de **100,000** aplicaciones basadas en Dify.AI. Integra los conceptos de Backend como Servicio y LLMOps, cubriendo el conjunto de tecnologías esenciales requerido para construir aplicaciones nativas de inteligencia artificial generativa, incluyendo un motor RAG incorporado. Con Dify, **puedes auto-desplegar capacidades similares a las de Assistants API y GPTs basadas en cualquier LLM.**
 
-Las aplicaciones creadas con Dify incluyen:
+![](./images/demo.png)
 
-- Sitios web listos para usar que admiten el modo de formulario y el modo de conversación por chat.
-- Una API única que abarca capacidades de complementos, mejora de contexto y más, lo que te ahorra esfuerzo de programación en el backend.
-- Análisis visual de datos, revisión de registros y anotación para aplicaciones.
+## Utilizar Servicios en la Nube
 
-Dify es compatible con Langchain, lo que significa que gradualmente admitiremos múltiples LLMs, actualmente compatibles con:
+Usar [Dify.AI Cloud](https://dify.ai) proporciona todas las capacidades de la versión de código abierto, e incluye un complemento de 200 créditos de prueba para GPT.
 
-- GPT 3 (text-davinci-003)
-- GPT 3.5 Turbo (ChatGPT)
-- GPT-4
+## Por qué Dify
 
-## Usar servicios en la nube
+Dify se caracteriza por su neutralidad de modelo y es un conjunto tecnológico completo e ingenierizado, en comparación con las bibliotecas de desarrollo codificadas como LangChain. A diferencia de la API de Assistants de OpenAI, Dify permite el despliegue local completo de los servicios.
 
-Visita [Dify.ai](https://dify.ai)
+| Característica | Dify.AI | API de Assistants | LangChain |
+|----------------|---------|------------------|-----------|
+| **Enfoque de Programación** | Orientado a API | Orientado a API | Orientado a Código en Python |
+| **Estrategia del Ecosistema** | Código Abierto | Cerrado y Comercial | Código Abierto |
+| **Motor RAG** | Soportado | Soportado | No Soportado |
+| **IDE de Prompts** | Incluido | Incluido | Ninguno |
+| **LLMs Soportados** | Gran Variedad | Solo GPT | Gran Variedad |
+| **Despliegue Local** | Soportado | No Soportado | No Aplicable |
+
+## Características
+
+![](./images/models.png)
+
+**1. Soporte LLM**: Integración con la familia de modelos GPT de OpenAI, o los modelos de la familia Llama2 de código abierto. De hecho, Dify soporta modelos comerciales convencionales y modelos de código abierto (desplegados localmente o basados en MaaS).
+
+**2. IDE de Prompts**: Orquestación visual de aplicaciones y servicios basados en LLMs con tu equipo.
+
+**3. Motor RAG**: Incluye varias capacidades RAG basadas en indexación de texto completo o incrustaciones de base de datos vectoriales, permitiendo la carga directa de PDFs, TXTs y otros formatos de texto.
+
+**4. Agentes**: Un marco de Agentes basado en Llamadas de Función que permite a los usuarios configurar lo que ven es lo que obtienen. Dify incluye capacidades básicas de plugins como la Búsqueda de Google.
+
+**5. Operaciones Continuas**: Monitorear y analizar registros de aplicaciones y rendimiento, mejorando continuamente Prompts, conjuntos de datos o modelos usando datos de producción.
+
+## Antes de Empezar
+
+- [Sitio web](https://dify.ai)
+- [Documentación](https://docs.dify.ai)
+- [Documentación de Implementación](https://docs.dify.ai/getting-started/install-self-hosted)
+- [Preguntas Frecuentes](https://docs.dify.ai/getting-started/faq)
 
 ## Instalar la Edición Comunitaria
 
-### Requisitos del sistema
+### Requisitos del Sistema
 
-Antes de instalar Dify, asegúrate de que tu máquina cumple con los siguientes requisitos mínimos del sistema:
+Antes de instalar Dify, asegúrate de que tu máquina cumpla con los siguientes requisitos mínimos del sistema:
 
-- CPU >= 2 Core
+- CPU >= 2 núcleos
 - RAM >= 4GB
 
-### Inicio rápido
+### Inicio Rápido
 
 La forma más sencilla de iniciar el servidor de Dify es ejecutar nuestro archivo [docker-compose.yml](docker/docker-compose.yaml). Antes de ejecutar el comando de instalación, asegúrate de que [Docker](https://docs.docker.com/get-docker/) y [Docker Compose](https://docs.docker.com/compose/install/) estén instalados en tu máquina:
 
@@ -44,79 +79,33 @@ cd docker
 docker compose up -d
 ```
 
-Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegador desde [http://localhost/install](http://localhost/install) y comenzar el proceso de instalación de inicialización.
+Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegador en [http://localhost/install](http://localhost/install) y comenzar el proceso de instalación de inicialización.
 
-### Helm Chart
+### Gráfico Helm
 
-Un gran agradecimiento a @BorisPolonsky por proporcionarnos una versión de [Helm Chart](https://helm.sh/), que permite desplegar Dify en Kubernetes.
-Puede ir a https://github.com/BorisPolonsky/dify-helm para obtener información de despliegue.
+Un gran agradecimiento a @BorisPolonsky por proporcionarnos una versión del [Gráfico Helm](https://helm.sh/), que permite implementar Dify en Kubernetes. Puedes visitar https://github.com/BorisPolonsky/dify-helm para obtener información sobre la implementación.
 
 ### Configuración
 
-Si necesitas personalizar la configuración, consulta los comentarios en nuestro archivo [docker-compose.yml](docker/docker-compose.yaml) y configura manualmente la configuración del entorno. Después de realizar los cambios, ejecuta nuevamente 'docker-compose up -d'.
+Si necesitas personalizar la configuración, consulta los comentarios en nuestro archivo [docker-compose.yml](docker/docker-compose.yaml) y configura manualmente la configuración del entorno. Después de realizar los cambios, ejecuta nuevamente `docker-compose up -d`. Puedes ver la lista completa de variables de entorno en nuestra [documentación](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
-## Hoja de ruta
+## Historial de Estrellas
 
-Funciones en desarrollo:
+[![Gráfico de Historial de Estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
 
-- **Conjuntos de datos**, admitiendo más conjuntos de datos, por ejemplo, sincronización de contenido desde Notion o páginas web.
-Admitiremos más conjuntos de datos, incluidos texto, páginas web e incluso contenido de Notion. Los usuarios pueden construir aplicaciones de IA basadas en sus propias fuentes de datos
-- **Complementos**, introduciendo complementos estándar de ChatGPT para aplicaciones, o utilizando complementos producidos por Dify.
-Lanzaremos complementos que cumplan con el estándar de ChatGPT, o nuestros propios complementos de Dify para habilitar más capacidades en las aplicaciones.
-- **Modelos de código abierto**, por ejemplo, adoptar Llama como proveedor de modelos o para un ajuste adicional.
-Trabajaremos con excelentes modelos de código abierto como Llama, proporcionándolos como opciones de modelos en nuestra plataforma o utilizándolos para un ajuste adicional.
+## Comunidad y Soporte
 
-## Preguntas y respuestas
+Te damos la bienvenida a contribuir a Dify para ayudar a hacer que Dify sea mejor de diversas maneras, enviando código, informando problemas, proponiendo nuevas ideas o compartiendo las aplicaciones de inteligencia artificial interesantes y útiles que hayas creado basadas en Dify. Al mismo tiempo, también te invitamos a compartir Dify en diferentes eventos, conferencias y redes sociales.
 
-**P: ¿Qué puedo hacer con Dify?**
+- [Problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores y problemas que encuentres al usar Dify.AI, consulta la [Guía de Contribución](CONTRIBUTING.md).
+- [Soporte por Correo Electrónico](mailto:hello@dify.ai?subject=[GitHub]Preguntas%20sobre%20Dify). Lo mejor para: preguntas que tengas sobre el uso de Dify.AI.
+- [Discord](https://discord.gg/FngNHpbcY7). Lo mejor para: compartir tus aplicaciones y socializar con la comunidad.
+- [Twitter](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y socializar con la comunidad.
+- [Licencia Comercial](mailto:business@dify.ai?subject=[GitHub]Consulta%20de%20Licencia%20Comercial). Lo mejor para: consultas comerciales sobre la licencia de Dify.AI para uso comercial.
 
-R: Dify es una herramienta de desarrollo y operaciones de LLM, simple pero poderosa. Puedes usarla para construir aplicaciones de calidad comercial y asistentes personales. Si deseas desarrollar tus propias aplicaciones, LangDifyGenius puede ahorrarte trabajo en el backend al integrar con OpenAI y ofrecer capacidades de operaciones visuales, lo que te permite mejorar y entrenar continuamente tu modelo GPT.
-
-**P: ¿Cómo uso Dify para "entrenar" mi propio modelo?**
-
-R: Una aplicación valiosa consta de Ingeniería de indicaciones, mejora de contexto y ajuste fino. Hemos creado un enfoque de programación híbrida que combina las indicaciones con lenguajes de programación (similar a un motor de plantillas), lo que facilita la incorporación de texto largo o la captura de subtítulos de un video de YouTube ingresado por el usuario, todo lo cual se enviará como contexto para que los LLM lo procesen. Damos gran importancia a la operabilidad de la aplicación, con los datos generados por los usuarios durante el uso de la aplicación disponibles para análisis, anotación y entrenamiento continuo. Sin las herramientas adecuadas, estos pasos pueden llevar mucho tiempo.
-
-**P: ¿Qué necesito preparar si quiero crear mi propia aplicación?**
-
-R: Suponemos que ya tienes una clave de API de OpenAI; si no la tienes, por favor regístrate. ¡Si ya tienes contenido que pueda servir como contexto de entrenamiento, eso es genial!
-
-**P: ¿Qué idiomas de interfaz están disponibles?**
-
-R: Actualmente se admiten inglés y chino, y puedes contribuir con paquetes de idiomas.
-
-## Historial de estrellas
-
-[![Gráfico de historial de estrellas](https://api.star-history.com/svg?repos=langgenius/dify&type=Date)](https://star-history.com/#langgenius/dify&Date)
-
-## Contáctanos
-
-Si tienes alguna pregunta, sugerencia o consulta sobre asociación, no dudes en contactarnos a través de los siguientes canales:
-
-- Presentar un problema o una solicitud de extracción en nuestro repositorio de GitHub.
-- Únete a la discusión en nuestra comunidad de [Discord](https://discord.gg/FngNHpbcY7).
-- Envía un correo electrónico a hello@dify.ai.
-
-¡Estamos ansiosos por ayudarte y crear juntos aplicaciones de IA más divertidas y útiles!
-
-## Contribuciones
-
-Para garantizar una revisión adecuada, todas las contribuciones de código, incluidas las de los colaboradores con acceso directo a los compromisos, deben enviarse mediante solicitudes de extracción y ser aprobadas por el equipo principal de
-
- desarrollo antes de fusionarse.
-
-¡Agradecemos todas las solicitudes de extracción! Si deseas ayudar, consulta la [Guía de Contribución](CONTRIBUTING.md) para obtener más información sobre cómo comenzar.
-
-## Seguridad
+## Divulgación de Seguridad
 
 Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
-
-## Citación
-
-Este software utiliza el siguiente software de código abierto:
-
-- Chase, H. (2022). LangChain [Software de computadora]. https://github.com/hwchase17/langchain
-
-Para obtener más información, consulta el sitio web oficial o el texto de la licencia del software correspondiente.
 
 ## Licencia
 

@@ -108,7 +108,7 @@ class CompletionConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_id, conversation_id, 'completion')
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -230,7 +230,7 @@ class ChatConversationDetailApi(Resource):
         conversation_id = str(conversation_id)
 
         return _get_conversation(app_id, conversation_id, 'chat')
-    
+
     @setup_required
     @login_required
     @account_initialization_required
@@ -251,8 +251,6 @@ class ChatConversationDetailApi(Resource):
         db.session.commit()
 
         return {'result': 'success'}, 204
-
-
 
 
 api.add_resource(CompletionConversationApi, '/apps/<uuid:app_id>/completion-conversations')

@@ -5,7 +5,7 @@ import s from './index.module.css'
 import type { DataSet } from '@/models/datasets'
 
 const itemClass = `
-  w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
+  w-full sm:w-[234px] p-3 rounded-xl bg-gray-25 border border-gray-100 cursor-pointer
 `
 const radioClass = `
   w-4 h-4 border-[2px] border-gray-200 rounded-full
@@ -40,7 +40,7 @@ const IndexMethodRadio = ({
   ]
 
   return (
-    <div className={classNames(s.wrapper, 'flex justify-between w-full')}>
+    <div className={classNames(s.wrapper, 'flex justify-between w-full flex-wrap gap-y-2')}>
       {
         options.map(option => (
           <div

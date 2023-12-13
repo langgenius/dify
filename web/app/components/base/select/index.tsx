@@ -5,6 +5,11 @@ import { Combobox, Listbox, Transition } from '@headlessui/react'
 import classNames from 'classnames'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/20/solid'
 import { useTranslation } from 'react-i18next'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 
 const defaultItems = [
   { value: 1, name: 'option1' },
@@ -143,7 +148,7 @@ const Select: FC<ISelectProps> = ({
 
 const SimpleSelect: FC<ISelectProps> = ({
   className,
-  wrapperClassName,
+  wrapperClassName = '',
   items = defaultItems,
   defaultValue = 1,
   disabled = false,
@@ -222,5 +227,83 @@ const SimpleSelect: FC<ISelectProps> = ({
     </Listbox>
   )
 }
-export { SimpleSelect }
+
+type PortalSelectProps = {
+  value: string | number
+  onSelect: (value: Item) => void
+  items: Item[]
+  placeholder?: string
+  popupClassName?: string
+}
+const PortalSelect: FC<PortalSelectProps> = ({
+  value,
+  onSelect,
+  items,
+  placeholder,
+  popupClassName,
+}) => {
+  const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
+  const localPlaceholder = placeholder || t('common.placeholder.select')
+  const selectedItem = items.find(item => item.value === value)
+
+  return (
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={setOpen}
+      placement='bottom-start'
+      offset={4}
+    >
+      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} className='w-full'>
+        <div
+          className={`
+            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm cursor-pointer 
+          `}
+          title={selectedItem?.name}
+        >
+          <span
+            className={`
+              grow truncate
+              ${!selectedItem?.name && 'text-gray-400'}
+            `}
+          >
+            {selectedItem?.name ?? localPlaceholder}
+          </span>
+          <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
+        <div
+          className='px-1 py-1 max-h-60 overflow-auto rounded-md bg-white text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm'
+        >
+          {items.map((item: Item) => (
+            <div
+              key={item.value}
+              className={`
+                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700
+                ${item.value === value && 'bg-gray-100'}
+              `}
+              title={item.name}
+              onClick={() => {
+                onSelect(item)
+                setOpen(false)
+              }}
+            >
+              <span
+                className='grow truncate'
+                title={item.name}
+              >
+                {item.name}
+              </span>
+              {item.value === value && (
+                <CheckIcon className='shrink-0 h-4 w-4' />
+              )}
+            </div>
+          ))}
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+  )
+}
+export { SimpleSelect, PortalSelect }
 export default React.memo(Select)

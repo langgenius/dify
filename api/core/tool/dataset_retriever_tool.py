@@ -1,5 +1,6 @@
 import json
-from typing import Type, Optional
+import threading
+from typing import Type, Optional, List
 
 from flask import current_app
 from langchain.tools import BaseTool
@@ -14,6 +15,18 @@ from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitE
 from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
+from services.retrieval_service import RetrievalService
+
+default_retrieval_model = {
+    'search_method': 'semantic_search',
+    'reranking_enable': False,
+    'reranking_model': {
+        'reranking_provider_name': '',
+        'reranking_model_name': ''
+    },
+    'top_k': 2,
+    'score_threshold_enabled': False
+}
 
 
 class DatasetRetrieverToolInput(BaseModel):
@@ -56,7 +69,9 @@ class DatasetRetrieverTool(BaseTool):
         ).first()
 
         if not dataset:
-            return f'[{self.name} failed to find dataset with id {self.dataset_id}.]'
+            return ''
+        # get retrieval model , if the model is not setting , using default
+        retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
         if dataset.indexing_technique == "economy":
             # use keyword table query
@@ -83,33 +98,68 @@ class DatasetRetrieverTool(BaseTool):
                 return ''
 
             embeddings = CacheEmbedding(embedding_model)
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
-            )
 
+            documents = []
+            threads = []
             if self.top_k > 0:
-                documents = vector_index.search(
-                    query,
-                    search_type='similarity_score_threshold',
-                    search_kwargs={
-                        'k': self.top_k,
-                        'score_threshold': self.score_threshold,
-                        'filter': {
-                            'group_id': [dataset.id]
-                        }
-                    }
-                )
+                # retrieval source with semantic
+                if retrieval_model['search_method'] == 'semantic_search' or retrieval_model['search_method'] == 'hybrid_search':
+                    embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
+                        'flask_app': current_app._get_current_object(),
+                        'dataset_id': str(dataset.id),
+                        'query': query,
+                        'top_k': self.top_k,
+                        'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
+                            'score_threshold_enabled'] else None,
+                        'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
+                            'reranking_enable'] else None,
+                        'all_documents': documents,
+                        'search_method': retrieval_model['search_method'],
+                        'embeddings': embeddings
+                    })
+                    threads.append(embedding_thread)
+                    embedding_thread.start()
+
+                # retrieval_model source with full text
+                if retrieval_model['search_method'] == 'full_text_search' or retrieval_model['search_method'] == 'hybrid_search':
+                    full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
+                        'flask_app': current_app._get_current_object(),
+                        'dataset_id': str(dataset.id),
+                        'query': query,
+                        'search_method': retrieval_model['search_method'],
+                        'embeddings': embeddings,
+                        'score_threshold': retrieval_model['score_threshold'] if retrieval_model[
+                            'score_threshold_enabled'] else None,
+                        'top_k': self.top_k,
+                        'reranking_model': retrieval_model['reranking_model'] if retrieval_model[
+                            'reranking_enable'] else None,
+                        'all_documents': documents
+                    })
+                    threads.append(full_text_index_thread)
+                    full_text_index_thread.start()
+
+                for thread in threads:
+                    thread.join()
+                # hybrid search: rerank after all documents have been searched
+                if retrieval_model['search_method'] == 'hybrid_search':
+                    hybrid_rerank = ModelFactory.get_reranking_model(
+                        tenant_id=dataset.tenant_id,
+                        model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
+                        model_name=retrieval_model['reranking_model']['reranking_model_name']
+                    )
+                    documents = hybrid_rerank.rerank(query, documents,
+                                                     retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
+                                                     self.top_k)
             else:
                 documents = []
 
-            hit_callback = DatasetIndexToolCallbackHandler(dataset.id, self.conversation_message_task)
+            hit_callback = DatasetIndexToolCallbackHandler(self.conversation_message_task)
             hit_callback.on_tool_end(documents)
             document_score_list = {}
             if dataset.indexing_technique != "economy":
                 for item in documents:
-                    document_score_list[item.metadata['doc_id']] = item.metadata['score']
+                    if 'score' in item.metadata and item.metadata['score']:
+                        document_score_list[item.metadata['doc_id']] = item.metadata['score']
             document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in documents]
             segments = DocumentSegment.query.filter(DocumentSegment.dataset_id == self.dataset_id,
@@ -147,10 +197,10 @@ class DatasetRetrieverTool(BaseTool):
                                 'document_name': document.name,
                                 'data_source_type': document.data_source_type,
                                 'segment_id': segment.id,
-                                'retriever_from': self.retriever_from
+                                'retriever_from': self.retriever_from,
+                                'score': document_score_list.get(segment.index_node_id, None)
+
                             }
-                            if dataset.indexing_technique != "economy":
-                                source['score'] = document_score_list.get(segment.index_node_id)
                             if self.retriever_from == 'dev':
                                 source['hit_count'] = segment.hit_count
                                 source['word_count'] = segment.word_count

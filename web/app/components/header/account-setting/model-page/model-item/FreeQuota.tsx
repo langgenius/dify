@@ -16,8 +16,8 @@ const TIP_MAP: { [k: string]: TypeWithI18N } = {
     'zh-Hans': '免费获取 100 万个 token',
   },
   [ProviderEnumValue.spark]: {
-    'en': 'Earn 6 million tokens for free',
-    'zh-Hans': '免费获取 600 万个 token',
+    'en': 'Earn 3 million tokens (v3.0) for free',
+    'zh-Hans': '免费获取 300 万个 token (v3.0)',
   },
   [ProviderEnumValue.zhipuai]: {
     'en': 'Earn 10 million tokens for free',

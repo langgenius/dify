@@ -1,5 +1,3 @@
-import logging
-
 from core.generator.llm_generator import LLMGenerator
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -10,8 +8,9 @@ def handle(sender, **kwargs):
     message = sender
     conversation = kwargs.get('conversation')
     is_first_message = kwargs.get('is_first_message')
+    auto_generate_name = kwargs.get('auto_generate_name', True)
 
-    if is_first_message:
+    if auto_generate_name and is_first_message:
         if conversation.mode == 'chat':
             app_model = conversation.app
             if not app_model:
@@ -19,14 +18,9 @@ def handle(sender, **kwargs):
 
             # generate conversation name
             try:
-                name = LLMGenerator.generate_conversation_name(app_model.tenant_id, message.query, message.answer)
-
-                if len(name) > 75:
-                    name = name[:75] + '...'
-
+                name = LLMGenerator.generate_conversation_name(app_model.tenant_id, message.query)
                 conversation.name = name
             except:
-                conversation.name = 'New conversation'
+                pass
 
-            db.session.add(conversation)
             db.session.commit()

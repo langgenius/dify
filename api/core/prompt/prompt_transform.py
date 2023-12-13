@@ -8,7 +8,7 @@ from langchain.memory.chat_memory import BaseChatMemory
 from langchain.schema import BaseMessage
 
 from core.model_providers.models.entity.model_params import ModelMode
-from core.model_providers.models.entity.message import PromptMessage, MessageType, to_prompt_messages
+from core.model_providers.models.entity.message import PromptMessage, MessageType, to_prompt_messages, PromptMessageFile
 from core.model_providers.models.llm.base import BaseLLM
 from core.model_providers.models.llm.baichuan_model import BaichuanModel
 from core.model_providers.models.llm.huggingface_hub_model import HuggingfaceHubModel
@@ -16,32 +16,57 @@ from core.model_providers.models.llm.openllm_model import OpenLLMModel
 from core.model_providers.models.llm.xinference_model import XinferenceModel
 from core.prompt.prompt_builder import PromptBuilder
 from core.prompt.prompt_template import PromptTemplateParser
+from models.model import AppModelConfig
+
 
 class AppMode(enum.Enum):
     COMPLETION = 'completion'
     CHAT = 'chat'
 
+
 class PromptTransform:
-    def get_prompt(self, mode: str,
-                   pre_prompt: str, inputs: dict,
+    def get_prompt(self,
+                   app_mode: str,
+                   pre_prompt: str,
+                   inputs: dict,
                    query: str,
+                   files: List[PromptMessageFile],
                    context: Optional[str],
                    memory: Optional[BaseChatMemory],
                    model_instance: BaseLLM) -> \
             Tuple[List[PromptMessage], Optional[List[str]]]:
-        prompt_rules = self._read_prompt_rules_from_file(self._prompt_file_name(mode, model_instance))
-        prompt, stops = self._get_prompt_and_stop(prompt_rules, pre_prompt, inputs, query, context, memory, model_instance)
-        return [PromptMessage(content=prompt)], stops
 
-    def get_advanced_prompt(self, 
-            app_mode: str,
-            app_model_config: str, 
-            inputs: dict,
-            query: str,
-            context: Optional[str],
-            memory: Optional[BaseChatMemory],
-            model_instance: BaseLLM) -> List[PromptMessage]:
-        
+        app_mode_enum = AppMode(app_mode)
+        model_mode_enum = model_instance.model_mode
+
+        prompt_rules = self._read_prompt_rules_from_file(self._prompt_file_name(app_mode, model_instance))
+
+        if app_mode_enum == AppMode.CHAT and model_mode_enum == ModelMode.CHAT:
+            stops = None
+
+            prompt_messages = self._get_simple_chat_app_chat_model_prompt_messages(prompt_rules, pre_prompt, inputs,
+                                                                                   query, context, memory,
+                                                                                   model_instance, files)
+        else:
+            stops = prompt_rules.get('stops')
+            if stops is not None and len(stops) == 0:
+                stops = None
+
+            prompt_messages = self._get_simple_others_prompt_messages(prompt_rules, pre_prompt, inputs, query, context,
+                                                                      memory,
+                                                                      model_instance, files)
+        return prompt_messages, stops
+
+    def get_advanced_prompt(self,
+                            app_mode: str,
+                            app_model_config: AppModelConfig,
+                            inputs: dict,
+                            query: str,
+                            files: List[PromptMessageFile],
+                            context: Optional[str],
+                            memory: Optional[BaseChatMemory],
+                            model_instance: BaseLLM) -> List[PromptMessage]:
+
         model_mode = app_model_config.model_dict['mode']
 
         app_mode_enum = AppMode(app_mode)
@@ -51,15 +76,20 @@ class PromptTransform:
 
         if app_mode_enum == AppMode.CHAT:
             if model_mode_enum == ModelMode.COMPLETION:
-                prompt_messages = self._get_chat_app_completion_model_prompt_messages(app_model_config, inputs, query, context, memory, model_instance)
+                prompt_messages = self._get_chat_app_completion_model_prompt_messages(app_model_config, inputs, query,
+                                                                                      files, context, memory,
+                                                                                      model_instance)
             elif model_mode_enum == ModelMode.CHAT:
-                prompt_messages =  self._get_chat_app_chat_model_prompt_messages(app_model_config, inputs, query, context, memory, model_instance)
+                prompt_messages = self._get_chat_app_chat_model_prompt_messages(app_model_config, inputs, query, files,
+                                                                                context, memory, model_instance)
         elif app_mode_enum == AppMode.COMPLETION:
             if model_mode_enum == ModelMode.CHAT:
-                prompt_messages =  self._get_completion_app_chat_model_prompt_messages(app_model_config, inputs, context)
+                prompt_messages = self._get_completion_app_chat_model_prompt_messages(app_model_config, inputs,
+                                                                                      files, context)
             elif model_mode_enum == ModelMode.COMPLETION:
-                prompt_messages =  self._get_completion_app_completion_model_prompt_messages(app_model_config, inputs, context)
-            
+                prompt_messages = self._get_completion_app_completion_model_prompt_messages(app_model_config, inputs,
+                                                                                            files, context)
+
         return prompt_messages
 
     def _get_history_messages_from_memory(self, memory: BaseChatMemory,
@@ -71,7 +101,7 @@ class PromptTransform:
         return external_context[memory_key]
 
     def _get_history_messages_list_from_memory(self, memory: BaseChatMemory,
-                                          max_token_limit: int) -> List[PromptMessage]:
+                                               max_token_limit: int) -> List[PromptMessage]:
         """Get memory messages."""
         memory.max_token_limit = max_token_limit
         memory.return_messages = True
@@ -79,7 +109,7 @@ class PromptTransform:
         external_context = memory.load_memory_variables({})
         memory.return_messages = False
         return to_prompt_messages(external_context[memory_key])
-    
+
     def _prompt_file_name(self, mode: str, model_instance: BaseLLM) -> str:
         # baichuan
         if isinstance(model_instance, BaichuanModel):
@@ -94,13 +124,13 @@ class PromptTransform:
             return 'common_completion'
         else:
             return 'common_chat'
-        
+
     def _prompt_file_name_for_baichuan(self, mode: str) -> str:
         if mode == 'completion':
             return 'baichuan_completion'
         else:
             return 'baichuan_chat'
-    
+
     def _read_prompt_rules_from_file(self, prompt_name: str) -> dict:
         # Get the absolute path of the subdirectory
         prompt_path = os.path.join(
@@ -111,12 +141,53 @@ class PromptTransform:
         # Open the JSON file and read its content
         with open(json_file_path, 'r') as json_file:
             return json.load(json_file)
-        
-    def _get_prompt_and_stop(self, prompt_rules: dict, pre_prompt: str, inputs: dict,
-                             query: str,
-                             context: Optional[str],
-                             memory: Optional[BaseChatMemory],
-                             model_instance: BaseLLM) -> Tuple[str, Optional[list]]:
+
+    def _get_simple_chat_app_chat_model_prompt_messages(self, prompt_rules: dict, pre_prompt: str, inputs: dict,
+                                                        query: str,
+                                                        context: Optional[str],
+                                                        memory: Optional[BaseChatMemory],
+                                                        model_instance: BaseLLM,
+                                                        files: List[PromptMessageFile]) -> List[PromptMessage]:
+        prompt_messages = []
+
+        context_prompt_content = ''
+        if context and 'context_prompt' in prompt_rules:
+            prompt_template = PromptTemplateParser(template=prompt_rules['context_prompt'])
+            context_prompt_content = prompt_template.format(
+                {'context': context}
+            )
+
+        pre_prompt_content = ''
+        if pre_prompt:
+            prompt_template = PromptTemplateParser(template=pre_prompt)
+            prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
+            pre_prompt_content = prompt_template.format(
+                prompt_inputs
+            )
+
+        prompt = ''
+        for order in prompt_rules['system_prompt_orders']:
+            if order == 'context_prompt':
+                prompt += context_prompt_content
+            elif order == 'pre_prompt':
+                prompt += pre_prompt_content
+
+        prompt = re.sub(r'<\|.*?\|>', '', prompt)
+
+        prompt_messages.append(PromptMessage(type=MessageType.SYSTEM, content=prompt))
+
+        self._append_chat_histories(memory, prompt_messages, model_instance)
+
+        prompt_messages.append(PromptMessage(type=MessageType.USER, content=query, files=files))
+
+        return prompt_messages
+
+    def _get_simple_others_prompt_messages(self, prompt_rules: dict, pre_prompt: str, inputs: dict,
+                                           query: str,
+                                           context: Optional[str],
+                                           memory: Optional[BaseChatMemory],
+                                           model_instance: BaseLLM,
+                                           files: List[PromptMessageFile]) -> List[PromptMessage]:
         context_prompt_content = ''
         if context and 'context_prompt' in prompt_rules:
             prompt_template = PromptTemplateParser(template=prompt_rules['context_prompt'])
@@ -175,16 +246,12 @@ class PromptTransform:
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
 
-        stops = prompt_rules.get('stops')
-        if stops is not None and len(stops) == 0:
-            stops = None
+        return [PromptMessage(content=prompt, files=files)]
 
-        return prompt, stops
-    
     def _set_context_variable(self, context: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> None:
         if '#context#' in prompt_template.variable_keys:
             if context:
-                prompt_inputs['#context#'] = context    
+                prompt_inputs['#context#'] = context
             else:
                 prompt_inputs['#context#'] = ''
 
@@ -195,17 +262,18 @@ class PromptTransform:
             else:
                 prompt_inputs['#query#'] = ''
 
-    def _set_histories_variable(self, memory: BaseChatMemory, raw_prompt: str, conversation_histories_role: dict, 
-                                prompt_template: PromptTemplateParser, prompt_inputs: dict, model_instance: BaseLLM) -> None:
+    def _set_histories_variable(self, memory: BaseChatMemory, raw_prompt: str, conversation_histories_role: dict,
+                                prompt_template: PromptTemplateParser, prompt_inputs: dict,
+                                model_instance: BaseLLM) -> None:
         if '#histories#' in prompt_template.variable_keys:
             if memory:
                 tmp_human_message = PromptBuilder.to_human_message(
                     prompt_content=raw_prompt,
-                    inputs={ '#histories#': '', **prompt_inputs }
+                    inputs={'#histories#': '', **prompt_inputs}
                 )
 
                 rest_tokens = self._calculate_rest_token(tmp_human_message, model_instance)
-                
+
                 memory.human_prefix = conversation_histories_role['user_prefix']
                 memory.ai_prefix = conversation_histories_role['assistant_prefix']
                 histories = self._get_history_messages_from_memory(memory, rest_tokens)
@@ -213,7 +281,8 @@ class PromptTransform:
             else:
                 prompt_inputs['#histories#'] = ''
 
-    def _append_chat_histories(self, memory: BaseChatMemory, prompt_messages: list[PromptMessage], model_instance: BaseLLM) -> None:
+    def _append_chat_histories(self, memory: BaseChatMemory, prompt_messages: list[PromptMessage],
+                               model_instance: BaseLLM) -> None:
         if memory:
             rest_tokens = self._calculate_rest_token(prompt_messages, model_instance)
 
@@ -242,19 +311,19 @@ class PromptTransform:
         return prompt
 
     def _get_chat_app_completion_model_prompt_messages(self,
-            app_model_config: str,
-            inputs: dict,
-            query: str,
-            context: Optional[str],
-            memory: Optional[BaseChatMemory],
-            model_instance: BaseLLM) -> List[PromptMessage]:
-        
+                                                       app_model_config: AppModelConfig,
+                                                       inputs: dict,
+                                                       query: str,
+                                                       files: List[PromptMessageFile],
+                                                       context: Optional[str],
+                                                       memory: Optional[BaseChatMemory],
+                                                       model_instance: BaseLLM) -> List[PromptMessage]:
+
         raw_prompt = app_model_config.completion_prompt_config_dict['prompt']['text']
         conversation_histories_role = app_model_config.completion_prompt_config_dict['conversation_histories_role']
 
         prompt_messages = []
-        prompt = ''
-        
+
         prompt_template = PromptTemplateParser(template=raw_prompt)
         prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
@@ -262,28 +331,29 @@ class PromptTransform:
 
         self._set_query_variable(query, prompt_template, prompt_inputs)
 
-        self._set_histories_variable(memory, raw_prompt, conversation_histories_role, prompt_template, prompt_inputs, model_instance)
+        self._set_histories_variable(memory, raw_prompt, conversation_histories_role, prompt_template, prompt_inputs,
+                                     model_instance)
 
         prompt = self._format_prompt(prompt_template, prompt_inputs)
 
-        prompt_messages.append(PromptMessage(type = MessageType(MessageType.USER) ,content=prompt))
+        prompt_messages.append(PromptMessage(type=MessageType.USER, content=prompt, files=files))
 
         return prompt_messages
 
     def _get_chat_app_chat_model_prompt_messages(self,
-            app_model_config: str,
-            inputs: dict,
-            query: str,
-            context: Optional[str],
-            memory: Optional[BaseChatMemory],
-            model_instance: BaseLLM) -> List[PromptMessage]:
+                                                 app_model_config: AppModelConfig,
+                                                 inputs: dict,
+                                                 query: str,
+                                                 files: List[PromptMessageFile],
+                                                 context: Optional[str],
+                                                 memory: Optional[BaseChatMemory],
+                                                 model_instance: BaseLLM) -> List[PromptMessage]:
         raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
 
         prompt_messages = []
 
         for prompt_item in raw_prompt_list:
             raw_prompt = prompt_item['text']
-            prompt = ''
 
             prompt_template = PromptTemplateParser(template=raw_prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
@@ -292,23 +362,23 @@ class PromptTransform:
 
             prompt = self._format_prompt(prompt_template, prompt_inputs)
 
-            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
-        
+            prompt_messages.append(PromptMessage(type=MessageType(prompt_item['role']), content=prompt))
+
         self._append_chat_histories(memory, prompt_messages, model_instance)
 
-        prompt_messages.append(PromptMessage(type = MessageType.USER ,content=query))
+        prompt_messages.append(PromptMessage(type=MessageType.USER, content=query, files=files))
 
         return prompt_messages
 
     def _get_completion_app_completion_model_prompt_messages(self,
-                   app_model_config: str,
-                   inputs: dict,
-                   context: Optional[str]) -> List[PromptMessage]:
+                                                             app_model_config: AppModelConfig,
+                                                             inputs: dict,
+                                                             files: List[PromptMessageFile],
+                                                             context: Optional[str]) -> List[PromptMessage]:
         raw_prompt = app_model_config.completion_prompt_config_dict['prompt']['text']
 
         prompt_messages = []
-        prompt = ''
-        
+
         prompt_template = PromptTemplateParser(template=raw_prompt)
         prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
 
@@ -316,21 +386,21 @@ class PromptTransform:
 
         prompt = self._format_prompt(prompt_template, prompt_inputs)
 
-        prompt_messages.append(PromptMessage(type = MessageType(MessageType.USER) ,content=prompt))
+        prompt_messages.append(PromptMessage(type=MessageType(MessageType.USER), content=prompt, files=files))
 
         return prompt_messages
 
     def _get_completion_app_chat_model_prompt_messages(self,
-                   app_model_config: str,
-                   inputs: dict,
-                   context: Optional[str]) -> List[PromptMessage]:
+                                                       app_model_config: AppModelConfig,
+                                                       inputs: dict,
+                                                       files: List[PromptMessageFile],
+                                                       context: Optional[str]) -> List[PromptMessage]:
         raw_prompt_list = app_model_config.chat_prompt_config_dict['prompt']
 
         prompt_messages = []
 
         for prompt_item in raw_prompt_list:
             raw_prompt = prompt_item['text']
-            prompt = ''
 
             prompt_template = PromptTemplateParser(template=raw_prompt)
             prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
@@ -339,6 +409,11 @@ class PromptTransform:
 
             prompt = self._format_prompt(prompt_template, prompt_inputs)
 
-            prompt_messages.append(PromptMessage(type = MessageType(prompt_item['role']) ,content=prompt))
-        
+            prompt_messages.append(PromptMessage(type=MessageType(prompt_item['role']), content=prompt))
+
+        for prompt_message in prompt_messages[::-1]:
+            if prompt_message.type == MessageType.USER:
+                prompt_message.files = files
+                break
+
         return prompt_messages

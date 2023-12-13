@@ -1,7 +1,7 @@
 from typing import Dict
 
-from httpx import Limits
 from langchain.chat_models import ChatAnthropic
+from langchain.schema import ChatMessage, BaseMessage, HumanMessage, AIMessage, SystemMessage
 from langchain.utils import get_from_dict_or_env, check_package_version
 from pydantic import root_validator
 
@@ -29,8 +29,7 @@ class AnthropicLLM(ChatAnthropic):
                 base_url=values["anthropic_api_url"],
                 api_key=values["anthropic_api_key"],
                 timeout=values["default_request_timeout"],
-                max_retries=0,
-                connection_pool_limits=Limits(max_connections=200, max_keepalive_connections=100),
+                max_retries=0
             )
             values["async_client"] = anthropic.AsyncAnthropic(
                 base_url=values["anthropic_api_url"],
@@ -46,3 +45,16 @@ class AnthropicLLM(ChatAnthropic):
                 "Please it install it with `pip install anthropic`."
             )
         return values
+
+    def _convert_one_message_to_text(self, message: BaseMessage) -> str:
+        if isinstance(message, ChatMessage):
+            message_text = f"\n\n{message.role.capitalize()}: {message.content}"
+        elif isinstance(message, HumanMessage):
+            message_text = f"{self.HUMAN_PROMPT} {message.content}"
+        elif isinstance(message, AIMessage):
+            message_text = f"{self.AI_PROMPT} {message.content}"
+        elif isinstance(message, SystemMessage):
+            message_text = f"{message.content}"
+        else:
+            raise ValueError(f"Got unknown type {message}")
+        return message_text

@@ -100,7 +100,11 @@ const Popup: FC<PopupProps> = ({
                             data={source.index_node_hash.substring(0, 7)}
                             icon={<BezierCurve03 className='mr-1 w-3 h-3' />}
                           />
-                          <ProgressTooltip data={Number(source.score.toFixed(2))} />
+                          {
+                            source.score && (
+                              <ProgressTooltip data={Number(source.score.toFixed(2))} />
+                            )
+                          }
                         </div>
                       )
                     }

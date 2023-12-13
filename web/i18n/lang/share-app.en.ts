@@ -9,6 +9,7 @@ const translation = {
     pinnedTitle: 'Pinned',
     unpinnedTitle: 'Chats',
     newChatDefaultName: 'New conversation',
+    resetChat: 'Reset conversation',
     powerBy: 'Powered by',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Conversation settings',

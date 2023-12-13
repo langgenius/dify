@@ -135,21 +135,6 @@ class TenantPreferredModelProvider(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
-class ProviderOrderPaymentStatus(Enum):
-    WAIT_PAY = 'wait_pay'
-    PAID = 'paid'
-    PAY_FAILED = 'pay_failed'
-    REFUNDED = 'refunded'
-
-    @staticmethod
-    def value_of(value):
-        for member in ProviderOrderPaymentStatus:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
-
-
-
 class ProviderOrder(db.Model):
     __tablename__ = 'provider_orders'
     __table_args__ = (

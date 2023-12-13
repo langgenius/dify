@@ -9,8 +9,8 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_providers.error import LLMBadRequestError
 from core.model_providers.providers.base import CredentialsValidateFailedError
-from services.provider_checkout_service import ProviderCheckoutService
 from services.provider_service import ProviderService
+from services.billing_service import BillingService
 
 
 class ModelProviderListApi(Resource):
@@ -21,8 +21,12 @@ class ModelProviderListApi(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
 
+        parser = reqparse.RequestParser()
+        parser.add_argument('model_type', type=str, required=False, nullable=True, location='args')
+        args = parser.parse_args()
+
         provider_service = ProviderService()
-        provider_list = provider_service.get_provider_list(tenant_id)
+        provider_list = provider_service.get_provider_list(tenant_id=tenant_id, model_type=args.get('model_type'))
 
         return provider_list
 
@@ -111,7 +115,7 @@ class ModelProviderModelValidateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='json')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='json')
         parser.add_argument('config', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
@@ -151,7 +155,7 @@ class ModelProviderModelUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='json')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='json')
         parser.add_argument('config', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
@@ -180,7 +184,7 @@ class ModelProviderModelUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('model_name', type=str, required=True, nullable=False, location='args')
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text'], location='args')
+                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='args')
         args = parser.parse_args()
 
         provider_service = ProviderService()
@@ -260,16 +264,13 @@ class ModelProviderPaymentCheckoutUrlApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider_name: str):
-        provider_service = ProviderCheckoutService()
-        provider_checkout = provider_service.create_checkout(
-            tenant_id=current_user.current_tenant_id,
-            provider_name=provider_name,
-            account=current_user
-        )
+        if provider_name != 'anthropic':
+            raise ValueError(f'provider name {provider_name} is invalid')
 
-        return {
-            'url': provider_checkout.get_checkout_url()
-        }
+        data = BillingService.get_model_provider_payment_link(provider_name=provider_name,
+                                                              tenant_id=current_user.current_tenant_id,
+                                                              account_id=current_user.id)
+        return data
 
 
 class ModelProviderFreeQuotaSubmitApi(Resource):

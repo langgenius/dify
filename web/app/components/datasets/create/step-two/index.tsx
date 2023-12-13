@@ -4,9 +4,11 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
+import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import cn from 'classnames'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
+import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -19,7 +21,11 @@ import {
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-
+import FloatRightContainer from '@/app/components/base/float-right-container'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import { type RetrievalConfig } from '@/types/app'
+import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
@@ -31,6 +37,10 @@ import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { useProviderContext } from '@/context/provider-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -78,7 +88,10 @@ const StepTwo = ({
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
 
-  const { mutateDatasetRes } = useDatasetDetailContext()
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
+  const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const scrollRef = useRef<HTMLDivElement>(null)
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
@@ -254,7 +267,11 @@ const StepTwo = ({
       }
     }
   }
-
+  const {
+    rerankDefaultModel,
+    isRerankDefaultModelVaild,
+    rerankModelList,
+  } = useProviderContext()
   const getCreationParams = () => {
     let params
     if (isSetting) {
@@ -263,9 +280,31 @@ const StepTwo = ({
         doc_form: docForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
       } as CreateDocumentReq
     }
-    else {
+    else { // create
+      const indexMethod = getIndexing_technique()
+      if (
+        !isReRankModelSelected({
+          rerankDefaultModel,
+          isRerankDefaultModelVaild,
+          rerankModelList,
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          retrievalConfig,
+          indexMethod: indexMethod as string,
+        })
+      ) {
+        Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+        return
+      }
+      const postRetrievalConfig = ensureRerankModelSelected({
+        rerankDefaultModel: rerankDefaultModel!,
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        retrievalConfig,
+        indexMethod: indexMethod as string,
+      })
       params = {
         data_source: {
           type: dataSourceType,
@@ -277,6 +316,8 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         doc_form: docForm,
         doc_language: docLanguage,
+
+        retrieval_model: postRetrievalConfig,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -327,10 +368,13 @@ const StepTwo = ({
     try {
       let res
       const params = getCreationParams()
+      if (!params)
+        return false
+
       setIsCreating(true)
       if (!datasetId) {
         res = await createFirstDocument({
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -338,7 +382,7 @@ const StepTwo = ({
       else {
         res = await createDocument({
           datasetId,
-          body: params,
+          body: params as CreateDocumentReq,
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
@@ -430,7 +474,7 @@ const StepTwo = ({
   useEffect(() => {
     if (segmentationType === SegmentType.AUTO) {
       setAutomaticFileIndexingEstimate(null)
-      setShowPreview()
+      !isMobile && setShowPreview()
       fetchFileIndexingEstimate()
       setPreviewSwitched(false)
     }
@@ -441,11 +485,38 @@ const StepTwo = ({
     }
   }, [segmentationType, indexType])
 
+  const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
+    search_method: RETRIEVE_METHOD.semantic,
+    reranking_enable: false,
+    reranking_model: {
+      reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
+      reranking_model_name: rerankDefaultModel?.model_name,
+    },
+    top_k: 3,
+    score_threshold_enabled: false,
+    score_threshold: 0.5,
+  } as RetrievalConfig)
+
   return (
     <div className='flex w-full h-full'>
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
-        <div className={cn(s.pageHeader, scrolled && s.fixed)}>{t('datasetCreation.steps.two')}</div>
-        <div className={cn(s.form)}>
+        <div className={cn(s.pageHeader, scrolled && s.fixed, isMobile && '!px-6')}>
+          <span>{t('datasetCreation.steps.two')}</span>
+          {isMobile && (
+            <Button
+              className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
+              onClick={setShowPreview}
+            >
+              <Tooltip selector='data-preview-toggle'>
+                <div className="flex flex-row items-center">
+                  <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
+                  <span className="text-[13px]">{t('datasetCreation.stepTwo.previewTitleButton')}</span>
+                </div>
+              </Tooltip>
+            </Button>
+          )}
+        </div>
+        <div className={cn(s.form, isMobile && '!px-4')}>
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>
           <div className='max-w-[640px]'>
             <div
@@ -505,7 +576,7 @@ const StepTwo = ({
                     </div>
                   </div>
                   <div className={s.formRow}>
-                    <div className='w-full'>
+                    <div className='w-full flex flex-col gap-1'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.rules')}</div>
                       {rules.map(rule => (
                         <div key={rule.id} className={s.ruleItem}>
@@ -525,7 +596,7 @@ const StepTwo = ({
           </div>
           <div className={s.label}>{t('datasetCreation.stepTwo.indexMode')}</div>
           <div className='max-w-[640px]'>
-            <div className='flex items-center gap-3'>
+            <div className='flex items-center gap-3 flex-wrap sm:flex-nowrap'>
               {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
                 <div
                   className={cn(
@@ -626,6 +697,56 @@ const StepTwo = ({
                 )}
               </div>
             )}
+            {/* Retrieval Method Config */}
+            <div>
+              {!datasetId
+                ? (
+                  <div className={s.label}>
+                    {t('datasetSettings.form.retrievalSetting.title')}
+                    <div className='leading-[18px] text-xs font-normal text-gray-500'>
+                      <a target='_blank' href='https://docs.dify.ai/advanced/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      {t('datasetSettings.form.retrievalSetting.longDescription')}
+                    </div>
+                  </div>
+                )
+                : (
+                  <div className={cn(s.label, 'flex justify-between items-center')}>
+                    <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  </div>
+                )}
+
+              <div className='max-w-[640px]'>
+                {!datasetId
+                  ? (<>
+                    {getIndexing_technique() === IndexingType.QUALIFIED
+                      ? (
+                        <RetrievalMethodConfig
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
+                        />
+                      )
+                      : (
+                        <EconomicalRetrievalMethodConfig
+                          value={retrievalConfig}
+                          onChange={setRetrievalConfig}
+                        />
+                      )}
+                  </>)
+                  : (
+                    <div>
+                      <RetrievalMethodInfo
+                        value={retrievalConfig}
+                      />
+                      <div className='mt-2 text-xs text-gray-500 font-medium'>
+                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
+                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                      </div>
+                    </div>
+                  )}
+
+              </div>
+            </div>
+
             <div className={s.source}>
               <div className={s.sourceContent}>
                 {dataSourceType === DataSourceType.FILE && (
@@ -698,68 +819,69 @@ const StepTwo = ({
           </div>
         </div>
       </div>
-      {(showPreview)
-        ? (
-          <div ref={previewScrollRef} className={cn(s.previewWrap, 'relativeh-full overflow-y-scroll border-l border-[#F2F4F7]')}>
-            <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
-              <div className='flex items-center justify-between px-8'>
-                <div className='grow flex items-center'>
-                  <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
-                  {docForm === DocForm.QA && !previewSwitched && (
-                    <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
-                  )}
-                </div>
-                <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
-                  <XMarkIcon className='h-4 w-4'></XMarkIcon>
-                </div>
+      <FloatRightContainer isMobile={isMobile} isOpen={showPreview} onClose={hidePreview} footer={null}>
+        {showPreview && <div ref={previewScrollRef} className={cn(s.previewWrap, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}>
+          <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
+            <div className='flex items-center justify-between px-8'>
+              <div className='grow flex items-center'>
+                <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
+                {docForm === DocForm.QA && !previewSwitched && (
+                  <Button className='ml-2 !h-[26px] !py-[3px] !px-2 !text-xs !font-medium !text-primary-600' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                )}
               </div>
-              {docForm === DocForm.QA && !previewSwitched && (
-                <div className='px-8 pr-12 text-xs text-gray-500'>
-                  <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
-                  <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
-                </div>
-              )}
+              <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
+                <XMarkIcon className='h-4 w-4'></XMarkIcon>
+              </div>
             </div>
-            <div className='my-4 px-8 space-y-4'>
-              {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
-                <>
-                  {fileIndexingEstimate?.qa_preview.map((item, index) => (
-                    <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
-                  ))}
-                </>
-              )}
-              {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
-                <>
-                  {fileIndexingEstimate?.preview.map((item, index) => (
-                    <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
-                  ))}
-                </>
-              )}
-              {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
-                <div className='flex items-center justify-center h-[200px]'>
-                  <Loading type='area' />
-                </div>
-              )}
-              {!previewSwitched && !fileIndexingEstimate?.preview && (
-                <div className='flex items-center justify-center h-[200px]'>
-                  <Loading type='area' />
-                </div>
-              )}
+            {docForm === DocForm.QA && !previewSwitched && (
+              <div className='px-8 pr-12 text-xs text-gray-500'>
+                <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
+                <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
+              </div>
+            )}
+          </div>
+          <div className='my-4 px-8 space-y-4'>
+            {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
+              <>
+                {fileIndexingEstimate?.qa_preview.map((item, index) => (
+                  <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
+                ))}
+              </>
+            )}
+            {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
+              <>
+                {fileIndexingEstimate?.preview.map((item, index) => (
+                  <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
+                ))}
+              </>
+            )}
+            {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
+              <div className='flex items-center justify-center h-[200px]'>
+                <Loading type='area' />
+              </div>
+            )}
+            {!previewSwitched && !fileIndexingEstimate?.preview && (
+              <div className='flex items-center justify-center h-[200px]'>
+                <Loading type='area' />
+              </div>
+            )}
+          </div>
+        </div>}
+        {!showPreview && (
+          <div className={cn(s.sideTip)}>
+            <div className={s.tipCard}>
+              <span className={s.icon} />
+              <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
+              <div className={s.content}>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
+                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
+                <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
+              </div>
             </div>
           </div>
-        )
-        : (<div className={cn(s.sideTip)}>
-          <div className={s.tipCard}>
-            <span className={s.icon} />
-            <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
-            <div className={s.content}>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
-              <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
-              <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
-            </div>
-          </div>
-        </div>)}
+        )}
+      </FloatRightContainer>
     </div>
   )
 }

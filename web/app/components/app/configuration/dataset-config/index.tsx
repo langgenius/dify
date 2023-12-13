@@ -81,7 +81,7 @@ const DatasetConfig: FC = () => {
     >
       {hasData
         ? (
-          <div className='flex flex-wrap mt-1 px-3 justify-between'>
+          <div className='flex flex-wrap mt-1 px-3 pb-3 justify-between'>
             {dataSet.map(item => (
               <CardItem
                 key={item.id}
@@ -105,7 +105,6 @@ const DatasetConfig: FC = () => {
           onChange={handleSelectContextVar}
         />
       )}
-
     </FeaturePanel>
   )
 }

@@ -1,4 +1,4 @@
-from langchain.vectorstores import Weaviate
+from core.vector_store.vector.weaviate import Weaviate
 
 
 class WeaviateVectorStore(Weaviate):

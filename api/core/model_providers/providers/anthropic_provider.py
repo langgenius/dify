@@ -32,9 +32,12 @@ class AnthropicProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'claude-instant-1',
-                    'name': 'claude-instant-1',
+                    'id': 'claude-2.1',
+                    'name': 'claude-2.1',
                     'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'claude-2',
@@ -43,6 +46,11 @@ class AnthropicProvider(BaseModelProvider):
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
+                },
+                {
+                    'id': 'claude-instant-1',
+                    'name': 'claude-instant-1',
+                    'mode': ModelMode.CHAT.value,
                 },
             ]
         else:
@@ -73,12 +81,18 @@ class AnthropicProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
+        model_max_tokens = {
+            'claude-instant-1': 100000,
+            'claude-2': 100000,
+            'claude-2.1': 200000,
+        }
+
         return ModelKwargsRules(
             temperature=KwargRule[float](min=0, max=1, default=1, precision=2),
             top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=100000, default=256, precision=0),
+            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=model_max_tokens.get(model_name, 100000), default=256, precision=0),
         )
 
     @classmethod
@@ -176,23 +190,6 @@ class AnthropicProvider(BaseModelProvider):
             return True
 
         return False
-
-    def get_payment_info(self) -> Optional[dict]:
-        """
-        get product info if it payable.
-
-        :return:
-        """
-        if hosted_model_providers.anthropic \
-                and hosted_model_providers.anthropic.paid_enabled:
-            return {
-                'product_id': hosted_model_providers.anthropic.paid_stripe_price_id,
-                'increase_quota': hosted_model_providers.anthropic.paid_increase_quota,
-                'min_quantity': hosted_model_providers.anthropic.paid_min_quantity,
-                'max_quantity': hosted_model_providers.anthropic.paid_max_quantity,
-            }
-
-        return None
 
     @classmethod
     def is_model_credentials_valid_or_raise(cls, model_name: str, model_type: ModelType, credentials: dict):

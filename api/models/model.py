@@ -1,10 +1,10 @@
 import json
-from json import JSONDecodeError
 
 from flask import current_app, request
 from flask_login import UserMixin
 from sqlalchemy.dialects.postgresql import UUID
 
+from core.file.upload_file_parser import UploadFileParser
 from libs.helper import generate_string
 from extensions.ext_database import db
 from .account import Account, Tenant
@@ -98,6 +98,7 @@ class AppModelConfig(db.Model):
     completion_prompt_config = db.Column(db.Text)
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
+    file_upload = db.Column(db.Text)
 
     @property
     def app(self):
@@ -159,7 +160,17 @@ class AppModelConfig(db.Model):
 
     @property
     def dataset_configs_dict(self) -> dict:
-        return json.loads(self.dataset_configs) if self.dataset_configs else {"top_k": 2, "score_threshold": {"enable": False}}
+        if self.dataset_configs:
+            dataset_configs = json.loads(self.dataset_configs)
+            if 'retrieval_model' not in dataset_configs:
+                return {'retrieval_model': 'single'}
+            else:
+                return dataset_configs
+        return {'retrieval_model': 'single'}
+
+    @property
+    def file_upload_dict(self) -> dict:
+        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False, "number_limits": 3, "detail": "high", "transfer_methods": ["remote_url", "local_file"]}}
 
     def to_dict(self) -> dict:
         return {
@@ -182,7 +193,8 @@ class AppModelConfig(db.Model):
             "prompt_type": self.prompt_type,
             "chat_prompt_config": self.chat_prompt_config_dict,
             "completion_prompt_config": self.completion_prompt_config_dict,
-            "dataset_configs": self.dataset_configs_dict
+            "dataset_configs": self.dataset_configs_dict,
+            "file_upload": self.file_upload_dict
         }
 
     def from_model_config_dict(self, model_config: dict):
@@ -213,6 +225,8 @@ class AppModelConfig(db.Model):
             if model_config.get('completion_prompt_config') else None
         self.dataset_configs = json.dumps(model_config.get('dataset_configs')) \
             if model_config.get('dataset_configs') else None
+        self.file_upload = json.dumps(model_config.get('file_upload')) \
+            if model_config.get('file_upload') else None
         return self
 
     def copy(self):
@@ -238,7 +252,8 @@ class AppModelConfig(db.Model):
             prompt_type=self.prompt_type,
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
-            dataset_configs=self.dataset_configs
+            dataset_configs=self.dataset_configs,
+            file_upload=self.file_upload
         )
 
         return new_app_model_config
@@ -512,6 +527,37 @@ class Message(db.Model):
         return db.session.query(DatasetRetrieverResource).filter(DatasetRetrieverResource.message_id == self.id) \
             .order_by(DatasetRetrieverResource.position.asc()).all()
 
+    @property
+    def message_files(self):
+        return db.session.query(MessageFile).filter(MessageFile.message_id == self.id).all()
+
+    @property
+    def files(self):
+        message_files = self.message_files
+
+        files = []
+        for message_file in message_files:
+            url = message_file.url
+            if message_file.type == 'image':
+                if message_file.transfer_method == 'local_file':
+                    upload_file = (db.session.query(UploadFile)
+                                   .filter(
+                        UploadFile.id == message_file.upload_file_id
+                    ).first())
+
+                    url = UploadFileParser.get_image_data(
+                        upload_file=upload_file,
+                        force_url=True
+                    )
+
+            files.append({
+                'id': message_file.id,
+                'type': message_file.type,
+                'url': url
+            })
+
+        return files
+
 
 class MessageFeedback(db.Model):
     __tablename__ = 'message_feedbacks'
@@ -538,6 +584,25 @@ class MessageFeedback(db.Model):
     def from_account(self):
         account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
         return account
+
+
+class MessageFile(db.Model):
+    __tablename__ = 'message_files'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='message_file_pkey'),
+        db.Index('message_file_message_idx', 'message_id'),
+        db.Index('message_file_created_by_idx', 'created_by')
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    message_id = db.Column(UUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    transfer_method = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.Text, nullable=True)
+    upload_file_id = db.Column(UUID, nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
 class MessageAnnotation(db.Model):
@@ -683,6 +748,7 @@ class UploadFile(db.Model):
     size = db.Column(db.Integer, nullable=False)
     extension = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(255), nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'account'::character varying"))
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     used = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
@@ -783,4 +849,3 @@ class DatasetRetrieverResource(db.Model):
     retriever_from = db.Column(db.Text, nullable=False)
     created_by = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
-

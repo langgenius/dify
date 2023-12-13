@@ -35,6 +35,25 @@ export const useAnthropicCheckPay = () => {
   return confirm
 }
 
+export const useBillingPay = () => {
+  const { t } = useTranslation()
+  const [confirm, setConfirm] = useState<ConfirmType | null>(null)
+  const searchParams = useSearchParams()
+  const paymentType = searchParams.get('payment_type')
+  const paymentResult = searchParams.get('payment_result')
+
+  useEffect(() => {
+    if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
+      setConfirm({
+        type: paymentResult === 'succeeded' ? 'success' : 'danger',
+        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
+      })
+    }
+  }, [paymentType, paymentResult, t])
+
+  return confirm
+}
+
 const QUOTA_RECEIVE_STATUS = {
   [ProviderEnum.spark]: {
     success: {
@@ -138,13 +157,14 @@ export const CheckModal = () => {
   const anthropicConfirmInfo = useAnthropicCheckPay()
   const freeQuotaConfirmInfo = useCheckFreeQuota()
   const notionConfirmInfo = useCheckNotion()
+  const billingConfirmInfo = useBillingPay()
 
   const handleCancelShowPayStatusModal = useCallback(() => {
     setShowPayStatusModal(false)
     router.replace('/', { forceOptimisticNavigation: false })
   }, [router])
 
-  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo || notionConfirmInfo
+  const confirmInfo = anthropicConfirmInfo || freeQuotaConfirmInfo || notionConfirmInfo || billingConfirmInfo
 
   if (!confirmInfo || !showPayStatusModal)
     return null

@@ -18,8 +18,6 @@ type IFileUploaderProps = {
   onFileUpdate: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
-  countLimit: number
-  countUsed: number
 }
 
 const ACCEPTS = [
@@ -41,8 +39,6 @@ const FileUploader = ({
   onFileUpdate,
   onFileListUpdate,
   onPreview,
-  countLimit,
-  countUsed,
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -149,10 +145,7 @@ const FileUploader = ({
   const initialUpload = useCallback((files: File[]) => {
     if (!files.length)
       return false
-    if (files.length > countLimit - countUsed) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.overCountLimit', { countLimit }) })
-      return false
-    }
+
     const preparedFiles = files.map((file, index) => ({
       fileID: `file${index}-${Date.now()}`,
       file,
@@ -234,10 +227,12 @@ const FileUploader = ({
       />
       <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
-        <div className='flex justify-center items-center h-6 mb-2'>
+        <div className='flex justify-center items-center min-h-6 mb-2'>
           <span className={s.uploadIcon}/>
-          <span>{t('datasetCreation.stepOne.uploader.button')}</span>
-          <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+          <span>
+            {t('datasetCreation.stepOne.uploader.button')}
+            <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+          </span>
         </div>
         <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', { size: fileUploadConfig.file_size_limit })}</div>
         {dragging && <div ref={dragRef} className={s.draggingCover}/>}

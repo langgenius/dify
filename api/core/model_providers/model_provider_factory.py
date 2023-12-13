@@ -72,6 +72,12 @@ class ModelProviderFactory:
         elif provider_name == 'localai':
             from core.model_providers.providers.localai_provider import LocalAIProvider
             return LocalAIProvider
+        elif provider_name == 'cohere':
+            from core.model_providers.providers.cohere_provider import CohereProvider
+            return CohereProvider
+        elif provider_name == 'jina':
+            from core.model_providers.providers.jina_provider import JinaProvider
+            return JinaProvider
         else:
             raise NotImplementedError
 

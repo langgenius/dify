@@ -26,6 +26,8 @@ import SavedItems from '@/app/components/app/text-generate/saved-items'
 import type { InstalledApp } from '@/models/explore'
 import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -92,6 +94,14 @@ const TextGeneration: FC<IMainProps> = ({
   // send message task
   const [controlSend, setControlSend] = useState(0)
   const [controlStopResponding, setControlStopResponding] = useState(0)
+  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
+    enabled: false,
+    number_limits: 2,
+    detail: Resolution.low,
+    transfer_methods: [TransferMethod.local_file],
+  })
+  const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
+
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
@@ -338,7 +348,11 @@ const TextGeneration: FC<IMainProps> = ({
       setSiteInfo(siteInfo as SiteInfo)
       changeLanguage(siteInfo.default_language)
 
-      const { user_input_form, more_like_this, sensitive_word_avoidance }: any = appParams
+      const { user_input_form, more_like_this, file_upload, sensitive_word_avoidance }: any = appParams
+      setVisionConfig({
+        ...file_upload.image,
+        image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+      })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
         prompt_template: '', // placeholder for feture
@@ -378,6 +392,8 @@ const TextGeneration: FC<IMainProps> = ({
     handleSaveMessage={handleSaveMessage}
     taskId={task?.id}
     onCompleted={handleCompleted}
+    visionConfig={visionConfig}
+    completionFiles={completionFiles}
   />)
 
   const renderBatchRes = () => {
@@ -512,6 +528,8 @@ const TextGeneration: FC<IMainProps> = ({
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}
+                visionConfig={visionConfig}
+                onVisionFilesChange={setCompletionFiles}
               />
             </div>
             <div className={cn(isInBatchTab ? 'block' : 'hidden')}>

@@ -2,6 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import cn from 'classnames'
+import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
+import { GoldCoin as GoldCoinOutLine } from '../../base/icons/src/vender/line/financeAndECommerce'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
@@ -11,6 +13,7 @@ import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelPage from './model-page'
 import s from './index.module.css'
+import BillingPage from '@/app/components/billing/billing-page'
 import Modal from '@/app/components/base/modal'
 import {
   Database03,
@@ -23,6 +26,8 @@ import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useProviderContext } from '@/context/provider-context'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -36,48 +41,72 @@ type IAccountSettingProps = {
   onCancel: () => void
   activeTab?: string
 }
+
+type GroupItem = {
+  key: string
+  name: string
+  icon: JSX.Element
+  activeIcon: JSX.Element
+}
+
 export default function AccountSetting({
   onCancel,
   activeTab = 'account',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
+  const { enableBilling } = useProviderContext()
+
+  const workplaceGroupItems = (() => {
+    return [
+      {
+        key: 'provider',
+        name: t('common.settings.provider'),
+        icon: <CubeOutline className={iconClassName} />,
+        activeIcon: <CubeOutline className={iconClassName} />,
+      },
+      {
+        key: 'members',
+        name: t('common.settings.members'),
+        icon: <Users01 className={iconClassName} />,
+        activeIcon: <Users01Solid className={iconClassName} />,
+      },
+      {
+        // Use key false to hide this item
+        key: enableBilling ? 'billing' : false,
+        name: t('common.settings.billing'),
+        icon: <GoldCoinOutLine className={iconClassName} />,
+        activeIcon: <GoldCoin className={iconClassName} />,
+      },
+      {
+        key: 'data-source',
+        name: t('common.settings.dataSource'),
+        icon: <Database03 className={iconClassName} />,
+        activeIcon: <Database03Solid className={iconClassName} />,
+      },
+      {
+        key: 'plugin',
+        name: t('common.settings.plugin'),
+        icon: <PuzzlePiece01 className={iconClassName} />,
+        activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
+      },
+      {
+        key: 'api-based-extension',
+        name: t('common.settings.apiBasedExtension'),
+        icon: <Webhooks className={iconClassName} />,
+        activeIcon: <Webhooks className={iconClassName} />,
+      },
+    ].filter(item => !!item.key) as GroupItem[]
+  })()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const menuItems = [
     {
       key: 'workspace-group',
       name: t('common.settings.workplaceGroup'),
-      items: [
-        {
-          key: 'members',
-          name: t('common.settings.members'),
-          icon: <Users01 className={iconClassName} />,
-          activeIcon: <Users01Solid className={iconClassName} />,
-        },
-        {
-          key: 'provider',
-          name: t('common.settings.provider'),
-          icon: <CubeOutline className={iconClassName} />,
-          activeIcon: <CubeOutline className={iconClassName} />,
-        },
-        {
-          key: 'data-source',
-          name: t('common.settings.dataSource'),
-          icon: <Database03 className={iconClassName} />,
-          activeIcon: <Database03Solid className={iconClassName} />,
-        },
-        {
-          key: 'plugin',
-          name: t('common.settings.plugin'),
-          icon: <PuzzlePiece01 className={iconClassName} />,
-          activeIcon: <PuzzlePiece01Solid className={iconClassName} />,
-        },
-        {
-          key: 'api-based-extension',
-          name: t('common.settings.apiBasedExtension'),
-          icon: <Webhooks className={iconClassName} />,
-          activeIcon: <Webhooks className={iconClassName} />,
-        },
-      ],
+      items: workplaceGroupItems,
     },
     {
       key: 'account-group',
@@ -130,13 +159,13 @@ export default function AccountSetting({
       wrapperClassName='!z-20 pt-[60px]'
     >
       <div className='flex'>
-        <div className='w-[200px] p-4 border border-gray-100'>
-          <div className='mb-8 ml-2 text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
-          <div>
+        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-gray-100 shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
+          <div className='mb-8 ml-0 sm:ml-2 text-sm sm:text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
+          <div className='w-full'>
             {
               menuItems.map(menuItem => (
                 <div key={menuItem.key} className='mb-4'>
-                  <div className='px-2 mb-[6px] text-xs font-medium text-gray-500'>{menuItem.name}</div>
+                  <div className='px-2 mb-[6px] text-[10px] sm:text-xs font-medium text-gray-500'>{menuItem.name}</div>
                   <div>
                     {
                       menuItem.items.map(item => (
@@ -150,7 +179,7 @@ export default function AccountSetting({
                           onClick={() => setActiveMenu(item.key)}
                         >
                           {activeMenu === item.key ? item.activeIcon : item.icon}
-                          <div className='truncate'>{item.name}</div>
+                          {!isMobile && <div className='truncate'>{item.name}</div>}
                         </div>
                       ))
                     }
@@ -167,9 +196,10 @@ export default function AccountSetting({
               <XClose className='w-4 h-4 text-gray-500' />
             </div>
           </div>
-          <div className='px-8 pt-2'>
+          <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
+            {activeMenu === 'billing' && <BillingPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelPage />}
