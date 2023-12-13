@@ -6,14 +6,14 @@ from flask import Response, stream_with_context
 from flask_login import current_user
 from flask_restful import Resource, reqparse, marshal_with, fields
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
 
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.app.error import CompletionRequestError, ProviderNotInitializeError, \
     AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.login import login_required
@@ -152,7 +152,12 @@ class MessageAnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
     def post(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
 
         parser = reqparse.RequestParser()
