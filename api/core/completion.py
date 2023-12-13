@@ -387,6 +387,7 @@ class Completion:
             )
             if documents:
                 annotation_id = documents[0].metadata['annotation_id']
+                score = documents[0].metadata['score']
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
                 if annotation:
                     conversation_message_task.annotation_end(annotation.content)
@@ -395,7 +396,8 @@ class Completion:
                                                                 app.id,
                                                                 conversation_message_task.query,
                                                                 conversation_message_task.user.id,
-                                                                from_source)
+                                                                from_source,
+                                                                score)
                     return True
         return False
 
