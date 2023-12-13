@@ -1,0 +1,2 @@
+class LLMApplicationManager:
+    pass

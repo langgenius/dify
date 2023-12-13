@@ -1,18 +1,13 @@
-class ModelProviderManager:
+from core.provider_configuration import ProviderConfigurations
+from models.provider import TenantDefaultModel
+
+
+class ProviderManager:
     """
-    ModelProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
+    ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
 
-    def get_system_provider_configurations(self, tenant_id: str) -> list:
-        """
-        Get provider system configurations.
-
-        :param tenant_id:
-        :return:
-        """
-        pass
-
-    def get_configurations(self, tenant_id: str) -> dict:
+    def get_configurations(self, tenant_id: str) -> ProviderConfigurations:
         """
         Get model provider configurations.
 
@@ -48,8 +43,8 @@ class ModelProviderManager:
         #   quota_exceeded insufficient quota, unsupported hosting
         # - Get the availability of custom configuration
         #   Custom provider available conditions:
-        #   (1. provider credentials available
-        #   (2. at least one model available
+        #   (1. custom provider credentials available
+        #   (2. at least one custom model credentials available
         # - Check the missing hosting provider records and fill them up
         # - Verify, update, and delete custom provider configuration
         # - Verify, update, and delete custom provider model configuration
@@ -61,7 +56,7 @@ class ModelProviderManager:
         # Return the encapsulated object
         pass
 
-    def get_default_model_record(self, tenant_id: str, model_type: str):
+    def get_default_model_record(self, tenant_id: str, model_type: str) -> TenantDefaultModel:
         """
         Get default model record.
 
@@ -75,7 +70,7 @@ class ModelProviderManager:
         # and update the TenantDefaultModel record
         pass
 
-    def update_default_model_record(self, tenant_id: str, model_type: str, model: str):
+    def update_default_model_record(self, tenant_id: str, model_type: str, model: str) -> TenantDefaultModel:
         """
         Update default model record.
 
@@ -89,5 +84,3 @@ class ModelProviderManager:
         # create or update TenantDefaultModel record
 
         pass
-
-
