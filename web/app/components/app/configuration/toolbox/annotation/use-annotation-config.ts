@@ -10,15 +10,11 @@ type Params = {
   appId: string
   annotationConfig: AnnotationReplyConfig
   setAnnotationConfig: (annotationConfig: AnnotationReplyConfig) => void
-  showChooseFeatureTrue: () => void
-  handleFeatureChange: (feature: string, value: boolean) => void
 }
 const useAnnotationConfig = ({
   appId,
   annotationConfig,
   setAnnotationConfig,
-  // showChooseFeatureTrue,
-  handleFeatureChange,
 }: Params) => {
   const [isShowAnnotationConfigInit, setIsShowAnnotationConfigInit] = React.useState(false)
 
@@ -40,7 +36,6 @@ const useAnnotationConfig = ({
 
     const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.enable, embeddingModel)
     await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
-    handleFeatureChange('annotation', true)
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = true
       draft.embedding_model = embeddingModel
@@ -49,13 +44,12 @@ const useAnnotationConfig = ({
     }))
   }
 
-  const handleDisableAnnotation = async () => {
+  const handleDisableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
     if (!annotationConfig.enabled)
       return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable)
+    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, embeddingModel)
     await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-    handleFeatureChange('annotation', false)
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = false
     }))

@@ -120,7 +120,7 @@ const Config: FC = () => {
       }
       else {
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        await handleDisableAnnotation()
+        await handleDisableAnnotation(annotationConfig.embedding_model)
       }
     },
     moderation: moderationConfig.enabled,
@@ -163,8 +163,6 @@ const Config: FC = () => {
     appId,
     annotationConfig,
     setAnnotationConfig,
-    showChooseFeatureTrue,
-    handleFeatureChange,
   })
 
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
