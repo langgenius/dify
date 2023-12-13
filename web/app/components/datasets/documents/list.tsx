@@ -316,8 +316,8 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
   }
 
   return (
-    <>
-      <table className={`w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
+    <div className='w-full h-full overflow-x-auto'>
+      <table className={`min-w-[700px] max-w-full w-full border-collapse border-0 text-sm mt-3 ${s.documentTable}`}>
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-medium text-xs uppercase">
           <tr>
             <td className='w-12'>#</td>
@@ -380,7 +380,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           })}
         </tbody>
       </table>
-    </>
+    </div>
   )
 }
 

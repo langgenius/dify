@@ -24,7 +24,7 @@ default_retrieval_model = {
         'reranking_model_name': ''
     },
     'top_k': 2,
-    'score_threshold_enable': False
+    'score_threshold_enabled': False
 }
 
 
@@ -82,7 +82,8 @@ class DatasetMultiRetrieverTool(BaseTool):
         hit_callback.on_tool_end(all_documents)
         document_score_list = {}
         for item in all_documents:
-            document_score_list[item.metadata['doc_id']] = item.metadata['score']
+            if 'score' in item.metadata and item.metadata['score']:
+                document_score_list[item.metadata['doc_id']] = item.metadata['score']
 
         document_context_list = []
         index_node_ids = [document.metadata['doc_id'] for document in all_documents]
@@ -192,7 +193,7 @@ class DatasetMultiRetrieverTool(BaseTool):
                         'search_method'] == 'hybrid_search':
                         embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
                             'flask_app': current_app._get_current_object(),
-                            'dataset': dataset,
+                            'dataset_id': str(dataset.id),
                             'query': query,
                             'top_k': self.top_k,
                             'score_threshold': self.score_threshold,
@@ -210,13 +211,13 @@ class DatasetMultiRetrieverTool(BaseTool):
                         full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search,
                                                                   kwargs={
                                                                       'flask_app': current_app._get_current_object(),
-                                                                      'dataset': dataset,
+                                                                      'dataset_id': str(dataset.id),
                                                                       'query': query,
                                                                       'search_method': 'hybrid_search',
                                                                       'embeddings': embeddings,
                                                                       'score_threshold': retrieval_model[
                                                                           'score_threshold'] if retrieval_model[
-                                                                          'score_threshold_enable'] else None,
+                                                                          'score_threshold_enabled'] else None,
                                                                       'top_k': self.top_k,
                                                                       'reranking_model': retrieval_model[
                                                                           'reranking_model'] if retrieval_model[

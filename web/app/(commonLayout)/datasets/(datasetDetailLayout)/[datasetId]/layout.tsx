@@ -4,6 +4,8 @@ import React, { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
+import classNames from 'classnames'
+import { useBoolean } from 'ahooks'
 import {
   Cog8ToothIcon,
   // CommandLineIcon,
@@ -11,6 +13,8 @@ import {
   // eslint-disable-next-line sort-imports
   PuzzlePieceIcon,
   DocumentTextIcon,
+  PaperClipIcon,
+  QuestionMarkCircleIcon,
 } from '@heroicons/react/24/outline'
 import {
   Cog8ToothIcon as Cog8ToothSolidIcon,
@@ -20,29 +24,39 @@ import {
 import Link from 'next/link'
 import s from './style.module.css'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
-import type { RelatedApp } from '@/models/datasets'
+import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
 import { getLocaleOnClient } from '@/i18n/client'
 import AppSideBar from '@/app/components/app-sidebar'
 import Divider from '@/app/components/base/divider'
 import Indicator from '@/app/components/header/indicator'
 import AppIcon from '@/app/components/base/app-icon'
 import Loading from '@/app/components/base/loading'
+import FloatPopoverContainer from '@/app/components/base/float-popover-container'
 import DatasetDetailContext from '@/context/dataset-detail'
 import { DataSourceType } from '@/models/datasets'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
   params: { datasetId: string }
 }
 
-const LikedItem: FC<{ type?: 'plugin' | 'app'; appStatus?: boolean; detail: RelatedApp }> = ({
+type ILikedItemProps = {
+  type?: 'plugin' | 'app'
+  appStatus?: boolean
+  detail: RelatedApp
+  isMobile: boolean
+}
+
+const LikedItem = ({
   type = 'app',
   appStatus = true,
   detail,
-}) => {
+  isMobile,
+}: ILikedItemProps) => {
   return (
-    <Link className={s.itemWrapper} href={`/app/${detail?.id}/overview`}>
-      <div className={s.iconWrapper}>
+    <Link className={classNames(s.itemWrapper, 'px-0 sm:px-3 justify-center sm:justify-start')} href={`/app/${detail?.id}/overview`}>
+      <div className={classNames(s.iconWrapper, 'mr-0 sm:mr-2')}>
         <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background}/>
         {type === 'app' && (
           <div className={s.statusPoint}>
@@ -50,7 +64,7 @@ const LikedItem: FC<{ type?: 'plugin' | 'app'; appStatus?: boolean; detail: Rela
           </div>
         )}
       </div>
-      <div className={s.appInfo}>{detail?.name || '--'}</div>
+      {!isMobile && <div className={s.appInfo}>{detail?.name || '--'}</div>}
     </Link>
   )
 }
@@ -83,6 +97,68 @@ const BookOpenIcon = ({ className }: SVGProps<SVGElement>) => {
   </svg>
 }
 
+type IExtraInfoProps = {
+  isMobile: boolean
+  relatedApps?: RelatedAppResponse
+}
+
+const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
+  const locale = getLocaleOnClient()
+  const [isShowTips, { toggle: toggleTips, set: setShowTips }] = useBoolean(!isMobile)
+  const { t } = useTranslation()
+
+  useEffect(() => {
+    setShowTips(!isMobile)
+  }, [isMobile, setShowTips])
+
+  return <div className='w-full flex flex-col items-center'>
+    <Divider className='mt-5' />
+    {(relatedApps?.data && relatedApps?.data?.length > 0) && (
+      <>
+        {!isMobile && <div className={s.subTitle}>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>}
+        {isMobile && <div className={classNames(s.subTitle, 'flex items-center justify-center !px-0 gap-1')}>
+          {relatedApps?.total || '--'}
+          <PaperClipIcon className='h-4 w-4 text-gray-700' />
+        </div>}
+        {relatedApps?.data?.map((item, index) => (<LikedItem key={index} isMobile={isMobile} detail={item} />))}
+      </>
+    )}
+    {!relatedApps?.data?.length && (
+      <FloatPopoverContainer
+        placement='bottom-start'
+        open={isShowTips}
+        toggle={toggleTips}
+        isMobile={isMobile}
+        triggerElement={
+          <div className={classNames('h-7 w-7 inline-flex justify-center items-center rounded-lg bg-transparent', isShowTips && '!bg-gray-50')}>
+            <QuestionMarkCircleIcon className='h-4 w-4 flex-shrink-0 text-gray-500' />
+          </div>
+        }
+      >
+        <div className={classNames('mt-5 p-3', isMobile && 'border-[0.5px] border-gray-200 shadow-lg rounded-lg bg-white w-[150px]')}>
+          <div className='flex items-center justify-start gap-2'>
+            <div className={s.emptyIconDiv}>
+              <Squares2X2Icon className='w-3 h-3 text-gray-500' />
+            </div>
+            <div className={s.emptyIconDiv}>
+              <PuzzlePieceIcon className='w-3 h-3 text-gray-500' />
+            </div>
+          </div>
+          <div className='text-xs text-gray-500 mt-2'>{t('common.datasetMenus.emptyTip')}</div>
+          <a
+            className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
+            href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/application/prompt-engineering`}
+            target='_blank'
+          >
+            <BookOpenIcon className='mr-1' />
+            {t('common.datasetMenus.viewDoc')}
+          </a>
+        </div>
+      </FloatPopoverContainer>
+    )}
+  </div>
+}
+
 const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const {
     children,
@@ -91,6 +167,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = /documents\/create$/.test(pathname)
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const { data: datasetRes, error, mutate: mutateDatasetRes } = useSWR({
     url: 'fetchDatasetDetail',
     datasetId,
@@ -113,54 +193,18 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       document.title = `${datasetRes.name || 'Dataset'} - Dify`
   }, [datasetRes])
 
-  const ExtraInfo: FC = () => {
-    const locale = getLocaleOnClient()
-
-    return <div className='w-full'>
-      <Divider className='mt-5' />
-      {relatedApps?.data?.length
-        ? (
-          <>
-            <div className={s.subTitle}>{relatedApps?.total || '--'} {t('common.datasetMenus.relatedApp')}</div>
-            {relatedApps?.data?.map((item, index) => (<LikedItem key={index} detail={item} />))}
-          </>
-        )
-        : (
-          <div className='mt-5 p-3'>
-            <div className='flex items-center justify-start gap-2'>
-              <div className={s.emptyIconDiv}>
-                <Squares2X2Icon className='w-3 h-3 text-gray-500' />
-              </div>
-              <div className={s.emptyIconDiv}>
-                <PuzzlePieceIcon className='w-3 h-3 text-gray-500' />
-              </div>
-            </div>
-            <div className='text-xs text-gray-500 mt-2'>{t('common.datasetMenus.emptyTip')}</div>
-            <a
-              className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
-              href={`https://docs.dify.ai/${locale === 'zh-Hans' ? 'v/zh-hans' : ''}/application/prompt-engineering`}
-              target='_blank'
-            >
-              <BookOpenIcon className='mr-1' />
-              {t('common.datasetMenus.viewDoc')}
-            </a>
-          </div>
-        )}
-    </div>
-  }
-
   if (!datasetRes && !error)
     return <Loading />
 
   return (
-    <div className='flex'>
+    <div className='flex overflow-hidden'>
       {!hideSideBar && <AppSideBar
         title={datasetRes?.name || '--'}
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
         icon_background={datasetRes?.icon_background || '#F5F5F5'}
         desc={datasetRes?.description || '--'}
         navigation={navigation}
-        extraInfo={<ExtraInfo />}
+        extraInfo={<ExtraInfo isMobile={isMobile} relatedApps={relatedApps} />}
         iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
       />}
       <DatasetDetailContext.Provider value={{
@@ -168,7 +212,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         dataset: datasetRes,
         mutateDatasetRes: () => mutateDatasetRes(),
       }}>
-        <div className="bg-white grow" style={{ minHeight: 'calc(100vh - 56px)' }}>{children}</div>
+        <div className="bg-white grow overflow-hidden">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

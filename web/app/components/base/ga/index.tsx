@@ -1,5 +1,7 @@
-import React, { FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import Script from 'next/script'
+import { IS_CE_EDITION } from '@/config'
 
 export enum GaType {
   admin = 'admin',
@@ -11,27 +13,34 @@ const gaIdMaps = {
   [GaType.webapp]: 'G-2MFWXK7WYT',
 }
 
-export interface IGAProps {
+export type IGAProps = {
   gaType: GaType
 }
 
-
 const GA: FC<IGAProps> = ({
-  gaType
+  gaType,
 }) => {
+  if (IS_CE_EDITION)
+    return null
+
   return (
-    <Script
-      id="gtag-base"
-      strategy="beforeInteractive"
-      dangerouslySetInnerHTML={{
-        __html: `
-            (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-            new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-            j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-            'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-            })(window,document,'script','dataLayer', '${gaIdMaps[gaType]}');
+    <>
+      <Script strategy="beforeInteractive" async src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}></Script>
+      <Script
+        id="ga-init"
+        dangerouslySetInnerHTML={{
+          __html: `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', '${gaIdMaps[gaType]}');
           `,
-      }} />
+        }}
+      >
+      </Script>
+
+    </>
+
   )
 }
 export default React.memo(GA)

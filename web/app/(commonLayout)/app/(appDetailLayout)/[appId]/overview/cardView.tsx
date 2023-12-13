@@ -93,7 +93,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   }
 
   return (
-    <div className="min-w-max grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6">
+    <div className="grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6">
       <AppCard
         appInfo={response}
         cardType="webapp"

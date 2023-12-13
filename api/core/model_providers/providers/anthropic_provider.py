@@ -32,9 +32,12 @@ class AnthropicProvider(BaseModelProvider):
         if model_type == ModelType.TEXT_GENERATION:
             return [
                 {
-                    'id': 'claude-instant-1',
-                    'name': 'claude-instant-1',
+                    'id': 'claude-2.1',
+                    'name': 'claude-2.1',
                     'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
                 },
                 {
                     'id': 'claude-2',
@@ -43,6 +46,11 @@ class AnthropicProvider(BaseModelProvider):
                     'features': [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
+                },
+                {
+                    'id': 'claude-instant-1',
+                    'name': 'claude-instant-1',
+                    'mode': ModelMode.CHAT.value,
                 },
             ]
         else:
@@ -73,12 +81,18 @@ class AnthropicProvider(BaseModelProvider):
         :param model_type:
         :return:
         """
+        model_max_tokens = {
+            'claude-instant-1': 100000,
+            'claude-2': 100000,
+            'claude-2.1': 200000,
+        }
+
         return ModelKwargsRules(
             temperature=KwargRule[float](min=0, max=1, default=1, precision=2),
             top_p=KwargRule[float](min=0, max=1, default=0.7, precision=2),
             presence_penalty=KwargRule[float](enabled=False),
             frequency_penalty=KwargRule[float](enabled=False),
-            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=100000, default=256, precision=0),
+            max_tokens=KwargRule[int](alias="max_tokens_to_sample", min=10, max=model_max_tokens.get(model_name, 100000), default=256, precision=0),
         )
 
     @classmethod

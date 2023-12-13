@@ -31,12 +31,12 @@ def mock_chat_generate_invalid(messages: List[BaseMessage],
                                run_manager: Optional[CallbackManagerForLLMRun] = None,
                                **kwargs: Any):
     raise anthropic.APIStatusError('Invalid credentials',
-                                   request=httpx._models.Request(
-                                       method='POST',
-                                       url='https://api.anthropic.com/v1/completions',
-                                   ),
                                    response=httpx._models.Response(
                                        status_code=401,
+                                       request=httpx._models.Request(
+                                           method='POST',
+                                           url='https://api.anthropic.com/v1/completions',
+                                       )
                                    ),
                                    body=None
                                 )

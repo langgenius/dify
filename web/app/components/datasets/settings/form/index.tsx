@@ -24,13 +24,13 @@ import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 const rowClass = `
-  flex justify-between py-4
+  flex justify-between py-4 flex-wrap gap-y-2
 `
 const labelClass = `
   flex items-center w-[168px] h-9
 `
 const inputClass = `
-  w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
+  w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
 const useInitialValue: <T>(depend: T, dispatch: Dispatch<T>) => void = (depend, dispatch) => {
   useEffect(() => {
@@ -118,14 +118,14 @@ const Form = () => {
   useInitialValue<DataSet['indexing_technique'] | undefined>(currentDataset?.indexing_technique, setIndexMethod)
 
   return (
-    <div className='w-[800px] px-16 py-6'>
+    <div className='w-full sm:w-[800px] p-4 sm:px-16 sm:py-6'>
       <div className={rowClass}>
         <div className={labelClass}>
           <div>{t('datasetSettings.form.name')}</div>
         </div>
         <input
           disabled={!currentDataset?.embedding_available}
-          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60')}
+          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
           value={name}
           onChange={e => setName(e.target.value)}
         />
@@ -134,7 +134,7 @@ const Form = () => {
         <div className={labelClass}>
           <div>{t('datasetSettings.form.desc')}</div>
         </div>
-        <div>
+        <div className='w-full max-w-[480px]'>
           <textarea
             disabled={!currentDataset?.embedding_available}
             className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
@@ -152,7 +152,7 @@ const Form = () => {
         <div className={labelClass}>
           <div>{t('datasetSettings.form.permissions')}</div>
         </div>
-        <div className='w-[480px]'>
+        <div className='w-full sm:w-[480px]'>
           <PermissionsRadio
             disable={!currentDataset?.embedding_available}
             value={permission}
@@ -167,7 +167,7 @@ const Form = () => {
             <div className={labelClass}>
               <div>{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <div className='w-[480px]'>
+            <div className='w-full sm:w-[480px]'>
               <IndexMethodRadio
                 disable={!currentDataset?.embedding_available}
                 value={indexMethod}

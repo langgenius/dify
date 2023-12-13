@@ -33,7 +33,7 @@ const Explore: FC<IExploreProps> = ({
   }, [])
 
   return (
-    <div className='flex h-full bg-gray-100 border-t border-gray-200'>
+    <div className='flex h-full bg-gray-100 border-t border-gray-200 overflow-hidden'>
       <ExploreContext.Provider
         value={
           {

@@ -15,6 +15,11 @@ import { formatNumber } from '@/utils/format'
 import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
+import PriorityLabel from '@/app/components/billing/priority-label'
+import { Plan } from '@/app/components/billing/type'
+import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   datasetId: string
@@ -78,6 +83,7 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) =>
 
 const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType }) => {
   const { t } = useTranslation()
+  const { enableBilling, plan } = useProviderContext()
 
   const getFirstDocument = documents[0]
 
@@ -115,14 +121,14 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }, [])
 
   // get rule
-  const { data: ruleDetail, error: ruleError } = useSWR({
+  const { data: ruleDetail } = useSWR({
     action: 'fetchProcessRule',
     params: { documentId: getFirstDocument.id },
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
   // get cost
-  const { data: indexingEstimateDetail, error: indexingEstimateErr } = useSWR({
+  const { data: indexingEstimateDetail } = useSWR({
     action: 'fetchIndexingEstimateBatch',
     datasetId,
     batchId,
@@ -175,7 +181,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
         <div className={s.cost}>
-          {indexingType === 'high_quaility' && (
+          {indexingType === 'high_quality' && (
             <div className='flex items-center'>
               <div className={cn(s.commonIcon, s.highIcon)} />
               {t('datasetDocuments.embedding.highQuality')} · {t('datasetDocuments.embedding.estimate')}
@@ -192,6 +198,19 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           )}
         </div>
       </div>
+      {
+        enableBilling && plan.type !== Plan.team && (
+          <div className='flex items-center mb-3 p-3 h-14 bg-white border-[0.5px] border-black/5 shadow-md rounded-xl'>
+            <div className='shrink-0 flex items-center justify-center w-8 h-8 bg-[#FFF6ED] rounded-lg'>
+              <ZapFast className='w-4 h-4 text-[#FB6514]' />
+            </div>
+            <div className='grow mx-3 text-[13px] font-medium text-gray-700'>
+              {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+            </div>
+            <UpgradeBtn loc='knowledge-speed-up' />
+          </div>
+        )
+      }
       <div className={s.progressContainer}>
         {indexingStatusBatchDetail.map(indexingStatusDetail => (
           <div key={indexingStatusDetail.id} className={cn(
@@ -202,7 +221,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
             {isSourceEmbedding(indexingStatusDetail) && (
               <div className={s.progressbar} style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}/>
             )}
-            <div className={s.info}>
+            <div className={`${s.info} grow`}>
               {getSourceType(indexingStatusDetail.id) === DataSourceType.FILE && (
                 <div className={cn(s.fileIcon, s[getFileType(getSourceName(indexingStatusDetail.id))])}/>
               )}
@@ -213,7 +232,12 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                   src={getIcon(indexingStatusDetail.id)}
                 />
               )}
-              <div className={s.name}>{getSourceName(indexingStatusDetail.id)}</div>
+              <div className={`${s.name} truncate`} title={getSourceName(indexingStatusDetail.id)}>{getSourceName(indexingStatusDetail.id)}</div>
+              {
+                enableBilling && (
+                  <PriorityLabel />
+                )
+              }
             </div>
             <div className='shrink-0'>
               {isSourceEmbedding(indexingStatusDetail) && (

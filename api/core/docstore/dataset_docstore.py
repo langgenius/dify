@@ -8,7 +8,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment
 
 
-class DatesetDocumentStore:
+class DatasetDocumentStore:
     def __init__(
             self,
             dataset: Dataset,
@@ -20,7 +20,7 @@ class DatesetDocumentStore:
         self._document_id = document_id
 
     @classmethod
-    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatesetDocumentStore":
+    def from_dict(cls, config_dict: Dict[str, Any]) -> "DatasetDocumentStore":
         return cls(**config_dict)
 
     def to_dict(self) -> Dict[str, Any]:

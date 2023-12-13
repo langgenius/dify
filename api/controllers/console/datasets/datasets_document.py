@@ -16,7 +16,7 @@ from controllers.console.app.error import ProviderNotInitializeError, ProviderQu
 from controllers.console.datasets.error import DocumentAlreadyFinishedError, InvalidActionError, DocumentIndexingError, \
     InvalidMetadataError, ArchivedDocumentImmutableError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.indexing_runner import IndexingRunner
 from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError, \
     LLMBadRequestError
@@ -194,6 +194,7 @@ class DatasetDocumentListApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(documents_and_batch_fields)
+    @cloud_edition_billing_resource_check('vector_space')
     def post(self, dataset_id):
         dataset_id = str(dataset_id)
 
@@ -252,6 +253,7 @@ class DatasetInitApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(dataset_and_document_fields)
+    @cloud_edition_billing_resource_check('vector_space')
     def post(self):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
@@ -693,6 +695,7 @@ class DocumentStatusApi(DocumentResource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('vector_space')
     def patch(self, dataset_id, document_id, action):
         dataset_id = str(dataset_id)
         document_id = str(document_id)
@@ -769,14 +772,6 @@ class DocumentStatusApi(DocumentResource):
         elif action == "un_archive":
             if not document.archived:
                 raise InvalidActionError('Document is not archived.')
-
-            # check document limit
-            if current_app.config['EDITION'] == 'CLOUD':
-                documents_count = DocumentService.get_tenant_documents_count()
-                total_count = documents_count + 1
-                tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-                if total_count > tenant_document_count:
-                    raise ValueError(f"All your documents have overed limit {tenant_document_count}.")
 
             document.archived = False
             document.archived_at = None
@@ -856,21 +851,6 @@ class DocumentRecoverApi(DocumentResource):
         return {'result': 'success'}, 204
 
 
-class DocumentLimitApi(DocumentResource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def get(self):
-        """get document limit"""
-        documents_count = DocumentService.get_tenant_documents_count()
-        tenant_document_count = int(current_app.config['TENANT_DOCUMENT_COUNT'])
-
-        return {
-            'documents_count': documents_count,
-            'documents_limit': tenant_document_count
-                }, 200
-
-
 api.add_resource(GetProcessRuleApi, '/datasets/process-rule')
 api.add_resource(DatasetDocumentListApi,
                  '/datasets/<uuid:dataset_id>/documents')
@@ -896,4 +876,3 @@ api.add_resource(DocumentStatusApi,
                  '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/status/<string:action>')
 api.add_resource(DocumentPauseApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/pause')
 api.add_resource(DocumentRecoverApi, '/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/processing/resume')
-api.add_resource(DocumentLimitApi, '/datasets/limit')

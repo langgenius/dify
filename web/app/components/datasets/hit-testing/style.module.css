@@ -1,5 +1,5 @@
 .container {
-  @apply flex h-full w-full relative;
+  @apply flex h-full w-full relative overflow-y-auto;
 }
 .container > div {
   @apply flex-1 h-full;
@@ -8,7 +8,7 @@
   @apply border-r border-gray-100 px-6 py-3 flex flex-col;
 }
 .rightDiv {
-  @apply px-8 pt-[42px] pb-[26px] flex flex-col;
+  @apply flex flex-col;
 }
 .titleWrapper {
   @apply flex flex-col justify-center gap-1 mb-5;

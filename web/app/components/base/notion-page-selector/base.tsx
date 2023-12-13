@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import cn from 'classnames'
 import s from './base.module.css'
@@ -10,7 +8,6 @@ import PageSelector from './page-selector'
 import { preImportNotionPages } from '@/service/datasets'
 import { NotionConnector } from '@/app/components/datasets/create/step-one'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace, NotionPage } from '@/models/common'
-import { ToastContext } from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 
 type NotionPageSelectorProps = {
@@ -20,8 +17,6 @@ type NotionPageSelectorProps = {
   previewPageId?: string
   onPreview?: (selectedPage: NotionPage) => void
   datasetId?: string
-  countLimit: number
-  countUsed: number
 }
 
 const NotionPageSelector = ({
@@ -31,11 +26,7 @@ const NotionPageSelector = ({
   previewPageId,
   onPreview,
   datasetId = '',
-  countLimit,
-  countUsed,
 }: NotionPageSelectorProps) => {
-  const { t } = useTranslation()
-  const { notify } = useContext(ToastContext)
   const { data, mutate } = useSWR({ url: '/notion/pre-import/pages', datasetId }, preImportNotionPages)
   const [prevData, setPrevData] = useState(data)
   const [searchValue, setSearchValue] = useState('')
@@ -80,10 +71,7 @@ const NotionPageSelector = ({
   }, [])
   const handleSelecPages = (newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => getPagesMapAndSelectedPagesId[0][pageId])
-    if (selectedPages.length > countLimit - countUsed) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.overCountLimit', { countLimit }) })
-      return false
-    }
+
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
     onSelect(selectedPages)
   }

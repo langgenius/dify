@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { omit } from 'lodash-es'
 import cn from 'classnames'
 import dayjs from 'dayjs'
+import { useBoolean } from 'ahooks'
 import { useContext } from 'use-context-selector'
 import SegmentCard from '../documents/detail/completed/SegmentCard'
 import docStyle from '../documents/detail/completed/style.module.css'
@@ -16,10 +17,13 @@ import ModifyRetrievalModal from './modify-retrieval-modal'
 import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
+import Drawer from '@/app/components/base/drawer'
 import Pagination from '@/app/components/base/pagination'
+import FloatRightContainer from '@/app/components/base/float-right-container'
 import { fetchTestingRecords } from '@/service/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const limit = 10
 
@@ -39,6 +43,10 @@ const RecordsEmpty: FC = () => {
 
 const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const { t } = useTranslation()
+
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
+
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
   const [submitLoading, setSubmitLoading] = useState(false)
   const [currParagraph, setCurrParagraph] = useState<{ paraInfo?: HitTestingType; showModal: boolean }>({ showModal: false })
@@ -63,6 +71,11 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
+  const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+
+  useEffect(() => {
+    setShowRightPanel(!isMobile)
+  }, [isMobile, setShowRightPanel])
 
   return (
     <div className={s.container}>
@@ -74,6 +87,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
         <Textarea
           datasetId={datasetId}
           setHitResult={setHitResult}
+          onSubmit={showRightPanel}
           onUpdateList={recordsMutate}
           loading={submitLoading}
           setLoading={setSubmitLoading}
@@ -131,53 +145,56 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
               <RecordsEmpty />
             )}
       </div>
-      <div className={s.rightDiv}>
-        {submitLoading
-          ? <div className={s.cardWrapper}>
-            <SegmentCard
-              loading={true}
-              scene='hitTesting'
-              className='h-[216px]'
-            />
-            <SegmentCard
-              loading={true}
-              scene='hitTesting'
-              className='h-[216px]'
-            />
-          </div>
-          : !hitResult?.records.length
-            ? (
-              <div className='h-full flex flex-col justify-center items-center'>
-                <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
-                <div className='text-gray-300 text-[13px] mt-3'>
-                  {t('datasetHitTesting.hit.emptyTip')}
-                </div>
-              </div>
-            )
-            : (
-              <>
-                <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
-                <div className='overflow-auto flex-1'>
-                  <div className={s.cardWrapper}>
-                    {hitResult?.records.map((record, idx) => {
-                      return <SegmentCard
-                        key={idx}
-                        loading={false}
-                        detail={record.segment as any}
-                        score={record.score}
-                        scene='hitTesting'
-                        className='h-[216px] mb-4'
-                        onClick={() => onClickCard(record as any)}
-                      />
-                    })}
+      <FloatRightContainer panelClassname='!justify-start !overflow-y-auto' showClose isMobile={isMobile} isOpen={isShowRightPanel} onClose={hideRightPanel} footer={null}>
+        <div className={cn(s.rightDiv, 'p-0 sm:px-8 sm:pt-[42px] sm:pb-[26px]')}>
+          {submitLoading
+            ? <div className={s.cardWrapper}>
+              <SegmentCard
+                loading={true}
+                scene='hitTesting'
+                className='h-[216px]'
+              />
+              <SegmentCard
+                loading={true}
+                scene='hitTesting'
+                className='h-[216px]'
+              />
+            </div>
+            : !hitResult?.records.length
+              ? (
+                <div className='h-full flex flex-col justify-center items-center'>
+                  <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
+                  <div className='text-gray-300 text-[13px] mt-3'>
+                    {t('datasetHitTesting.hit.emptyTip')}
                   </div>
                 </div>
-              </>
-            )
-        }
-      </div>
+              )
+              : (
+                <>
+                  <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
+                  <div className='overflow-auto flex-1'>
+                    <div className={s.cardWrapper}>
+                      {hitResult?.records.map((record, idx) => {
+                        return <SegmentCard
+                          key={idx}
+                          loading={false}
+                          detail={record.segment as any}
+                          score={record.score}
+                          scene='hitTesting'
+                          className='h-[216px] mb-4'
+                          onClick={() => onClickCard(record as any)}
+                        />
+                      })}
+                    </div>
+                  </div>
+                </>
+              )
+          }
+        </div>
+      </FloatRightContainer>
       <Modal
         className='!max-w-[960px] !p-0'
+        wrapperClassName='!z-40'
         closable
         onClose={() => setCurrParagraph({ showModal: false })}
         isShow={currParagraph.showModal}
@@ -190,7 +207,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           }}
         />}
       </Modal>
-      {isShowModifyRetrievalModal && (
+      <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal
           indexMethod={currentDataset?.indexing_technique || ''}
           value={retrievalConfig}
@@ -201,7 +218,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
             setIsShowModifyRetrievalModal(false)
           }}
         />
-      )}
+      </Drawer>
     </div>
   )
 }

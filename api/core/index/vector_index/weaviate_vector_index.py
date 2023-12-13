@@ -111,7 +111,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
         if self._vector_store:
             return self._vector_store
 
-        attributes = ['doc_id', 'dataset_id', 'document_id']
+        attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
         if self._is_origin():
             attributes = ['doc_id']
 
@@ -140,6 +140,16 @@ class WeaviateVectorIndex(BaseVectorIndex):
             "path": ["document_id"],
             "valueText": document_id
         })
+
+    def delete_by_group_id(self, group_id: str):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+            return
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.delete()
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:

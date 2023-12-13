@@ -1,11 +1,8 @@
-import fetchStream from 'fetch-readablestream'
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
-import { isSupportNativeFetchStream } from '@/utils/stream'
 
 const TIME_OUT = 100000
-const supportNativeFetchStream = isSupportNativeFetchStream()
 
 const ContentType = {
   json: 'application/json',
@@ -223,9 +220,6 @@ const baseFetch = <T>(
   if (body && bodyStringify)
     options.body = JSON.stringify(body)
 
-  // for those do not support native fetch stream, we use fetch-readablestream as polyfill
-  const doFetch = supportNativeFetchStream ? globalThis.fetch : fetchStream
-
   // Handle timeout
   return Promise.race([
     new Promise((resolve, reject) => {
@@ -234,7 +228,7 @@ const baseFetch = <T>(
       }, TIME_OUT)
     }),
     new Promise((resolve, reject) => {
-      doFetch(urlWithPrefix, options as RequestInit)
+      globalThis.fetch(urlWithPrefix, options as RequestInit)
         .then((res) => {
           const resClone = res.clone()
           // Error handler
@@ -243,29 +237,24 @@ const baseFetch = <T>(
             switch (res.status) {
               case 401: {
                 if (isPublicAPI) {
-                  Toast.notify({ type: 'error', message: 'Invalid token' })
-                  return bodyJson.then((data: T) => Promise.reject(data))
+                  return bodyJson.then((data: ResponseError) => {
+                    Toast.notify({ type: 'error', message: data.message })
+                    return Promise.reject(data)
+                  })
                 }
                 const loginUrl = `${globalThis.location.origin}/signin`
-                if (IS_CE_EDITION) {
-                  bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'not_setup') {
-                      globalThis.location.href = `${globalThis.location.origin}/install`
-                    }
-                    else {
-                      if (location.pathname === '/signin') {
-                        bodyJson.then((data: ResponseError) => {
-                          Toast.notify({ type: 'error', message: data.message })
-                        })
-                      }
-                      else {
-                        globalThis.location.href = loginUrl
-                      }
-                    }
-                  })
-                  return Promise.reject(Error('Unauthorized'))
-                }
-                globalThis.location.href = loginUrl
+                bodyJson.then((data: ResponseError) => {
+                  if (data.code === 'not_setup' && IS_CE_EDITION)
+                    globalThis.location.href = `${globalThis.location.origin}/install`
+                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
+                    globalThis.location.href = loginUrl
+                  else
+                    Toast.notify({ type: 'error', message: data.message })
+                }).catch(() => {
+                  // Handle any other errors
+                  globalThis.location.href = loginUrl
+                })
+
                 break
               }
               case 403:

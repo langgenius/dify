@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: '文档',
-    desc: '数据集的所有文件都在这里显示，整个数据集都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
+    desc: '知识库的所有文件都在这里显示，整个知识库都可以链接到 Dify 引用或通过 Chat 插件进行索引。',
     addFile: '添加文件',
     addPages: '添加页面',
     table: {

@@ -232,7 +232,7 @@ class CompletionService:
                 logging.exception("Unknown Error in completion")
                 PubHandler.pub_error(user, generate_task_id, e)
             finally:
-                db.session.commit()
+                db.session.remove()
 
     @classmethod
     def countdown_and_close(cls, flask_app: Flask, worker_thread, pubsub, detached_user,
@@ -242,22 +242,25 @@ class CompletionService:
 
         def close_pubsub():
             with flask_app.app_context():
-                user = db.session.merge(detached_user)
+                try:
+                    user = db.session.merge(detached_user)
 
-                sleep_iterations = 0
-                while sleep_iterations < timeout and worker_thread.is_alive():
-                    if sleep_iterations > 0 and sleep_iterations % 10 == 0:
-                        PubHandler.ping(user, generate_task_id)
+                    sleep_iterations = 0
+                    while sleep_iterations < timeout and worker_thread.is_alive():
+                        if sleep_iterations > 0 and sleep_iterations % 10 == 0:
+                            PubHandler.ping(user, generate_task_id)
 
-                    time.sleep(1)
-                    sleep_iterations += 1
+                        time.sleep(1)
+                        sleep_iterations += 1
 
-                if worker_thread.is_alive():
-                    PubHandler.stop(user, generate_task_id)
-                    try:
-                        pubsub.close()
-                    except Exception:
-                        pass
+                    if worker_thread.is_alive():
+                        PubHandler.stop(user, generate_task_id)
+                        try:
+                            pubsub.close()
+                        except Exception:
+                            pass
+                finally:
+                    db.session.remove()
 
         countdown_thread = threading.Thread(target=close_pubsub)
         countdown_thread.start()
@@ -394,7 +397,7 @@ class CompletionService:
                     logging.exception(e)
                     raise
             finally:
-                db.session.commit()
+                db.session.remove()
 
                 try:
                     pubsub.unsubscribe(generate_channel)
@@ -436,7 +439,7 @@ class CompletionService:
                         logging.exception(e)
                         raise
                 finally:
-                    db.session.commit()
+                    db.session.remove()
 
                     try:
                         pubsub.unsubscribe(generate_channel)
