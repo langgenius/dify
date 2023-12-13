@@ -584,10 +584,6 @@ class LargeLanguageModel(AIModel):
             else:
                 raise ValueError(f"Model Parameter {parameter_name} type {parameter_rule.type} is not supported.")
 
-            # change parameter name to alias if alias is present
-            if parameter_rule.alias is not None and parameter_rule.alias != parameter_name:
-                filtered_model_parameters[parameter_rule.alias] = parameter_value
-            else:
-                filtered_model_parameters[parameter_name] = parameter_value
+            filtered_model_parameters[parameter_name] = parameter_value
 
         return filtered_model_parameters

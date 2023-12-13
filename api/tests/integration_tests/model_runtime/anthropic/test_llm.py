@@ -49,7 +49,7 @@ def test_invoke_model():
         model_parameters={
             'temperature': 0.0,
             'top_p': 1.0,
-            'max_tokens': 10
+            'max_tokens_to_sample': 10
         },
         stop=['How'],
         stream=False,
@@ -78,7 +78,7 @@ def test_invoke_stream_model():
         ],
         model_parameters={
             'temperature': 0.0,
-            'max_tokens': 100
+            'max_tokens_to_sample': 100
         },
         stream=True,
         user="abc-123"

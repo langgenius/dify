@@ -21,7 +21,7 @@ class ModelProviderManager:
         """
         # Get all provider records of the workspace
 
-        # Get all provider records of the workspace
+        # Get all provider model records of the workspace
 
         # decrypt all encrypted information of custom credentials
 

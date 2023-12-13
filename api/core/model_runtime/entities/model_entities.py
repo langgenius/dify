@@ -40,7 +40,7 @@ class ModelFeature(Enum):
 
 class DefaultParameterName(Enum):
     """
-    Enum class for parameter aliases.
+    Enum class for parameter template variable.
     """
     TEMPERATURE = "temperature"
     TOP_P = "top_p"
@@ -105,7 +105,7 @@ class ParameterRule(BaseModel):
     Model class for parameter rule.
     """
     name: str
-    alias: Optional[str] = None
+    use_template: Optional[str] = None
     label: I18nObject
     type: ParameterType
     help: Optional[I18nObject] = None

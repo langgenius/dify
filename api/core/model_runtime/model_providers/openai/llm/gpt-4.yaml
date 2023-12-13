@@ -11,15 +11,15 @@ model_properties:
   context_size: 8192
 parameter_rules:
 - name: temperature
-  alias: temperature
+  use_template: temperature
 - name: top_p
-  alias: top_p
+  use_template: top_p
 - name: presence_penalty
-  alias: presence_penalty
+  use_template: presence_penalty
 - name: frequency_penalty
-  alias: frequency_penalty
+  use_template: frequency_penalty
 - name: max_tokens
-  alias: max_tokens
+  use_template: max_tokens
   default: 512
   min: 1
   max: 8191

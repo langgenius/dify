@@ -18,6 +18,7 @@ from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.openai._common import _CommonOpenAI
+from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
 
@@ -362,7 +363,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         extra_model_kwargs = {}
 
         if tools:
-            extra_model_kwargs['tools'] = [PromptMessageFunction(function=tool).model_dump() for tool in tools]
+            extra_model_kwargs['tools'] = [helper.dump_model(PromptMessageFunction(function=tool)) for tool in tools]
             # extra_model_kwargs['functions'] = [{
             #     "name": tool.name,
             #     "description": tool.description,

@@ -3,7 +3,7 @@ from typing import Dict
 from core.model_runtime.entities.model_entities import DefaultParameterName
 
 
-ALIAS_DEFAULT_PARAMETER_RULE_VARIABLE_MAP: Dict[DefaultParameterName, dict] = {
+PARAMETER_RULE_TEMPLATE: Dict[DefaultParameterName, dict] = {
     DefaultParameterName.TEMPERATURE: {
         'label': {
             'en_US': 'Temperature',

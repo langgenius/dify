@@ -5,7 +5,7 @@ from typing import Optional
 
 import yaml
 
-from core.model_runtime.entities.defaults import ALIAS_DEFAULT_PARAMETER_RULE_VARIABLE_MAP
+from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import PriceInfo, AIModelEntity, PriceType, PriceConfig, \
     DefaultParameterName, FetchFrom
 from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
@@ -169,14 +169,15 @@ class AIModel(ABC):
 
             new_parameter_rules = []
             for parameter_rule in yaml_data.get('parameter_rules', []):
-                try:
-                    default_parameter_name = DefaultParameterName.value_of(parameter_rule['name'])
-                    default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
-                    copy_default_parameter_rule = default_parameter_rule.copy()
-                    copy_default_parameter_rule.update(parameter_rule)
-                    parameter_rule = copy_default_parameter_rule
-                except ValueError:
-                    pass
+                if 'use_template' in parameter_rule:
+                    try:
+                        default_parameter_name = DefaultParameterName.value_of(parameter_rule['use_template'])
+                        default_parameter_rule = self._get_default_parameter_rule_variable_map(default_parameter_name)
+                        copy_default_parameter_rule = default_parameter_rule.copy()
+                        copy_default_parameter_rule.update(parameter_rule)
+                        parameter_rule = copy_default_parameter_rule
+                    except ValueError:
+                        pass
 
                 if 'label' not in parameter_rule:
                     parameter_rule['label'] = {
@@ -236,7 +237,7 @@ class AIModel(ABC):
         :param name: parameter name
         :return: parameter rule
         """
-        default_parameter_rule = ALIAS_DEFAULT_PARAMETER_RULE_VARIABLE_MAP.get(name)
+        default_parameter_rule = PARAMETER_RULE_TEMPLATE.get(name)
 
         if not default_parameter_rule:
             raise Exception(f'Invalid model parameter rule name {name}')
