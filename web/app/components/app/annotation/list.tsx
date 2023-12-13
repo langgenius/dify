@@ -40,6 +40,11 @@ const List: FC<Props> = ({
             <tr
               key={item.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+              onClick={
+                () => {
+                  onView(item)
+                }
+              }
             >
               <td
                 className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
@@ -51,7 +56,7 @@ const List: FC<Props> = ({
               >{item.answer}</td>
               <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
               <td>{item.hit_count}</td>
-              <td className='w-[96px]'>
+              <td className='w-[96px]' onClick={e => e.stopPropagation()}>
                 {/* Actions */}
                 <div className='flex space-x-2 text-gray-500'>
                   <div

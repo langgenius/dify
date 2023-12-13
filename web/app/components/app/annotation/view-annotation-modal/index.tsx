@@ -131,7 +131,7 @@ const ViewAnnotationModal: FC<Props> = ({
                   title={item.question}
                 >{item.question}</td>
                 <td>{item.source}</td>
-                <td>{item.score || '-'}</td>
+                <td>{item.score ? item.score.toFixed(2) : '-'}</td>
                 <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
               </tr>
             ))}
