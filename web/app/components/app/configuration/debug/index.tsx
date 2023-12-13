@@ -66,6 +66,7 @@ const Debug: FC<IDebug> = ({
     datasetConfigs,
     externalDataToolsConfig,
     visionConfig,
+    annotationConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -224,6 +225,7 @@ const Debug: FC<IDebug> = ({
       file_upload: {
         image: visionConfig,
       },
+      annotation_reply: annotationConfig,
     }
 
     if (isAdvancedMode) {
@@ -357,6 +359,18 @@ const Debug: FC<IDebug> = ({
       },
       onMessageReplace: (messageReplace) => {
         responseItem.content = messageReplace.answer
+      },
+      onAnnotationReply: (annotationReply) => {
+        responseItem.content = annotationReply.answer
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({ ...responseItem })
+          })
+        setChatList(newListWithAnswer)
       },
       onError() {
         setResponsingFalse()
