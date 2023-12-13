@@ -31,7 +31,7 @@ const Annotation: FC<Props> = ({
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    keyword: queryParams.keyword,
+    keyword: queryParams.keyword || '',
   }
 
   const [controlUpdateList, setControlUpdateList] = useState(Date.now())
@@ -57,6 +57,11 @@ const Annotation: FC<Props> = ({
   useEffect(() => {
     fetchList(currPage + 1)
   }, [currPage])
+
+  useEffect(() => {
+    fetchList(1)
+    setControlUpdateList(Date.now())
+  }, [queryParams])
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appId, {
