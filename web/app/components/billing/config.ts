@@ -13,7 +13,7 @@ export const ALL_PLANS: Record<Plan, PlanInfo> = {
     modelProviders: supportModelProviders,
     teamMembers: 1,
     buildApps: 10,
-    vectorSpace: 10,
+    vectorSpace: 5,
     documentProcessingPriority: Priority.standard,
     logHistory: 30,
   },
