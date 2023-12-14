@@ -137,10 +137,10 @@ const Answer: FC<IAnswerProps> = ({
   const renderHasAnnotationBtn = () => {
     return (
       <div
-        className={'relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7]'}
+        className={cn(s.hasAnnotationBtn, 'relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7]')}
         style={{ boxShadow: '0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)' }}
       >
-        <div className='rounded-lg bg-[#EEF4FF] '>
+        <div className='p-1 rounded-lg bg-[#EEF4FF] '>
           <MessageFast className='w-4 h-4' />
         </div>
       </div>
@@ -340,7 +340,8 @@ const Answer: FC<IAnswerProps> = ({
                   createdAt={annotation?.created_at}
                   onRemove={() => { }}
                 />
-                {renderHasAnnotationBtn()}
+                {hasAnnotation && renderHasAnnotationBtn()}
+
                 {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
                 {/* Admin feedback is displayed only in the background. */}
                 {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}

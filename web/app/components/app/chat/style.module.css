@@ -69,6 +69,10 @@
   display: block;
 }
 
+.answerWrap:hover .hasAnnotationBtn {
+  display: none;
+}
+
 .answerWrap .itemOperation {
   display: none;
 }
