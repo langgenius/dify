@@ -7,15 +7,18 @@ import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import { editAnnotation } from '@/service/annotation'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   isShow: boolean
   onHide: () => void
+  appId: string
+  annotationId: string
   query: string
   answer: string
-  onSave: (editedQuery: string, editedAnswer: string) => void
-  id: string
-  createdAt: number
+  onSaved: (editedQuery: string, editedAnswer: string) => void
+  createdAt?: number
   onRemove: () => void
 }
 
@@ -24,18 +27,30 @@ const EditAnnotationModal: FC<Props> = ({
   onHide,
   query,
   answer,
-  onSave,
-  id,
+  onSaved,
+  appId,
+  annotationId,
   createdAt,
   onRemove,
 }) => {
   const { t } = useTranslation()
 
-  const handleSave = (type: EditItemType, editedContent: string) => {
+  const handleSave = async (type: EditItemType, editedContent: string) => {
+    let postQuery = query
+    let postAnswer = answer
     if (type === EditItemType.Query)
-      onSave(editedContent, answer)
+      postQuery = editedContent
     else
-      onSave(query, editedContent)
+      postAnswer = editedContent
+    await editAnnotation(appId, annotationId, {
+      question: postQuery,
+      answer: postAnswer,
+    })
+    onSaved(postQuery, postAnswer)
+    Toast.notify({
+      message: t('common.api.actionSuccess') as string,
+      type: 'success',
+    })
   }
   const [showModal, setShowModal] = useState(false)
 
@@ -60,7 +75,7 @@ const EditAnnotationModal: FC<Props> = ({
             />
           </div>
         )}
-        foot={id
+        foot={annotationId
           ? (
             <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
               <div
@@ -70,7 +85,7 @@ const EditAnnotationModal: FC<Props> = ({
                 <MessageCheckRemove />
                 <div>{t('appAnnotation.editModal.removeThisCache')}</div>
               </div>
-              <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>
+              {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>}
             </div>
           )
           : undefined}

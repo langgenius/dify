@@ -52,6 +52,8 @@ export type ModelConfigDetail = {
 }
 
 export type Annotation = {
+  id: string
+  authorName: string
   content: string
   account: {
     id: string

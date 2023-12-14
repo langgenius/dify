@@ -27,6 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
+import type { Annotation as AnnotationType } from '@/models/log'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -362,6 +363,10 @@ const Debug: FC<IDebug> = ({
       },
       onAnnotationReply: (annotationReply) => {
         responseItem.content = annotationReply.answer
+        responseItem.annotation = ({
+          id: annotationReply.annotation_id,
+          authorName: annotationReply.annotation_author_name,
+        } as AnnotationType)
         const newListWithAnswer = produce(
           getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
           (draft) => {
@@ -547,6 +552,9 @@ const Debug: FC<IDebug> = ({
                     ...visionConfig,
                     image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
                   }}
+                  supportAnnotation
+                  appId={appId}
+                  onChatListChange={setChatList}
                 />
               </div>
             </div>

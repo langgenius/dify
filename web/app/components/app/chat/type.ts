@@ -87,4 +87,6 @@ export type AnnotationReply = {
   task_id: string
   answer: string
   conversation_id: string
+  annotation_id: string
+  annotation_author_name: string
 }

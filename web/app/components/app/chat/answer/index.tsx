@@ -2,10 +2,9 @@
 import type { FC, ReactNode } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { UserCircleIcon } from '@heroicons/react/24/solid'
 import cn from 'classnames'
-import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc, ThoughtItem } from '../type'
+import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, ThoughtItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
 import { EditIcon, EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
@@ -15,12 +14,9 @@ import CopyBtn from '../copy-btn'
 import Thought from '../thought'
 import Citation from '../citation'
 import { randomString } from '@/utils'
-import type { Annotation, MessageRating } from '@/models/log'
-import AppContext from '@/context/app-context'
+import type { MessageRating } from '@/models/log'
 import Tooltip from '@/app/components/base/tooltip'
 import { Markdown } from '@/app/components/base/markdown'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
-import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
@@ -44,7 +40,6 @@ export type IAnswerProps = {
   feedbackDisabled: boolean
   isHideFeedbackEdit: boolean
   onFeedback?: FeedbackFunc
-  onSubmitAnnotation?: SubmitAnnotationFunc
   displayScene: DisplayScene
   isResponsing?: boolean
   answerIcon?: ReactNode
@@ -55,6 +50,9 @@ export type IAnswerProps = {
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
   supportAnnotation?: boolean
+  appId?: string
+  question: string
+  onAnnotationEdited?: (question: string, answer: string) => void
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -62,7 +60,6 @@ const Answer: FC<IAnswerProps> = ({
   feedbackDisabled = false,
   isHideFeedbackEdit = false,
   onFeedback,
-  onSubmitAnnotation,
   displayScene = 'web',
   isResponsing,
   answerIcon,
@@ -72,15 +69,19 @@ const Answer: FC<IAnswerProps> = ({
   dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
+  appId,
   supportAnnotation,
+  question,
+  onAnnotationEdited,
 }) => {
-  const { id, content, more, feedback, adminFeedback, annotation: initAnnotation } = item
+  const { id, content, more, feedback, adminFeedback, annotation } = item
+  const hasAnnotation = !!annotation?.id
   const [showEdit, setShowEdit] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [annotation, setAnnotation] = useState<Annotation | undefined | null>(initAnnotation)
-  const [inputValue, setInputValue] = useState<string>(initAnnotation?.content ?? '')
+  // const [annotation, setAnnotation] = useState<Annotation | undefined | null>(initAnnotation)
+  // const [inputValue, setInputValue] = useState<string>(initAnnotation?.content ?? '')
   const [localAdminFeedback, setLocalAdminFeedback] = useState<Feedbacktype | undefined | null>(adminFeedback)
-  const { userProfile } = useContext(AppContext)
+  // const { userProfile } = useContext(AppContext)
   const { t } = useTranslation()
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
@@ -229,7 +230,8 @@ const Answer: FC<IAnswerProps> = ({
                       <Markdown content={content} />
                     </div>
                   )}
-                {!showEdit
+                {/* old annotation */}
+                {/* {!showEdit
                   ? (annotation?.content
                     && <>
                       <Divider name={annotation?.account?.name || userProfile?.name} />
@@ -266,7 +268,7 @@ const Answer: FC<IAnswerProps> = ({
                         }}>{t('common.operation.cancel')}</Button>
                     </div>
                   </>
-                }
+                } */}
                 {
                   !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
@@ -283,7 +285,7 @@ const Answer: FC<IAnswerProps> = ({
                 {supportAnnotation && (
                   <AnnotationCtrlBtn
                     className={cn(s.annotationBtn, 'ml-1')}
-                    cached={true}
+                    cached={hasAnnotation}
                     onAdd={() => { }}
                     onEdit={() => setIsShowReplyModal(true)}
                     onRemove={() => { }}
@@ -293,13 +295,13 @@ const Answer: FC<IAnswerProps> = ({
                 <EditReplyModal
                   isShow={isShowReplyModal}
                   onHide={() => setIsShowReplyModal(false)}
-                  query="Let's play a decryption game today. You go first."
-                  answer='Lara, the Caesar cipher is a simple substitution encryption technique, where each letter in the alphabet is shifted forward or backward a fixed number of positions. Please try shifting the letters back 13 positions.'
-                  onSave={(query, answer) => {
-                    console.log(query, answer)
-                  }}
-                  id='1'
-                  createdAt='2023-03-21 10:00'
+                  query={question}
+                  answer={content}
+                  onSaved={onAnnotationEdited!}
+                  appId={appId!}
+                  annotationId={annotation?.id || ''}
+
+                  createdAt={annotation?.created_at}
                   onRemove={() => { }}
                 />
                 {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
@@ -309,6 +311,7 @@ const Answer: FC<IAnswerProps> = ({
                 {!feedbackDisabled && renderFeedbackRating(feedback?.rating, !isHideFeedbackEdit, displayScene !== 'console')}
               </div>
             </div>
+
             {more && <MoreInfo className='invisible group-hover:visible' more={more} isQuestion={false} />}
           </div>
         </div>
