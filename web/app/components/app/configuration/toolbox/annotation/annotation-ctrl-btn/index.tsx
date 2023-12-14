@@ -51,8 +51,7 @@ const CacheCtrlBtn: FC<Props> = ({
       message: t('common.api.actionSuccess') as string,
       type: 'success',
     })
-    // TODO: wait for api
-    onAdded(res.id || 'aaa', 'Joel')
+    onAdded(res.id, res.account?.name)
   }
 
   const handleRemove = async () => {

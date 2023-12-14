@@ -61,7 +61,7 @@ const EditAnnotationModal: FC<Props> = ({
         question: postQuery,
         answer: postAnswer,
       })
-      onAdded(res.id || 'aaa', 'Joel', postQuery, postAnswer)
+      onAdded(res.id, res.account?.name, postQuery, postAnswer)
     }
 
     Toast.notify({
