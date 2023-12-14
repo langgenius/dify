@@ -7,7 +7,7 @@ import cn from 'classnames'
 import type { CitationItem, DisplayScene, FeedbackFunc, Feedbacktype, IChatItem, ThoughtItem } from '../type'
 import OperationBtn from '../operation'
 import LoadingAnim from '../loading-anim'
-import { EditIcon, EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
+import { EditIconSolid, OpeningStatementIcon, RatingIcon } from '../icon-component'
 import s from '../style.module.css'
 import MoreInfo from '../more-info'
 import CopyBtn from '../copy-btn'
@@ -55,7 +55,6 @@ export type IAnswerProps = {
   supportAnnotation?: boolean
   appId?: string
   question: string
-  llmAnswer?: string
   onAnnotationEdited?: (question: string, answer: string) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
   onAnnotationRemoved?: () => void
@@ -78,7 +77,6 @@ const Answer: FC<IAnswerProps> = ({
   supportAnnotation,
   appId,
   question,
-  llmAnswer,
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
@@ -172,12 +170,6 @@ const Answer: FC<IAnswerProps> = ({
 
     const adminOperation = () => {
       return <div className='flex gap-1'>
-        <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.addAnnotation') as string}>
-          {OperationBtn({
-            innerContent: <IconWrapper><EditIcon className='hover:text-gray-800' /></IconWrapper>,
-            onClick: () => setShowEdit(true),
-          })}
-        </Tooltip>
         {!localAdminFeedback?.rating && <>
           <Tooltip selector={`user-feedback-${randomString(16)}`} content={t('appLog.detail.operation.like') as string}>
             {OperationBtn({
@@ -249,13 +241,13 @@ const Answer: FC<IAnswerProps> = ({
                   )
                   : (
                     <div>
-                      {llmAnswer && (
+                      {annotation?.logAnnotation && (
                         <div className='mb-1'>
-                          <div>
-                            <Markdown content={content} />
+                          <div className='mb-3'>
+                            <Markdown className='line-through !text-gray-400' content={annotation?.logAnnotation.content} />
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
-                            author: annotation?.authorName,
+                            author: annotation?.logAnnotation.account.name,
                           })} />
                         </div>
                       )}
@@ -263,7 +255,7 @@ const Answer: FC<IAnswerProps> = ({
                       <div>
                         <Markdown content={content} />
                       </div>
-                      {!llmAnswer && hasAnnotation && (
+                      {hasAnnotation && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
                           author: annotation.authorName,
                         })} />

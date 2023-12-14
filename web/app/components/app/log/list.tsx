@@ -84,7 +84,6 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
       log: item.message as any,
       message_files: item.message_files,
     })
-
     newChatList.push({
       id: item.id,
       content: item.answer,
@@ -97,7 +96,26 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
         tokens: item.answer_tokens + item.message_tokens,
         latency: item.provider_response_latency.toFixed(2),
       },
-      annotation: item.annotation,
+      annotation: (() => {
+        if (item.annotation_hit_history) {
+          return {
+            id: item.annotation_hit_history.annotation_id,
+            authorName: item.annotation_hit_history.annotation_create_account.name,
+            created_at: item.annotation_hit_history.created_at,
+          }
+        }
+
+        if (item.annotation) {
+          return {
+            id: '',
+            authorName: '',
+            logAnnotation: item.annotation,
+            created_at: 0,
+          }
+        }
+
+        return undefined
+      })(),
     })
   })
   return newChatList
@@ -280,10 +298,11 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             chatList={items}
             isHideSendInput={true}
             onFeedback={onFeedback}
-            onSubmitAnnotation={onSubmitAnnotation}
             displayScene='console'
             isShowPromptLog
             supportAnnotation
+            appId={appDetail?.id}
+            onChatListChange={setItems}
           />
         </div>
         : <div
@@ -321,7 +340,6 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               chatList={items}
               isHideSendInput={true}
               onFeedback={onFeedback}
-              onSubmitAnnotation={onSubmitAnnotation}
               displayScene='console'
               isShowPromptLog
             />
@@ -439,7 +457,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
       <Tooltip
         htmlContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
-            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${dayjs.unix(annotation?.created_at || dayjs().unix()).format('MM-DD hh:mm A')}`}
+            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.logAnnotation?.account?.name })} ${dayjs.unix(annotation?.created_at || dayjs().unix()).format('MM-DD hh:mm A')}`}
           </span>
         }
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
