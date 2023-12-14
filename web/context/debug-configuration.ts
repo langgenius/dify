@@ -1,6 +1,7 @@
 import { createContext } from 'use-context-selector'
 import { PromptMode } from '@/models/debug'
 import type {
+  AnnotationReplyConfig,
   BlockStatus,
   ChatPromptConfig,
   CitationConfig,
@@ -21,7 +22,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { VisionSettings } from '@/types/app'
 import { ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 
 type IDebugConfiguration = {
   appId: string
@@ -58,6 +59,8 @@ type IDebugConfiguration = {
   setSpeechToTextConfig: (speechToTextConfig: SpeechToTextConfig) => void
   citationConfig: CitationConfig
   setCitationConfig: (citationConfig: CitationConfig) => void
+  annotationConfig: AnnotationReplyConfig
+  setAnnotationConfig: (annotationConfig: AnnotationReplyConfig) => void
   moderationConfig: ModerationConfig
   setModerationConfig: (moderationConfig: ModerationConfig) => void
   externalDataToolsConfig: ExternalDataTool[]
@@ -138,13 +141,23 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   citationConfig: {
     enabled: false,
   },
-  setCitationConfig: () => {},
+  setCitationConfig: () => { },
   moderationConfig: {
     enabled: false,
   },
-  setModerationConfig: () => {},
+  annotationConfig: {
+    id: '',
+    enabled: false,
+    score_threshold: ANNOTATION_DEFAULT.score_threshold,
+    embedding_model: {
+      embedding_model_name: '',
+      embedding_provider_name: '',
+    },
+  },
+  setAnnotationConfig: () => { },
+  setModerationConfig: () => { },
   externalDataToolsConfig: [],
-  setExternalDataToolsConfig: () => {},
+  setExternalDataToolsConfig: () => { },
   formattingChanged: false,
   setFormattingChanged: () => { },
   inputs: {},
@@ -189,7 +202,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     score_threshold_enabled: false,
     score_threshold: 0.7,
   },
-  setDatasetConfigs: () => {},
+  setDatasetConfigs: () => { },
   hasSetContextVar: false,
   isShowVisionConfig: false,
   visionConfig: {
@@ -198,7 +211,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     detail: Resolution.low,
     transfer_methods: [TransferMethod.remote_url],
   },
-  setVisionConfig: () => {},
+  setVisionConfig: () => { },
 })
 
 export default DebugConfigurationContext

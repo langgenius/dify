@@ -5,12 +5,14 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GroupName from '../base/group-name'
 import Moderation from './moderation'
+import Annotation from './annotation/config-param'
 
 export type ToolboxProps = {
   showModerationSettings: boolean
+  showAnnotation: boolean
 }
 
-const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
+const Toolbox: FC<ToolboxProps> = ({ showModerationSettings, showAnnotation }) => {
   const { t } = useTranslation()
 
   return (
@@ -19,6 +21,11 @@ const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
       {
         showModerationSettings && (
           <Moderation />
+        )
+      }
+      {
+        (showAnnotation || true) && (
+          <Annotation />
         )
       }
     </div>

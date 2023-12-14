@@ -22,6 +22,7 @@ const ProviderContext = createContext<{
   textGenerationDefaultModel?: BackendModel
   mutateTextGenerationDefaultModel: () => void
   embeddingsDefaultModel?: BackendModel
+  isEmbeddingsDefaultModelValid: boolean
   mutateEmbeddingsDefaultModel: () => void
   speech2textDefaultModel?: BackendModel
   mutateSpeech2textDefaultModel: () => void
@@ -42,16 +43,17 @@ const ProviderContext = createContext<{
       speech2textModelList: [],
       rerankModelList: [],
       agentThoughtModelList: [],
-      updateModelList: () => {},
+      updateModelList: () => { },
       textGenerationDefaultModel: undefined,
-      mutateTextGenerationDefaultModel: () => {},
+      mutateTextGenerationDefaultModel: () => { },
       speech2textDefaultModel: undefined,
-      mutateSpeech2textDefaultModel: () => {},
+      mutateSpeech2textDefaultModel: () => { },
       embeddingsDefaultModel: undefined,
-      mutateEmbeddingsDefaultModel: () => {},
+      isEmbeddingsDefaultModelValid: false,
+      mutateEmbeddingsDefaultModel: () => { },
       rerankDefaultModel: undefined,
       isRerankDefaultModelVaild: false,
-      mutateRerankDefaultModel: () => {},
+      mutateRerankDefaultModel: () => { },
       supportRetrievalMethods: [],
       plan: {
         type: Plan.sandbox,
@@ -97,6 +99,10 @@ export const ProviderContextProvider = ({
     item => item.model_name === rerankDefaultModel?.model_name && item.model_provider.provider_name === rerankDefaultModel?.model_provider.provider_name,
   )
 
+  const isEmbeddingsDefaultModelValid = !!embeddingsModelList?.find(
+    item => item.model_name === embeddingsDefaultModel?.model_name && item.model_provider.provider_name === embeddingsDefaultModel?.model_provider.provider_name,
+  )
+
   const updateModelList = (type: ModelType) => {
     if (type === ModelType.textGeneration)
       mutateTextGenerationModelList()
@@ -139,6 +145,7 @@ export const ProviderContextProvider = ({
       mutateSpeech2textDefaultModel,
       rerankDefaultModel,
       isRerankDefaultModelVaild,
+      isEmbeddingsDefaultModelValid,
       mutateRerankDefaultModel,
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,

@@ -1,0 +1,134 @@
+'use client'
+import type { FC } from 'react'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Item } from './config-param'
+import ScoreSlider from './score-slider'
+import Modal from '@/app/components/base/modal'
+import Button from '@/app/components/base/button'
+import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
+import { useProviderContext } from '@/context/provider-context'
+import Toast from '@/app/components/base/toast'
+import type { AnnotationReplyConfig } from '@/models/debug'
+import { ANNOTATION_DEFAULT } from '@/config'
+
+type Props = {
+  appId: string
+  isShow: boolean
+  onHide: () => void
+  onSave: (embeddingModel: {
+    embedding_provider_name: string
+    embedding_model_name: string
+  }, score: number) => void
+  isInit?: boolean
+  annotationConfig: AnnotationReplyConfig
+}
+
+const ConfigParamModal: FC<Props> = ({
+  appId,
+  isShow,
+  onHide: doHide,
+  onSave,
+  isInit,
+  annotationConfig: oldAnnotationConfig,
+}) => {
+  const { t } = useTranslation()
+  const {
+    embeddingsDefaultModel,
+    isEmbeddingsDefaultModelValid,
+  } = useProviderContext()
+  const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
+
+  const [isLoading, setLoading] = useState(false)
+  const [embeddingModel, setEmbeddingModel] = useState(embeddingsDefaultModel
+    ? {
+      providerName: embeddingsDefaultModel.model_provider.provider_name,
+      modelName: embeddingsDefaultModel.model_name,
+    }
+    : undefined)
+  const onHide = () => {
+    if (!isLoading)
+      doHide()
+  }
+
+  const handleSave = async () => {
+    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
+      Toast.notify({
+        message: t('common.modelProvider.embeddingModel.required'),
+        type: 'error',
+      })
+      return
+    }
+    setLoading(true)
+    await onSave({
+      embedding_provider_name: embeddingModel.providerName,
+      embedding_model_name: embeddingModel.modelName,
+    }, annotationConfig.score_threshold)
+    setLoading(false)
+  }
+
+  return (
+    <Modal
+      isShow={isShow}
+      onClose={onHide}
+      className='!p-8 !pb-6 !mt-14 !max-w-none !w-[640px]'
+      wrapperClassName='!z-50'
+    >
+      <div className='mb-2 text-xl font-semibold text-[#1D2939]'>
+        {t(`appAnnotation.initSetup.${isInit ? 'title' : 'configTitle'}`)}
+      </div>
+
+      <div className='space-y-2'>
+        <Item
+          title={t('appDebug.feature.annotation.scoreThreshold.title')}
+          tooltip={t('appDebug.feature.annotation.scoreThreshold.description')}
+        >
+          <ScoreSlider
+            className='mt-1'
+            value={(annotationConfig.score_threshold || ANNOTATION_DEFAULT.score_threshold) * 100}
+            onChange={(val) => {
+              setAnnotationConfig({
+                ...annotationConfig,
+                score_threshold: val / 100,
+              })
+            }}
+          />
+        </Item>
+
+        <Item
+          title={t('common.modelProvider.embeddingModel.key')}
+          tooltip={t('common.modelProvider.embeddingModel.tip')}
+        >
+          <div className='pt-1'>
+            <ModelSelector
+              widthSameToTrigger
+              value={embeddingModel}
+              modelType={ModelType.embeddings}
+              onChange={(val) => {
+                setEmbeddingModel({
+                  providerName: val.model_provider.provider_name,
+                  modelName: val.model_name,
+                })
+              }}
+            />
+          </div>
+        </Item>
+      </div>
+
+      <div className='mt-4 flex gap-2 justify-end'>
+        <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button
+          type='primary'
+          onClick={handleSave}
+          className='flex items-center border-[0.5px]'
+          loading={isLoading}
+        >
+          <div></div>
+          <div>{t(`appAnnotation.initSetup.${isInit ? 'confirmBtn' : 'configConfirmBtn'}`)}</div>
+        </Button >
+      </div >
+    </Modal >
+  )
+}
+export default React.memo(ConfigParamModal)

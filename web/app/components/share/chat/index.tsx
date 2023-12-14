@@ -613,6 +613,22 @@ const Main: FC<IMainProps> = ({
           ))
         }
       },
+      onAnnotationReply: (annotationReply) => {
+        responseItem.content = annotationReply.answer
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({
+              ...responseItem,
+              id: annotationReply.id,
+            })
+          })
+        setChatList(newListWithAnswer)
+        tempNewConversationId = annotationReply.conversation_id
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
