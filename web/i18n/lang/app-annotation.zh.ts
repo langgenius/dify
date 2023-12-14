@@ -8,7 +8,9 @@ const translation = {
   },
   table: {
     header: {
-      question: '问题',
+      question: '提问',
+      match: '匹配',
+      response: '回复',
       answer: '答案',
       createdAt: '创建时间',
       hits: '命中次数',
@@ -51,6 +53,9 @@ const translation = {
   },
   hitHistoryTable: {
     question: '问题',
+    query: '提问',
+    match: '匹配',
+    response: '回复',
     source: '来源',
     score: '分数',
     time: '时间',
