@@ -499,6 +499,13 @@ const Debug: FC<IDebug> = ({
     })
   }
 
+  const varList = modelConfig.configs.prompt_variables.map((item: any) => {
+    return {
+      label: item.key,
+      value: inputs[item.key],
+    }
+  })
+
   return (
     <>
       <div className="shrink-0">
@@ -577,6 +584,7 @@ const Debug: FC<IDebug> = ({
                 onRetry={() => { }}
                 supportAnnotation
                 appId={appId}
+                varList={varList}
               />
             )}
           </div>

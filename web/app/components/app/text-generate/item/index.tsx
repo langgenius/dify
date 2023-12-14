@@ -46,6 +46,7 @@ export type IGenerationItemProps = {
   supportFeedback?: boolean
   supportAnnotation?: boolean
   appId?: string
+  varList?: { label: string; value: string | number | object }[]
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -90,6 +91,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   supportFeedback,
   supportAnnotation,
   appId,
+  varList,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -109,7 +111,8 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-  const question = 'test'
+  const question = (varList && varList?.length > 0) ? varList?.map(({ label, value }) => `${label}:${value}`).join('&') : ''
+  console.log(question)
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {

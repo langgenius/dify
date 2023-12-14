@@ -291,6 +291,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           onFeedback={feedback => onFeedback(detail.message.id, feedback)}
           supportAnnotation
           appId={appDetail?.id}
+          varList={varList}
         />
       </div>
       : items.length < 8
