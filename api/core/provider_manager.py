@@ -1,7 +1,6 @@
 import json
 from collections import defaultdict
 from json import JSONDecodeError
-from typing import Tuple
 
 from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, CustomModelConfiguration, \
@@ -48,7 +47,6 @@ class ProviderManager:
           Custom provider available conditions:
           (1. custom provider credentials available
           (2. at least one custom model credentials available
-        - Check the missing hosting provider records and fill them up
         - Verify, update, and delete custom provider configuration
         - Verify, update, and delete custom provider model configuration
         - Get the list of available models (optional provider filtering, model type filtering)
@@ -60,22 +58,22 @@ class ProviderManager:
         :return:
         """
         # Get all provider records of the workspace
-        provider_name_to_provider_records_dict = self.get_all_providers(tenant_id)
+        provider_name_to_provider_records_dict = self._get_all_providers(tenant_id)
 
         # Initialize trial provider records if not exist
-        provider_name_to_provider_records_dict = self.init_trial_provider_records(
+        provider_name_to_provider_records_dict = self._init_trial_provider_records(
             tenant_id,
             provider_name_to_provider_records_dict
         )
 
         # Get all provider model records of the workspace
-        provider_name_to_provider_model_records_dict = self.get_all_provider_models(tenant_id)
+        provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
 
         # Get all provider entities
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
-        provider_name_to_preferred_model_provider_records_dict = self.get_all_preferred_model_providers(tenant_id)
+        provider_name_to_preferred_model_provider_records_dict = self._get_all_preferred_model_providers(tenant_id)
 
         # Get decoding rsa key and cipher for decrypting credentials
         decoding_rsa_key, decoding_cipher_rsa = encrypter.get_decrypt_decoding(tenant_id)
@@ -89,7 +87,7 @@ class ProviderManager:
             provider_name = provider_entity.provider
 
             # Convert to custom configuration
-            custom_configuration = self.to_custom_configuration(
+            custom_configuration = self._to_custom_configuration(
                 provider_entity,
                 provider_name_to_provider_records_dict.get(provider_entity.provider),
                 provider_name_to_provider_model_records_dict.get(provider_entity.provider),
@@ -98,7 +96,7 @@ class ProviderManager:
             )
 
             # Convert to system configuration
-            system_configuration = self.to_system_configuration(
+            system_configuration = self._to_system_configuration(
                 provider_entity,
                 provider_name_to_provider_records_dict.get(provider_entity.provider)
             )
@@ -158,7 +156,7 @@ class ProviderManager:
 
         pass
 
-    def get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
+    def _get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
         """
         Get all provider records of the workspace.
 
@@ -177,7 +175,7 @@ class ProviderManager:
 
         return provider_name_to_provider_records_dict
 
-    def get_all_provider_models(self, tenant_id: str) -> dict[str, list[ProviderModel]]:
+    def _get_all_provider_models(self, tenant_id: str) -> dict[str, list[ProviderModel]]:
         """
         Get all provider model records of the workspace.
 
@@ -197,7 +195,7 @@ class ProviderManager:
 
         return provider_name_to_provider_model_records_dict
 
-    def get_all_preferred_model_providers(self, tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
+    def _get_all_preferred_model_providers(self, tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
         """
         Get All preferred provider types of the workspace.
 
@@ -216,8 +214,8 @@ class ProviderManager:
 
         return provider_name_to_preferred_provider_type_records_dict
 
-    def init_trial_provider_records(self, tenant_id: str,
-                                    provider_name_to_provider_records_dict: dict[str, list]) -> dict[str, list]:
+    def _init_trial_provider_records(self, tenant_id: str,
+                                     provider_name_to_provider_records_dict: dict[str, list]) -> dict[str, list]:
         """
         Initialize trial provider records if not exists.
 
@@ -261,12 +259,12 @@ class ProviderManager:
 
         return provider_name_to_provider_records_dict
 
-    def to_custom_configuration(self,
-                                provider_entity: ProviderEntity,
-                                provider_records: list[Provider],
-                                provider_model_records: list[ProviderModel],
-                                decoding_rsa_key,
-                                decoding_cipher_rsa) -> CustomConfiguration:
+    def _to_custom_configuration(self,
+                                 provider_entity: ProviderEntity,
+                                 provider_records: list[Provider],
+                                 provider_model_records: list[ProviderModel],
+                                 decoding_rsa_key,
+                                 decoding_cipher_rsa) -> CustomConfiguration:
         """
         Convert to custom configuration.
 
@@ -352,9 +350,9 @@ class ProviderManager:
             models=custom_model_configurations
         )
 
-    def to_system_configuration(self,
-                                provider_entity: ProviderEntity,
-                                provider_records: list[Provider]) -> SystemConfiguration:
+    def _to_system_configuration(self,
+                                 provider_entity: ProviderEntity,
+                                 provider_records: list[Provider]) -> SystemConfiguration:
         """
         Convert to system configuration.
 
@@ -365,7 +363,7 @@ class ProviderManager:
         # Get hosting configuration
         hosting_configuration = ext_hosting_provider.hosting_configuration
 
-        if provider_entity.provider not in hosting_configuration.provider_map\
+        if provider_entity.provider not in hosting_configuration.provider_map \
                 or not hosting_configuration.provider_map.get(provider_entity.provider).enabled:
             return SystemConfiguration(
                 enabled=False
