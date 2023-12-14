@@ -1,5 +1,6 @@
 const translation = {
   title: 'Annotations',
+  name: 'Annotated Response',
   editBy: 'Answer edited by {{author}}',
   noData: {
     title: 'No annotations',

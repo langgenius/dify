@@ -11,6 +11,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-page/mo
 import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReplyConfig } from '@/models/debug'
+import { ANNOTATION_DEFAULT } from '@/config'
 
 type Props = {
   appId: string
@@ -85,7 +86,7 @@ const ConfigParamModal: FC<Props> = ({
         >
           <ScoreSlider
             className='mt-1'
-            value={annotationConfig.score_threshold * 100}
+            value={(annotationConfig.score_threshold || ANNOTATION_DEFAULT.score_threshold) * 100}
             onChange={(val) => {
               setAnnotationConfig({
                 ...annotationConfig,

@@ -1,12 +1,13 @@
 import { del, get, post } from './base'
 import type { AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
+import { ANNOTATION_DEFAULT } from '@/config'
 
 export const fetchAnnotationConfig = (appId: string) => {
   return get(`apps/${appId}/annotation-setting`)
 }
 export const updateAnnotationStatus = (appId: string, action: AnnotationEnableStatus, embeddingModel?: EmbeddingModelConfig, score?: number) => {
   let body: any = {
-    score_threshold: score,
+    score_threshold: score || ANNOTATION_DEFAULT.score_threshold,
   }
   if (embeddingModel) {
     body = {
@@ -21,7 +22,7 @@ export const updateAnnotationStatus = (appId: string, action: AnnotationEnableSt
 }
 
 export const updateAnnotationScore = (appId: string, settingId: string, score: number) => {
-  return post(`apps/${appId}/annotation-setting/${settingId}`, {
+  return post(`apps/${appId}/annotation-settings/${settingId}`, {
     body: { score_threshold: score },
   })
 }

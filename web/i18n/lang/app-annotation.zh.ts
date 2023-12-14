@@ -1,5 +1,6 @@
 const translation = {
   title: '标注',
+  name: '标注回复',
   editBy: '{{author}}编辑的答案',
   noData: {
     title: '没有标注',
