@@ -7,17 +7,19 @@ import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
 import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
-import { editAnnotation } from '@/service/annotation'
+import { addAnnotation, editAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
   isShow: boolean
   onHide: () => void
   appId: string
-  annotationId: string
+  messageId?: string
+  annotationId?: string
   query: string
   answer: string
-  onSaved: (editedQuery: string, editedAnswer: string) => void
+  onEdited: (editedQuery: string, editedAnswer: string) => void
+  onAdded: (annotationId: string, authorName: string, editedQuery: string, editedAnswer: string) => void
   createdAt?: number
   onRemove: () => void
 }
@@ -27,8 +29,10 @@ const EditAnnotationModal: FC<Props> = ({
   onHide,
   query,
   answer,
-  onSaved,
+  onEdited,
+  onAdded,
   appId,
+  messageId,
   annotationId,
   createdAt,
   onRemove,
@@ -42,11 +46,22 @@ const EditAnnotationModal: FC<Props> = ({
       postQuery = editedContent
     else
       postAnswer = editedContent
-    await editAnnotation(appId, annotationId, {
-      question: postQuery,
-      answer: postAnswer,
-    })
-    onSaved(postQuery, postAnswer)
+    if (annotationId) {
+      await editAnnotation(appId, annotationId, {
+        message_id: messageId,
+        question: postQuery,
+        answer: postAnswer,
+      })
+      onEdited(postQuery, postAnswer)
+    }
+    else {
+      const res: any = await addAnnotation(appId, {
+        question: postQuery,
+        answer: postAnswer,
+      })
+      onAdded(res.id || 'aaa', 'Joel', postQuery, postAnswer)
+    }
+
     Toast.notify({
       message: t('common.api.actionSuccess') as string,
       type: 'success',

@@ -24,6 +24,7 @@ import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-u
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
+import type { Annotation } from '@/models/log'
 
 export type IChatProps = {
   appId?: string
@@ -235,6 +236,28 @@ const Chat: FC<IChatProps> = ({
                   return item
                 }))
               }}
+              onAnnotationAdded={(annotationId, authorName, query, answer) => {
+                onChatListChange?.(chatList.map((item, i) => {
+                  if (i === index - 1) {
+                    return {
+                      ...item,
+                      content: query,
+                    }
+                  }
+                  if (i === index) {
+                    return {
+                      ...item,
+                      content: answer,
+                      annotation: {
+                        id: annotationId,
+                        authorName,
+                      } as Annotation,
+                    }
+                  }
+                  return item
+                }))
+              }}
+
             />
           }
           return (

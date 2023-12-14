@@ -57,6 +57,7 @@ export type IAnswerProps = {
   question: string
   llmAnswer?: string
   onAnnotationEdited?: (question: string, answer: string) => void
+  onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -78,6 +79,7 @@ const Answer: FC<IAnswerProps> = ({
   question,
   llmAnswer,
   onAnnotationEdited,
+  onAnnotationAdded,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation } = item
   const hasAnnotation = !!annotation?.id
@@ -266,45 +268,6 @@ const Answer: FC<IAnswerProps> = ({
                       )}
                     </div>
                   )}
-                {/* old annotation */}
-                {/* {!showEdit
-                  ? (annotation?.content
-                    && <>
-                      <Divider name={annotation?.account?.name || userProfile?.name} />
-                      {annotation.content}
-                    </>)
-                  : <>
-                    <Divider name={annotation?.account?.name || userProfile?.name} />
-                    <AutoHeightTextarea
-                      placeholder={t('appLog.detail.operation.annotationPlaceholder') as string}
-                      value={inputValue}
-                      onChange={e => setInputValue(e.target.value)}
-                      minHeight={58}
-                      className={`${cn(s.textArea)} !py-2 resize-none block w-full !px-3 bg-gray-50 border border-gray-200 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm text-gray-700 tracking-[0.2px]`}
-                    />
-                    <div className="mt-2 flex flex-row">
-                      <Button
-                        type='primary'
-                        className='mr-2'
-                        loading={loading}
-                        onClick={async () => {
-                          if (!inputValue)
-                            return
-                          setLoading(true)
-                          const res = await onSubmitAnnotation?.(id, inputValue)
-                          if (res)
-                            setAnnotation({ ...annotation, content: inputValue } as Annotation)
-                          setLoading(false)
-                          setShowEdit(false)
-                        }}>{t('common.operation.confirm')}</Button>
-                      <Button
-                        onClick={() => {
-                          setInputValue(annotation?.content ?? '')
-                          setShowEdit(false)
-                        }}>{t('common.operation.cancel')}</Button>
-                    </div>
-                  </>
-                } */}
                 {
                   !!citation?.length && !isThinking && isShowCitation && !isResponsing && (
                     <Citation data={citation} showHitInfo={isShowCitationHitInfo} />
@@ -320,9 +283,13 @@ const Answer: FC<IAnswerProps> = ({
                 )}
                 {supportAnnotation && (
                   <AnnotationCtrlBtn
+                    appId={appId!}
+                    messageId={id}
                     className={cn(s.annotationBtn, 'ml-1')}
                     cached={hasAnnotation}
-                    onAdd={() => { }}
+                    query={question}
+                    answer={content}
+                    onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content)}
                     onEdit={() => setIsShowReplyModal(true)}
                     onRemove={() => { }}
                   />
@@ -333,10 +300,11 @@ const Answer: FC<IAnswerProps> = ({
                   onHide={() => setIsShowReplyModal(false)}
                   query={question}
                   answer={content}
-                  onSaved={onAnnotationEdited!}
+                  onEdited={onAnnotationEdited!}
+                  onAdded={onAnnotationAdded!}
                   appId={appId!}
+                  messageId={id}
                   annotationId={annotation?.id || ''}
-
                   createdAt={annotation?.created_at}
                   onRemove={() => { }}
                 />

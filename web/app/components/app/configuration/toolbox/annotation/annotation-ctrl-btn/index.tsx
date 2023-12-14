@@ -9,11 +9,17 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove-annotation-confirm-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { addAnnotation } from '@/service/annotation'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
+  appId: string
+  messageId?: string
   className?: string
   cached: boolean
-  onAdd: () => void
+  query: string
+  answer: string
+  onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
   onRemove: () => void
 }
@@ -21,7 +27,11 @@ type Props = {
 const CacheCtrlBtn: FC<Props> = ({
   className,
   cached,
-  onAdd,
+  query,
+  answer,
+  appId,
+  messageId,
+  onAdded,
   onEdit,
   onRemove,
 }) => {
@@ -29,6 +39,19 @@ const CacheCtrlBtn: FC<Props> = ({
   const [showModal, setShowModal] = useState(false)
   const cachedBtnRef = useRef<HTMLDivElement>(null)
   const isCachedBtnHovering = useHover(cachedBtnRef)
+  const handleAdd = async () => {
+    const res: any = await addAnnotation(appId, {
+      message_id: messageId,
+      question: query,
+      answer,
+    })
+    Toast.notify({
+      message: t('common.api.actionSuccess') as string,
+      type: 'success',
+    })
+    // TODO: wait for api
+    onAdded(res.id || 'aaa', 'Joel')
+  }
   return (
     <div className={cn(className, 'inline-block')}>
       <div className='inline-flex p-0.5 space-x-0.5 rounded-lg bg-white border border-gray-100 shadow-md text-gray-500 cursor-pointer'>
@@ -60,7 +83,7 @@ const CacheCtrlBtn: FC<Props> = ({
             >
               <div
                 className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
-                onClick={onAdd}
+                onClick={handleAdd}
               >
                 <MessageFastPlus className='w-4 h-4' />
               </div>

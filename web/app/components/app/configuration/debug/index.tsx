@@ -362,6 +362,7 @@ const Debug: FC<IDebug> = ({
         responseItem.content = messageReplace.answer
       },
       onAnnotationReply: (annotationReply) => {
+        responseItem.id = annotationReply.id
         responseItem.content = annotationReply.answer
         responseItem.annotation = ({
           id: annotationReply.annotation_id,
