@@ -9,19 +9,20 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove-annotation-confirm-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { addAnnotation } from '@/service/annotation'
+import { addAnnotation, delAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
 
 type Props = {
   appId: string
   messageId?: string
+  annotationId?: string
   className?: string
   cached: boolean
   query: string
   answer: string
   onAdded: (annotationId: string, authorName: string) => void
   onEdit: () => void
-  onRemove: () => void
+  onRemoved: () => void
 }
 
 const CacheCtrlBtn: FC<Props> = ({
@@ -31,9 +32,10 @@ const CacheCtrlBtn: FC<Props> = ({
   answer,
   appId,
   messageId,
+  annotationId,
   onAdded,
   onEdit,
-  onRemove,
+  onRemoved,
 }) => {
   const { t } = useTranslation()
   const [showModal, setShowModal] = useState(false)
@@ -51,6 +53,16 @@ const CacheCtrlBtn: FC<Props> = ({
     })
     // TODO: wait for api
     onAdded(res.id || 'aaa', 'Joel')
+  }
+
+  const handleRemove = async () => {
+    await delAnnotation(appId, annotationId!)
+    Toast.notify({
+      message: t('common.api.actionSuccess') as string,
+      type: 'success',
+    })
+    onRemoved()
+    setShowModal(false)
   }
   return (
     <div className={cn(className, 'inline-block')}>
@@ -104,7 +116,7 @@ const CacheCtrlBtn: FC<Props> = ({
       <RemoveAnnotationConfirmModal
         isShow={showModal}
         onHide={() => setShowModal(false)}
-        onRemove={onRemove}
+        onRemove={handleRemove}
       />
     </div>
   )

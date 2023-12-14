@@ -58,6 +58,7 @@ export type IAnswerProps = {
   llmAnswer?: string
   onAnnotationEdited?: (question: string, answer: string) => void
   onAnnotationAdded?: (annotationId: string, authorName: string, question: string, answer: string) => void
+  onAnnotationRemoved?: () => void
 }
 // The component needs to maintain its own state to control whether to display input component
 const Answer: FC<IAnswerProps> = ({
@@ -80,6 +81,7 @@ const Answer: FC<IAnswerProps> = ({
   llmAnswer,
   onAnnotationEdited,
   onAnnotationAdded,
+  onAnnotationRemoved,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation } = item
   const hasAnnotation = !!annotation?.id
@@ -285,13 +287,14 @@ const Answer: FC<IAnswerProps> = ({
                   <AnnotationCtrlBtn
                     appId={appId!}
                     messageId={id}
+                    annotationId={annotation?.id || ''}
                     className={cn(s.annotationBtn, 'ml-1')}
                     cached={hasAnnotation}
                     query={question}
                     answer={content}
                     onAdded={(id, authorName) => onAnnotationAdded?.(id, authorName, question, content)}
                     onEdit={() => setIsShowReplyModal(true)}
-                    onRemove={() => { }}
+                    onRemoved={onAnnotationRemoved!}
                   />
                 )}
 

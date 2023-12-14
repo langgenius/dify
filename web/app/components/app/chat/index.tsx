@@ -257,6 +257,21 @@ const Chat: FC<IChatProps> = ({
                   return item
                 }))
               }}
+              onAnnotationRemoved={() => {
+                onChatListChange?.(chatList.map((item, i) => {
+                  if (i === index) {
+                    return {
+                      ...item,
+                      content: '',
+                      annotation: {
+                        ...(item.annotation || {}),
+                        id: '',
+                      } as Annotation,
+                    }
+                  }
+                  return item
+                }))
+              }}
 
             />
           }
