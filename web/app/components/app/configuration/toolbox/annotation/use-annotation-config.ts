@@ -30,11 +30,11 @@ const useAnnotationConfig = ({
     }
   }
 
-  const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig) => {
+  const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score: number) => {
     if (annotationConfig.enabled)
       return
 
-    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.enable, embeddingModel)
+    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.enable, embeddingModel, score)
     await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)
     setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
       draft.enabled = true

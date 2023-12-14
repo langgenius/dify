@@ -146,6 +146,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     enabled: false,
   },
   annotationConfig: {
+    id: '',
     enabled: false,
     score_threshold: ANNOTATION_DEFAULT.score_threshold,
     embedding_model: {

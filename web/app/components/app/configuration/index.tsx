@@ -92,6 +92,7 @@ const Configuration: FC = () => {
     enabled: false,
   })
   const [annotationConfig, doSetAnnotationConfig] = useState<AnnotationReplyConfig>({
+    id: '',
     enabled: false,
     score_threshold: ANNOTATION_DEFAULT.score_threshold,
     embedding_model: {
@@ -526,9 +527,6 @@ const Configuration: FC = () => {
       data.chat_prompt_config = chatPromptConfig
       data.completion_prompt_config = completionPromptConfig
     }
-
-    if (mode === AppType.chat)
-      data.annotation_reply = annotationConfig
 
     await updateAppModelConfig({ url: `/apps/${appId}/model-config`, body: data })
     const newModelConfig = produce(modelConfig, (draft: any) => {

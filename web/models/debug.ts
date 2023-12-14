@@ -74,6 +74,7 @@ export type SpeechToTextConfig = MoreLikeThisConfig
 export type CitationConfig = MoreLikeThisConfig
 
 export type AnnotationReplyConfig = {
+  id: string
   enabled: boolean
   score_threshold: number
   embedding_model: {

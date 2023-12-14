@@ -56,7 +56,9 @@ const translation = {
   },
   initSetup: {
     title: 'Annotated Response Initial Setup',
+    configTitle: 'Annotated Response Setup',
     confirmBtn: 'Save & Enable',
+    configConfirmBtn: 'Save',
   },
 }
 

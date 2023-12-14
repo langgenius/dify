@@ -56,7 +56,9 @@ const translation = {
   },
   initSetup: {
     title: '标注回复初始设置',
+    configTitle: '标注回复设置',
     confirmBtn: '保存并启用',
+    configConfirmBtn: '保存',
   },
 }
 

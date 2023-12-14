@@ -23,7 +23,7 @@ import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig,
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
-import ConfigInit from '@/app/components/app/configuration/toolbox/annotation/config-init'
+import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 
 const Config: FC = () => {
   const {
@@ -264,17 +264,19 @@ const Config: FC = () => {
           )
         }
 
-        <ConfigInit
+        <ConfigParamModal
           appId={appId}
+          isInit
           isShow={isShowAnnotationConfigInit}
           onHide={() => {
             setIsShowAnnotationConfigInit(false)
             showChooseFeatureTrue()
           }}
-          onSave={async (embeddingModel) => {
-            await handleEnableAnnotation(embeddingModel)
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
             setIsShowAnnotationConfigInit(false)
           }}
+          annotationConfig={annotationConfig}
         />
       </div>
     </>
