@@ -244,7 +244,7 @@ const Answer: FC<IAnswerProps> = ({
                       {annotation?.logAnnotation && (
                         <div className='mb-1'>
                           <div className='mb-3'>
-                            <Markdown className='line-through !text-gray-400' content={annotation?.logAnnotation.content} />
+                            <Markdown className='line-through !text-gray-400' content={content} />
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
                             author: annotation?.logAnnotation.account.name,
@@ -253,7 +253,7 @@ const Answer: FC<IAnswerProps> = ({
                       )}
 
                       <div>
-                        <Markdown content={content} />
+                        <Markdown content={annotation?.logAnnotation ? annotation?.logAnnotation.content : content} />
                       </div>
                       {hasAnnotation && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
