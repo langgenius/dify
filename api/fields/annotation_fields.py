@@ -26,7 +26,9 @@ annotation_hit_history_fields = {
     "source": fields.String,
     "score": fields.Float,
     "question": fields.String,
-    "created_at": TimestampField
+    "created_at": TimestampField,
+    "match": fields.String(attribute='annotation_question'),
+    "response": fields.String(attribute='annotation_content')
 }
 
 annotation_hit_history_list_fields = {

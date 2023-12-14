@@ -100,7 +100,6 @@ class AppModelConfig(db.Model):
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
-    annotation_reply = db.Column(db.Text)
 
     @property
     def app(self):
@@ -132,8 +131,22 @@ class AppModelConfig(db.Model):
 
     @property
     def annotation_reply_dict(self) -> dict:
-        return json.loads(self.annotation_reply) if self.annotation_reply \
-            else {"enabled": False}
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == self.app_id).first()
+        if annotation_setting:
+            collection_binding_detail = annotation_setting.collection_binding_detail
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {
+                    "embedding_provider_name": collection_binding_detail.provider_name,
+                    "embedding_model_name": collection_binding_detail.model_name
+                }
+            }
+
+        else:
+            return {"enabled": False}
 
     @property
     def more_like_this_dict(self) -> dict:
@@ -237,8 +250,6 @@ class AppModelConfig(db.Model):
             if model_config.get('dataset_configs') else None
         self.file_upload = json.dumps(model_config.get('file_upload')) \
             if model_config.get('file_upload') else None
-        self.annotation_reply = json.dumps(model_config.get('annotation_reply')) \
-            if model_config.get('annotation_reply') else None
         return self
 
     def copy(self):
@@ -261,7 +272,6 @@ class AppModelConfig(db.Model):
             pre_prompt=self.pre_prompt,
             agent_mode=self.agent_mode,
             retriever_resource=self.retriever_resource,
-            annotation_reply=self.annotation_reply,
             prompt_type=self.prompt_type,
             chat_prompt_config=self.chat_prompt_config,
             completion_prompt_config=self.completion_prompt_config,
@@ -523,7 +533,6 @@ class Message(db.Model):
                               .filter(AppAnnotationHitHistory.message_id == self.id).first())
         return annotation_history
 
-
     @property
     def app_model_config(self):
         conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
@@ -670,6 +679,8 @@ class AppAnnotationHitHistory(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     score = db.Column(Float, nullable=False, server_default=db.text('0'))
     message_id = db.Column(UUID, nullable=False)
+    annotation_question = db.Column(db.Text, nullable=False)
+    annotation_content = db.Column(db.Text, nullable=False)
 
     @property
     def account(self):
@@ -682,6 +693,44 @@ class AppAnnotationHitHistory(db.Model):
     def annotation_create_account(self):
         account = db.session.query(Account).filter(Account.id == self.account_id).first()
         return account
+
+
+class AppAnnotationSetting(db.Model):
+    __tablename__ = 'app_annotation_settings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_settings_pkey'),
+        db.Index('app_annotation_settings_app_idx', 'app_id')
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(UUID, nullable=False)
+    score_threshold = db.Column(Float, nullable=False, server_default=db.text('0'))
+    collection_binding_id = db.Column(UUID, nullable=False)
+    created_user_id = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_user_id = db.Column(UUID, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def created_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def updated_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def collection_binding_detail(self):
+        from .dataset import DatasetCollectionBinding
+        collection_binding_detail = (db.session.query(DatasetCollectionBinding)
+                                     .filter(DatasetCollectionBinding.id == self.collection_binding_id).first())
+        return collection_binding_detail
 
 
 class OperationLog(db.Model):

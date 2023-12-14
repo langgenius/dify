@@ -11,12 +11,12 @@ from core.index.index import IndexBuilder
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import MessageAnnotation, App
+from models.model import MessageAnnotation, App, AppAnnotationSetting
 from services.dataset_service import DatasetCollectionBindingService
 
 
 @shared_task(queue='dataset')
-def enable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
+def enable_annotation_reply_task(job_id: str, app_id: str, user_id: str, tenant_id: str, score_threshold: float,
                                  embedding_provider_name: str, embedding_model_name: str):
     """
     Async enable annotation reply task
@@ -44,6 +44,23 @@ def enable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
             embedding_model_name,
             'annotation'
         )
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id).first()
+        if annotation_setting:
+            annotation_setting.score_threshold = score_threshold
+            annotation_setting.collection_binding_id = dataset_collection_binding.id
+            annotation_setting.updated_user_id = user_id
+            annotation_setting.updated_at = datetime.datetime.utcnow()
+            db.session.add(annotation_setting)
+        else:
+            new_app_annotation_setting = AppAnnotationSetting(
+                app_id=app_id,
+                score_threshold=score_threshold,
+                collection_binding_id=dataset_collection_binding.id,
+                created_user_id=user_id,
+                updated_user_id=user_id
+            )
+            db.session.add(new_app_annotation_setting)
 
         dataset = Dataset(
             id=app_id,
@@ -73,6 +90,7 @@ def enable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
                         click.style('Delete annotation index error: {}'.format(str(e)),
                                     fg='red'))
                 index.add_texts(documents)
+        db.session.commit()
         redis_client.setex(enable_app_annotation_job_key, 600, 'completed')
         end_at = time.perf_counter()
         logging.info(
@@ -83,5 +101,6 @@ def enable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str,
         redis_client.setex(enable_app_annotation_job_key, 600, 'error')
         enable_app_annotation_error_key = 'enable_app_annotation_error_{}'.format(str(job_id))
         redis_client.setex(enable_app_annotation_error_key, 600, str(e))
+        db.session.rollback()
     finally:
         redis_client.delete(enable_app_annotation_key)

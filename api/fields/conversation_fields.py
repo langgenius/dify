@@ -23,6 +23,8 @@ feedback_fields = {
 }
 
 annotation_fields = {
+    'id': fields.String,
+    'question': fields.String,
     'content': fields.String,
     'account': fields.Nested(account_fields, allow_null=True),
     'created_at': TimestampField

@@ -3,27 +3,24 @@ import time
 
 import click
 from celery import shared_task
-from flask import current_app
+from langchain.schema import Document
 
 from core.index.index import IndexBuilder
-from core.index.vector_index.vector_index import VectorIndex
-from extensions.ext_database import db
-from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
-    AppDatasetJoin, Document
+
+from models.dataset import Dataset
 from services.dataset_service import DatasetCollectionBindingService
 
 
 @shared_task(queue='dataset')
 def update_annotation_to_index_task(annotation_id: str, question: str, tenant_id: str, app_id: str,
-                                    embedding_provider_name: str, embedding_model_name: str):
+                                    collection_binding_id: str):
     """
     Update annotation to index.
     :param annotation_id: annotation id
     :param question: question
     :param tenant_id: tenant id
     :param app_id: app id
-    :param embedding_provider_name: embedding provider name
-    :param embedding_model_name: embedding model name
+    :param collection_binding_id: embedding binding id
 
     Usage: clean_dataset_task.delay(dataset_id, tenant_id, indexing_technique, index_struct)
     """
@@ -31,9 +28,8 @@ def update_annotation_to_index_task(annotation_id: str, question: str, tenant_id
     start_at = time.perf_counter()
 
     try:
-        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-            embedding_provider_name,
-            embedding_model_name,
+        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            collection_binding_id,
             'annotation'
         )
 
@@ -41,8 +37,8 @@ def update_annotation_to_index_task(annotation_id: str, question: str, tenant_id
             id=app_id,
             tenant_id=tenant_id,
             indexing_technique='high_quality',
-            embedding_model_provider=embedding_provider_name,
-            embedding_model=embedding_model_name,
+            embedding_model_provider=dataset_collection_binding.provider_name,
+            embedding_model=dataset_collection_binding.model_name,
             collection_binding_id=dataset_collection_binding.id
         )
 
