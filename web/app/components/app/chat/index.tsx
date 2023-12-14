@@ -262,7 +262,7 @@ const Chat: FC<IChatProps> = ({
                   if (i === index) {
                     return {
                       ...item,
-                      content: '',
+                      content: item.content,
                       annotation: {
                         ...(item.annotation || {}),
                         id: '',
