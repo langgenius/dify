@@ -50,7 +50,9 @@ const translation = {
     noHitHistory: 'No hit history',
   },
   hitHistoryTable: {
-    question: 'Question',
+    query: 'Query',
+    match: 'Match',
+    response: 'Response',
     source: 'Source',
     score: 'Score',
     time: 'Time',

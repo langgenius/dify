@@ -114,7 +114,9 @@ const ViewAnnotationModal: FC<Props> = ({
         <table className={cn(s.table, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
           <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
             <tr className='uppercase'>
-              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.question')}</td>
+              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.query')}</td>
+              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.match')}</td>
+              <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.response')}</td>
               <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.source')}</td>
               <td className='whitespace-nowrap'>{t('appAnnotation.hitHistoryTable.score')}</td>
               <td className='whitespace-nowrap w-[140px]'>{t('appAnnotation.hitHistoryTable.time')}</td>
@@ -130,6 +132,14 @@ const ViewAnnotationModal: FC<Props> = ({
                   className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                   title={item.question}
                 >{item.question}</td>
+                <td
+                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  title={item.match}
+                >{item.match}</td>
+                <td
+                  className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                  title={item.response}
+                >{item.response}</td>
                 <td>{item.source}</td>
                 <td>{item.score ? item.score.toFixed(2) : '-'}</td>
                 <td>{dayjs(item.created_at * 1000).format('YYYY-MM-DD hh:mm')}</td>
@@ -177,7 +187,7 @@ const ViewAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName='!max-w-[640px]'
+        maxWidthClassName='!max-w-[800px]'
         // t('appAnnotation.editModal.title') as string
         title={
           <TabSlider

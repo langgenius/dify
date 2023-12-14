@@ -15,6 +15,8 @@ export type AnnotationItem = {
 export type HitHistoryItem = {
   id: string
   question: string
+  match: string
+  response: string
   source: string
   score: number
   created_at: number
