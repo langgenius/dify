@@ -21,6 +21,18 @@
             "unit": "0.001",
             "currency": "USD"
         },
+        "gpt-4-1106-preview": {
+            "prompt": "0.01",
+            "completion": "0.03",
+            "unit": "0.001",
+            "currency": "USD"
+        },
+        "gpt-4-vision-preview": {
+            "prompt": "0.01",
+            "completion": "0.03",
+            "unit": "0.001",
+            "currency": "USD"
+        },
         "gpt-35-turbo": {
             "prompt": "0.002",
             "completion": "0.0015",

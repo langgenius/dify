@@ -23,7 +23,8 @@ FUNCTION_CALL_MODELS = [
     'gpt-4',
     'gpt-4-32k',
     'gpt-35-turbo',
-    'gpt-35-turbo-16k'
+    'gpt-35-turbo-16k',
+    'gpt-4-1106-preview'
 ]
 
 class AzureOpenAIModel(BaseLLM):
