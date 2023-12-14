@@ -27,15 +27,50 @@ class AnnotationReplyActionApi(Resource):
 
         app_id = str(app_id)
         parser = reqparse.RequestParser()
+        parser.add_argument('score_threshold', required=True, type=float, location='json')
         parser.add_argument('embedding_provider_name', required=True, type=str, location='json')
         parser.add_argument('embedding_model_name', required=True, type=str, location='json')
         args = parser.parse_args()
         if action == 'enable':
             result = AppAnnotationService.enable_app_annotation(args, app_id)
         elif action == 'disable':
-            result = AppAnnotationService.disable_app_annotation(args, app_id)
+            result = AppAnnotationService.disable_app_annotation(app_id)
         else:
             raise ValueError('Unsupported annotation reply action')
+        return result, 200
+
+
+class AppAnnotationSettingDetailApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        result = AppAnnotationService.get_app_annotation_setting_by_app_id(app_id)
+        return result, 200
+
+
+class AppAnnotationSettingUpdateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, app_id, annotation_setting_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
+        app_id = str(app_id)
+        annotation_setting_id = str(annotation_setting_id)
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('score_threshold', required=True, type=float, location='json')
+        args = parser.parse_args()
+
+        result = AppAnnotationService.update_app_annotation_setting(app_id, annotation_setting_id, args)
         return result, 200
 
 
@@ -229,7 +264,8 @@ class AnnotationHitHistoryListApi(Resource):
         limit = request.args.get('limit', default=20, type=int)
         app_id = str(app_id)
         annotation_id = str(annotation_id)
-        annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(app_id, annotation_id, page, limit)
+        annotation_hit_history_list, total = AppAnnotationService.get_annotation_hit_histories(app_id, annotation_id,
+                                                                                               page, limit)
         response = {
             'data': marshal(annotation_hit_history_list, annotation_hit_history_fields),
             'has_more': len(annotation_hit_history_list) == limit,
@@ -249,3 +285,5 @@ api.add_resource(AnnotationUpdateDeleteApi, '/apps/<uuid:app_id>/annotations/<uu
 api.add_resource(AnnotationBatchImportApi, '/apps/<uuid:app_id>/annotations/batch-import',
                  '/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>')
 api.add_resource(AnnotationHitHistoryListApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories')
+api.add_resource(AppAnnotationSettingDetailApi, '/apps/<uuid:app_id>/annotation-setting')
+api.add_resource(AppAnnotationSettingUpdateApi, '/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>')

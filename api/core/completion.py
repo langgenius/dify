@@ -393,6 +393,8 @@ class Completion:
                     # insert annotation history
                     AppAnnotationService.add_annotation_history(annotation.id,
                                                                 app.id,
+                                                                annotation.question,
+                                                                annotation.content,
                                                                 conversation_message_task.query,
                                                                 conversation_message_task.user.id,
                                                                 conversation_message_task.message.id,

@@ -1,3 +1,4 @@
+import datetime
 import json
 import uuid
 
@@ -9,7 +10,7 @@ from werkzeug.exceptions import NotFound
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.model import MessageAnnotation, Message, App, AppAnnotationHitHistory
+from models.model import MessageAnnotation, Message, App, AppAnnotationHitHistory, AppAnnotationSetting
 from tasks.annotation.add_annotation_to_index_task import add_annotation_to_index_task
 from tasks.annotation.enable_annotation_reply_task import enable_annotation_reply_task
 from tasks.annotation.disable_annotation_reply_task import disable_annotation_reply_task
@@ -65,16 +66,11 @@ class AppAnnotationService:
         db.session.add(annotation)
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_model_config = app.app_model_config
-        if app_model_config:
-            if app_model_config.annotation_reply:
-                annotation_reply_config = json.loads(app_model_config.annotation_reply)
-                if annotation_reply_config['enabled']:
-                    add_annotation_to_index_task.delay(annotation.id, args['question'], current_user.current_tenant_id,
-                                                       app_id, annotation_reply_config['embedding_model'][
-                                                           'embedding_provider_name'],
-                                                       annotation_reply_config['embedding_model'][
-                                                           'embedding_model_name'])
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id).first()
+        if annotation_setting:
+            add_annotation_to_index_task.delay(annotation.id, args['question'], current_user.current_tenant_id,
+                                               app_id, annotation_setting.collection_binding_id)
         return annotation
 
     @classmethod
@@ -92,7 +88,8 @@ class AppAnnotationService:
         enable_app_annotation_job_key = 'enable_app_annotation_job_{}'.format(str(job_id))
         # send batch add segments task
         redis_client.setnx(enable_app_annotation_job_key, 'waiting')
-        enable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id,
+        enable_annotation_reply_task.delay(str(job_id), app_id, current_user.id, current_user.current_tenant_id,
+                                           args['score_threshold'],
                                            args['embedding_provider_name'], args['embedding_model_name'])
         return {
             'job_id': job_id,
@@ -100,7 +97,7 @@ class AppAnnotationService:
         }
 
     @classmethod
-    def disable_app_annotation(cls, args: dict, app_id: str) -> dict:
+    def disable_app_annotation(cls, app_id: str) -> dict:
         disable_app_annotation_key = 'disable_app_annotation_{}'.format(str(app_id))
         cache_result = redis_client.get(disable_app_annotation_key)
         if cache_result is not None:
@@ -114,8 +111,7 @@ class AppAnnotationService:
         disable_app_annotation_job_key = 'disable_app_annotation_job_{}'.format(str(job_id))
         # send batch add segments task
         redis_client.setnx(disable_app_annotation_job_key, 'waiting')
-        disable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id,
-                                            args['embedding_provider_name'], args['embedding_model_name'])
+        disable_annotation_reply_task.delay(str(job_id), app_id, current_user.current_tenant_id)
         return {
             'job_id': job_id,
             'job_status': 'waiting'
@@ -187,17 +183,11 @@ class AppAnnotationService:
         db.session.add(annotation)
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_model_config = app.app_model_config
-        if app_model_config:
-            if app_model_config.annotation_reply:
-                annotation_reply_config = json.loads(app_model_config.annotation_reply)
-                if annotation_reply_config['enabled']:
-                    add_annotation_to_index_task.delay(annotation.id, annotation.question,
-                                                       current_user.current_tenant_id,
-                                                       app_id, annotation_reply_config['embedding_model'][
-                                                           'embedding_provider_name'],
-                                                       annotation_reply_config['embedding_model'][
-                                                           'embedding_model_name'])
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id).first()
+        if annotation_setting:
+            add_annotation_to_index_task.delay(annotation.id, args['question'], current_user.current_tenant_id,
+                                               app_id, annotation_setting.collection_binding_id)
         return annotation
 
     @classmethod
@@ -222,17 +212,15 @@ class AppAnnotationService:
 
         db.session.commit()
         # if annotation reply is enabled , add annotation to index
-        app_model_config = app.app_model_config
-        if app_model_config:
-            if app_model_config.annotation_reply:
-                annotation_reply_config = json.loads(app_model_config.annotation_reply)
-                if annotation_reply_config['enabled']:
-                    update_annotation_to_index_task.delay(annotation.id, annotation.question,
-                                                          current_user.current_tenant_id,
-                                                          app_id, annotation_reply_config['embedding_model'][
-                                                              'embedding_provider_name'],
-                                                          annotation_reply_config['embedding_model'][
-                                                              'embedding_model_name'])
+        app_annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id
+        ).first()
+
+        if app_annotation_setting:
+            update_annotation_to_index_task.delay(annotation.id, annotation.question,
+                                                  current_user.current_tenant_id,
+                                                  app_id, app_annotation_setting.collection_binding_id)
+
         return annotation
 
     @classmethod
@@ -253,19 +241,25 @@ class AppAnnotationService:
             raise NotFound("Annotation not found")
 
         db.session.delete(annotation)
+
+        annotation_hit_histories = (db.session.query(AppAnnotationHitHistory)
+                                    .filter(AppAnnotationHitHistory.annotation_id == annotation_id)
+                                    .all()
+                                    )
+        if annotation_hit_histories:
+            for annotation_hit_history in annotation_hit_histories:
+                db.session.delete(annotation_hit_history)
+
         db.session.commit()
         # if annotation reply is enabled , delete annotation index
-        app_model_config = app.app_model_config
-        if app_model_config:
-            if app_model_config.annotation_reply:
-                annotation_reply_config = json.loads(app_model_config.annotation_reply)
-                if annotation_reply_config['enabled']:
-                    delete_annotation_index_task.delay(annotation.id, app_id,
-                                                       current_user.current_tenant_id,
-                                                       annotation_reply_config['embedding_model'][
-                                                           'embedding_provider_name'],
-                                                       annotation_reply_config['embedding_model'][
-                                                           'embedding_model_name'])
+        app_annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id
+        ).first()
+
+        if app_annotation_setting:
+            delete_annotation_index_task.delay(annotation.id, app_id,
+                                               current_user.current_tenant_id,
+                                               app_annotation_setting.collection_binding_id)
 
     @classmethod
     def batch_import_app_annotations(cls, app_id, file: FileStorage) -> dict:
@@ -341,8 +335,9 @@ class AppAnnotationService:
         return annotation
 
     @classmethod
-    def add_annotation_history(cls, annotation_id: str, app_id: str, query: str,
-                               user_id: str, message_id: str, from_source: str, score: float):
+    def add_annotation_history(cls, annotation_id: str, app_id: str, annotation_question: str,
+                               annotation_content: str, query: str, user_id: str,
+                               message_id: str, from_source: str, score: float):
         # add hit count to annotation
         db.session.query(MessageAnnotation).filter(
             MessageAnnotation.id == annotation_id
@@ -351,14 +346,81 @@ class AppAnnotationService:
             synchronize_session=False
         )
 
-        annotation = AppAnnotationHitHistory(
+        annotation_hit_history = AppAnnotationHitHistory(
             annotation_id=annotation_id,
             app_id=app_id,
             account_id=user_id,
             question=query,
             source=from_source,
             score=score,
-            message_id=message_id
+            message_id=message_id,
+            annotation_question=annotation_question,
+            annotation_content=annotation_content
         )
-        db.session.add(annotation)
+        db.session.add(annotation_hit_history)
         db.session.commit()
+
+    @classmethod
+    def get_app_annotation_setting_by_app_id(cls, app_id: str):
+        # get app info
+        app = db.session.query(App).filter(
+            App.id == app_id,
+            App.tenant_id == current_user.current_tenant_id,
+            App.status == 'normal'
+        ).first()
+
+        if not app:
+            raise NotFound("App not found")
+
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id).first()
+        if annotation_setting:
+            collection_binding_detail = annotation_setting.collection_binding_detail
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {
+                    "embedding_provider_name": collection_binding_detail.provider_name,
+                    "embedding_model_name": collection_binding_detail.model_name
+                }
+            }
+        return {
+            "enabled": False
+        }
+
+    @classmethod
+    def update_app_annotation_setting(cls, app_id: str, annotation_setting_id: str, args: dict):
+        # get app info
+        app = db.session.query(App).filter(
+            App.id == app_id,
+            App.tenant_id == current_user.current_tenant_id,
+            App.status == 'normal'
+        ).first()
+
+        if not app:
+            raise NotFound("App not found")
+
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == app_id,
+            AppAnnotationSetting.id == annotation_setting_id,
+        ).first()
+        if not annotation_setting:
+            raise NotFound("App annotation not found")
+        annotation_setting.score_threshold = args['score_threshold']
+        annotation_setting.updated_user_id = current_user.id
+        annotation_setting.updated_at = datetime.datetime.utcnow()
+        db.session.add(annotation_setting)
+        db.session.commit()
+
+        collection_binding_detail = annotation_setting.collection_binding_detail
+
+        return {
+            "id": annotation_setting.id,
+            "enabled": True,
+            "score_threshold": annotation_setting.score_threshold,
+            "embedding_model": {
+                "embedding_provider_name": collection_binding_detail.provider_name,
+                "embedding_model_name": collection_binding_detail.model_name
+            }
+        }

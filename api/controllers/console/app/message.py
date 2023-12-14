@@ -17,7 +17,7 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.login import login_required
-from fields.conversation_fields import message_detail_fields
+from fields.conversation_fields import message_detail_fields, annotation_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
@@ -153,6 +153,7 @@ class MessageAnnotationApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check('annotation')
+    @marshal_with(annotation_fields)
     def post(self, app_id):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
@@ -164,10 +165,11 @@ class MessageAnnotationApi(Resource):
         parser.add_argument('message_id', required=False, type=uuid_value, location='json')
         parser.add_argument('question', required=True, type=str, location='json')
         parser.add_argument('answer', required=True, type=str, location='json')
+        parser.add_argument('annotation_reply', required=False, type=dict, location='json')
         args = parser.parse_args()
-        AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
 
-        return {'result': 'success'}
+        return annotation
 
 
 class MessageAnnotationCountApi(Resource):

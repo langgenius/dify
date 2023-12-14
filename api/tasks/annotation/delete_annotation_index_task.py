@@ -4,29 +4,22 @@ import time
 
 import click
 from celery import shared_task
-from langchain.schema import Document
-from werkzeug.exceptions import NotFound
-
 from core.index.index import IndexBuilder
-from extensions.ext_database import db
-from extensions.ext_redis import redis_client
 from models.dataset import Dataset
-from models.model import MessageAnnotation, App
 from services.dataset_service import DatasetCollectionBindingService
 
 
 @shared_task(queue='dataset')
 def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str,
-                                 embedding_provider_name: str, embedding_model_name: str):
+                                 collection_binding_id: str):
     """
     Async delete annotation index task
     """
     logging.info(click.style('Start delete app annotation index: {}'.format(app_id), fg='green'))
     start_at = time.perf_counter()
     try:
-        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-            embedding_provider_name,
-            embedding_model_name,
+        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+            collection_binding_id,
             'annotation'
         )
 

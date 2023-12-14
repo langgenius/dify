@@ -4,15 +4,14 @@ import time
 
 import click
 from celery import shared_task
-from flask import current_app
+from langchain.schema import Document
+from werkzeug.exceptions import NotFound
 
 from core.index.index import IndexBuilder
-from core.index.vector_index.vector_index import VectorIndex
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import DocumentSegment, Dataset, DatasetKeywordTable, DatasetQuery, DatasetProcessRule, \
-    AppDatasetJoin, Document
-from models.model import MessageAnnotation, App
+from models.dataset import Dataset
+from models.model import MessageAnnotation, App, AppAnnotationSetting
 from services.dataset_service import DatasetCollectionBindingService
 
 
@@ -61,31 +60,30 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
                 )
                 documents.append(document)
             # if annotation reply is enabled , batch add annotations' index
-            app_model_config = app.app_model_config
-            if app_model_config:
-                if app_model_config.annotation_reply:
-                    annotation_reply_config = json.loads(app_model_config.annotation_reply)
-                    if annotation_reply_config['enabled']:
+            app_annotation_setting = db.session.query(AppAnnotationSetting).filter(
+                AppAnnotationSetting.app_id == app_id
+            ).first()
 
-                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                            annotation_reply_config['embedding_model']['embedding_provider_name'],
-                            annotation_reply_config['embedding_model']['embedding_model_name'],
-                            'annotation'
-                        )
+            if app_annotation_setting:
+                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding_by_id_and_type(
+                    app_annotation_setting.collection_binding_id,
+                    'annotation'
+                )
+                if not dataset_collection_binding:
+                    raise NotFound("App annotation setting not found")
+                dataset = Dataset(
+                    id=app_id,
+                    tenant_id=tenant_id,
+                    indexing_technique='high_quality',
+                    embedding_model_provider=dataset_collection_binding.provider_name,
+                    embedding_model=dataset_collection_binding.model_name,
+                    collection_binding_id=dataset_collection_binding.id
+                )
 
-                        dataset = Dataset(
-                            id=app_id,
-                            tenant_id=tenant_id,
-                            indexing_technique='high_quality',
-                            embedding_model_provider=annotation_reply_config[
-                                'embedding_model']['embedding_provider_name'],
-                            embedding_model=annotation_reply_config['embedding_model']['embedding_model_name'],
-                            collection_binding_id=dataset_collection_binding.id
-                        )
+                index = IndexBuilder.get_index(dataset, 'high_quality')
+                if index:
+                    index.add_texts([documents])
 
-                        index = IndexBuilder.get_index(dataset, 'high_quality')
-                        if index:
-                            index.add_texts([documents])
             db.session.commit()
             redis_client.setex(indexing_cache_key, 600, 'completed')
             end_at = time.perf_counter()
