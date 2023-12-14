@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'rc-textarea'
+import cn from 'classnames'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import { Edit04, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 import { Edit04 as EditSolid } from '@/app/components/base/icons/src/vender/solid/general'
@@ -18,8 +19,8 @@ type Props = {
   onSave: (content: string) => void
 }
 
-const EditTitle: FC<{ title: string }> = ({ title }) => (
-  <div className='flex items-center height-[18px] text-xs font-medium text-gray-500'>
+export const EditTitle: FC<{ className?: string; title: string }> = ({ className, title }) => (
+  <div className={cn(className, 'flex items-center height-[18px] text-xs font-medium text-gray-500')}>
     <EditSolid className='mr-1 w-3.5 h-3.5' />
     <div>{title}</div>
     <div

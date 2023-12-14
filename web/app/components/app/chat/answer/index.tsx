@@ -20,6 +20,8 @@ import { Markdown } from '@/app/components/base/markdown'
 import type { DataSet } from '@/models/datasets'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
+import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 
 const Divider: FC<{ name: string }> = ({ name }) => {
   const { t } = useTranslation()
@@ -49,9 +51,11 @@ export type IAnswerProps = {
   dataSets?: DataSet[]
   isShowCitation?: boolean
   isShowCitationHitInfo?: boolean
+  // Annotation props
   supportAnnotation?: boolean
   appId?: string
   question: string
+  llmAnswer?: string
   onAnnotationEdited?: (question: string, answer: string) => void
 }
 // The component needs to maintain its own state to control whether to display input component
@@ -69,9 +73,10 @@ const Answer: FC<IAnswerProps> = ({
   dataSets,
   isShowCitation,
   isShowCitationHitInfo = false,
-  appId,
   supportAnnotation,
+  appId,
   question,
+  llmAnswer,
   onAnnotationEdited,
 }) => {
   const { id, content, more, feedback, adminFeedback, annotation } = item
@@ -126,6 +131,19 @@ const Answer: FC<IAnswerProps> = ({
           {!isWebScene && isUserFeedback && UserSymbol}
         </div>
       </Tooltip>
+    )
+  }
+
+  const renderHasAnnotationBtn = () => {
+    return (
+      <div
+        className={'relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7]'}
+        style={{ boxShadow: '0px 4px 6px -1px rgba(0, 0, 0, 0.1), 0px 2px 4px -2px rgba(0, 0, 0, 0.05)' }}
+      >
+        <div className='rounded-lg bg-[#EEF4FF] '>
+          <MessageFast className='w-4 h-4' />
+        </div>
+      </div>
     )
   }
 
@@ -227,7 +245,25 @@ const Answer: FC<IAnswerProps> = ({
                   )
                   : (
                     <div>
-                      <Markdown content={content} />
+                      {llmAnswer && (
+                        <div className='mb-1'>
+                          <div>
+                            <Markdown content={content} />
+                          </div>
+                          <EditTitle title={t('appAnnotation.editBy', {
+                            author: annotation?.authorName,
+                          })} />
+                        </div>
+                      )}
+
+                      <div>
+                        <Markdown content={content} />
+                      </div>
+                      {!llmAnswer && hasAnnotation && (
+                        <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
+                          author: annotation.authorName,
+                        })} />
+                      )}
                     </div>
                   )}
                 {/* old annotation */}
@@ -304,6 +340,7 @@ const Answer: FC<IAnswerProps> = ({
                   createdAt={annotation?.created_at}
                   onRemove={() => { }}
                 />
+                {renderHasAnnotationBtn()}
                 {!feedbackDisabled && !item.feedbackDisabled && renderItemOperation(displayScene !== 'console')}
                 {/* Admin feedback is displayed only in the background. */}
                 {!feedbackDisabled && renderFeedbackRating(localAdminFeedback?.rating, false, false)}
