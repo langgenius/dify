@@ -21,7 +21,7 @@ from core.index.index import IndexBuilder
 from core.model_providers.error import ProviderTokenNotInitError
 from core.model_providers.model_factory import ModelFactory
 from core.model_providers.models.entity.message import MessageType
-from core.spiltter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
+from core.spiltter import CustomTextSplitter, FixedRecursiveCharacterTextSplitter
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -443,11 +443,9 @@ class IndexingRunner:
             if separator:
                 separator = separator.replace('\\n', '\n')
 
-            character_splitter = FixedRecursiveCharacterTextSplitter.from_tiktoken_encoder(
+            character_splitter = CustomTextSplitter.from_tiktoken_encoder(
                 chunk_size=segmentation["max_tokens"],
-                chunk_overlap=0,
-                fixed_separator=separator,
-                separators=["\n\n", "。", ".", " ", ""]
+                chunk_overlap=0
             )
         else:
             # Automatic segmentation
