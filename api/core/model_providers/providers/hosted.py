@@ -6,6 +6,8 @@ from flask import Flask
 from pydantic import BaseModel
 
 
+# TODO remove it
+
 class HostedOpenAI(BaseModel):
     api_base: str = None
     api_organization: str = None

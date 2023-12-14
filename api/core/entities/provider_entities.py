@@ -4,42 +4,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import ProviderEntity
-
-
-class ProviderType(Enum):
-    CUSTOM = 'custom'
-    SYSTEM = 'system'
-
-    @classmethod
-    def value_of(cls, value) -> "ProviderType":
-        for member in ProviderType:
-            if member.value == cls:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
+from models.provider import ProviderQuotaType
 
 
 class QuotaUnit(Enum):
     TIMES = 'times'
     TOKENS = 'tokens'
-
-
-class QuotaType(Enum):
-    PAID = 'paid'
-    """hosted paid quota"""
-
-    FREE = 'free'
-    """third-party free quota"""
-
-    TRIAL = 'trial'
-    """hosted trial quota"""
-
-    @classmethod
-    def value_of(cls, value) -> "QuotaType":
-        for member in cls:
-            if member.value == value:
-                return member
-        raise ValueError(f"No matching enum found for value '{value}'")
 
 
 class SystemConfigurationStatus(Enum):
@@ -55,7 +25,7 @@ class QuotaConfiguration(BaseModel):
     """
     Model class for provider quota configuration.
     """
-    quota_type: QuotaType
+    quota_type: ProviderQuotaType
     quota_unit: QuotaUnit
     quota_limit: int
     quota_used: int
@@ -67,9 +37,16 @@ class SystemConfiguration(BaseModel):
     Model class for provider system configuration.
     """
     enabled: bool
-    current_quota_type: Optional[QuotaType] = None
+    current_quota_type: Optional[ProviderQuotaType] = None
     quota_configurations: list[QuotaConfiguration] = []
     credentials: Optional[dict] = None
+
+
+class CustomProviderConfiguration(BaseModel):
+    """
+    Model class for provider custom configuration.
+    """
+    credentials: dict
 
 
 class CustomModelConfiguration(BaseModel):
@@ -85,6 +62,5 @@ class CustomConfiguration(BaseModel):
     """
     Model class for provider custom configuration.
     """
-    enabled: bool
-    credentials: Optional[dict] = None
+    provider: Optional[CustomProviderConfiguration] = None
     models: list[CustomModelConfiguration] = []

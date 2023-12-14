@@ -28,9 +28,6 @@ class ProviderConfiguration(BaseModel):
     def is_custom_configuration_available(self) -> bool:
         pass
 
-    def fix_missing_system_provider_records(self) -> None:
-        pass
-
     def get_custom_credentials(self, obfuscated: bool = False) -> Optional[dict]:
         pass
 

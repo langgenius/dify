@@ -19,6 +19,45 @@ class ModelType(Enum):
     # TTS = "tts"
     # TEXT2IMG = "text2img"
 
+    @classmethod
+    def from_origin_model_type(cls, origin_model_type: str) -> "ModelType":
+        """
+        Get model type from origin model type.
+
+        :return: model type
+        """
+        if origin_model_type == 'text-generation':
+            return cls.LLM
+        elif origin_model_type == 'embeddings':
+            return cls.TEXT_EMBEDDING
+        elif origin_model_type == 'reranking':
+            return cls.RERANK
+        elif origin_model_type == 'speech2text':
+            return cls.SPEECH2TEXT
+        elif origin_model_type == 'moderation':
+            return cls.MODERATION
+        else:
+            raise ValueError(f'invalid origin model type {origin_model_type}')
+
+    def to_origin_model_type(self) -> str:
+        """
+        Get origin model type from model type.
+
+        :return: origin model type
+        """
+        if self == self.LLM:
+            return 'text-generation'
+        elif self == self.TEXT_EMBEDDING:
+            return 'embeddings'
+        elif self == self.RERANK:
+            return 'reranking'
+        elif self == self.SPEECH2TEXT:
+            return 'speech2text'
+        elif self == self.MODERATION:
+            return 'moderation'
+        else:
+            raise ValueError(f'invalid model type {self}')
+
 
 class FetchFrom(Enum):
     """

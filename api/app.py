@@ -10,6 +10,9 @@ if not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != 'true':
         import grpc.experimental.gevent
         grpc.experimental.gevent.init_gevent()
 
+    import langchain
+    langchain.verbose = True
+
 import time
 import logging
 import json
@@ -20,7 +23,7 @@ from flask_cors import CORS
 
 from core.model_providers.providers import hosted
 from extensions import ext_celery, ext_sentry, ext_redis, ext_login, ext_migrate, \
-    ext_database, ext_storage, ext_mail, ext_stripe, ext_code_based_extension
+    ext_database, ext_storage, ext_mail, ext_stripe, ext_code_based_extension, ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 
@@ -79,6 +82,7 @@ def create_app(test_config=None) -> Flask:
     register_blueprints(app)
     register_commands(app)
 
+    # TODO remove it
     hosted.init_app(app)
 
     return app
@@ -95,6 +99,7 @@ def initialize_extensions(app):
     ext_celery.init_app(app)
     ext_login.init_app(app)
     ext_mail.init_app(app)
+    ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
     ext_stripe.init_app(app)
 
