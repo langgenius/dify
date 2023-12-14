@@ -16,6 +16,7 @@ export enum EditItemType {
 type Props = {
   type: EditItemType
   content: string
+  readonly?: boolean
   onSave: (content: string) => void
 }
 
@@ -33,6 +34,7 @@ export const EditTitle: FC<{ className?: string; title: string }> = ({ className
 )
 const EditItem: FC<Props> = ({
   type,
+  readonly,
   content,
   onSave,
 }) => {
@@ -73,15 +75,18 @@ const EditItem: FC<Props> = ({
                 </div>
               )}
               <div className='mt-2 flex items-center'>
-                <div
-                  className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-[#155EEF] cursor-pointer'
-                  onClick={(e) => {
-                    setIsEdit(true)
-                  }}
-                >
-                  <Edit04 className='mr-1 w-3.5 h-3.5' />
-                  <div>{t('common.operation.edit')}</div>
-                </div>
+                {!readonly && (
+                  <div
+                    className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-[#155EEF] cursor-pointer'
+                    onClick={(e) => {
+                      setIsEdit(true)
+                    }}
+                  >
+                    <Edit04 className='mr-1 w-3.5 h-3.5' />
+                    <div>{t('common.operation.edit')}</div>
+                  </div>
+                )}
+
                 {showNewContent && (
                   <div className='ml-2 flex items-center leading-[18px] text-xs font-medium text-gray-500'>
                     <div className='mr-2'>·</div>

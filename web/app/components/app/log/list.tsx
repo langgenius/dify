@@ -290,6 +290,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           feedback={detail.message.feedbacks.find((item: any) => item.from_source === 'admin')}
           onFeedback={feedback => onFeedback(detail.message.id, feedback)}
           supportAnnotation
+          appId={appDetail?.id}
         />
       </div>
       : items.length < 8

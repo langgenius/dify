@@ -22,6 +22,7 @@ type Props = {
   onAdded: (annotationId: string, authorName: string, editedQuery: string, editedAnswer: string) => void
   createdAt?: number
   onRemove: () => void
+  onlyEditResponse?: boolean
 }
 
 const EditAnnotationModal: FC<Props> = ({
@@ -36,6 +37,7 @@ const EditAnnotationModal: FC<Props> = ({
   annotationId,
   createdAt,
   onRemove,
+  onlyEditResponse,
 }) => {
   const { t } = useTranslation()
 
@@ -81,6 +83,7 @@ const EditAnnotationModal: FC<Props> = ({
             <EditItem
               type={EditItemType.Query}
               content={query}
+              readonly={onlyEditResponse}
               onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
             />
             <EditItem

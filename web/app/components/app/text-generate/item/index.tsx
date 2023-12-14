@@ -45,6 +45,7 @@ export type IGenerationItemProps = {
   controlClearMoreLikeThis?: number
   supportFeedback?: boolean
   supportAnnotation?: boolean
+  appId?: string
 }
 
 export const SimpleBtn = ({ className, isDisabled, onClick, children }: {
@@ -88,6 +89,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   controlClearMoreLikeThis,
   supportFeedback,
   supportAnnotation,
+  appId,
 }) => {
   const { t } = useTranslation()
   const params = useParams()
@@ -107,7 +109,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
-
+  const question = 'test'
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
@@ -328,26 +330,34 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   <>
                     <div className='ml-2 mr-1 h-[14px] w-[1px] bg-gray-200'></div>
                     <AnnotationCtrlBtn
+                      appId={appId!}
+                      messageId={messageId!}
                       className='ml-1'
-                      cached={true}
-                      onAdd={() => { }}
+                      query={question}
+                      answer={content}
+                      // not support cache. So can not be cached
+                      cached={false}
+                      onAdded={() => {
+
+                      }}
                       onEdit={() => setIsShowReplyModal(true)}
-                      onRemove={() => { }}
+                      onRemoved={() => { }}
                     />
                   </>
                 )}
 
                 <EditReplyModal
+                  appId={appId!}
+                  messageId={messageId!}
                   isShow={isShowReplyModal}
                   onHide={() => setIsShowReplyModal(false)}
-                  query="Let's play a decryption game today. You go first."
-                  answer='Lara, the Caesar cipher is a simple substitution encryption technique, where each letter in the alphabet is shifted forward or backward a fixed number of positions. Please try shifting the letters back 13 positions.'
-                  onSave={(query, answer) => {
-                    console.log(query, answer)
-                  }}
-                  id='1'
-                  createdAt='2023-03-21 10:00'
+                  query={question}
+                  answer={content}
+                  onAdded={() => { }}
+                  onEdited={() => { }}
+                  createdAt={0}
                   onRemove={() => { }}
+                  onlyEditResponse
                 />
 
                 {supportFeedback && (
