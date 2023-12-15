@@ -267,14 +267,6 @@ class BaseModelProvider(BaseModel, ABC):
         ).update({'last_used': datetime.utcnow()})
         db.session.commit()
 
-    def get_payment_info(self) -> Optional[dict]:
-        """
-        get product info if it payable.
-
-        :return:
-        """
-        return None
-
     def _get_provider_model(self, model_name: str, model_type: ModelType) -> ProviderModel:
         """
         get provider model.

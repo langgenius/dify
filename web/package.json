@@ -98,7 +98,7 @@
     "@types/sortablejs": "^1.15.1",
     "autoprefixer": "^10.4.14",
     "cross-env": "^7.0.3",
-    "eslint": "8.36.0",
+    "eslint": "^8.36.0",
     "eslint-config-next": "^13.4.7",
     "husky": "^8.0.3",
     "lint-staged": "^13.2.2",

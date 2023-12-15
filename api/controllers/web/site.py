@@ -1,4 +1,6 @@
 # -*- coding:utf-8 -*-
+import os
+
 from flask_restful import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -6,6 +8,7 @@ from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from models.model import Site
+from services.billing_service import BillingService
 
 
 class AppSiteApi(WebApiResource):
@@ -39,6 +42,7 @@ class AppSiteApi(WebApiResource):
         'site': fields.Nested(site_fields),
         'model_config': fields.Nested(model_config_fields, allow_null=True),
         'plan': fields.String,
+        'can_replace_logo': fields.Boolean,
     }
 
     @marshal_with(app_fields)
@@ -50,7 +54,14 @@ class AppSiteApi(WebApiResource):
         if not site:
             raise Forbidden()
 
-        return AppSiteInfo(app_model.tenant, app_model, site, end_user.id)
+        edition = os.environ.get('EDITION')
+        can_replace_logo = False
+
+        if edition == 'CLOUD':
+            info = BillingService.get_info(app_model.tenant_id)
+            can_replace_logo = info['can_replace_logo']
+
+        return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 
 
 api.add_resource(AppSiteApi, '/site')
@@ -59,7 +70,7 @@ api.add_resource(AppSiteApi, '/site')
 class AppSiteInfo:
     """Class to store site information."""
 
-    def __init__(self, tenant, app, site, end_user):
+    def __init__(self, tenant, app, site, end_user, can_replace_logo):
         """Initialize AppSiteInfo instance."""
         self.app_id = app.id
         self.end_user_id = end_user
@@ -67,6 +78,7 @@ class AppSiteInfo:
         self.site = site
         self.model_config = None
         self.plan = tenant.plan
+        self.can_replace_logo = can_replace_logo
 
         if app.enable_site and site.prompt_public:
             app_model_config = app.app_model_config
