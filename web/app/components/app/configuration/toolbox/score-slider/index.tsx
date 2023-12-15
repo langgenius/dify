@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Slider from '@/app/components/base/slider'
+import Slider from '@/app/components/app/configuration/toolbox/score-slider/base-slider'
 
 type Props = {
   className?: string
@@ -19,17 +19,16 @@ const ScoreSlider: FC<Props> = ({
 
   return (
     <div className={className}>
-      <div className='mb-2 leading-[18px] text-xs font-medium text-gray-900'>
-        {(value / 100).toFixed(2)}
+      <div className='h-[1px] mt-[14px]'>
+        <Slider
+          max={100}
+          min={80}
+          step={1}
+          value={value}
+          onChange={onChange}
+        />
       </div>
-      <Slider
-        max={100}
-        min={80}
-        step={1}
-        value={value}
-        onChange={onChange}
-      />
-      <div className='mt-4 flex justify-between items-center leading-4 text-xs font-normal '>
+      <div className='mt-[10px] flex justify-between items-center leading-4 text-xs font-normal '>
         <div className='flex space-x-1 text-[#00A286]'>
           <div>0.8</div>
           <div>·</div>
