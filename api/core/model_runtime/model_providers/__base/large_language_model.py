@@ -46,7 +46,7 @@ class LargeLanguageModel(AIModel):
         if model_parameters is None:
             model_parameters = {}
 
-        model_parameters = self._validate_and_filter_model_parameters(model, model_parameters)
+        model_parameters = self._validate_and_filter_model_parameters(model, model_parameters, credentials)
 
         self.started_at = time.perf_counter()
 
@@ -507,19 +507,22 @@ class LargeLanguageModel(AIModel):
                     else:
                         logger.warning(f"Callback {callback.__class__.__name__} on_invoke_error failed with error {e}")
 
-    def _validate_and_filter_model_parameters(self, model: str, model_parameters: dict) -> dict:
+    def _validate_and_filter_model_parameters(self, model: str, model_parameters: dict, credentials: dict) -> dict:
         """
         Validate model parameters
 
         :param model: model name
         :param model_parameters: model parameters
+        :param credentials: model credentials
         :return:
         """
         model_schema = self.get_predefined_model_schema(model)
         if not model_schema:
-            return model_parameters
-
-        parameter_rules = model_schema.parameter_rules
+            parameter_rules = self.get_customizable_model_parameter_rules(model, credentials)
+            if not parameter_rules:
+                return model_parameters
+        else:
+            parameter_rules = model_schema.parameter_rules
 
         # validate model parameters
         filtered_model_parameters = {}
