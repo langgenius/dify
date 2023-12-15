@@ -40,12 +40,17 @@ const ConfigParamModal: FC<Props> = ({
   const [annotationConfig, setAnnotationConfig] = useState(oldAnnotationConfig)
 
   const [isLoading, setLoading] = useState(false)
-  const [embeddingModel, setEmbeddingModel] = useState(embeddingsDefaultModel
+  const [embeddingModel, setEmbeddingModel] = useState(oldAnnotationConfig.embedding_model
     ? {
-      providerName: embeddingsDefaultModel.model_provider.provider_name,
-      modelName: embeddingsDefaultModel.model_name,
+      providerName: oldAnnotationConfig.embedding_model.embedding_provider_name,
+      modelName: oldAnnotationConfig.embedding_model.embedding_model_name,
     }
-    : undefined)
+    : (embeddingsDefaultModel
+      ? {
+        providerName: embeddingsDefaultModel.model_provider.provider_name,
+        modelName: embeddingsDefaultModel.model_name,
+      }
+      : undefined))
   const onHide = () => {
     if (!isLoading)
       doHide()
@@ -102,7 +107,7 @@ const ConfigParamModal: FC<Props> = ({
           <div className='pt-1'>
             <ModelSelector
               widthSameToTrigger
-              value={embeddingModel}
+              value={embeddingModel as any}
               modelType={ModelType.embeddings}
               onChange={(val) => {
                 setEmbeddingModel({

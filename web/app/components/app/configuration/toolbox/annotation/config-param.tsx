@@ -100,7 +100,7 @@ const AnnotationReplyConfig: FC<Props> = ({
               await handleEnableAnnotation(embeddingModel)
 
             if (score !== annotationConfig.score_threshold)
-              updateAnnotationScore(appId, annotationConfig.id, score)
+              await updateAnnotationScore(appId, annotationConfig.id, score)
 
             setIsShowEdit(false)
           }}

@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import cn from 'classnames'
 import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
@@ -156,7 +157,7 @@ const Annotation: FC<Props> = ({
           <div className='flex items-center space-x-2'>
             {isChatApp && (
               <>
-                <div className='flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1'>
+                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1')}>
                   <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
@@ -287,7 +288,7 @@ const Annotation: FC<Props> = ({
               }
 
               if (score !== annotationConfig?.score_threshold)
-                updateAnnotationScore(appId, annotationConfig?.id || '', score)
+                await updateAnnotationScore(appId, annotationConfig?.id || '', score)
 
               await fetchAnnotationConfig()
               Toast.notify({
