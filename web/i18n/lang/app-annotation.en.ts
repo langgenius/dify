@@ -4,7 +4,7 @@ const translation = {
   editBy: 'Answer edited by {{author}}',
   noData: {
     title: 'No annotations',
-    description: 'There are no annotations',
+    description: 'You can edit annotations in app debuggiung, or import annotations in bulk here for high-quality response.',
   },
   table: {
     header: {

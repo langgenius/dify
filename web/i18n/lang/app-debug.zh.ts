@@ -81,7 +81,7 @@ const translation = {
       resDes: '标注回复已启用',
       scoreThreshold: {
         title: '分数阈值',
-        description: 'TODO：设置标注回复的分数阈值，低于该阈值的回复将不会被标注。',
+        description: '用于设置标注回复的匹配相似度阈值。',
         easyMatch: '模糊匹配',
         accurateMatch: '精准匹配',
       },
