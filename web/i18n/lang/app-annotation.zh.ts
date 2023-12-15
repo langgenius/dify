@@ -84,6 +84,7 @@ const translation = {
     confirmBtn: '保存并启用',
     configConfirmBtn: '保存',
   },
+  embeddingModelSwitchTip: '标注文本向量化模型，切换模型会重新嵌入，产生额外费用消耗',
 }
 
 export default translation

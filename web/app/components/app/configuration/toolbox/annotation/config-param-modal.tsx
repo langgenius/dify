@@ -102,7 +102,7 @@ const ConfigParamModal: FC<Props> = ({
 
         <Item
           title={t('common.modelProvider.embeddingModel.key')}
-          tooltip={t('common.modelProvider.embeddingModel.tip')}
+          tooltip={t('appAnnotation.embeddingModelSwitchTip')}
         >
           <div className='pt-1'>
             <ModelSelector
