@@ -81,7 +81,7 @@ const translation = {
       resDes: 'Annotation Response is enabled',
       scoreThreshold: {
         title: 'Score Threshold',
-        description: 'TODO：The score threshold for the cache response to be returned.',
+        description: 'Used to set the similarity threshold for annotation response.',
         easyMatch: 'Easy Match',
         accurateMatch: 'Accurate Match',
       },

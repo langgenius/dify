@@ -4,7 +4,7 @@ const translation = {
   editBy: '{{author}}编辑的答案',
   noData: {
     title: '没有标注',
-    description: '没有标注数据',
+    description: '你可以在应用会话调试中编辑标注，也可以在此批量导入标注用于高质量回复。',
   },
   table: {
     header: {
