@@ -98,6 +98,11 @@ const translation = {
     fullTipLine1: 'Upgrade your plan to',
     fullTipLine2: 'build more apps.',
   },
+  annotatedResponse: {
+    fullTipLine1: 'Upgrade your plan to',
+    fullTipLine2: 'annotate more conversations.',
+    quotaTitle: 'Annotated Response Quota',
+  },
 }
 
 export default translation

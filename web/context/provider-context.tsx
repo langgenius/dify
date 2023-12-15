@@ -61,11 +61,13 @@ const ProviderContext = createContext<{
           vectorSpace: 32,
           buildApps: 12,
           teamMembers: 1,
+          annotatedResponse: 1,
         },
         total: {
           vectorSpace: 200,
           buildApps: 50,
           teamMembers: 1,
+          annotatedResponse: 10,
         },
       },
       isFetchedPlan: false,
