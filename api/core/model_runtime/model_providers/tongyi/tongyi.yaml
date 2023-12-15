@@ -1,0 +1,23 @@
+provider: tongyi
+label:
+  zh_Hans: 通义千问
+  en_US: TONGYI
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  zh_Hans: icon_l_zh.png
+  en_US: icon_l_en.png
+supported_model_types:
+- llm
+configurate_methods:
+- predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+  - variable: tongyi_api_key
+    label:
+      en_US: APIKey
+    type: text-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入您的 APIKey
+      en_US: Enter your APIKey
