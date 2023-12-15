@@ -43,7 +43,7 @@ const EditAnnotationModal: FC<Props> = ({
   const { t } = useTranslation()
   const { plan, enableBilling } = useProviderContext()
   const isAdd = !annotationId
-  const isAnnotationFull = true || (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
     let postAnswer = answer
