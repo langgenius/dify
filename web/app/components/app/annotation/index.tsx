@@ -21,6 +21,8 @@ import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotat
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { sleep } from '@/utils'
+import { useProviderContext } from '@/context/provider-context'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 
 type Props = {
   appId: string
@@ -40,7 +42,9 @@ const Annotation: FC<Props> = ({
     fetchAnnotationConfig()
   }, [])
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
-
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
@@ -150,6 +154,11 @@ const Annotation: FC<Props> = ({
                 size='md'
                 onChange={async (value) => {
                   if (value) {
+                    if (isAnnotationFull) {
+                      setIsShowAnnotationFullModal(true)
+                      setControlRefreshSwitch(Date.now())
+                      return
+                    }
                     setIsShowEdit(true)
                   }
                   else {
@@ -269,6 +278,14 @@ text-xs text-gray-700 font-medium hover:bg-gray-200
             annotationConfig={annotationConfig!}
           />
         )}
+        {
+          isShowAnnotationFullModal && (
+            <AnnotationFullModal
+              show={isShowAnnotationFullModal}
+              onHide={() => setIsShowAnnotationFullModal(false)}
+            />
+          )
+        }
       </div>
     </div>
   )
