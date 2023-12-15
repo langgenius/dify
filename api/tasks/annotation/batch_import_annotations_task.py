@@ -82,7 +82,7 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
 
                 index = IndexBuilder.get_index(dataset, 'high_quality')
                 if index:
-                    index.add_texts([documents])
+                    index.add_texts(documents)
 
             db.session.commit()
             redis_client.setex(indexing_cache_key, 600, 'completed')
