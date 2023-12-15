@@ -12,7 +12,7 @@ export type ToolboxProps = {
   showModerationSettings: boolean
   showAnnotation: boolean
   onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
-  onScoreChange: (score: number) => void
+  onScoreChange: (score: number, embeddingModel?: EmbeddingModelConfig) => void
 }
 
 const Toolbox: FC<ToolboxProps> = ({

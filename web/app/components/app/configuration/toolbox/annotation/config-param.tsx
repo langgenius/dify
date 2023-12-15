@@ -15,7 +15,7 @@ import { updateAnnotationScore } from '@/service/annotation'
 
 type Props = {
   onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
-  onScoreChange: (score: number) => void
+  onScoreChange: (score: number, embeddingModel?: EmbeddingModelConfig) => void
 }
 
 export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
@@ -95,15 +95,22 @@ const AnnotationReplyConfig: FC<Props> = ({
             setIsShowEdit(false)
           }}
           onSave={async (embeddingModel, score) => {
+            let isEmbeddingModelChanged = false
             if (
               embeddingModel.embedding_model_name !== annotationConfig.embedding_model.embedding_model_name
               && embeddingModel.embedding_provider_name !== annotationConfig.embedding_model.embedding_provider_name
-            )
+            ) {
               await onEmbeddingChange(embeddingModel)
+              isEmbeddingModelChanged = true
+            }
 
             if (score !== annotationConfig.score_threshold) {
               await updateAnnotationScore(appId, annotationConfig.id, score)
-              onScoreChange(score)
+              if (isEmbeddingModelChanged)
+                onScoreChange(score, embeddingModel)
+
+              else
+                onScoreChange(score)
             }
 
             setIsShowEdit(false)
