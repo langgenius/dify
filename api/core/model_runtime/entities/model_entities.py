@@ -20,7 +20,7 @@ class ModelType(Enum):
     # TEXT2IMG = "text2img"
 
     @classmethod
-    def from_origin_model_type(cls, origin_model_type: str) -> "ModelType":
+    def value_of(cls, origin_model_type: str) -> "ModelType":
         """
         Get model type from origin model type.
 

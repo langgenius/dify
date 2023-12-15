@@ -23,6 +23,7 @@ class ProviderConfiguration(BaseModel):
     tenant_id: str
     provider: ProviderEntity
     preferred_provider_type: ProviderType
+    using_provider_type: ProviderType
     system_configuration: SystemConfiguration
     custom_configuration: CustomConfiguration
 
@@ -32,10 +33,31 @@ class ProviderConfiguration(BaseModel):
 
         :return:
         """
-        if self.preferred_provider_type == ProviderType.SYSTEM:
+        if self.using_provider_type == ProviderType.SYSTEM:
             return self.system_configuration
         else:
             return self.custom_configuration
+
+    def get_current_credentials(self, model_type: ModelType, model: str) -> Optional[dict]:
+        """
+        Get current credentials.
+
+        :param model_type: model type
+        :param model: model name
+        :return:
+        """
+        if self.using_provider_type == ProviderType.SYSTEM:
+            return self.system_configuration.credentials
+        else:
+            if self.custom_configuration.models:
+                for model_configuration in self.custom_configuration.models:
+                    if model_configuration.model_type == model_type and model_configuration.model == model:
+                        return model_configuration.credentials
+
+            if self.custom_configuration.provider:
+                return self.custom_configuration.provider.credentials
+            else:
+                return None
 
     def get_system_configuration_status(self) -> SystemConfigurationStatus:
         """
@@ -134,6 +156,7 @@ class ProviderConfiguration(BaseModel):
                     credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         # save provider
+        # Note: Do not switch the preferred provider, which allows users to use quotas first
         if provider_record:
             provider_record.encrypted_config = json.dumps(credentials)
             provider_record.is_valid = True
@@ -257,6 +280,7 @@ class ProviderConfiguration(BaseModel):
                     credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         # save provider model
+        # Note: Do not switch the preferred provider, which allows users to use quotas first
         if provider_model_record:
             provider_model_record.encrypted_config = json.dumps(credentials)
             provider_model_record.is_valid = True
@@ -382,6 +406,28 @@ class ProviderConfigurations(BaseModel, Dict[str, ProviderConfiguration]):
             -> list[ModelWithProviderEntity]:
         """
         Get available models.
+
+        If preferred provider type is `system`:
+          Get the current **system mode** if provider supported,
+          if all system modes are not available (no quota), it is considered to be the **custom credential mode**.
+          If there is no model configured in custom mode, it is treated as no_configure.
+        system > custom > no_configure
+
+        If preferred provider type is `custom`:
+          If custom credentials are configured, it is treated as custom mode.
+          Otherwise, get the current **system mode** if supported,
+          If all system modes are not available (no quota), it is treated as no_configure.
+        custom > system > no_configure
+
+        If real mode is `system`, use system credentials to get models,
+          paid quotas > provider free quotas > system free quotas
+          include pre-defined models (exclude GPT-4, status marked as `no_permission`), remote models.
+        If real mode is `custom`, use workspace custom credentials to get models,
+          include pre-defined models, remote models and custom models(manual append).
+        If real mode is `no_configure`, only return pre-defined models from `model runtime`.
+          (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
+        model status marked as `active` is available.
+
         :param provider: provider name
         :param model_type: model type
         :param only_active: only active models
@@ -400,37 +446,18 @@ class ProviderConfigurations(BaseModel, Dict[str, ProviderConfiguration]):
             else:
                 model_types = provider_instance.get_provider_schema().supported_model_types
 
-            if provider_configuration.preferred_provider_type == ProviderType.SYSTEM \
-                    and provider_configuration.system_configuration.enabled is True:
+            if provider_configuration.using_provider_type == ProviderType.SYSTEM:
                 provider_models = self._get_system_provider_models(
                     provider_configuration=provider_configuration,
                     model_types=model_types,
                     provider_instance=provider_instance
                 )
-
-                has_active_models = any([m.status == ModelStatus.ACTIVE for m in provider_models])
-
-                if not has_active_models:
-                    provider_models = self._get_custom_provider_models(
-                        provider_configuration=provider_configuration,
-                        model_types=model_types,
-                        provider_instance=provider_instance
-                    )
             else:
                 provider_models = self._get_custom_provider_models(
                     provider_configuration=provider_configuration,
                     model_types=model_types,
                     provider_instance=provider_instance
                 )
-
-                has_active_models = any([m.status == ModelStatus.ACTIVE for m in provider_models])
-
-                if not has_active_models and provider_configuration.system_configuration.enabled is True:
-                    provider_models = self._get_system_provider_models(
-                        provider_configuration=provider_configuration,
-                        model_types=model_types,
-                        provider_instance=provider_instance
-                    )
 
             if only_active:
                 provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]

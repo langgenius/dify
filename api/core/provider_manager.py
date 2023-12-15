@@ -114,10 +114,36 @@ class ProviderManager:
                 else:
                     preferred_provider_type = ProviderType.CUSTOM
 
+            using_provider_type = preferred_provider_type
+            if preferred_provider_type == ProviderType.SYSTEM:
+                if not system_configuration.enabled:
+                    using_provider_type = ProviderType.CUSTOM
+
+                has_valid_quota = False
+                for quota_configuration in system_configuration.quota_configurations:
+                    if quota_configuration.is_valid:
+                        has_valid_quota = True
+                        break
+
+                if not has_valid_quota:
+                    using_provider_type = ProviderType.CUSTOM
+            else:
+                if not custom_configuration.provider and not custom_configuration.models:
+                    if system_configuration.enabled:
+                        has_valid_quota = False
+                        for quota_configuration in system_configuration.quota_configurations:
+                            if quota_configuration.is_valid:
+                                has_valid_quota = True
+                                break
+
+                        if has_valid_quota:
+                            using_provider_type = ProviderType.SYSTEM
+
             provider_configuration = ProviderConfiguration(
                 tenant_id=tenant_id,
                 provider=provider_entity,
                 preferred_provider_type=preferred_provider_type,
+                using_provider_type=using_provider_type,
                 system_configuration=system_configuration,
                 custom_configuration=custom_configuration
             )
@@ -402,7 +428,7 @@ class ProviderManager:
             custom_model_configurations.append(
                 CustomModelConfiguration(
                     model=provider_model_record.model_name,
-                    model_type=ModelType.from_origin_model_type(provider_model_record.model_type),
+                    model_type=ModelType.value_of(provider_model_record.model_type),
                     credentials=provider_model_credentials
                 )
             )

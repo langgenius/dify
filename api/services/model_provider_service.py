@@ -1,12 +1,16 @@
 import logging
 import os
-from typing import Optional
+from typing import Optional, cast
 
 import requests
 
-from core.model_runtime.model_providers import model_provider_factory
-from models.provider import TenantDefaultModel
-
+from core.entities.model_entities import ModelWithProviderEntity, ModelStatus
+from core.model_runtime.entities.model_entities import ModelType, ParameterRule
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.provider_manager import ProviderManager
+from models.provider import TenantDefaultModel, ProviderType
+from services.entities.model_provider_entities import ProviderResponse, CustomConfigurationResponse, \
+    SystemConfigurationResponse, CustomConfigurationStatus, ProviderWithModelsResponse, ModelResponse
 
 logger = logging.getLogger(__name__)
 
@@ -15,27 +19,45 @@ class ModelProviderService:
     """
     Model Provider Service
     """
+    def __init__(self) -> None:
+        self.provider_manager = ProviderManager()
 
-    def get_provider_list(self, tenant_id: str, model_type: Optional[str] = None) -> list:
+    def get_provider_list(self, tenant_id: str, model_type: Optional[str] = None) -> list[ProviderResponse]:
         """
         get provider list.
 
-        :param tenant_id:
-        :param model_type:
+        :param tenant_id: workspace id
+        :param model_type: model type
         :return:
         """
-        # Get all providers from model runtime, only return pre-defined providers & models
-        providers = model_provider_factory.get_providers()
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # Get the provider hosting configuration and get the quota information hosted by the team
+        provider_responses = []
+        for provider_configuration in provider_configurations:
+            if model_type:
+                model_type_entity = ModelType.value_of(model_type)
+                if model_type_entity not in provider_configuration.provider.supported_model_types:
+                    continue
 
-        # Get Provider custom configuration status
+            provider_response = ProviderResponse(
+                **provider_configuration.provider.dict(),
+                preferred_provider_type=provider_configuration.preferred_provider_type,
+                custom_configuration=CustomConfigurationResponse(
+                    status=CustomConfigurationStatus.ACTIVE
+                    if provider_configuration.is_custom_configuration_available()
+                    else CustomConfigurationStatus.NO_CONFIGURE
+                ),
+                system_configuration=SystemConfigurationResponse(
+                    **provider_configuration.system_configuration.dict()
+                )
+            )
 
-        # Get preferred provider type
+            provider_responses.append(provider_response)
 
-        return []
+        return provider_responses
 
-    def get_models_by_provider(self, tenant_id: str, provider: str) -> list:
+    def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntity]:
         """
         get provider models.
         For the model provider page,
@@ -45,32 +67,13 @@ class ModelProviderService:
         :param provider:
         :return:
         """
-        # Get preferred provider type
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # If preferred provider type is `hosting`:
-        #   Get the current **hosting mode** if provider supported,
-        #   if all hosting modes are not available (no quota), it is considered to be the **custom credential mode**.
-        #   If there is no model configured in custom mode, it is treated as no_configure.
-        # hosting > custom > no_configure
-
-        # If preferred provider type is `custom`:
-        #   If custom credentials are configured, it is treated as custom mode.
-        #   Otherwise, get the current **hosting mode** if supported,
-        #   If all hosting modes are not available (no quota), it is treated as no_configure.
-        # custom > hosting > no_configure
-
-        # If real mode is `hosting`, use hosting credentials to get models,
-        #   paid quotas > provider free quotas > hosting free quotas
-        #   include pre-defined models (exclude GPT-4, status marked as `no_permission`), remote models.
-        # If real mode is `custom`, use workspace custom credentials to get models,
-        #   include pre-defined models, remote models and custom models(manual append).
-        # If real mode is `no_configure`, only return pre-defined models from `model runtime`.
-        #   (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
-        # model status marked as `active` is available.
-
-        # Construct list[ProviderConfig], pass in available providers and corresponding credentials
-
-        return []
+        # Get provider available models
+        return provider_configurations.get_models(
+            provider=provider
+        )
 
     def get_provider_credentials(self, tenant_id: str, provider: str) -> dict:
         """
@@ -80,16 +83,16 @@ class ModelProviderService:
         :param provider:
         :return:
         """
-        # Check if the provider's configure_method supports either `predefined-model` or `fetch-from-remote`.
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
 
         # Get provider custom credentials from workspace
-
-        # Hide secret credential values to `***abc***` for security.
-        # Fetch secret credential types from `provider_credential_schema` in the provider's schema.
-
-        # return credentials
-
-        return {}
+        return provider_configuration.get_custom_credentials(obfuscated=True)
 
     def provider_credentials_validate(self, tenant_id: str, provider: str, credentials: dict) -> None:
         """
@@ -99,14 +102,15 @@ class ModelProviderService:
         :param provider:
         :param credentials:
         """
-        # Check if the provider's configure_method supports either `predefined-model` or `fetch-from-remote`.
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # Get provider custom credentials from workspace
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
 
-        # Fetch secret credential types from `provider_credential_schema` in the provider's schema.
-        # Replace `[__HIDDEN__]` to real credential value.
-
-        # Validate credentials
+        provider_configuration.custom_credentials_validate(credentials)
 
     def save_provider_credentials(self, tenant_id: str, provider: str, credentials: dict) -> None:
         """
@@ -117,11 +121,16 @@ class ModelProviderService:
         :param credentials: provider credentials
         :return:
         """
-        # validate credentials
-        self.provider_credentials_validate(tenant_id, provider, credentials)
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # save and encrypt provider credentials
-        # Note: Do not switch the preferred provider, which allows users to use quotas first
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Add or update custom provider credentials.
+        provider_configuration.add_or_update_custom_credentials(credentials)
 
     def remove_provider_credentials(self, tenant_id: str, provider: str) -> None:
         """
@@ -131,9 +140,16 @@ class ModelProviderService:
         :param provider: provider name
         :return:
         """
-        # remove provider credentials
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # switch preferred provider if needed
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Remove custom provider credentials.
+        provider_configuration.delete_custom_credentials()
 
     def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> dict:
         """
@@ -145,18 +161,20 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
-        # Check if the provider's configure_method supports `customizable-model`.
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # Check model type is supported by provider.
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
 
         # Get model custom credentials from ProviderModel if exists
-
-        # Hide secret credential values to `***abc***` for security.
-        # Fetch secret credential types from `model_credential_schema` in the provider's schema.
-
-        # return credentials
-
-        return {}
+        return provider_configuration.get_custom_model_credentials(
+            model_type=ModelType.value_of(model_type),
+            model=model,
+            obfuscated=True
+        )
 
     def model_credentials_validate(self, tenant_id: str, provider: str, model_type: str, model: str,
                                    credentials: dict) -> None:
@@ -170,16 +188,20 @@ class ModelProviderService:
         :param credentials: model credentials
         :return:
         """
-        # Check if the provider's configure_method supports `customizable-model`.
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # Check model type is supported by provider.
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
 
-        # Get model custom credentials from ProviderModel if exists
-
-        # Fetch secret credential types from `model_credential_schema` in the provider's schema.
-        # Replace `[__HIDDEN__]` to real credential value.
-
-        # Validate credentials
+        # Validate model credentials
+        provider_configuration.custom_model_credentials_validate(
+            model_type=ModelType.value_of(model_type),
+            model=model,
+            credentials=credentials
+        )
 
     def save_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str,
                                credentials: dict) -> None:
@@ -193,11 +215,20 @@ class ModelProviderService:
         :param credentials: model credentials
         :return:
         """
-        # validate credentials
-        self.model_credentials_validate(tenant_id, provider, model_type, model, credentials)
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # save and encrypt model credentials
-        # Note: Do not switch the preferred provider, which allows users to use quotas first
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Add or update custom model credentials
+        provider_configuration.add_or_update_custom_model_credentials(
+            model_type=ModelType.value_of(model_type),
+            model=model,
+            credentials=credentials
+        )
 
     def remove_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> None:
         """
@@ -209,9 +240,19 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
-        # remove model credentials
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # switch preferred provider if all models credentials are removed
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Remove custom model credentials
+        provider_configuration.delete_custom_model_credentials(
+            model_type=ModelType.value_of(model_type),
+            model=model
+        )
 
     def get_models_by_model_type(self, tenant_id: str, model_type: str) -> list:
         """
@@ -221,48 +262,54 @@ class ModelProviderService:
         :param model_type: model type
         :return:
         """
-        # Get all available provider records for the current workspace
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # Get all preferred provider records for the current workspace
+        # Get provider available models
+        models = provider_configurations.get_models(
+            model_type=ModelType.value_of(model_type)
+        )
 
-        # Group by provider, and get the real credentials used according to the preferred provider type
-        # and hosting quota (if unavailable, there is no credentials)
+        # Group models by provider
+        provider_models = {}
+        for model in models:
+            if model.provider not in provider_models:
+                provider_models[model.provider] = []
 
-        # If preferred provider type is `hosting`:
-        #   Get the current **hosting mode** credentials if provider supported,
-        #   if all hosting modes are not available (no quota),
-        #   it is considered to be the **custom credential mode** and use provider custom credentials.
-        #   If there is no model configured in custom mode, it is treated as no_configure and no credentials.
-        # hosting > custom > no_configure
+            provider_models[model.provider].append(model)
 
-        # If preferred provider type is `custom`:
-        #   If custom credentials are configured, it is treated as custom mode and use provider custom credentials.
-        #   Otherwise, get the current **hosting mode** credentials if supported,
-        #   If all hosting modes are not available (no quota), it is treated as no_configure and no credentials.
-        # custom > hosting > no_configure
+        # convert to ProviderWithModelsResponse list
+        providers_with_models: list[ProviderWithModelsResponse] = []
+        for provider, models in provider_models.items():
+            if not models:
+                continue
 
-        # If real mode is `hosting`, use hosting credentials to get models,
-        #   paid quotas > provider free quotas > hosting free quotas
-        #   include pre-defined models (exclude GPT-4, status marked as `no_permission`), remote models.
-        # If real mode is `custom`, use workspace custom credentials to get models,
-        #   include pre-defined models, remote models and custom models(manual append).
-        # If real mode is `no_configure`, only return pre-defined models from `model runtime`.
-        #   (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
-        # model status marked as `active` is available.
+            first_model = models[0]
 
-        # Construct list[ProviderConfig], pass in available providers and corresponding credentials
+            has_active_models = any([model.status == ModelStatus.ACTIVE for model in models])
 
-        # Get all available provider models and add them to the models list under providers
-        # (if custom models are supported and provider real mode is `custom`)
+            providers_with_models.append(
+                ProviderWithModelsResponse(
+                    provider=provider,
+                    label=first_model.provider.label,
+                    icon_small=first_model.provider.icon_small,
+                    icon_large=first_model.provider.icon_large,
+                    status=CustomConfigurationStatus.ACTIVE
+                    if has_active_models else CustomConfigurationStatus.NO_CONFIGURE,
+                    models=[ModelResponse(
+                        model=model.model,
+                        label=model.label,
+                        model_type=model.model_type,
+                        features=model.features,
+                        model_properties=model.model_properties,
+                        status=model.status
+                    ) for model in models]
+                )
+            )
 
-        # (If the provider is in hosting mode and some models are not supported for calling in hosting mode,
-        # set the model status to no_permission, otherwise it is active)
+        return providers_with_models
 
-        # Set the provider status, active/no_configure
-
-        return []
-
-    def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> dict:
+    def get_model_parameter_rules(self, tenant_id: str, provider: str, model: str) -> list[ParameterRule]:
         """
         get model parameter rules.
         Only supports LLM.
@@ -272,13 +319,35 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
         # Get provider instance
+        provider_instance = provider_configuration.get_provider_instance()
 
         # Get model instance of LLM
+        model_instance = provider_instance.get_model_instance(ModelType.LLM)
+        model_instance = cast(LargeLanguageModel, model_instance)
+
+        # fetch credentials
+        credentials = provider_configuration.get_current_credentials(
+            model_type=ModelType.LLM,
+            model=model
+        )
+
+        if not credentials:
+            return []
 
         # Call get_parameter_rules method of model instance to get model parameter rules
-
-        return {}
+        return model_instance.get_parameter_rules(
+            model=model,
+            credentials=credentials
+        )
 
     def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[TenantDefaultModel]:
         """
@@ -288,12 +357,11 @@ class ModelProviderService:
         :param model_type: model type
         :return:
         """
-        # get default model of model type from TenantDefaultModel
-
-        # if not found, get first available model of LLM (self.get_models_by_model_type)
-
-        # return default model
-        return None
+        model_type_enum = ModelType.value_of(model_type)
+        return self.provider_manager.get_default_model_record(
+            tenant_id=tenant_id,
+            model_type=model_type_enum
+        )
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
         """
@@ -305,13 +373,13 @@ class ModelProviderService:
         :param model: model name
         :return:
         """
-        # Check model is available
-
-        # fetch default model of model type from TenantDefaultModel
-
-        # if not found, create new TenantDefaultModel
-
-        # else update default model of model type
+        model_type_enum = ModelType.value_of(model_type)
+        self.provider_manager.update_default_model_record(
+            tenant_id=tenant_id,
+            model_type=model_type_enum,
+            provider=provider,
+            model=model
+        )
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """
@@ -322,11 +390,19 @@ class ModelProviderService:
         :param preferred_provider_type: preferred provider type
         :return:
         """
-        # Check if the provider's configure_method supports:
-        # `customizable-model`: custom
-        # `predefined-model` or `fetch-from-remote`: system
+        # Get all provider configurations of the current workspace
+        provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
-        # create or update TenantPreferredModelProvider
+        # Convert preferred_provider_type to ProviderType
+        preferred_provider_type_enum = ProviderType.value_of(preferred_provider_type)
+
+        # Get provider configuration
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # Switch preferred provider type
+        provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
 
     def free_quota_submit(self, tenant_id: str, provider_name: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
