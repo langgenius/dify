@@ -32,6 +32,7 @@ const translation = {
     ok: 'OK',
     log: 'Log',
     learnMore: 'Learn More',
+    params: 'Params',
   },
   placeholder: {
     input: 'Please enter',

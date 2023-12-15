@@ -26,7 +26,6 @@ type Props = {
 }
 
 const ConfigParamModal: FC<Props> = ({
-  appId,
   isShow,
   onHide: doHide,
   onSave,
