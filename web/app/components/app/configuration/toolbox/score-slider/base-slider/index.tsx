@@ -20,7 +20,7 @@ const Slider: React.FC<ISliderProps> = ({ className, max, min, step, value, disa
     max={max || 100}
     step={step || 1}
     className={cn(className, s.slider)}
-    thumbClassName={cn(s['slider-thumb'], 'top-[-7px] w-2 h-[18px] bg-white border !border-black/8 rounded-[36px] shadow-md')}
+    thumbClassName={cn(s['slider-thumb'], 'top-[-7px] w-2 h-[18px] bg-white border !border-black/8 rounded-[36px] shadow-md cursor-pointer')}
     trackClassName={s['slider-track']}
     onChange={onChange}
     renderThumb={(props, state) => (

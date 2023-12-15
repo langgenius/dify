@@ -81,6 +81,7 @@ const translation = {
     confirmBtn: 'Save & Enable',
     configConfirmBtn: 'Save',
   },
+  embeddingModelSwitchTip: 'Annotation text vectorization model, switching models will be re-embedded, resulting in additional costs.',
 }
 
 export default translation

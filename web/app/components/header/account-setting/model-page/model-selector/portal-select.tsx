@@ -189,7 +189,7 @@ const ModelSelector: FC<Props> = ({
       <div className='relative'>
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} className={cn('flex items-center px-2.5 w-full h-9 rounded-lg', readonly ? '!cursor-auto bg-gray-100 opacity-50' : 'bg-gray-100', hasRemoved && '!bg-[#FEF3F2]')}>
           {
-            <div ref={triggerRef} className='flex items-center w-full'>
+            <div ref={triggerRef} className='flex items-center w-full cursor-pointer'>
               {
                 (value && value.modelName && value.providerName)
                   ? (

@@ -255,7 +255,7 @@ const Answer: FC<IAnswerProps> = ({
                       <div>
                         <Markdown content={annotation?.logAnnotation ? annotation?.logAnnotation.content : content} />
                       </div>
-                      {hasAnnotation && (
+                      {(hasAnnotation && !annotation?.logAnnotation) && (
                         <EditTitle className='mt-1' title={t('appAnnotation.editBy', {
                           author: annotation.authorName,
                         })} />
