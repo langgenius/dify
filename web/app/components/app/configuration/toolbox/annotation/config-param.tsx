@@ -14,7 +14,8 @@ import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { updateAnnotationScore } from '@/service/annotation'
 
 type Props = {
-  handleEnableAnnotation: (embeddingModel: EmbeddingModelConfig, score?: number) => void
+  onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
+  onScoreChange: (score: number) => void
 }
 
 export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
@@ -40,7 +41,8 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
 }
 
 const AnnotationReplyConfig: FC<Props> = ({
-  handleEnableAnnotation,
+  onEmbeddingChange,
+  onScoreChange,
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -97,10 +99,12 @@ const AnnotationReplyConfig: FC<Props> = ({
               embeddingModel.embedding_model_name !== annotationConfig.embedding_model.embedding_model_name
               && embeddingModel.embedding_provider_name !== annotationConfig.embedding_model.embedding_provider_name
             )
-              await handleEnableAnnotation(embeddingModel)
+              await onEmbeddingChange(embeddingModel)
 
-            if (score !== annotationConfig.score_threshold)
+            if (score !== annotationConfig.score_threshold) {
               await updateAnnotationScore(appId, annotationConfig.id, score)
+              onScoreChange(score)
+            }
 
             setIsShowEdit(false)
           }}

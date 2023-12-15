@@ -43,7 +43,7 @@ const useAnnotationConfig = ({
     }
   }
 
-  const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score: number) => {
+  const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score?: number) => {
     if (isAnnotationFull)
       return
     if (annotationConfig.enabled)
@@ -56,6 +56,12 @@ const useAnnotationConfig = ({
       draft.embedding_model = embeddingModel
       if (!draft.score_threshold)
         draft.score_threshold = ANNOTATION_DEFAULT.score_threshold
+    }))
+  }
+
+  const setScore = (score: number) => {
+    setAnnotationConfig(produce(annotationConfig, (draft: AnnotationReplyConfig) => {
+      draft.score_threshold = score
     }))
   }
 
@@ -76,6 +82,7 @@ const useAnnotationConfig = ({
     setIsShowAnnotationConfigInit,
     isShowAnnotationFullModal,
     setIsShowAnnotationFullModal,
+    setScore,
   }
 }
 
