@@ -23,6 +23,7 @@ import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+import { fetchAppDetail } from '@/service/apps'
 
 type Props = {
   appId: string
@@ -34,12 +35,19 @@ const Annotation: FC<Props> = ({
   const { t } = useTranslation()
   const [isShowEdit, setIsShowEdit] = React.useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
+  const [isChatApp, setIsChatApp] = useState(false)
+
   const fetchAnnotationConfig = async () => {
     const res = await doFetchAnnotationConfig(appId)
     setAnnotationConfig(res as AnnotationReplyConfig)
   }
   useEffect(() => {
-    fetchAnnotationConfig()
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
+      const isChatApp = res.mode === 'chat'
+      setIsChatApp(isChatApp)
+      if (isChatApp)
+        fetchAnnotationConfig()
+    })
   }, [])
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
   const { plan, enableBilling } = useProviderContext()
@@ -146,50 +154,55 @@ const Annotation: FC<Props> = ({
       <div className='flex flex-col py-4 '>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
-            <div className='flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1'>
-              <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
-              <Switch
-                key={controlRefreshSwitch}
-                defaultValue={annotationConfig?.enabled}
-                size='md'
-                onChange={async (value) => {
-                  if (value) {
-                    if (isAnnotationFull) {
-                      setIsShowAnnotationFullModal(true)
-                      setControlRefreshSwitch(Date.now())
-                      return
-                    }
-                    setIsShowEdit(true)
-                  }
-                  else {
-                    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
-                    await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                    await fetchAnnotationConfig()
-                    Toast.notify({
-                      message: t('common.api.actionSuccess'),
-                      type: 'success',
-                    })
-                  }
-                }}
-              ></Switch>
-              {annotationConfig?.enabled && (
-                <div className='flex items-center pl-1.5'>
-                  <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
-                  <div
-                    className={`
+            {isChatApp && (
+              <>
+                <div className='flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1'>
+                  <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
+                  <Switch
+                    key={controlRefreshSwitch}
+                    defaultValue={annotationConfig?.enabled}
+                    size='md'
+                    onChange={async (value) => {
+                      if (value) {
+                        if (isAnnotationFull) {
+                          setIsShowAnnotationFullModal(true)
+                          setControlRefreshSwitch(Date.now())
+                          return
+                        }
+                        setIsShowEdit(true)
+                      }
+                      else {
+                        const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
+                        await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+                        await fetchAnnotationConfig()
+                        Toast.notify({
+                          message: t('common.api.actionSuccess'),
+                          type: 'success',
+                        })
+                      }
+                    }}
+                  ></Switch>
+                  {annotationConfig?.enabled && (
+                    <div className='flex items-center pl-1.5'>
+                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
+                      <div
+                        className={`
                       shrink-0  h-7 w-7 flex items-center justify-center
                       text-xs text-gray-700 font-medium 
                     `}
-                    onClick={() => { setIsShowEdit(true) }}
-                  >
-                    <div className='flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-200'>
-                      <Settings04 className='w-4 h-4' />
+                        onClick={() => { setIsShowEdit(true) }}
+                      >
+                        <div className='flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-200'>
+                          <Settings04 className='w-4 h-4' />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+              </>
+            )}
+
             <HeaderOpts
               appId={appId}
               controlUpdateList={controlUpdateList}
