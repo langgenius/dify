@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
+import cn from 'classnames'
 import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
@@ -19,10 +20,11 @@ import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
 import type { AnnotationReplyConfig } from '@/models/debug'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+import { fetchAppDetail } from '@/service/apps'
 
 type Props = {
   appId: string
@@ -34,12 +36,19 @@ const Annotation: FC<Props> = ({
   const { t } = useTranslation()
   const [isShowEdit, setIsShowEdit] = React.useState(false)
   const [annotationConfig, setAnnotationConfig] = useState<AnnotationReplyConfig | null>(null)
+  const [isChatApp, setIsChatApp] = useState(false)
+
   const fetchAnnotationConfig = async () => {
     const res = await doFetchAnnotationConfig(appId)
     setAnnotationConfig(res as AnnotationReplyConfig)
   }
   useEffect(() => {
-    fetchAnnotationConfig()
+    fetchAppDetail({ url: '/apps', id: appId }).then(async (res: any) => {
+      const isChatApp = res.mode === 'chat'
+      setIsChatApp(isChatApp)
+      if (isChatApp)
+        fetchAnnotationConfig()
+    })
   }, [])
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
   const { plan, enableBilling } = useProviderContext()
@@ -143,48 +152,58 @@ const Annotation: FC<Props> = ({
   return (
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
-      <div className='flex flex-col py-4 flex-1'>
+      <div className='flex flex-col py-4 '>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
-            <div className='flex items-center space-x-1 text-gray-500'>
-              <div className='text-[14px]'>{t('appAnnotation.name')}</div>
-              <Switch
-                key={controlRefreshSwitch}
-                defaultValue={annotationConfig?.enabled}
-                size='md'
-                onChange={async (value) => {
-                  if (value) {
-                    if (isAnnotationFull) {
-                      setIsShowAnnotationFullModal(true)
-                      setControlRefreshSwitch(Date.now())
-                      return
-                    }
-                    setIsShowEdit(true)
-                  }
-                  else {
-                    const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
-                    await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
-                    await fetchAnnotationConfig()
-                    Toast.notify({
-                      message: t('common.api.actionSuccess'),
-                      type: 'success',
-                    })
-                  }
-                }}
-              ></Switch>
-              {annotationConfig?.enabled && (
-                <div
-                  className={`
-shrink-0 flex items-center px-1 h-7 cursor-pointer rounded-md
-text-xs text-gray-700 font-medium hover:bg-gray-200
-`}
-                  onClick={() => { setIsShowEdit(true) }}
-                >
-                  <Settings01 className='mr-[5px] w-4 h-4' />
+            {isChatApp && (
+              <>
+                <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex items-center h-7 rounded-lg border border-gray-200 pl-2 space-x-1')}>
+                  <div className='leading-[18px] text-[13px] font-medium text-gray-900'>{t('appAnnotation.name')}</div>
+                  <Switch
+                    key={controlRefreshSwitch}
+                    defaultValue={annotationConfig?.enabled}
+                    size='md'
+                    onChange={async (value) => {
+                      if (value) {
+                        if (isAnnotationFull) {
+                          setIsShowAnnotationFullModal(true)
+                          setControlRefreshSwitch(Date.now())
+                          return
+                        }
+                        setIsShowEdit(true)
+                      }
+                      else {
+                        const { job_id: jobId }: any = await updateAnnotationStatus(appId, AnnotationEnableStatus.disable, annotationConfig?.embedding_model, annotationConfig?.score_threshold)
+                        await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
+                        await fetchAnnotationConfig()
+                        Toast.notify({
+                          message: t('common.api.actionSuccess'),
+                          type: 'success',
+                        })
+                      }
+                    }}
+                  ></Switch>
+                  {annotationConfig?.enabled && (
+                    <div className='flex items-center pl-1.5'>
+                      <div className='shrink-0 mr-1 w-[1px] h-3.5 bg-gray-200'></div>
+                      <div
+                        className={`
+                      shrink-0  h-7 w-7 flex items-center justify-center
+                      text-xs text-gray-700 font-medium 
+                    `}
+                        onClick={() => { setIsShowEdit(true) }}
+                      >
+                        <div className='flex h-6 w-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-200'>
+                          <Settings04 className='w-4 h-4' />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-            <div className='shrink-0 mx-2 w-[1px] h-3.5 bg-gray-200'></div>
+                <div className='shrink-0 mx-3 w-[1px] h-3.5 bg-gray-200'></div>
+              </>
+            )}
+
             <HeaderOpts
               appId={appId}
               controlUpdateList={controlUpdateList}
@@ -244,8 +263,8 @@ text-xs text-gray-700 font-medium hover:bg-gray-200
             appId={appId}
             isShow={isShowViewModal}
             onHide={() => setIsShowViewModal(false)}
-            onRemove={() => {
-              handleRemove((currItem as AnnotationItem)?.id)
+            onRemove={async () => {
+              await handleRemove((currItem as AnnotationItem)?.id)
             }}
             item={currItem as AnnotationItem}
             onSave={handleSave}
@@ -269,7 +288,7 @@ text-xs text-gray-700 font-medium hover:bg-gray-200
               }
 
               if (score !== annotationConfig?.score_threshold)
-                updateAnnotationScore(appId, annotationConfig?.id || '', score)
+                await updateAnnotationScore(appId, annotationConfig?.id || '', score)
 
               await fetchAnnotationConfig()
               Toast.notify({

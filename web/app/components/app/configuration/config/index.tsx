@@ -157,6 +157,7 @@ const Config: FC = () => {
 
   const {
     handleEnableAnnotation,
+    setScore,
     handleDisableAnnotation,
     isShowAnnotationConfigInit,
     setIsShowAnnotationConfigInit,
@@ -263,6 +264,8 @@ const Config: FC = () => {
             <Toolbox
               showModerationSettings={moderationConfig.enabled}
               showAnnotation={isChatApp && featureConfig.annotation}
+              onEmbeddingChange={handleEnableAnnotation}
+              onScoreChange={setScore}
             />
           )
         }

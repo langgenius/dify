@@ -8,13 +8,14 @@ import ConfigParamModal from './config-param-modal'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { HelpCircle, LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import { HelpCircle, LinkExternal02, Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { updateAnnotationScore } from '@/service/annotation'
 
 type Props = {
-  handleEnableAnnotation: (embeddingModel: EmbeddingModelConfig, score?: number) => void
+  onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
+  onScoreChange: (score: number, embeddingModel?: EmbeddingModelConfig) => void
 }
 
 export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }> = ({
@@ -40,7 +41,8 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
 }
 
 const AnnotationReplyConfig: FC<Props> = ({
-  handleEnableAnnotation,
+  onEmbeddingChange,
+  onScoreChange,
 }) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -64,18 +66,17 @@ const AnnotationReplyConfig: FC<Props> = ({
         headerRight={
           <div className='flex items-center'>
             <div
-              className={`
-          shrink-0 flex items-center px-3 h-7 cursor-pointer rounded-md
-          text-xs text-gray-700 font-medium hover:bg-gray-200
-        `}
+              className='flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200'
               onClick={() => { setIsShowEdit(true) }}
             >
-              <Settings01 className='mr-[5px] w-3.5 h-3.5' />
-              {t('common.operation.settings')}
+              <Settings04 className="w-[14px] h-[14px]" />
+              <div className='text-xs font-medium'>
+
+                {t('common.operation.params')}
+              </div>
             </div>
-            <div className='shrink-0 mx-1 w-[1px] h-3.5 bg-gray-200'></div>
             <div
-              className='flex items-center h-7 px-3 space-x-1 leading-[18px] text-xs font-medium text-gray-700 rounded-md cursor-pointer hover:bg-gray-200'
+              className='ml-1 flex items-center h-7 px-3 space-x-1 leading-[18px] text-xs font-medium text-gray-700 rounded-md cursor-pointer hover:bg-gray-200'
               onClick={() => {
                 router.push(`/app/${appId}/annotations`)
               }}>
@@ -94,14 +95,23 @@ const AnnotationReplyConfig: FC<Props> = ({
             setIsShowEdit(false)
           }}
           onSave={async (embeddingModel, score) => {
+            let isEmbeddingModelChanged = false
             if (
               embeddingModel.embedding_model_name !== annotationConfig.embedding_model.embedding_model_name
               && embeddingModel.embedding_provider_name !== annotationConfig.embedding_model.embedding_provider_name
-            )
-              await handleEnableAnnotation(embeddingModel)
+            ) {
+              await onEmbeddingChange(embeddingModel)
+              isEmbeddingModelChanged = true
+            }
 
-            if (score !== annotationConfig.score_threshold)
-              updateAnnotationScore(appId, annotationConfig.id, score)
+            if (score !== annotationConfig.score_threshold) {
+              await updateAnnotationScore(appId, annotationConfig.id, score)
+              if (isEmbeddingModelChanged)
+                onScoreChange(score, embeddingModel)
+
+              else
+                onScoreChange(score)
+            }
 
             setIsShowEdit(false)
           }}
