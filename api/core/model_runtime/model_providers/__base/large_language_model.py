@@ -282,26 +282,31 @@ class LargeLanguageModel(AIModel):
         if model in model_map:
             return model_map[model].parameter_rules
 
-        return self.get_customizable_model_parameter_rules(model, credentials)
+        model_schema = self.get_customizable_model_schema(model, credentials)
+        if model_schema:
+            return model_schema.parameter_rules
 
-    def get_customizable_model_parameter_rules(self, model: str, credentials: dict) -> list[ParameterRule]:
-        """
-        Get customizable model parameter rules
-
-        :param model: model name
-        :param credentials: model credentials
-        :return: parameter rules
-        """
         return []
 
-    def get_model_mode(self, model: str) -> LLMMode:
+    def get_model_mode(self, model: str, credentials: Optional[dict] = None) -> LLMMode:
         """
         Get model mode
 
         :param model: model name
+        :param credentials: model credentials
         :return: model mode
         """
         model_schema = self.get_predefined_model_schema(model)
+        if not model_schema and credentials:
+            remote_models = self.remote_models(credentials)
+            if remote_models:
+                for remote_model in remote_models:
+                    if remote_model.model == model:
+                        model_schema = remote_model
+                        break
+
+            if not model_schema:
+                model_schema = self.get_customizable_model_schema(model, credentials)
 
         mode = LLMMode.CHAT
         if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
@@ -516,13 +521,7 @@ class LargeLanguageModel(AIModel):
         :param credentials: model credentials
         :return:
         """
-        model_schema = self.get_predefined_model_schema(model)
-        if not model_schema:
-            parameter_rules = self.get_customizable_model_parameter_rules(model, credentials)
-            if not parameter_rules:
-                return model_parameters
-        else:
-            parameter_rules = model_schema.parameter_rules
+        parameter_rules = self.get_parameter_rules(model, credentials)
 
         # validate model parameters
         filtered_model_parameters = {}
@@ -531,8 +530,8 @@ class LargeLanguageModel(AIModel):
             parameter_value = model_parameters.get(parameter_name)
             if parameter_value is None:
                 if parameter_rule.required:
-                    if parameter_rule.default_value is not None:
-                        filtered_model_parameters[parameter_name] = parameter_rule.default_value
+                    if parameter_rule.default is not None:
+                        filtered_model_parameters[parameter_name] = parameter_rule.default
                         continue
                     else:
                         raise ValueError(f"Model Parameter {parameter_name} is required.")

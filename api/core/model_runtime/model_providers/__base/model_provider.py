@@ -5,7 +5,7 @@ from typing import Optional, Dict
 
 import yaml
 
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import ModelType, AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
@@ -58,7 +58,7 @@ class ModelProvider(ABC):
 
         return provider_schema
 
-    def models(self, model_type: ModelType, remote_model_fetch_credentials: Optional[dict] = None) -> list:
+    def models(self, model_type: ModelType, remote_model_fetch_credentials: Optional[dict] = None) -> list[AIModelEntity]:
         """
         Get all models for given model type
 

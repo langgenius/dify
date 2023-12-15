@@ -230,6 +230,16 @@ class AIModel(ABC):
 
         return None
 
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: model schema
+        """
+        return None
+
     def _get_default_parameter_rule_variable_map(self, name: DefaultParameterName) -> dict:
         """
         Get default parameter rule for given name

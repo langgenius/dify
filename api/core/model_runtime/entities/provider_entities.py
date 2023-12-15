@@ -118,7 +118,8 @@ class ProviderEntity(BaseModel):
             label=self.label,
             icon_small=self.icon_small,
             icon_large=self.icon_large,
-            supported_model_types=self.supported_model_types
+            supported_model_types=self.supported_model_types,
+            models=self.models
         )
 
 

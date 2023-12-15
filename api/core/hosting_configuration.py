@@ -32,6 +32,7 @@ class HostingProvider(BaseModel):
     credentials: Optional[dict] = None
     quota_unit: Optional[QuotaUnit] = None
     quotas: list[HostingQuota] = []
+    restrict_llms: list[str] = []
 
 
 class HostedModerationConfig(BaseModel):
@@ -69,7 +70,14 @@ class HostingConfiguration:
             hosted_quota_limit = int(os.environ.get("HOSTED_OPENAI_QUOTA_LIMIT", "200"))
             if hosted_quota_limit != -1 or hosted_quota_limit > 0:
                 trial_quota = TrialHostingQuota(
-                    quota_limit=hosted_quota_limit
+                    quota_limit=hosted_quota_limit,
+                    restrict_llms=[
+                        "gpt-3.5-turbo",
+                        "gpt-3.5-turbo-1106",
+                        "gpt-3.5-turbo-instruct",
+                        "gpt-3.5-turbo-16k",
+                        "text-davinci-003"
+                    ]
                 )
                 quotas.append(trial_quota)
 

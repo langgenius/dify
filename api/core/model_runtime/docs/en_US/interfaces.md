@@ -185,22 +185,21 @@ Inherit the `__base.large_language_model.LargeLanguageModel` base class and impl
 
   For parameter explanations, refer to the above section on `LLM Invocation`.
 
-- Fetch Custom Model Parameter Rules [Optional]
+- Fetch Custom Model Schema [Optional]
 
   ```python
-  def get_customizable_model_parameter_rules(self, model: str, credentials: dict) -> list[ParameterRule]:
+  def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
       """
-      Get customizable model parameter rules
-  
+      Get customizable model schema
+
       :param model: model name
       :param credentials: model credentials
-      :return: parameter rules
+      :return: model schema
       """
   ```
 
-  When the provider supports adding custom LLMs, this method can be implemented to allow custom models to fetch parameter rules for invocation. The default parameter rules are empty.
+  When the provider supports adding custom LLMs, this method can be implemented to allow custom models to fetch model schema. The default return null.
 
-  Invocation parameters include: `temperature`, `top_p`, `max_tokens`, etc.
 
 ### TextEmbedding
 

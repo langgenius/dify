@@ -183,22 +183,20 @@ def validate_provider_credentials(self, credentials: dict) -> None:
 
   参数说明见上述 `LLM 调用`。
   
-- 获取自定义模型参数规则 [可选]
+- 获取自定义模型规则 [可选]
 
   ```python
-  def get_customizable_model_parameter_rules(self, model: str, credentials: dict) -> list[ParameterRule]:
+  def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
       """
-      Get customizable model parameter rules
-  
+      Get customizable model schema
+
       :param model: model name
       :param credentials: model credentials
-      :return: parameter rules
+      :return: model schema
       """
   ```
 
-​	当供应商支持增加自定义 LLM 时，可实现此方法让自定义模型可获取调用时的参数规则，默认参数规则为空。
-
-​	调用参数如：`temperature` / `top_p` / `max_tokens` 等。
+​	当供应商支持增加自定义 LLM 时，可实现此方法让自定义模型可获取模型规则，默认返回 None。
 
 ### TextEmbedding
 

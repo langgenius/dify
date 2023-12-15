@@ -46,8 +46,13 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        # handle fine tune remote models
+        base_model = model
+        if model.startswith('ft:'):
+            base_model = model.split(':')[1]
+
         # get model mode
-        model_mode = self.get_model_mode(model)
+        model_mode = self.get_model_mode(base_model, credentials)
 
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -113,8 +118,13 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             credentials_kwargs = self._to_credential_kwargs(credentials)
             client = OpenAI(**credentials_kwargs)
 
+            # handle fine tune remote models
+            base_model = model
+            if model.startswith('ft:'):
+                base_model = model.split(':')[1]
+
             # get model mode
-            model_mode = self.get_model_mode(model)
+            model_mode = self.get_model_mode(base_model, credentials)
 
             if model_mode == LLMMode.CHAT:
                 # chat model

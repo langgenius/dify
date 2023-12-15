@@ -30,6 +30,7 @@ class QuotaConfiguration(BaseModel):
     quota_limit: int
     quota_used: int
     is_valid: bool
+    restrict_llms: list[str] = []
 
 
 class SystemConfiguration(BaseModel):

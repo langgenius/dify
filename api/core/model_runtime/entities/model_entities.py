@@ -26,15 +26,15 @@ class ModelType(Enum):
 
         :return: model type
         """
-        if origin_model_type == 'text-generation':
+        if origin_model_type == 'text-generation' or origin_model_type == cls.LLM.value:
             return cls.LLM
-        elif origin_model_type == 'embeddings':
+        elif origin_model_type == 'embeddings' or origin_model_type == cls.TEXT_EMBEDDING.value:
             return cls.TEXT_EMBEDDING
-        elif origin_model_type == 'reranking':
+        elif origin_model_type == 'reranking' or origin_model_type == cls.RERANK.value:
             return cls.RERANK
-        elif origin_model_type == 'speech2text':
+        elif origin_model_type == cls.SPEECH2TEXT.value:
             return cls.SPEECH2TEXT
-        elif origin_model_type == 'moderation':
+        elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION
         else:
             raise ValueError(f'invalid origin model type {origin_model_type}')
