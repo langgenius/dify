@@ -107,7 +107,7 @@ const ViewAnnotationModal: FC<Props> = ({
     </>
   )
 
-  const hitHistoryTab = activeTab.length === 0
+  const hitHistoryTab = total === 0
     ? (<HitHistoryNoData />)
     : (
       <div>
@@ -223,9 +223,10 @@ const ViewAnnotationModal: FC<Props> = ({
       <DeleteConfirmModal
         isShow={showModal}
         onHide={() => setShowModal(false)}
-        onRemove={() => {
-          onRemove()
+        onRemove={async () => {
+          await onRemove()
           setShowModal(false)
+          onHide()
         }}
         text={t('appDebug.feature.annotation.removeConfirm') as string}
       />

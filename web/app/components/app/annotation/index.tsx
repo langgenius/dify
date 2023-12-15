@@ -262,8 +262,8 @@ const Annotation: FC<Props> = ({
             appId={appId}
             isShow={isShowViewModal}
             onHide={() => setIsShowViewModal(false)}
-            onRemove={() => {
-              handleRemove((currItem as AnnotationItem)?.id)
+            onRemove={async () => {
+              await handleRemove((currItem as AnnotationItem)?.id)
             }}
             item={currItem as AnnotationItem}
             onSave={handleSave}
