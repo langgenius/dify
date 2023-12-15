@@ -222,7 +222,7 @@ class AnnotationBatchImportApi(Resource):
         # check file type
         if not file.filename.endswith('.csv'):
             raise ValueError("Invalid file type. Only CSV files are allowed")
-        AppAnnotationService.batch_import_app_annotations(app_id, file)
+        return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
     @setup_required
     @login_required
