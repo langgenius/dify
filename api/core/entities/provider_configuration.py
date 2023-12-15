@@ -11,6 +11,7 @@ from core.helper import encrypter
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import ProviderEntity, CredentialFormSchema, FormType
 from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from extensions.ext_database import db
 from models.provider import ProviderType, Provider, ProviderModel, TenantPreferredModelProvider, ProviderQuotaType
@@ -26,17 +27,6 @@ class ProviderConfiguration(BaseModel):
     using_provider_type: ProviderType
     system_configuration: SystemConfiguration
     custom_configuration: CustomConfiguration
-
-    def get_current_configuration(self):
-        """
-        Get current configuration.
-
-        :return:
-        """
-        if self.using_provider_type == ProviderType.SYSTEM:
-            return self.system_configuration
-        else:
-            return self.custom_configuration
 
     def get_current_credentials(self, model_type: ModelType, model: str) -> Optional[dict]:
         """
@@ -325,6 +315,19 @@ class ProviderConfiguration(BaseModel):
         :return:
         """
         return model_provider_factory.get_provider_instance(self.provider.provider)
+
+    def get_model_instance(self, model_type: ModelType) -> AIModel:
+        """
+        Get current model instance.
+
+        :param model_type: model type
+        :return:
+        """
+        # Get provider instance
+        provider_instance = self.get_provider_instance()
+
+        # Get model instance of LLM
+        return provider_instance.get_model_instance(model_type)
 
     def switch_preferred_provider_type(self, provider_type: ProviderType) -> None:
         """

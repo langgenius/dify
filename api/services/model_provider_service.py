@@ -327,11 +327,8 @@ class ModelProviderService:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        # Get provider instance
-        provider_instance = provider_configuration.get_provider_instance()
-
         # Get model instance of LLM
-        model_instance = provider_instance.get_model_instance(ModelType.LLM)
+        model_instance = provider_configuration.get_model_instance(ModelType.LLM)
         model_instance = cast(LargeLanguageModel, model_instance)
 
         # fetch credentials
