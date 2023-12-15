@@ -11,18 +11,20 @@ import Button from '../../../base/button'
 import { Plus } from '../../../base/icons/src/vender/line/general'
 import AddAnnotationModal from '../add-annotation-modal'
 import type { AnnotationItemBasic } from '../type'
+import BatchAddModal from '../batch-add-annotation-modal'
 import s from './style.module.css'
 import CustomPopover from '@/app/components/base/popover'
 // import Divider from '@/app/components/base/divider'
-import { FileDownload02 } from '@/app/components/base/icons/src/vender/line/files'
+import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import I18n from '@/context/i18n'
 import { fetchExportAnnotationList } from '@/service/annotation'
-
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']
+
 type Props = {
   appId: string
   onAdd: (payload: AnnotationItemBasic) => void
+  onAdded: () => void
   controlUpdateList: number
   // onClearAll: () => void
 }
@@ -30,6 +32,7 @@ type Props = {
 const HeaderOptions: FC<Props> = ({
   appId,
   onAdd,
+  onAdded,
   // onClearAll,
   controlUpdateList,
 }) => {
@@ -50,19 +53,17 @@ const HeaderOptions: FC<Props> = ({
       fetchList()
   }, [controlUpdateList])
 
+  const [showBulkImportModal, setShowBulkImportModal] = useState(false)
+
   const Operations = () => {
-    // const onClickDelete = async (e: React.MouseEvent<HTMLDivElement>) => {
-    //   e.stopPropagation()
-    //   props.onClick?.()
-    //   e.preventDefault()
-    //   // setShowConfirmDelete(true)
-    // }
     return (
       <div className="w-full py-1">
-        {/* <button className={s.actionItem} onClick={onClickSettings}>
+        <button className={s.actionItem} onClick={() => {
+          setShowBulkImportModal(true)
+        }}>
           <FilePlus02 className={s.actionItemIcon} />
           <span className={s.actionName}>{t('appAnnotation.table.header.bulkImport')}</span>
-        </button> */}
+        </button>
 
         <CSVDownloader
           type={Type.Link}
@@ -113,7 +114,7 @@ const HeaderOptions: FC<Props> = ({
           )
         }
         // !w-[208px]
-        className={'!w-[130px] h-fit !z-20'}
+        className={'!w-[131px] h-fit !z-20'}
         manualClose
       />
       {showAddModal && (
@@ -123,6 +124,17 @@ const HeaderOptions: FC<Props> = ({
           onAdd={onAdd}
         />
       )}
+
+      {
+        showBulkImportModal && (
+          <BatchAddModal
+            appId={appId}
+            isShow={showBulkImportModal}
+            onCancel={() => setShowBulkImportModal(false)}
+            onAdded={onAdded}
+          />
+        )
+      }
     </div>
   )
 }

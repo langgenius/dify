@@ -189,6 +189,9 @@ text-xs text-gray-700 font-medium hover:bg-gray-200
               appId={appId}
               controlUpdateList={controlUpdateList}
               onAdd={handleAdd}
+              onAdded={() => {
+                fetchList()
+              }}
             />
           </div>
         </Filter>
