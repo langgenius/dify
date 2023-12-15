@@ -41,8 +41,6 @@ const Annotation: FC<Props> = ({
   }, [])
   const [controlRefreshSwitch, setControlRefreshSwitch] = useState(Date.now())
 
-  console.log(annotationConfig?.enabled)
-
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {

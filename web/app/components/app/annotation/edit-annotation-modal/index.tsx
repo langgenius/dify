@@ -60,6 +60,7 @@ const EditAnnotationModal: FC<Props> = ({
       const res: any = await addAnnotation(appId, {
         question: postQuery,
         answer: postAnswer,
+        message_id: messageId,
       })
       onAdded(res.id, res.account?.name, postQuery, postAnswer)
     }
