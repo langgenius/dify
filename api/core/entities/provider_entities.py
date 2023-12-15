@@ -56,7 +56,7 @@ class CustomModelConfiguration(BaseModel):
     """
     model: str
     model_type: ModelType
-    credentials: Optional[dict] = None
+    credentials: dict
 
 
 class CustomConfiguration(BaseModel):

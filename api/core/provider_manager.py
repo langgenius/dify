@@ -127,34 +127,96 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
-    def get_default_model_record(self, tenant_id: str, model_type: str) -> TenantDefaultModel:
+    def get_default_model_record(self, tenant_id: str, model_type: ModelType) -> TenantDefaultModel:
         """
         Get default model record.
 
-        :param tenant_id:
-        :param model_type:
+        :param tenant_id: workspace id
+        :param model_type: model type
         :return:
         """
         # Get the corresponding TenantDefaultModel record
+        default_model = db.session.query(TenantDefaultModel) \
+            .filter(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type.to_origin_model_type()
+        ).first()
 
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
-        pass
+        if not default_model:
+            provider_configurations = self.get_configurations(tenant_id)
 
-    def update_default_model_record(self, tenant_id: str, model_type: str, model: str) -> TenantDefaultModel:
+            # get available models from provider_configurations
+            available_models = provider_configurations.get_models(
+                model_type=model_type,
+                only_active=True
+            )
+
+            if available_models:
+                available_model = available_models[0]
+                default_model = TenantDefaultModel(
+                    tenant_id=tenant_id,
+                    model_type=model_type.to_origin_model_type(),
+                    provider_name=available_model.provider.provider,
+                    model_name=available_model.model
+                )
+                db.session.add(default_model)
+                db.session.commit()
+
+        return default_model
+
+    def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
+            -> TenantDefaultModel:
         """
         Update default model record.
 
-        :param tenant_id:
-        :param model_type:
-        :param model:
+        :param tenant_id: workspace id
+        :param model_type: model type
+        :param provider: provider name
+        :param model: model name
         :return:
         """
+        provider_configurations = self.get_configurations(tenant_id)
+        if provider not in provider_configurations:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        # get available models from provider_configurations
+        available_models = provider_configurations.get_models(
+            model_type=model_type,
+            only_active=True
+        )
+
+        # check if the model is exist in available models
+        model_names = [model.model for model in available_models]
+        if model not in model_names:
+            raise ValueError(f"Model {model} does not exist.")
+
         # Get the list of available models from get_configurations and check if it is LLM
+        default_model = db.session.query(TenantDefaultModel) \
+            .filter(
+            TenantDefaultModel.tenant_id == tenant_id,
+            TenantDefaultModel.model_type == model_type.to_origin_model_type()
+        ).first()
 
         # create or update TenantDefaultModel record
+        if default_model:
+            # update default model
+            default_model.provider_name = provider
+            default_model.model_name = model
+            db.session.commit()
+        else:
+            # create default model
+            default_model = TenantDefaultModel(
+                tenant_id=tenant_id,
+                model_type=model_type.value,
+                provider_name=provider,
+                model_name=model,
+            )
+            db.session.add(default_model)
+            db.session.commit()
 
-        pass
+        return default_model
 
     def _get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
         """
@@ -327,7 +389,7 @@ class ProviderManager:
             try:
                 provider_model_credentials = json.loads(provider_model_record.encrypted_config)
             except JSONDecodeError:
-                provider_model_credentials = {}
+                continue
 
             for variable in model_credential_secret_variables:
                 if variable in provider_model_credentials:
@@ -390,6 +452,7 @@ class ProviderManager:
                 quota_used=provider_record.quota_used,
                 quota_limit=provider_record.quota_limit,
                 is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
+                restrict_llms=provider_hosting_configuration.restrict_llms
             )
 
             quota_configurations.append(quota_configuration)
