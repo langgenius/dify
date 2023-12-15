@@ -224,11 +224,13 @@ class AnnotationBatchImportApi(Resource):
             raise ValueError("Invalid file type. Only CSV files are allowed")
         return AppAnnotationService.batch_import_app_annotations(app_id, file)
 
+
+class AnnotationBatchImportStatusApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check('annotation')
-    def get(self, job_id):
+    def get(self, app_id, job_id):
         # The role of the current user in the ta table must be admin or owner
         if current_user.current_tenant.current_role not in ['admin', 'owner']:
             raise Forbidden()
@@ -282,8 +284,8 @@ api.add_resource(AnnotationReplyActionStatusApi,
 api.add_resource(AnnotationListApi, '/apps/<uuid:app_id>/annotations')
 api.add_resource(AnnotationExportApi, '/apps/<uuid:app_id>/annotations/export')
 api.add_resource(AnnotationUpdateDeleteApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>')
-api.add_resource(AnnotationBatchImportApi, '/apps/<uuid:app_id>/annotations/batch-import',
-                 '/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>')
+api.add_resource(AnnotationBatchImportApi, '/apps/<uuid:app_id>/annotations/batch-import')
+api.add_resource(AnnotationBatchImportStatusApi, '/apps/<uuid:app_id>/annotations/batch-import-status/<uuid:job_id>')
 api.add_resource(AnnotationHitHistoryListApi, '/apps/<uuid:app_id>/annotations/<uuid:annotation_id>/hit-histories')
 api.add_resource(AppAnnotationSettingDetailApi, '/apps/<uuid:app_id>/annotation-setting')
 api.add_resource(AppAnnotationSettingUpdateApi, '/apps/<uuid:app_id>/annotation-settings/<uuid:annotation_setting_id>')
