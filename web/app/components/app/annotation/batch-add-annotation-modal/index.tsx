@@ -45,7 +45,6 @@ const BatchModal: FC<IBatchModalProps> = ({
     try {
       const res = await checkAnnotationBatchImportProgress({ jobID, appId })
       setImportStatus(res.job_status)
-      console.log(res.job_status)
       if (res.job_status === ProcessStatus.WAITING || res.job_status === ProcessStatus.PROCESSING)
         setTimeout(() => checkProcess(res.job_id), 2500)
       if (res.job_status === ProcessStatus.ERROR)
