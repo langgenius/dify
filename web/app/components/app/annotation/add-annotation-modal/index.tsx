@@ -7,7 +7,8 @@ import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
-
+import { useProviderContext } from '@/context/provider-context'
+import AnnotationFull from '@/app/components/billing/annotation-full'
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -20,6 +21,8 @@ const AddAnnotationModal: FC<Props> = ({
   onAdd,
 }) => {
   const { t } = useTranslation()
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [isCreateNext, setIsCreateNext] = useState(false)
@@ -87,18 +90,26 @@ const AddAnnotationModal: FC<Props> = ({
         )}
         foot={
           (
-            <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
-              <div
-                className='flex items-center space-x-2'
-              >
-                <input type="checkbox" checked={isCreateNext} onChange={() => setIsCreateNext(!isCreateNext)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
-                <div>{t('appAnnotation.addModal.createNext')}</div>
-              </div>
-              <div className='mt-2 flex space-x-2'>
-                <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave} loading={isSaving}>{t('common.operation.save')}</Button>
-                <Button className='!h-7 !text-xs !font-medium' onClick={onHide}>{t('common.operation.cancel')}</Button>
+            <div>
+              {isAnnotationFull && (
+                <div className='mt-6 mb-4 px-6'>
+                  <AnnotationFull />
+                </div>
+              )}
+              <div className='px-6 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+                <div
+                  className='flex items-center space-x-2'
+                >
+                  <input type="checkbox" checked={isCreateNext} onChange={() => setIsCreateNext(!isCreateNext)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
+                  <div>{t('appAnnotation.addModal.createNext')}</div>
+                </div>
+                <div className='mt-2 flex space-x-2'>
+                  <Button className='!h-7 !text-xs !font-medium' onClick={onHide}>{t('common.operation.cancel')}</Button>
+                  <Button className='!h-7 !text-xs !font-medium' type='primary' onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
+                </div>
               </div>
             </div>
+
           )
         }
       >

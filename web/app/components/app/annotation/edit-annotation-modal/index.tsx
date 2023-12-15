@@ -9,7 +9,8 @@ import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/
 import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
 import { addAnnotation, editAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
-
+import { useProviderContext } from '@/context/provider-context'
+import AnnotationFull from '@/app/components/billing/annotation-full'
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -40,7 +41,9 @@ const EditAnnotationModal: FC<Props> = ({
   onlyEditResponse,
 }) => {
   const { t } = useTranslation()
-
+  const { plan, enableBilling } = useProviderContext()
+  const isAdd = !annotationId
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
   const handleSave = async (type: EditItemType, editedContent: string) => {
     let postQuery = query
     let postAnswer = answer
@@ -48,7 +51,7 @@ const EditAnnotationModal: FC<Props> = ({
       postQuery = editedContent
     else
       postAnswer = editedContent
-    if (annotationId) {
+    if (!isAdd) {
       await editAnnotation(appId, annotationId, {
         message_id: messageId,
         question: postQuery,
@@ -60,6 +63,7 @@ const EditAnnotationModal: FC<Props> = ({
       const res: any = await addAnnotation(appId, {
         question: postQuery,
         answer: postAnswer,
+        message_id: messageId,
       })
       onAdded(res.id, res.account?.name, postQuery, postAnswer)
     }
@@ -83,30 +87,43 @@ const EditAnnotationModal: FC<Props> = ({
             <EditItem
               type={EditItemType.Query}
               content={query}
-              readonly={onlyEditResponse}
+              readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
               onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
             />
             <EditItem
               type={EditItemType.Answer}
               content={answer}
+              readonly={isAdd && isAnnotationFull}
               onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
             />
           </div>
         )}
-        foot={annotationId
-          ? (
-            <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
-              <div
-                className='flex items-center pl-3 space-x-2 cursor-pointer'
-                onClick={() => setShowModal(true)}
-              >
-                <MessageCheckRemove />
-                <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+        foot={
+          <div>
+            {isAnnotationFull && (
+              <div className='mt-6 mb-4 px-6'>
+                <AnnotationFull />
               </div>
-              {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>}
-            </div>
-          )
-          : undefined}
+            )}
+
+            {
+              annotationId
+                ? (
+                  <div className='px-4 flex h-16 items-center justify-between border-t border-black/5 bg-gray-50 rounded-bl-xl rounded-br-xl leading-[18px] text-[13px] font-medium text-gray-500'>
+                    <div
+                      className='flex items-center pl-3 space-x-2 cursor-pointer'
+                      onClick={() => setShowModal(true)}
+                    >
+                      <MessageCheckRemove />
+                      <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+                    </div>
+                    {createdAt && <div>{t('appAnnotation.editModal.createdAt')}&nbsp;{dayjs(createdAt * 1000).format('YYYY-MM-DD hh:mm')}</div>}
+                  </div>
+                )
+                : undefined
+            }
+          </div>
+        }
       >
       </Drawer>
       <DeleteConfirmModal

@@ -24,6 +24,7 @@ import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
 import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 
 const Config: FC = () => {
   const {
@@ -159,6 +160,8 @@ const Config: FC = () => {
     handleDisableAnnotation,
     isShowAnnotationConfigInit,
     setIsShowAnnotationConfigInit,
+    isShowAnnotationFullModal,
+    setIsShowAnnotationFullModal,
   } = useAnnotationConfig({
     appId,
     annotationConfig,
@@ -278,6 +281,12 @@ const Config: FC = () => {
           }}
           annotationConfig={annotationConfig}
         />
+        {isShowAnnotationFullModal && (
+          <AnnotationFullModal
+            show={isShowAnnotationFullModal}
+            onHide={() => setIsShowAnnotationFullModal(false)}
+          />
+        )}
       </div>
     </>
   )
