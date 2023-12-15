@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import produce from 'immer'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { queryAnnotationJobStatus, updateAnnotationStatus } from '@/service/annotation'
@@ -6,6 +6,8 @@ import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { AnnotationEnableStatus, JobStatus } from '@/app/components/app/annotation/type'
 import { sleep } from '@/utils'
 import { ANNOTATION_DEFAULT } from '@/config'
+import { useProviderContext } from '@/context/provider-context'
+
 type Params = {
   appId: string
   annotationConfig: AnnotationReplyConfig
@@ -16,8 +18,19 @@ const useAnnotationConfig = ({
   annotationConfig,
   setAnnotationConfig,
 }: Params) => {
-  const [isShowAnnotationConfigInit, setIsShowAnnotationConfigInit] = React.useState(false)
-
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const [isShowAnnotationFullModal, setIsShowAnnotationFullModal] = useState(false)
+  const [isShowAnnotationConfigInit, doSetIsShowAnnotationConfigInit] = React.useState(false)
+  const setIsShowAnnotationConfigInit = (isShow: boolean) => {
+    if (isShow) {
+      if (isAnnotationFull) {
+        setIsShowAnnotationFullModal(true)
+        return
+      }
+    }
+    doSetIsShowAnnotationConfigInit(isShow)
+  }
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     let isCompleted = false
     while (!isCompleted) {
@@ -31,6 +44,8 @@ const useAnnotationConfig = ({
   }
 
   const handleEnableAnnotation = async (embeddingModel: EmbeddingModelConfig, score: number) => {
+    if (isAnnotationFull)
+      return
     if (annotationConfig.enabled)
       return
 
@@ -59,6 +74,8 @@ const useAnnotationConfig = ({
     handleDisableAnnotation,
     isShowAnnotationConfigInit,
     setIsShowAnnotationConfigInit,
+    isShowAnnotationFullModal,
+    setIsShowAnnotationFullModal,
   }
 }
 
