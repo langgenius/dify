@@ -245,14 +245,23 @@ const Chat: FC<IChatProps> = ({
                     }
                   }
                   if (i === index) {
-                    return {
+                    const answerItem = {
                       ...item,
-                      content: answer,
+                      content: item.content,
                       annotation: {
                         id: annotationId,
                         authorName,
+                        logAnnotation: {
+                          content: answer,
+                          account: {
+                            id: '',
+                            name: authorName,
+                            email: '',
+                          },
+                        },
                       } as Annotation,
                     }
+                    return answerItem
                   }
                   return item
                 }))
