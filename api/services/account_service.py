@@ -412,6 +412,12 @@ class TenantService:
         db.session.delete(tenant)
         db.session.commit()
 
+    @staticmethod
+    def get_custom_config(tenant_id: str) -> None:
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).one_or_404()
+
+        return tenant.custom_config_dict
+
 
 class RegisterService:
 

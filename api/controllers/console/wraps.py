@@ -62,6 +62,8 @@ def cloud_edition_billing_resource_check(resource: str,
                     abort(403, error_msg)
                 elif resource == 'vector_space' and 0 < vector_space['limit'] <= vector_space['size']:
                     abort(403, error_msg)
+                elif resource == 'workspace_custom' and not billing_info['can_replace_logo']:
+                    abort(403, error_msg)
                 else:
                     return view(*args, **kwargs)
 
