@@ -123,6 +123,22 @@ class AzureOpenAIProvider(BaseModelProvider):
                     ]
                 },
                 {
+                    'id': 'gpt-4-1106-preview',
+                    'name': 'gpt-4-1106-preview',
+                    'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.AGENT_THOUGHT.value
+                    ]
+                },
+                {
+                    'id': 'gpt-4-vision-preview',
+                    'name': 'gpt-4-vision-preview',
+                    'mode': ModelMode.CHAT.value,
+                    'features': [
+                        ModelFeature.VISION.value
+                    ]
+                },
+                {
                     'id': 'text-davinci-003',
                     'name': 'text-davinci-003',
                     'mode': ModelMode.COMPLETION.value,
@@ -171,6 +187,8 @@ class AzureOpenAIProvider(BaseModelProvider):
         base_model_max_tokens = {
             'gpt-4': 8192,
             'gpt-4-32k': 32768,
+            'gpt-4-1106-preview': 4096,
+            'gpt-4-vision-preview': 4096,
             'gpt-35-turbo': 4096,
             'gpt-35-turbo-16k': 16384,
             'text-davinci-003': 4097,
@@ -372,6 +390,18 @@ class AzureOpenAIProvider(BaseModelProvider):
 
             self._add_provider_model(
                 model_name='gpt-4',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='gpt-4-1106-preview',
+                model_type=ModelType.TEXT_GENERATION,
+                provider_credentials=credentials
+            )
+
+            self._add_provider_model(
+                model_name='gpt-4-vision-preview',
                 model_type=ModelType.TEXT_GENERATION,
                 provider_credentials=credentials
             )

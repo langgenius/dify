@@ -297,7 +297,7 @@ const baseFetch = <T>(
   ]) as Promise<T>
 }
 
-export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
+export const upload = (options: any, isPublicAPI?: boolean, url?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   let token = ''
   if (isPublicAPI) {
@@ -318,7 +318,7 @@ export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
   }
   const defaultOptions = {
     method: 'POST',
-    url: `${urlPrefix}/files/upload`,
+    url: url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`,
     headers: {
       Authorization: `Bearer ${token}`,
     },
