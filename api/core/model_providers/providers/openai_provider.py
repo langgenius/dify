@@ -4,7 +4,6 @@ from json import JSONDecodeError
 from typing import Type, Optional
 
 from flask import current_app
-from openai.error import AuthenticationError, OpenAIError
 
 import openai
 
@@ -211,11 +210,8 @@ class OpenAIProvider(BaseModelProvider):
                 max_tokens=20,
                 **credentials_kwargs
             )
-        except (AuthenticationError, OpenAIError) as ex:
-            raise CredentialsValidateFailedError(str(ex))
         except Exception as ex:
-            logging.exception('OpenAI config validation failed')
-            raise ex
+            raise CredentialsValidateFailedError(str(ex))
 
     @classmethod
     def encrypt_provider_credentials(cls, tenant_id: str, credentials: dict) -> dict:

@@ -1,7 +1,7 @@
 import datetime
 import json
 from json import JSONDecodeError
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Iterator
 
 from pydantic import BaseModel
 
@@ -401,11 +401,16 @@ class ProviderConfiguration(BaseModel):
         return copy_credentials
 
 
-class ProviderConfigurations(BaseModel, Dict[str, ProviderConfiguration]):
+class ProviderConfigurations(BaseModel):
     """
     Model class for provider configuration dict.
     """
     tenant_id: str
+    configurations: Dict[str, ProviderConfiguration] = {}
+
+    def __init__(self, tenant_id: str, **configurations):
+        super().__init__(tenant_id=tenant_id)
+        self.configurations = configurations
 
     def get_models(self,
                    provider: Optional[str] = None,
@@ -585,3 +590,18 @@ class ProviderConfigurations(BaseModel, Dict[str, ProviderConfiguration]):
             )
 
         return provider_models
+
+    def __getitem__(self, key):
+        return self.configurations[key]
+
+    def __setitem__(self, key, value):
+        self.configurations[key] = value
+
+    def __iter__(self):
+        return iter(self.configurations)
+
+    def values(self) -> Iterator[ProviderConfiguration]:
+        return self.configurations.values()
+
+    def get(self, key, default=None):
+        return self.configurations.get(key, default)

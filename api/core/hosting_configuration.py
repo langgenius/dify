@@ -9,14 +9,17 @@ from models.provider import ProviderQuotaType
 
 class HostingQuota(BaseModel):
     quota_type: ProviderQuotaType
+    restrict_llms: list[str] = []
 
 
 class TrialHostingQuota(HostingQuota):
+    quota_type: ProviderQuotaType = ProviderQuotaType.TRIAL
     quota_limit: int = 0
     """Quota limit for the hosting provider models. -1 means unlimited."""
 
 
 class PaidHostingQuota(HostingQuota):
+    quota_type: ProviderQuotaType = ProviderQuotaType.PAID
     stripe_price_id: str = None
     increase_quota: int = 1
     min_quantity: int = 20
@@ -24,7 +27,7 @@ class PaidHostingQuota(HostingQuota):
 
 
 class FreeHostingQuota(HostingQuota):
-    pass
+    quota_type: ProviderQuotaType = ProviderQuotaType.FREE
 
 
 class HostingProvider(BaseModel):
@@ -32,7 +35,6 @@ class HostingProvider(BaseModel):
     credentials: Optional[dict] = None
     quota_unit: Optional[QuotaUnit] = None
     quotas: list[HostingQuota] = []
-    restrict_llms: list[str] = []
 
 
 class HostedModerationConfig(BaseModel):
@@ -41,7 +43,7 @@ class HostedModerationConfig(BaseModel):
 
 
 class HostingConfiguration:
-    provider_map: dict[str, HostingProvider] = []
+    provider_map: dict[str, HostingProvider] = {}
     moderation_config: HostedModerationConfig = None
 
     def init_app(self):
@@ -85,8 +87,8 @@ class HostingConfiguration:
                 paid_quota = PaidHostingQuota(
                     stripe_price_id=os.environ.get("HOSTED_OPENAI_PAID_STRIPE_PRICE_ID"),
                     increase_quota=int(os.environ.get("HOSTED_OPENAI_PAID_INCREASE_QUOTA", "1")),
-                    min_quantity=int(os.environ.get("HOSTED_OPENAI_PAID_MIN_QUANTITY")),
-                    max_quantity=int(os.environ.get("HOSTED_OPENAI_PAID_MAX_QUANTITY"))
+                    min_quantity=int(os.environ.get("HOSTED_OPENAI_PAID_MIN_QUANTITY", "1")),
+                    max_quantity=int(os.environ.get("HOSTED_OPENAI_PAID_MAX_QUANTITY", "1"))
                 )
                 quotas.append(paid_quota)
 

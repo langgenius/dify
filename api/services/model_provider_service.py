@@ -34,7 +34,7 @@ class ModelProviderService:
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         provider_responses = []
-        for provider_configuration in provider_configurations:
+        for provider_configuration in provider_configurations.values():
             if model_type:
                 model_type_entity = ModelType.value_of(model_type)
                 if model_type_entity not in provider_configuration.provider.supported_model_types:

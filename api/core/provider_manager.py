@@ -88,11 +88,19 @@ class ProviderManager:
         for provider_entity in provider_entities:
             provider_name = provider_entity.provider
 
+            provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider)
+            if not provider_records:
+                provider_records = []
+
+            provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider)
+            if not provider_model_records:
+                provider_model_records = []
+
             # Convert to custom configuration
             custom_configuration = self._to_custom_configuration(
                 provider_entity,
-                provider_name_to_provider_records_dict.get(provider_entity.provider),
-                provider_name_to_provider_model_records_dict.get(provider_entity.provider),
+                provider_records,
+                provider_model_records,
                 decoding_rsa_key,
                 decoding_cipher_rsa
             )
@@ -335,6 +343,9 @@ class ProviderManager:
 
             provider_quota_to_provider_record_dict = dict()
             for provider_record in provider_records:
+                if provider_record.provider_type != ProviderType.SYSTEM.value:
+                    continue
+
                 provider_quota_to_provider_record_dict[ProviderQuotaType.value_of(provider_record.quota_type)] \
                     = provider_record
 
@@ -473,6 +484,9 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict = dict()
         for provider_record in provider_records:
+            if provider_record.provider_type != ProviderType.SYSTEM.value:
+                continue
+
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] \
                 = provider_record
 
@@ -489,7 +503,7 @@ class ProviderManager:
                 quota_used=provider_record.quota_used,
                 quota_limit=provider_record.quota_limit,
                 is_valid=provider_record.quota_limit > provider_record.quota_used or provider_record.quota_limit == -1,
-                restrict_llms=provider_hosting_configuration.restrict_llms
+                restrict_llms=provider_quota.restrict_llms
             )
 
             quota_configurations.append(quota_configuration)
