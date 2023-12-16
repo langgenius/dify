@@ -1,7 +1,7 @@
 import datetime
 import json
 from json import JSONDecodeError
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 
 from pydantic import BaseModel
 
@@ -95,26 +95,12 @@ class ProviderConfiguration(BaseModel):
             if self.provider.provider_credential_schema else []
         )
 
-    def custom_credentials_validate(self, credentials: dict) -> None:
+    def custom_credentials_validate(self, credentials: dict) -> Tuple[Provider, dict]:
         """
         Validate custom credentials.
         :param credentials: provider credentials
         :return:
         """
-        model_provider_factory.provider_credentials_validate(
-            self.provider.provider,
-            credentials
-        )
-
-    def add_or_update_custom_credentials(self, credentials: dict) -> None:
-        """
-        Add or update custom provider credentials.
-        :param credentials:
-        :return:
-        """
-        # validate custom provider config
-        self.custom_credentials_validate(credentials)
-
         # get provider
         provider_record = db.session.query(Provider) \
             .filter(
@@ -144,6 +130,22 @@ class ProviderConfiguration(BaseModel):
                     credentials[key] = original_credentials[key]
                 else:
                     credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+
+        model_provider_factory.provider_credentials_validate(
+            self.provider.provider,
+            credentials
+        )
+
+        return provider_record, credentials
+
+    def add_or_update_custom_credentials(self, credentials: dict) -> None:
+        """
+        Add or update custom provider credentials.
+        :param credentials:
+        :return:
+        """
+        # validate custom provider config
+        provider_record, credentials = self.custom_credentials_validate(credentials)
 
         # save provider
         # Note: Do not switch the preferred provider, which allows users to use quotas first
@@ -211,7 +213,8 @@ class ProviderConfiguration(BaseModel):
 
         return None
 
-    def custom_model_credentials_validate(self, model_type: ModelType, model: str, credentials: dict) -> None:
+    def custom_model_credentials_validate(self, model_type: ModelType, model: str, credentials: dict) \
+            -> Tuple[ProviderModel, dict]:
         """
         Validate custom model credentials.
 
@@ -220,24 +223,6 @@ class ProviderConfiguration(BaseModel):
         :param credentials: model credentials
         :return:
         """
-        model_provider_factory.model_credentials_validate(
-            model_type=model_type,
-            model=model,
-            credentials=credentials
-        )
-
-    def add_or_update_custom_model_credentials(self, model_type: ModelType, model: str, credentials: dict) -> None:
-        """
-        Add or update custom model credentials.
-
-        :param model_type: model type
-        :param model: model name
-        :param credentials: model credentials
-        :return:
-        """
-        # validate custom model config
-        self.custom_model_credentials_validate(model_type, model, credentials)
-
         # get provider model
         provider_model_record = db.session.query(ProviderModel) \
             .filter(
@@ -268,6 +253,26 @@ class ProviderConfiguration(BaseModel):
                     credentials[key] = original_credentials[key]
                 else:
                     credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+
+        model_provider_factory.model_credentials_validate(
+            model_type=model_type,
+            model=model,
+            credentials=credentials
+        )
+
+        return provider_model_record, credentials
+
+    def add_or_update_custom_model_credentials(self, model_type: ModelType, model: str, credentials: dict) -> None:
+        """
+        Add or update custom model credentials.
+
+        :param model_type: model type
+        :param model: model name
+        :param credentials: model credentials
+        :return:
+        """
+        # validate custom model config
+        provider_model_record, credentials = self.custom_model_credentials_validate(model_type, model, credentials)
 
         # save provider model
         # Note: Do not switch the preferred provider, which allows users to use quotas first

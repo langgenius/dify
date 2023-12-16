@@ -1,6 +1,8 @@
 from enum import Enum
 
-from core.model_runtime.entities.model_entities import ProviderModel
+from pydantic import BaseModel
+
+from core.model_runtime.entities.model_entities import ProviderModel, ModelType
 from core.model_runtime.entities.provider_entities import SimpleProviderEntity
 
 
@@ -20,3 +22,12 @@ class ModelWithProviderEntity(ProviderModel):
     """
     provider: SimpleProviderEntity
     status: ModelStatus
+
+
+class DefaultModelEntity(BaseModel):
+    """
+    Default model entity.
+    """
+    model: str
+    model_type: ModelType
+    provider: SimpleProviderEntity

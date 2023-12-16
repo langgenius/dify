@@ -1,7 +1,9 @@
 import json
 from collections import defaultdict
 from json import JSONDecodeError
+from typing import Optional
 
+from core.entities.model_entities import ModelWithProviderEntity, DefaultModelEntity
 from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, CustomModelConfiguration, \
     SystemConfiguration, QuotaConfiguration
@@ -153,9 +155,9 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
-    def get_default_model_record(self, tenant_id: str, model_type: ModelType) -> TenantDefaultModel:
+    def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:
         """
-        Get default model record.
+        Get default model.
 
         :param tenant_id: workspace id
         :param model_type: model type
@@ -190,7 +192,16 @@ class ProviderManager:
                 db.session.add(default_model)
                 db.session.commit()
 
-        return default_model
+        if not default_model:
+            return None
+
+        provider_entity = model_provider_factory.get_provider_instance(default_model.provider_name)
+
+        return DefaultModelEntity(
+            model=default_model.model_name,
+            model_type=model_type,
+            provider=provider_entity.provider_schema.to_simple_provider()
+        )
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
             -> TenantDefaultModel:

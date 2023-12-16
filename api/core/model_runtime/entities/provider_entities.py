@@ -89,15 +89,25 @@ class SimpleProviderEntity(BaseModel):
     models: list[AIModelEntity] = []
 
 
+class ProviderHelpEntity(BaseModel):
+    """
+    Model class for provider help.
+    """
+    title: I18nObject
+    url: I18nObject
+
+
 class ProviderEntity(BaseModel):
     """
     Model class for provider.
     """
     provider: str
     label: I18nObject
+    description: Optional[I18nObject] = None
     icon_small: I18nObject
     icon_large: I18nObject
     background: Optional[I18nObject] = None
+    help: Optional[ProviderHelpEntity] = None
     supported_model_types: list[ModelType]
     configurate_methods: list[ConfigurateMethod]
     models: list[ProviderModel] = []

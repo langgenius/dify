@@ -14,12 +14,23 @@
 - `label` (object) 供应商展示名称，i18n，可设置 `en_US` 英文、`zh_Hans` 中文两种语言
   - `zh_Hans ` (string) [optional] 中文标签名，`zh_Hans` 不设置将默认使用 `en_US`。
   - `en_US` (string) 英文标签名
+- `description` (object) [optional] 供应商描述，i18n
+  - `zh_Hans` (string) [optional] 中文描述
+  - `en_US` (string) 英文描述
 - `icon_small` (string) [optional] 供应商小 ICON，存储在对应供应商实现目录下的 `_assets` 目录，中英文策略同 `label`
-  - `zh_Hans` (string)  中文 ICON
+  - `zh_Hans` (string)  [optional] 中文 ICON
   - `en_US` (string) 英文 ICON
 - `icon_large` (string) [optional] 供应商大 ICON，存储在对应供应商实现目录下的 _assets 目录，中英文策略同 label
-  - `zh_Hans `(string) 中文 ICON
+  - `zh_Hans `(string) [optional] 中文 ICON
   - `en_US` (string) 英文 ICON
+- `background` (string) [optional] 背景颜色色值，例：#FFFFFF，为空则展示前端默认色值。
+- `help` (object) [optional] 帮助信息
+  - `title` (object) 帮助标题，i18n
+    - `zh_Hans` (string) [optional] 中文标题
+    - `en_US` (string) 英文标题
+  - `url` (object) 帮助链接，i18n
+    - `zh_Hans` (string) [optional] 中文链接
+    - `en_US` (string) 英文链接
 - `supported_model_types` (array[[ModelType](#ModelType)]) 支持的模型类型
 - `configurate_methods` (array[[ConfigurateMethod](#ConfigurateMethod)]) 配置方式
 - `provider_credential_schema` ([ProviderCredentialSchema](#ProviderCredentialSchema)) 供应商凭据规格
@@ -31,7 +42,6 @@
 - `label` (object) [optional] 模型展示名称，i18n，可设置 `en_US` 英文、`zh_Hans` 中文两种语言
   - `zh_Hans `(string) [optional] 中文标签名
   - `en_US` (string) 英文标签名
-- `background` (string) [optional] 背景颜色色值，例：#FFFFFF，为空则展示前端默认色值。
 - `model_type` ([ModelType](#ModelType)) 模型类型
 - `features` (array[[ModelFeature](#ModelFeature)]) [optional] 支持功能列表
 - `model_properties` (object) 模型属性

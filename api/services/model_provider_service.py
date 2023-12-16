@@ -4,7 +4,7 @@ from typing import Optional, cast
 
 import requests
 
-from core.entities.model_entities import ModelWithProviderEntity, ModelStatus
+from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, DefaultModelEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
@@ -254,7 +254,7 @@ class ModelProviderService:
             model=model
         )
 
-    def get_models_by_model_type(self, tenant_id: str, model_type: str) -> list:
+    def get_models_by_model_type(self, tenant_id: str, model_type: str) -> list[ProviderWithModelsResponse]:
         """
         get models by model type.
 
@@ -346,7 +346,7 @@ class ModelProviderService:
             credentials=credentials
         )
 
-    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[TenantDefaultModel]:
+    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelEntity]:
         """
         get default model of model type.
 
@@ -355,7 +355,7 @@ class ModelProviderService:
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-        return self.provider_manager.get_default_model_record(
+        return self.provider_manager.get_default_model(
             tenant_id=tenant_id,
             model_type=model_type_enum
         )
@@ -401,7 +401,7 @@ class ModelProviderService:
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
 
-    def free_quota_submit(self, tenant_id: str, provider_name: str):
+    def free_quota_submit(self, tenant_id: str, provider: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
         api_url = api_base_url + '/api/v1/providers/apply'
@@ -410,7 +410,7 @@ class ModelProviderService:
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {api_key}"
         }
-        response = requests.post(api_url, headers=headers, json={'workspace_id': tenant_id, 'provider_name': provider_name})
+        response = requests.post(api_url, headers=headers, json={'workspace_id': tenant_id, 'provider_name': provider})
         if not response.ok:
             logger.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
             raise ValueError(f"Error: {response.status_code} ")
@@ -433,7 +433,7 @@ class ModelProviderService:
                 'result': 'success'
             }
 
-    def free_quota_qualification_verify(self, tenant_id: str, provider_name: str, token: Optional[str]):
+    def free_quota_qualification_verify(self, tenant_id: str, provider: str, token: Optional[str]):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
         api_url = api_base_url + '/api/v1/providers/qualification-verify'
@@ -442,7 +442,7 @@ class ModelProviderService:
             'Content-Type': 'application/json',
             'Authorization': f"Bearer {api_key}"
         }
-        json_data = {'workspace_id': tenant_id, 'provider_name': provider_name}
+        json_data = {'workspace_id': tenant_id, 'provider_name': provider}
         if token:
             json_data['token'] = token
         response = requests.post(api_url, headers=headers,
@@ -461,13 +461,13 @@ class ModelProviderService:
         if data['qualified'] is True:
             return {
                 'result': 'success',
-                'provider_name': provider_name,
+                'provider_name': provider,
                 'flag': True
             }
         else:
             return {
                 'result': 'success',
-                'provider_name': provider_name,
+                'provider_name': provider,
                 'flag': False,
                 'reason': data['reason']
             }

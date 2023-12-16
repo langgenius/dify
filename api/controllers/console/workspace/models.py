@@ -1,16 +1,14 @@
 import logging
 
 from flask_login import current_user
-from libs.login import login_required
-from flask_restful import Resource, reqparse
+from flask_restful import reqparse, Resource
 
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.model_providers.model_provider_factory import ModelProviderFactory
-from core.model_providers.models.entity.model_params import ModelType
-from models.provider import ProviderType
-from services.provider_service import ProviderService
+from core.model_runtime.entities.model_entities import ModelType
+from libs.login import login_required
+from services.model_provider_service import ModelProviderService
 
 
 class DefaultModelApi(Resource):
@@ -21,52 +19,20 @@ class DefaultModelApi(Resource):
     def get(self):
         parser = reqparse.RequestParser()
         parser.add_argument('model_type', type=str, required=True, nullable=False,
-                            choices=['text-generation', 'embeddings', 'speech2text', 'reranking'], location='args')
+                            choices=[mt.value for mt in ModelType], location='args')
         args = parser.parse_args()
 
         tenant_id = current_user.current_tenant_id
 
-        provider_service = ProviderService()
-        default_model = provider_service.get_default_model_of_model_type(
+        model_provider_service = ModelProviderService()
+        default_model_entity = model_provider_service.get_default_model_of_model_type(
             tenant_id=tenant_id,
             model_type=args['model_type']
         )
 
-        if not default_model:
-            return None
-
-        model_provider = ModelProviderFactory.get_preferred_model_provider(
-            tenant_id,
-            default_model.provider_name
-        )
-
-        if not model_provider:
-            return {
-                'model_name': default_model.model_name,
-                'model_type': default_model.model_type,
-                'model_provider': {
-                    'provider_name': default_model.provider_name
-                }
-            }
-
-        provider = model_provider.provider
-        rst = {
-            'model_name': default_model.model_name,
-            'model_type': default_model.model_type,
-            'model_provider': {
-                'provider_name': provider.provider_name,
-                'provider_type': provider.provider_type
-            }
+        return {
+            "data": default_model_entity
         }
-
-        model_provider_rules = ModelProviderFactory.get_provider_rule(default_model.provider_name)
-        if provider.provider_type == ProviderType.SYSTEM.value:
-            rst['model_provider']['quota_type'] = provider.quota_type
-            rst['model_provider']['quota_unit'] = model_provider_rules['system_config']['quota_unit']
-            rst['model_provider']['quota_limit'] = provider.quota_limit
-            rst['model_provider']['quota_used'] = provider.quota_used
-
-        return rst
 
     @setup_required
     @login_required
@@ -76,15 +42,17 @@ class DefaultModelApi(Resource):
         parser.add_argument('model_settings', type=list, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        provider_service = ProviderService()
+        tenant_id = current_user.current_tenant_id
+
+        model_provider_service = ModelProviderService()
         model_settings = args['model_settings']
         for model_setting in model_settings:
             try:
-                provider_service.update_default_model_of_model_type(
-                    tenant_id=current_user.current_tenant_id,
+                model_provider_service.update_default_model_of_model_type(
+                    tenant_id=tenant_id,
                     model_type=model_setting['model_type'],
-                    provider_name=model_setting['provider_name'],
-                    model_name=model_setting['model_name']
+                    provider=model_setting['provider'],
+                    model=model_setting['model']
                 )
             except Exception:
                 logging.warning(f"{model_setting['model_type']} save error")
@@ -92,22 +60,44 @@ class DefaultModelApi(Resource):
         return {'result': 'success'}
 
 
-class ValidModelApi(Resource):
+class ModelProviderModelApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        tenant_id = current_user.current_tenant_id
+
+        model_provider_service = ModelProviderService()
+        models = model_provider_service.get_models_by_provider(
+            tenant_id=tenant_id,
+            provider=provider
+        )
+
+        return {
+            "data": models
+        }
+
+
+class ModelProviderAvailableModelApi(Resource):
 
     @setup_required
     @login_required
     @account_initialization_required
     def get(self, model_type):
-        ModelType.value_of(model_type)
+        tenant_id = current_user.current_tenant_id
 
-        provider_service = ProviderService()
-        valid_models = provider_service.get_valid_model_list(
-            tenant_id=current_user.current_tenant_id,
+        model_provider_service = ModelProviderService()
+        models = model_provider_service.get_models_by_model_type(
+            tenant_id=tenant_id,
             model_type=model_type
         )
 
-        return valid_models
+        return {
+            "data": models
+        }
 
 
+api.add_resource(ModelProviderModelApi, '/workspaces/current/model-providers/<string:provider>/models')
+api.add_resource(ModelProviderAvailableModelApi, '/workspaces/current/models/model-types/<string:model_type>')
 api.add_resource(DefaultModelApi, '/workspaces/current/default-model')
-api.add_resource(ValidModelApi, '/workspaces/current/models/model-type/<string:model_type>')

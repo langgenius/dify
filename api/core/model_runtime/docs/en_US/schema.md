@@ -11,12 +11,23 @@
 - `label` (object) Provider display name, i18n, with `en_US` English and `zh_Hans` Chinese language settings
   - `zh_Hans` (string) [optional] Chinese label name, if `zh_Hans` is not set, `en_US` will be used by default.
   - `en_US` (string) English label name
+- `description` (object) Provider description, i18n
+  - `zh_Hans` (string) [optional] Chinese description
+  - `en_US` (string) English description
 - `icon_small` (string) [optional] Small provider ICON, stored in the `_assets` directory under the corresponding provider implementation directory, with the same language strategy as `label`
   - `zh_Hans` (string) Chinese ICON
   - `en_US` (string) English ICON
 - `icon_large` (string) [optional] Large provider ICON, stored in the `_assets` directory under the corresponding provider implementation directory, with the same language strategy as `label`
   - `zh_Hans` (string) Chinese ICON
   - `en_US` (string) English ICON
+- `background` (string) [optional] Background color value, e.g., #FFFFFF, if empty, the default frontend color value will be displayed.
+- `help` (object) [optional] help information
+  - `title` (object) help title, i18n
+    - `zh_Hans` (string) [optional] Chinese title
+    - `en_US` (string) English title
+  - `url` (object) help link, i18n
+    - `zh_Hans` (string) [optional] Chinese link
+    - `en_US` (string) English link
 - `supported_model_types` (array[[ModelType](#ModelType)]) Supported model types
 - `configurate_methods` (array[[ConfigurateMethod](#ConfigurateMethod)]) Configuration methods
 - `provider_credential_schema` ([ProviderCredentialSchema](#ProviderCredentialSchema)) Provider credential specification
@@ -28,7 +39,6 @@
 - `label` (object) [optional] Model display name, i18n, with `en_US` English and `zh_Hans` Chinese language settings
   - `zh_Hans` (string) [optional] Chinese label name
   - `en_US` (string) English label name
-- `background` (string) [optional] Background color value, e.g., #FFFFFF, if empty, the default frontend color value will be displayed.
 - `model_type` ([ModelType](#ModelType)) Model type
 - `features` (array[[ModelFeature](#ModelFeature)]) [optional] Supported feature list
 - `model_properties` (object) Model properties

@@ -8,7 +8,7 @@ from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
 from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderCredentialSchema, \
-    ModelCredentialSchema
+    ModelCredentialSchema, ProviderHelpEntity
 from models.provider import ProviderType, ProviderQuotaType
 
 
@@ -42,9 +42,11 @@ class ProviderResponse(BaseModel):
     """
     provider: str
     label: I18nObject
+    description: Optional[I18nObject] = None
     icon_small: I18nObject
     icon_large: I18nObject
     background: Optional[I18nObject] = None
+    help: Optional[ProviderHelpEntity] = None
     supported_model_types: list[ModelType]
     configurate_methods: list[ConfigurateMethod]
     provider_credential_schema: Optional[ProviderCredentialSchema] = None
