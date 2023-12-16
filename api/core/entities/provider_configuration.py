@@ -5,7 +5,7 @@ from typing import Optional, List, Dict, Tuple, Iterator
 
 from pydantic import BaseModel
 
-from core.entities.model_entities import ModelWithProviderEntity, ModelStatus
+from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, SimpleModelProviderEntity
 from core.entities.provider_entities import SystemConfiguration, CustomConfiguration, SystemConfigurationStatus
 from core.helper import encrypter
 from core.model_runtime.entities.model_entities import ModelType
@@ -127,14 +127,16 @@ class ProviderConfiguration(BaseModel):
             if key in provider_credential_secret_variables:
                 # if send [__HIDDEN__] in secret input, it will be same as original value
                 if value == '[__HIDDEN__]' and key in original_credentials:
-                    credentials[key] = original_credentials[key]
-                else:
-                    credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+                    credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         model_provider_factory.provider_credentials_validate(
             self.provider.provider,
             credentials
         )
+
+        for key, value in credentials.items():
+            if key in provider_credential_secret_variables:
+                credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return provider_record, credentials
 
@@ -249,16 +251,17 @@ class ProviderConfiguration(BaseModel):
         for key, value in credentials.items():
             if key in provider_credential_secret_variables:
                 # if send [__HIDDEN__] in secret input, it will be same as original value
-                if value == '[__HIDDEN__]' and key in original_credentials:
-                    credentials[key] = original_credentials[key]
-                else:
-                    credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
+                credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         model_provider_factory.model_credentials_validate(
             model_type=model_type,
             model=model,
             credentials=credentials
         )
+
+        for key, value in credentials.items():
+            if key in provider_credential_secret_variables:
+                credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return provider_model_record, credentials
 
@@ -374,7 +377,7 @@ class ProviderConfiguration(BaseModel):
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables
@@ -508,7 +511,7 @@ class ProviderConfigurations(BaseModel):
                 [
                     ModelWithProviderEntity(
                         **m.dict(),
-                        provider=provider_configuration.provider.to_simple_provider(),
+                        provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
                         status=ModelStatus.ACTIVE
                     )
                     for m in provider_instance.models(model_type)
@@ -551,6 +554,9 @@ class ProviderConfigurations(BaseModel):
             credentials = provider_configuration.custom_configuration.provider.credentials
 
         for model_type in model_types:
+            if model_type not in provider_configuration.provider.supported_model_types:
+                continue
+
             if credentials:
                 models = provider_instance.models(model_type, credentials)
             else:
@@ -559,7 +565,7 @@ class ProviderConfigurations(BaseModel):
             provider_models.extend(
                 ModelWithProviderEntity(
                     **m.dict(),
-                    provider=provider_configuration.provider.to_simple_provider(),
+                    provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
                     status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
                 )
                 for m in models
@@ -584,7 +590,7 @@ class ProviderConfigurations(BaseModel):
             provider_models.append(
                 ModelWithProviderEntity(
                     **custom_model_schema.dict(),
-                    provider=provider_configuration.provider.to_simple_provider(),
+                    provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
                     status=ModelStatus.ACTIVE
                 )
             )

@@ -50,6 +50,15 @@ class DefaultModelApi(Resource):
         model_provider_service = ModelProviderService()
         model_settings = args['model_settings']
         for model_setting in model_settings:
+            if 'model_type' not in model_setting or model_setting['model_type'] not in [mt.value for mt in ModelType]:
+                raise ValueError('invalid model type')
+
+            if 'provider' not in model_setting:
+                raise ValueError('invalid provider')
+
+            if 'model' not in model_setting:
+                raise ValueError('invalid model')
+
             try:
                 model_provider_service.update_default_model_of_model_type(
                     tenant_id=tenant_id,

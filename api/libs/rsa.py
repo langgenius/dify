@@ -86,7 +86,7 @@ def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
 def decrypt(encrypted_text, tenant_id):
     rsa_key, cipher_rsa = get_decrypt_decoding(tenant_id)
 
-    return decrypt_token(encrypted_text, rsa_key, cipher_rsa)
+    return decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa)
 
 
 class PrivkeyNotFoundError(Exception):

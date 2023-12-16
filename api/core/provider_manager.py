@@ -208,7 +208,7 @@ class ProviderManager:
         return DefaultModelEntity(
             model=default_model.model_name,
             model_type=model_type,
-            provider=provider_entity.provider_schema.to_simple_provider()
+            provider=provider_entity.get_provider_schema().to_simple_provider()
         )
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
@@ -556,7 +556,7 @@ class ProviderManager:
         """
         secret_input_form_variables = []
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema.type == FormType.SECRET_INPUT.value:
+            if credential_form_schema.type == FormType.SECRET_INPUT:
                 secret_input_form_variables.append(credential_form_schema.variable)
 
         return secret_input_form_variables

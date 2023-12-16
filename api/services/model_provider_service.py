@@ -273,10 +273,10 @@ class ModelProviderService:
         # Group models by provider
         provider_models = {}
         for model in models:
-            if model.provider not in provider_models:
-                provider_models[model.provider] = []
+            if model.provider.provider not in provider_models:
+                provider_models[model.provider.provider] = []
 
-            provider_models[model.provider].append(model)
+            provider_models[model.provider.provider].append(model)
 
         # convert to ProviderWithModelsResponse list
         providers_with_models: list[ProviderWithModelsResponse] = []
@@ -301,6 +301,7 @@ class ModelProviderService:
                         label=model.label,
                         model_type=model.model_type,
                         features=model.features,
+                        fetch_from=model.fetch_from,
                         model_properties=model.model_properties,
                         status=model.status
                     ) for model in models]
