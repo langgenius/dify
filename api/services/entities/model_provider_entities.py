@@ -8,7 +8,7 @@ from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
 from core.model_runtime.entities.provider_entities import ConfigurateMethod, ProviderCredentialSchema, \
-    ModelCredentialSchema, ProviderHelpEntity
+    ModelCredentialSchema, ProviderHelpEntity, SimpleProviderEntity
 from models.provider import ProviderType, ProviderQuotaType
 
 
@@ -73,3 +73,12 @@ class ProviderWithModelsResponse(BaseModel):
     icon_large: I18nObject
     status: CustomConfigurationStatus
     models: list[ModelResponse]
+
+
+class DefaultModelResponse(BaseModel):
+    """
+    Default model entity.
+    """
+    model: str
+    model_type: ModelType
+    provider: SimpleProviderEntity

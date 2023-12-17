@@ -8,9 +8,10 @@ from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, D
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
-from models.provider import TenantDefaultModel, ProviderType
+from models.provider import ProviderType
 from services.entities.model_provider_entities import ProviderResponse, CustomConfigurationResponse, \
-    SystemConfigurationResponse, CustomConfigurationStatus, ProviderWithModelsResponse, ModelResponse
+    SystemConfigurationResponse, CustomConfigurationStatus, ProviderWithModelsResponse, ModelResponse, \
+    DefaultModelResponse
 
 logger = logging.getLogger(__name__)
 
@@ -347,7 +348,7 @@ class ModelProviderService:
             credentials=credentials
         )
 
-    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelEntity]:
+    def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
         """
         get default model of model type.
 
@@ -356,10 +357,14 @@ class ModelProviderService:
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-        return self.provider_manager.get_default_model(
+        result = self.provider_manager.get_default_model(
             tenant_id=tenant_id,
             model_type=model_type_enum
         )
+
+        return DefaultModelResponse(
+            **result.dict()
+        ) if result else None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
         """

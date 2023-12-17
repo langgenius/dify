@@ -3,8 +3,8 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
-from core.entities.model_entities import ModelWithProviderEntity, DefaultModelEntity
-from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration
+from core.entities.model_entities import DefaultModelEntity
+from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, CustomModelConfiguration, \
     SystemConfiguration, QuotaConfiguration
 from core.helper import encrypter
@@ -163,6 +163,30 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
+    def get_provider_model_bundle(self, tenant_id: str, provider: str, model_type: ModelType) -> Optional[ProviderModelBundle]:
+        """
+        Get provider model bundle.
+        :param tenant_id: workspace id
+        :param provider: provider name
+        :param model_type: model type
+        :return:
+        """
+        provider_configurations = self.get_configurations(tenant_id)
+
+        # get provider instance
+        provider_configuration = provider_configurations.get(provider)
+        if not provider_configuration:
+            raise ValueError(f"Provider {provider} does not exist.")
+
+        provider_instance = provider_configuration.get_provider_instance()
+        model_instance = provider_instance.get_model_instance(model_type)
+
+        return ProviderModelBundle(
+            configuration=provider_configuration,
+            provider_instance=provider_instance,
+            model_instance=model_instance
+        )
+
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:
         """
         Get default model.
@@ -171,6 +195,9 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
+        # Get provider configurations
+        provider_configurations = self.get_configurations(tenant_id)
+
         # Get the corresponding TenantDefaultModel record
         default_model = db.session.query(TenantDefaultModel) \
             .filter(
@@ -181,8 +208,6 @@ class ProviderManager:
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
         if not default_model:
-            provider_configurations = self.get_configurations(tenant_id)
-
             # get available models from provider_configurations
             available_models = provider_configurations.get_models(
                 model_type=model_type,
@@ -203,12 +228,16 @@ class ProviderManager:
         if not default_model:
             return None
 
-        provider_entity = model_provider_factory.get_provider_instance(default_model.provider_name)
+        provider_configuration = provider_configurations.get(default_model.provider_name)
+        if not provider_configuration:
+            raise ValueError(f"Provider {default_model.provider_name} does not exist.")
+
+        provider_instance = provider_configuration.get_provider_instance()
 
         return DefaultModelEntity(
             model=default_model.model_name,
             model_type=model_type,
-            provider=provider_entity.get_provider_schema().to_simple_provider()
+            provider=provider_instance.get_provider_schema().to_simple_provider(),
         )
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \

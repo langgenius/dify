@@ -14,7 +14,7 @@ from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 from extensions.ext_database import db
-from models.provider import ProviderType, Provider, ProviderModel, TenantPreferredModelProvider, ProviderQuotaType
+from models.provider import ProviderType, Provider, ProviderModel, TenantPreferredModelProvider
 
 
 class ProviderConfiguration(BaseModel):
@@ -411,9 +411,8 @@ class ProviderConfigurations(BaseModel):
     tenant_id: str
     configurations: Dict[str, ProviderConfiguration] = {}
 
-    def __init__(self, tenant_id: str, **configurations):
+    def __init__(self, tenant_id: str):
         super().__init__(tenant_id=tenant_id)
-        self.configurations = configurations
 
     def get_models(self,
                    provider: Optional[str] = None,
@@ -611,3 +610,17 @@ class ProviderConfigurations(BaseModel):
 
     def get(self, key, default=None):
         return self.configurations.get(key, default)
+
+
+class ProviderModelBundle(BaseModel):
+    """
+    Provider model bundle.
+    """
+    configuration: ProviderConfiguration
+    provider_instance: ModelProvider
+    model_instance: AIModel
+
+    class Config:
+        """Configuration for this pydantic object."""
+
+        arbitrary_types_allowed = True
