@@ -163,7 +163,7 @@ class ProviderManager:
         # Return the encapsulated object
         return provider_configurations
 
-    def get_provider_model_bundle(self, tenant_id: str, provider: str, model_type: ModelType) -> Optional[ProviderModelBundle]:
+    def get_provider_model_bundle(self, tenant_id: str, provider: str, model_type: ModelType) -> ProviderModelBundle:
         """
         Get provider model bundle.
         :param tenant_id: workspace id

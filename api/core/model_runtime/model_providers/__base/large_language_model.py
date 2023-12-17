@@ -529,14 +529,18 @@ class LargeLanguageModel(AIModel):
             parameter_name = parameter_rule.name
             parameter_value = model_parameters.get(parameter_name)
             if parameter_value is None:
-                if parameter_rule.required:
-                    if parameter_rule.default is not None:
-                        filtered_model_parameters[parameter_name] = parameter_rule.default
-                        continue
-                    else:
-                        raise ValueError(f"Model Parameter {parameter_name} is required.")
+                if parameter_rule.use_template and parameter_rule.use_template in model_parameters:
+                    # if parameter value is None, use template value variable name instead
+                    parameter_value = model_parameters[parameter_rule.use_template]
                 else:
-                    continue
+                    if parameter_rule.required:
+                        if parameter_rule.default is not None:
+                            filtered_model_parameters[parameter_name] = parameter_rule.default
+                            continue
+                        else:
+                            raise ValueError(f"Model Parameter {parameter_name} is required.")
+                    else:
+                        continue
 
             # validate parameter value type
             if parameter_rule.type == ParameterType.INT:

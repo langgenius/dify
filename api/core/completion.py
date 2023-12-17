@@ -316,15 +316,6 @@ class Completion:
         return response
 
     @classmethod
-    def get_history_messages_from_memory(cls, memory: ReadOnlyConversationTokenDBBufferSharedMemory,
-                                         max_token_limit: int) -> str:
-        """Get memory messages."""
-        memory.max_token_limit = max_token_limit
-        memory_key = memory.memory_variables[0]
-        external_context = memory.load_memory_variables({})
-        return external_context[memory_key]
-
-    @classmethod
     def get_memory_from_conversation(cls, tenant_id: str, app_model_config: AppModelConfig,
                                      conversation: Conversation,
                                      **kwargs) -> ReadOnlyConversationTokenDBBufferSharedMemory:

@@ -138,7 +138,7 @@ class AppModelConfigService:
             config["retriever_resource"]["enabled"] = False
 
         if not isinstance(config["retriever_resource"]["enabled"], bool):
-            raise ValueError("enabled in speech_to_text must be of boolean type")
+            raise ValueError("enabled in retriever_resource must be of boolean type")
 
         # more_like_this
         if 'more_like_this' not in config or not config["more_like_this"]:
