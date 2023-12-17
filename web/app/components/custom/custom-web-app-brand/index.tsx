@@ -25,7 +25,11 @@ const CustomWebAppBrand = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { plan } = useProviderContext()
-  const { currentWorkspace, mutateCurrentWorkspace } = useAppContext()
+  const {
+    currentWorkspace,
+    mutateCurrentWorkspace,
+    isCurrentWorkspaceManager,
+  } = useAppContext()
   const [fileId, setFileId] = useState('')
   const [uploadProgress, setUploadProgress] = useState(0)
   const isSandbox = plan.type === Plan.sandbox
@@ -131,7 +135,7 @@ const CustomWebAppBrand = () => {
         <Switch
           size='l'
           defaultValue={webappBrandRemoved}
-          disabled={isSandbox}
+          disabled={isSandbox || !isCurrentWorkspaceManager}
           onChange={handleSwitch}
         />
       </div>
@@ -151,7 +155,7 @@ const CustomWebAppBrand = () => {
                   relative mr-2 !h-8 !px-3 bg-white !text-[13px] 
                   ${isSandbox ? 'opacity-40' : ''}
                 `}
-                disabled={isSandbox || webappBrandRemoved}
+                disabled={isSandbox || webappBrandRemoved || !isCurrentWorkspaceManager}
               >
                 <ImagePlus className='mr-2 w-4 h-4' />
                 {
@@ -168,7 +172,7 @@ const CustomWebAppBrand = () => {
                   type='file'
                   accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
                   onChange={handleChange}
-                  disabled={isSandbox || webappBrandRemoved}
+                  disabled={isSandbox || webappBrandRemoved || !isCurrentWorkspaceManager}
                 />
               </Button>
             )
@@ -191,14 +195,14 @@ const CustomWebAppBrand = () => {
                   type='primary'
                   className='mr-2 !h-8 !px-3 !py-0 !text-[13px]'
                   onClick={handleApply}
-                  disabled={webappBrandRemoved}
+                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
                 >
                   {t('custom.apply')}
                 </Button>
                 <Button
                   className='mr-2 !h-8 !px-3 !text-[13px] bg-white'
                   onClick={handleCancel}
-                  disabled={webappBrandRemoved}
+                  disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
                 >
                   {t('common.operation.cancel')}
                 </Button>
@@ -211,7 +215,7 @@ const CustomWebAppBrand = () => {
               !h-8 !px-3 bg-white !text-[13px] 
               ${isSandbox ? 'opacity-40' : ''}
             `}
-            disabled={isSandbox || (!webappLogo && !webappBrandRemoved) || webappBrandRemoved}
+            disabled={isSandbox || (!webappLogo && !webappBrandRemoved) || webappBrandRemoved || !isCurrentWorkspaceManager}
             onClick={handleRestore}
           >
             {t('custom.restore')}

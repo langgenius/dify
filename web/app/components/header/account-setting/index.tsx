@@ -31,6 +31,7 @@ import { Colors } from '@/app/components/base/icons/src/vender/line/editor'
 import { Colors as ColorsSolid } from '@/app/components/base/icons/src/vender/solid/editor'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
+import { IS_CE_EDITION } from '@/config'
 
 const iconClassName = `
   w-4 h-4 ml-3 mr-2
@@ -100,7 +101,7 @@ export default function AccountSetting({
         activeIcon: <Webhooks className={iconClassName} />,
       },
       {
-        key: 'custom',
+        key: IS_CE_EDITION ? false : 'custom',
         name: t('custom.custom'),
         icon: <Colors className={iconClassName} />,
         activeIcon: <ColorsSolid className={iconClassName} />,
