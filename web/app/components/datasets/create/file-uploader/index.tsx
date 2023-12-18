@@ -52,8 +52,7 @@ const FileUploader = ({
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
-  const supportTypes = supportFileTypesResponse?.allowed_extensions || ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-    'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml']
+  const supportTypes = supportFileTypesResponse?.allowed_extensions || []
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
