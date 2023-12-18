@@ -8,6 +8,8 @@ import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig } from '@/models/debug'
 import type {
@@ -28,13 +30,15 @@ const ModalContext = createContext<{
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: Dispatch<SetStateAction<any>>
+  setShowAnnotationFullModal: () => void
 }>({
-  setShowAccountSettingModal: () => {},
-  setShowApiBasedExtensionModal: () => {},
-  setShowModerationSettingModal: () => {},
-  setShowExternalDataToolModal: () => {},
-  setShowPricingModal: () => {},
-})
+      setShowAccountSettingModal: () => { },
+      setShowApiBasedExtensionModal: () => { },
+      setShowModerationSettingModal: () => { },
+      setShowExternalDataToolModal: () => { },
+      setShowPricingModal: () => { },
+      setShowAnnotationFullModal: () => { },
+    })
 
 export const useModalContext = () => useContext(ModalContext)
 
@@ -51,7 +55,7 @@ export const ModalContextProvider = ({
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
-
+  const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
 
@@ -101,6 +105,7 @@ export const ModalContextProvider = ({
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
       setShowPricingModal: () => setShowPricingModal(true),
+      setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
     }}>
       <>
         {children}
@@ -150,6 +155,14 @@ export const ModalContextProvider = ({
 
               setShowPricingModal(false)
             }} />
+          )
+        }
+
+        {
+          showAnnotationFullModal && (
+            <AnnotationFullModal
+              show={showAnnotationFullModal}
+              onHide={() => setShowAnnotationFullModal(false)} />
           )
         }
       </>

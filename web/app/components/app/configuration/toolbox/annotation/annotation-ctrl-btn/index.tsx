@@ -11,6 +11,8 @@ import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { addAnnotation, delAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
+import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
 
 type Props = {
   appId: string
@@ -38,10 +40,17 @@ const CacheCtrlBtn: FC<Props> = ({
   onRemoved,
 }) => {
   const { t } = useTranslation()
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
+  const { setShowAnnotationFullModal } = useModalContext()
   const [showModal, setShowModal] = useState(false)
   const cachedBtnRef = useRef<HTMLDivElement>(null)
   const isCachedBtnHovering = useHover(cachedBtnRef)
   const handleAdd = async () => {
+    if (isAnnotationFull) {
+      setShowAnnotationFullModal()
+      return
+    }
     const res: any = await addAnnotation(appId, {
       message_id: messageId,
       question: query,
