@@ -54,7 +54,8 @@ DEFAULTS = {
     'UPLOAD_IMAGE_FILE_SIZE_LIMIT': 10,
     'OUTPUT_MODERATION_BUFFER_SIZE': 300,
     'MULTIMODAL_SEND_IMAGE_FORMAT': 'base64',
-    'INVITE_EXPIRY_HOURS': 72
+    'INVITE_EXPIRY_HOURS': 72,
+    'ETL_TYPE': 'dify',
 }
 
 
@@ -275,6 +276,9 @@ class Config:
 
         self.HOSTED_MODERATION_ENABLED = get_bool_env('HOSTED_MODERATION_ENABLED')
         self.HOSTED_MODERATION_PROVIDERS = get_env('HOSTED_MODERATION_PROVIDERS')
+
+        self.ETL_TYPE = get_env('ETL_TYPE')
+        self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
 
 
 class CloudEditionConfig(Config):
