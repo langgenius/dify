@@ -100,7 +100,6 @@ class MilvusVectorIndex(BaseVectorIndex):
         """Only for created index."""
         if self._vector_store:
             return self._vector_store
-        attributes = ['doc_id', 'dataset_id', 'document_id']
 
         return MilvusVectorStore(
             collection_name=self.get_index_name(self.dataset),
