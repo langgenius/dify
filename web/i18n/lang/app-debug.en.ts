@@ -76,12 +76,12 @@ const translation = {
       resDes: 'Citations and Attributions is enabled',
     },
     annotation: {
-      title: 'Annotated Response',
+      title: 'Annotation Reply',
       description: 'You can manually add high-quality response to the cache for prioritized matching with similar user questions.',
       resDes: 'Annotation Response is enabled',
       scoreThreshold: {
         title: 'Score Threshold',
-        description: 'Used to set the similarity threshold for annotation response.',
+        description: 'Used to set the similarity threshold for annotation reply.',
         easyMatch: 'Easy Match',
         accurateMatch: 'Accurate Match',
       },
@@ -90,7 +90,7 @@ const translation = {
         choosePlaceholder: 'Choose match variable',
       },
       cacheManagement: 'Annotations',
-      cached: 'Annotationed',
+      cached: 'Annotated',
       remove: 'Remove',
       removeConfirm: 'Delete this annotation ?',
       add: 'Add annotation',
