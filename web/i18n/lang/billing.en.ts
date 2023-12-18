@@ -20,6 +20,7 @@ const translation = {
     save: 'Save ',
     free: 'Free',
     currentPlan: 'Current Plan',
+    contractOwner: 'Contact your workspace owner',
     startForFree: 'Start for free',
     getStartedWith: 'Get started with ',
     contactSales: 'Contact Sales',
