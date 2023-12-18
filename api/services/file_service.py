@@ -17,8 +17,8 @@ from models.model import UploadFile, EndUser
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
-                      'jpg', 'jpeg', 'png', 'webp', 'gif']
-IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+                      'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
+IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 PREVIEW_WORDS_LIMIT = 3000
 
 
@@ -152,5 +152,23 @@ class FileService:
             raise UnsupportedFileTypeError()
 
         generator = storage.load(upload_file.key, stream=True)
+
+        return generator, upload_file.mime_type
+    
+    @staticmethod
+    def get_public_image_preview(file_id: str) -> str:
+        upload_file = db.session.query(UploadFile) \
+            .filter(UploadFile.id == file_id) \
+            .first()
+
+        if not upload_file:
+            raise NotFound("File not found or signature is invalid")
+
+        # extract text from file
+        extension = upload_file.extension
+        if extension.lower() not in IMAGE_EXTENSIONS:
+            raise UnsupportedFileTypeError()
+
+        generator = storage.load(upload_file.key)
 
         return generator, upload_file.mime_type

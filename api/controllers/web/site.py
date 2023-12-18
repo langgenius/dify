@@ -2,6 +2,7 @@
 import os
 
 from flask_restful import fields, marshal_with
+from flask import current_app
 from werkzeug.exceptions import Forbidden
 
 from controllers.web import api
@@ -43,6 +44,7 @@ class AppSiteApi(WebApiResource):
         'model_config': fields.Nested(model_config_fields, allow_null=True),
         'plan': fields.String,
         'can_replace_logo': fields.Boolean,
+        'custom_config': fields.Raw(attribute='custom_config'),
     }
 
     @marshal_with(app_fields)
@@ -79,6 +81,15 @@ class AppSiteInfo:
         self.model_config = None
         self.plan = tenant.plan
         self.can_replace_logo = can_replace_logo
+
+        if can_replace_logo:
+            base_url = current_app.config.get('FILES_URL')
+            remove_webapp_brand = tenant.custom_config_dict.get('remove_webapp_brand', False)
+            replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict['replace_webapp_logo'] else None
+            self.custom_config = {
+                'remove_webapp_brand': remove_webapp_brand,
+                'replace_webapp_logo': replace_webapp_logo,
+            }
 
         if app.enable_site and site.prompt_public:
             app_model_config = app.app_model_config

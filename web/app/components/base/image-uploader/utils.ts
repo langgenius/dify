@@ -6,13 +6,13 @@ type ImageUploadParams = {
   onSuccessCallback: (res: { id: string }) => void
   onErrorCallback: () => void
 }
-type ImageUpload = (v: ImageUploadParams, isPublic?: boolean) => void
+type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
 export const imageUpload: ImageUpload = ({
   file,
   onProgressCallback,
   onSuccessCallback,
   onErrorCallback,
-}, isPublic) => {
+}, isPublic, url) => {
   const formData = new FormData()
   formData.append('file', file)
   const onProgress = (e: ProgressEvent) => {
@@ -26,7 +26,7 @@ export const imageUpload: ImageUpload = ({
     xhr: new XMLHttpRequest(),
     data: formData,
     onprogress: onProgress,
-  }, isPublic)
+  }, isPublic, url)
     .then((res: { id: string }) => {
       onSuccessCallback(res)
     })

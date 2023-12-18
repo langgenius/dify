@@ -123,6 +123,10 @@ export type ICurrentWorkspace = Omit<IWorkspace, 'current'> & {
   providers: Provider[]
   in_trail: boolean
   trial_end_reason?: string
+  custom_config?: {
+    remove_webapp_brand?: boolean
+    replace_webapp_logo?: string
+  }
 }
 
 export type DataSourceNotionPage = {

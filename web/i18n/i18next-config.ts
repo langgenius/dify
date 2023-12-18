@@ -37,6 +37,8 @@ import exploreEn from './lang/explore.en'
 import exploreZh from './lang/explore.zh'
 import billingEn from './lang/billing.en'
 import billingZh from './lang/billing.zh'
+import customEn from './lang/custom.en'
+import customZh from './lang/custom.zh'
 
 const resources = {
   'en': {
@@ -62,6 +64,7 @@ const resources = {
       explore: exploreEn,
       // billing
       billing: billingEn,
+      custom: customEn,
     },
   },
   'zh-Hans': {
@@ -86,6 +89,7 @@ const resources = {
       datasetCreation: datasetCreationZh,
       explore: exploreZh,
       billing: billingZh,
+      custom: customZh,
     },
   },
 }
