@@ -26,6 +26,7 @@ export type IWelcomeProps = {
   savedInputs: Record<string, any>
   onInputsChange: (inputs: Record<string, any>) => void
   plan: string
+  canReplaceLogo?: boolean
 }
 
 const Welcome: FC<IWelcomeProps> = ({
@@ -39,6 +40,7 @@ const Welcome: FC<IWelcomeProps> = ({
   canEditInputs,
   savedInputs,
   onInputsChange,
+  canReplaceLogo,
 }) => {
   const { t } = useTranslation()
   const hasVar = promptConfig.prompt_variables.length > 0
@@ -351,7 +353,7 @@ const Welcome: FC<IWelcomeProps> = ({
               </div>
               : <div>
               </div>}
-            {plan === 'basic' && <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
+            {!canReplaceLogo && <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
               <span className='uppercase'>{t('share.chat.powerBy')}</span>
               <FootLogo />
             </a>}
