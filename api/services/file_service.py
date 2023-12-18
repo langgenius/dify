@@ -17,7 +17,7 @@ from models.model import UploadFile, EndUser
 from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
-                      'jpg', 'jpeg', 'png', 'webp', 'gif']
+                      'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 PREVIEW_WORDS_LIMIT = 3000
 
