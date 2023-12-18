@@ -371,7 +371,8 @@ class Completion:
                 vector_index = VectorIndex(
                     dataset=dataset,
                     config=current_app.config,
-                    embeddings=embeddings
+                    embeddings=embeddings,
+                    attributes=['doc_id', 'annotation_id', 'app_id']
                 )
 
                 documents = vector_index.search(

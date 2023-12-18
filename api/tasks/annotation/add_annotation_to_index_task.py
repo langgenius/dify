@@ -36,6 +36,8 @@ def add_annotation_to_index_task(annotation_id: str, question: str, tenant_id: s
             id=app_id,
             tenant_id=tenant_id,
             indexing_technique='high_quality',
+            embedding_model_provider=dataset_collection_binding.provider_name,
+            embedding_model=dataset_collection_binding.model_name,
             collection_binding_id=dataset_collection_binding.id
         )
 
