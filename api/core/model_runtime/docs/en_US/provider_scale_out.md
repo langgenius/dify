@@ -63,6 +63,7 @@ You can also refer to the YAML configuration information under other provider di
 ### Implementing Provider Code
 
 Providers need to inherit the `__base.model_provider.ModelProvider` base class and implement the `validate_provider_credentials` method for unified provider credential verification. For reference, see [AnthropicProvider](https://github.com/langgenius/dify-runtime/blob/main/lib/model_providers/anthropic/anthropic.py).
+> If the provider is the type of `customizable-model`, there is no need to implement the `validate_provider_credentials` method.
 
 ```python
 def validate_provider_credentials(self, credentials: dict) -> None:

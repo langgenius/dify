@@ -65,6 +65,7 @@ class FetchFrom(Enum):
     """
     PREDEFINED_MODEL = "predefined-model"
     REMOTE = "fetch-from-remote"
+    CUSTOMIZABLE_MODEL = "customizable-model"
 
 
 class ModelFeature(Enum):
