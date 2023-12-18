@@ -54,15 +54,17 @@ const Main: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [inited, setInited] = useState<boolean>(false)
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
+  const [customConfig, setCustomConfig] = useState<any>(null)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title) {
-      if (plan !== 'basic')
+      if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
         document.title = `${siteInfo.title} - Powered by Dify`
     }
-  }, [siteInfo?.title, plan])
+  }, [siteInfo?.title, canReplaceLogo])
 
   /*
   * conversation info
@@ -282,9 +284,11 @@ const Main: FC<IMainProps> = ({
     (async () => {
       try {
         const [appData, conversationData, appParams]: any = await fetchInitData()
-        const { app_id: appId, site: siteInfo, plan }: any = appData
+        const { app_id: appId, site: siteInfo, plan, can_replace_logo, custom_config }: any = appData
         setAppId(appId)
         setPlan(plan)
+        setCanReplaceLogo(can_replace_logo)
+        setCustomConfig(custom_config)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
         const prompt_template = ''
@@ -589,6 +593,8 @@ const Main: FC<IMainProps> = ({
             savedInputs={currInputs as Record<string, any>}
             onInputsChange={setCurrInputs}
             plan={plan}
+            canReplaceLogo={canReplaceLogo}
+            customConfig={customConfig}
           ></ConfigScene>
           {
             shouldReload && (

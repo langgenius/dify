@@ -15,9 +15,12 @@ import IconTypeIcon from '@/app/components/app/configuration/config-var/input-ty
 
 type Option = { name: string; value: string; type: string }
 export type Props = {
+  triggerClassName?: string
+  className?: string
   value: string | undefined
   options: Option[]
   onChange: (value: string) => void
+  notSelectedVarTip?: string | null
 }
 
 const VarItem: FC<{ item: Option }> = ({ item }) => (
@@ -31,9 +34,12 @@ const VarItem: FC<{ item: Option }> = ({ item }) => (
   </div>
 )
 const VarPicker: FC<Props> = ({
+  triggerClassName,
+  className,
   value,
   options,
   onChange,
+  notSelectedVarTip,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -48,9 +54,10 @@ const VarPicker: FC<Props> = ({
         mainAxis: 8,
       }}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger className={cn(triggerClassName)} onClick={() => setOpen(v => !v)}>
         <div className={cn(
           s.trigger,
+          className,
           notSetVar ? 'bg-[#FFFCF5] border-[#FEDF89] text-[#DC6803]' : ' hover:bg-gray-50 border-gray-200 text-primary-600',
           open ? 'bg-gray-50' : 'bg-white',
           `
@@ -63,7 +70,7 @@ const VarPicker: FC<Props> = ({
                 <VarItem item={currItem as Option} />
               )
               : (<div>
-                {t('appDebug.feature.dataSet.queryVariable.choosePlaceholder')}
+                {notSelectedVarTip || t('appDebug.feature.dataSet.queryVariable.choosePlaceholder')}
               </div>)}
           </div>
           <ChevronDownIcon className={cn(s.dropdownIcon, open && 'rotate-180 text-[#98A2B3]', 'w-3.5 h-3.5')} />

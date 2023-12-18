@@ -15,7 +15,7 @@ import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
 import { fetchAppDetail } from '@/service/apps'
-
+import { APP_PAGE_LIMIT } from '@/config'
 export type ILogsProps = {
   appId: string
 }
@@ -25,9 +25,6 @@ export type QueryParam = {
   annotation_status?: string
   keyword?: string
 }
-
-// Custom page count is not currently supported.
-const limit = 10
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
@@ -60,7 +57,7 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
 
   const query = {
     page: currPage + 1,
-    limit,
+    limit: APP_PAGE_LIMIT,
     ...(queryParams.period !== 'all'
       ? {
         start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
@@ -93,11 +90,8 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <div className='flex flex-col justify-center px-6 pt-4'>
-        <h1 className='flex text-xl font-medium text-gray-900'>{t('appLog.title')}</h1>
-        <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
-      </div>
-      <div className='flex flex-col px-6 py-4 flex-1'>
+      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
+      <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appId} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined
           ? <Loading type='app' />
@@ -106,14 +100,14 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
             : <EmptyElement appUrl={`${appDetail?.site.app_base_url}/${appDetail?.mode}/${appDetail?.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}
-        {(total && total > limit)
+        {(total && total > APP_PAGE_LIMIT)
           ? <Pagination
             className="flex items-center w-full h-10 text-sm select-none mt-8"
             currentPage={currPage}
             edgePageCount={2}
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
-            totalPages={Math.ceil(total / limit)}
+            totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
             truncableClassName="w-8 px-0.5 text-center"
             truncableText="..."
           >
@@ -131,8 +125,8 @@ const Logs: FC<ILogsProps> = ({ appId }) => {
               />
             </div>
             <Pagination.NextButton
-              disabled={currPage === Math.ceil(total / limit) - 1}
-              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / limit) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
+              disabled={currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1}
+              className={`flex items-center mr-2 text-gray-500 focus:outline-none ${currPage === Math.ceil(total / APP_PAGE_LIMIT) - 1 ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:text-gray-600 dark:hover:text-gray-200'}`} >
               {t('appLog.table.pagination.next')}
               <ArrowRightIcon className="ml-3 h-3 w-3" />
             </Pagination.NextButton>

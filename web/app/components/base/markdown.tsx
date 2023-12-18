@@ -81,11 +81,11 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
   return isIntersecting
 }
 
-export function Markdown(props: { content: string }) {
+export function Markdown(props: { content: string; className?: string }) {
   const [isCopied, setIsCopied] = useState(false)
   const [isSVG, setIsSVG] = useState(false)
   return (
-    <div className="markdown-body">
+    <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
         remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
         rehypePlugins={[
@@ -120,7 +120,7 @@ export function Markdown(props: { content: string }) {
                       />
                     </div>
                   </div>
-                  { (language === 'mermaid' && isSVG)
+                  {(language === 'mermaid' && isSVG)
                     ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
                     : (<SyntaxHighlighter
                       {...props}

@@ -24,29 +24,29 @@ class ModelConfigResource(Resource):
         """Modify app model config"""
         app_id = str(app_id)
 
-        app_model = _get_app(app_id)
+        app = _get_app(app_id)
 
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
             tenant_id=current_user.current_tenant_id,
             account=current_user,
             config=request.json,
-            mode=app_model.mode
+            mode=app.mode
         )
 
         new_app_model_config = AppModelConfig(
-            app_id=app_model.id,
+            app_id=app.id,
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 
         db.session.add(new_app_model_config)
         db.session.flush()
 
-        app_model.app_model_config_id = new_app_model_config.id
+        app.app_model_config_id = new_app_model_config.id
         db.session.commit()
 
         app_model_config_was_updated.send(
-            app_model,
+            app,
             app_model_config=new_app_model_config
         )
 

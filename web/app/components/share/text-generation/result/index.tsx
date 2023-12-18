@@ -14,6 +14,7 @@ import type { PromptConfig } from '@/models/debug'
 import type { InstalledApp } from '@/models/explore'
 import type { ModerationService } from '@/models/common'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
+
 export type IResultProps = {
   isCallBatchAPI: boolean
   isPC: boolean

@@ -1,9 +1,6 @@
-import stripe
-import os
-
 from flask_restful import Resource, reqparse
 from flask_login import current_user
-from flask import current_app, request
+from flask import current_app
 
 from controllers.console import api
 from controllers.console.setup import setup_required
@@ -40,7 +37,12 @@ class Subscription(Resource):
         parser.add_argument('interval', type=str, required=True, location='args', choices=['month', 'year'])
         args = parser.parse_args()
 
-        return BillingService.get_subscription(args['plan'], args['interval'], current_user.email, current_user.name, current_user.current_tenant_id)
+        BillingService.is_tenant_owner(current_user)
+
+        return BillingService.get_subscription(args['plan'],
+                                               args['interval'],
+                                               current_user.email,
+                                               current_user.current_tenant_id)
 
 
 class Invoices(Resource):
@@ -50,36 +52,10 @@ class Invoices(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self):
-
+        BillingService.is_tenant_owner(current_user)
         return BillingService.get_invoices(current_user.email)
-
-
-class StripeBillingWebhook(Resource):
-
-    @setup_required
-    @only_edition_cloud
-    def post(self):
-        payload = request.data
-        sig_header = request.headers.get('STRIPE_SIGNATURE')
-        webhook_secret = os.environ.get('STRIPE_WEBHOOK_BILLING_SECRET', 'STRIPE_WEBHOOK_BILLING_SECRET')
-
-        try:
-            event = stripe.Webhook.construct_event(
-                payload, sig_header, webhook_secret
-            )
-        except ValueError as e:
-            # Invalid payload
-            return 'Invalid payload', 400
-        except stripe.error.SignatureVerificationError as e:
-            # Invalid signature
-            return 'Invalid signature', 400
-
-        BillingService.process_event(event)
-
-        return 'success', 200
 
 
 api.add_resource(BillingInfo, '/billing/info')
 api.add_resource(Subscription, '/billing/subscription')
 api.add_resource(Invoices, '/billing/invoices')
-api.add_resource(StripeBillingWebhook, '/billing/webhook/stripe')

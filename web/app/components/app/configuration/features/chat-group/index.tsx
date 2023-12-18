@@ -8,7 +8,6 @@ import OpeningStatement from './opening-statement'
 import SuggestedQuestionsAfterAnswer from './suggested-questions-after-answer'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
-
 /*
 * Include
 * 1. Conversation Opener

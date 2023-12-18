@@ -70,17 +70,19 @@ const Main: FC<IMainProps> = ({
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [inited, setInited] = useState<boolean>(false)
   const [plan, setPlan] = useState<string>('basic') // basic/plus/pro
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
+  const [customConfig, setCustomConfig] = useState<any>(null)
   // in mobile, show sidebar by click button
   const [isShowSidebar, { setTrue: showSidebar, setFalse: hideSidebar }] = useBoolean(false)
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
     if (siteInfo?.title) {
-      if (plan !== 'basic')
+      if (canReplaceLogo)
         document.title = `${siteInfo.title}`
       else
         document.title = `${siteInfo.title} - Powered by Dify`
     }
-  }, [siteInfo?.title, plan])
+  }, [siteInfo?.title, canReplaceLogo])
 
   /*
   * conversation info
@@ -363,9 +365,11 @@ const Main: FC<IMainProps> = ({
     (async () => {
       try {
         const [appData, conversationData, appParams]: any = await fetchInitData()
-        const { app_id: appId, site: siteInfo, plan }: any = appData
+        const { app_id: appId, site: siteInfo, plan, can_replace_logo, custom_config }: any = appData
         setAppId(appId)
         setPlan(plan)
+        setCanReplaceLogo(can_replace_logo)
+        setCustomConfig(custom_config)
         const tempIsPublicVersion = siteInfo.prompt_public
         setIsPublicVersion(tempIsPublicVersion)
         const prompt_template = ''
@@ -611,6 +615,22 @@ const Main: FC<IMainProps> = ({
           ))
         }
       },
+      onAnnotationReply: (annotationReply) => {
+        responseItem.content = annotationReply.answer
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({
+              ...responseItem,
+              id: annotationReply.id,
+            })
+          })
+        setChatList(newListWithAnswer)
+        tempNewConversationId = annotationReply.conversation_id
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -733,6 +753,8 @@ const Main: FC<IMainProps> = ({
             savedInputs={currInputs as Record<string, any>}
             onInputsChange={setCurrInputs}
             plan={plan}
+            canReplaceLogo={canReplaceLogo}
+            customConfig={customConfig}
           ></ConfigSence>
 
           {

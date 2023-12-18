@@ -1,6 +1,7 @@
 export { default as CheckCircle } from './CheckCircle'
 export { default as CheckDone01 } from './CheckDone01'
 export { default as Download02 } from './Download02'
+export { default as Edit04 } from './Edit04'
 export { default as Eye } from './Eye'
 export { default as MessageClockCircle } from './MessageClockCircle'
 export { default as Target04 } from './Target04'

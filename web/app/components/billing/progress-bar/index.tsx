@@ -7,7 +7,7 @@ const ProgressBar = ({
   color = '#2970FF',
 }: ProgressBarProps) => {
   return (
-    <div className='bg-[#F2F4F7] rounded-[4px]'>
+    <div className='bg-[#F2F4F7] rounded-[4px] overflow-hidden'>
       <div
         className='h-2 rounded-[4px]'
         style={{
