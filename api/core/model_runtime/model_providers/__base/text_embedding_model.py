@@ -57,30 +57,32 @@ class TextEmbeddingModel(AIModel):
         """
         raise NotImplementedError
 
-    def _get_context_size(self, model: str) -> int:
+    def _get_context_size(self, model: str, credentials: dict) -> int:
         """
         Get context size for given embedding model
 
         :param model: model name
+        :param credentials: model credentials
         :return: context size
         """
-        model_schema = self.get_predefined_model_schema(model)
+        model_schema = self.get_model_schema(model, credentials)
 
-        if ModelPropertyKey.CONTEXT_SIZE in model_schema.model_properties:
+        if model_schema and ModelPropertyKey.CONTEXT_SIZE in model_schema.model_properties:
             return model_schema.model_properties[ModelPropertyKey.CONTEXT_SIZE]
 
         return 1000
 
-    def _get_max_chunks(self, model: str) -> int:
+    def _get_max_chunks(self, model: str, credentials: dict) -> int:
         """
         Get max chunks for given embedding model
 
         :param model: model name
+        :param credentials: model credentials
         :return: max chunks
         """
-        model_schema = self.get_predefined_model_schema(model)
+        model_schema = self.get_model_schema(model, credentials)
 
-        if ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
+        if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
             return model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
 
         return 1

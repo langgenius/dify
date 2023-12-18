@@ -154,6 +154,7 @@ class ParameterRule(BaseModel):
     min: Optional[float | int] = None
     max: Optional[float | int] = None
     precision: Optional[int] = None
+    options: list[str] = []
 
 
 class PriceConfig(BaseModel):

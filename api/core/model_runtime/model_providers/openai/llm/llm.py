@@ -54,14 +54,11 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # get model mode
         model_mode = self.get_model_mode(base_model, credentials)
 
-        # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
-
         if model_mode == LLMMode.CHAT:
             # chat model
             return self._chat_generate(
                 model=model,
-                credentials_kwargs=credentials_kwargs,
+                credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 tools=tools,
@@ -73,7 +70,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             # text completion model
             return self._generate(
                 model=model,
-                credentials_kwargs=credentials_kwargs,
+                credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
                 stop=stop,
@@ -202,14 +199,14 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return ai_model_entities
 
-    def _generate(self, model: str, credentials_kwargs: dict,
+    def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
 
         :param model: model name
-        :param credentials_kwargs: credentials kwargs
+        :param credentials: credentials
         :param prompt_messages: prompt messages
         :param model_parameters: model parameters
         :param stop: stop words
@@ -217,6 +214,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        # transform credentials to kwargs for model instance
+        credentials_kwargs = self._to_credential_kwargs(credentials)
+
         # init model client
         client = OpenAI(**credentials_kwargs)
 
@@ -238,16 +238,17 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_generate_stream_response(model, response, prompt_messages)
+            return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
-        return self._handle_generate_response(model, response, prompt_messages)
+        return self._handle_generate_response(model, credentials, response, prompt_messages)
 
-    def _handle_generate_response(self, model: str, response: Completion,
+    def _handle_generate_response(self, model: str, credentials: dict, response: Completion,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm completion response
 
         :param model: model name
+        :param credentials: model credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm result
@@ -270,7 +271,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             completion_tokens = self._num_tokens_from_string(model, assistant_text)
 
         # transform usage
-        usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
         # transform response
         result = LLMResult(
@@ -282,12 +283,13 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, response: Stream[Completion],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, response: Stream[Completion],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm completion stream response
 
         :param model: model name
+        :param credentials: model credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
@@ -319,7 +321,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     completion_tokens = self._num_tokens_from_string(model, text)
 
                 # transform usage
-                usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
                 yield LLMResultChunk(
                     model=chunk.model,
@@ -341,7 +343,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     )
                 )
 
-    def _chat_generate(self, model: str, credentials_kwargs: dict,
+    def _chat_generate(self, model: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
@@ -349,7 +351,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         Invoke llm chat model
 
         :param model: model name
-        :param credentials_kwargs: credentials kwargs
+        :param credentials: credentials
         :param prompt_messages: prompt messages
         :param model_parameters: model parameters
         :param tools: tools for tool calling
@@ -358,6 +360,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        # transform credentials to kwargs for model instance
+        credentials_kwargs = self._to_credential_kwargs(credentials)
+
         # init model client
         client = OpenAI(**credentials_kwargs)
 
@@ -396,17 +401,18 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_chat_generate_stream_response(model, response, prompt_messages, tools)
+            return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
 
-        return self._handle_chat_generate_response(model, response, prompt_messages, tools)
+        return self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
 
-    def _handle_chat_generate_response(self, model: str, response: ChatCompletion,
+    def _handle_chat_generate_response(self, model: str, credentials: dict, response: ChatCompletion,
                                        prompt_messages: list[PromptMessage],
                                        tools: Optional[list[PromptMessageTool]] = None) -> LLMResult:
         """
         Handle llm chat response
 
         :param model: model name
+        :param credentials: credentials
         :param response: response
         :param prompt_messages: prompt messages
         :param tools: tools for tool calling
@@ -438,7 +444,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             completion_tokens = self._num_tokens_from_messages(model, [assistant_prompt_message])
 
         # transform usage
-        usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
         # transform response
         response = LLMResult(
@@ -450,7 +456,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return response
 
-    def _handle_chat_generate_stream_response(self, model: str, response: Stream[ChatCompletionChunk],
+    def _handle_chat_generate_stream_response(self, model: str, credentials: dict, response: Stream[ChatCompletionChunk],
                                               prompt_messages: list[PromptMessage],
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
         """
@@ -491,7 +497,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 completion_tokens = self._num_tokens_from_messages(model, [assistant_prompt_message])
 
                 # transform usage
-                usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
                 yield LLMResultChunk(
                     model=chunk.model,

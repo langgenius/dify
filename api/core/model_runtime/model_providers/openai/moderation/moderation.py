@@ -33,10 +33,10 @@ class OpenAIModerationModel(_CommonOpenAI, ModerationModel):
         client = OpenAI(**credentials_kwargs)
 
         # chars per chunk
-        length = self._get_max_characters_per_chunk(model)
+        length = self._get_max_characters_per_chunk(model, credentials)
         text_chunks = [text[i:i + length] for i in range(0, len(text), length)]
 
-        max_text_chunks = self._get_max_chunks(model)
+        max_text_chunks = self._get_max_chunks(model, credentials)
         chunks = [text_chunks[i:i + max_text_chunks] for i in range(0, len(text_chunks), max_text_chunks)]
 
         for text_chunk in chunks:
@@ -84,30 +84,32 @@ class OpenAIModerationModel(_CommonOpenAI, ModerationModel):
 
         return moderation_result
 
-    def _get_max_characters_per_chunk(self, model: str) -> int:
+    def _get_max_characters_per_chunk(self, model: str, credentials: dict) -> int:
         """
         Get max characters per chunk
 
         :param model: model name
+        :param credentials: model credentials
         :return: max characters per chunk
         """
-        model_schema = self.get_predefined_model_schema(model)
+        model_schema = self.get_model_schema(model, credentials)
 
-        if ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK in model_schema.model_properties:
+        if model_schema and ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK in model_schema.model_properties:
             return model_schema.model_properties[ModelPropertyKey.MAX_CHARACTERS_PER_CHUNK]
 
         return 2000
 
-    def _get_max_chunks(self, model: str) -> int:
+    def _get_max_chunks(self, model: str, credentials: dict) -> int:
         """
         Get max chunks for given embedding model
 
         :param model: model name
+        :param credentials: model credentials
         :return: max chunks
         """
-        model_schema = self.get_predefined_model_schema(model)
+        model_schema = self.get_model_schema(model, credentials)
 
-        if ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
+        if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties:
             return model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
 
         return 1

@@ -58,40 +58,23 @@ class AIModel(ABC):
 
         return InvokeError(description=f"Error: {str(error)}")
 
-    def remote_models(self, credentials: dict) -> list[AIModelEntity]:
-        """
-        Return remote models if credentials are provided.
-
-        :param credentials: provider credentials
-        :return:
-        """
-        return []
-
-    def predefined_models(self) -> list[AIModelEntity]:
-        """
-        Get all predefined models for given provider.
-
-        :return: list of predefined models
-        """
-        # get all model schema files for given model type
-        return self.get_model_schemas()
-
-    def get_price(self, model: str, price_type: PriceType, tokens: int) -> PriceInfo:
+    def get_price(self, model: str, credentials: dict, price_type: PriceType, tokens: int) -> PriceInfo:
         """
         Get price for given model and tokens
 
         :param model: model name
+        :param credentials: model credentials
         :param price_type: price type
         :param tokens: number of tokens
         :return: price info
         """
-        # get predefined model schema
-        predefined_model_schema = self.get_predefined_model_schema(model)
+        # get model schema
+        model_schema = self.get_model_schema(model, credentials)
 
         # get price info from predefined model schema
         price_config: Optional[PriceConfig] = None
-        if predefined_model_schema:
-            price_config: PriceConfig = predefined_model_schema.pricing
+        if model_schema:
+            price_config: PriceConfig = model_schema.pricing
 
         # get unit price
         unit_price = None
@@ -120,9 +103,18 @@ class AIModel(ABC):
             currency=price_config.currency,
         )
 
-    def get_model_schemas(self) -> list[AIModelEntity]:
+    def remote_models(self, credentials: dict) -> list[AIModelEntity]:
         """
-        Get model schemas
+        Return remote models if credentials are provided.
+
+        :param credentials: provider credentials
+        :return:
+        """
+        return []
+
+    def predefined_models(self) -> list[AIModelEntity]:
+        """
+        Get all predefined models for given provider.
 
         :return:
         """
@@ -212,20 +204,34 @@ class AIModel(ABC):
 
         return model_schemas
 
-    def get_predefined_model_schema(self, model: str) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
         """
-        Get model schema by model name
-        Only used for predefined models
+        Get model schema by model name and credentials
 
         :param model: model name
+        :param credentials: model credentials
         :return: model schema
         """
-        # get all model schema files for given model type
-        model_schemas = self.get_model_schemas()
+        # get predefined models (predefined_models)
+        models = self.predefined_models()
 
-        # find model schema by model name
-        for model_schema in model_schemas:
-            if model_schema.model == model:
+        # get remote models from remote api
+        if credentials:
+            remote_models = self.remote_models(credentials)
+            if remote_models:
+                # merge predefined_models and remote_models
+                predefined_model_ids = [model.model for model in models]
+                for remote_model in remote_models:
+                    if remote_model.model not in predefined_model_ids:
+                        models.append(remote_model)
+
+        model_map = {model.model: model for model in models}
+        if model in model_map:
+            return model_map[model]
+
+        if credentials:
+            model_schema = self.get_customizable_model_schema(model, credentials)
+            if model_schema:
                 return model_schema
 
         return None

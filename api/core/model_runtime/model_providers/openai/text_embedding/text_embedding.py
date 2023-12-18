@@ -43,8 +43,8 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
         extra_model_kwargs['encoding_format'] = 'base64'
 
         # get model properties
-        context_size = self._get_context_size(model)
-        max_chunks = self._get_max_chunks(model)
+        context_size = self._get_context_size(model, credentials)
+        max_chunks = self._get_max_chunks(model, credentials)
 
         embeddings: list[list[float]] = [[] for _ in range(len(texts))]
         tokens = []
@@ -104,6 +104,7 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
         # calc usage
         usage = self._calc_response_usage(
             model=model,
+            credentials=credentials,
             tokens=used_tokens
         )
 
@@ -184,17 +185,19 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
 
         return [data.embedding for data in response.data], response.usage.total_tokens
 
-    def _calc_response_usage(self, model: str, tokens: int) -> EmbeddingUsage:
+    def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
 
         :param model: model name
+        :param credentials: model credentials
         :param tokens: input tokens
         :return: usage
         """
         # get input price info
         input_price_info = self.get_price(
             model=model,
+            credentials=credentials,
             price_type=PriceType.INPUT,
             tokens=tokens
         )

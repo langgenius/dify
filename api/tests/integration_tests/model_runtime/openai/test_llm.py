@@ -12,9 +12,9 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
 
-def test_get_model_schemas():
+def test_predefined_models():
     model = OpenAILargeLanguageModel()
-    model_schemas = model.get_model_schemas()
+    model_schemas = model.predefined_models()
 
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)

@@ -5,9 +5,6 @@ from pydantic import BaseModel
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.provider_manager import ProviderManager
 
 
 class ModelConfigEntity(BaseModel):
@@ -16,7 +13,7 @@ class ModelConfigEntity(BaseModel):
     """
     provider: str
     model: str
-    mode: Optional[str]
+    mode: str
     provider_model_bundle: ProviderModelBundle
     credentials: dict[str, Any] = {}
     parameters: dict[str, Any] = {}
@@ -264,6 +261,7 @@ class LLMApplicationGenerateEntity(BaseModel):
     app_model_config_id: str
     # for save
     app_model_config_dict: dict
+    app_model_config_override: bool
 
     # Converted from app_model_config to Entity object, or directly covered by external input
     app_orchestration_config_entity: AppOrchestrationConfigEntity
@@ -280,3 +278,16 @@ class LLMApplicationGenerateEntity(BaseModel):
 
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}
+
+
+class LLMApplicationGenerateResponse(BaseModel):
+    """
+    LLM Application Generate Response.
+    """
+    event: str = 'message'
+    task_id: str
+    id: str
+    answer: str
+    metadata: dict[str, Any] = {}
+    created_at: int
+    conversation_id: Optional[str] = None

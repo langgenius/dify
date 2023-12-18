@@ -38,11 +38,8 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
-
         # invoke model
-        return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, stop, stream, user)
+        return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
     def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -73,11 +70,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         try:
-            # transform credentials to kwargs for model instance
-            credentials_kwargs = self._to_credential_kwargs(credentials)
             self._generate(
                 model=model,
-                credentials_kwargs=credentials_kwargs,
+                credentials=credentials,
                 prompt_messages=[
                     UserPromptMessage(content="ping"),
                 ],
@@ -89,7 +84,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _generate(self, model: str, credentials_kwargs: dict,
+    def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
                   stop: Optional[List[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
@@ -97,7 +92,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         Invoke large language model
 
         :param model: model name
-        :param credentials_kwargs: credentials kwargs
+        :param credentials: credentials
         :param prompt_messages: prompt messages
         :param model_parameters: model parameters
         :param stop: stop words
@@ -108,6 +103,9 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         extra_model_kwargs = {}
         if stop:
             extra_model_kwargs['stop_sequences'] = stop
+
+        # transform credentials to kwargs for model instance
+        credentials_kwargs = self._to_credential_kwargs(credentials)
 
         dashscope.api_key = credentials_kwargs['api_key']
 
@@ -129,20 +127,21 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 **params
             )
 
-            return self._handle_generate_stream_response(model, responses, prompt_messages)
+            return self._handle_generate_stream_response(model, credentials, responses, prompt_messages)
 
         response = generate_with_retry(
             client,
             **params,
         )
-        return self._handle_generate_response(model, response, prompt_messages)
+        return self._handle_generate_response(model, credentials, response, prompt_messages)
         
-    def _handle_generate_response(self, model: str, response: DashScopeAPIResponse,
+    def _handle_generate_response(self, model: str, credentials: dict, response: DashScopeAPIResponse,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm response
 
         :param model: model name
+        :param credentials: credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm response
@@ -153,7 +152,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         )
 
         # transform usage
-        usage = self._calc_response_usage(model, response.usage.input_tokens, response.usage.output_tokens)
+        usage = self._calc_response_usage(model, credentials, response.usage.input_tokens, response.usage.output_tokens)
 
         # transform response
         result = LLMResult(
@@ -164,12 +163,13 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, responses: list[Generator],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, responses: list[Generator],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
 
         :param model: model name
+        :param credentials: credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
@@ -189,7 +189,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
             if resp_finish_reason is not None:
                 # transform usage
-                usage = self._calc_response_usage(model, useage.input_tokens, useage.output_tokens)
+                usage = self._calc_response_usage(model, credentials, useage.input_tokens, useage.output_tokens)
 
                 yield LLMResultChunk(
                     model=model,

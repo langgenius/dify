@@ -35,11 +35,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # transform credentials to kwargs for model instance
-        credentials_kwargs = self._to_credential_kwargs(credentials)
-
         # invoke model
-        return self._generate(model, credentials_kwargs, prompt_messages, model_parameters, stop, stream, user)
+        return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
     def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -65,11 +62,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         try:
-            # transform credentials to kwargs for model instance
-            credentials_kwargs = self._to_credential_kwargs(credentials)
             self._generate(
                 model=model,
-                credentials_kwargs=credentials_kwargs,
+                credentials=credentials,
                 prompt_messages=[
                     UserPromptMessage(content="ping"),
                 ],
@@ -82,7 +77,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _generate(self, model: str, credentials_kwargs: dict,
+    def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict,
                   stop: Optional[List[str]] = None, stream: bool = True,
                   user: Optional[str] = None) -> Union[LLMResult, Generator]:
@@ -90,7 +85,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         Invoke large language model
 
         :param model: model name
-        :param credentials_kwargs: credentials kwargs
+        :param credentials: credentials kwargs
         :param prompt_messages: prompt messages
         :param model_parameters: model parameters
         :param stop: stop words
@@ -98,6 +93,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        # transform credentials to kwargs for model instance
+        credentials_kwargs = self._to_credential_kwargs(credentials)
+
         client = Anthropic(**credentials_kwargs)
 
         extra_model_kwargs = {}
@@ -116,16 +114,17 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_generate_stream_response(model, response, prompt_messages)
+            return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
-        return self._handle_generate_response(model, response, prompt_messages)
+        return self._handle_generate_response(model, credentials, response, prompt_messages)
 
-    def _handle_generate_response(self, model: str, response: Completion,
+    def _handle_generate_response(self, model: str, credentials: dict, response: Completion,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
         """
         Handle llm response
 
         :param model: model name
+        :param credentials: credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm response
@@ -140,7 +139,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
 
         # transform usage
-        usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
         # transform response
         result = LLMResult(
@@ -151,12 +150,13 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return result
 
-    def _handle_generate_stream_response(self, model: str, response: Stream[Completion],
+    def _handle_generate_stream_response(self, model: str, credentials: dict, response: Stream[Completion],
                                          prompt_messages: list[PromptMessage]) -> Generator:
         """
         Handle llm stream response
 
         :param model: model name
+        :param credentials: credentials
         :param response: response
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
@@ -180,7 +180,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
 
                 # transform usage
-                usage = self._calc_response_usage(model, prompt_tokens, completion_tokens)
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
                 yield LLMResultChunk(
                     model=chunk.model,

@@ -265,24 +265,7 @@ class LargeLanguageModel(AIModel):
         :param credentials: model credentials
         :return: parameter rules
         """
-        # get predefined models (predefined_models)
-        models = self.predefined_models()
-
-        # get remote models from remote api
-        remote_models = self.remote_models(credentials)
-
-        if remote_models:
-            # merge predefined_models and remote_models
-            predefined_model_ids = [model.model for model in models]
-            for remote_model in remote_models:
-                if remote_model.model not in predefined_model_ids:
-                    models.append(remote_model)
-
-        model_map = {model.model: model for model in models}
-        if model in model_map:
-            return model_map[model].parameter_rules
-
-        model_schema = self.get_customizable_model_schema(model, credentials)
+        model_schema = self.get_model_schema(model, credentials)
         if model_schema:
             return model_schema.parameter_rules
 
@@ -296,17 +279,7 @@ class LargeLanguageModel(AIModel):
         :param credentials: model credentials
         :return: model mode
         """
-        model_schema = self.get_predefined_model_schema(model)
-        if not model_schema and credentials:
-            remote_models = self.remote_models(credentials)
-            if remote_models:
-                for remote_model in remote_models:
-                    if remote_model.model == model:
-                        model_schema = remote_model
-                        break
-
-            if not model_schema:
-                model_schema = self.get_customizable_model_schema(model, credentials)
+        model_schema = self.get_model_schema(model, credentials)
 
         mode = LLMMode.CHAT
         if model_schema and model_schema.model_properties.get(ModelPropertyKey.MODE):
@@ -314,11 +287,12 @@ class LargeLanguageModel(AIModel):
 
         return mode
 
-    def _calc_response_usage(self, model: str, prompt_tokens: int, completion_tokens: int) -> LLMUsage:
+    def _calc_response_usage(self, model: str, credentials: dict, prompt_tokens: int, completion_tokens: int) -> LLMUsage:
         """
         Calculate response usage
 
         :param model: model name
+        :param credentials: model credentials
         :param prompt_tokens: prompt tokens
         :param completion_tokens: completion tokens
         :return: usage
@@ -326,13 +300,15 @@ class LargeLanguageModel(AIModel):
         # get prompt price info
         prompt_price_info = self.get_price(
             model=model,
+            credentials=credentials,
             price_type=PriceType.INPUT,
-            tokens=prompt_tokens
+            tokens=prompt_tokens,
         )
 
         # get completion price info
         completion_price_info = self.get_price(
             model=model,
+            credentials=credentials,
             price_type=PriceType.OUTPUT,
             tokens=completion_tokens
         )
