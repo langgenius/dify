@@ -22,18 +22,6 @@ type IFileUploaderProps = {
   onPreview: (file: File) => void
 }
 
-// const ACCEPTS = [
-//   '.pdf',
-//   '.html',
-//   '.htm',
-//   '.md',
-//   '.markdown',
-//   '.txt',
-//   '.xlsx',
-//   '.csv',
-//   '.docx',
-// ]
-
 const FileUploader = ({
   fileList,
   titleClassName,
