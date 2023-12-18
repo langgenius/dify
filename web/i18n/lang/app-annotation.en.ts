@@ -1,6 +1,6 @@
 const translation = {
   title: 'Annotations',
-  name: 'Annotated Response',
+  name: 'Annotation Reply',
   editBy: 'Answer edited by {{author}}',
   noData: {
     title: 'No annotations',
@@ -20,7 +20,7 @@ const translation = {
     },
   },
   editModal: {
-    title: 'Edit Annotated Response',
+    title: 'Edit Annotation Reply',
     queryName: 'User Query',
     answerName: 'Storyteller Bot',
     yourAnswer: 'Your Answer',
@@ -31,7 +31,7 @@ const translation = {
     createdAt: 'Created At',
   },
   addModal: {
-    title: 'Add Annotated Response',
+    title: 'Add Annotation Reply',
     queryName: 'Question',
     answerName: 'Answer',
     answerPlaceholder: 'Type answer here',
@@ -61,7 +61,7 @@ const translation = {
     queryRequired: 'Question is required',
   },
   viewModal: {
-    annotatedResponse: 'Annotated Response',
+    annotatedResponse: 'Annotation Reply',
     hitHistory: 'Hit History',
     hit: 'Hit',
     hits: 'Hits',
@@ -76,8 +76,8 @@ const translation = {
     time: 'Time',
   },
   initSetup: {
-    title: 'Annotated Response Initial Setup',
-    configTitle: 'Annotated Response Setup',
+    title: 'Annotation Reply Initial Setup',
+    configTitle: 'Annotation Reply Setup',
     confirmBtn: 'Save & Enable',
     configConfirmBtn: 'Save',
   },
