@@ -20,6 +20,7 @@ const translation = {
     save: 'Save ',
     free: 'Free',
     currentPlan: 'Current Plan',
+    contractOwner: 'Contact your workspace owner',
     startForFree: 'Start for free',
     getStartedWith: 'Get started with ',
     contactSales: 'Contact Sales',
@@ -101,7 +102,7 @@ const translation = {
   annotatedResponse: {
     fullTipLine1: 'Upgrade your plan to',
     fullTipLine2: 'annotate more conversations.',
-    quotaTitle: 'Annotated Response Quota',
+    quotaTitle: 'Annotation Reply Quota',
   },
 }
 

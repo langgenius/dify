@@ -9,6 +9,7 @@ import PlanItem from './plan-item'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { useProviderContext } from '@/context/provider-context'
 import GridMask from '@/app/components/base/grid-mask'
+import { useAppContext } from '@/context/app-context'
 
 type Props = {
   onCancel: () => void
@@ -19,7 +20,8 @@ const Pricing: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { plan } = useProviderContext()
-
+  const { isCurrentWorkspaceOwner } = useAppContext()
+  const canPay = isCurrentWorkspaceOwner
   const [planRange, setPlanRange] = React.useState<PlanRange>(PlanRange.monthly)
 
   return createPortal(
@@ -41,21 +43,25 @@ const Pricing: FC<Props> = ({
               currentPlan={plan.type}
               plan={Plan.sandbox}
               planRange={planRange}
+              canPay={canPay}
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.professional}
               planRange={planRange}
+              canPay={canPay}
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.team}
               planRange={planRange}
+              canPay={canPay}
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.enterprise}
               planRange={planRange}
+              canPay={canPay}
             />
           </div>
         </div>

@@ -37,6 +37,8 @@ class Subscription(Resource):
         parser.add_argument('interval', type=str, required=True, location='args', choices=['month', 'year'])
         args = parser.parse_args()
 
+        BillingService.is_tenant_owner(current_user)
+
         return BillingService.get_subscription(args['plan'],
                                                args['interval'],
                                                current_user.email,
@@ -50,7 +52,7 @@ class Invoices(Resource):
     @account_initialization_required
     @only_edition_cloud
     def get(self):
-
+        BillingService.is_tenant_owner(current_user)
         return BillingService.get_invoices(current_user.email)
 
 
