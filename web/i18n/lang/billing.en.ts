@@ -102,7 +102,7 @@ const translation = {
   annotatedResponse: {
     fullTipLine1: 'Upgrade your plan to',
     fullTipLine2: 'annotate more conversations.',
-    quotaTitle: 'Annotated Response Quota',
+    quotaTitle: 'Annotation Reply Quota',
   },
 }
 
