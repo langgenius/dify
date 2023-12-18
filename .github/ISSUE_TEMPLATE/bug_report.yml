@@ -1,5 +1,5 @@
 name: "🕷️ Bug report"
-description: Report errors or unexpected behavior [please use English :）]
+description: Report errors or unexpected behavior
 labels:
 - bug
 body:
