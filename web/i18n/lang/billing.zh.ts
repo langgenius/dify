@@ -19,6 +19,7 @@ const translation = {
     year: '年',
     save: '节省',
     currentPlan: '当前计划',
+    contractOwner: '联系您的工作区所有者',
     free: '免费',
     startForFree: '免费开始',
     getStartedWith: '开始使用',
