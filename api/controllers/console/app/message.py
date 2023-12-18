@@ -6,22 +6,23 @@ from flask import Response, stream_with_context
 from flask_login import current_user
 from flask_restful import Resource, reqparse, marshal_with, fields
 from flask_restful.inputs import int_range
-from werkzeug.exceptions import InternalServerError, NotFound
+from werkzeug.exceptions import InternalServerError, NotFound, Forbidden
 
 from controllers.console import api
 from controllers.console.app import _get_app
 from controllers.console.app.error import CompletionRequestError, ProviderNotInitializeError, \
     AppMoreLikeThisDisabledError, ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.model_providers.error import LLMRateLimitError, LLMBadRequestError, LLMAuthorizationError, LLMAPIConnectionError, \
     ProviderTokenNotInitError, LLMAPIUnavailableError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.login import login_required
-from fields.conversation_fields import message_detail_fields
+from fields.conversation_fields import message_detail_fields, annotation_fields
 from libs.helper import uuid_value
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
 from models.model import MessageAnnotation, Conversation, Message, MessageFeedback
+from services.annotation_service import AppAnnotationService
 from services.completion_service import CompletionService
 from services.errors.app import MoreLikeThisDisabledError
 from services.errors.conversation import ConversationNotExistsError
@@ -151,44 +152,24 @@ class MessageAnnotationApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @cloud_edition_billing_resource_check('annotation')
+    @marshal_with(annotation_fields)
     def post(self, app_id):
+        # The role of the current user in the ta table must be admin or owner
+        if current_user.current_tenant.current_role not in ['admin', 'owner']:
+            raise Forbidden()
+
         app_id = str(app_id)
 
-        # get app info
-        app = _get_app(app_id)
-
         parser = reqparse.RequestParser()
-        parser.add_argument('message_id', required=True, type=uuid_value, location='json')
-        parser.add_argument('content', type=str, location='json')
+        parser.add_argument('message_id', required=False, type=uuid_value, location='json')
+        parser.add_argument('question', required=True, type=str, location='json')
+        parser.add_argument('answer', required=True, type=str, location='json')
+        parser.add_argument('annotation_reply', required=False, type=dict, location='json')
         args = parser.parse_args()
+        annotation = AppAnnotationService.up_insert_app_annotation_from_message(args, app_id)
 
-        message_id = str(args['message_id'])
-
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app.id
-        ).first()
-
-        if not message:
-            raise NotFound("Message Not Exists.")
-
-        annotation = message.annotation
-
-        if annotation:
-            annotation.content = args['content']
-        else:
-            annotation = MessageAnnotation(
-                app_id=app.id,
-                conversation_id=message.conversation_id,
-                message_id=message.id,
-                content=args['content'],
-                account_id=current_user.id
-            )
-            db.session.add(annotation)
-
-        db.session.commit()
-
-        return {'result': 'success'}
+        return annotation
 
 
 class MessageAnnotationCountApi(Resource):

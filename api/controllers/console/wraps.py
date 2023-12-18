@@ -55,12 +55,15 @@ def cloud_edition_billing_resource_check(resource: str,
                 members = billing_info['members']
                 apps = billing_info['apps']
                 vector_space = billing_info['vector_space']
+                annotation_quota_limit = billing_info['annotation_quota_limit']
 
                 if resource == 'members' and 0 < members['limit'] <= members['size']:
                     abort(403, error_msg)
                 elif resource == 'apps' and 0 < apps['limit'] <= apps['size']:
                     abort(403, error_msg)
                 elif resource == 'vector_space' and 0 < vector_space['limit'] <= vector_space['size']:
+                    abort(403, error_msg)
+                elif resource == 'annotation' and 0 < annotation_quota_limit['limit'] <= annotation_quota_limit['size']:
                     abort(403, error_msg)
                 else:
                     return view(*args, **kwargs)

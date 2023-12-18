@@ -21,6 +21,7 @@ model_config_fields = {
     'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
     'speech_to_text': fields.Raw(attribute='speech_to_text_dict'),
     'retriever_resource': fields.Raw(attribute='retriever_resource_dict'),
+    'annotation_reply': fields.Raw(attribute='annotation_reply_dict'),
     'more_like_this': fields.Raw(attribute='more_like_this_dict'),
     'sensitive_word_avoidance': fields.Raw(attribute='sensitive_word_avoidance_dict'),
     'external_data_tools': fields.Raw(attribute='external_data_tools_list'),
