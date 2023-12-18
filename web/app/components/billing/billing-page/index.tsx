@@ -16,7 +16,7 @@ const Billing: FC = () => {
   const { enableBilling } = useProviderContext()
 
   useEffect(() => {
-    if (!enableBilling && !isCurrentWorkspaceOwner)
+    if (!enableBilling || !isCurrentWorkspaceOwner)
       return
     (async () => {
       const { url } = await fetchBillingUrl()
