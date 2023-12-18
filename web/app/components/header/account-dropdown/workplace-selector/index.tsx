@@ -28,7 +28,6 @@ const WorkplaceSelector = () => {
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
   const currentWorkspace = workspaces.find(v => v.current)
-  console.log(currentWorkspace?.name)
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     console.log(tenant_id, currentWorkspace?.id)
