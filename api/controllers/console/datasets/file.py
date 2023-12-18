@@ -75,7 +75,7 @@ class FileeSupportTypApi(Resource):
     @account_initialization_required
     def get(self):
         etl_type = current_app.config['ETL_TYPE']
-        if etl_type == 'sad':
+        if etl_type == 'Unstructured':
             allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
         else:
             allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
