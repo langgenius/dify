@@ -112,7 +112,6 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const question = (varList && varList?.length > 0) ? varList?.map(({ label, value }) => `${label}:${value}`).join('&') : ''
-  console.log(question)
   const [isQuerying, { setTrue: startQuerying, setFalse: stopQuerying }] = useBoolean(false)
 
   const childProps = {
