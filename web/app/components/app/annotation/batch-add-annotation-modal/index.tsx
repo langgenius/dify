@@ -9,6 +9,8 @@ import Modal from '@/app/components/base/modal'
 import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import Toast from '@/app/components/base/toast'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
+import { useProviderContext } from '@/context/provider-context'
+import AnnotationFull from '@/app/components/billing/annotation-full'
 
 export enum ProcessStatus {
   WAITING = 'waiting',
@@ -31,6 +33,8 @@ const BatchModal: FC<IBatchModalProps> = ({
   onAdded,
 }) => {
   const { t } = useTranslation()
+  const { plan, enableBilling } = useProviderContext()
+  const isAnnotationFull = (enableBilling && plan.usage.annotatedResponse >= plan.total.annotatedResponse)
   const [currentCSV, setCurrentCSV] = useState<File>()
   const handleFile = (file?: File) => setCurrentCSV(file)
 
@@ -93,6 +97,13 @@ const BatchModal: FC<IBatchModalProps> = ({
         updateFile={handleFile}
       />
       <CSVDownloader />
+
+      {isAnnotationFull && (
+        <div className='mt-4'>
+          <AnnotationFull />
+        </div>
+      )}
+
       <div className='mt-[28px] pt-6 flex justify-end'>
         <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onCancel}>
           {t('appAnnotation.batchModal.cancel')}
@@ -101,7 +112,7 @@ const BatchModal: FC<IBatchModalProps> = ({
           className='text-sm font-medium'
           type="primary"
           onClick={handleSend}
-          disabled={!currentCSV}
+          disabled={isAnnotationFull || !currentCSV}
           loading={importStatus === ProcessStatus.PROCESSING}
         >
           {t('appAnnotation.batchModal.run')}

@@ -82,7 +82,7 @@ const translation = {
       scoreThreshold: {
         title: '分数阈值',
         description: '用于设置标注回复的匹配相似度阈值。',
-        easyMatch: '模糊匹配',
+        easyMatch: '容易匹配',
         accurateMatch: '精准匹配',
       },
       matchVariable: {

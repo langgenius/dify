@@ -126,6 +126,13 @@ export const ProviderContextProvider = ({
       setEnableBilling(enabled)
       if (enabled) {
         setPlan(parseCurrentPlan(data))
+        // setPlan(parseCurrentPlan({
+        //   ...data,
+        //   annotation_quota_limit: {
+        //     ...data.annotation_quota_limit,
+        //     limit: 10,
+        //   },
+        // }))
         setIsFetchedPlan(true)
       }
     })()
