@@ -1,5 +1,9 @@
 import os
+
 import requests
+
+from extensions.ext_database import db
+from models.account import TenantAccountJoin
 
 
 class BillingService:
@@ -55,3 +59,15 @@ class BillingService:
         response = requests.request(method, url, json=json, params=params, headers=headers)
 
         return response.json()
+
+    @staticmethod
+    def is_tenant_owner(current_user):
+        tenant_id = current_user.current_tenant_id
+
+        join = db.session.query(TenantAccountJoin).filter(
+            TenantAccountJoin.tenant_id == tenant_id,
+            TenantAccountJoin.account_id == current_user.id
+        ).first()
+
+        if join.role != 'owner':
+            raise ValueError('Only tenant owner can perform this action')
