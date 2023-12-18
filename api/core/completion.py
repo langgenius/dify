@@ -341,66 +341,70 @@ class Completion:
         app = conversation_message_task.app
         annotation_reply = app_model_config.annotation_reply_dict
         if annotation_reply['enabled']:
-            score_threshold = annotation_reply.get('score_threshold', 1)
-            embedding_provider_name = annotation_reply['embedding_model']['embedding_provider_name']
-            embedding_model_name = annotation_reply['embedding_model']['embedding_model_name']
-            # get embedding model
-            embedding_model = ModelFactory.get_embedding_model(
-                tenant_id=app.tenant_id,
-                model_provider_name=embedding_provider_name,
-                model_name=embedding_model_name
-            )
-            embeddings = CacheEmbedding(embedding_model)
+            try:
+                score_threshold = annotation_reply.get('score_threshold', 1)
+                embedding_provider_name = annotation_reply['embedding_model']['embedding_provider_name']
+                embedding_model_name = annotation_reply['embedding_model']['embedding_model_name']
+                # get embedding model
+                embedding_model = ModelFactory.get_embedding_model(
+                    tenant_id=app.tenant_id,
+                    model_provider_name=embedding_provider_name,
+                    model_name=embedding_model_name
+                )
+                embeddings = CacheEmbedding(embedding_model)
 
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name,
-                embedding_model_name,
-                'annotation'
-            )
+                dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                    embedding_provider_name,
+                    embedding_model_name,
+                    'annotation'
+                )
 
-            dataset = Dataset(
-                id=app.id,
-                tenant_id=app.tenant_id,
-                indexing_technique='high_quality',
-                embedding_model_provider=embedding_provider_name,
-                embedding_model=embedding_model_name,
-                collection_binding_id=dataset_collection_binding.id
-            )
+                dataset = Dataset(
+                    id=app.id,
+                    tenant_id=app.tenant_id,
+                    indexing_technique='high_quality',
+                    embedding_model_provider=embedding_provider_name,
+                    embedding_model=embedding_model_name,
+                    collection_binding_id=dataset_collection_binding.id
+                )
 
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings
-            )
+                vector_index = VectorIndex(
+                    dataset=dataset,
+                    config=current_app.config,
+                    embeddings=embeddings
+                )
 
-            documents = vector_index.search(
-                conversation_message_task.query,
-                search_type='similarity_score_threshold',
-                search_kwargs={
-                    'k': 1,
-                    'score_threshold': score_threshold,
-                    'filter': {
-                        'group_id': [dataset.id]
+                documents = vector_index.search(
+                    conversation_message_task.query,
+                    search_type='similarity_score_threshold',
+                    search_kwargs={
+                        'k': 1,
+                        'score_threshold': score_threshold,
+                        'filter': {
+                            'group_id': [dataset.id]
+                        }
                     }
-                }
-            )
-            if documents:
-                annotation_id = documents[0].metadata['annotation_id']
-                score = documents[0].metadata['score']
-                annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
-                if annotation:
-                    conversation_message_task.annotation_end(annotation.content, annotation.id, annotation.account.name)
-                    # insert annotation history
-                    AppAnnotationService.add_annotation_history(annotation.id,
-                                                                app.id,
-                                                                annotation.question,
-                                                                annotation.content,
-                                                                conversation_message_task.query,
-                                                                conversation_message_task.user.id,
-                                                                conversation_message_task.message.id,
-                                                                from_source,
-                                                                score)
-                    return True
+                )
+                if documents:
+                    annotation_id = documents[0].metadata['annotation_id']
+                    score = documents[0].metadata['score']
+                    annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
+                    if annotation:
+                        conversation_message_task.annotation_end(annotation.content, annotation.id, annotation.account.name)
+                        # insert annotation history
+                        AppAnnotationService.add_annotation_history(annotation.id,
+                                                                    app.id,
+                                                                    annotation.question,
+                                                                    annotation.content,
+                                                                    conversation_message_task.query,
+                                                                    conversation_message_task.user.id,
+                                                                    conversation_message_task.message.id,
+                                                                    from_source,
+                                                                    score)
+                        return True
+            except Exception as e:
+                logging.warning(f'Query annotation failed, exception: {str(e)}.')
+                return False
         return False
 
     @classmethod
