@@ -54,3 +54,5 @@ werkzeug==2.3.7
 pymilvus==2.3.0
 qdrant-client==1.6.4
 cohere~=4.32
+unstructured~=0.10.27
+unstructured[docx,pptx]~=0.10.27
