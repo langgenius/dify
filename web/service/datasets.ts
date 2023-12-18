@@ -214,3 +214,11 @@ export const createApikey: Fetcher<CreateApiKeyResponse, { url: string; body: Re
 export const fetchDatasetApiBaseUrl: Fetcher<{ api_base_url: string }, string> = (url) => {
   return get<{ api_base_url: string }>(url)
 }
+
+type FileTypesRes = {
+  allowed_extensions: string[]
+}
+
+export const fetchSupportFileTypes: Fetcher<FileTypesRes, { url: string }> = ({ url }) => {
+  return get<FileTypesRes>(url)
+}
