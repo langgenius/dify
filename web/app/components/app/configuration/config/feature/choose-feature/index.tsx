@@ -10,6 +10,7 @@ import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuratio
 import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { Citations } from '@/app/components/base/icons/src/vender/solid/editor'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
+import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 type IConfig = {
   openingStatement: boolean
   moreLikeThis: boolean
@@ -17,6 +18,7 @@ type IConfig = {
   speechToText: boolean
   citation: boolean
   moderation: boolean
+  annotation: boolean
 }
 
 export type IChooseFeatureProps = {
@@ -43,7 +45,6 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
   showSpeechToTextItem,
 }) => {
   const { t } = useTranslation()
-
   return (
     <Modal
       isShow={isShow}
@@ -126,10 +127,18 @@ const ChooseFeature: FC<IChooseFeatureProps> = ({
               value={config.moderation}
               onChange={value => onChange('moderation', value)}
             />
+            {isChatApp && (
+              <FeatureItem
+                icon={<MessageFast className='w-4 h-4 text-[#444CE7]' />}
+                title={t('appDebug.feature.annotation.title')}
+                description={t('appDebug.feature.annotation.description')}
+                value={config.annotation}
+                onChange={value => onChange('annotation', value)}
+              />
+            )}
           </>
         </FeatureGroup>
       </div>
-
     </Modal>
   )
 }

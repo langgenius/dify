@@ -63,10 +63,12 @@ export const defaultPlan = {
     vectorSpace: 1,
     buildApps: 1,
     teamMembers: 1,
+    annotatedResponse: 1,
   },
   total: {
     vectorSpace: 10,
     buildApps: 10,
     teamMembers: 1,
+    annotatedResponse: 10,
   },
 }

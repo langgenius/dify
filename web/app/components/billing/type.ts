@@ -23,7 +23,7 @@ export type PlanInfo = {
   annotatedResponse: number
 }
 
-export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers'>
+export type UsagePlanInfo = Pick<PlanInfo, 'vectorSpace' | 'buildApps' | 'teamMembers' | 'annotatedResponse'>
 
 export enum DocumentProcessingPriority {
   standard = 'standard',
@@ -45,6 +45,10 @@ export type CurrentPlanInfoBackend = {
     limit: number // total. 0 means unlimited
   }
   vector_space: {
+    size: number
+    limit: number // total. 0 means unlimited
+  }
+  annotation_quota_limit: {
     size: number
     limit: number // total. 0 means unlimited
   }

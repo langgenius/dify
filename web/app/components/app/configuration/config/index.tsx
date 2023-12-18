@@ -11,6 +11,7 @@ import ExperienceEnchanceGroup from '../features/experience-enchance-group'
 import Toolbox from '../toolbox'
 import HistoryPanel from '../config-prompt/conversation-histroy/history-panel'
 import ConfigVision from '../config-vision'
+import useAnnotationConfig from '../toolbox/annotation/use-annotation-config'
 import AddFeatureBtn from './feature/add-feature-btn'
 import ChooseFeature from './feature/choose-feature'
 import useFeature from './feature/use-feature'
@@ -18,13 +19,16 @@ import AdvancedModeWaring from '@/app/components/app/configuration/prompt-mode/a
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import type { PromptVariable } from '@/models/debug'
+import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig } from '@/models/debug'
 import { AppType, ModelModeType } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
+import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
+import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 
 const Config: FC = () => {
   const {
+    appId,
     mode,
     isAdvancedMode,
     modelModeType,
@@ -45,6 +49,8 @@ const Config: FC = () => {
     setSpeechToTextConfig,
     citationConfig,
     setCitationConfig,
+    annotationConfig,
+    setAnnotationConfig,
     moderationConfig,
     setModerationConfig,
   } = useContext(ConfigContext)
@@ -56,7 +62,7 @@ const Config: FC = () => {
   const promptVariables = modelConfig.configs.prompt_variables
   // simple mode
   const handlePromptChange = (newTemplate: string, newVariables: PromptVariable[]) => {
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.configs.prompt_template = newTemplate
       draft.configs.prompt_variables = [...draft.configs.prompt_variables, ...newVariables]
     })
@@ -70,7 +76,7 @@ const Config: FC = () => {
 
   const handlePromptVariablesNameChange = (newVariables: PromptVariable[]) => {
     setPrevPromptConfig(modelConfig.configs)
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.configs.prompt_variables = newVariables
     })
     setModelConfig(newModelConfig)
@@ -85,31 +91,42 @@ const Config: FC = () => {
     setIntroduction,
     moreLikeThis: moreLikeThisConfig.enabled,
     setMoreLikeThis: (value) => {
-      setMoreLikeThisConfig(produce(moreLikeThisConfig, (draft) => {
+      setMoreLikeThisConfig(produce(moreLikeThisConfig, (draft: MoreLikeThisConfig) => {
         draft.enabled = value
       }))
     },
     suggestedQuestionsAfterAnswer: suggestedQuestionsAfterAnswerConfig.enabled,
     setSuggestedQuestionsAfterAnswer: (value) => {
-      setSuggestedQuestionsAfterAnswerConfig(produce(suggestedQuestionsAfterAnswerConfig, (draft) => {
+      setSuggestedQuestionsAfterAnswerConfig(produce(suggestedQuestionsAfterAnswerConfig, (draft: SuggestedQuestionsAfterAnswerConfig) => {
         draft.enabled = value
       }))
     },
     speechToText: speechToTextConfig.enabled,
     setSpeechToText: (value) => {
-      setSpeechToTextConfig(produce(speechToTextConfig, (draft) => {
+      setSpeechToTextConfig(produce(speechToTextConfig, (draft: SpeechToTextConfig) => {
         draft.enabled = value
       }))
     },
     citation: citationConfig.enabled,
     setCitation: (value) => {
-      setCitationConfig(produce(citationConfig, (draft) => {
+      setCitationConfig(produce(citationConfig, (draft: CitationConfig) => {
         draft.enabled = value
       }))
     },
+    annotation: annotationConfig.enabled,
+    setAnnotation: async (value) => {
+      if (value) {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        setIsShowAnnotationConfigInit(true)
+      }
+      else {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        await handleDisableAnnotation(annotationConfig.embedding_model)
+      }
+    },
     moderation: moderationConfig.enabled,
     setModeration: (value) => {
-      setModerationConfig(produce(moderationConfig, (draft) => {
+      setModerationConfig(produce(moderationConfig, (draft: ModerationConfig) => {
         draft.enabled = value
       }))
       if (value && !moderationConfig.type) {
@@ -127,7 +144,7 @@ const Config: FC = () => {
           },
           onSaveCallback: setModerationConfig,
           onCancelCallback: () => {
-            setModerationConfig(produce(moderationConfig, (draft) => {
+            setModerationConfig(produce(moderationConfig, (draft: ModerationConfig) => {
               draft.enabled = false
               showChooseFeatureTrue()
             }))
@@ -138,8 +155,22 @@ const Config: FC = () => {
     },
   })
 
+  const {
+    handleEnableAnnotation,
+    setScore,
+    handleDisableAnnotation,
+    isShowAnnotationConfigInit,
+    setIsShowAnnotationConfigInit,
+    isShowAnnotationFullModal,
+    setIsShowAnnotationFullModal,
+  } = useAnnotationConfig({
+    appId,
+    annotationConfig,
+    setAnnotationConfig,
+  })
+
   const hasChatConfig = isChatApp && (featureConfig.openingStatement || featureConfig.suggestedQuestionsAfterAnswer || (featureConfig.speechToText && !!speech2textDefaultModel) || featureConfig.citation)
-  const hasToolbox = false
+  const hasToolbox = moderationConfig.enabled || featureConfig.annotation
 
   const wrapRef = useRef<HTMLDivElement>(null)
   const wrapScroll = useScroll(wrapRef)
@@ -229,10 +260,36 @@ const Config: FC = () => {
 
         {/* Toolbox */}
         {
-          moderationConfig.enabled && (
-            <Toolbox showModerationSettings />
+          hasToolbox && (
+            <Toolbox
+              showModerationSettings={moderationConfig.enabled}
+              showAnnotation={isChatApp && featureConfig.annotation}
+              onEmbeddingChange={handleEnableAnnotation}
+              onScoreChange={setScore}
+            />
           )
         }
+
+        <ConfigParamModal
+          appId={appId}
+          isInit
+          isShow={isShowAnnotationConfigInit}
+          onHide={() => {
+            setIsShowAnnotationConfigInit(false)
+            showChooseFeatureTrue()
+          }}
+          onSave={async (embeddingModel, score) => {
+            await handleEnableAnnotation(embeddingModel, score)
+            setIsShowAnnotationConfigInit(false)
+          }}
+          annotationConfig={annotationConfig}
+        />
+        {isShowAnnotationFullModal && (
+          <AnnotationFullModal
+            show={isShowAnnotationFullModal}
+            onHide={() => setIsShowAnnotationFullModal(false)}
+          />
+        )}
       </div>
     </>
   )

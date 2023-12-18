@@ -1,6 +1,7 @@
 const translation = {
   api: {
     success: '成功',
+    actionSuccess: '操作成功',
     saved: '已保存',
     create: '已创建',
     remove: '已移除',
@@ -31,6 +32,7 @@ const translation = {
     ok: '好的',
     log: '日志',
     learnMore: '了解更多',
+    params: '参数',
   },
   placeholder: {
     input: '请输入',
@@ -236,6 +238,7 @@ const translation = {
     embeddingModel: {
       key: 'Embedding 模型',
       tip: '设置知识库文档嵌入处理的默认模型，检索和导入知识库均使用该Embedding模型进行向量化处理，切换后将导致已导入的知识库与问题之间的向量维度不一致，从而导致检索失败。为避免检索失败，请勿随意切换该模型。',
+      required: '请选择 Embedding 模型',
     },
     speechToTextModel: {
       key: '语音转文本模型',
