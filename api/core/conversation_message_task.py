@@ -319,6 +319,10 @@ class ConversationMessageTask:
         self._pub_handler.pub_message_end(self.retriever_resource)
         self._pub_handler.pub_end()
 
+    def annotation_end(self, text: str, annotation_id: str, annotation_author_name: str):
+        self._pub_handler.pub_annotation(text, annotation_id, annotation_author_name, self.start_at)
+        self._pub_handler.pub_end()
+
 
 class PubHandler:
     def __init__(self, user: Union[Account, EndUser], task_id: str,
@@ -435,11 +439,35 @@ class PubHandler:
                 'task_id': self._task_id,
                 'message_id': self._message.id,
                 'mode': self._conversation.mode,
-                'conversation_id': self._conversation.id
+                'conversation_id': self._conversation.id,
             }
         }
         if retriever_resource:
             content['data']['retriever_resources'] = retriever_resource
+        redis_client.publish(self._channel, json.dumps(content))
+
+        if self._is_stopped():
+            self.pub_end()
+            raise ConversationTaskStoppedException()
+
+    def pub_annotation(self, text: str, annotation_id: str, annotation_author_name: str, start_at: float):
+        content = {
+            'event': 'annotation',
+            'data': {
+                'task_id': self._task_id,
+                'message_id': self._message.id,
+                'mode': self._conversation.mode,
+                'conversation_id': self._conversation.id,
+                'text': text,
+                'annotation_id': annotation_id,
+                'annotation_author_name': annotation_author_name
+            }
+        }
+        self._message.answer = text
+        self._message.provider_response_latency = time.perf_counter() - start_at
+
+        db.session.commit()
+
         redis_client.publish(self._channel, json.dumps(content))
 
         if self._is_stopped():

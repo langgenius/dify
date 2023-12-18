@@ -141,6 +141,17 @@ class WeaviateVectorIndex(BaseVectorIndex):
             "valueText": document_id
         })
 
+    def delete_by_metadata_field(self, key: str, value: str):
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.del_texts({
+            "operator": "Equal",
+            "path": [key],
+            "valueText": value
+        })
+
     def delete_by_group_id(self, group_id: str):
         if self._is_origin():
             self.recreate_dataset(self.dataset)

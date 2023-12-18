@@ -1,4 +1,4 @@
-import type { IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnMessageReplace } from './base'
+import type { IOnAnnotationReply, IOnCompleted, IOnData, IOnError, IOnMessageEnd, IOnMessageReplace } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
@@ -22,12 +22,13 @@ function getUrl(url: string, isInstalledApp: boolean, installedAppId: string) {
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd, onMessageReplace }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onError, getAbortController, onMessageEnd, onMessageReplace, onAnnotationReply }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onError: IOnError
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
+  onAnnotationReply: IOnAnnotationReply
   getAbortController?: (abortController: AbortController) => void
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('chat-messages', isInstalledApp, installedAppId), {
@@ -35,7 +36,7 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace })
+  }, { onData, onCompleted, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace, onAnnotationReply })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {

@@ -98,6 +98,11 @@ const translation = {
     fullTipLine1: '升级您的套餐以',
     fullTipLine2: '构建更多的程序。',
   },
+  annotatedResponse: {
+    fullTipLine1: '升级您的套餐以',
+    fullTipLine2: '标注更多对话。',
+    quotaTitle: '标注的配额',
+  },
 }
 
 export default translation
