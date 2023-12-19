@@ -33,6 +33,13 @@ class FormOption(BaseModel):
     label: I18nObject
     value: str
 
+    def __init__(self, **data):
+        super().__init__(**data)
+        if not self.label:
+            self.label = I18nObject(
+                en_US=self.value
+            )
+
 
 class FormShowOnObject(BaseModel):
     """
@@ -49,10 +56,10 @@ class CredentialFormSchema(BaseModel):
     variable: str
     label: I18nObject
     type: FormType
-    required: bool
+    required: bool = True
     default: Optional[str] = None
     options: Optional[list[FormOption]] = None
-    placeholder: I18nObject
+    placeholder: Optional[I18nObject] = None
     max_length: int = 0
     show_on: list[FormShowOnObject] = []
 
@@ -104,8 +111,8 @@ class ProviderEntity(BaseModel):
     provider: str
     label: I18nObject
     description: Optional[I18nObject] = None
-    icon_small: I18nObject
-    icon_large: I18nObject
+    icon_small: Optional[I18nObject] = None
+    icon_large: Optional[I18nObject] = None
     background: Optional[I18nObject] = None
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: list[ModelType]

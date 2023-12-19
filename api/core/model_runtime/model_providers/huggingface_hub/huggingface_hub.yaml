@@ -3,6 +3,8 @@ label:
   en_US: HuggingFace Hub
 icon_small:
     en_US: icon_s_en.svg
+icon_large:
+    en_US: icon_l_en.svg
 supported_model_types:
 - llm
 - text-embedding
@@ -72,6 +74,6 @@ provider_credential_schema:
     - value: feature-extraction
       label:
         en_US: Feature Extraction
-    - show_on:
-      - variable: huggingfacehub_api_type
-        value: inference_endpoints
+    show_on:
+    - variable: huggingfacehub_api_type
+      value: inference_endpoints
