@@ -531,7 +531,11 @@ class Message(db.Model):
     def annotation_hit_history(self):
         annotation_history = (db.session.query(AppAnnotationHitHistory)
                               .filter(AppAnnotationHitHistory.message_id == self.id).first())
-        return annotation_history
+        if annotation_history:
+            annotation = (db.session.query(MessageAnnotation).
+                          filter(MessageAnnotation.id == annotation_history.annotation_id).first())
+            return annotation
+        return None
 
     @property
     def app_model_config(self):
@@ -656,6 +660,11 @@ class MessageAnnotation(db.Model):
 
     @property
     def account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+    @property
+    def annotation_create_account(self):
         account = db.session.query(Account).filter(Account.id == self.account_id).first()
         return account
 
