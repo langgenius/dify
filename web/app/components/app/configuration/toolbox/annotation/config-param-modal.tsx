@@ -83,7 +83,7 @@ const ConfigParamModal: FC<Props> = ({
         {t(`appAnnotation.initSetup.${isInit ? 'title' : 'configTitle'}`)}
       </div>
 
-      <div className='space-y-2'>
+      <div className='mt-6 space-y-3'>
         <Item
           title={t('appDebug.feature.annotation.scoreThreshold.title')}
           tooltip={t('appDebug.feature.annotation.scoreThreshold.description')}
@@ -120,12 +120,12 @@ const ConfigParamModal: FC<Props> = ({
         </Item>
       </div>
 
-      <div className='mt-4 flex gap-2 justify-end'>
-        <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+      <div className='mt-6 flex gap-2 justify-end'>
+        <Button className='!text-sm' onClick={onHide}>{t('common.operation.cancel')}</Button>
         <Button
           type='primary'
           onClick={handleSave}
-          className='flex items-center border-[0.5px]'
+          className='flex items-center border-[0.5px] !text-sm'
           loading={isLoading}
         >
           <div></div>
