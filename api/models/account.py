@@ -127,7 +127,7 @@ class Tenant(db.Model):
     
     @property
     def custom_config_dict(self) -> dict:
-        return json.loads(self.custom_config) if self.custom_config else None
+        return json.loads(self.custom_config) if self.custom_config else {}
     
     @custom_config_dict.setter
     def custom_config_dict(self, value: dict):

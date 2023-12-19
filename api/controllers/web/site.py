@@ -85,7 +85,7 @@ class AppSiteInfo:
         if can_replace_logo:
             base_url = current_app.config.get('FILES_URL')
             remove_webapp_brand = tenant.custom_config_dict.get('remove_webapp_brand', False)
-            replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict['replace_webapp_logo'] else None
+            replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict.get('replace_webapp_logo') else None
             self.custom_config = {
                 'remove_webapp_brand': remove_webapp_brand,
                 'replace_webapp_logo': replace_webapp_logo,
