@@ -16,6 +16,7 @@ type Props = {
   currentPlan: Plan
   plan: Plan
   planRange: PlanRange
+  canPay: boolean
 }
 
 const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | JSX.Element; tooltip?: string }) => {
@@ -65,6 +66,7 @@ const PlanItem: FC<Props> = ({
   plan,
   currentPlan,
   planRange,
+  canPay,
 }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
@@ -75,10 +77,13 @@ const PlanItem: FC<Props> = ({
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
+  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const btnText = (() => {
+    if (!canPay && plan !== Plan.enterprise)
+      return t('billing.plansCommon.contractOwner')
+
     if (isCurrent)
       return t('billing.plansCommon.currentPlan')
 

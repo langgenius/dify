@@ -11,6 +11,8 @@ function useFeature({
   setSpeechToText,
   citation,
   setCitation,
+  annotation,
+  setAnnotation,
   moderation,
   setModeration,
 }: {
@@ -24,6 +26,8 @@ function useFeature({
   setSpeechToText: (speechToText: boolean) => void
   citation: boolean
   setCitation: (citation: boolean) => void
+  annotation: boolean
+  setAnnotation: (annotation: boolean) => void
   moderation: boolean
   setModeration: (moderation: boolean) => void
 }) {
@@ -45,6 +49,7 @@ function useFeature({
     suggestedQuestionsAfterAnswer,
     speechToText,
     citation,
+    annotation,
     moderation,
   }
   const handleFeatureChange = (key: string, value: boolean) => {
@@ -66,6 +71,9 @@ function useFeature({
         break
       case 'citation':
         setCitation(value)
+        break
+      case 'annotation':
+        setAnnotation(value)
         break
       case 'moderation':
         setModeration(value)

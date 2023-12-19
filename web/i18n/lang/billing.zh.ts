@@ -19,6 +19,7 @@ const translation = {
     year: '年',
     save: '节省',
     currentPlan: '当前计划',
+    contractOwner: '联系您的工作区所有者',
     free: '免费',
     startForFree: '免费开始',
     getStartedWith: '开始使用',
@@ -97,6 +98,11 @@ const translation = {
   apps: {
     fullTipLine1: '升级您的套餐以',
     fullTipLine2: '构建更多的程序。',
+  },
+  annotatedResponse: {
+    fullTipLine1: '升级您的套餐以',
+    fullTipLine2: '标注更多对话。',
+    quotaTitle: '标注的配额',
   },
 }
 

@@ -1,4 +1,6 @@
+import json
 import enum
+from math import e
 from typing import List
 
 from flask_login import UserMixin
@@ -112,6 +114,7 @@ class Tenant(db.Model):
     encrypt_public_key = db.Column(db.Text)
     plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -121,6 +124,14 @@ class Tenant(db.Model):
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id
         ).all()
+    
+    @property
+    def custom_config_dict(self) -> dict:
+        return json.loads(self.custom_config) if self.custom_config else {}
+    
+    @custom_config_dict.setter
+    def custom_config_dict(self, value: dict):
+        self.custom_config = json.dumps(value)
 
 
 class TenantAccountJoinRole(enum.Enum):

@@ -2,6 +2,7 @@ import json
 
 from flask import current_app, request
 from flask_login import UserMixin
+from sqlalchemy import Float
 from sqlalchemy.dialects.postgresql import UUID
 
 from core.file.upload_file_parser import UploadFileParser
@@ -129,6 +130,25 @@ class AppModelConfig(db.Model):
             else {"enabled": False}
 
     @property
+    def annotation_reply_dict(self) -> dict:
+        annotation_setting = db.session.query(AppAnnotationSetting).filter(
+            AppAnnotationSetting.app_id == self.app_id).first()
+        if annotation_setting:
+            collection_binding_detail = annotation_setting.collection_binding_detail
+            return {
+                "id": annotation_setting.id,
+                "enabled": True,
+                "score_threshold": annotation_setting.score_threshold,
+                "embedding_model": {
+                    "embedding_provider_name": collection_binding_detail.provider_name,
+                    "embedding_model_name": collection_binding_detail.model_name
+                }
+            }
+
+        else:
+            return {"enabled": False}
+
+    @property
     def more_like_this_dict(self) -> dict:
         return json.loads(self.more_like_this) if self.more_like_this else {"enabled": False}
 
@@ -170,7 +190,9 @@ class AppModelConfig(db.Model):
 
     @property
     def file_upload_dict(self) -> dict:
-        return json.loads(self.file_upload) if self.file_upload else {"image": {"enabled": False, "number_limits": 3, "detail": "high", "transfer_methods": ["remote_url", "local_file"]}}
+        return json.loads(self.file_upload) if self.file_upload else {
+            "image": {"enabled": False, "number_limits": 3, "detail": "high",
+                      "transfer_methods": ["remote_url", "local_file"]}}
 
     def to_dict(self) -> dict:
         return {
@@ -182,6 +204,7 @@ class AppModelConfig(db.Model):
             "suggested_questions_after_answer": self.suggested_questions_after_answer_dict,
             "speech_to_text": self.speech_to_text_dict,
             "retriever_resource": self.retriever_resource_dict,
+            "annotation_reply": self.annotation_reply_dict,
             "more_like_this": self.more_like_this_dict,
             "sensitive_word_avoidance": self.sensitive_word_avoidance_dict,
             "external_data_tools": self.external_data_tools_list,
@@ -505,6 +528,16 @@ class Message(db.Model):
         return annotation
 
     @property
+    def annotation_hit_history(self):
+        annotation_history = (db.session.query(AppAnnotationHitHistory)
+                              .filter(AppAnnotationHitHistory.message_id == self.id).first())
+        if annotation_history:
+            annotation = (db.session.query(MessageAnnotation).
+                          filter(MessageAnnotation.id == annotation_history.annotation_id).first())
+            return annotation
+        return None
+
+    @property
     def app_model_config(self):
         conversation = db.session.query(Conversation).filter(Conversation.id == self.conversation_id).first()
         if conversation:
@@ -616,9 +649,11 @@ class MessageAnnotation(db.Model):
 
     id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(UUID, nullable=False)
-    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=False)
-    message_id = db.Column(UUID, nullable=False)
+    conversation_id = db.Column(UUID, db.ForeignKey('conversations.id'), nullable=True)
+    message_id = db.Column(UUID, nullable=True)
+    question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)
+    hit_count = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     account_id = db.Column(UUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
@@ -627,6 +662,84 @@ class MessageAnnotation(db.Model):
     def account(self):
         account = db.session.query(Account).filter(Account.id == self.account_id).first()
         return account
+
+    @property
+    def annotation_create_account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+
+class AppAnnotationHitHistory(db.Model):
+    __tablename__ = 'app_annotation_hit_histories'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_hit_histories_pkey'),
+        db.Index('app_annotation_hit_histories_app_idx', 'app_id'),
+        db.Index('app_annotation_hit_histories_account_idx', 'account_id'),
+        db.Index('app_annotation_hit_histories_annotation_idx', 'annotation_id'),
+        db.Index('app_annotation_hit_histories_message_idx', 'message_id'),
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(UUID, nullable=False)
+    annotation_id = db.Column(UUID, nullable=False)
+    source = db.Column(db.Text, nullable=False)
+    question = db.Column(db.Text, nullable=False)
+    account_id = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    score = db.Column(Float, nullable=False, server_default=db.text('0'))
+    message_id = db.Column(UUID, nullable=False)
+    annotation_question = db.Column(db.Text, nullable=False)
+    annotation_content = db.Column(db.Text, nullable=False)
+
+    @property
+    def account(self):
+        account = (db.session.query(Account)
+                   .join(MessageAnnotation, MessageAnnotation.account_id == Account.id)
+                   .filter(MessageAnnotation.id == self.annotation_id).first())
+        return account
+
+    @property
+    def annotation_create_account(self):
+        account = db.session.query(Account).filter(Account.id == self.account_id).first()
+        return account
+
+
+class AppAnnotationSetting(db.Model):
+    __tablename__ = 'app_annotation_settings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='app_annotation_settings_pkey'),
+        db.Index('app_annotation_settings_app_idx', 'app_id')
+    )
+
+    id = db.Column(UUID, server_default=db.text('uuid_generate_v4()'))
+    app_id = db.Column(UUID, nullable=False)
+    score_threshold = db.Column(Float, nullable=False, server_default=db.text('0'))
+    collection_binding_id = db.Column(UUID, nullable=False)
+    created_user_id = db.Column(UUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_user_id = db.Column(UUID, nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    @property
+    def created_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.created_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def updated_account(self):
+        account = (db.session.query(Account)
+                   .join(AppAnnotationSetting, AppAnnotationSetting.updated_user_id == Account.id)
+                   .filter(AppAnnotationSetting.id == self.annotation_id).first())
+        return account
+
+    @property
+    def collection_binding_detail(self):
+        from .dataset import DatasetCollectionBinding
+        collection_binding_detail = (db.session.query(DatasetCollectionBinding)
+                                     .filter(DatasetCollectionBinding.id == self.collection_binding_id).first())
+        return collection_binding_detail
 
 
 class OperationLog(db.Model):
