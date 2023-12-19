@@ -56,3 +56,5 @@ qdrant-client==1.6.4
 cohere~=4.32
 unstructured~=0.10.27
 unstructured[docx,pptx]~=0.10.27
+bs4~=0.0.1
+markdown~=3.5.1
