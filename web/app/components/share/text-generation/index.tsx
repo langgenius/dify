@@ -71,6 +71,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [inputs, setInputs] = useState<Record<string, any>>({})
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
+  const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
   const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
   const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
 
@@ -343,9 +344,10 @@ const TextGeneration: FC<IMainProps> = ({
   useEffect(() => {
     (async () => {
       const [appData, appParams]: any = await fetchInitData()
-      const { app_id: appId, site: siteInfo } = appData
+      const { app_id: appId, site: siteInfo, can_replace_logo } = appData
       setAppId(appId)
       setSiteInfo(siteInfo as SiteInfo)
+      setCanReplaceLogo(can_replace_logo)
       changeLanguage(siteInfo.default_language)
 
       const { user_input_form, more_like_this, file_upload, sensitive_word_avoidance }: any = appParams
@@ -364,9 +366,13 @@ const TextGeneration: FC<IMainProps> = ({
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useEffect(() => {
-    if (siteInfo?.title)
-      document.title = `${siteInfo.title} - Powered by Dify`
-  }, [siteInfo?.title])
+    if (siteInfo?.title) {
+      if (canReplaceLogo)
+        document.title = `${siteInfo.title}`
+      else
+        document.title = `${siteInfo.title} - Powered by Dify`
+    }
+  }, [siteInfo?.title, canReplaceLogo])
 
   const [isShowResSidebar, { setTrue: showResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
   const resRef = useRef<HTMLDivElement>(null)

@@ -243,7 +243,7 @@ class Weaviate(VectorStore):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         if kwargs.get("additional"):
             query_obj = query_obj.with_additional(kwargs.get("additional"))
-        properties = ['text', 'dataset_id', 'doc_hash', 'doc_id', 'document_id']
+        properties = ['text']
         result = query_obj.with_bm25(query=query, properties=properties).with_limit(k).do()
         if "errors" in result:
             raise ValueError(f"Error during query: {result['errors']}")

@@ -1,8 +1,16 @@
 name: "📚 Documentation Issue"
-description: Report issues in our documentation [please use English :）]
+description: Report issues in our documentation
 labels: 
 - ducumentation
 body:
+- type: checkboxes
+  attributes:
+    label: Self Checks
+    description: "To make sure we get to you in time, please check the following :)"
+      - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
+        required: true
+      - label: I confirm that I am using English to file this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+        required: true
 - type: textarea
   attributes: 
     label: Provide a description of requested docs changes

@@ -31,7 +31,8 @@ const WorkplaceSelector = () => {
 
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
-      if (currentWorkspace?.id === tenant_id) return
+      if (currentWorkspace?.id === tenant_id)
+        return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       location.assign(`${location.origin}`)

@@ -5,12 +5,22 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import GroupName from '../base/group-name'
 import Moderation from './moderation'
+import Annotation from './annotation/config-param'
+import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 
 export type ToolboxProps = {
   showModerationSettings: boolean
+  showAnnotation: boolean
+  onEmbeddingChange: (embeddingModel: EmbeddingModelConfig) => void
+  onScoreChange: (score: number, embeddingModel?: EmbeddingModelConfig) => void
 }
 
-const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
+const Toolbox: FC<ToolboxProps> = ({
+  showModerationSettings,
+  showAnnotation,
+  onEmbeddingChange,
+  onScoreChange,
+}) => {
   const { t } = useTranslation()
 
   return (
@@ -19,6 +29,14 @@ const Toolbox: FC<ToolboxProps> = ({ showModerationSettings }) => {
       {
         showModerationSettings && (
           <Moderation />
+        )
+      }
+      {
+        (showAnnotation || true) && (
+          <Annotation
+            onEmbeddingChange={onEmbeddingChange}
+            onScoreChange={onScoreChange}
+          />
         )
       }
     </div>

@@ -1,4 +1,4 @@
-import type { ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug.ts'
 import type { ExternalDataTool } from '@/models/common'
 export enum ProviderType {
   openai = 'openai',
@@ -130,6 +130,7 @@ export type ModelConfig = {
     enabled: boolean
   }
   external_data_tools: ExternalDataTool[]
+  annotation_reply?: AnnotationReplyConfig
   agent_mode: {
     enabled: boolean
     tools: ToolItem[]

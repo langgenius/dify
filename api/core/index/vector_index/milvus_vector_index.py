@@ -100,7 +100,6 @@ class MilvusVectorIndex(BaseVectorIndex):
         """Only for created index."""
         if self._vector_store:
             return self._vector_store
-        attributes = ['doc_id', 'dataset_id', 'document_id']
 
         return MilvusVectorStore(
             collection_name=self.get_index_name(self.dataset),
@@ -116,6 +115,16 @@ class MilvusVectorIndex(BaseVectorIndex):
         vector_store = self._get_vector_store()
         vector_store = cast(self._get_vector_store_class(), vector_store)
         ids = vector_store.get_ids_by_document_id(document_id)
+        if ids:
+            vector_store.del_texts({
+                'filter': f'id in {ids}'
+            })
+
+    def delete_by_metadata_field(self, key: str, value: str):
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+        ids = vector_store.get_ids_by_metadata_field(key, value)
         if ids:
             vector_store.del_texts({
                 'filter': f'id in {ids}'

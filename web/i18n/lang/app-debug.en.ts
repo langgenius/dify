@@ -75,6 +75,27 @@ const translation = {
       description: 'Once enabled, show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
+    annotation: {
+      title: 'Annotation Reply',
+      description: 'You can manually add high-quality response to the cache for prioritized matching with similar user questions.',
+      resDes: 'Annotation Response is enabled',
+      scoreThreshold: {
+        title: 'Score Threshold',
+        description: 'Used to set the similarity threshold for annotation reply.',
+        easyMatch: 'Easy Match',
+        accurateMatch: 'Accurate Match',
+      },
+      matchVariable: {
+        title: 'Match Variable',
+        choosePlaceholder: 'Choose match variable',
+      },
+      cacheManagement: 'Annotations',
+      cached: 'Annotated',
+      remove: 'Remove',
+      removeConfirm: 'Delete this annotation ?',
+      add: 'Add annotation',
+      edit: 'Edit annotation',
+    },
     dataSet: {
       title: 'Context',
       noData: 'You can import Knowledge as context',

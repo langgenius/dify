@@ -138,7 +138,22 @@ class AppModelConfigService:
             config["retriever_resource"]["enabled"] = False
 
         if not isinstance(config["retriever_resource"]["enabled"], bool):
-            raise ValueError("enabled in speech_to_text must be of boolean type")
+            raise ValueError("enabled in retriever_resource must be of boolean type")
+
+        # annotation reply
+        if 'annotation_reply' not in config or not config["annotation_reply"]:
+            config["annotation_reply"] = {
+                "enabled": False
+            }
+
+        if not isinstance(config["annotation_reply"], dict):
+            raise ValueError("annotation_reply must be of dict type")
+
+        if "enabled" not in config["annotation_reply"] or not config["annotation_reply"]["enabled"]:
+            config["annotation_reply"]["enabled"] = False
+
+        if not isinstance(config["annotation_reply"]["enabled"], bool):
+            raise ValueError("enabled in annotation_reply must be of boolean type")
 
         # more_like_this
         if 'more_like_this' not in config or not config["more_like_this"]:
@@ -325,6 +340,7 @@ class AppModelConfigService:
             "suggested_questions_after_answer": config["suggested_questions_after_answer"],
             "speech_to_text": config["speech_to_text"],
             "retriever_resource": config["retriever_resource"],
+            "annotation_reply": config["annotation_reply"],
             "more_like_this": config["more_like_this"],
             "sensitive_word_avoidance": config["sensitive_word_avoidance"],
             "external_data_tools": config["external_data_tools"],

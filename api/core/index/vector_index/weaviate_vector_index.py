@@ -27,9 +27,10 @@ class WeaviateConfig(BaseModel):
 
 class WeaviateVectorIndex(BaseVectorIndex):
 
-    def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings):
+    def __init__(self, dataset: Dataset, config: WeaviateConfig, embeddings: Embeddings, attributes: list):
         super().__init__(dataset, embeddings)
         self._client = self._init_client(config)
+        self._attributes = attributes
 
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
         auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
@@ -111,7 +112,7 @@ class WeaviateVectorIndex(BaseVectorIndex):
         if self._vector_store:
             return self._vector_store
 
-        attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
+        attributes = self._attributes
         if self._is_origin():
             attributes = ['doc_id']
 
@@ -140,6 +141,27 @@ class WeaviateVectorIndex(BaseVectorIndex):
             "path": ["document_id"],
             "valueText": document_id
         })
+
+    def delete_by_metadata_field(self, key: str, value: str):
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.del_texts({
+            "operator": "Equal",
+            "path": [key],
+            "valueText": value
+        })
+
+    def delete_by_group_id(self, group_id: str):
+        if self._is_origin():
+            self.recreate_dataset(self.dataset)
+            return
+
+        vector_store = self._get_vector_store()
+        vector_store = cast(self._get_vector_store_class(), vector_store)
+
+        vector_store.delete()
 
     def _is_origin(self):
         if self.dataset.index_struct_dict:

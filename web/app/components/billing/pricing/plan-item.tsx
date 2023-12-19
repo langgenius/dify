@@ -6,7 +6,9 @@ import cn from 'classnames'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE, contactSalesUrl } from '../config'
 import Toast from '../../base/toast'
+import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
+import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 
@@ -14,12 +16,24 @@ type Props = {
   currentPlan: Plan
   plan: Plan
   planRange: PlanRange
+  canPay: boolean
 }
 
-const KeyValue = ({ label, value }: { label: string; value: string | number | JSX.Element }) => {
+const KeyValue = ({ label, value, tooltip }: { label: string; value: string | number | JSX.Element; tooltip?: string }) => {
   return (
     <div className='mt-3.5 leading-[125%] text-[13px] font-medium'>
-      <div className='text-gray-500'>{label}</div>
+      <div className='flex items-center text-gray-500 space-x-1'>
+        <div>{label}</div>
+        {tooltip && (
+          <TooltipPlus
+            popupContent={
+              <div className='w-[200px]'>{tooltip}</div>
+            }
+          >
+            <HelpCircle className='w-3 h-3 text-gray-400' />
+          </TooltipPlus>
+        )}
+      </div>
       <div className='mt-0.5 text-gray-900'>{value}</div>
     </div>
   )
@@ -52,6 +66,7 @@ const PlanItem: FC<Props> = ({
   plan,
   currentPlan,
   planRange,
+  canPay,
 }) => {
   const { t } = useTranslation()
   const [loading, setLoading] = React.useState(false)
@@ -62,10 +77,13 @@ const PlanItem: FC<Props> = ({
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
+  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level || (!canPay && plan !== Plan.enterprise)
   const { isCurrentWorkspaceManager } = useAppContext()
 
   const btnText = (() => {
+    if (!canPay && plan !== Plan.enterprise)
+      return t('billing.plansCommon.contractOwner')
+
     if (isCurrent)
       return t('billing.plansCommon.currentPlan')
 
@@ -84,7 +102,33 @@ const PlanItem: FC<Props> = ({
       case Plan.sandbox:
         return t('billing.plansCommon.supportItems.communityForums')
       case Plan.professional:
-        return t('billing.plansCommon.supportItems.emailSupport')
+        return (
+          <div>
+            <div>{t('billing.plansCommon.supportItems.emailSupport')}</div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.logoChange')}</div>
+              <div>{comingSoon}</div>
+            </div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div className='flex items-center'>
+                +
+                <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
+                <TooltipPlus
+                  popupContent={
+                    <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
+                  }
+                >
+                  <HelpCircle className='w-3 h-3 text-gray-400' />
+                </TooltipPlus>
+              </div>
+              <div>{comingSoon}</div>
+            </div>
+            <div className='mt-3.5 flex items-center space-x-1'>
+              <div>+ {t('billing.plansCommon.supportItems.agentModel')}</div>
+              <div>{comingSoon}</div>
+            </div>
+          </div>
+        )
       case Plan.team:
         return (
           <div>
@@ -94,7 +138,7 @@ const PlanItem: FC<Props> = ({
               <div>{comingSoon}</div>
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.personalizedSupport')}</div>
+              <div>+ {t('billing.plansCommon.supportItems.SSOAuthentication')}</div>
               <div>{comingSoon}</div>
             </div>
           </div>
@@ -103,9 +147,6 @@ const PlanItem: FC<Props> = ({
         return (
           <div>
             <div>{t('billing.plansCommon.supportItems.personalizedSupport')}</div>
-            <div className='mt-3.5 flex items-center space-x-1'>
-              <div>+ {t('billing.plansCommon.supportItems.dedicatedAPISupport')}</div>
-            </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div>+ {t('billing.plansCommon.supportItems.customIntegration')}</div>
             </div>
@@ -141,29 +182,19 @@ const PlanItem: FC<Props> = ({
     setLoading(true)
     try {
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
-      if ((window as any).gtag) {
-        (window as any).gtag('event', 'click_pay_btn', {
-          plan,
-          interval: isYear ? 'year' : 'month',
-          event_callback: () => {
-            window.location.href = res.url
-          },
-        })
-      }
-      else {
-        window.location.href = res.url
-      }
+      // Adb Block additional tracking block the gtag, so we need to redirect directly
+      window.location.href = res.url
     }
     finally {
       setLoading(false)
     }
   }
   return (
-    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] h-[712px] rounded-xl')}>
+    <div className={cn(isMostPopularPlan ? 'bg-[#0086C9] p-0.5' : 'pt-7', 'flex flex-col min-w-[290px] w-[290px] rounded-xl')}>
       {isMostPopularPlan && (
         <div className='flex items-center h-7 justify-center leading-[12px] text-xs font-medium text-[#F5F8FF]'>{t('billing.plansCommon.mostPopular')}</div>
       )}
-      <div className={cn(style[plan].bg, 'grow px-6 pt-6 rounded-[10px]')}>
+      <div className={cn(style[plan].bg, 'grow px-6 py-6 rounded-[10px]')}>
         <div className={cn(style[plan].title, 'mb-1 leading-[125%] text-lg font-semibold')}>{t(`${i18nPrefix}.name`)}</div>
         <div className={cn(isFreePlan ? 'text-[#FB6514]' : 'text-gray-500', 'mb-4 h-8 leading-[125%] text-[13px] font-normal')}>{t(`${i18nPrefix}.description`)}</div>
 
@@ -211,10 +242,21 @@ const PlanItem: FC<Props> = ({
         <KeyValue
           label={t('billing.plansCommon.vectorSpace')}
           value={planInfo.vectorSpace === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : (planInfo.vectorSpace >= 1000 ? `${planInfo.vectorSpace / 1000}G` : `${planInfo.vectorSpace}MB`)}
+          tooltip={t('billing.plansCommon.vectorSpaceBillingTooltip') as string}
         />
         <KeyValue
           label={t('billing.plansCommon.documentProcessingPriority')}
           value={t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`) as string}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.messageRequest.title')}
+          value={planInfo.messageRequest === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.messageRequest} ${t('billing.plansCommon.messageRequest.unit')}`}
+          tooltip={t('billing.plansCommon.messageRequest.tooltip') as string}
+        />
+        <KeyValue
+          label={t('billing.plansCommon.annotatedResponse.title')}
+          value={planInfo.annotatedResponse === NUM_INFINITE ? t('billing.plansCommon.unlimited') as string : `${planInfo.annotatedResponse}`}
+          tooltip={t('billing.plansCommon.annotatedResponse.tooltip') as string}
         />
         <KeyValue
           label={t('billing.plansCommon.logsHistory')}

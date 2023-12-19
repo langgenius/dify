@@ -158,7 +158,8 @@ class DatasetRetrieverTool(BaseTool):
             document_score_list = {}
             if dataset.indexing_technique != "economy":
                 for item in documents:
-                    document_score_list[item.metadata['doc_id']] = item.metadata['score']
+                    if 'score' in item.metadata and item.metadata['score']:
+                        document_score_list[item.metadata['doc_id']] = item.metadata['score']
             document_context_list = []
             index_node_ids = [document.metadata['doc_id'] for document in documents]
             segments = DocumentSegment.query.filter(DocumentSegment.dataset_id == self.dataset_id,

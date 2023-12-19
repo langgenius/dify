@@ -30,6 +30,16 @@ class MilvusVectorStore(Milvus):
         else:
             return None
 
+    def get_ids_by_metadata_field(self, key: str, value: str):
+        result = self.col.query(
+            expr=f'metadata["{key}"] == "{value}"',
+            output_fields=["id"]
+        )
+        if result:
+            return [item["id"] for item in result]
+        else:
+            return None
+
     def get_ids_by_doc_ids(self, doc_ids: list):
         result = self.col.query(
             expr=f'metadata["doc_id"] in {doc_ids}',

@@ -1,6 +1,6 @@
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
-import type { MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
+import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/app/chat/type'
 
 const TIME_OUT = 100000
 
@@ -34,6 +34,7 @@ export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDa
 export type IOnThought = (though: ThoughtItem) => void
 export type IOnMessageEnd = (messageEnd: MessageEnd) => void
 export type IOnMessageReplace = (messageReplace: MessageReplace) => void
+export type IOnAnnotationReply = (messageReplace: AnnotationReply) => void
 export type IOnCompleted = (hasError?: boolean) => void
 export type IOnError = (msg: string, code?: string) => void
 
@@ -46,6 +47,7 @@ type IOtherOptions = {
   onThought?: IOnThought
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
+  onAnnotationReply?: IOnAnnotationReply
   onError?: IOnError
   onCompleted?: IOnCompleted // for stream
   getAbortController?: (abortController: AbortController) => void
@@ -79,7 +81,7 @@ export function format(text: string) {
   return res.replaceAll('\n', '<br/>').replaceAll('```', '')
 }
 
-const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace) => {
+const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnCompleted, onThought?: IOnThought, onMessageEnd?: IOnMessageEnd, onMessageReplace?: IOnMessageReplace, onAnnotationReply?: IOnAnnotationReply) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
 
@@ -139,6 +141,9 @@ const handleStream = (response: Response, onData: IOnData, onCompleted?: IOnComp
             }
             else if (bufferObj.event === 'message_replace') {
               onMessageReplace?.(bufferObj as MessageReplace)
+            }
+            else if (bufferObj.event === 'annotation') {
+              onAnnotationReply?.(bufferObj as AnnotationReply)
             }
           }
         })
@@ -292,7 +297,7 @@ const baseFetch = <T>(
   ]) as Promise<T>
 }
 
-export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
+export const upload = (options: any, isPublicAPI?: boolean, url?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
   let token = ''
   if (isPublicAPI) {
@@ -313,7 +318,7 @@ export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
   }
   const defaultOptions = {
     method: 'POST',
-    url: `${urlPrefix}/files/upload`,
+    url: url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`,
     headers: {
       Authorization: `Bearer ${token}`,
     },
@@ -345,7 +350,7 @@ export const upload = (options: any, isPublicAPI?: boolean): Promise<any> => {
   })
 }
 
-export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onMessageReplace, onError, getAbortController }: IOtherOptions) => {
+export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAPI = false, onData, onCompleted, onThought, onMessageEnd, onMessageReplace, onAnnotationReply, onError, getAbortController }: IOtherOptions) => {
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -384,7 +389,7 @@ export const ssePost = (url: string, fetchOptions: FetchOptionType, { isPublicAP
           return
         }
         onData?.(str, isFirstMessage, moreInfo)
-      }, onCompleted, onThought, onMessageEnd, onMessageReplace)
+      }, onCompleted, onThought, onMessageEnd, onMessageReplace, onAnnotationReply)
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.')
         Toast.notify({ type: 'error', message: e })
