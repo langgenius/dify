@@ -398,11 +398,11 @@ class ModelProviderService:
         provider_instance = model_provider_factory.get_provider_instance(provider)
         provider_schema = provider_instance.get_provider_schema()
 
-        if icon_type == 'icon_small':
+        if icon_type.lower() == 'icon_small':
             if not provider_schema.icon_small:
                 raise ValueError(f"Provider {provider} does not have small icon.")
 
-            if lang == 'zh_Hans':
+            if lang.lower() == 'zh_hans':
                 file_name = provider_schema.icon_small.zh_Hans
             else:
                 file_name = provider_schema.icon_small.en_US
@@ -410,7 +410,7 @@ class ModelProviderService:
             if not provider_schema.icon_large:
                 raise ValueError(f"Provider {provider} does not have large icon.")
 
-            if lang == 'zh_Hans':
+            if lang.lower() == 'zh_hans':
                 file_name = provider_schema.icon_large.zh_Hans
             else:
                 file_name = provider_schema.icon_large.en_US

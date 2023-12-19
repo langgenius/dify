@@ -21,3 +21,4 @@ class GenerateTaskPipeline:
         self._pubsub_manager = pubsub_manager
         self._conversation_id = conversation_id
         self._message_id = message_id
+

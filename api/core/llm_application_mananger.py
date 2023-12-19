@@ -120,7 +120,6 @@ class LLMApplicationManager:
         self._countdown_and_stop_thread(
             flask_app=current_app._get_current_object(),
             worker_thread=worker_thread,
-            pubsub_manager=pubsub_manager,
             llm_application_generate_entity=llm_application_generate_entity
         )
 
@@ -179,36 +178,37 @@ class LLMApplicationManager:
 
     def _countdown_and_stop_thread(self, flask_app: Flask,
                                    worker_thread: threading.Thread,
-                                   pubsub_manager: PubSubManager,
                                    llm_application_generate_entity: LLMApplicationGenerateEntity) -> threading.Thread:
+        """
+        Countdown and stop generate task thread.
+        :param flask_app: Flask app
+        :param worker_thread: worker thread
+        :param llm_application_generate_entity: LLM application generate entity
+        :return:
+        """
         # wait for 10 minutes to close the thread
         timeout = 600
 
         def close_pubsub():
             with flask_app.app_context():
                 try:
-                    task_id = llm_application_generate_entity.task_id
-                    if llm_application_generate_entity.invoke_from in [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP]:
-                        user = db.session.query(EndUser).filter(
-                            EndUser.tenant_id == llm_application_generate_entity.tenant_id,
-                            EndUser.id == llm_application_generate_entity.user_id
-                        ).first()
-                    else:
-                        user = db.session.query(Account).filter(
-                            Account.id == llm_application_generate_entity.user_id
-                        ).first()
+                    # init pubsub manager
+                    pubsub_manager = PubSubManager(
+                        task_id=llm_application_generate_entity.task_id,
+                        user_id=llm_application_generate_entity.user_id,
+                        invoke_from=llm_application_generate_entity.invoke_from
+                    )
 
                     sleep_iterations = 0
                     while sleep_iterations < timeout and worker_thread.is_alive():
                         if sleep_iterations > 0 and sleep_iterations % 10 == 0:
-                            pubsub_manager.ping(user, task_id)
+                            pubsub_manager.publish_ping()
 
                         time.sleep(1)
                         sleep_iterations += 1
 
                     if worker_thread.is_alive():
-                        # todo
-                        pubsub_manager.stop(user, task_id)
+                        pubsub_manager.stop_task()
                         try:
                             pubsub_manager.unsubscribe()
                         except Exception:
