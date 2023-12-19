@@ -247,7 +247,7 @@ const Answer: FC<IAnswerProps> = ({
                             <Markdown className='line-through !text-gray-400' content={content} />
                           </div>
                           <EditTitle title={t('appAnnotation.editBy', {
-                            author: annotation?.logAnnotation.account.name,
+                            author: annotation?.logAnnotation.account?.name,
                           })} />
                         </div>
                       )}
