@@ -31,8 +31,9 @@ annotation_fields = {
 }
 
 annotation_hit_history_fields = {
-    'annotation_id': fields.String,
-    'annotation_create_account': fields.Nested(account_fields, allow_null=True)
+    'annotation_id': fields.String(attribute='id'),
+    'annotation_create_account': fields.Nested(account_fields, allow_null=True),
+    'created_at': TimestampField
 }
 
 message_file_fields = {
