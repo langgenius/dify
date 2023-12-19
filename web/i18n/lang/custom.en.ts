@@ -5,7 +5,7 @@ const translation = {
     suffix: 'customize your brand.',
   },
   webapp: {
-    title: 'Customize web app brand',
+    title: 'Customize WebApp brand',
     removeBrand: 'Remove Powered by Dify',
     changeLogo: 'Change Powered by Brand Image',
     changeLogoTip: 'SVG or PNG format with a minimum size of 40x40px',
