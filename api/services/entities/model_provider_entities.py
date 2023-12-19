@@ -1,6 +1,7 @@
 from enum import Enum
 from typing import Optional
 
+from flask import current_app
 from pydantic import BaseModel
 
 from core.entities.model_entities import ModelStatus
@@ -43,8 +44,8 @@ class ProviderResponse(BaseModel):
     provider: str
     label: I18nObject
     description: Optional[I18nObject] = None
-    icon_small: I18nObject
-    icon_large: I18nObject
+    icon_small: Optional[I18nObject] = None
+    icon_large: Optional[I18nObject] = None
     background: Optional[I18nObject] = None
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: list[ModelType]
@@ -55,6 +56,22 @@ class ProviderResponse(BaseModel):
     custom_configuration: CustomConfigurationResponse
     system_configuration: SystemConfigurationResponse
 
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+                      + f"/console/api/workspaces/current/model-providers/{self.provider}")
+        if self.icon_small is not None:
+            self.icon_small = I18nObject(
+                en_US=f"{url_prefix}/icon_small/en_US",
+                zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
+            )
+
+        if self.icon_large is not None:
+            self.icon_large = I18nObject(
+                en_US=f"{url_prefix}/icon_large/en_US",
+                zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+            )
 
 class ModelResponse(ProviderModel):
     """

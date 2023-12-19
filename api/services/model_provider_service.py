@@ -3,9 +3,11 @@ import os
 from typing import Optional, cast
 
 import requests
+from flask import current_app
 
 from core.entities.model_entities import ModelWithProviderEntity, ModelStatus, DefaultModelEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
+from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.provider_manager import ProviderManager
 from models.provider import ProviderType
@@ -383,6 +385,47 @@ class ModelProviderService:
             provider=provider,
             model=model
         )
+
+    def get_model_provider_icon(self, provider: str, icon_type: str, lang: str) -> Optional[bytes]:
+        """
+        get model provider icon.
+
+        :param provider: provider name
+        :param icon_type: icon type (icon_small or icon_large)
+        :param lang: language (zh_Hans or en_US)
+        :return:
+        """
+        provider_instance = model_provider_factory.get_provider_instance(provider)
+        provider_schema = provider_instance.get_provider_schema()
+
+        if icon_type == 'icon_small':
+            if not provider_schema.icon_small:
+                raise ValueError(f"Provider {provider} does not have small icon.")
+
+            if lang == 'zh_Hans':
+                file_name = provider_schema.icon_small.zh_Hans
+            else:
+                file_name = provider_schema.icon_small.en_US
+        else:
+            if not provider_schema.icon_large:
+                raise ValueError(f"Provider {provider} does not have large icon.")
+
+            if lang == 'zh_Hans':
+                file_name = provider_schema.icon_large.zh_Hans
+            else:
+                file_name = provider_schema.icon_large.en_US
+
+        root_path = current_app.root_path
+        provider_instance_path = os.path.dirname(os.path.join(root_path, provider_instance.__class__.__module__.replace('.', '/')))
+        file_path = os.path.join(provider_instance_path, "_assets")
+        file_path = os.path.join(file_path, file_name)
+
+        if not os.path.exists(file_path):
+            return None
+
+        # read binary from file
+        with open(file_path, 'rb') as f:
+            return f.read()
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """

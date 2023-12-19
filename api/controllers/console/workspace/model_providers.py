@@ -1,4 +1,7 @@
+import io
+
 from fastapi.encoders import jsonable_encoder
+from flask import send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
@@ -132,6 +135,28 @@ class ModelProviderApi(Resource):
         return {'result': 'success'}, 204
 
 
+class ModelProviderIconApi(Resource):
+    """
+    Get model provider icon
+    """
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider: str, icon_type: str, lang: str):
+        model_provider_service = ModelProviderService()
+        icon = model_provider_service.get_model_provider_icon(
+            provider=provider,
+            icon_type=icon_type,
+            lang=lang
+        )
+
+        return send_file(io.BytesIO(icon),
+                         as_attachment=True,
+                         mimetype='application/octet-stream',
+                         download_name='icon.bin')
+
+
 class PreferredProviderTypeUpdateApi(Resource):
 
     @setup_required
@@ -210,6 +235,8 @@ api.add_resource(ModelProviderListApi, '/workspaces/current/model-providers')
 api.add_resource(ModelProviderCredentialApi, '/workspaces/current/model-providers/<string:provider>/credentials')
 api.add_resource(ModelProviderValidateApi, '/workspaces/current/model-providers/<string:provider>/credentials/validate')
 api.add_resource(ModelProviderApi, '/workspaces/current/model-providers/<string:provider>')
+api.add_resource(ModelProviderIconApi, '/workspaces/current/model-providers/<string:provider>/'
+                                       '<string:icon_type>/<string:lang>')
 
 api.add_resource(PreferredProviderTypeUpdateApi,
                  '/workspaces/current/model-providers/<string:provider>/preferred-provider-type')
