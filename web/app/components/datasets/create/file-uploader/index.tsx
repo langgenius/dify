@@ -77,7 +77,7 @@ const FileUploader = ({
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, notify, t])
+  }, [fileUploadConfig, notify, t, ACCEPTS])
 
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
