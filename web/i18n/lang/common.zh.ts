@@ -32,7 +32,7 @@ const translation = {
     ok: '好的',
     log: '日志',
     learnMore: '了解更多',
-    params: '参数',
+    params: '参数设置',
   },
   placeholder: {
     input: '请输入',
