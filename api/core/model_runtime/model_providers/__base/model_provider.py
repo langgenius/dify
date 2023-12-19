@@ -50,8 +50,11 @@ class ModelProvider(ABC):
             with open(yaml_path, 'r') as f:
                 yaml_data = yaml.safe_load(f)
 
-        # yaml_data to entity
-        provider_schema = ProviderEntity(**yaml_data)
+        try:
+            # yaml_data to entity
+            provider_schema = ProviderEntity(**yaml_data)
+        except Exception as e:
+            raise Exception(f'Invalid provider schema for {provider_name}: {str(e)}')
 
         # cache schema
         self.provider_schema = provider_schema

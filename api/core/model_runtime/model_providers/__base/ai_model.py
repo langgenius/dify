@@ -189,8 +189,13 @@ class AIModel(ABC):
 
             yaml_data['fetch_from'] = FetchFrom.PREDEFINED_MODEL.value
 
-            # yaml_data to entity
-            model_schema = AIModelEntity(**yaml_data)
+            try:
+                # yaml_data to entity
+                model_schema = AIModelEntity(**yaml_data)
+            except Exception as e:
+                model_schema_yaml_file_name = os.path.basename(model_schema_yaml_path).rstrip(".yaml")
+                raise Exception(f'Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}:'
+                                f' {str(e)}')
 
             # cache model schema
             model_schemas.append(model_schema)
