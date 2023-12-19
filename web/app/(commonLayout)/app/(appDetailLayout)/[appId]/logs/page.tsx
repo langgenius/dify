@@ -1,5 +1,6 @@
 import React from 'react'
-import Main from '@/app/components/app/log'
+import Main from '@/app/components/app/log-annotation'
+import { PageType } from '@/app/components/app/configuration/toolbox/annotation/type'
 
 export type IProps = {
   params: { appId: string }
@@ -9,7 +10,7 @@ const Logs = async ({
   params: { appId },
 }: IProps) => {
   return (
-    <Main appId={appId} />
+    <Main pageType={PageType.log} appId={appId} />
   )
 }
 

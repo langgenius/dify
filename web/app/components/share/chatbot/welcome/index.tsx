@@ -26,6 +26,11 @@ export type IWelcomeProps = {
   savedInputs: Record<string, any>
   onInputsChange: (inputs: Record<string, any>) => void
   plan: string
+  canReplaceLogo?: boolean
+  customConfig?: {
+    remove_webapp_brand?: boolean
+    replace_webapp_logo?: string
+  }
 }
 
 const Welcome: FC<IWelcomeProps> = ({
@@ -33,12 +38,12 @@ const Welcome: FC<IWelcomeProps> = ({
   hasSetInputs,
   isPublicVersion,
   siteInfo,
-  plan,
   promptConfig,
   onStartChat,
   canEditInputs,
   savedInputs,
   onInputsChange,
+  customConfig,
 }) => {
   const { t } = useTranslation()
   const hasVar = promptConfig.prompt_variables.length > 0
@@ -351,10 +356,20 @@ const Welcome: FC<IWelcomeProps> = ({
               </div>
               : <div>
               </div>}
-            {plan === 'basic' && <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
-              <span className='uppercase'>{t('share.chat.powerBy')}</span>
-              <FootLogo />
-            </a>}
+            {
+              customConfig?.remove_webapp_brand
+                ? null
+                : (
+                  <a className='flex items-center pr-3 space-x-3' href="https://dify.ai/" target="_blank">
+                    <span className='uppercase'>{t('share.chat.powerBy')}</span>
+                    {
+                      customConfig?.replace_webapp_logo
+                        ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />
+                        : <FootLogo />
+                    }
+                  </a>
+                )
+            }
           </div>
         )}
       </div>

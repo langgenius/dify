@@ -1,5 +1,9 @@
 import os
+
 import requests
+
+from extensions.ext_database import db
+from models.account import TenantAccountJoin
 
 
 class BillingService:
@@ -10,7 +14,7 @@ class BillingService:
     def get_info(cls, tenant_id: str):
         params = {'tenant_id': tenant_id}
 
-        billing_info = cls._send_request('GET', '/info', params=params)
+        billing_info = cls._send_request('GET', '/subscription/info', params=params)
 
         return billing_info
 
@@ -18,16 +22,26 @@ class BillingService:
     def get_subscription(cls, plan: str,
                          interval: str,
                          prefilled_email: str = '',
-                         user_name: str = '',
                          tenant_id: str = ''):
         params = {
             'plan': plan,
             'interval': interval,
             'prefilled_email': prefilled_email,
-            'user_name': user_name,
             'tenant_id': tenant_id
         }
-        return cls._send_request('GET', '/subscription', params=params)
+        return cls._send_request('GET', '/subscription/payment-link', params=params)
+
+    @classmethod
+    def get_model_provider_payment_link(cls,
+                                        provider_name: str,
+                                        tenant_id: str,
+                                        account_id: str):
+        params = {
+            'provider_name': provider_name,
+            'tenant_id': tenant_id,
+            'account_id': account_id
+        }
+        return cls._send_request('GET', '/model-provider/payment-link', params=params)
 
     @classmethod
     def get_invoices(cls, prefilled_email: str = ''):
@@ -46,9 +60,14 @@ class BillingService:
 
         return response.json()
 
-    @classmethod
-    def process_event(cls, event: dict):
-        json = {
-            "content": event,
-        }
-        return cls._send_request('POST', '/webhook/stripe', json=json)
+    @staticmethod
+    def is_tenant_owner(current_user):
+        tenant_id = current_user.current_tenant_id
+
+        join = db.session.query(TenantAccountJoin).filter(
+            TenantAccountJoin.tenant_id == tenant_id,
+            TenantAccountJoin.account_id == current_user.id
+        ).first()
+
+        if join.role != 'owner':
+            raise ValueError('Only tenant owner can perform this action')

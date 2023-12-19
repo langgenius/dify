@@ -51,13 +51,19 @@ export type ModelConfigDetail = {
   completion_params: CompletionParamsType
 }
 
-export type Annotation = {
+export type LogAnnotation = {
   content: string
   account: {
     id: string
     name: string
     email: string
   }
+}
+
+export type Annotation = {
+  id: string
+  authorName: string
+  logAnnotation?: LogAnnotation
   created_at?: number
 }
 
@@ -73,7 +79,16 @@ export type MessageContent = {
   answer: string
   provider_response_latency: number
   created_at: number
-  annotation: Annotation
+  annotation: LogAnnotation
+  annotation_hit_history: {
+    annotation_id: string
+    annotation_create_account: {
+      id: string
+      name: string
+      email: string
+    }
+    created_at: number
+  }
   feedbacks: Array<{
     rating: 'like' | 'dislike' | null
     content: string | null

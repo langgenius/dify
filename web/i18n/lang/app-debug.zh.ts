@@ -75,6 +75,27 @@ const translation = {
       description: '启用后，显示源文档和生成内容的归属部分。',
       resDes: '引用和归属已启用',
     },
+    annotation: {
+      title: '标注回复',
+      description: '启用后，将标注用户的回复，以便在用户重复提问时快速响应。',
+      resDes: '标注回复已启用',
+      scoreThreshold: {
+        title: '分数阈值',
+        description: '用于设置标注回复的匹配相似度阈值。',
+        easyMatch: '容易匹配',
+        accurateMatch: '精准匹配',
+      },
+      matchVariable: {
+        title: '匹配变量',
+        choosePlaceholder: '请选择变量',
+      },
+      cacheManagement: '标注管理',
+      cached: '已标注',
+      remove: '移除',
+      removeConfirm: '删除这个标注？',
+      add: '添加标注',
+      edit: '编辑标注',
+    },
     dataSet: {
       title: '上下文',
       noData: '您可以导入知识库作为上下文',

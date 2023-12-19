@@ -19,6 +19,7 @@ const translation = {
     year: '年',
     save: '节省',
     currentPlan: '当前计划',
+    contractOwner: '联系您的工作区所有者',
     free: '免费',
     startForFree: '免费开始',
     getStartedWith: '开始使用',
@@ -29,6 +30,7 @@ const translation = {
     buildApps: '构建应用程序数',
     vectorSpace: '向量空间',
     vectorSpaceTooltip: '向量空间是 LLMs 理解您的数据所需的长期记忆系统。',
+    vectorSpaceBillingTooltip: '向量存储是将知识库向量化处理后为让 LLMs 理解数据而使用的长期记忆存储，1MB 大约能满足1.2 million character 的向量化后数据存储（以 OpenAI Embedding 模型估算，不同模型计算方式有差异）。在向量化过程中，实际的压缩或尺寸减小取决于内容的复杂性和冗余性。',
     documentProcessingPriority: '文档处理优先级',
     documentProcessingPriorityTip: '如需更高的文档处理优先级，请升级您的套餐',
     documentProcessingPriorityUpgrade: '以更快的速度、更高的精度处理更多的数据。',
@@ -50,10 +52,22 @@ const translation = {
       personalizedSupport: '个性化支持',
       dedicatedAPISupport: '专用 API 支持',
       customIntegration: '自定义集成和支持',
+      ragAPIRequest: 'RAG API 请求',
+      agentModel: 'Agent 模型',
     },
     comingSoon: '即将推出',
     member: '成员',
     memberAfter: '个成员',
+    messageRequest: {
+      title: '信息限制',
+      unit: '条每天',
+      tooltip: '指每日应用会话调用 Dify API 的次数（而非 LLMs 的 API 资源调用），它包含你所有应用中通过 API 或者在 WebApp 会话中产生的消息数。',
+    },
+    annotatedResponse: {
+      title: '标注回复数',
+      tooltip: '标注回复功能通过人工编辑标注为应用提供了可定制的高质量问答回复能力',
+    },
+    ragAPIRequestTooltip: '指单独调用 Dify 知识库数据处理能力的 API。',
   },
   plans: {
     sandbox: {
@@ -84,6 +98,11 @@ const translation = {
   apps: {
     fullTipLine1: '升级您的套餐以',
     fullTipLine2: '构建更多的程序。',
+  },
+  annotatedResponse: {
+    fullTipLine1: '升级您的套餐以',
+    fullTipLine2: '标注更多对话。',
+    quotaTitle: '标注的配额',
   },
 }
 

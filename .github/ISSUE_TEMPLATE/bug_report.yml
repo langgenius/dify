@@ -1,11 +1,18 @@
 name: "🕷️ Bug report"
-description: Report errors or unexpected behavior [please use English :）]
+description: Report errors or unexpected behavior
 labels:
 - bug
 body:
-- type: markdown
+- type: checkboxes
   attributes:
-    value: Please make sure to [search for existing issues](https://github.com/langgenius/dify/issues) before filing a new one!
+    label: Self Checks
+    description: "To make sure we get to you in time, please check the following :)"
+    options:
+      - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
+        required: true
+      - label: I confirm that I am using English to file this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+        required: true
+
 - type: input
   attributes:
     label: Dify version

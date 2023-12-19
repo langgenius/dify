@@ -25,7 +25,7 @@
 						"attributes": {
 							"width": "600",
 							"height": "600",
-							"fill": "url(#pattern0)"
+							"fill": "url(#pattern999)"
 						},
 						"children": []
 					}
@@ -40,7 +40,7 @@
 						"type": "element",
 						"name": "pattern",
 						"attributes": {
-							"id": "pattern0",
+							"id": "pattern999",
 							"patternContentUnits": "objectBoundingBox",
 							"width": "1",
 							"height": "1"

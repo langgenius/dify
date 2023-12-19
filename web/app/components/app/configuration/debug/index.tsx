@@ -27,7 +27,7 @@ import { IS_CE_EDITION } from '@/config'
 import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
-
+import type { Annotation as AnnotationType } from '@/models/log'
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -67,6 +67,7 @@ const Debug: FC<IDebug> = ({
     datasetConfigs,
     externalDataToolsConfig,
     visionConfig,
+    annotationConfig,
   } = useContext(ConfigContext)
   const { speech2textDefaultModel } = useProviderContext()
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
@@ -225,6 +226,7 @@ const Debug: FC<IDebug> = ({
       file_upload: {
         image: visionConfig,
       },
+      annotation_reply: annotationConfig,
     }
 
     if (isAdvancedMode) {
@@ -359,6 +361,26 @@ const Debug: FC<IDebug> = ({
       onMessageReplace: (messageReplace) => {
         responseItem.content = messageReplace.answer
       },
+      onAnnotationReply: (annotationReply) => {
+        responseItem.id = annotationReply.id
+        responseItem.content = annotationReply.answer
+        responseItem.annotation = ({
+          id: annotationReply.annotation_id,
+          authorName: annotationReply.annotation_author_name,
+        } as AnnotationType)
+        const newListWithAnswer = produce(
+          getChatList().filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
+          (draft) => {
+            if (!draft.find(item => item.id === questionId))
+              draft.push({ ...questionItem })
+
+            draft.push({
+              ...responseItem,
+              id: annotationReply.id,
+            })
+          })
+        setChatList(newListWithAnswer)
+      },
       onError() {
         setResponsingFalse()
         // role back placeholder answer
@@ -477,6 +499,13 @@ const Debug: FC<IDebug> = ({
     })
   }
 
+  const varList = modelConfig.configs.prompt_variables.map((item: any) => {
+    return {
+      label: item.key,
+      value: inputs[item.key],
+    }
+  })
+
   return (
     <>
       <div className="shrink-0">
@@ -531,6 +560,9 @@ const Debug: FC<IDebug> = ({
                     ...visionConfig,
                     image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
                   }}
+                  supportAnnotation
+                  appId={appId}
+                  onChatListChange={setChatList}
                 />
               </div>
             </div>
@@ -550,6 +582,9 @@ const Debug: FC<IDebug> = ({
                 messageId={messageId}
                 isError={false}
                 onRetry={() => { }}
+                supportAnnotation
+                appId={appId}
+                varList={varList}
               />
             )}
           </div>
@@ -566,7 +601,6 @@ const Debug: FC<IDebug> = ({
           />
         )}
       </div>
-
       {!hasSetAPIKEY && (<HasNotSetAPIKEY isTrailFinished={!IS_CE_EDITION} onSetting={onSetting} />)}
     </>
   )

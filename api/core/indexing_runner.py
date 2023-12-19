@@ -15,7 +15,7 @@ from sqlalchemy.orm.exc import ObjectDeletedError
 
 from core.data_loader.file_extractor import FileExtractor
 from core.data_loader.loader.notion import NotionLoader
-from core.docstore.dataset_docstore import DatesetDocumentStore
+from core.docstore.dataset_docstore import DatasetDocumentStore
 from core.generator.llm_generator import LLMGenerator
 from core.index.index import IndexBuilder
 from core.model_providers.error import ProviderTokenNotInitError
@@ -106,7 +106,8 @@ class IndexingRunner:
                 document_id=dataset_document.id
             ).all()
 
-            db.session.delete(document_segments)
+            for document_segment in document_segments:
+                db.session.delete(document_segment)
             db.session.commit()
 
             # load file
@@ -396,7 +397,7 @@ class IndexingRunner:
                 one_or_none()
 
             if file_detail:
-                text_docs = FileExtractor.load(file_detail, is_automatic=False)
+                text_docs = FileExtractor.load(file_detail, is_automatic=True)
         elif dataset_document.data_source_type == 'notion_import':
             loader = NotionLoader.from_document(dataset_document)
             text_docs = loader.load()
@@ -474,7 +475,7 @@ class IndexingRunner:
         )
 
         # save node to document segment
-        doc_store = DatesetDocumentStore(
+        doc_store = DatasetDocumentStore(
             dataset=dataset,
             user_id=dataset_document.created_by,
             document_id=dataset_document.id
@@ -631,8 +632,8 @@ class IndexingRunner:
         return text
 
     def format_split_text(self, text):
-        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q|$)"
-        matches = re.findall(regex, text, re.MULTILINE)
+        regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)" 
+        matches = re.findall(regex, text, re.UNICODE)
 
         return [
             {

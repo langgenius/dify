@@ -15,6 +15,7 @@ import s from './style.module.css'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
+  AnnotationReplyConfig,
   CompletionParams,
   DatasetConfigs,
   Inputs,
@@ -41,7 +42,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptMode } from '@/models/debug'
-import { DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
@@ -56,6 +57,7 @@ type PublichConfig = {
 const Configuration: FC = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
   const [hasFetchedDetail, setHasFetchedDetail] = useState(false)
   const isLoading = !hasFetchedDetail
@@ -89,11 +91,25 @@ const Configuration: FC = () => {
   const [citationConfig, setCitationConfig] = useState<MoreLikeThisConfig>({
     enabled: false,
   })
+  const [annotationConfig, doSetAnnotationConfig] = useState<AnnotationReplyConfig>({
+    id: '',
+    enabled: false,
+    score_threshold: ANNOTATION_DEFAULT.score_threshold,
+    embedding_model: {
+      embedding_provider_name: '',
+      embedding_model_name: '',
+    },
+  })
+  const setAnnotationConfig = (config: AnnotationReplyConfig, notSetFormatChanged?: boolean) => {
+    doSetAnnotationConfig(config)
+    if (!notSetFormatChanged)
+      setFormattingChanged(true)
+  }
+
   const [moderationConfig, setModerationConfig] = useState<ModerationConfig>({
     enabled: false,
   })
   const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
-  const [formattingChanged, setFormattingChanged] = useState(false)
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
   const [completionParams, doSetCompletionParams] = useState<CompletionParams>({
@@ -167,7 +183,7 @@ const Configuration: FC = () => {
 
     setFormattingChanged(true)
     if (data.find(item => !item.name)) { // has not loaded selected dataset
-      const newSelected = produce(data, (draft) => {
+      const newSelected = produce(data, (draft: any) => {
         data.forEach((item, index) => {
           if (!item.name) { // not fetched database
             const newItem = dataSets.find(i => i.id === item.id)
@@ -230,7 +246,7 @@ const Configuration: FC = () => {
     if (hasFetchedDetail && !modelModeType) {
       const mode = textGenerationModelList.find(({ model_name }) => model_name === modelConfig.model_id)?.model_mode
       if (mode) {
-        const newModelConfig = produce(modelConfig, (draft) => {
+        const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
           draft.mode = mode
         })
         setModelConfig(newModelConfig)
@@ -302,7 +318,7 @@ const Configuration: FC = () => {
           await migrateToDefaultPrompt(true, ModelModeType.chat)
       }
     }
-    const newModelConfig = produce(modelConfig, (draft) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.provider = provider
       draft.model_id = modelId
       draft.mode = modeMode
@@ -368,6 +384,9 @@ const Configuration: FC = () => {
 
       if (modelConfig.retriever_resource)
         setCitationConfig(modelConfig.retriever_resource)
+
+      if (modelConfig.annotation_reply)
+        setAnnotationConfig(modelConfig.annotation_reply, true)
 
       if (modelConfig.sensitive_word_avoidance)
         setModerationConfig(modelConfig.sensitive_word_avoidance)
@@ -580,6 +599,8 @@ const Configuration: FC = () => {
       setSpeechToTextConfig,
       citationConfig,
       setCitationConfig,
+      annotationConfig,
+      setAnnotationConfig,
       moderationConfig,
       setModerationConfig,
       externalDataToolsConfig,
@@ -628,7 +649,7 @@ const Configuration: FC = () => {
                         onClick={() => setPromptMode(PromptMode.simple)}
                         className='flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
                       >
-                        <FlipBackward className='w-3 h-3 text-white'/>
+                        <FlipBackward className='w-3 h-3 text-white' />
                         <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
                       </div>
                     )}

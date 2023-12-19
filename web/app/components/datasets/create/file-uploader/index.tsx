@@ -10,6 +10,8 @@ import { ToastContext } from '@/app/components/base/toast'
 
 import { upload } from '@/service/base'
 import { fetchFileUploadConfig } from '@/service/common'
+import { fetchSupportFileTypes } from '@/service/datasets'
+import I18n from '@/context/i18n'
 
 type IFileUploaderProps = {
   fileList: FileItem[]
@@ -19,18 +21,6 @@ type IFileUploaderProps = {
   onFileListUpdate?: (files: FileItem[]) => void
   onPreview: (file: File) => void
 }
-
-const ACCEPTS = [
-  '.pdf',
-  '.html',
-  '.htm',
-  '.md',
-  '.markdown',
-  '.txt',
-  '.xlsx',
-  '.csv',
-  '.docx',
-]
 
 const FileUploader = ({
   fileList,
@@ -42,12 +32,16 @@ const FileUploader = ({
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { locale } = useContext(I18n)
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
   const fileUploader = useRef<HTMLInputElement>(null)
 
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+  const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
+  const supportTypes = supportFileTypesResponse?.allowed_extensions || []
+  const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
     batch_count_limit: 5,
@@ -228,14 +222,17 @@ const FileUploader = ({
       <div className={cn(s.title, titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
       <div ref={dropRef} className={cn(s.uploader, dragging && s.dragging)}>
         <div className='flex justify-center items-center min-h-6 mb-2'>
-          <span className={s.uploadIcon}/>
+          <span className={s.uploadIcon} />
           <span>
             {t('datasetCreation.stepOne.uploader.button')}
             <label className={s.browse} onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
           </span>
         </div>
-        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', { size: fileUploadConfig.file_size_limit })}</div>
-        {dragging && <div ref={dragRef} className={s.draggingCover}/>}
+        <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', {
+          size: fileUploadConfig.file_size_limit,
+          supportTypes: supportTypes.map(item => item.toUpperCase()).join(locale === 'en' ? ', ' : '、 '),
+        })}</div>
+        {dragging && <div ref={dragRef} className={s.draggingCover} />}
       </div>
       <div className={s.fileList}>
         {fileList.map((fileItem, index) => (
@@ -248,10 +245,10 @@ const FileUploader = ({
             )}
           >
             {fileItem.progress < 100 && (
-              <div className={s.progressbar} style={{ width: `${fileItem.progress}%` }}/>
+              <div className={s.progressbar} style={{ width: `${fileItem.progress}%` }} />
             )}
             <div className={s.fileInfo}>
-              <div className={cn(s.fileIcon, s[getFileType(fileItem.file)])}/>
+              <div className={cn(s.fileIcon, s[getFileType(fileItem.file)])} />
               <div className={s.filename}>{fileItem.file.name}</div>
               <div className={s.size}>{getFileSize(fileItem.file.size)}</div>
             </div>
@@ -263,7 +260,7 @@ const FileUploader = ({
                 <div className={s.remove} onClick={(e) => {
                   e.stopPropagation()
                   removeFile(fileItem.fileID)
-                }}/>
+                }} />
               )}
             </div>
           </div>
