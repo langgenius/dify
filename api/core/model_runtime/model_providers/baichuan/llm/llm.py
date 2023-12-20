@@ -106,15 +106,19 @@ class BaichuanLarguageModel(LargeLanguageModel):
         response = instance.generate(model=model, stream=stream, messages=messages, parameters=model_parameters, timeout=60)
 
         if stream:
-            return self._handle_chat_generate_stream_response(model, credentials, response)
+            return self._handle_chat_generate_stream_response(model, prompt_messages, credentials, response)
         
-        return self._handle_chat_generate_response(model, credentials, response)
+        return self._handle_chat_generate_response(model, prompt_messages, credentials, response)
 
-    def _handle_chat_generate_response(self, model: str, credentials: dict, response: BaichuanMessage) -> LLMResult:
+    def _handle_chat_generate_response(self, model: str,
+                                       prompt_messages: list[PromptMessage],
+                                       credentials: dict,
+                                       response: BaichuanMessage) -> LLMResult:
         # convert baichuan message to llm result
         usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=response.usage['prompt_tokens'], completion_tokens=response.usage['completion_tokens'])
         return LLMResult(
             model=model,
+            prompt_messages=prompt_messages,
             message=AssistantPromptMessage(
                 content=response.content,
                 tool_calls=[]
@@ -122,12 +126,16 @@ class BaichuanLarguageModel(LargeLanguageModel):
             usage=usage,
         )
 
-    def _handle_chat_generate_stream_response(self, model: str, credentials: dict, response: Generator[BaichuanMessage, None, None]) -> Generator:
+    def _handle_chat_generate_stream_response(self, model: str,
+                                              prompt_messages: list[PromptMessage],
+                                              credentials: dict,
+                                              response: Generator[BaichuanMessage, None, None]) -> Generator:
         for message in response:
             if message.usage:
                 usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=message.usage['prompt_tokens'], completion_tokens=message.usage['completion_tokens'])
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(
@@ -141,6 +149,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(
