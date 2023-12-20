@@ -100,7 +100,7 @@ export default function AccountSetting({
         activeIcon: <Webhooks className={iconClassName} />,
       },
       {
-        key: enableReplaceWebAppLogo ? 'custom' : false,
+        key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
         name: t('custom.custom'),
         icon: <Colors className={iconClassName} />,
         activeIcon: <ColorsSolid className={iconClassName} />,
