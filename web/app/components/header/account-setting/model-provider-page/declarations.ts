@@ -18,7 +18,7 @@ export type FormOption = {
 }
 
 export enum ModelTypeEnum {
-  textGeneration = 'text-generation',
+  textGeneration = 'llm',
   textEmbedding = 'text-embedding',
   rerank = 'rerank',
   speech2text = 'speech2text',
@@ -31,18 +31,23 @@ export enum ConfigurateMethodEnum {
   fetchFromRemote = 'fetch-from-remote',
 }
 
-export enum ModelFeature {
+export enum ModelFeatureEnum {
   toolCall = 'tool-call',
   multiToolCall = 'multi-tool-call',
   agentThought = 'agent_thought',
   vision = 'vision',
 }
 
-export enum ModelStatus {
+export enum ModelStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
   quotaExceeded = 'quota-exceeded',
   noPermission = 'no-permission',
+}
+
+export enum CustomConfigurationEnum {
+  active = 'active',
+  noConfigure = 'no-configure',
 }
 
 export type FormShowOnObject = {
@@ -72,13 +77,14 @@ export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: Fo
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
 
-export type Model = {
+export type ModelItem = {
   model: string
   label: TypeWithI18N
   model_type: ModelTypeEnum
-  features: ModelFeature[]
-  configurate_method: ConfigurateMethodEnum
-  status: ModelStatus
+  features: ModelFeatureEnum[]
+  fetch_from: ConfigurateMethodEnum
+  status: ModelStatusEnum
+  deprecated: boolean
 }
 
 export enum PreferredProviderTypeEnum {
@@ -115,7 +121,7 @@ export type ModelProvider = {
   icon_small: TypeWithI18N
   icon_large: TypeWithI18N
   background?: string
-  supported_models_types: ModelTypeEnum[]
+  supported_model_types: ModelTypeEnum[]
   configurate_methods: ConfigurateMethodEnum[]
   provider_credential_schema: {
     credential_form_schemas: CredentialFormSchema[]
@@ -129,11 +135,20 @@ export type ModelProvider = {
   }
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
-    status: 'active' | 'no_configure'
+    status: CustomConfigurationEnum
   }
   system_configuration: {
     enabled: boolean
     current_system_quota_type: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
+}
+
+export type Model = {
+  provider: string
+  icon_large: TypeWithI18N
+  icon_small: TypeWithI18N
+  label: TypeWithI18N
+  models: ModelItem[]
+  status: CustomConfigurationEnum
 }

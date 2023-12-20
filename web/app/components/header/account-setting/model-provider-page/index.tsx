@@ -1,55 +1,46 @@
+import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import SystemModel from '../model-page/system-model'
 import ProviderAddedCard from './provider-added-card'
 import ProviderCard from './provider-card'
-import type { ModelProvider } from './declarations'
-import {
+import ModelModal from './model-modal'
+import type {
   ConfigurateMethodEnum,
-  ModelTypeEnum,
+  ModelProvider,
+} from './declarations'
+import {
+  CustomConfigurationEnum,
 } from './declarations'
 import { fetchModelProviders } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 
-const provider: ModelProvider = {
-  provider: 'openai',
-  label: {
-    zh_Hans: 'OpenAI',
-    en_US: 'OpenAI',
-  },
-  icon_small: {
-    zh_Hans: '',
-    en_US: '',
-  },
-  icon_large: {
-    zh_Hans: '',
-    en_US: '',
-  },
-  background: '#FFF8DC',
-  supported_models_types: [
-    ModelTypeEnum.textEmbedding,
-    ModelTypeEnum.textGeneration,
-    ModelTypeEnum.speech2text,
-    ModelTypeEnum.rerank,
-  ],
-  configurate_methods: [
-    ConfigurateMethodEnum.predefinedModel,
-    ConfigurateMethodEnum.customizableModel,
-  ],
-}
-
 const ModelProviderPage = () => {
   const { t } = useTranslation()
   const {
-    updateModelList,
     textGenerationDefaultModel,
     embeddingsDefaultModel,
     speech2textDefaultModel,
     rerankDefaultModel,
   } = useProviderContext()
-  const { data: providers, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
+  const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
+  const { data: providersData, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
+  const providers = providersData ? providersData.data : []
+  const configedProviders = providers.filter(provider => provider.custom_configuration.status === CustomConfigurationEnum.active)
+  const notConfigedProviders = providers.filter(provider => provider.custom_configuration.status === CustomConfigurationEnum.noConfigure)
+
+  const handleOpenModal = (provider: ModelProvider, configurateMethod: ConfigurateMethodEnum) => {
+    setCurrentProvider(provider)
+    setCurrentConfigurateMethod(configurateMethod)
+  }
+
+  const handleCancelModelModal = () => {
+    setCurrentProvider(null)
+    setCurrentConfigurateMethod(null)
+  }
 
   return (
     <div className='relative pt-1 -mt-2'>
@@ -66,16 +57,51 @@ const ModelProviderPage = () => {
         }
         <SystemModel onUpdate={() => mutateProviders()} />
       </div>
-      <div className='pb-3'>
-        <ProviderAddedCard provider={provider} />
-      </div>
-      <div className='flex items-center mb-2 text-xs font-semibold text-gray-500'>
-        + ADD MORE MODEL PROVIDER
-        <span className='grow ml-3 h-[1px] bg-gradient-to-r from-[#f3f4f6]' />
-      </div>
-      <div className='grid grid-cols-3 gap-2'>
-        <ProviderCard provider={provider} />
-      </div>
+      {
+        !!configedProviders?.length && (
+          <div className='pb-3'>
+            {
+              configedProviders?.map(provider => (
+                <ProviderAddedCard
+                  key={provider.provider}
+                  provider={provider}
+                />
+              ))
+            }
+          </div>
+        )
+      }
+      {
+        !!notConfigedProviders?.length && (
+          <>
+            <div className='flex items-center mb-2 text-xs font-semibold text-gray-500'>
+              + ADD MORE MODEL PROVIDER
+              <span className='grow ml-3 h-[1px] bg-gradient-to-r from-[#f3f4f6]' />
+            </div>
+            <div className='grid grid-cols-3 gap-2'>
+              {
+                notConfigedProviders?.map(provider => (
+                  <ProviderCard
+                    key={provider.provider}
+                    provider={provider}
+                    onOpenModal={(configurateMethod: ConfigurateMethodEnum) => handleOpenModal(provider, configurateMethod)}
+                  />
+                ))
+              }
+            </div>
+          </>
+        )
+      }
+      {
+        !!currentProvider && !!currentConfigurateMethod && (
+          <ModelModal
+            provider={currentProvider}
+            configurateMethod={currentConfigurateMethod}
+            onCancel={handleCancelModelModal}
+            onSave={() => {}}
+          />
+        )
+      }
     </div>
   )
 }

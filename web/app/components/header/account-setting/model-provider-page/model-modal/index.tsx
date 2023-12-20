@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type {
-  CredentialFormSchema,
   FormValue,
   ModelProvider,
 } from '../declarations'
@@ -21,10 +21,11 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
+import { fetchModelProviderCredentials } from '@/service/common'
+import Loading from '@/app/components/base/loading'
 
 type ModelModalProps = {
   provider: ModelProvider
-  formSchemas: CredentialFormSchema[]
   configurateMethod: ConfigurateMethodEnum
   onCancel: () => void
   onSave: (v: FormValue) => void
@@ -32,7 +33,6 @@ type ModelModalProps = {
 
 const ModelModal: FC<ModelModalProps> = ({
   provider,
-  formSchemas,
   configurateMethod,
   onCancel,
   onSave,
@@ -42,23 +42,27 @@ const ModelModal: FC<ModelModalProps> = ({
   const language = languageMaps[locale]
   const [loading, setLoading] = useState(false)
   const [initialFormValueCleared, setInitialFormValueCleared] = useState(false)
-
+  const { data: formSchemasData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider.provider}/credentials`, fetchModelProviderCredentials)
   const initialFormValue = useMemo(() => {
-    return formSchemas.reduce((acc: FormValue, cur) => {
+    if (!formSchemasData)
+      return {}
+    return formSchemasData.credenntials.reduce((acc: FormValue, cur) => {
       acc[cur.variable] = cur.default
       return acc
     }, {})
-  }, [formSchemas])
+  }, [formSchemasData])
   const [value, setValue] = useState(initialFormValue)
   const [validate, validating, validatedStatusState] = useValidate(value)
   const isEditMode = useMemo(() => {
-    return formSchemas.every(formSchema => formSchema.required && initialFormValue[formSchema.variable])
-  }, [initialFormValue])
+    if (!formSchemasData)
+      return false
+    return formSchemasData.credenntials.every(formSchema => formSchema.required && initialFormValue[formSchema.variable])
+  }, [initialFormValue, formSchemasData])
 
   const handleSave = () => {
     onSave(value)
 
-    const validateKeys = formSchemas.filter(formSchema => formSchema.required).map(formSchema => formSchema.variable)
+    const validateKeys = formSchemasData?.credenntials.filter(formSchema => formSchema.required).map(formSchema => formSchema.variable) || []
     if (validateKeys.length) {
       validate({
         before: () => {
@@ -94,72 +98,81 @@ const ModelModal: FC<ModelModalProps> = ({
   return (
     <PortalToFollowElem open>
       <PortalToFollowElemContent className='w-full h-full z-[60]'>
-        <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
-            <div className='px-8 pt-8'>
-              <div className='flex justify-between items-center mb-2'>
-                <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
-                <div className='h-6' style={{ background: provider.icon_large[language] }} />
-              </div>
-              <Form
-                value={value}
-                onChange={val => setValue(val)}
-                formSchemas={formSchemas}
-                isEditMode={isEditMode}
-                initialFormValueCleared={initialFormValueCleared}
-                onInitialFormValueCleared={val => setInitialFormValueCleared(val)}
-                validating={validating}
-                validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
-              />
-              <div className='flex justify-between items-center py-6 flex-wrap gap-y-2'>
-                <a
-                  href={provider.help_url[language]}
-                  target='_blank'
-                  className='inline-flex items-center text-xs text-primary-600'
-                >
-                  {provider.help_text[language]}
-                  <LinkExternal02 className='ml-1 w-3 h-3' />
-                </a>
-                <div>
-                  <Button className='mr-2 h-9 text-sm font-medium text-gray-700' onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                  <Button
-                    className='h-9 text-sm font-medium'
-                    type='primary'
-                    onClick={handleSave}
-                    disabled={loading || (isEditMode && !initialFormValueCleared) || validating}
-                  >
-                    {t('common.operation.save')}
-                  </Button>
+        {
+          isLoading && (
+            <Loading />
+          )
+        }
+        {
+          !isLoading && (
+            <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
+              <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
+                <div className='px-8 pt-8'>
+                  <div className='flex justify-between items-center mb-2'>
+                    <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
+                    <div className='h-6' style={{ background: provider.icon_large[language] }} />
+                  </div>
+                  <Form
+                    value={value}
+                    onChange={val => setValue(val)}
+                    formSchemas={formSchemasData?.credenntials || []}
+                    isEditMode={isEditMode}
+                    initialFormValueCleared={initialFormValueCleared}
+                    onInitialFormValueCleared={val => setInitialFormValueCleared(val)}
+                    validating={validating}
+                    validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
+                  />
+                  <div className='flex justify-between items-center py-6 flex-wrap gap-y-2'>
+                    <a
+                      href={provider.help_url[language]}
+                      target='_blank'
+                      className='inline-flex items-center text-xs text-primary-600'
+                    >
+                      {provider.help_text[language]}
+                      <LinkExternal02 className='ml-1 w-3 h-3' />
+                    </a>
+                    <div>
+                      <Button className='mr-2 h-9 text-sm font-medium text-gray-700' onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                      <Button
+                        className='h-9 text-sm font-medium'
+                        type='primary'
+                        onClick={handleSave}
+                        disabled={loading || (isEditMode && !initialFormValueCleared) || validating}
+                      >
+                        {t('common.operation.save')}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <div className='border-t-[0.5px] border-t-black/5'>
+                  {
+                    (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
+                      ? (
+                        <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
+                          <AlertCircle className='mt-[1px] mr-2 w-[14px] h-[14px]' />
+                          {validatedStatusState.message}
+                        </div>
+                      )
+                      : (
+                        <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
+                          <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
+                          {t('common.modelProvider.encrypted.front')}
+                          <a
+                            className='text-primary-600 mx-1'
+                            target={'_blank'}
+                            href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                          >
+                            PKCS1_OAEP
+                          </a>
+                          {t('common.modelProvider.encrypted.back')}
+                        </div>
+                      )
+                  }
                 </div>
               </div>
             </div>
-            <div className='border-t-[0.5px] border-t-black/5'>
-              {
-                (validatedStatusState.status === ValidatedStatus.Error && validatedStatusState.message)
-                  ? (
-                    <div className='flex px-[10px] py-3 bg-[#FEF3F2] text-xs text-[#D92D20]'>
-                      <AlertCircle className='mt-[1px] mr-2 w-[14px] h-[14px]' />
-                      {validatedStatusState.message}
-                    </div>
-                  )
-                  : (
-                    <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                      <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
-                      {t('common.modelProvider.encrypted.front')}
-                      <a
-                        className='text-primary-600 mx-1'
-                        target={'_blank'}
-                        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                      >
-                        PKCS1_OAEP
-                      </a>
-                      {t('common.modelProvider.encrypted.back')}
-                    </div>
-                  )
-              }
-            </div>
-          </div>
-        </div>
+          )
+        }
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )

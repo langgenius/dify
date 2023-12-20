@@ -34,7 +34,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           <div className='mb-2 h-6' style={{ background: provider.icon_large[language] }} />
           <div className='flex gap-0.5'>
             {
-              provider.supported_models_types.map(modelType => (
+              provider.supported_model_types.map(modelType => (
                 <ModelBadge
                   key={modelType}
                   text={modelType.toLocaleUpperCase()}

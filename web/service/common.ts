@@ -26,7 +26,11 @@ import type {
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
-import type { ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  CredentialFormSchema,
+  Model,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -147,12 +151,16 @@ export const activateMember: Fetcher<CommonResponse, { url: string; body: any }>
   return post<CommonResponse>(url, { body })
 }
 
-export const fetchModelProviders: Fetcher<ModelProvider[], string> = (url) => {
-  return get<ModelProvider[]>(url)
+export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
+  return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelList: Fetcher<BackendModel[], string> = (url) => {
-  return get<BackendModel[]>(url)
+export const fetchModelProviderCredentials: Fetcher<{ credenntials: CredentialFormSchema[] }, string> = (url) => {
+  return get<{ credenntials: CredentialFormSchema[] }>(url)
+}
+
+export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
+  return get<{ data: Model[] }>(url)
 }
 
 export const validateModelProvider: Fetcher<ValidateOpenAIKeyResponse, { url: string; body: any }> = ({ url, body }) => {
