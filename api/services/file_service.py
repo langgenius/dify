@@ -30,9 +30,11 @@ class FileService:
         etl_type = current_app.config['ETL_TYPE']
         if etl_type == 'Unstructured':
             allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
-                                  'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml']
+                                  'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml',
+                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
         else:
-            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
+            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv',
+                                  'jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
         elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
