@@ -294,6 +294,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
+        full_text = ''
         for chunk in response:
             if len(chunk.choices) == 0:
                 continue
@@ -309,6 +310,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 content=text
             )
 
+            full_text += text
+
             if delta.finish_reason is not None:
                 # calculate num tokens
                 if chunk.usage:
@@ -318,7 +321,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 else:
                     # calculate num tokens
                     prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-                    completion_tokens = self._num_tokens_from_string(model, text)
+                    completion_tokens = self._num_tokens_from_string(model, full_text)
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -468,6 +471,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         :param tools: tools for tool calling
         :return: llm response chunk generator
         """
+        full_assistant_content = ''
         for chunk in response:
             if len(chunk.choices) == 0:
                 continue
@@ -491,10 +495,17 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 tool_calls=tool_calls
             )
 
+            full_assistant_content += delta.delta.content if delta.delta.content else ''
+
             if delta.finish_reason is not None:
                 # calculate num tokens
                 prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, tools)
-                completion_tokens = self._num_tokens_from_messages(model, [assistant_prompt_message])
+
+                full_assistant_prompt_message = AssistantPromptMessage(
+                    content=full_assistant_content,
+                    tool_calls=tool_calls
+                )
+                completion_tokens = self._num_tokens_from_messages(model, [full_assistant_prompt_message])
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -660,15 +671,6 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
-        if model == "gpt-3.5-turbo":
-            # gpt-3.5-turbo may change over time.
-            # Returning num tokens assuming gpt-3.5-turbo-0301.
-            model = "gpt-3.5-turbo-0301"
-        elif model == "gpt-4":
-            # gpt-4 may change over time.
-            # Returning num tokens assuming gpt-4-0314.
-            model = "gpt-4-0314"
-
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
