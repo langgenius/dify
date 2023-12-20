@@ -266,7 +266,6 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
             -> Generator:
         
         full_response = ''
-        tool_call_tokens = 0
 
         for chunk in response:
             if len(chunk.choices) == 0:
