@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -8,7 +8,11 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { ConfigurateMethodEnum } from '../declarations'
-import { languageMaps } from '../utils'
+import {
+  languageMaps,
+  saveCredentials,
+  validateCredentials,
+} from '../utils'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import Form from './Form'
@@ -23,12 +27,13 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { fetchModelProviderCredentials } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import { useToastContext } from '@/app/components/base/toast'
 
 type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurateMethodEnum
   onCancel: () => void
-  onSave: (v: FormValue) => void
+  onSave: () => void
 }
 
 const ModelModal: FC<ModelModalProps> = ({
@@ -38,51 +43,68 @@ const ModelModal: FC<ModelModalProps> = ({
   onSave,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const { locale } = useContext(I18n)
   const language = languageMaps[locale]
   const [loading, setLoading] = useState(false)
   const [initialFormValueCleared, setInitialFormValueCleared] = useState(false)
-  const { data: formSchemasData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider.provider}/credentials`, fetchModelProviderCredentials)
-  const initialFormValue = useMemo(() => {
-    if (!formSchemasData)
-      return {}
-    return formSchemasData.credenntials.reduce((acc: FormValue, cur) => {
-      acc[cur.variable] = cur.default
-      return acc
-    }, {})
-  }, [formSchemasData])
-  const [value, setValue] = useState(initialFormValue)
+  const { data: formSchemasValue, isLoading } = useSWR(`/workspaces/current/model-providers/${provider.provider}/credentials`, fetchModelProviderCredentials)
+  const initialFormSchemasValue = formSchemasValue?.credenntials || {}
+  const [value, setValue] = useState(initialFormSchemasValue)
   const [validate, validating, validatedStatusState] = useValidate(value)
-  const isEditMode = useMemo(() => {
-    if (!formSchemasData)
-      return false
-    return formSchemasData.credenntials.every(formSchema => formSchema.required && initialFormValue[formSchema.variable])
-  }, [initialFormValue, formSchemasData])
+  const isEditMode = Object.keys(initialFormSchemasValue).length !== 0
+  const formSchemas = provider.provider_credential_schema.credential_form_schemas
+  const formRequiredValueAllCompleted = formSchemas.filter(formSchema => formSchema.required).every(formSchema => value[formSchema.variable])
+  const providerFormSchemaPredefined = configurateMethod === ConfigurateMethodEnum.predefinedModel
 
-  const handleSave = () => {
-    onSave(value)
+  const handleValueChange = (v: FormValue) => {
+    setValue(v)
 
-    const validateKeys = formSchemasData?.credenntials.filter(formSchema => formSchema.required).map(formSchema => formSchema.variable) || []
+    const validateKeys = formSchemas.filter(formSchema => formSchema.required).map(formSchema => formSchema.variable) || []
     if (validateKeys.length) {
       validate({
         before: () => {
           for (let i = 0; i < validateKeys.length; i++) {
-            if (!value[validateKeys[i]])
+            if (!v[validateKeys[i]])
               return false
           }
           return true
         },
         run: () => {
-          return new Promise((resolve, reject) => {
-            setLoading(true)
-            setTimeout(() => {
-              setLoading(false)
-              resolve({})
-            }, 1000)
-          })
+          return validateCredentials(
+            providerFormSchemaPredefined,
+            provider.provider,
+            {
+              credentials: v,
+            },
+          )
         },
       })
     }
+  }
+  const handleSave = async () => {
+    setLoading(true)
+    try {
+      const res = await saveCredentials(
+        providerFormSchemaPredefined,
+        provider.provider,
+        {
+          credentials: value,
+        },
+      )
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onSave()
+        onCancel()
+      }
+    }
+    finally {
+      setLoading(false)
+    }
+  }
+
+  const handleRemove = () => {
+
   }
 
   const renderTitlePrefix = () => {
@@ -114,8 +136,8 @@ const ModelModal: FC<ModelModalProps> = ({
                   </div>
                   <Form
                     value={value}
-                    onChange={val => setValue(val)}
-                    formSchemas={formSchemasData?.credenntials || []}
+                    onChange={handleValueChange}
+                    formSchemas={formSchemas}
                     isEditMode={isEditMode}
                     initialFormValueCleared={initialFormValueCleared}
                     onInitialFormValueCleared={val => setInitialFormValueCleared(val)}
@@ -123,21 +145,43 @@ const ModelModal: FC<ModelModalProps> = ({
                     validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
                   />
                   <div className='flex justify-between items-center py-6 flex-wrap gap-y-2'>
-                    <a
-                      href={provider.help_url[language]}
-                      target='_blank'
-                      className='inline-flex items-center text-xs text-primary-600'
-                    >
-                      {provider.help_text[language]}
-                      <LinkExternal02 className='ml-1 w-3 h-3' />
-                    </a>
+                    {
+                      (provider.help && (provider.help.title || provider.help.url))
+                        ? (
+                          <a
+                            href={provider.help?.url[language]}
+                            target='_blank'
+                            className='inline-flex items-center text-xs text-primary-600'
+                            onClick={e => !provider.help.url && e.preventDefault()}
+                          >
+                            {provider.help.title?.[language] || provider.help.url[language]}
+                            <LinkExternal02 className='ml-1 w-3 h-3' />
+                          </a>
+                        )
+                        : <div />
+                    }
                     <div>
-                      <Button className='mr-2 h-9 text-sm font-medium text-gray-700' onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                      {
+                        isEditMode && (
+                          <Button
+                            className='mr-2 h-9 text-sm font-medium text-[#D92D20]'
+                            onClick={handleRemove}
+                          >
+                            {t('common.operation.remove')}
+                          </Button>
+                        )
+                      }
+                      <Button
+                        className='mr-2 h-9 text-sm font-medium text-gray-700'
+                        onClick={onCancel}
+                      >
+                        {t('common.operation.cancel')}
+                      </Button>
                       <Button
                         className='h-9 text-sm font-medium'
                         type='primary'
                         onClick={handleSave}
-                        disabled={loading || (isEditMode && !initialFormValueCleared) || validating}
+                        disabled={loading || (isEditMode && !initialFormValueCleared) || validating || !formRequiredValueAllCompleted}
                       >
                         {t('common.operation.save')}
                       </Button>

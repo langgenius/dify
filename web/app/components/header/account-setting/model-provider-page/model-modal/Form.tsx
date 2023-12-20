@@ -66,15 +66,25 @@ const Form: FC<FormProps> = ({
       const {
         variable,
         label,
+        placeholder,
+        required,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>{label[language]}</div>
+          <div className='py-2 text-sm text-gray-900'>
+            {label[language]}
+            {
+              required && (
+                <span className='ml-1 text-red-500'>*</span>
+              )
+            }
+          </div>
           <Input
-            value={value[variable]}
+            value={value[variable] as string}
             onChange={val => handleFormChange(variable, val)}
             onFocus={handleFocus}
             validated={validatedSuccess}
+            placeholder={placeholder[language]}
           />
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -127,7 +137,7 @@ const Form: FC<FormProps> = ({
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>{label[language]}</div>
           <SimpleSelect
-            defaultValue={value[variable]}
+            defaultValue={value[variable] as string}
             items={options.map(option => ({ value: option.value, name: option.label[language] }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
           />

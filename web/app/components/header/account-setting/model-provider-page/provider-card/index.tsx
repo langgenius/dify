@@ -6,6 +6,7 @@ import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   languageMaps,
+  modelTypeFormat,
 } from '../utils'
 import ModelBadge from '../model-badge'
 import I18n from '@/context/i18n'
@@ -64,7 +65,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
             provider.supported_model_types.map(modelType => (
               <ModelBadge
                 key={modelType}
-                text={modelType.toLocaleUpperCase()}
+                text={modelTypeFormat(modelType)}
               />
             ))
           }

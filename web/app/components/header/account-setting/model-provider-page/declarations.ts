@@ -1,4 +1,4 @@
-export type FormValue = Record<string, string>
+export type FormValue = Record<string, string | boolean | undefined>
 
 export type TypeWithI18N<T = string> = {
   'en_US': T
@@ -55,13 +55,6 @@ export type FormShowOnObject = {
   value: string
 }
 
-export type CredentialFormSchemaMap = {
-  [FormTypeEnum.textInput]: { max_length: number; placeholder: TypeWithI18N }
-  [FormTypeEnum.select]: { options: FormOption[] }
-  [FormTypeEnum.radio]: { options: FormOption[] }
-  [FormTypeEnum.secretInput]: { placeholder: TypeWithI18N }
-}
-
 export type CredentialFormSchemaBase = {
   variable: string
   label: TypeWithI18N
@@ -84,6 +77,7 @@ export type ModelItem = {
   features: ModelFeatureEnum[]
   fetch_from: ConfigurateMethodEnum
   status: ModelStatusEnum
+  model_properties: Record<string, string | number>
   deprecated: boolean
 }
 
@@ -116,8 +110,10 @@ export type ModelProvider = {
   provider: string
   label: TypeWithI18N
   description?: TypeWithI18N
-  help_url: TypeWithI18N
-  help_text: TypeWithI18N
+  help: {
+    title: TypeWithI18N
+    url: TypeWithI18N
+  }
   icon_small: TypeWithI18N
   icon_large: TypeWithI18N
   background?: string
@@ -139,7 +135,7 @@ export type ModelProvider = {
   }
   system_configuration: {
     enabled: boolean
-    current_system_quota_type: CurrentSystemQuotaTypeEnum
+    current_quota_type: CurrentSystemQuotaTypeEnum
     quota_configurations: QuotaConfiguration[]
   }
 }

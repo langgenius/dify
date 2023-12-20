@@ -1,7 +1,7 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import SystemModel from '../model-page/system-model'
+// import SystemModel from '../model-page/system-model'
 import ProviderAddedCard from './provider-added-card'
 import ProviderCard from './provider-card'
 import ModelModal from './model-modal'
@@ -28,9 +28,22 @@ const ModelProviderPage = () => {
   const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
   const { data: providersData, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
-  const providers = providersData ? providersData.data : []
-  const configedProviders = providers.filter(provider => provider.custom_configuration.status === CustomConfigurationEnum.active)
-  const notConfigedProviders = providers.filter(provider => provider.custom_configuration.status === CustomConfigurationEnum.noConfigure)
+  const providers = useMemo(() => {
+    return providersData ? providersData.data : []
+  }, [providersData])
+  const [configedProviders, notConfigedProviders] = useMemo(() => {
+    const configedProviders: ModelProvider[] = []
+    const notConfigedProviders: ModelProvider[] = []
+
+    providers.forEach((provider) => {
+      if (provider.custom_configuration.status === CustomConfigurationEnum.active || provider.system_configuration.enabled === true)
+        configedProviders.push(provider)
+      else
+        notConfigedProviders.push(provider)
+    })
+
+    return [configedProviders, notConfigedProviders]
+  }, [providers])
 
   const handleOpenModal = (provider: ModelProvider, configurateMethod: ConfigurateMethodEnum) => {
     setCurrentProvider(provider)
@@ -55,7 +68,7 @@ const ModelProviderPage = () => {
             )
             : <div className='text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
         }
-        <SystemModel onUpdate={() => mutateProviders()} />
+        {/* <SystemModel onUpdate={() => mutateProviders()} /> */}
       </div>
       {
         !!configedProviders?.length && (
@@ -65,6 +78,7 @@ const ModelProviderPage = () => {
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
+                  onOpenModal={(configurateMethod: ConfigurateMethodEnum) => handleOpenModal(provider, configurateMethod)}
                 />
               ))
             }
@@ -98,7 +112,7 @@ const ModelProviderPage = () => {
             provider={currentProvider}
             configurateMethod={currentConfigurateMethod}
             onCancel={handleCancelModelModal}
-            onSave={() => {}}
+            onSave={() => mutateProviders()}
           />
         )
       }

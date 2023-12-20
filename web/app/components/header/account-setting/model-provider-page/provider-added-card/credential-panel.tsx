@@ -1,42 +1,57 @@
+import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { ModelProvider } from '../declarations'
+import {
+  CustomConfigurationEnum,
+  PreferredProviderTypeEnum,
+} from '../declarations'
 import PrioritySelector from './priority-selector'
+import PriorityUseTip from './priority-use-tip'
 import Indicator from '@/app/components/header/indicator'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
-import { IS_CE_EDITION } from '@/config'
 
-const CredentialPanel = () => {
+type CredentialPanelProps = {
+  provider: ModelProvider
+  onSetup: () => void
+}
+const CredentialPanel: FC<CredentialPanelProps> = ({
+  provider,
+  onSetup,
+}) => {
   const { t } = useTranslation()
+  const customConfig = provider.custom_configuration
+  const systemConfig = provider.system_configuration
+  const priorityUseType = provider.preferred_provider_type
+
+  const handleChangePriority = () => {}
 
   return (
     <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.3] border-[0.5px] border-black/5'>
       <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 text-xs font-medium text-gray-500'>
         API-KEY
-        <Indicator />
+        <Indicator color={customConfig.status === CustomConfigurationEnum.active ? 'green' : 'gray'} />
       </div>
       <div className='flex items-center gap-0.5'>
-        <Button className='grow px-0 h-6 bg-white text-xs font-medium rounded-md'>
+        <Button
+          className='grow px-0 h-6 bg-white text-xs font-medium rounded-md'
+          onClick={onSetup}
+        >
           <Settings01 className='mr-1 w-3 h-3' />
           {t('common.operation.setup')}
         </Button>
         {
-          !IS_CE_EDITION && (
+          systemConfig.enabled && (
             <PrioritySelector
-              onSelect={() => {}}
-              value='custom'
+              onSelect={handleChangePriority}
+              value={priorityUseType}
             />
           )
         }
       </div>
       {
-        !IS_CE_EDITION && (
-          <Tooltip selector='provider-quota-credential-priority-using' content='Prioritize using'>
-            <div className='absolute -right-[5px] -top-[5px] bg-indigo-50 rounded-[5px] border-[0.5px] border-indigo-100 cursor-pointer'>
-              <ChevronDownDouble className='rotate-180 w-3 h-3 text-indigo-600' />
-            </div>
-          </Tooltip>
+        priorityUseType === PreferredProviderTypeEnum.custom && systemConfig.enabled && (
+          <PriorityUseTip />
         )
       }
     </div>

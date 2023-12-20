@@ -2,6 +2,7 @@ import { Fragment } from 'react'
 import type { FC } from 'react'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import { PreferredProviderTypeEnum } from '../declarations'
 import { Check, DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 
@@ -16,11 +17,11 @@ const Selector: FC<SelectorProps> = ({
   const { t } = useTranslation()
   const options = [
     {
-      key: 'custom',
+      key: PreferredProviderTypeEnum.custom,
       text: 'API',
     },
     {
-      key: 'system',
+      key: PreferredProviderTypeEnum.system,
       text: t('common.modelProvider.quota'),
     },
   ]

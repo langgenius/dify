@@ -27,8 +27,8 @@ import type {
 } from '@/models/app'
 import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type {
-  CredentialFormSchema,
   Model,
+  ModelItem,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -155,8 +155,12 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelProviderCredentials: Fetcher<{ credenntials: CredentialFormSchema[] }, string> = (url) => {
-  return get<{ credenntials: CredentialFormSchema[] }>(url)
+export const fetchModelProviderCredentials: Fetcher<{ credenntials?: Record<string, string | undefined | boolean> }, string> = (url) => {
+  return get<{ credenntials?: Record<string, string | undefined | boolean> }>(url)
+}
+
+export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
+  return get<{ data: ModelItem[] }>(url)
 }
 
 export const fetchModelList: Fetcher<{ data: Model[] }, string> = (url) => {
