@@ -6,10 +6,10 @@ bp = Blueprint('console', __name__, url_prefix='/console/api')
 api = ExternalApi(bp)
 
 # Import other controllers
-from . import extension, setup, version, apikey, admin
+from . import extension, setup, version, apikey, admin, feature
 
 # Import app controllers
-from .app import advanced_prompt_template, app, site, completion, model_config, statistic, conversation, message, generator, audio
+from .app import advanced_prompt_template, app, site, completion, model_config, statistic, conversation, message, generator, audio, annotation
 
 # Import auth controllers
 from .auth import login, oauth, data_source_oauth, activate

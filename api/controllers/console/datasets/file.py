@@ -69,5 +69,20 @@ class FilePreviewApi(Resource):
         return {'content': text}
 
 
+class FileSupportTypeApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        etl_type = current_app.config['ETL_TYPE']
+        if etl_type == 'Unstructured':
+            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx',
+                                  'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml']
+        else:
+            allowed_extensions = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'docx', 'csv']
+        return {'allowed_extensions': allowed_extensions}
+
+
 api.add_resource(FileApi, '/files/upload')
 api.add_resource(FilePreviewApi, '/files/<uuid:file_id>/preview')
+api.add_resource(FileSupportTypeApi, '/files/support-type')

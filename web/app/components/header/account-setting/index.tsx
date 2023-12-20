@@ -14,6 +14,7 @@ import DataSourcePage from './data-source-page'
 import ModelPage from './model-page'
 import s from './index.module.css'
 import BillingPage from '@/app/components/billing/billing-page'
+import CustomPage from '@/app/components/custom/custom-page'
 import Modal from '@/app/components/base/modal'
 import {
   Database03,
@@ -26,6 +27,8 @@ import { User01 as User01Solid, Users01 as Users01Solid } from '@/app/components
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import { AtSign, XClose } from '@/app/components/base/icons/src/vender/line/general'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import { Colors } from '@/app/components/base/icons/src/vender/line/editor'
+import { Colors as ColorsSolid } from '@/app/components/base/icons/src/vender/solid/editor'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -55,7 +58,7 @@ export default function AccountSetting({
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
-  const { enableBilling } = useProviderContext()
+  const { enableBilling, enableReplaceWebAppLogo } = useProviderContext()
 
   const workplaceGroupItems = (() => {
     return [
@@ -95,6 +98,12 @@ export default function AccountSetting({
         name: t('common.settings.apiBasedExtension'),
         icon: <Webhooks className={iconClassName} />,
         activeIcon: <Webhooks className={iconClassName} />,
+      },
+      {
+        key: (enableReplaceWebAppLogo || enableBilling) ? 'custom' : false,
+        name: t('custom.custom'),
+        icon: <Colors className={iconClassName} />,
+        activeIcon: <ColorsSolid className={iconClassName} />,
       },
     ].filter(item => !!item.key) as GroupItem[]
   })()
@@ -206,6 +215,7 @@ export default function AccountSetting({
             {activeMenu === 'data-source' && <DataSourcePage />}
             {activeMenu === 'plugin' && <PluginPage />}
             {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage /> }
+            {activeMenu === 'custom' && <CustomPage /> }
           </div>
         </div>
       </div>

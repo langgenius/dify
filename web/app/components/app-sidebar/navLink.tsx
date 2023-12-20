@@ -28,7 +28,15 @@ export default function NavLink({
   mode = 'expand',
 }: NavLinkProps) {
   const segment = useSelectedLayoutSegment()
-  const isActive = href.toLowerCase().split('/')?.pop() === segment?.toLowerCase()
+  const formattedSegment = (() => {
+    let res = segment?.toLowerCase()
+    // logs and annotations use the same nav
+    if (res === 'annotations')
+      res = 'logs'
+
+    return res
+  })()
+  const isActive = href.toLowerCase().split('/')?.pop() === formattedSegment
   const NavIcon = isActive ? iconMap.selected : iconMap.normal
 
   return (

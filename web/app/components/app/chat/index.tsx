@@ -7,7 +7,7 @@ import cn from 'classnames'
 import Recorder from 'js-audio-recorder'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
-import type { DisplayScene, FeedbackFunc, IChatItem, SubmitAnnotationFunc } from './type'
+import type { DisplayScene, FeedbackFunc, IChatItem } from './type'
 import { TryToAskIcon, stopIcon } from './icon-component'
 import Answer from './answer'
 import Question from './question'
@@ -24,10 +24,13 @@ import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-u
 import ImageList from '@/app/components/base/image-uploader/image-list'
 import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
 import { useClipboardUploader, useDraggableUploader, useImageFiles } from '@/app/components/base/image-uploader/hooks'
+import type { Annotation } from '@/models/log'
 
 export type IChatProps = {
+  appId?: string
   configElem?: React.ReactNode
   chatList: IChatItem[]
+  onChatListChange?: (chatList: IChatItem[]) => void
   controlChatUpdateAllConversation?: number
   /**
    * Whether to display the editing area and rating status
@@ -39,7 +42,6 @@ export type IChatProps = {
   isHideFeedbackEdit?: boolean
   isHideSendInput?: boolean
   onFeedback?: FeedbackFunc
-  onSubmitAnnotation?: SubmitAnnotationFunc
   checkCanSend?: () => boolean
   onSend?: (message: string, files: VisionFile[]) => void
   displayScene?: DisplayScene
@@ -59,6 +61,7 @@ export type IChatProps = {
   isShowCitationHitInfo?: boolean
   isShowPromptLog?: boolean
   visionConfig?: VisionSettings
+  supportAnnotation?: boolean
 }
 
 const Chat: FC<IChatProps> = ({
@@ -69,7 +72,6 @@ const Chat: FC<IChatProps> = ({
   isHideFeedbackEdit = false,
   isHideSendInput = false,
   onFeedback,
-  onSubmitAnnotation,
   checkCanSend,
   onSend = () => { },
   displayScene,
@@ -89,6 +91,9 @@ const Chat: FC<IChatProps> = ({
   isShowCitationHitInfo,
   isShowPromptLog,
   visionConfig,
+  appId,
+  supportAnnotation,
+  onChatListChange,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -190,7 +195,7 @@ const Chat: FC<IChatProps> = ({
       {isShowConfigElem && (configElem || null)}
       {/* Chat List */}
       <div className={cn((isShowConfigElem && configElem) ? 'h-0' : 'h-full', 'space-y-[30px]')}>
-        {chatList.map((item) => {
+        {chatList.map((item, index) => {
           if (item.isAnswer) {
             const isLast = item.id === chatList[chatList.length - 1].id
             const thoughts = item.agent_thoughts?.filter(item => item.thought !== '[DONE]')
@@ -202,7 +207,6 @@ const Chat: FC<IChatProps> = ({
               feedbackDisabled={feedbackDisabled}
               isHideFeedbackEdit={isHideFeedbackEdit}
               onFeedback={onFeedback}
-              onSubmitAnnotation={onSubmitAnnotation}
               displayScene={displayScene ?? 'web'}
               isResponsing={isResponsing && isLast}
               answerIcon={answerIcon}
@@ -212,6 +216,76 @@ const Chat: FC<IChatProps> = ({
               dataSets={dataSets}
               isShowCitation={isShowCitation}
               isShowCitationHitInfo={isShowCitationHitInfo}
+              supportAnnotation={supportAnnotation}
+              appId={appId}
+              question={chatList[index - 1]?.content}
+              onAnnotationEdited={(query, answer) => {
+                onChatListChange?.(chatList.map((item, i) => {
+                  if (i === index - 1) {
+                    return {
+                      ...item,
+                      content: query,
+                    }
+                  }
+                  if (i === index) {
+                    return {
+                      ...item,
+                      content: answer,
+                      annotation: {
+                        ...item.annotation,
+                        logAnnotation: undefined,
+                      } as any,
+                    }
+                  }
+                  return item
+                }))
+              }}
+              onAnnotationAdded={(annotationId, authorName, query, answer) => {
+                onChatListChange?.(chatList.map((item, i) => {
+                  if (i === index - 1) {
+                    return {
+                      ...item,
+                      content: query,
+                    }
+                  }
+                  if (i === index) {
+                    const answerItem = {
+                      ...item,
+                      content: item.content,
+                      annotation: {
+                        id: annotationId,
+                        authorName,
+                        logAnnotation: {
+                          content: answer,
+                          account: {
+                            id: '',
+                            name: authorName,
+                            email: '',
+                          },
+                        },
+                      } as Annotation,
+                    }
+                    return answerItem
+                  }
+                  return item
+                }))
+              }}
+              onAnnotationRemoved={() => {
+                onChatListChange?.(chatList.map((item, i) => {
+                  if (i === index) {
+                    return {
+                      ...item,
+                      content: item.content,
+                      annotation: {
+                        ...(item.annotation || {}),
+                        id: '',
+                      } as Annotation,
+                    }
+                  }
+                  return item
+                }))
+              }}
+
             />
           }
           return (

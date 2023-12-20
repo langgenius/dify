@@ -14,6 +14,7 @@ export type IDrawerProps = {
   isOpen: boolean
   // closable: boolean
   showClose?: boolean
+  clickOutsideNotOpen?: boolean
   onClose: () => void
   onCancel?: () => void
   onOk?: () => void
@@ -28,6 +29,7 @@ export default function Drawer({
   mask = true,
   showClose = false,
   isOpen,
+  clickOutsideNotOpen,
   onClose,
   onCancel,
   onOk,
@@ -37,7 +39,7 @@ export default function Drawer({
     <Dialog
       unmount={false}
       open={isOpen}
-      onClose={() => onClose()}
+      onClose={() => !clickOutsideNotOpen && onClose()}
       className="fixed z-30 inset-0 overflow-y-auto"
     >
       <div className="flex w-screen h-screen justify-end">

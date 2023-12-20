@@ -10,7 +10,7 @@ from flask import current_app
 
 from extensions.ext_storage import storage
 
-SUPPORT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']
+SUPPORT_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 
 
 class UploadFileParser:
