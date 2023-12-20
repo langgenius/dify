@@ -69,6 +69,10 @@ class ModelProvider(ABC):
         :param remote_model_fetch_credentials: credentials for fetching remote models if you want to fetch remote models
         :return: list of models
         """
+        provider_schema = self.get_provider_schema()
+        if model_type not in provider_schema.supported_model_types:
+            return []
+
         # get model instance of the model type
         model_instance = self.get_model_instance(model_type)
 

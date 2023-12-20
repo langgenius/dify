@@ -125,9 +125,9 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         entity = AIModelEntity(
-            model=credentials['model'],
+            model=model,
             label=I18nObject(
-                en_US=credentials['model']
+                en_US=model
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
