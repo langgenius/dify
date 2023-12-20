@@ -1,15 +1,20 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import type {
+  CredentialFormSchema,
   FormValue,
   ModelProvider,
 } from '../declarations'
-import { ConfigurateMethodEnum } from '../declarations'
+import {
+  ConfigurateMethodEnum,
+  FormTypeEnum,
+} from '../declarations'
 import {
   languageMaps,
+  removeCredentials,
   saveCredentials,
   validateCredentials,
 } from '../utils'
@@ -28,6 +33,7 @@ import {
 import { fetchModelProviderCredentials } from '@/service/common'
 import Loading from '@/app/components/base/loading'
 import { useToastContext } from '@/app/components/base/toast'
+import ConfirmCommon from '@/app/components/base/confirm/common'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -47,25 +53,43 @@ const ModelModal: FC<ModelModalProps> = ({
   const { locale } = useContext(I18n)
   const language = languageMaps[locale]
   const [loading, setLoading] = useState(false)
-  const [initialFormValueCleared, setInitialFormValueCleared] = useState(false)
+  const [showConfirm, setShowConfirm] = useState(false)
   const { data: formSchemasValue, isLoading } = useSWR(`/workspaces/current/model-providers/${provider.provider}/credentials`, fetchModelProviderCredentials)
-  const initialFormSchemasValue = formSchemasValue?.credenntials || {}
+  const initialFormSchemasValue = useMemo(() => {
+    return formSchemasValue?.credentials || {}
+  }, [formSchemasValue])
   const [value, setValue] = useState(initialFormSchemasValue)
+  useEffect(() => {
+    setValue(initialFormSchemasValue)
+  }, [initialFormSchemasValue])
   const [validate, validating, validatedStatusState] = useValidate(value)
-  const isEditMode = Object.keys(initialFormSchemasValue).length !== 0
+  const isEditMode = !!formSchemasValue?.credentials
   const formSchemas = provider.provider_credential_schema.credential_form_schemas
-  const formRequiredValueAllCompleted = formSchemas.filter(formSchema => formSchema.required).every(formSchema => value[formSchema.variable])
   const providerFormSchemaPredefined = configurateMethod === ConfigurateMethodEnum.predefinedModel
+  const [requiredFormSchemas, secretFormSchemas] = useMemo(() => {
+    const requiredFormSchemas: CredentialFormSchema[] = []
+    const secretFormSchemas: CredentialFormSchema[] = []
+
+    formSchemas.forEach((formSchema) => {
+      if (formSchema.required)
+        requiredFormSchemas.push(formSchema)
+
+      if (formSchema.type === FormTypeEnum.secretInput)
+        secretFormSchemas.push(formSchema)
+    })
+
+    return [requiredFormSchemas, secretFormSchemas]
+  }, [formSchemas])
+  const formRequiredValueAllCompleted = requiredFormSchemas.every(formSchema => value[formSchema.variable])
 
   const handleValueChange = (v: FormValue) => {
     setValue(v)
 
-    const validateKeys = formSchemas.filter(formSchema => formSchema.required).map(formSchema => formSchema.variable) || []
-    if (validateKeys.length) {
+    if (requiredFormSchemas.length) {
       validate({
         before: () => {
-          for (let i = 0; i < validateKeys.length; i++) {
-            if (!v[validateKeys[i]])
+          for (let i = 0; i < requiredFormSchemas.length; i++) {
+            if (!v[requiredFormSchemas[i].variable])
               return false
           }
           return true
@@ -83,13 +107,23 @@ const ModelModal: FC<ModelModalProps> = ({
     }
   }
   const handleSave = async () => {
-    setLoading(true)
     try {
+      setLoading(true)
+      const secretValues = secretFormSchemas.reduce((prev, next) => {
+        if (value[next.variable] === initialFormSchemasValue[next.variable])
+          prev[next.variable] = '[__HIDDEN__]'
+
+        return prev
+      }, {} as Record<string, string>)
+
       const res = await saveCredentials(
         providerFormSchemaPredefined,
         provider.provider,
         {
-          credentials: value,
+          credentials: {
+            ...value,
+            ...secretValues,
+          },
         },
       )
       if (res.result === 'success') {
@@ -103,16 +137,27 @@ const ModelModal: FC<ModelModalProps> = ({
     }
   }
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    try {
+      setLoading(true)
 
+      const res = await removeCredentials(
+        providerFormSchemaPredefined,
+        provider.provider,
+      )
+      if (res.result === 'success') {
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        onSave()
+        onCancel()
+      }
+    }
+    finally {
+      setLoading(false)
+    }
   }
 
   const renderTitlePrefix = () => {
-    let prefix
-    if (isEditMode)
-      prefix = t('common.operation.edit')
-    else
-      prefix = configurateMethod === ConfigurateMethodEnum.customizableModel ? t('common.operation.create') : t('common.operation.setup')
+    const prefix = configurateMethod === ConfigurateMethodEnum.customizableModel ? t('common.operation.add') : t('common.operation.setup')
 
     return `${prefix} ${provider.label[language]}`
   }
@@ -138,9 +183,6 @@ const ModelModal: FC<ModelModalProps> = ({
                     value={value}
                     onChange={handleValueChange}
                     formSchemas={formSchemas}
-                    isEditMode={isEditMode}
-                    initialFormValueCleared={initialFormValueCleared}
-                    onInitialFormValueCleared={val => setInitialFormValueCleared(val)}
                     validating={validating}
                     validatedSuccess={validatedStatusState.status === ValidatedStatus.Success}
                   />
@@ -165,7 +207,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         isEditMode && (
                           <Button
                             className='mr-2 h-9 text-sm font-medium text-[#D92D20]'
-                            onClick={handleRemove}
+                            onClick={() => setShowConfirm(true)}
                           >
                             {t('common.operation.remove')}
                           </Button>
@@ -181,7 +223,7 @@ const ModelModal: FC<ModelModalProps> = ({
                         className='h-9 text-sm font-medium'
                         type='primary'
                         onClick={handleSave}
-                        disabled={loading || (isEditMode && !initialFormValueCleared) || validating || !formRequiredValueAllCompleted}
+                        disabled={loading || validating || !formRequiredValueAllCompleted}
                       >
                         {t('common.operation.save')}
                       </Button>
@@ -214,6 +256,17 @@ const ModelModal: FC<ModelModalProps> = ({
                   }
                 </div>
               </div>
+              {
+                showConfirm && (
+                  <ConfirmCommon
+                    title='Are you sure?'
+                    isShow={showConfirm}
+                    onCancel={() => setShowConfirm(false)}
+                    onConfirm={handleRemove}
+                    confirmWrapperClassName='z-[70]'
+                  />
+                )
+              }
             </div>
           )
         }

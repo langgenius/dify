@@ -9,6 +9,7 @@ import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   languageMaps,
+  modelTypeFormat,
 } from '../utils'
 import ModelBadge from '../model-badge'
 import CredentialPanel from './credential-panel'
@@ -67,10 +68,9 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           <div className='flex gap-0.5'>
             {
               provider.supported_model_types.map(modelType => (
-                <ModelBadge
-                  key={modelType}
-                  text={modelType.toLocaleUpperCase()}
-                />
+                <ModelBadge key={modelType}>
+                  {modelTypeFormat(modelType)}
+                </ModelBadge>
               ))
             }
           </div>

@@ -2,6 +2,7 @@ import { ValidatedStatus } from '../key-validator/declarations'
 import type { FormValue } from './declarations'
 import { ModelTypeEnum } from './declarations'
 import {
+  deleteModelProvider,
   setModelProvider,
   validateModelProvider,
 } from '@/service/common'
@@ -73,6 +74,27 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
   }
 
   return setModelProvider({ url, body })
+}
+
+export const removeCredentials = async (predefined: boolean, provider: string, v?: Pick<validateModelProviderBody, 'model' | 'model_type'>) => {
+  let url = ''
+  let body
+
+  if (predefined) {
+    url = `/workspaces/current/model-providers/${provider}`
+  }
+  else {
+    if (v) {
+      const { model, model_type } = v
+      body = {
+        model,
+        model_type,
+      }
+      url = `/workspaces/current/model-providers/${provider}/models`
+    }
+  }
+
+  return deleteModelProvider({ url, body })
 }
 
 export const sizeFormat = (size: number) => {

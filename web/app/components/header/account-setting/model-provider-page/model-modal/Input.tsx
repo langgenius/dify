@@ -4,7 +4,7 @@ import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/genera
 type InputProps = {
   value?: string
   onChange: (v: string) => void
-  onFocus: () => void
+  onFocus?: () => void
   placeholder?: string
   validated?: boolean
 }

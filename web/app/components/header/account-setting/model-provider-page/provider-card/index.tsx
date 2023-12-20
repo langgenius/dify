@@ -63,10 +63,9 @@ const ProviderCard: FC<ProviderCardProps> = ({
         <div className='flex flex-wrap group-hover:hidden gap-0.5'>
           {
             provider.supported_model_types.map(modelType => (
-              <ModelBadge
-                key={modelType}
-                text={modelTypeFormat(modelType)}
-              />
+              <ModelBadge key={modelType}>
+                {modelTypeFormat(modelType)}
+              </ModelBadge>
             ))
           }
         </div>

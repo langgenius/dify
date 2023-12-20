@@ -155,8 +155,8 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export const fetchModelProviderCredentials: Fetcher<{ credenntials?: Record<string, string | undefined | boolean> }, string> = (url) => {
-  return get<{ credenntials?: Record<string, string | undefined | boolean> }>(url)
+export const fetchModelProviderCredentials: Fetcher<{ credentials?: Record<string, string | undefined | boolean> }, string> = (url) => {
+  return get<{ credentials?: Record<string, string | undefined | boolean> }>(url)
 }
 
 export const fetchModelProviderModelList: Fetcher<{ data: ModelItem[] }, string> = (url) => {
@@ -175,8 +175,8 @@ export const setModelProvider: Fetcher<CommonResponse, { url: string; body: any 
   return post<CommonResponse>(url, { body })
 }
 
-export const deleteModelProvider: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
-  return del<CommonResponse>(url)
+export const deleteModelProvider: Fetcher<CommonResponse, { url: string; body?: any }> = ({ url, body }) => {
+  return del<CommonResponse>(url, { body })
 }
 
 export const changeModelProviderPriority: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {

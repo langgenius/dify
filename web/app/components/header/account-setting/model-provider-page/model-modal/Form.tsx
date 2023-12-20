@@ -20,9 +20,6 @@ type FormProps = {
   value: FormValue
   onChange: (val: FormValue) => void
   formSchemas: CredentialFormSchema[]
-  isEditMode: boolean
-  initialFormValueCleared: boolean
-  onInitialFormValueCleared: (val: boolean) => void
   validating: boolean
   validatedSuccess?: boolean
 }
@@ -31,30 +28,12 @@ const Form: FC<FormProps> = ({
   value,
   onChange,
   formSchemas,
-  isEditMode,
-  initialFormValueCleared,
-  onInitialFormValueCleared,
   validating,
   validatedSuccess,
 }) => {
   const { locale } = useContext(I18n)
   const language = languageMaps[locale]
   const [changeKey, setChangeKey] = useState('')
-
-  const handleClearInitialFormValue = () => {
-    const needClearInitialFormValues = formSchemas.filter(formSchema => formSchema.type === (FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textInput))
-    const newValue: Record<string, string> = {}
-    needClearInitialFormValues?.forEach((field) => {
-      newValue[field.variable] = ''
-    })
-    onChange({ ...value, ...newValue })
-    onInitialFormValueCleared(true)
-  }
-
-  const handleFocus = () => {
-    if (isEditMode && !initialFormValueCleared)
-      handleClearInitialFormValue()
-  }
 
   const handleFormChange = (key: string, val: string) => {
     setChangeKey(key)
@@ -82,7 +61,6 @@ const Form: FC<FormProps> = ({
           <Input
             value={value[variable] as string}
             onChange={val => handleFormChange(variable, val)}
-            onFocus={handleFocus}
             validated={validatedSuccess}
             placeholder={placeholder[language]}
           />

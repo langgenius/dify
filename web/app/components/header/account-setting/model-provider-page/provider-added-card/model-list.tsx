@@ -84,15 +84,21 @@ const ModelList: FC<ModelListProps> = ({
                 {model.label[language]}
               </span>
               <div className='grow flex items-center gap-1'>
-                <ModelBadge text={modelTypeFormat(model.model_type)}/>
+                <ModelBadge>
+                  {modelTypeFormat(model.model_type)}
+                </ModelBadge>
                 {
                   model.model_properties.mode && (
-                    <ModelBadge text={(model.model_properties.mode as string).toLocaleUpperCase()}/>
+                    <ModelBadge>
+                      {(model.model_properties.mode as string).toLocaleUpperCase()}
+                    </ModelBadge>
                   )
                 }
                 {
                   model.model_properties.context_size && (
-                    <ModelBadge text={sizeFormat(model.model_properties.context_size as number)}/>
+                    <ModelBadge>
+                      {sizeFormat(model.model_properties.context_size as number)}
+                    </ModelBadge>
                   )
                 }
               </div>
