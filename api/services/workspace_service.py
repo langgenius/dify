@@ -4,7 +4,7 @@ from extensions.ext_database import db
 from models.account import Tenant, TenantAccountJoin, TenantAccountJoinRole
 from models.provider import Provider
 
-from services.billing_service import BillingService
+from services.feature_service import FeatureService
 from services.account_service import TenantService
 
 
@@ -32,12 +32,10 @@ class WorkspaceService:
         ).first()
         tenant_info['role'] = tenant_account_join.role
 
-        edition = current_app.config['EDITION']
-        if edition == 'CLOUD':
-            billing_info = BillingService.get_info(tenant_info['id'])
+        can_replace_logo = FeatureService.get_features(tenant_info['id']).can_replace_logo
 
-            if billing_info['can_replace_logo'] and TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]):
-                tenant_info['custom_config'] = tenant.custom_config_dict
+        if can_replace_logo and TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER, TenantAccountJoinRole.ADMIN]):
+            tenant_info['custom_config'] = tenant.custom_config_dict
 
         # Get providers
         providers = db.session.query(Provider).filter(
