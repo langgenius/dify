@@ -12,8 +12,7 @@ from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.entities.application_entities import ApplicationGenerateEntity, AppOrchestrationConfigEntity, \
     ModelConfigEntity, PromptTemplateEntity, AdvancedChatMessageEntity, AdvancedChatPromptTemplateEntity, \
     AdvancedCompletionPromptTemplateEntity, ExternalDataVariableEntity, DatasetEntity, DatasetRetrieveConfigEntity, \
-    AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, AnnotationReplyEntity, \
-    AnnotationReplyEmbeddingModelEntity, InvokeFrom, ApplicationGenerateResponse
+    AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom, ApplicationGenerateResponse
 from core.entities.model_entities import ModelStatus
 from core.file.file_obj import FileObj
 from core.model_providers.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
@@ -470,17 +469,6 @@ class ApplicationManager:
                 properties['sensitive_word_avoidance'] = SensitiveWordAvoidanceEntity(
                     type=sensitive_word_avoidance_dict.get('type'),
                     config=sensitive_word_avoidance_dict.get('config'),
-                )
-
-        annotation_reply_dict = copy_app_model_config_dict.get('annotation_reply')
-        if annotation_reply_dict:
-            if 'enabled' in annotation_reply_dict and annotation_reply_dict['enabled']:
-                properties['annotation_reply'] = AnnotationReplyEntity(
-                    score_threshold=annotation_reply_dict.get('score_threshold'),
-                    embedding_model=AnnotationReplyEmbeddingModelEntity(
-                        provider=annotation_reply_dict['embedding_model']['embedding_provider_name'],
-                        model=annotation_reply_dict['embedding_model']['embedding_model_name'],
-                    )
                 )
 
         return AppOrchestrationConfigEntity(**properties)

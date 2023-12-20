@@ -158,22 +158,6 @@ class SensitiveWordAvoidanceEntity(BaseModel):
     config: dict[str, Any] = {}
 
 
-class AnnotationReplyEmbeddingModelEntity(BaseModel):
-    """
-    Annotation Reply Embedding Model Entity.
-    """
-    provider: str
-    model: str
-
-
-class AnnotationReplyEntity(BaseModel):
-    """
-    Annotation Reply Entity.
-    """
-    score_threshold: float
-    embedding_model: AnnotationReplyEmbeddingModelEntity
-
-
 class FileUploadEntity(BaseModel):
     """
     File Upload Entity.
@@ -224,7 +208,6 @@ class AppOrchestrationConfigEntity(BaseModel):
     speech_to_text: bool = False
     show_retrieve_source: bool = False
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
-    annotation_reply: Optional[AnnotationReplyEntity]
 
 
 class InvokeFrom(Enum):
