@@ -111,4 +111,4 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 
 ## Licencia
 
-Este repositorio está disponible bajo la [Licencia de código abierto de Dify](LICENSE).
+Este repositorio está disponible bajo la [Licencia de Código Abierto Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
