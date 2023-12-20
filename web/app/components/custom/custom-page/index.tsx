@@ -10,12 +10,16 @@ import { contactSalesUrl } from '@/app/components/billing/config'
 
 const CustomPage = () => {
   const { t } = useTranslation()
-  const { plan } = useProviderContext()
+  const { plan, enableBilling } = useProviderContext()
+
+  const showBillingTip = enableBilling && plan.type === Plan.sandbox
+  const showCustomAppHeaderBrand = enableBilling && plan.type === Plan.sandbox
+  const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (
     <div className='flex flex-col'>
       {
-        plan.type === Plan.sandbox && (
+        showBillingTip && (
           <GridMask canvasClassName='!rounded-xl'>
             <div className='flex justify-between mb-1 px-6 py-5 h-[88px] shadow-md rounded-xl border-[0.5px] border-gray-200'>
               <div className={`${s.textGradient} leading-[24px] text-base font-semibold`}>
@@ -29,7 +33,7 @@ const CustomPage = () => {
       }
       <CustomWebAppBrand />
       {
-        plan.type === Plan.sandbox && (
+        showCustomAppHeaderBrand && (
           <>
             <div className='my-2 h-[0.5px] bg-gray-100'></div>
             <CustomAppHeaderBrand />
@@ -37,7 +41,7 @@ const CustomPage = () => {
         )
       }
       {
-        (plan.type === Plan.professional || plan.type === Plan.team) && (
+        showContact && (
           <div className='absolute bottom-0 h-[50px] leading-[50px] text-xs text-gray-500'>
             {t('custom.customize.prefix')}
             <a className='text-[#155EEF]' href={contactSalesUrl} target='_blank'>{t('custom.customize.contactUs')}</a>

@@ -37,6 +37,7 @@ const ProviderContext = createContext<{
   }
   isFetchedPlan: boolean
   enableBilling: boolean
+  enableReplaceWebAppLogo: boolean
 }>({
       textGenerationModelList: [],
       embeddingsModelList: [],
@@ -72,6 +73,7 @@ const ProviderContext = createContext<{
       },
       isFetchedPlan: false,
       enableBilling: false,
+      enableReplaceWebAppLogo: false,
     })
 
 export const useProviderContext = () => useContext(ProviderContext)
@@ -119,11 +121,13 @@ export const ProviderContextProvider = ({
   const [plan, setPlan] = useState(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
   const [enableBilling, setEnableBilling] = useState(true)
+  const [enableReplaceWebAppLogo, setEnableReplaceWebAppLogo] = useState(false)
   useEffect(() => {
     (async () => {
       const data = await fetchCurrentPlanInfo()
-      const enabled = data.enabled
+      const enabled = data.billing.enabled
       setEnableBilling(enabled)
+      setEnableReplaceWebAppLogo(data.can_replace_logo)
       if (enabled) {
         setPlan(parseCurrentPlan(data))
         // setPlan(parseCurrentPlan({
@@ -160,6 +164,7 @@ export const ProviderContextProvider = ({
       plan,
       isFetchedPlan,
       enableBilling,
+      enableReplaceWebAppLogo,
     }}>
       {children}
     </ProviderContext.Provider>
