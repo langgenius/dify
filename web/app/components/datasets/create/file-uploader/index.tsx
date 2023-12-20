@@ -41,6 +41,38 @@ const FileUploader = ({
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   const { data: supportFileTypesResponse } = useSWR({ url: '/files/support-type' }, fetchSupportFileTypes)
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []
+  const supportTypesShowNames = (() => {
+    let res = [...supportTypes]
+    if (res.includes('markdown') && res.includes('md'))
+      res = res.filter(item => item !== 'md')
+
+    if (res.includes('pptx') && res.includes('ppt'))
+      res = res.filter(item => item !== 'ppt')
+
+    if (res.includes('html') && res.includes('htm'))
+      res = res.filter(item => item !== 'htm')
+
+    res = res.map((item) => {
+      if (item === 'md')
+        return 'markdown'
+
+      if (item === 'pptx')
+        return 'ppt'
+
+      if (item === 'htm')
+        return 'html'
+
+      if (item === 'xlsx')
+        return 'xls'
+
+      if (item === 'docx')
+        return 'doc'
+
+      return item
+    })
+
+    return res.map(item => item.toUpperCase()).join(locale === 'en' ? ', ' : '、 ')
+  })()
   const ACCEPTS = supportTypes.map((ext: string) => `.${ext}`)
   const fileUploadConfig = useMemo(() => fileUploadConfigResponse ?? {
     file_size_limit: 15,
@@ -77,7 +109,7 @@ const FileUploader = ({
       notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
-  }, [fileUploadConfig, notify, t])
+  }, [fileUploadConfig, notify, t, ACCEPTS])
 
   const fileUpload = useCallback(async (fileItem: FileItem): Promise<FileItem> => {
     const formData = new FormData()
@@ -230,7 +262,7 @@ const FileUploader = ({
         </div>
         <div className={s.tip}>{t('datasetCreation.stepOne.uploader.tip', {
           size: fileUploadConfig.file_size_limit,
-          supportTypes: supportTypes.map(item => item.toUpperCase()).join(locale === 'en' ? ', ' : '、 '),
+          supportTypes: supportTypesShowNames,
         })}</div>
         {dragging && <div ref={dragRef} className={s.draggingCover} />}
       </div>

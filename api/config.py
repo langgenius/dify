@@ -55,6 +55,8 @@ DEFAULTS = {
     'OUTPUT_MODERATION_BUFFER_SIZE': 300,
     'MULTIMODAL_SEND_IMAGE_FORMAT': 'base64',
     'INVITE_EXPIRY_HOURS': 72,
+    'BILLING_ENABLED': 'False',
+    'CAN_REPLACE_LOGO': 'False',
     'ETL_TYPE': 'dify',
 }
 
@@ -85,7 +87,7 @@ class Config:
         # ------------------------
         # General Configurations.
         # ------------------------
-        self.CURRENT_VERSION = "0.3.33"
+        self.CURRENT_VERSION = "0.3.34"
         self.COMMIT_SHA = get_env('COMMIT_SHA')
         self.EDITION = "SELF_HOSTED"
         self.DEPLOY_ENV = get_env('DEPLOY_ENV')
@@ -279,6 +281,8 @@ class Config:
 
         self.ETL_TYPE = get_env('ETL_TYPE')
         self.UNSTRUCTURED_API_URL = get_env('UNSTRUCTURED_API_URL')
+        self.BILLING_ENABLED = get_bool_env('BILLING_ENABLED')
+        self.CAN_REPLACE_LOGO = get_bool_env('CAN_REPLACE_LOGO')
 
 
 class CloudEditionConfig(Config):

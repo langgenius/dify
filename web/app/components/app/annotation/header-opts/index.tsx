@@ -114,7 +114,8 @@ const HeaderOptions: FC<Props> = ({
           )
         }
         // !w-[208px]
-        className={'!w-[131px] h-fit !z-20'}
+        className={'!w-[135px] h-fit !z-20'}
+        popupClassName='!w-full'
         manualClose
       />
       {showAddModal && (

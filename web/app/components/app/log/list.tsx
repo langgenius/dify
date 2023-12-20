@@ -100,7 +100,7 @@ const getFormattedChatList = (messages: ChatMessage[]) => {
         if (item.annotation_hit_history) {
           return {
             id: item.annotation_hit_history.annotation_id,
-            authorName: item.annotation_hit_history.annotation_create_account.name,
+            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
             created_at: item.annotation_hit_history.created_at,
           }
         }
