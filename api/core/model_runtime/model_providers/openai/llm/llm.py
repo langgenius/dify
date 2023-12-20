@@ -276,6 +276,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # transform response
         result = LLMResult(
             model=response.model,
+            prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,
             system_fingerprint=response.system_fingerprint,
@@ -328,6 +329,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,
@@ -339,6 +341,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,
@@ -452,6 +455,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # transform response
         response = LLMResult(
             model=response.model,
+            prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,
             system_fingerprint=response.system_fingerprint,
@@ -512,6 +516,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,
@@ -523,6 +528,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,

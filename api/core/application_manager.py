@@ -1,7 +1,6 @@
 import json
 import logging
 import threading
-import time
 import uuid
 from typing import cast, Optional, Any, Union, Generator, Tuple
 
@@ -10,18 +9,20 @@ from flask import Flask, current_app
 from core.app_runner.agent_app_runner import AgentApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
-from core.entities.llm_application_entities import LLMApplicationGenerateEntity, AppOrchestrationConfigEntity, \
+from core.entities.application_entities import ApplicationGenerateEntity, AppOrchestrationConfigEntity, \
     ModelConfigEntity, PromptTemplateEntity, AdvancedChatMessageEntity, AdvancedChatPromptTemplateEntity, \
     AdvancedCompletionPromptTemplateEntity, ExternalDataVariableEntity, DatasetEntity, DatasetRetrieveConfigEntity, \
     AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, AnnotationReplyEntity, \
-    AnnotationReplyEmbeddingModelEntity, InvokeFrom, LLMApplicationGenerateResponse
+    AnnotationReplyEmbeddingModelEntity, InvokeFrom, ApplicationGenerateResponse
+from core.entities.model_entities import ModelStatus
 from core.file.file_obj import FileObj
+from core.model_providers.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_template import PromptTemplateParser
 from core.provider_manager import ProviderManager
-from core.pub_sub_manager import PubSubManager, ConversationTaskStoppedException
+from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser, Conversation, Message, MessageFile, App
@@ -29,9 +30,9 @@ from models.model import EndUser, Conversation, Message, MessageFile, App
 logger = logging.getLogger(__name__)
 
 
-class LLMApplicationManager:
+class ApplicationManager:
     """
-    This class is responsible for managing LLM application
+    This class is responsible for managing application
     """
 
     def generate(self, tenant_id: str,
@@ -47,7 +48,7 @@ class LLMApplicationManager:
                  conversation: Optional[Conversation] = None,
                  stream: bool = False,
                  extras: Optional[dict[str, Any]] = None) \
-            -> Union[LLMApplicationGenerateResponse, Generator]:
+            -> Union[ApplicationGenerateResponse, Generator]:
         """
         Generate App response.
 
@@ -65,11 +66,11 @@ class LLMApplicationManager:
         :param stream: is stream
         :param extras: extras
         """
-        # init pubsub manager
+        # init task id
         task_id = str(uuid.uuid4())
 
-        # init llm application generate entity
-        llm_application_generate_entity = LLMApplicationGenerateEntity(
+        # init application generate entity
+        application_generate_entity = ApplicationGenerateEntity(
             task_id=task_id,
             tenant_id=tenant_id,
             app_id=app_id,
@@ -94,210 +95,129 @@ class LLMApplicationManager:
         (
             conversation,
             message
-        ) = self._init_generate_records(llm_application_generate_entity)
+        ) = self._init_generate_records(application_generate_entity)
 
-        # init pubsub manager
-        pubsub_manager = PubSubManager(
-            task_id=llm_application_generate_entity.task_id,
-            user_id=llm_application_generate_entity.user_id,
-            invoke_from=llm_application_generate_entity.invoke_from
+        # init queue manager
+        queue_manager = ApplicationQueueManager(
+            task_id=application_generate_entity.task_id,
+            user_id=application_generate_entity.user_id,
+            invoke_from=application_generate_entity.invoke_from,
+            conversation_id=conversation.id,
+            app_mode=conversation.mode,
+            message_id=message.id
         )
-
-        # subscribe channel, and listening in _handle_response method
-        pubsub_manager.subscribe()
 
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(),
-            'llm_application_generate_entity': llm_application_generate_entity,
+            'application_generate_entity': application_generate_entity,
+            'queue_manager': queue_manager,
             'conversation_id': conversation.id,
             'message_id': message.id,
         })
 
         worker_thread.start()
 
-        # wait for a limited time to close the worker thread
-        self._countdown_and_stop_thread(
-            flask_app=current_app._get_current_object(),
-            worker_thread=worker_thread,
-            llm_application_generate_entity=llm_application_generate_entity
+        # return response or stream generator
+        return self._handle_response(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message,
+            stream=stream
         )
 
-        # return response or stream generator
-        return self._handle_response(pubsub_manager, stream)
-
     def _generate_worker(self, flask_app: Flask,
-                         llm_application_generate_entity: LLMApplicationGenerateEntity,
+                         application_generate_entity: ApplicationGenerateEntity,
+                         queue_manager: ApplicationQueueManager,
                          conversation_id: str,
                          message_id: str) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
-        :param llm_application_generate_entity: LLM application generate entity
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
         :param conversation_id: conversation ID
         :param message_id: message ID
         :return:
         """
         with flask_app.app_context():
-            # init pubsub manager
-            pubsub_manager = PubSubManager(
-                task_id=llm_application_generate_entity.task_id,
-                user_id=llm_application_generate_entity.user_id,
-                invoke_from=llm_application_generate_entity.invoke_from
-            )
-
-            # init generate task pipeline
-            generate_task_pipeline = GenerateTaskPipeline(
-                llm_application_generate_entity=llm_application_generate_entity,
-                pubsub_manager=pubsub_manager,
-                conversation_id=conversation_id,
-                message_id=message_id
-            )
-
             try:
-                if llm_application_generate_entity.app_orchestration_config_entity.agent:
+                # get conversation and message
+                conversation = self._get_conversation(conversation_id)
+                message = self._get_message(message_id)
+
+                if application_generate_entity.app_orchestration_config_entity.agent:
                     # agent app
                     runner = AgentApplicationRunner()
-                    runner.run(generate_task_pipeline)
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message
+                    )
                 else:
                     # basic app
                     runner = BasicApplicationRunner()
-                    runner.run(generate_task_pipeline)
-            except (ConversationTaskInterruptException, ConversationTaskStoppedException):
+                    runner.run(
+                        application_generate_entity=application_generate_entity,
+                        queue_manager=queue_manager,
+                        conversation=conversation,
+                        message=message
+                    )
+            except ConversationTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
-                pubsub_manager.pub_error(InvokeAuthorizationError('Incorrect API key provided'))
-            except (ValueError, InvokeError, ProviderTokenNotInitError, QuotaExceededError,
-                    ModelCurrentlyNotSupportError) as e:
-                pubsub_manager.pub_error(e)
+                queue_manager.publish_error(InvokeAuthorizationError('Incorrect API key provided'))
+            except (ValueError, InvokeError) as e:
+                queue_manager.publish_error(e)
             except Exception as e:
-                logger.exception("Unknown Error in completion")
-                pubsub_manager.pub_error(e)
+                logger.exception("Unknown Error in generate worker")
+                queue_manager.publish_error(e)
             finally:
                 db.session.remove()
 
-    def _countdown_and_stop_thread(self, flask_app: Flask,
-                                   worker_thread: threading.Thread,
-                                   llm_application_generate_entity: LLMApplicationGenerateEntity) -> threading.Thread:
+    def _handle_response(self, application_generate_entity: ApplicationGenerateEntity,
+                         queue_manager: ApplicationQueueManager,
+                         conversation: Conversation,
+                         message: Message,
+                         stream: bool = False) -> Union[dict, Generator]:
         """
-        Countdown and stop generate task thread.
-        :param flask_app: Flask app
-        :param worker_thread: worker thread
-        :param llm_application_generate_entity: LLM application generate entity
+        Handle response.
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
+        :param conversation: conversation
+        :param message: message
+        :param stream: is stream
         :return:
         """
-        # wait for 10 minutes to close the thread
-        timeout = 600
+        # init generate task pipeline
+        generate_task_pipeline = GenerateTaskPipeline(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            conversation=conversation,
+            message=message
+        )
 
-        def close_pubsub():
-            with flask_app.app_context():
-                try:
-                    # init pubsub manager
-                    pubsub_manager = PubSubManager(
-                        task_id=llm_application_generate_entity.task_id,
-                        user_id=llm_application_generate_entity.user_id,
-                        invoke_from=llm_application_generate_entity.invoke_from
-                    )
-
-                    sleep_iterations = 0
-                    while sleep_iterations < timeout and worker_thread.is_alive():
-                        if sleep_iterations > 0 and sleep_iterations % 10 == 0:
-                            pubsub_manager.publish_ping()
-
-                        time.sleep(1)
-                        sleep_iterations += 1
-
-                    if worker_thread.is_alive():
-                        pubsub_manager.stop_task()
-                        try:
-                            pubsub_manager.unsubscribe()
-                        except Exception:
-                            pass
-                finally:
-                    db.session.remove()
-
-        countdown_thread = threading.Thread(target=close_pubsub)
-        countdown_thread.start()
-
-        return countdown_thread
-
-    def _handle_response(self, pubsub_manager: PubSubManager, stream: bool = False) -> Union[dict, Generator]:
-        if not stream:
-            try:
-                message_result = {}
-                for message in pubsub_manager.subscriber_listen():
-                    if message["type"] == "message":
-                        result = message["data"].decode('utf-8')
-                        result = json.loads(result)
-                        if result.get('error'):
-                            cls.handle_error(result)
-                        if result['event'] == 'message' and 'data' in result:
-                            message_result['message'] = result.get('data')
-                        if result['event'] == 'message_end' and 'data' in result:
-                            message_result['message_end'] = result.get('data')
-                            return cls.get_blocking_message_response_data(message_result)
-            except ValueError as e:
-                if e.args[0] != "I/O operation on closed file.":  # ignore this error
-                    raise CompletionStoppedError()
-                else:
-                    logging.exception(e)
-                    raise
-            finally:
-                db.session.remove()
-
-                try:
-                    pubsub_manager.unsubscribe()
-                except ConnectionError:
-                    pass
-        else:
-            def generate() -> Generator:
-                try:
-                    for message in pubsub_manager.subscriber_listen():
-                        if message["type"] == "message":
-                            result = message["data"].decode('utf-8')
-                            result = json.loads(result)
-                            if result.get('error'):
-                                cls.handle_error(result)
-
-                            event = result.get('event')
-                            if event == "end":
-                                logging.debug("{} finished".format(generate_channel))
-                                break
-                            if event == 'message':
-                                yield "data: " + json.dumps(cls.get_message_response_data(result.get('data'))) + "\n\n"
-                            elif event == 'message_replace':
-                                yield "data: " + json.dumps(
-                                    cls.get_message_replace_response_data(result.get('data'))) + "\n\n"
-                            elif event == 'chain':
-                                yield "data: " + json.dumps(cls.get_chain_response_data(result.get('data'))) + "\n\n"
-                            elif event == 'agent_thought':
-                                yield "data: " + json.dumps(
-                                    cls.get_agent_thought_response_data(result.get('data'))) + "\n\n"
-                            elif event == 'message_end':
-                                yield "data: " + json.dumps(
-                                    cls.get_message_end_data(result.get('data'))) + "\n\n"
-                            elif event == 'ping':
-                                yield "event: ping\n\n"
-                            else:
-                                yield "data: " + json.dumps(result) + "\n\n"
-                except ValueError as e:
-                    if e.args[0] != "I/O operation on closed file.":  # ignore this error
-                        logging.exception(e)
-                        raise
-                finally:
-                    db.session.remove()
-
-                    try:
-                        pubsub_manager.unsubscribe()
-                    except ConnectionError:
-                        pass
-
-            return generate()
+        try:
+            return generate_task_pipeline.process(stream=stream)
+        except ValueError as e:
+            if e.args[0] == "I/O operation on closed file.":  # ignore this error
+                raise ConversationTaskStoppedException()
+            else:
+                logger.exception(e)
+                raise
+        finally:
+            db.session.remove()
 
     def _convert_from_app_model_config_dict(self, tenant_id: str, app_model_config_dict: dict) \
             -> AppOrchestrationConfigEntity:
         """
         Convert app model config dict to entity.
+        :param tenant_id: tenant ID
+        :param app_model_config_dict: app model config dict
+        :raises ProviderTokenNotInitError: provider token not init error
+        :return: app orchestration config entity
         """
         properties = {}
 
@@ -310,13 +230,37 @@ class LLMApplicationManager:
             model_type=ModelType.LLM
         )
 
+        provider_name = provider_model_bundle.configuration.provider.provider
+        model_name = copy_app_model_config_dict['model']['name']
+
         model_instance = provider_model_bundle.model_instance
         model_instance = cast(LargeLanguageModel, model_instance)
 
+        # check model credentials
         model_credentials = provider_model_bundle.configuration.get_current_credentials(
             model_type=ModelType.LLM,
             model=copy_app_model_config_dict['model']['name']
         )
+
+        if model_credentials is None:
+            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+
+        # check model
+        provider_model = provider_model_bundle.configuration.get_provider_model(
+            model=copy_app_model_config_dict['model']['name'],
+            model_type=ModelType.LLM
+        )
+
+        if provider_model is None:
+            model_name = copy_app_model_config_dict['model']['name']
+            raise ValueError(f"Model {model_name} not exist.")
+
+        if provider_model.status == ModelStatus.NO_CONFIGURE:
+            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+        elif provider_model.status == ModelStatus.NO_PERMISSION:
+            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+        elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
+            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
         completion_params = copy_app_model_config_dict['model'].get('completion_params')
@@ -541,14 +485,14 @@ class LLMApplicationManager:
 
         return AppOrchestrationConfigEntity(**properties)
 
-    def _init_generate_records(self, llm_application_generate_entity: LLMApplicationGenerateEntity) \
+    def _init_generate_records(self, application_generate_entity: ApplicationGenerateEntity) \
             -> Tuple[Conversation, Message]:
         """
         Initialize generate records
-        :param llm_application_generate_entity: LLM application generate entity
+        :param application_generate_entity: application generate entity
         :return:
         """
-        app_orchestration_config_entity = llm_application_generate_entity.app_orchestration_config_entity
+        app_orchestration_config_entity = application_generate_entity.app_orchestration_config_entity
 
         model_instance = app_orchestration_config_entity.model_config.provider_model_bundle.model_instance
         model_instance = cast(LargeLanguageModel, model_instance)
@@ -558,39 +502,39 @@ class LLMApplicationManager:
         )
 
         app_record = (db.session.query(App)
-                      .filter(App.id == llm_application_generate_entity.app_id).first())
+                      .filter(App.id == application_generate_entity.app_id).first())
 
         app_mode = app_record.mode
 
         # get from source
         end_user_id = None
         account_id = None
-        if llm_application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
             from_source = 'api'
-            end_user_id = llm_application_generate_entity.user_id
+            end_user_id = application_generate_entity.user_id
         else:
             from_source = 'console'
-            account_id = llm_application_generate_entity.user_id
+            account_id = application_generate_entity.user_id
 
         override_model_configs = None
-        if llm_application_generate_entity.app_model_config_override:
-            override_model_configs = llm_application_generate_entity.app_model_config_dict
+        if application_generate_entity.app_model_config_override:
+            override_model_configs = application_generate_entity.app_model_config_dict
 
         introduction = ''
         if app_mode == 'chat':
             # get conversation introduction
-            introduction = self._get_conversation_introduction(llm_application_generate_entity)
+            introduction = self._get_conversation_introduction(application_generate_entity)
 
-        if not llm_application_generate_entity.conversation_id:
+        if not application_generate_entity.conversation_id:
             conversation = Conversation(
                 app_id=app_record.id,
-                app_model_config_id=llm_application_generate_entity.app_model_config_id,
+                app_model_config_id=application_generate_entity.app_model_config_id,
                 model_provider=app_orchestration_config_entity.model_config.provider,
                 model_id=app_orchestration_config_entity.model_config.model,
                 override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
                 mode=app_mode,
                 name='New conversation',
-                inputs=llm_application_generate_entity.inputs,
+                inputs=application_generate_entity.inputs,
                 introduction=introduction,
                 system_instruction="",
                 system_instruction_tokens=0,
@@ -606,7 +550,7 @@ class LLMApplicationManager:
             conversation = (
                 db.session.query(Conversation)
                 .filter(
-                    Conversation.id == llm_application_generate_entity.conversation_id,
+                    Conversation.id == application_generate_entity.conversation_id,
                     Conversation.app_id == app_record.id
                 ).first()
             )
@@ -619,8 +563,8 @@ class LLMApplicationManager:
             model_id=app_orchestration_config_entity.model_config.model,
             override_model_configs=json.dumps(override_model_configs) if override_model_configs else None,
             conversation_id=conversation.id,
-            inputs=llm_application_generate_entity.inputs,
-            query=llm_application_generate_entity.query,
+            inputs=application_generate_entity.inputs,
+            query=application_generate_entity.query,
             message="",
             message_tokens=0,
             message_unit_price=0,
@@ -641,7 +585,7 @@ class LLMApplicationManager:
         db.session.add(message)
         db.session.commit()
 
-        for file in llm_application_generate_entity.files:
+        for file in application_generate_entity.files:
             message_file = MessageFile(
                 message_id=message.id,
                 type=file.type.value,
@@ -656,18 +600,18 @@ class LLMApplicationManager:
 
         return conversation, message
 
-    def _get_conversation_introduction(self, llm_application_generate_entity: LLMApplicationGenerateEntity) -> str:
+    def _get_conversation_introduction(self, application_generate_entity: ApplicationGenerateEntity) -> str:
         """
         Get conversation introduction
-        :param llm_application_generate_entity: LLM application generate entity
+        :param application_generate_entity: application generate entity
         :return: conversation introduction
         """
-        app_orchestration_config_entity = llm_application_generate_entity.app_orchestration_config_entity
+        app_orchestration_config_entity = application_generate_entity.app_orchestration_config_entity
         introduction = app_orchestration_config_entity.opening_statement
 
         if introduction:
             try:
-                inputs = llm_application_generate_entity.inputs
+                inputs = application_generate_entity.inputs
                 prompt_template = PromptTemplateParser(template=introduction)
                 prompt_inputs = {k: inputs[k] for k in prompt_template.variable_keys if k in inputs}
                 introduction = prompt_template.format(prompt_inputs)
@@ -675,3 +619,31 @@ class LLMApplicationManager:
                 pass
 
         return introduction
+
+    def _get_conversation(self, conversation_id: str) -> Conversation:
+        """
+        Get conversation by conversation id
+        :param conversation_id: conversation id
+        :return: conversation
+        """
+        conversation = (
+            db.session.query(Conversation)
+            .filter(Conversation.id == conversation_id)
+            .first()
+        )
+
+        return conversation
+
+    def _get_message(self, message_id: str) -> Message:
+        """
+        Get message by message id
+        :param message_id: message id
+        :return: message
+        """
+        message = (
+            db.session.query(Message)
+            .filter(Message.id == message_id)
+            .first()
+        )
+
+        return message

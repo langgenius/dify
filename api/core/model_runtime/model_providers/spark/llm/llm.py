@@ -150,6 +150,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         # transform response
         result = LLMResult(
             model=model,
+            prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,
         )
@@ -180,6 +181,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
 
             yield LLMResultChunk(
                 model=model,
+                prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=index,
                     message=assistant_prompt_message,
@@ -194,13 +196,14 @@ class SparkLargeLanguageModel(LargeLanguageModel):
 
             yield LLMResultChunk(
                 model=model,
+                prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=index,
                     message=AssistantPromptMessage(content=''),
                     usage=usage
                 )
             )
-        
+
         thread.join()
 
     def _to_credential_kwargs(self, credentials: dict) -> dict:

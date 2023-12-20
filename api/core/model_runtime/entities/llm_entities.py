@@ -4,7 +4,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelUsage, PriceInfo
 
 
@@ -52,6 +52,7 @@ class LLMResult(BaseModel):
     Model class for llm result.
     """
     model: str
+    prompt_messages: list[PromptMessage]
     message: AssistantPromptMessage
     usage: LLMUsage
     system_fingerprint: Optional[str] = None
@@ -72,6 +73,7 @@ class LLMResultChunk(BaseModel):
     Model class for llm result chunk.
     """
     model: str
+    prompt_messages: list[PromptMessage]
     system_fingerprint: Optional[str] = None
     delta: LLMResultChunkDelta
 

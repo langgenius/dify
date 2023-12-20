@@ -164,6 +164,7 @@ class LargeLanguageModel(AIModel):
             model=model,
             result=LLMResult(
                 model=real_model,
+                prompt_messages=prompt_messages,
                 message=prompt_message,
                 usage=usage,
                 system_fingerprint=system_fingerprint
@@ -247,6 +248,7 @@ class LargeLanguageModel(AIModel):
 
             yield LLMResultChunk(
                 model=result.model,
+                prompt_messages=result.prompt_messages,
                 system_fingerprint=result.system_fingerprint,
                 delta=LLMResultChunkDelta(
                     index=index,

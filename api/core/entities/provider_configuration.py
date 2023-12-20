@@ -403,6 +403,157 @@ class ProviderConfiguration(BaseModel):
 
         return copy_credentials
 
+    def get_provider_model(self, model_type: ModelType,
+                           model: str,
+                           only_active: bool = False) -> Optional[ModelWithProviderEntity]:
+        """
+        Get provider model.
+        :param model_type: model type
+        :param model: model name
+        :param only_active: return active model only
+        :return:
+        """
+        provider_models = self.get_provider_models(model_type, only_active)
+
+        for provider_model in provider_models:
+            if provider_model.model == model:
+                return provider_model
+
+        return None
+
+    def get_provider_models(self, model_type: Optional[ModelType] = None,
+                            only_active: bool = False) -> list[ModelWithProviderEntity]:
+        """
+        Get provider models.
+        :param model_type: model type
+        :param only_active: only active models
+        :return:
+        """
+        provider_instance = self.get_provider_instance()
+
+        model_types = []
+        if model_type:
+            model_types.append(model_type)
+        else:
+            model_types = provider_instance.get_provider_schema().supported_model_types
+
+        if self.using_provider_type == ProviderType.SYSTEM:
+            provider_models = self._get_system_provider_models(
+                model_types=model_types,
+                provider_instance=provider_instance
+            )
+        else:
+            provider_models = self._get_custom_provider_models(
+                model_types=model_types,
+                provider_instance=provider_instance
+            )
+
+        if only_active:
+            provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
+
+        # resort provider_models
+        return sorted(provider_models, key=lambda x: x.model_type.value)
+
+    def _get_system_provider_models(self,
+                                    model_types: list[ModelType],
+                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
+        """
+        Get system provider models.
+
+        :param model_types: model types
+        :param provider_instance: provider instance
+        :return:
+        """
+        provider_models = []
+        for model_type in model_types:
+            provider_models.extend(
+                [
+                    ModelWithProviderEntity(
+                        **m.dict(),
+                        provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
+                        status=ModelStatus.ACTIVE
+                    )
+                    for m in provider_instance.models(model_type)
+                ]
+            )
+
+        for quota_configuration in self.system_configuration.quota_configurations:
+            if self.system_configuration.current_quota_type != quota_configuration.quota_type:
+                continue
+
+            restrict_llms = quota_configuration.restrict_llms
+            if not restrict_llms:
+                break
+
+            # if llm name not in restricted llm list, remove it
+            for m in provider_models:
+                if m.model_type == ModelType.LLM and m.model in restrict_llms:
+                    m.status = ModelStatus.NO_PERMISSION
+                elif not quota_configuration.is_valid:
+                    m.status = ModelStatus.QUOTA_EXCEEDED
+
+        return provider_models
+
+    def _get_custom_provider_models(self,
+                                    model_types: list[ModelType],
+                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
+        """
+        Get custom provider models.
+
+        :param model_types: model types
+        :param provider_instance: provider instance
+        :return:
+        """
+        provider_models = []
+
+        credentials = None
+        if self.custom_configuration.provider:
+            credentials = self.custom_configuration.provider.credentials
+
+        for model_type in model_types:
+            if model_type not in self.provider.supported_model_types:
+                continue
+
+            if credentials:
+                models = provider_instance.models(model_type, credentials)
+            else:
+                models = provider_instance.models(model_type)
+
+            provider_models.extend(
+                ModelWithProviderEntity(
+                    **m.dict(),
+                    provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
+                    status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+                )
+                for m in models
+            )
+
+        # custom models
+        for model_configuration in self.custom_configuration.models:
+            if model_configuration.model_type not in model_types:
+                continue
+
+            custom_model_schema = (
+                provider_instance.get_model_instance(model_configuration.model_type)
+                .get_customizable_model_schema(
+                    model_configuration.model,
+                    model_configuration.credentials
+                )
+            )
+
+            if not custom_model_schema:
+                continue
+
+            provider_models.append(
+                ModelWithProviderEntity(
+                    **custom_model_schema.dict(),
+                    provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
+                    status=ModelStatus.ACTIVE
+                )
+            )
+
+        return provider_models
+
 
 class ProviderConfigurations(BaseModel):
     """
@@ -453,34 +604,7 @@ class ProviderConfigurations(BaseModel):
             if provider and provider_configuration.provider.provider != provider:
                 continue
 
-            provider_instance = provider_configuration.get_provider_instance()
-
-            model_types = []
-            if model_type:
-                model_types.append(model_type)
-            else:
-                model_types = provider_instance.get_provider_schema().supported_model_types
-
-            if provider_configuration.using_provider_type == ProviderType.SYSTEM:
-                provider_models = self._get_system_provider_models(
-                    provider_configuration=provider_configuration,
-                    model_types=model_types,
-                    provider_instance=provider_instance
-                )
-            else:
-                provider_models = self._get_custom_provider_models(
-                    provider_configuration=provider_configuration,
-                    model_types=model_types,
-                    provider_instance=provider_instance
-                )
-
-            if only_active:
-                provider_models = [m for m in provider_models if m.status == ModelStatus.ACTIVE]
-
-            # resort provider_models
-            provider_models = sorted(provider_models, key=lambda x: x.model_type.value)
-
-            all_models.extend(provider_models)
+            all_models.extend(provider_configuration.get_provider_models(model_type, only_active))
 
         return all_models
 
@@ -491,110 +615,6 @@ class ProviderConfigurations(BaseModel):
         :return:
         """
         return list(self.values())
-
-    def _get_system_provider_models(self,
-                                    provider_configuration: ProviderConfiguration,
-                                    model_types: list[ModelType],
-                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
-        """
-        Get system provider models.
-
-        :param provider_configuration: provider configuration
-        :param model_types: model types
-        :param provider_instance: provider instance
-        :return:
-        """
-        provider_models = []
-        for model_type in model_types:
-            provider_models.extend(
-                [
-                    ModelWithProviderEntity(
-                        **m.dict(),
-                        provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
-                        status=ModelStatus.ACTIVE
-                    )
-                    for m in provider_instance.models(model_type)
-                ]
-            )
-
-        for quota_configuration in provider_configuration.system_configuration.quota_configurations:
-            if provider_configuration.system_configuration.current_quota_type != quota_configuration.quota_type:
-                continue
-
-            restricted_llms = quota_configuration.restrict_llms
-            if not restricted_llms:
-                break
-
-            # if llm name not in restricted llm list, remove it
-            for m in provider_models:
-                if m.model_type == ModelType.LLM and m.model in restricted_llms:
-                    m.status = ModelStatus.NO_PERMISSION
-                elif not quota_configuration.is_valid:
-                    m.status = ModelStatus.QUOTA_EXCEEDED
-
-        return provider_models
-
-    def _get_custom_provider_models(self,
-                                    provider_configuration: ProviderConfiguration,
-                                    model_types: list[ModelType],
-                                    provider_instance: ModelProvider) -> list[ModelWithProviderEntity]:
-        """
-        Get custom provider models.
-
-        :param provider_configuration: provider configuration
-        :param model_types: model types
-        :param provider_instance: provider instance
-        :return:
-        """
-        provider_models = []
-
-        credentials = None
-        if provider_configuration.custom_configuration.provider:
-            credentials = provider_configuration.custom_configuration.provider.credentials
-
-        for model_type in model_types:
-            if model_type not in provider_configuration.provider.supported_model_types:
-                continue
-
-            if credentials:
-                models = provider_instance.models(model_type, credentials)
-            else:
-                models = provider_instance.models(model_type)
-
-            provider_models.extend(
-                ModelWithProviderEntity(
-                    **m.dict(),
-                    provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
-                    status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
-                )
-                for m in models
-            )
-
-        # custom models
-        for model_configuration in provider_configuration.custom_configuration.models:
-            if model_configuration.model_type not in model_types:
-                continue
-
-            custom_model_schema = (
-                provider_instance.get_model_instance(model_configuration.model_type)
-                .get_customizable_model_schema(
-                    model_configuration.model,
-                    model_configuration.credentials
-                )
-            )
-
-            if not custom_model_schema:
-                continue
-
-            provider_models.append(
-                ModelWithProviderEntity(
-                    **custom_model_schema.dict(),
-                    provider=SimpleModelProviderEntity(**provider_configuration.provider.to_simple_provider().dict()),
-                    status=ModelStatus.ACTIVE
-                )
-            )
-
-        return provider_models
 
     def __getitem__(self, key):
         return self.configurations[key]

@@ -193,6 +193,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
                         message=assistant_prompt_message,
@@ -203,6 +204,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
                         message=assistant_prompt_message

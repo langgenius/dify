@@ -288,6 +288,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
                 
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,
@@ -299,6 +300,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=model,
+                    prompt_messages=prompt_messages,
                     system_fingerprint=chunk.system_fingerprint,
                     delta=LLMResultChunkDelta(
                         index=delta.index,
@@ -345,6 +347,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
 
         response = LLMResult(
             model=model,
+            prompt_messages=prompt_messages,
             system_fingerprint=response.system_fingerprint,
             usage=usage,
             message=assistant_prompt_message,

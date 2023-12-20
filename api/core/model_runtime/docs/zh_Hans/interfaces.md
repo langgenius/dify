@@ -564,6 +564,7 @@ class LLMResult(BaseModel):
     Model class for llm result.
     """
     model: str  # 实际使用模型
+    prompt_messages: list[PromptMessage]  # prompt 消息列表
     message: AssistantPromptMessage  # 回复消息
     usage: LLMUsage  # 使用的 tokens 及费用信息
     system_fingerprint: Optional[str] = None  # 请求指纹，可参考 OpenAI 该参数定义
@@ -594,6 +595,7 @@ class LLMResultChunk(BaseModel):
     Model class for llm result chunk.
     """
     model: str  # 实际使用模型
+    prompt_messages: list[PromptMessage]  # prompt 消息列表
     system_fingerprint: Optional[str] = None  # 请求指纹，可参考 OpenAI 该参数定义
     delta: LLMResultChunkDelta  # 每个迭代存在变化的内容
 ```

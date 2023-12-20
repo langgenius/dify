@@ -36,9 +36,9 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             **model_parameters)
 
         if stream:
-            return self._handle_generate_stream_response(credentials['model'], response)
+            return self._handle_generate_stream_response(credentials['model'], prompt_messages, response)
 
-        return self._handle_generate_response(credentials['model'], response)
+        return self._handle_generate_response(credentials['model'], prompt_messages, response)
 
     @staticmethod
     def _get_llm_usage():
@@ -171,6 +171,7 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
         return [temperature_rule, top_k_rule, top_p_rule]
 
     def _handle_generate_stream_response(self, model: str,
+                                         prompt_messages: list[PromptMessage],
                                          response: Generator) -> Generator:
         for chunk in response:
             # skip special tokens
@@ -179,6 +180,7 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
 
             yield LLMResultChunk(
                 model=model,
+                prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=chunk.token.id,
                     message=AssistantPromptMessage(content=chunk.token.text),
@@ -186,7 +188,7 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
                 ),
             )
 
-    def _handle_generate_response(self, model: str, response: any) -> LLMResult:
+    def _handle_generate_response(self, model: str, prompt_messages: list[PromptMessage], response: any) -> LLMResult:
         if isinstance(response, str):
             content = response
         else:
@@ -195,6 +197,7 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
         usage = self._get_llm_usage()
         result = LLMResult(
             model=model,
+            prompt_messages=prompt_messages,
             message=AssistantPromptMessage(content=content),
             usage=usage,
         )

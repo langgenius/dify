@@ -250,9 +250,9 @@ class InvokeFrom(Enum):
         raise ValueError(f'invalid invoke from value {value}')
 
 
-class LLMApplicationGenerateEntity(BaseModel):
+class ApplicationGenerateEntity(BaseModel):
     """
-    LLM Application Generate Entity.
+    Application Generate Entity.
     """
     task_id: str
     tenant_id: str
@@ -280,9 +280,9 @@ class LLMApplicationGenerateEntity(BaseModel):
     extras: dict[str, Any] = {}
 
 
-class LLMApplicationGenerateResponse(BaseModel):
+class ApplicationGenerateResponse(BaseModel):
     """
-    LLM Application Generate Response.
+    Application Generate Response.
     """
     event: str = 'message'
     task_id: str

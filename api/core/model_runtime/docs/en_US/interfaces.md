@@ -567,6 +567,7 @@ class LLMResult(BaseModel):
     Model class for llm result.
     """
     model: str  # Actual used modele
+    prompt_messages: list[PromptMessage]  # prompt messages
     message: AssistantPromptMessage  # response message
     usage: LLMUsage  # usage info
     system_fingerprint: Optional[str] = None  # request fingerprint, refer to OpenAI definition
@@ -597,6 +598,7 @@ class LLMResultChunk(BaseModel):
     Model class for llm result chunk.
     """
     model: str  # Actual used modele
+    prompt_messages: list[PromptMessage]  # prompt messages
     system_fingerprint: Optional[str] = None  # request fingerprint, refer to OpenAI definition
     delta: LLMResultChunkDelta
 ```

@@ -144,6 +144,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         # transform response
         result = LLMResult(
             model=response.model,
+            prompt_messages=prompt_messages,
             message=assistant_prompt_message,
             usage=usage,
         )
@@ -184,6 +185,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
                         message=assistant_prompt_message,
@@ -194,6 +196,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             else:
                 yield LLMResultChunk(
                     model=chunk.model,
+                    prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
                         message=assistant_prompt_message
