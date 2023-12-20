@@ -112,4 +112,4 @@ docker compose up -d
 
 ## License
 
-本仓库遵循 [Dify Open Source License](LICENSE) 开源协议。
+本仓库遵循 [Dify Open Source License](LICENSE) 开源协议，该许可证本质上是 Apache 2.0，但有一些额外的限制。
