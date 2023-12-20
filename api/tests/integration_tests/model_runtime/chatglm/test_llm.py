@@ -1,0 +1,210 @@
+import os
+import pytest
+
+from typing import Generator
+
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, UserPromptMessage, \
+    SystemPromptMessage, PromptMessageTool
+from core.model_runtime.entities.model_entities import AIModelEntity
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
+    LLMResultChunk
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.model_providers.chatglm.llm.llm import ChatGLMLargeLanguageModel
+
+def test_predefined_models():
+    model = ChatGLMLargeLanguageModel()
+    model_schemas = model.predefined_models()
+    assert len(model_schemas) >= 1
+    assert isinstance(model_schemas[0], AIModelEntity)
+
+def test_validate_credentials_for_chat_model():
+    model = ChatGLMLargeLanguageModel()
+
+    with pytest.raises(CredentialsValidateFailedError):
+        model.validate_credentials(
+            model='chatglm2-6b',
+            credentials={
+                'api_base': 'invalid_key'
+            }
+        )
+
+    model.validate_credentials(
+        model='chatglm2-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        }
+    )
+
+def test_invoke_model():
+    model = ChatGLMLargeLanguageModel()
+
+    response = model.invoke(
+        model='chatglm2-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+        },
+        stop=['you'],
+        user="abc-123",
+        stream=False
+    )
+
+    assert isinstance(response, LLMResult)
+    assert len(response.message.content) > 0
+    assert response.usage.total_tokens > 0
+
+def test_invoke_stream_model():
+    model = ChatGLMLargeLanguageModel()
+
+    response = model.invoke(
+        model='chatglm2-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+        },
+        stop=['you'],
+        stream=True,
+        user="abc-123"
+    )
+
+    assert isinstance(response, Generator)
+    for chunk in response:
+        assert isinstance(chunk, LLMResultChunk)
+        assert isinstance(chunk.delta, LLMResultChunkDelta)
+        assert isinstance(chunk.delta.message, AssistantPromptMessage)
+        assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
+def test_invoke_model_with_functions():
+    model = ChatGLMLargeLanguageModel()
+
+    response = model.invoke(
+        model='chatglm3-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant who can use',
+            ),
+            UserPromptMessage(
+                content='What is the weather like in San Francisco?'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+        },
+        stop=['you'],
+        user='abc-123',
+        stream=False,
+        tools=[
+            PromptMessageTool(
+                name='get_current_weather',
+                description='Get the current weather in a given location',
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                        "type": "string",
+                            "description": "The city and state e.g. San Francisco, CA"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "c",
+                                "f"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "location"
+                    ]
+                }
+            )
+        ]
+    )
+
+    assert isinstance(response, LLMResult)
+    assert len(response.message.content) > 0
+    assert response.usage.total_tokens > 0
+    assert response.message.tool_calls[0].function.name == 'get_current_weather'
+
+def test_get_num_tokens():
+    model = ChatGLMLargeLanguageModel()
+
+    num_tokens = model.get_num_tokens(
+        model='chatglm2-6b',
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+        tools=[
+            PromptMessageTool(
+                name='get_current_weather',
+                description='Get the current weather in a given location',
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                        "type": "string",
+                            "description": "The city and state e.g. San Francisco, CA"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "c",
+                                "f"
+                            ]
+                        }
+                    },
+                    "required": [
+                        "location"
+                    ]
+                }
+            )
+        ]
+    )
+
+    assert isinstance(num_tokens, int)
+    assert num_tokens == 78
+
+    num_tokens = model.get_num_tokens(
+        model='chatglm2-6b',
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+    )
+
+    assert isinstance(num_tokens, int)
+    assert num_tokens == 21
