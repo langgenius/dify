@@ -1,0 +1,77 @@
+provider: localai
+label:
+  en_US: LocalAI
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+help:
+  title:
+    en_US: How to deploy LocalAI
+    zh_Hans: 如何部署 LocalAI
+  url:
+    en_US: https://github.com/go-skynet/LocalAI
+supported_model_types:
+- llm
+- text-embedding
+configurate_methods:
+- customizable-model
+provider_credential_schema:
+  credential_form_schemas:
+  - variable: model_type
+    type: select
+    label:
+      en_US: Model type
+      zh_Hans: 模型类型
+    required: true
+    placeholder:
+      zh_Hans: 选择模型类型
+      en_US: Select model type
+    options:
+      - value: text-generation
+        label:
+          en_US: Text Generation
+          zh_Hans: 文本生成
+      - value: embeddings
+        label:
+          en_US: Embeddings
+    default: text-generation
+  - variable: model_name
+    type: text-input
+    label:
+      en_US: Model name
+      zh_Hans: 模型名称
+    required: true
+    placeholder:
+      zh_Hans: 填写模型名称
+      en_US: Input model name
+  - variable: completion_type
+    show_on:
+      - variable: model_type
+        value: text-generation
+    label:
+      en_US: Completion type
+    type: select
+    required: false
+    default: chat_completion
+    placeholder:
+      zh_Hans: 选择对话类型
+      en_US: Select completion type
+    options:
+      - value: completion
+        label:
+          en_US: Completion
+          zh_Hans: 补全
+      - value: chat_completion
+        label:
+          en_US: ChatCompletion
+          zh_Hans: 对话
+  - variable: server_url
+    label:
+      zh_Hans: 服务器URL
+      en_US: Server url
+    type: text-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入LocalAI的服务器地址，如 https://example.com/xxx
+      en_US: Enter the url of your LocalAI, for example https://example.com/xxx
