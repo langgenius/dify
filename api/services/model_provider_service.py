@@ -14,7 +14,7 @@ from core.provider_manager import ProviderManager
 from models.provider import ProviderType
 from services.entities.model_provider_entities import ProviderResponse, CustomConfigurationResponse, \
     SystemConfigurationResponse, CustomConfigurationStatus, ProviderWithModelsResponse, ModelResponse, \
-    DefaultModelResponse
+    DefaultModelResponse, ModelWithProviderEntityResponse
 
 logger = logging.getLogger(__name__)
 
@@ -61,7 +61,7 @@ class ModelProviderService:
 
         return provider_responses
 
-    def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntity]:
+    def get_models_by_provider(self, tenant_id: str, provider: str) -> list[ModelWithProviderEntityResponse]:
         """
         get provider models.
         For the model provider page,
@@ -75,9 +75,9 @@ class ModelProviderService:
         provider_configurations = self.provider_manager.get_configurations(tenant_id)
 
         # Get provider available models
-        return provider_configurations.get_models(
+        return [ModelWithProviderEntityResponse(model) for model in provider_configurations.get_models(
             provider=provider
-        )
+        )]
 
     def get_provider_credentials(self, tenant_id: str, provider: str) -> dict:
         """

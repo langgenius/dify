@@ -4,7 +4,7 @@ from typing import Optional
 from flask import current_app
 from pydantic import BaseModel
 
-from core.entities.model_entities import ModelStatus
+from core.entities.model_entities import ModelStatus, ModelWithProviderEntity
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
@@ -73,6 +73,7 @@ class ProviderResponse(BaseModel):
                 zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
             )
 
+
 class ModelResponse(ProviderModel):
     """
     Model class for model response.
@@ -91,6 +92,46 @@ class ProviderWithModelsResponse(BaseModel):
     status: CustomConfigurationStatus
     models: list[ModelResponse]
 
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+                      + f"/console/api/workspaces/current/model-providers/{self.provider}")
+        if self.icon_small is not None:
+            self.icon_small = I18nObject(
+                en_US=f"{url_prefix}/icon_small/en_US",
+                zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
+            )
+
+        if self.icon_large is not None:
+            self.icon_large = I18nObject(
+                en_US=f"{url_prefix}/icon_large/en_US",
+                zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+            )
+
+
+class SimpleProviderEntityResponse(SimpleProviderEntity):
+    """
+    Simple provider entity response.
+    """
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+                      + f"/console/api/workspaces/current/model-providers/{self.provider}")
+        if self.icon_small is not None:
+            self.icon_small = I18nObject(
+                en_US=f"{url_prefix}/icon_small/en_US",
+                zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
+            )
+
+        if self.icon_large is not None:
+            self.icon_large = I18nObject(
+                en_US=f"{url_prefix}/icon_large/en_US",
+                zh_Hans=f"{url_prefix}/icon_large/zh_Hans"
+            )
+
 
 class DefaultModelResponse(BaseModel):
     """
@@ -98,4 +139,14 @@ class DefaultModelResponse(BaseModel):
     """
     model: str
     model_type: ModelType
-    provider: SimpleProviderEntity
+    provider: SimpleProviderEntityResponse
+
+
+class ModelWithProviderEntityResponse(ModelWithProviderEntity):
+    """
+    Model with provider entity.
+    """
+    provider: SimpleProviderEntityResponse
+
+    def __init__(self, model: ModelWithProviderEntity) -> None:
+        super().__init__(**model.dict())
