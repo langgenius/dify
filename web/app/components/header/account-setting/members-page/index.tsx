@@ -104,7 +104,7 @@ const MembersPage = () => {
                     </div>
                   </div>
                   <div className='shrink-0 flex items-center w-[104px] py-2 text-[13px] text-gray-700'>{dayjs(Number((account.last_login_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
-                  <div className='shrink-0 w-[96px] flex items-center relative z-10'>
+                  <div className='shrink-0 w-[96px] flex items-center'>
                     {
                       (owner && account.role !== 'owner')
                         ? <Operation member={account} onOperate={mutate} />

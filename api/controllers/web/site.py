@@ -9,7 +9,7 @@ from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
 from models.model import Site
-from services.billing_service import BillingService
+from services.feature_service import FeatureService
 
 
 class AppSiteApi(WebApiResource):
@@ -56,12 +56,7 @@ class AppSiteApi(WebApiResource):
         if not site:
             raise Forbidden()
 
-        edition = os.environ.get('EDITION')
-        can_replace_logo = False
-
-        if edition == 'CLOUD':
-            info = BillingService.get_info(app_model.tenant_id)
-            can_replace_logo = info['can_replace_logo']
+        can_replace_logo = FeatureService.get_features(app_model.tenant_id).can_replace_logo
 
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 

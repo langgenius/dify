@@ -479,6 +479,7 @@ class RegisterService:
 
         # send email
         send_invite_member_mail_task.delay(
+            language=account.interface_language,
             to=email,
             token=token,
             inviter_name=inviter.name if inviter else 'Dify',
