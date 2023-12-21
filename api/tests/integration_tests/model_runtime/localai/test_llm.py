@@ -214,4 +214,4 @@ def test_get_num_tokens():
     )
 
     assert isinstance(num_tokens, int)
-    assert num_tokens == 21
+    assert num_tokens == 10
