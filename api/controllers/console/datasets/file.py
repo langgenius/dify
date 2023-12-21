@@ -69,7 +69,7 @@ class FilePreviewApi(Resource):
         return {'content': text}
 
 
-class FileeSupportTypApi(Resource):
+class FileSupportTypeApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -85,4 +85,4 @@ class FileeSupportTypApi(Resource):
 
 api.add_resource(FileApi, '/files/upload')
 api.add_resource(FilePreviewApi, '/files/<uuid:file_id>/preview')
-api.add_resource(FileeSupportTypApi, '/files/support-type')
+api.add_resource(FileSupportTypeApi, '/files/support-type')

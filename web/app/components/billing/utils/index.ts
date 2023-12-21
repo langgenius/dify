@@ -10,7 +10,7 @@ const parseLimit = (limit: number) => {
 
 export const parseCurrentPlan = (data: CurrentPlanInfoBackend) => {
   return {
-    type: data.subscription.plan,
+    type: data.billing.subscription.plan,
     usage: {
       vectorSpace: data.vector_space.size,
       buildApps: data.apps?.size || 0,

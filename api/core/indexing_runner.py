@@ -529,6 +529,13 @@ class IndexingRunner:
                     hash = helper.generate_text_hash(document_node.page_content)
                     document_node.metadata['doc_id'] = doc_id
                     document_node.metadata['doc_hash'] = hash
+                    # delete Spliter character
+                    page_content = document_node.page_content
+                    if page_content.startswith(".") or page_content.startswith("。"):
+                        page_content = page_content[1:]
+                    else:
+                        page_content = page_content
+                    document_node.page_content = page_content
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
         # processing qa document

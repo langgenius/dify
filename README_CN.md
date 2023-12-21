@@ -4,7 +4,8 @@
   <a href="./README_CN.md">简体中文</a> |
   <a href="./README_JA.md">日本語</a> |
   <a href="./README_ES.md">Español</a> |
-  <a href="./README_KL.md">Klingon</a>
+  <a href="./README_KL.md">Klingon</a> |
+  <a href="./README_FR.md">Français</a>
 </p>
 
 <p align="center">
@@ -23,6 +24,10 @@
 Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Dify.AI 构建。它融合了 Backend as Service 和 LLMOps 的理念，涵盖了构建生成式 AI 原生应用所需的核心技术栈，包括一个内置 RAG 引擎。使用 Dify，你可以基于任何模型自部署类似 Assistants API 和 GPTs 的能力。
 
 ![](./images/demo.png)
+
+## 使用云端服务
+
+使用 [Dify.AI Cloud](https://dify.ai) 提供开源版本的所有功能,并包含 200 次 GPT 试用额度。
 
 ## 为什么选择 Dify
 
@@ -111,4 +116,4 @@ docker compose up -d
 
 ## License
 
-本仓库遵循 [Dify Open Source License](LICENSE) 开源协议。
+本仓库遵循 [Dify Open Source License](LICENSE) 开源协议，该许可证本质上是 Apache 2.0，但有一些额外的限制。

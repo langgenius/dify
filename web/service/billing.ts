@@ -2,7 +2,7 @@ import { get } from './base'
 import type { CurrentPlanInfoBackend, SubscriptionUrlsBackend } from '@/app/components/billing/type'
 
 export const fetchCurrentPlanInfo = () => {
-  return get<Promise<CurrentPlanInfoBackend>>('/billing/info')
+  return get<Promise<CurrentPlanInfoBackend>>('/features')
 }
 
 export const fetchSubscriptionUrls = (plan: string, interval: string) => {

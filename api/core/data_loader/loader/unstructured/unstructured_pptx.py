@@ -30,11 +30,19 @@ class UnstructuredPPTXLoader(BaseLoader):
         from unstructured.partition.pptx import partition_pptx
 
         elements = partition_pptx(filename=self._file_path, api_url=self._api_url)
-        from unstructured.chunking.title import chunk_by_title
-        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=0)
+        text_by_page = {}
+        for element in elements:
+            page = element.metadata.page_number
+            text = element.text
+            if page in text_by_page:
+                text_by_page[page] += "\n" + text
+            else:
+                text_by_page[page] = text
+
+        combined_texts = list(text_by_page.values())
         documents = []
-        for chunk in chunks:
-            text = chunk.text.strip()
+        for combined_text in combined_texts:
+            text = combined_text.strip()
             documents.append(Document(page_content=text))
 
         return documents
