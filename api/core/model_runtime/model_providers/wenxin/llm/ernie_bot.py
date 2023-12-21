@@ -22,6 +22,36 @@ class BaiduAccessToken:
         self.access_token = ''
         self.expires = datetime.now() + timedelta(days=3)
 
+    def _get_access_token(api_key: str, secret_key: str) -> str:
+        """
+            request access token from Baidu
+        """
+        try:
+            response = post(
+                url=f'https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}',
+                headers={
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
+            )
+        except Exception as e:
+            raise InvalidAuthenticationError(f'Failed to get access token from Baidu: {e}')
+
+        resp = response.json()
+        if 'error' in resp:
+            if resp['error'] == 'invalid_client':
+                raise InvalidAPIKeyError(f'Invalid API key or secret key: {resp["error_description"]}')
+            elif resp['error'] == 'unknown_error':
+                raise InternalServerError(f'Internal server error: {resp["error_description"]}')
+            elif resp['error'] == 'invalid_request':
+                raise BadRequestError(f'Bad request: {resp["error_description"]}')
+            elif resp['error'] == 'rate_limit_exceeded':
+                raise RateLimitReachedError(f'Rate limit reached: {resp["error_description"]}')
+            else:
+                raise Exception(f'Unknown error: {resp["error_description"]}')
+                
+        return resp['access_token']
+
     @staticmethod
     def get_access_token(api_key: str, secret_key: str) -> 'BaiduAccessToken':
         """
@@ -32,35 +62,6 @@ class BaiduAccessToken:
             it may be more efficient to use a ticker to refresh access token, but it will cause
             more complexity, so we just refresh access tokens when get_access_token is called.
         """
-        def _get_access_token(api_key: str, secret_key: str) -> str:
-            """
-                request access token from Baidu
-            """
-            try:
-                response = post(
-                    url=f'https://aip.baidubce.com/oauth/2.0/token?grant_type=client_credentials&client_id={api_key}&client_secret={secret_key}',
-                    headers={
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json'
-                    },
-                )
-            except Exception as e:
-                raise InvalidAuthenticationError(f'Failed to get access token from Baidu: {e}')
-
-            resp = response.json()
-            if 'error' in resp:
-                if resp['error'] == 'invalid_client':
-                    raise InvalidAPIKeyError(f'Invalid API key or secret key: {resp["error_description"]}')
-                elif resp['error'] == 'unknown_error':
-                    raise InternalServerError(f'Internal server error: {resp["error_description"]}')
-                elif resp['error'] == 'invalid_request':
-                    raise BadRequestError(f'Bad request: {resp["error_description"]}')
-                elif resp['error'] == 'rate_limit_exceeded':
-                    raise RateLimitReachedError(f'Rate limit reached: {resp["error_description"]}')
-                else:
-                    raise Exception(f'Unknown error: {resp["error_description"]}')
-                
-            return resp['access_token']
 
         # loop up cache, remove expired access token
         baidu_access_tokens_lock.acquire()
@@ -78,7 +79,7 @@ class BaiduAccessToken:
             # btw, _get_access_token will raise exception if failed, release lock here to avoid deadlock
             baidu_access_tokens_lock.release()
             # try to get access token
-            token_str = _get_access_token(api_key, secret_key)
+            token_str = BaiduAccessToken._get_access_token(api_key, secret_key)
             token.access_token = token_str
             token.expires = now + timedelta(days=3)
             return token
@@ -163,7 +164,7 @@ class ErnieBotModel(object):
             return self._handle_chat_stream_generate_response(resp)
         return self._handle_chat_generate_response(resp)
     
-    def _handle_error(code: int, msg: str):
+    def _handle_error(self, code: int, msg: str):
         error_map = {
             1: InternalServerError,
             2: InternalServerError,
