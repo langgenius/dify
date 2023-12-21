@@ -26,12 +26,21 @@ class FormType(Enum):
     RADIO = "radio"
 
 
+class FormShowOnObject(BaseModel):
+    """
+    Model class for form show on.
+    """
+    variable: str
+    value: str
+
+
 class FormOption(BaseModel):
     """
     Model class for form option.
     """
     label: I18nObject
     value: str
+    show_on: list[FormShowOnObject] = []
 
     def __init__(self, **data):
         super().__init__(**data)
@@ -39,14 +48,6 @@ class FormOption(BaseModel):
             self.label = I18nObject(
                 en_US=self.value
             )
-
-
-class FormShowOnObject(BaseModel):
-    """
-    Model class for form show on.
-    """
-    variable: str
-    value: str
 
 
 class CredentialFormSchema(BaseModel):

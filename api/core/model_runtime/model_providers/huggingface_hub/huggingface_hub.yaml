@@ -68,12 +68,21 @@ provider_credential_schema:
     - value: text2text-generation
       label:
         en_US: Text-to-Text Generation
+      show_on:
+      - variable: __model_type
+        value: llm
     - value: text-generation
       label:
         en_US: Text Generation
+      show_on:
+      - variable: __model_type
+        value: llm
     - value: feature-extraction
       label:
         en_US: Feature Extraction
+      show_on:
+      - variable: __model_type
+        value: text-embedding
     show_on:
     - variable: huggingfacehub_api_type
       value: inference_endpoints
