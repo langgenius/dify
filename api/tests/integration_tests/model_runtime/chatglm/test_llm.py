@@ -113,7 +113,7 @@ def test_invoke_stream_model_with_functions():
             )
         ],
         model_parameters={
-            'temperature': 0.7,
+            'temperature': 0,
             'top_p': 1.0,
         },
         stop=['you'],
