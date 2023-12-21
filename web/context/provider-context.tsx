@@ -5,9 +5,14 @@ import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
 import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  DefaultModel,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
@@ -21,17 +26,18 @@ const ProviderContext = createContext<{
   rerankModelList: Model[]
   agentThoughtModelList: Model[]
   updateModelList: (type: ModelType) => void
-  textGenerationDefaultModel?: BackendModel
+  textGenerationDefaultModel?: DefaultModel
   mutateTextGenerationDefaultModel: () => void
-  embeddingsDefaultModel?: BackendModel
+  embeddingsDefaultModel?: DefaultModel
   isEmbeddingsDefaultModelValid: boolean
   mutateEmbeddingsDefaultModel: () => void
-  speech2textDefaultModel?: BackendModel
+  speech2textDefaultModel?: DefaultModel
   mutateSpeech2textDefaultModel: () => void
-  rerankDefaultModel?: BackendModel
+  rerankDefaultModel?: DefaultModel
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
   supportRetrievalMethods: RETRIEVE_METHOD[]
+  hasSettedApiKey: boolean
   plan: {
     type: Plan
     usage: UsagePlanInfo
@@ -58,6 +64,7 @@ const ProviderContext = createContext<{
       isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => { },
       supportRetrievalMethods: [],
+      hasSettedApiKey: false,
       plan: {
         type: Plan.sandbox,
         usage: {
@@ -150,22 +157,23 @@ export const ProviderContextProvider = ({
 
   return (
     <ProviderContext.Provider value={{
-      textGenerationModelList: [],
-      embeddingsModelList: [],
-      speech2textModelList: [],
-      rerankModelList: [],
+      textGenerationModelList: textGenerationModelList?.data || [],
+      embeddingsModelList: embeddingsModelList?.data || [],
+      speech2textModelList: speech2textModelList?.data || [],
+      rerankModelList: rerankModelList?.data || [],
       agentThoughtModelList: [],
       updateModelList,
-      textGenerationDefaultModel,
+      textGenerationDefaultModel: textGenerationDefaultModel?.data,
       mutateTextGenerationDefaultModel,
-      embeddingsDefaultModel,
+      embeddingsDefaultModel: embeddingsDefaultModel?.data,
       mutateEmbeddingsDefaultModel,
-      speech2textDefaultModel,
+      speech2textDefaultModel: speech2textDefaultModel?.data,
       mutateSpeech2textDefaultModel,
-      rerankDefaultModel,
+      rerankDefaultModel: rerankDefaultModel?.data,
       isRerankDefaultModelVaild,
       isEmbeddingsDefaultModelValid,
       mutateRerankDefaultModel,
+      hasSettedApiKey: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
       isFetchedPlan,

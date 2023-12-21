@@ -18,6 +18,7 @@ import {
   saveCredentials,
   validateCredentials,
 } from '../utils'
+import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import Form from './Form'
@@ -177,7 +178,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 <div className='px-8 pt-8'>
                   <div className='flex justify-between items-center mb-2'>
                     <div className='text-xl font-semibold text-gray-900'>{renderTitlePrefix()}</div>
-                    <div className='h-6' style={{ background: provider.icon_large[language] }} />
+                    <ProviderIcon provider={provider} />
                   </div>
                   <Form
                     value={value}

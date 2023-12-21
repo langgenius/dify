@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
 import {
-  CustomConfigurationEnum,
+  CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
 import PrioritySelector from './priority-selector'
@@ -30,7 +30,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
     <div className='shrink-0 relative ml-1 p-1 w-[112px] rounded-lg bg-white/[0.3] border-[0.5px] border-black/5'>
       <div className='flex items-center justify-between mb-1 pt-1 pl-2 pr-[7px] h-5 text-xs font-medium text-gray-500'>
         API-KEY
-        <Indicator color={customConfig.status === CustomConfigurationEnum.active ? 'green' : 'gray'} />
+        <Indicator color={customConfig.status === CustomConfigurationStatusEnum.active ? 'green' : 'gray'} />
       </div>
       <div className='flex items-center gap-0.5'>
         <Button

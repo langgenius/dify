@@ -9,10 +9,10 @@ import {
   modelTypeFormat,
 } from '../utils'
 import ModelBadge from '../model-badge'
+import ProviderIcon from '../provider-icon'
 import I18n from '@/context/i18n'
 import { Plus, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 // import { CoinsStacked01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import Button from '@/app/components/base/button'
 
 type ProviderCardProps = {
@@ -35,23 +35,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
     >
       <div>
         <div className='py-0.5'>
-          {
-            provider.icon_large[language]
-              ? (
-                <div
-                  className='h-6'
-                  style={{ background: provider.icon_large[language] }}
-                />
-              )
-              : (
-                <div className='flex items-center h-6 text-xs font-semibold text-black'>
-                  <div className='flex items-center justify-center mr-2 w-6 h-6 rounded border-[0.5px] border-black/5 bg-gray-50'>
-                    <CubeOutline className='w-4 h-4 text-[#98A2B3]' />
-                  </div>
-                  Default Model Provider Image
-                </div>
-              )
-          }
+          <ProviderIcon provider={provider} />
         </div>
         {
           provider.description && (

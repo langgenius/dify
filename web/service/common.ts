@@ -25,8 +25,8 @@ import type {
   UpdateOpenAIKeyResponse,
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
-import type { BackendModel } from '@/app/components/header/account-setting/model-page/declarations'
 import type {
+  DefaultModel,
   Model,
   ModelItem,
   ModelProvider,
@@ -195,8 +195,8 @@ export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get<{ url: string }>(url)
 }
 
-export const fetchDefaultModal: Fetcher<BackendModel, string> = (url) => {
-  return get<BackendModel>(url)
+export const fetchDefaultModal: Fetcher<{ data: DefaultModel }, string> = (url) => {
+  return get<{ data: DefaultModel }>(url)
 }
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {

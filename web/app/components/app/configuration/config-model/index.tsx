@@ -33,8 +33,8 @@ export type IConfigModelProps = {
   isAdvancedMode: boolean
   mode: string
   modelId: string
-  provider: ProviderEnum
-  setModel: (model: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => void
+  provider: string
+  setModel: (model: { id: string; provider: string; mode: ModelModeType; features: string[] }) => void
   completionParams: CompletionParams
   onCompletionParamsChange: (newParams: CompletionParams) => void
   disabled: boolean
@@ -89,7 +89,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
   const selectedModel = { name: modelId } // options.find(option => option.id === modelId)
 
-  const ensureModelParamLoaded = (provider: ProviderEnum, modelId: string) => {
+  const ensureModelParamLoaded = (provider: string, modelId: string) => {
     return new Promise<void>((resolve) => {
       if (getAllParams()[provider]?.[modelId]) {
         resolve()
@@ -126,13 +126,13 @@ const ConfigModel: FC<IConfigModelProps> = ({
     return adjustedValue
   }
 
-  const handleSelectModel = ({ id, provider: nextProvider, mode, features }: { id: string; provider: ProviderEnum; mode: ModelModeType; features: string[] }) => {
+  const handleSelectModel = ({ id, provider: nextProvider, mode, features }: { id: string; provider: string; mode: ModelModeType; features: string[] }) => {
     return async () => {
       const prevParamsRule = getAllParams()[provider]?.[modelId]
 
       setModel({
         id,
-        provider: nextProvider || ProviderEnum.openai,
+        provider: nextProvider || 'openai',
         mode,
         features,
       })
@@ -269,7 +269,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
 
     const max = currParams.max_tokens.max
     const isSupportMaxToken = currParams.max_tokens.enabled
-    if (isSupportMaxToken && currModel?.model_provider.provider_name !== ProviderEnum.anthropic && completionParams.max_tokens > max * 2 / 3)
+    if (isSupportMaxToken && currModel?.model_provider.provider_name !== 'anthropic' && completionParams.max_tokens > max * 2 / 3)
       setMaxTokenSettingTipVisible(true)
     else
       setMaxTokenSettingTipVisible(false)

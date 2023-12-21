@@ -16,8 +16,8 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       `}
     >
       <div className='grow flex items-center'>
-        <div className='mr-1.5 flex items-center justify-center w-4 h-4 rounded-[5px] border-dashed border-black/5'>
-          <CubeOutline className='w-[11px] h-[11px] text-gray-400' />
+        <div className='mr-1.5 flex items-center justify-center w-4 h-4 rounded-[5px] border border-dashed border-black/5'>
+          <CubeOutline className='w-3 h-3 text-gray-400' />
         </div>
         <div
           className='text-[13px] text-gray-500 truncate'

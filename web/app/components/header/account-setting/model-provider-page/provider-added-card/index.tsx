@@ -11,6 +11,7 @@ import {
   languageMaps,
   modelTypeFormat,
 } from '../utils'
+import ProviderIcon from '../provider-icon'
 import ModelBadge from '../model-badge'
 import CredentialPanel from './credential-panel'
 import QuotaPanel from './quota-panel'
@@ -64,7 +65,10 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
     >
       <div className='flex pl-3 py-2 pr-2 rounded-t-xl'>
         <div className='grow px-1 pt-1 pb-0.5'>
-          <div className='mb-2 h-6' style={{ background: provider.icon_large[language] }} />
+          <ProviderIcon
+            className='mb-2'
+            provider={provider}
+          />
           <div className='flex gap-0.5'>
             {
               provider.supported_model_types.map(modelType => (

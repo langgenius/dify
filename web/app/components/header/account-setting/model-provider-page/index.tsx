@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-// import SystemModel from '../model-page/system-model'
+import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard from './provider-added-card'
 import ProviderCard from './provider-card'
 import ModelModal from './model-modal'
@@ -9,9 +9,7 @@ import type {
   ConfigurateMethodEnum,
   ModelProvider,
 } from './declarations'
-import {
-  CustomConfigurationEnum,
-} from './declarations'
+import { CustomConfigurationStatusEnum } from './declarations'
 import { fetchModelProviders } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -36,7 +34,7 @@ const ModelProviderPage = () => {
     const notConfigedProviders: ModelProvider[] = []
 
     providers.forEach((provider) => {
-      if (provider.custom_configuration.status === CustomConfigurationEnum.active || provider.system_configuration.enabled === true)
+      if (provider.custom_configuration.status === CustomConfigurationStatusEnum.active || provider.system_configuration.enabled === true)
         configedProviders.push(provider)
       else
         notConfigedProviders.push(provider)
@@ -68,7 +66,7 @@ const ModelProviderPage = () => {
             )
             : <div className='text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
         }
-        {/* <SystemModel onUpdate={() => mutateProviders()} /> */}
+        <SystemModelSelector onUpdate={() => mutateProviders()} />
       </div>
       {
         !!configedProviders?.length && (

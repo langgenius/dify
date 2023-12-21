@@ -47,8 +47,8 @@ const ConfigParamModal: FC<Props> = ({
     }
     : (embeddingsDefaultModel
       ? {
-        providerName: embeddingsDefaultModel.model_provider.provider_name,
-        modelName: embeddingsDefaultModel.model_name,
+        providerName: embeddingsDefaultModel.provider.provider,
+        modelName: embeddingsDefaultModel.model,
       }
       : undefined))
   const onHide = () => {
@@ -57,7 +57,7 @@ const ConfigParamModal: FC<Props> = ({
   }
 
   const handleSave = async () => {
-    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model_name && !isEmbeddingsDefaultModelValid)) {
+    if (!embeddingModel || !embeddingModel.modelName || (embeddingModel.modelName === embeddingsDefaultModel?.model && !isEmbeddingsDefaultModelValid)) {
       Toast.notify({
         message: t('common.modelProvider.embeddingModel.required'),
         type: 'error',

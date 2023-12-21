@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import {
-  CustomConfigurationEnum,
+  CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
 } from '../declarations'
 import PriorityUseTip from './priority-use-tip'
@@ -34,7 +34,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         Buy Quota
       </div>
       {
-        priorityUseType === PreferredProviderTypeEnum.system && customConfig.status === CustomConfigurationEnum.active && (
+        priorityUseType === PreferredProviderTypeEnum.system && customConfig.status === CustomConfigurationStatusEnum.active && (
           <PriorityUseTip />
         )
       }

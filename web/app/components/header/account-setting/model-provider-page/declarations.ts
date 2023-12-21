@@ -45,7 +45,7 @@ export enum ModelStatusEnum {
   noPermission = 'no-permission',
 }
 
-export enum CustomConfigurationEnum {
+export enum CustomConfigurationStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
 }
@@ -131,7 +131,7 @@ export type ModelProvider = {
   }
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
-    status: CustomConfigurationEnum
+    status: CustomConfigurationStatusEnum
   }
   system_configuration: {
     enabled: boolean
@@ -146,5 +146,13 @@ export type Model = {
   icon_small: TypeWithI18N
   label: TypeWithI18N
   models: ModelItem[]
-  status: CustomConfigurationEnum
+  status: ModelStatusEnum
+}
+
+export type DefaultModel = {
+  model: string
+  model_type: ModelTypeEnum
+  provider: {
+    provider: string
+  }
 }
