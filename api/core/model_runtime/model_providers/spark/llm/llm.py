@@ -179,27 +179,17 @@ class SparkLargeLanguageModel(LargeLanguageModel):
                 content=delta if delta else '',
             )
 
+            prompt_tokens = self.get_num_tokens(model, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
+
+            # transform usage
+            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
             yield LLMResultChunk(
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=index,
                     message=assistant_prompt_message,
-                )
-            )
-        else:
-            prompt_tokens = self.get_num_tokens(model, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
-
-            # transform usage
-            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
-
-            yield LLMResultChunk(
-                model=model,
-                prompt_messages=prompt_messages,
-                delta=LLMResultChunkDelta(
-                    index=index,
-                    message=AssistantPromptMessage(content=''),
                     usage=usage
                 )
             )

@@ -88,6 +88,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk, LLMResultChunk)
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
+        assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
 
 def test_get_num_tokens():
