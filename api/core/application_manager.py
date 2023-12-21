@@ -205,7 +205,7 @@ class ApplicationManager:
                 raise ConversationTaskStoppedException()
             else:
                 logger.exception(e)
-                raise
+                raise e
         finally:
             db.session.remove()
 
