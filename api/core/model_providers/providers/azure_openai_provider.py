@@ -24,6 +24,8 @@ from models.provider import ProviderType, ProviderModel, ProviderQuotaType
 BASE_MODELS = [
     'gpt-4',
     'gpt-4-32k',
+    'gpt-4-1106-preview',
+    'gpt-4-vision-preview',
     'gpt-35-turbo',
     'gpt-35-turbo-16k',
     'text-davinci-003',
