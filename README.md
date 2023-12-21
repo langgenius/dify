@@ -21,19 +21,18 @@
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web"></a>
 </p>
 
-[v0.3.34: Tailored High-Quality Responses with Annotation Reply Feature](https://docs.dify.ai/advanced/annotation-reply)
 
-**Dify** is an LLM application development platform that has already seen over **100,000** applications built on Dify.AI. It integrates the concepts of Backend as a Service and LLMOps, covering the core tech stack required for building generative AI-native applications, including a built-in RAG engine. With Dify, **you can self-deploy capabilities similar to Assistants API and GPTs based on any LLMs.**
+**Dify** is an LLM application development platform that has helped built over **100,000** applications. It integrates BaaS and LLMOps, covering the essential tech stack for building generative AI-native applications, including a built-in RAG engine. Dify allows you to **deploy your own version of Assistants API and GPTs, based on any LLMs.**
 
 ![](./images/demo.png)
 
 ## Use Cloud Services
 
-Using [Dify.AI Cloud](https://dify.ai) provides all the capabilities of the open-source version, and includes a complimentary 200 GPT trial credits.
+[Dify.AI Cloud](https://dify.ai) provides all the capabilities of the open-source version, and includes 200 free requests to OpenAI GPT-3.5.
 
 ## Why Dify
 
-Dify features model neutrality and is a complete, engineered tech stack compared to hardcoded development libraries like LangChain. Unlike OpenAI's Assistants API, Dify allows for full local deployment of services.
+Dify is model-agnostic and boasts a comprehensive tech stack compared to hardcoded development libraries like LangChain. Unlike OpenAI's Assistants API, Dify allows for full local deployment of services.
 
 | Feature | Dify.AI | Assistants API | LangChain |
 |---------|---------|----------------|-----------|
@@ -105,6 +104,7 @@ If you need to customize the configuration, please refer to the comments in our 
 
 We welcome you to contribute to Dify to help make Dify better in various ways, submitting code, issues, new ideas, or sharing the interesting and useful AI applications you have created based on Dify. At the same time, we also welcome you to share Dify at different events, conferences, and social media.
 
+- [Roadmap and Feedback](https://feedback.dify.ai/). Best for: sharing feedback and checking out our feature roadmap.
 - [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs and errors you encounter using Dify.AI, see the [Contribution Guide](CONTRIBUTING.md).
 - [Email Support](mailto:hello@dify.ai?subject=[GitHub]Questions%20About%20Dify). Best for: questions you have about using Dify.AI.
 - [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
