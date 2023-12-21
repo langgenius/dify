@@ -4,7 +4,7 @@ import pytest
 from typing import Generator
 from time import sleep
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage, SystemPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
     LLMResultChunk
@@ -180,6 +180,36 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta, LLMResultChunkDelta)
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
+def test_invoke_model_with_system():
+    sleep(3)
+    model = ErnieBotLarguageModel()
+
+    response = model.invoke(
+        model='ernie-bot',
+        credentials={
+            'api_key': os.environ.get('WENXIN_API_KEY'),
+            'secret_key': os.environ.get('WENXIN_SECRET_KEY')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='你是Kasumi'
+            ),
+            UserPromptMessage(
+                content='你是谁？'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+        },
+        stop=['you'],
+        stream=False,
+        user="abc-123"
+    )
+
+    assert isinstance(response, LLMResult)
+    assert 'kasumi' in response.message.content.lower()
 
 def test_invoke_with_search():
     sleep(3)
