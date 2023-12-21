@@ -14,6 +14,19 @@ class PromptMessageRole(Enum):
     ASSISTANT = "assistant"
     TOOL = "tool"
 
+    @classmethod
+    def value_of(cls, value: str) -> 'PromptMessageRole':
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for mode in cls:
+            if mode.value == value:
+                return mode
+        raise ValueError(f'invalid prompt message type value {value}')
+
 
 class PromptMessageTool(BaseModel):
     """

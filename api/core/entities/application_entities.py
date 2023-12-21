@@ -5,6 +5,8 @@ from pydantic import BaseModel
 
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileObj
+from core.model_runtime.entities.message_entities import PromptMessageRole
+from core.model_runtime.entities.model_entities import AIModelEntity
 
 
 class ModelConfigEntity(BaseModel):
@@ -13,6 +15,7 @@ class ModelConfigEntity(BaseModel):
     """
     provider: str
     model: str
+    model_schema: AIModelEntity
     mode: str
     provider_model_bundle: ProviderModelBundle
     credentials: dict[str, Any] = {}
@@ -24,26 +27,8 @@ class AdvancedChatMessageEntity(BaseModel):
     """
     Advanced Chat Message Entity.
     """
-    class MessageType(Enum):
-        USER = 'user'
-        ASSISTANT = 'assistant'
-        SYSTEM = 'system'
-
-        @classmethod
-        def value_of(cls, value: str) -> 'MessageType':
-            """
-            Get value of given mode.
-
-            :param value: mode value
-            :return: mode
-            """
-            for mode in cls:
-                if mode.value == value:
-                    return mode
-            raise ValueError(f'invalid message type value {value}')
-
     text: str
-    role: MessageType
+    role: PromptMessageRole
 
 
 class AdvancedChatPromptTemplateEntity(BaseModel):

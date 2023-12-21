@@ -10,12 +10,13 @@ from core.app_runner.agent_app_runner import AgentApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
 from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.entities.application_entities import ApplicationGenerateEntity, AppOrchestrationConfigEntity, \
-    ModelConfigEntity, PromptTemplateEntity, AdvancedChatMessageEntity, AdvancedChatPromptTemplateEntity, \
+    ModelConfigEntity, PromptTemplateEntity, AdvancedChatPromptTemplateEntity, \
     AdvancedCompletionPromptTemplateEntity, ExternalDataVariableEntity, DatasetEntity, DatasetRetrieveConfigEntity, \
     AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom, ApplicationGenerateResponse
 from core.entities.model_entities import ModelStatus
 from core.file.file_obj import FileObj
 from core.model_providers.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
+from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -81,7 +82,7 @@ class ApplicationManager:
             ),
             app_model_config_override=app_model_config_override,
             conversation_id=conversation.id if conversation else None,
-            inputs=inputs,
+            inputs=conversation.inputs if conversation else inputs,
             query=query.replace('\x00', '') if query else None,
             files=files if files else [],
             user_id=user.id,
@@ -278,9 +279,18 @@ class ApplicationManager:
 
             model_mode = mode_enum.value
 
+        model_schema = model_instance.get_model_schema(
+            copy_app_model_config_dict['model']['name'],
+            model_credentials
+        )
+
+        if not model_schema:
+            raise ValueError(f"Model {model_name} not exist.")
+
         properties['model_config'] = ModelConfigEntity(
             provider=copy_app_model_config_dict['model']['provider'],
             model=copy_app_model_config_dict['model']['name'],
+            model_schema=model_schema,
             mode=model_mode,
             provider_model_bundle=provider_model_bundle,
             credentials=model_credentials,
@@ -304,7 +314,7 @@ class ApplicationManager:
                 for message in chat_prompt_config.get("messages", []):
                     chat_prompt_messages.append({
                         "text": message["text"],
-                        "role": AdvancedChatMessageEntity.MessageType.value_of(message["role"])
+                        "role": PromptMessageRole.value_of(message["role"])
                     })
 
                 advanced_chat_prompt_template = AdvancedChatPromptTemplateEntity(
