@@ -329,13 +329,13 @@ class LocalAILarguageModel(LargeLanguageModel):
         for message in messages:
             if isinstance(message, UserPromptMessage):
                 message = cast(UserPromptMessage, message)
-                prompts += f'User: {message.content}\n'
+                prompts += f'{message.content}\n'
             elif isinstance(message, AssistantPromptMessage):
                 message = cast(AssistantPromptMessage, message)
-                prompts += f'Assistant: {message.content}\n'
+                prompts += f'{message.content}\n'
             elif isinstance(message, SystemPromptMessage):
                 message = cast(SystemPromptMessage, message)
-                prompts += f'System: {message.content}\n'
+                prompts += f'{message.content}\n'
             else:
                 raise ValueError(f"Unknown message type {type(message)}")
         
