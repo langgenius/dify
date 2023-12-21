@@ -202,12 +202,11 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
-            if message.tool_calls:
-                message_dict["tool_calls"] = [
-                    PromptMessageFunction(
-                        PromptMessageFunction(function=tool_call).model_dump() for tool_call in
-                                              message.tool_calls)
-                ]
+            if message.tool_calls and len(message.tool_calls) > 0:
+                message_dict["function_call"] = {
+                    "name": message.tool_calls[0].function.name,
+                    "arguments": message.tool_calls[0].function.arguments
+                }
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
@@ -277,7 +276,10 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
                 continue
             
             # check if there is a tool call in the response
-            function_calls = delta.delta.tool_calls
+            function_calls = None
+            if delta.delta.function_call:
+                function_calls = [delta.delta.function_call]
+
             assistant_message_tool_calls = self._extract_response_tool_calls(function_calls if function_calls else [])
 
             # transform assistant message to prompt message
@@ -292,6 +294,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
                     content=full_response,
                     tool_calls=assistant_message_tool_calls
                 )
+
                 prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
                 completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
 
@@ -317,7 +320,7 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
                     delta=LLMResultChunkDelta(
                         index=delta.index,
                         message=assistant_prompt_message,
-                    )
+                    ),
                 )
 
                 full_response += delta.delta.content
@@ -350,12 +353,8 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
             tool_calls=tool_calls
         )
 
-        if response.usage:
-            prompt_tokens = response.usage.prompt_tokens
-            completion_tokens = response.usage.completion_tokens
-        else:
-            prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
-            completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=tools)
+        prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
+        completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=tools)
 
         usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
 
@@ -398,36 +397,28 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
         
         tokens_per_message = 3
         tokens_per_name = 1
-
         num_tokens = 0
         messages_dict = [self._convert_prompt_message_to_dict(m) for m in messages]
         for message in messages_dict:
             num_tokens += tokens_per_message
             for key, value in message.items():
-                # Cast str(value) in case the message value is not a string
-                # This occurs with function messages
-                # TODO: The current token calculation method for the image type is not implemented,
-                #  which need to download the image and then get the resolution for calculation,
-                #  and will increase the request delay
                 if isinstance(value, list):
                     text = ''
                     for item in value:
                         if isinstance(item, dict) and item['type'] == 'text':
                             text += item['text']
-
                     value = text
 
-                if key == "functions":
-                    for tool_call in value:
-                        for t_key, t_value in tool_call.items():
+                if key == "function_call":
+                    for t_key, t_value in value.items():
+                        num_tokens += tokens(t_key)
+                        if t_key == "function":
+                            for f_key, f_value in t_value.items():
+                                num_tokens += tokens(f_key)
+                                num_tokens += tokens(f_value)
+                        else:
                             num_tokens += tokens(t_key)
-                            if t_key == "function":
-                                for f_key, f_value in t_value.items():
-                                    num_tokens += tokens(f_key)
-                                    num_tokens += tokens(f_value)
-                            else:
-                                num_tokens += tokens(t_key)
-                                num_tokens += tokens(t_value)
+                            num_tokens += tokens(t_value)
                 else:
                     num_tokens += tokens(str(value))
 
@@ -455,8 +446,6 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
 
         num_tokens = 0
         for tool in tools:
-            num_tokens += tokens('function')
-
             # calculate num tokens for function object
             num_tokens += tokens('name')
             num_tokens += tokens(tool.name)
@@ -464,9 +453,6 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
             num_tokens += tokens(tool.description)
             parameters = tool.parameters
             num_tokens += tokens('parameters')
-            if 'title' in parameters:
-                num_tokens += tokens('title')
-                num_tokens += tokens(parameters.get("title"))
             num_tokens += tokens('type')
             num_tokens += tokens(parameters.get("type"))
             if 'properties' in parameters:

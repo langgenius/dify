@@ -96,7 +96,7 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-def test_invoke_model_with_functions():
+def test_invoke_stream_model_with_functions():
     model = ChatGLMLargeLanguageModel()
 
     response = model.invoke(
@@ -106,8 +106,71 @@ def test_invoke_model_with_functions():
         },
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant who can use',
+                content='你是一个天气机器人，你不知道今天的天气怎么样，你需要通过调用一个函数来获取天气信息。'
             ),
+            UserPromptMessage(
+                content='波士顿天气如何？'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+        },
+        stop=['you'],
+        user='abc-123',
+        stream=True,
+        tools=[
+            PromptMessageTool(
+                name='get_current_weather',
+                description='Get the current weather in a given location',
+                parameters={
+                    "type": "object",
+                    "properties": {
+                        "location": {
+                        "type": "string",
+                            "description": "The city and state e.g. San Francisco, CA"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "enum": ["celsius", "fahrenheit"]
+                        }
+                    },
+                    "required": [
+                        "location"
+                    ]
+                }
+            )
+        ]
+    )
+
+    assert isinstance(response, Generator)
+    
+    call: LLMResultChunk = None
+    chunks = []
+
+    for chunk in response:
+        chunks.append(chunk)
+        assert isinstance(chunk, LLMResultChunk)
+        assert isinstance(chunk.delta, LLMResultChunkDelta)
+        assert isinstance(chunk.delta.message, AssistantPromptMessage)
+        assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
+
+        if chunk.delta.message.tool_calls and len(chunk.delta.message.tool_calls) > 0:
+            call = chunk
+            break
+
+    assert call is not None
+    assert call.delta.message.tool_calls[0].function.name == 'get_current_weather'
+
+def test_invoke_model_with_functions():
+    model = ChatGLMLargeLanguageModel()
+
+    response = model.invoke(
+        model='chatglm3-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
+        prompt_messages=[
             UserPromptMessage(
                 content='What is the weather like in San Francisco?'
             )
@@ -151,6 +214,7 @@ def test_invoke_model_with_functions():
     assert response.usage.total_tokens > 0
     assert response.message.tool_calls[0].function.name == 'get_current_weather'
 
+
 def test_get_num_tokens():
     model = ChatGLMLargeLanguageModel()
 
@@ -192,7 +256,7 @@ def test_get_num_tokens():
     )
 
     assert isinstance(num_tokens, int)
-    assert num_tokens == 78
+    assert num_tokens == 77
 
     num_tokens = model.get_num_tokens(
         model='chatglm2-6b',
