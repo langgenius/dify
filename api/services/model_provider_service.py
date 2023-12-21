@@ -1,6 +1,7 @@
 import logging
+import mimetypes
 import os
-from typing import Optional, cast
+from typing import Optional, cast, Tuple
 
 import requests
 from flask import current_app
@@ -386,7 +387,7 @@ class ModelProviderService:
             model=model
         )
 
-    def get_model_provider_icon(self, provider: str, icon_type: str, lang: str) -> Optional[bytes]:
+    def get_model_provider_icon(self, provider: str, icon_type: str, lang: str) -> Tuple[Optional[bytes], Optional[str]]:
         """
         get model provider icon.
 
@@ -421,11 +422,15 @@ class ModelProviderService:
         file_path = os.path.join(file_path, file_name)
 
         if not os.path.exists(file_path):
-            return None
+            return None, None
+
+        mimetype, _ = mimetypes.guess_type(file_path)
+        mimetype = mimetype or 'application/octet-stream'
 
         # read binary from file
         with open(file_path, 'rb') as f:
-            return f.read()
+            byte_data = f.read()
+            return byte_data, mimetype
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """

@@ -145,16 +145,13 @@ class ModelProviderIconApi(Resource):
     @account_initialization_required
     def get(self, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
-        icon = model_provider_service.get_model_provider_icon(
+        icon, mimetype = model_provider_service.get_model_provider_icon(
             provider=provider,
             icon_type=icon_type,
             lang=lang
         )
 
-        return send_file(io.BytesIO(icon),
-                         as_attachment=True,
-                         mimetype='application/octet-stream',
-                         download_name='icon.bin')
+        return send_file(io.BytesIO(icon), mimetype=mimetype)
 
 
 class PreferredProviderTypeUpdateApi(Resource):
