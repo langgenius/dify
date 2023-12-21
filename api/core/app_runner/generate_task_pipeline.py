@@ -3,12 +3,13 @@ import logging
 import threading
 import time
 from decimal import Decimal
-from typing import Union, Generator, cast
+from typing import Union, Generator, cast, Optional
 
 from pydantic import BaseModel
 
+from core.app_runner.moderation_handler import OutputModerationHandler, ModerationRule
 from core.entities.application_entities import ApplicationGenerateEntity
-from core.application_queue_manager import ApplicationQueueManager
+from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException
 from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, QueueMessage, \
     QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -74,6 +75,7 @@ class GenerateTaskPipeline:
             )
         )
         self._start_at = time.perf_counter()
+        self._output_moderation_handler = self._init_output_moderation()
 
     def process(self, stream: bool) -> Union[dict, Generator]:
         """
@@ -98,6 +100,15 @@ class GenerateTaskPipeline:
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._task_state.metadata['retriever_resources'] = event.retriever_resources
             elif isinstance(event, QueueMessageEndEvent):
+                # response moderation
+                if self._output_moderation_handler:
+                    self._output_moderation_handler.stop_thread()
+
+                    self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
+                        completion=self._task_state.llm_result.message.content,
+                        public_event=False
+                    )
+
                 # Save message
                 self._save_message(event.llm_result)
 
@@ -157,6 +168,15 @@ class GenerateTaskPipeline:
                         completion_tokens
                     )
 
+                # response moderation
+                if self._output_moderation_handler:
+                    self._output_moderation_handler.stop_thread()
+
+                    self._task_state.llm_result.message.content = self._output_moderation_handler.moderation_completion(
+                        completion=self._task_state.llm_result.message.content,
+                        public_event=True
+                    )
+
                 # Save message
                 self._save_message(self._task_state.llm_result)
 
@@ -207,6 +227,15 @@ class GenerateTaskPipeline:
 
                 if not self._task_state.llm_result.prompt_messages:
                     self._task_state.llm_result.prompt_messages = chunk.prompt_messages
+
+                if self._output_moderation_handler:
+                    if self._output_moderation_handler.should_direct_output():
+                        # stop subscribe new token when output moderation should direct output
+                        self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
+                        self._queue_manager.publish(QueueStopEvent())
+                        raise ConversationTaskStoppedException()
+                    else:
+                        self._output_moderation_handler.append_new_token(delta_text)
 
                 self._task_state.llm_result.message.content += delta_text
                 response = self._handle_chunk(delta_text)
@@ -348,3 +377,22 @@ class GenerateTaskPipeline:
             })
 
         return prompts
+
+    def _init_output_moderation(self) -> Optional[OutputModerationHandler]:
+        """
+        Init output moderation.
+        :return:
+        """
+        app_orchestration_config_entity = self._application_generate_entity.app_orchestration_config_entity
+        sensitive_word_avoidance = app_orchestration_config_entity.sensitive_word_avoidance
+
+        if sensitive_word_avoidance:
+            return OutputModerationHandler(
+                tenant_id=self._application_generate_entity.tenant_id,
+                app_id=self._application_generate_entity.app_id,
+                rule=ModerationRule(
+                    type=sensitive_word_avoidance.type,
+                    config=sensitive_word_avoidance.config
+                ),
+                on_message_replace_func=self._queue_manager.publish_message_replace
+            )

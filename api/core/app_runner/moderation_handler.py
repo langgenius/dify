@@ -1,7 +1,7 @@
 import logging
 import threading
 import time
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 from flask import current_app, Flask
 from pydantic import BaseModel
@@ -11,6 +11,10 @@ from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
 
 logger = logging.getLogger(__name__)
+
+class ModerationRule(BaseModel):
+    type: str
+    config: Dict[str, Any]
 
 
 class OutputModerationHandler(BaseModel):
