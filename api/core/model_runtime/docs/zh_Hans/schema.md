@@ -88,7 +88,7 @@
 
 ### LLMMode
 
-- `complete` 文本补全
+- `completion` 文本补全
 - `chat` 对话
 
 ### ParameterRule

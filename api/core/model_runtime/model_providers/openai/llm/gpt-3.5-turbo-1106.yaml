@@ -1,13 +1,13 @@
-model: gpt-3.5-turbo
+model: gpt-3.5-turbo-1106
 label:
-  zh_Hans: gpt-3.5-turbo
-  en_US: gpt-3.5-turbo
+  zh_Hans: gpt-3.5-turbo-1106
+  en_US: gpt-3.5-turbo-1106
 model_type: llm
 features:
 - agent-thought
 model_properties:
   mode: chat
-  context_size: 4096
+  context_size: 16385
 parameter_rules:
 - name: temperature
   use_template: temperature
@@ -21,7 +21,7 @@ parameter_rules:
   use_template: max_tokens
   default: 512
   min: 1
-  max: 4096
+  max: 16385
 pricing:
   input: '0.001'
   output: '0.002'

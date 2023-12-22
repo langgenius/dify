@@ -1,12 +1,11 @@
-model: gpt-3.5-turbo
+model: text-davinci-003
 label:
-  zh_Hans: gpt-3.5-turbo
-  en_US: gpt-3.5-turbo
+  zh_Hans: text-davinci-003
+  en_US: text-davinci-003
 model_type: llm
-features:
-- agent-thought
+features: []
 model_properties:
-  mode: chat
+  mode: completion
   context_size: 4096
 parameter_rules:
 - name: temperature
