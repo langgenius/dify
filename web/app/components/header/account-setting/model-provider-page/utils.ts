@@ -64,7 +64,7 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
     url = `/workspaces/current/model-providers/${provider}`
   }
   else {
-    const { __model_name, __model_type, credentials } = v
+    const { __model_name, __model_type, ...credentials } = v
     body = {
       model: __model_name,
       model_type: __model_type,
@@ -134,17 +134,17 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
   } as CredentialFormSchemaRadio
 }
 
-export const genModelNameFormSchema = () => {
+export const genModelNameFormSchema = (model: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>) => {
   return {
     type: FormTypeEnum.textInput,
-    label: {
+    label: model.label || {
       zh_Hans: '模型名称',
       en_US: 'Model Name',
     },
     variable: '__model_name',
     required: true,
     show_on: [],
-    placeholder: {
+    placeholder: model.placeholder || {
       zh_Hans: '请输入模型名称',
       en_US: 'Please enter model name',
     },

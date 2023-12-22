@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -53,11 +53,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const { data: formSchemasValue } = useSWR(
     `/workspaces/current/model-providers/${provider.provider}/credentials`,
     fetchModelProviderCredentials,
-    {
-      keepPreviousData: false,
-    },
   )
-  console.log(formSchemasValue)
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
@@ -69,13 +65,15 @@ const ModelModal: FC<ModelModalProps> = ({
       ? provider.provider_credential_schema.credential_form_schemas
       : [
         genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(),
-        ...provider.provider_credential_schema.credential_form_schemas,
+        genModelNameFormSchema(provider.model_credential_schema.model),
+        ...provider.model_credential_schema.credential_form_schemas,
       ]
   }, [
     providerFormSchemaPredefined,
-    provider.provider_credential_schema.credential_form_schemas,
+    provider.provider_credential_schema?.credential_form_schemas,
     provider.supported_model_types,
+    provider.model_credential_schema?.credential_form_schemas,
+    provider.model_credential_schema?.model,
   ])
   const [
     requiredFormSchemas,
@@ -142,19 +140,26 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [initialFormSchemasValue])
   const [validate, validating, validatedStatusState] = useValidate(value)
   const isEditMode = !!formSchemasValue?.credentials
-  const formRequiredValueAllCompleted = requiredFormSchemas.every(formSchema => value[formSchema.variable])
+  const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
+    if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+      return true
+
+    if (!requiredFormSchema.show_on.length)
+      return true
+
+    return false
+  })
+  const getSecretValues = useCallback((v: FormValue) => {
+    return secretFormSchemas.reduce((prev, next) => {
+      if (v[next.variable] === initialFormSchemasValue[next.variable])
+        prev[next.variable] = '[__HIDDEN__]'
+
+      return prev
+    }, {} as Record<string, string>)
+  }, [initialFormSchemasValue, secretFormSchemas])
 
   const handleValueChange = (v: FormValue) => {
     setValue(v)
-    const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
-      if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => v[showOnItem.variable] === showOnItem.value))
-        return true
-
-      if (!requiredFormSchema.show_on.length)
-        return true
-
-      return false
-    })
 
     if (filteredRequiredFormSchemas.length) {
       validate({
@@ -169,7 +174,10 @@ const ModelModal: FC<ModelModalProps> = ({
           return validateCredentials(
             providerFormSchemaPredefined,
             provider.provider,
-            v,
+            {
+              ...v,
+              ...getSecretValues(v),
+            },
           )
         },
       })
@@ -178,19 +186,13 @@ const ModelModal: FC<ModelModalProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true)
-      const secretValues = secretFormSchemas.reduce((prev, next) => {
-        if (value[next.variable] === initialFormSchemasValue[next.variable])
-          prev[next.variable] = '[__HIDDEN__]'
-
-        return prev
-      }, {} as Record<string, string>)
 
       const res = await saveCredentials(
         providerFormSchemaPredefined,
         provider.provider,
         {
           ...value,
-          ...secretValues,
+          ...getSecretValues(value),
         },
       )
       if (res.result === 'success') {
@@ -285,7 +287,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
-                    disabled={loading || validating || !formRequiredValueAllCompleted}
+                    disabled={loading || validatedStatusState.status !== ValidatedStatus.Success}
                   >
                     {t('common.operation.save')}
                   </Button>

@@ -128,7 +128,7 @@ export type ModelProvider = {
       label: TypeWithI18N
       placeholder: TypeWithI18N
     }
-    crenential_form_schemas: CredentialFormSchema[]
+    credential_form_schemas: CredentialFormSchema[]
   }
   preferred_provider_type: PreferredProviderTypeEnum
   custom_configuration: {
