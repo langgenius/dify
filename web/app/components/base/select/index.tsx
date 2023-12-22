@@ -98,7 +98,7 @@ const Select: FC<ISelectProps> = ({
                   setOpen(!open)
               }
             } className={`flex items-center h-9 w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200`}>
-              {selectedItem?.name}
+              <div className='w-0 grow text-left truncate' title={selectedItem?.name}>{selectedItem?.name}</div>
             </Combobox.Button>}
           <Combobox.Button className="absolute inset-y-0 right-0 flex items-center rounded-r-md px-2 focus:outline-none group-hover:bg-gray-200" onClick={
             () => {
@@ -290,7 +290,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
               }}
             >
               <span
-                className='grow truncate'
+                className='w-0 grow truncate'
                 title={item.name}
               >
                 {item.name}
