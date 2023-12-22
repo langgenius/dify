@@ -22,6 +22,15 @@ def test_hosted_inference_api_validate_credentials():
             }
         )
 
+    with pytest.raises(CredentialsValidateFailedError):
+        model.validate_credentials(
+            model='fake-model',
+            credentials={
+                'huggingfacehub_api_type': 'hosted_inference_api',
+                'huggingfacehub_api_token': 'invalid_key'
+            }
+        )
+
     model.validate_credentials(
         model='HuggingFaceH4/zephyr-7b-beta',
         credentials={

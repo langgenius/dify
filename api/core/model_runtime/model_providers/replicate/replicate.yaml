@@ -14,7 +14,11 @@ supported_model_types:
 - text-embedding
 configurate_methods:
 - customizable-model
-provider_credential_schema:
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
   credential_form_schemas:
   - variable: replicate_api_token
     label:

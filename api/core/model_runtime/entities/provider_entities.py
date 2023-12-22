@@ -74,7 +74,7 @@ class ProviderCredentialSchema(BaseModel):
 
 class FieldModelSchema(BaseModel):
     label: I18nObject
-    placeholder: I18nObject
+    placeholder: Optional[I18nObject] = None
 
 
 class ModelCredentialSchema(BaseModel):

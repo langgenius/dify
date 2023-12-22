@@ -61,35 +61,35 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
         return 0
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
-        if 'huggingfacehub_api_type' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type must be provided.')
-
-        if credentials['huggingfacehub_api_type'] not in ('inference_endpoints', 'hosted_inference_api'):
-            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
-
-        if 'huggingfacehub_api_token' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Access Token must be provided.')
-
-        if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            if 'huggingfacehub_endpoint_url' not in credentials:
-                raise CredentialsValidateFailedError('Huggingface Hub Endpoint URL must be provided.')
-
-            if 'task_type' not in credentials:
-                raise CredentialsValidateFailedError('Huggingface Hub Task Type must be provided.')
-        elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
-            credentials['task_type'] = self._get_hosted_model_task_type(credentials['huggingfacehub_api_token'],
-                                                                        model)
-
-        if credentials['task_type'] not in ("text2text-generation", "text-generation"):
-            raise CredentialsValidateFailedError('Huggingface Hub Task Type must be one of text2text-generation, '
-                                                 'text-generation.')
-
-        client = InferenceClient(token=credentials['huggingfacehub_api_token'])
-
-        if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            model = credentials['huggingfacehub_endpoint_url']
-
         try:
+            if 'huggingfacehub_api_type' not in credentials:
+                raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type must be provided.')
+
+            if credentials['huggingfacehub_api_type'] not in ('inference_endpoints', 'hosted_inference_api'):
+                raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
+
+            if 'huggingfacehub_api_token' not in credentials:
+                raise CredentialsValidateFailedError('Huggingface Hub Access Token must be provided.')
+
+            if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+                if 'huggingfacehub_endpoint_url' not in credentials:
+                    raise CredentialsValidateFailedError('Huggingface Hub Endpoint URL must be provided.')
+
+                if 'task_type' not in credentials:
+                    raise CredentialsValidateFailedError('Huggingface Hub Task Type must be provided.')
+            elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
+                credentials['task_type'] = self._get_hosted_model_task_type(credentials['huggingfacehub_api_token'],
+                                                                            model)
+
+            if credentials['task_type'] not in ("text2text-generation", "text-generation"):
+                raise CredentialsValidateFailedError('Huggingface Hub Task Type must be one of text2text-generation, '
+                                                     'text-generation.')
+
+            client = InferenceClient(token=credentials['huggingfacehub_api_token'])
+
+            if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+                model = credentials['huggingfacehub_endpoint_url']
+
             client.text_generation(
                 prompt='Who are you?',
                 stream=False,
