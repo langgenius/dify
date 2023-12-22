@@ -20,10 +20,8 @@ parameter_rules:
   max: 4800
 - name: presence_penalty
   use_template: presence_penalty
-  default: false
 - name: frequency_penalty
   use_template: frequency_penalty
-  default: false
 - name: disable_search
   label:
     zh_Hans: 禁用搜索

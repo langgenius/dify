@@ -20,7 +20,5 @@ parameter_rules:
   max: 11200
 - name: presence_penalty
   use_template: presence_penalty
-  default: false
 - name: frequency_penalty
   use_template: frequency_penalty
-  default: false
