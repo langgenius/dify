@@ -109,25 +109,24 @@ class ProviderConfiguration(BaseModel):
             Provider.provider_type == ProviderType.CUSTOM.value
         ).first()
 
-        original_credentials = {}
-        if provider_record:
-            try:
-                original_credentials = json.loads(provider_record.encrypted_config)
-            except JSONDecodeError:
-                original_credentials = {}
-
         # Get provider credential secret variables
         provider_credential_secret_variables = self._extract_secret_variables(
             self.provider.provider_credential_schema.credential_form_schemas
             if self.provider.provider_credential_schema else []
         )
 
-        # encrypt credentials
-        for key, value in credentials.items():
-            if key in provider_credential_secret_variables:
-                # if send [__HIDDEN__] in secret input, it will be same as original value
-                if value == '[__HIDDEN__]' and key in original_credentials:
-                    credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
+        if provider_record:
+            try:
+                original_credentials = json.loads(provider_record.encrypted_config)
+            except JSONDecodeError:
+                original_credentials = {}
+
+            # encrypt credentials
+            for key, value in credentials.items():
+                if key in provider_credential_secret_variables:
+                    # if send [__HIDDEN__] in secret input, it will be same as original value
+                    if value == '[__HIDDEN__]' and key in original_credentials:
+                        credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         model_provider_factory.provider_credentials_validate(
             self.provider.provider,
@@ -240,18 +239,17 @@ class ProviderConfiguration(BaseModel):
             if self.provider.model_credential_schema else []
         )
 
-        original_credentials = {}
         if provider_model_record:
             try:
                 original_credentials = json.loads(provider_model_record.encrypted_config)
             except JSONDecodeError:
                 original_credentials = {}
 
-        # encrypt credentials
-        for key, value in credentials.items():
-            if key in provider_credential_secret_variables:
-                # if send [__HIDDEN__] in secret input, it will be same as original value
-                credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
+            # encrypt credentials
+            for key, value in credentials.items():
+                if key in provider_credential_secret_variables:
+                    # if send [__HIDDEN__] in secret input, it will be same as original value
+                    credentials[key] = encrypter.decrypt_token(self.tenant_id, original_credentials[key])
 
         model_provider_factory.model_credentials_validate(
             model_type=model_type,
