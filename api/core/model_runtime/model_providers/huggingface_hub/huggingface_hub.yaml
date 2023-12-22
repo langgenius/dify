@@ -5,6 +5,8 @@ icon_small:
     en_US: icon_s_en.svg
 icon_large:
     en_US: icon_l_en.svg
+background:
+- value: #FFF8DC
 supported_model_types:
 - llm
 - text-embedding
@@ -12,6 +14,19 @@ configurate_methods:
 - customizable-model
 provider_credential_schema:
   credential_form_schemas:
+  - variable: model_type
+    label:
+      en_US: Model Type
+    type: radio
+    required: true
+    default: llm
+    options:
+    - value: llm
+      label:
+        en_US: Text Generation
+    - value: text-embedding
+      label:
+        en_US: Embeddings
   - variable: huggingfacehub_api_type
     label:
       en_US: HuggingFace Hub API Type
@@ -40,7 +55,7 @@ provider_credential_schema:
     placeholder:
       en_US: Enter your HuggingFace Namespace
     show_on:
-    - variable: __model_type
+    - variable: model_type
       value: text-embedding
     - variable: huggingfacehub_api_type
       value: inference_endpoints
@@ -63,25 +78,25 @@ provider_credential_schema:
   - variable: task_type
     label:
       en_US: Task Type
-    type: radio
+    type: select
     options:
     - value: text2text-generation
       label:
         en_US: Text-to-Text Generation
       show_on:
-      - variable: __model_type
+      - variable: model_type
         value: llm
     - value: text-generation
       label:
         en_US: Text Generation
       show_on:
-      - variable: __model_type
+      - variable: model_type
         value: llm
     - value: feature-extraction
       label:
         en_US: Feature Extraction
       show_on:
-      - variable: __model_type
+      - variable: model_type
         value: text-embedding
     show_on:
     - variable: huggingfacehub_api_type
