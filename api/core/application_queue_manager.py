@@ -6,7 +6,7 @@ from sqlalchemy.orm import DeclarativeMeta
 from core.entities.application_entities import InvokeFrom
 from core.entities.queue_entities import QueueStopEvent, AppQueueEvent, QueuePingEvent, QueueErrorEvent, \
     QueueAgentThoughtEvent, QueueMessageEndEvent, QueueRetrieverResourcesEvent, QueueMessageReplaceEvent, \
-    QueueMessageEvent, QueueMessage
+    QueueMessageEvent, QueueMessage, AnnotationReplyEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from extensions.ext_redis import redis_client
 from models.model import MessageAgentThought
@@ -58,7 +58,7 @@ class ApplicationQueueManager:
                 if listen_timeout <= 0 or self._is_stopped():
                     # publish two messages to make sure the client can receive the stop signal
                     # and stop listening after the stop signal processed
-                    self.publish(QueueStopEvent())
+                    self.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.USER_MANUAL))
                     self.stop_listen()
 
                 if listen_timeout > 0 and listen_timeout % 10 == 0:
@@ -98,6 +98,14 @@ class ApplicationQueueManager:
         :return:
         """
         self.publish(QueueRetrieverResourcesEvent(retriever_resources=retriever_resources))
+
+    def publish_annotation_reply(self, message_annotation_id: str) -> None:
+        """
+        Publish annotation reply
+        :param message_annotation_id: message annotation id
+        :return:
+        """
+        self.publish(AnnotationReplyEvent(message_annotation_id=message_annotation_id))
 
     def publish_message_end(self, llm_result: LLMResult) -> None:
         """

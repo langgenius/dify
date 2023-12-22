@@ -12,9 +12,8 @@ from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
 from core.chain.llm_chain import LLMChain
+from core.entities.application_entities import ModelConfigEntity
 from core.model_providers.models.entity.model_params import ModelMode
-from core.model_providers.models.llm.base import BaseLLM
-from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -101,8 +100,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
         try:
             full_output = self.llm_chain.predict(callbacks=callbacks, **full_inputs)
         except Exception as e:
-            new_exception = self.llm_chain.model_instance.handle_exceptions(e)
-            raise new_exception
+            raise e
 
         try:
             agent_decision = self.output_parser.parse(full_output)
@@ -207,7 +205,7 @@ Thought: {agent_scratchpad}
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_instance: BaseLLM,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             output_parser: Optional[AgentOutputParser] = None,
@@ -221,7 +219,7 @@ Thought: {agent_scratchpad}
     ) -> Agent:
         """Construct an agent from an LLM and tools."""
         cls._validate_tools(tools)
-        if model_instance.model_mode == ModelMode.CHAT:
+        if model_config.mode == ModelMode.CHAT.value:
             prompt = cls.create_prompt(
                 tools,
                 prefix=prefix,
@@ -238,8 +236,9 @@ Thought: {agent_scratchpad}
                 format_instructions=format_instructions,
                 input_variables=input_variables
             )
+
         llm_chain = LLMChain(
-            model_instance=model_instance,
+            model_config=model_config,
             prompt=prompt,
             callback_manager=callback_manager,
         )

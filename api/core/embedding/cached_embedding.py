@@ -1,19 +1,23 @@
 import logging
-from typing import List
+from typing import List, cast, Optional
 
 import numpy as np
 from langchain.embeddings.base import Embeddings
 from sqlalchemy.exc import IntegrityError
 
-from core.model_providers.models.embedding.base import BaseEmbedding
+from core.entities.application_entities import ModelConfigEntity
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from libs import helper
 from models.dataset import Embedding
 
+logger = logging.getLogger(__name__)
+
 
 class CacheEmbedding(Embeddings):
-    def __init__(self, embeddings: BaseEmbedding):
-        self._embeddings = embeddings
+    def __init__(self, model_config: ModelConfigEntity, user: Optional[str] = None) -> None:
+        self._model_config = model_config
+        self._user = user
 
     def embed_documents(self, texts: List[str]) -> List[List[float]]:
         """Embed search docs."""
@@ -22,7 +26,7 @@ class CacheEmbedding(Embeddings):
         embedding_queue_indices = []
         for i, text in enumerate(texts):
             hash = helper.generate_text_hash(text)
-            embedding = db.session.query(Embedding).filter_by(model_name=self._embeddings.name, hash=hash).first()
+            embedding = db.session.query(Embedding).filter_by(model_name=self._model_config.model, hash=hash).first()
             if embedding:
                 text_embeddings[i] = embedding.get_embedding()
             else:
@@ -30,15 +34,25 @@ class CacheEmbedding(Embeddings):
 
         if embedding_queue_indices:
             try:
-                embedding_results = self._embeddings.client.embed_documents([texts[i] for i in embedding_queue_indices])
+                model_instance = self._model_config.provider_model_bundle.model_instance
+                model_instance = cast(TextEmbeddingModel, model_instance)
+
+                embedding_result = model_instance.invoke(
+                    model=self._model_config.model,
+                    credentials=self._model_config.credentials,
+                    texts=[texts[i] for i in embedding_queue_indices],
+                    user=self._user
+                )
+                embedding_results = embedding_result.embeddings
             except Exception as ex:
-                raise self._embeddings.handle_exceptions(ex)
+                logger.error('Failed to embed documents: ', ex)
+                raise ex
 
             for i, indice in enumerate(embedding_queue_indices):
                 hash = helper.generate_text_hash(texts[indice])
 
                 try:
-                    embedding = Embedding(model_name=self._embeddings.name, hash=hash)
+                    embedding = Embedding(model_name=self._model_config.model, hash=hash)
                     vector = embedding_results[i]
                     normalized_embedding = (vector / np.linalg.norm(vector)).tolist()
                     text_embeddings[indice] = normalized_embedding
@@ -58,18 +72,27 @@ class CacheEmbedding(Embeddings):
         """Embed query text."""
         # use doc embedding cache or store if not exists
         hash = helper.generate_text_hash(text)
-        embedding = db.session.query(Embedding).filter_by(model_name=self._embeddings.name, hash=hash).first()
+        embedding = db.session.query(Embedding).filter_by(model_name=self._model_config.model, hash=hash).first()
         if embedding:
             return embedding.get_embedding()
 
         try:
-            embedding_results = self._embeddings.client.embed_query(text)
+            model_instance = self._model_config.provider_model_bundle.model_instance
+            model_instance = cast(TextEmbeddingModel, model_instance)
+
+            embedding_result = model_instance.invoke(
+                model=self._model_config.model,
+                credentials=self._model_config.credentials,
+                texts=[text],
+                user=self._user
+            )
+            embedding_results = embedding_result.embeddings[0]
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()
         except Exception as ex:
-            raise self._embeddings.handle_exceptions(ex)
+            raise ex
 
         try:
-            embedding = Embedding(model_name=self._embeddings.name, hash=hash)
+            embedding = Embedding(model_name=self._model_config.model, hash=hash)
             embedding.set_embedding(embedding_results)
             db.session.add(embedding)
             db.session.commit()
@@ -79,4 +102,3 @@ class CacheEmbedding(Embeddings):
             logging.exception('Failed to add embedding to db')
 
         return embedding_results
-

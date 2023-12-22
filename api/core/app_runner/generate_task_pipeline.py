@@ -11,7 +11,8 @@ from core.app_runner.moderation_handler import OutputModerationHandler, Moderati
 from core.entities.application_entities import ApplicationGenerateEntity
 from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException
 from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, QueueMessage, \
-    QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent
+    QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent, \
+    AnnotationReplyEvent
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, \
     TextPromptMessageContent, PromptMessageContentType, ImagePromptMessageContent, PromptMessage
@@ -21,6 +22,7 @@ from core.prompt.prompt_template import PromptTemplateParser
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.model import Message, Conversation, MessageAgentThought
+from services.annotation_service import AppAnnotationService
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +101,51 @@ class GenerateTaskPipeline:
                 raise self._handle_error(event)
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._task_state.metadata['retriever_resources'] = event.retriever_resources
-            elif isinstance(event, QueueMessageEndEvent):
+            elif isinstance(event, AnnotationReplyEvent):
+                annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
+                if annotation:
+                    account = annotation.account
+                    self._task_state.metadata['annotation_reply'] = {
+                        'id': annotation.id,
+                        'account': {
+                            'id': annotation.account_id,
+                            'name': account.name if account else 'Dify user'
+                        }
+                    }
+
+                    self._task_state.llm_result.message.content = annotation.content
+                    self._queue_manager.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.ANNOTATION_REPLY))
+            elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
+                if isinstance(event, QueueMessageEndEvent):
+                    self._task_state.llm_result = event.llm_result
+                else:
+                    model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
+                    model = model_config.model
+                    model_instance = model_config.provider_model_bundle.model_instance
+                    model_instance = cast(LargeLanguageModel, model_instance)
+
+                    # calculate num tokens
+                    prompt_tokens = 0
+                    if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
+                        prompt_tokens = model_instance.get_num_tokens(model, self._task_state.llm_result.prompt_messages)
+
+                    completion_tokens = 0
+                    if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
+                        completion_tokens = model_instance.get_num_tokens(
+                            model,
+                            [self._task_state.llm_result.message]
+                        )
+
+                    credentials = model_config.credentials
+
+                    # transform usage
+                    self._task_state.llm_result.usage = model_instance._calc_response_usage(
+                        model,
+                        credentials,
+                        prompt_tokens,
+                        completion_tokens
+                    )
+
                 # response moderation
                 if self._output_moderation_handler:
                     self._output_moderation_handler.stop_thread()
@@ -152,11 +198,17 @@ class GenerateTaskPipeline:
                     model_instance = cast(LargeLanguageModel, model_instance)
 
                     # calculate num tokens
-                    prompt_tokens = model_instance.get_num_tokens(model, self._task_state.llm_result.prompt_messages)
-                    completion_tokens = model_instance.get_num_tokens(
-                        model,
-                        [self._task_state.llm_result.message]
-                    )
+                    prompt_tokens = 0
+                    if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
+                        prompt_tokens = model_instance.get_num_tokens(model,
+                                                                      self._task_state.llm_result.prompt_messages)
+
+                    completion_tokens = 0
+                    if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
+                        completion_tokens = model_instance.get_num_tokens(
+                            model,
+                            [self._task_state.llm_result.message]
+                        )
 
                     credentials = model_config.credentials
 
@@ -195,6 +247,20 @@ class GenerateTaskPipeline:
                 yield self._yield_response(response)
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._task_state.metadata['retriever_resources'] = event.retriever_resources
+            elif isinstance(event, AnnotationReplyEvent):
+                annotation = AppAnnotationService.get_annotation_by_id(event.message_annotation_id)
+                if annotation:
+                    account = annotation.account
+                    self._task_state.metadata['annotation_reply'] = {
+                        'id': annotation.id,
+                        'account': {
+                            'id': annotation.account_id,
+                            'name': account.name if account else 'Dify user'
+                        }
+                    }
+
+                    self._task_state.llm_result.message.content = annotation.content
+                    self._queue_manager.publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY))
             elif isinstance(event, QueueAgentThoughtEvent):
                 agent_thought = (
                     db.session.query(MessageAgentThought)
@@ -232,7 +298,7 @@ class GenerateTaskPipeline:
                     if self._output_moderation_handler.should_direct_output():
                         # stop subscribe new token when output moderation should direct output
                         self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
-                        self._queue_manager.publish(QueueStopEvent())
+                        self._queue_manager.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.OUTPUT_MODERATION))
                         raise ConversationTaskStoppedException()
                     else:
                         self._output_moderation_handler.append_new_token(delta_text)
@@ -282,6 +348,7 @@ class GenerateTaskPipeline:
 
         message_was_created.send(
             self._message,
+            application_generate_entity=self._application_generate_entity,
             conversation=self._conversation,
             is_first_message=self._application_generate_entity.conversation_id is None,
             extras=self._application_generate_entity.extras

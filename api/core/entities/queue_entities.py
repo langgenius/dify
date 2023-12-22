@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -13,6 +14,7 @@ class QueueEvent(Enum):
     MESSAGE_REPLACE = "message-replace"
     MESSAGE_END = "message-end"
     RETRIEVER_RESOURCES = "retriever-resources"
+    ANNOTATION_REPLY = "annotation-reply"
     AGENT_THOUGHT = "agent-thought"
     ERROR = "error"
     PING = "ping"
@@ -50,6 +52,14 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     retriever_resources: list[dict]
 
 
+class AnnotationReplyEvent(AppQueueEvent):
+    """
+    AnnotationReplyEvent entity
+    """
+    event = QueueEvent.ANNOTATION_REPLY
+    message_annotation_id: str
+
+
 class QueueMessageEndEvent(AppQueueEvent):
     """
     QueueMessageEndEvent entity
@@ -71,7 +81,7 @@ class QueueErrorEvent(AppQueueEvent):
     QueueErrorEvent entity
     """
     event = QueueEvent.ERROR
-    error: Exception
+    error: Any
 
 
 class QueuePingEvent(AppQueueEvent):
@@ -85,7 +95,16 @@ class QueueStopEvent(AppQueueEvent):
     """
     QueueStopEvent entity
     """
+    class StopBy(Enum):
+        """
+        Stop by enum
+        """
+        USER_MANUAL = "user-manual"
+        ANNOTATION_REPLY = "annotation-reply"
+        OUTPUT_MODERATION = "output-moderation"
+
     event = QueueEvent.STOP
+    stopped_by: StopBy
 
 
 class QueueMessage(BaseModel):

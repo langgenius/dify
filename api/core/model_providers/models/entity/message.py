@@ -4,6 +4,9 @@ from typing import Any, cast, Union, List, Dict
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage, FunctionMessage
 from pydantic import BaseModel
 
+from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage, TextPromptMessageContent, \
+    ImagePromptMessageContent, AssistantPromptMessage, SystemPromptMessage, ToolPromptMessage
+
 
 class LLMRunResult(BaseModel):
     content: str
@@ -45,13 +48,6 @@ class ImagePromptMessageFile(PromptMessageFile):
     detail: DETAIL = DETAIL.LOW
 
 
-class PromptMessage(BaseModel):
-    type: MessageType = MessageType.USER
-    content: str = ''
-    files: list[PromptMessageFile] = []
-    function_call: dict = None
-
-
 class LCHumanMessageWithFiles(HumanMessage):
     # content: Union[str, List[Union[str, Dict]]]
     content: str
@@ -77,32 +73,41 @@ def to_lc_messages(messages: list[PromptMessage]):
     return lc_messages
 
 
-def to_prompt_messages(messages: list[BaseMessage]):
+def to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
     prompt_messages = []
     for message in messages:
         if isinstance(message, HumanMessage):
             if isinstance(message, LCHumanMessageWithFiles):
-                prompt_messages.append(PromptMessage(
-                    content=message.content,
-                    type=MessageType.USER,
-                    files=message.files
-                ))
+                file_prompt_message_contents = []
+                for file in message.files:
+                    if file.type == PromptMessageFileType.IMAGE:
+                        file = cast(ImagePromptMessageFile, file)
+                        file_prompt_message_contents.append(ImagePromptMessageContent(
+                            data=file.data,
+                            detail=ImagePromptMessageContent.DETAIL.HIGH
+                            if file.detail.value == "high" else ImagePromptMessageContent.DETAIL.LOW
+                        ))
+
+                prompt_message_contents = [TextPromptMessageContent(data=message.content)]
+                prompt_message_contents.extend(file_prompt_message_contents)
+
+                prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:
-                prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
+                prompt_messages.append(UserPromptMessage(content=message.content))
         elif isinstance(message, AIMessage):
             message_kwargs = {
-                'content': message.content,
-                'type': MessageType.ASSISTANT
+                'content': message.content
             }
 
             if 'function_call' in message.additional_kwargs:
-                message_kwargs['function_call'] = message.additional_kwargs['function_call']
+                message_kwargs['tool_calls'] = [message.additional_kwargs['function_call']]
 
-            prompt_messages.append(PromptMessage(**message_kwargs))
+            prompt_messages.append(AssistantPromptMessage(**message_kwargs))
         elif isinstance(message, SystemMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.SYSTEM))
+            prompt_messages.append(SystemPromptMessage(content=message.content))
         elif isinstance(message, FunctionMessage):
-            prompt_messages.append(PromptMessage(content=message.content, type=MessageType.USER))
+            prompt_messages.append(ToolPromptMessage(content=message.content, tool_call_id=message.name))
+
     return prompt_messages
 
 

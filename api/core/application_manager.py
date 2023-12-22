@@ -361,6 +361,13 @@ class ApplicationManager:
                 if model_mode == 'completion':
                     query_variable = copy_app_model_config_dict.get('dataset_query_variable')
 
+                # show retrieve source
+                show_retrieve_source = False
+                retriever_resource_dict = copy_app_model_config_dict.get('retriever_resource')
+                if retriever_resource_dict:
+                    if 'enabled' in retriever_resource_dict and retriever_resource_dict['enabled']:
+                        show_retrieve_source = True
+
                 dataset_ids = []
                 for tool in agent_dict.get('tools', []):
                     key = list(tool.keys())[0]
@@ -387,7 +394,8 @@ class ApplicationManager:
                                 dataset_configs['retrieve_strategy']
                             ),
                             single_strategy=agent_dict['strategy']
-                        )
+                        ),
+                        show_retrieve_source=show_retrieve_source
                     )
                 else:
                     properties['dataset'] = DatasetEntity(
@@ -400,7 +408,8 @@ class ApplicationManager:
                             top_k=dataset_configs.get('top_k'),
                             score_threshold=dataset_configs.get('score_threshold'),
                             reranking_model=dataset_configs.get('reranking_model')
-                        )
+                        ),
+                        show_retrieve_source=show_retrieve_source
                     )
             else:
                 if agent_dict['strategy'] == 'react':
@@ -465,12 +474,6 @@ class ApplicationManager:
         if speech_to_text_dict:
             if 'enabled' in speech_to_text_dict and speech_to_text_dict['enabled']:
                 properties['speech_to_text'] = True
-
-        # show retrieve source
-        retriever_resource_dict = copy_app_model_config_dict.get('retriever_resource')
-        if retriever_resource_dict:
-            if 'enabled' in retriever_resource_dict and retriever_resource_dict['enabled']:
-                properties['show_retrieve_source'] = True
 
         # sensitive word avoidance
         sensitive_word_avoidance_dict = copy_app_model_config_dict.get('sensitive_word_avoidance')

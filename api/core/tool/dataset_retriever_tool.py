@@ -43,7 +43,7 @@ class DatasetRetrieverTool(BaseTool):
     dataset_id: str
     top_k: int = 2
     score_threshold: Optional[float] = None
-    conversation_message_task: ConversationMessageTask
+    hit_callbacks: List[DatasetIndexToolCallbackHandler] = []
     return_resource: bool
     retriever_from: str
 
@@ -153,8 +153,8 @@ class DatasetRetrieverTool(BaseTool):
             else:
                 documents = []
 
-            hit_callback = DatasetIndexToolCallbackHandler(self.conversation_message_task)
-            hit_callback.on_tool_end(documents)
+            for hit_callback in self.hit_callbacks:
+                hit_callback.on_tool_end(documents)
             document_score_list = {}
             if dataset.indexing_technique != "economy":
                 for item in documents:
@@ -212,7 +212,9 @@ class DatasetRetrieverTool(BaseTool):
                                 source['content'] = segment.content
                             context_list.append(source)
                         resource_number += 1
-                    hit_callback.return_retriever_resource_info(context_list)
+
+                    for hit_callback in self.hit_callbacks:
+                        hit_callback.return_retriever_resource_info(context_list)
 
             return str("\n".join(document_context_list))
 

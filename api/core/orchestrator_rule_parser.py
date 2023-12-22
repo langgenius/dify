@@ -1,17 +1,11 @@
-import json
-import threading
 from typing import Optional, List
 
-from flask import Flask
 from langchain import WikipediaAPIWrapper
 from langchain.callbacks.manager import Callbacks
 from langchain.memory.chat_memory import BaseChatMemory
 from langchain.tools import BaseTool, Tool, WikipediaQueryRun
 from pydantic import BaseModel, Field
 
-from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
-from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
-from core.agent.agent.structed_multi_dataset_router_agent import StructuredMultiDatasetRouterAgent
 from core.agent.agent_executor import AgentExecutor, PlanningStrategy, AgentConfiguration
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.callback_handler.dataset_tool_callback_handler import DatasetToolCallbackHandler
@@ -29,7 +23,7 @@ from core.tool.provider.serpapi_provider import SerpAPIToolProvider
 from core.tool.serpapi_wrapper import OptimizedSerpAPIWrapper, OptimizedSerpAPIInput
 from core.tool.web_reader_tool import WebReaderTool
 from extensions.ext_database import db
-from models.dataset import Dataset, DatasetProcessRule
+from models.dataset import Dataset
 from models.model import AppModelConfig
 
 default_retrieval_model = {
@@ -311,28 +305,3 @@ class OrchestratorRuleParser:
             api_wrapper=WikipediaAPIWrapper(doc_content_chars_max=4000),
             args_schema=WikipediaInput
         )
-
-    @classmethod
-    def _dynamic_calc_retrieve_k(cls, dataset: Dataset, top_k: int, rest_tokens: int) -> int:
-        if rest_tokens == -1:
-            return top_k
-
-        processing_rule = dataset.latest_process_rule
-        if not processing_rule:
-            return top_k
-
-        if processing_rule.mode == "custom":
-            rules = processing_rule.rules_dict
-            if not rules:
-                return top_k
-
-            segmentation = rules["segmentation"]
-            segment_max_tokens = segmentation["max_tokens"]
-        else:
-            segment_max_tokens = DatasetProcessRule.AUTOMATIC_RULES['segmentation']['max_tokens']
-
-        # when rest_tokens is less than default context tokens
-        if rest_tokens < segment_max_tokens * top_k:
-            return rest_tokens // segment_max_tokens
-
-        return min(top_k, 10)

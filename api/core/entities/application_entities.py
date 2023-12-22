@@ -124,7 +124,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
     single_strategy: Optional[str] = None  # for temp
     top_k: Optional[int] = None
     score_threshold: Optional[float] = None
-    reranking_model: Optional[str] = None
+    reranking_model: Optional[dict] = None
 
 
 class DatasetEntity(BaseModel):
@@ -133,6 +133,7 @@ class DatasetEntity(BaseModel):
     """
     dataset_ids: list[str]
     retrieve_config: DatasetRetrieveConfigEntity
+    show_retrieve_source: bool = False
 
 
 class SensitiveWordAvoidanceEntity(BaseModel):
@@ -191,7 +192,6 @@ class AppOrchestrationConfigEntity(BaseModel):
     suggested_questions_after_answer: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
-    show_retrieve_source: bool = False
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None
 
 
@@ -216,6 +216,23 @@ class InvokeFrom(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f'invalid invoke from value {value}')
+
+    def to_source(self) -> str:
+        """
+        Get source of invoke from.
+
+        :return: source
+        """
+        if self == InvokeFrom.WEB_APP:
+            return 'web_app'
+        elif self == InvokeFrom.DEBUGGER:
+            return 'dev'
+        elif self == InvokeFrom.EXPLORE:
+            return 'explore_app'
+        elif self == InvokeFrom.SERVICE_API:
+            return 'api'
+
+        return 'dev'
 
 
 class ApplicationGenerateEntity(BaseModel):
