@@ -58,6 +58,10 @@ Dify Daq rIn neutrality 'ej Hoch, LangChain tInHar HubwI'. maH Daqbe'law' Qawqar
 
 ## Do'wI' qabmey lo'taH
 
+**maHvaD jatlhchugh, GitHub Daq Hoch chu' ghompu'vam tIqel yInob!**
+
+![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
+
 - [Website](https://dify.ai)
 - [Docs](https://docs.dify.ai)
 - [lo'taHmoH Docs](https://docs.dify.ai/getting-started/install-self-hosted)

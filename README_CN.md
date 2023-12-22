@@ -59,6 +59,10 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 
 ## 在开始之前
 
+**关注我们，您将立即收到 GitHub 上所有新发布版本的通知！**
+
+![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
+
 - [网站](https://dify.ai)
 - [文档](https://docs.dify.ai)
 - [部署文档](https://docs.dify.ai/getting-started/install-self-hosted)
