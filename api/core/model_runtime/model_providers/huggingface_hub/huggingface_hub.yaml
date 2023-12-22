@@ -5,8 +5,7 @@ icon_small:
     en_US: icon_s_en.svg
 icon_large:
     en_US: icon_l_en.svg
-background:
-- value: #FFF8DC
+background: #FFF8DC
 supported_model_types:
 - llm
 - text-embedding

@@ -114,7 +114,7 @@ class ProviderEntity(BaseModel):
     description: Optional[I18nObject] = None
     icon_small: Optional[I18nObject] = None
     icon_large: Optional[I18nObject] = None
-    background: str = None
+    background: Optional[str] = None
     help: Optional[ProviderHelpEntity] = None
     supported_model_types: list[ModelType]
     configurate_methods: list[ConfigurateMethod]
