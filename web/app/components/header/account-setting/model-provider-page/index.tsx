@@ -21,6 +21,7 @@ const ModelProviderPage = () => {
     embeddingsDefaultModel,
     speech2textDefaultModel,
     rerankDefaultModel,
+    updateModelList,
   } = useProviderContext()
   const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
   const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
@@ -51,6 +52,13 @@ const ModelProviderPage = () => {
   const handleCancelModelModal = () => {
     setCurrentProvider(null)
     setCurrentConfigurateMethod(null)
+  }
+
+  const handleSaveCrendentials = () => {
+    mutateProviders()
+    currentProvider?.supported_model_types.forEach((modelType) => {
+      updateModelList(modelType)
+    })
   }
 
   return (
@@ -110,7 +118,7 @@ const ModelProviderPage = () => {
             provider={currentProvider}
             configurateMethod={currentConfigurateMethod}
             onCancel={handleCancelModelModal}
-            onSave={() => mutateProviders()}
+            onSave={handleSaveCrendentials}
           />
         )
       }

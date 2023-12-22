@@ -4,7 +4,6 @@ import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import { fetchDefaultModal, fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import {
   ModelStatusEnum,
   ModelTypeEnum,
@@ -24,8 +23,9 @@ const ProviderContext = createContext<{
   embeddingsModelList: Model[]
   speech2textModelList: Model[]
   rerankModelList: Model[]
+  moderationModelList: Model[]
   agentThoughtModelList: Model[]
-  updateModelList: (type: ModelType) => void
+  updateModelList: (type: ModelTypeEnum) => void
   textGenerationDefaultModel?: DefaultModelResponse
   mutateTextGenerationDefaultModel: () => void
   embeddingsDefaultModel?: DefaultModelResponse
@@ -36,6 +36,8 @@ const ProviderContext = createContext<{
   rerankDefaultModel?: DefaultModelResponse
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
+  moderationDefaultModel?: DefaultModelResponse
+  mutateModerationDefaultModel: () => void
   supportRetrievalMethods: RETRIEVE_METHOD[]
   hasSettedApiKey: boolean
   plan: {
@@ -51,6 +53,7 @@ const ProviderContext = createContext<{
       embeddingsModelList: [],
       speech2textModelList: [],
       rerankModelList: [],
+      moderationModelList: [],
       agentThoughtModelList: [],
       updateModelList: () => { },
       textGenerationDefaultModel: undefined,
@@ -63,6 +66,8 @@ const ProviderContext = createContext<{
       rerankDefaultModel: undefined,
       isRerankDefaultModelVaild: false,
       mutateRerankDefaultModel: () => { },
+      moderationDefaultModel: undefined,
+      mutateModerationDefaultModel: () => {},
       supportRetrievalMethods: [],
       hasSettedApiKey: false,
       plan: {
@@ -97,11 +102,13 @@ export const ProviderContextProvider = ({
   const { data: embeddingsDefaultModel, mutate: mutateEmbeddingsDefaultModel } = useSWR(`/workspaces/current/default-model?model_type=${ModelTypeEnum.textEmbedding}`, fetchDefaultModal)
   const { data: speech2textDefaultModel, mutate: mutateSpeech2textDefaultModel } = useSWR(`/workspaces/current/default-model?model_type=${ModelTypeEnum.speech2text}`, fetchDefaultModal)
   const { data: rerankDefaultModel, mutate: mutateRerankDefaultModel } = useSWR(`/workspaces/current/default-model?model_type=${ModelTypeEnum.rerank}`, fetchDefaultModal)
+  const { data: moderationDefaultModel, mutate: mutateModerationDefaultModel } = useSWR(`/workspaces/current/default-model?model_type=${ModelTypeEnum.rerank}`, fetchDefaultModal)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
   const { data: textGenerationModelList, mutate: mutateTextGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
   const { data: embeddingsModelList, mutate: mutateEmbeddingsModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textEmbedding}`, fetchModelList)
   const { data: speech2textModelList, mutate: mutateSpeech2textModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.speech2text}`, fetchModelList)
   const { data: rerankModelList, mutate: mutateRerankModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.rerank}`, fetchModelList)
+  const { data: moderationModelList, mutate: mutateModerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.moderation}`, fetchModelList)
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
 
   // const agentThoughtModelList = textGenerationModelList?.data?.filter((item) => {
@@ -120,15 +127,17 @@ export const ProviderContextProvider = ({
 
   const isEmbeddingsDefaultModelValid = false
 
-  const updateModelList = (type: ModelType) => {
-    if (type === ModelType.textGeneration)
+  const updateModelList = (type: ModelTypeEnum) => {
+    if (type === ModelTypeEnum.textGeneration)
       mutateTextGenerationModelList()
-    if (type === ModelType.embeddings)
+    if (type === ModelTypeEnum.textEmbedding)
       mutateEmbeddingsModelList()
-    if (type === ModelType.speech2text)
+    if (type === ModelTypeEnum.speech2text)
       mutateSpeech2textModelList()
-    if (type === ModelType.reranking)
+    if (type === ModelTypeEnum.rerank)
       mutateRerankModelList()
+    if (type === ModelTypeEnum.moderation)
+      mutateModerationModelList()
   }
 
   const [plan, setPlan] = useState(defaultPlan)
@@ -161,6 +170,7 @@ export const ProviderContextProvider = ({
       embeddingsModelList: embeddingsModelList?.data || [],
       speech2textModelList: speech2textModelList?.data || [],
       rerankModelList: rerankModelList?.data || [],
+      moderationModelList: moderationModelList?.data || [],
       agentThoughtModelList: [],
       updateModelList,
       textGenerationDefaultModel: textGenerationDefaultModel?.data,
@@ -173,6 +183,8 @@ export const ProviderContextProvider = ({
       isRerankDefaultModelVaild,
       isEmbeddingsDefaultModelValid,
       mutateRerankDefaultModel,
+      moderationDefaultModel: moderationDefaultModel?.data,
+      mutateModerationDefaultModel,
       hasSettedApiKey: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,

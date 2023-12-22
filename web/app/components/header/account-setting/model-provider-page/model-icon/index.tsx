@@ -91,6 +91,20 @@ export const ModelIconSpeechToText: FC<ModelIconSubProps> = ({
   )
 }
 
+export const ModelIconModeration: FC<ModelIconSubProps> = ({
+  providerName,
+  className,
+}) => {
+  const { moderationModelList } = useProviderContext()
+  const provider = moderationModelList.find(item => item.provider === providerName)
+  return (
+    <ModelIconBase
+      provider={provider!}
+      className={className}
+    />
+  )
+}
+
 type ModelIconProps = {
   modelType: ModelTypeEnum
 } & ModelIconSubProps
@@ -126,6 +140,14 @@ const ModelIcon: FC<ModelIconProps> = ({
   if (modelType === ModelTypeEnum.speech2text) {
     return (
       <ModelIconSpeechToText
+        providerName={providerName}
+        className={className}
+      />
+    )
+  }
+  if (modelType === ModelTypeEnum.moderation) {
+    return (
+      <ModelIconModeration
         providerName={providerName}
         className={className}
       />

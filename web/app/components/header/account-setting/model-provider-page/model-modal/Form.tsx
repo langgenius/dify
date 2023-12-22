@@ -20,6 +20,7 @@ type FormProps = {
   formSchemas: CredentialFormSchema[]
   validating: boolean
   validatedSuccess?: boolean
+  showOnVariableMap: Record<string, string[]>
 }
 
 const Form: FC<FormProps> = ({
@@ -28,13 +29,21 @@ const Form: FC<FormProps> = ({
   formSchemas,
   validating,
   validatedSuccess,
+  showOnVariableMap,
 }) => {
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
 
   const handleFormChange = (key: string, val: string) => {
     setChangeKey(key)
-    onChange({ ...value, [key]: val })
+    const shouldClearVariable: Record<string, string | undefined> = {}
+    if (showOnVariableMap[key]?.length) {
+      showOnVariableMap[key].forEach((clearVariable) => {
+        shouldClearVariable[clearVariable] = undefined
+      })
+    }
+    console.log(key, val, shouldClearVariable)
+    onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
   const renderField = (formSchema: CredentialFormSchema) => {
@@ -44,7 +53,12 @@ const Form: FC<FormProps> = ({
         label,
         placeholder,
         required,
+        show_on,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+
+      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+        return null
+
       return (
         <div key={variable} className='py-3'>
           <div className='py-2 text-sm text-gray-900'>
@@ -59,7 +73,7 @@ const Form: FC<FormProps> = ({
             value={value[variable] as string}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
-            placeholder={placeholder[language]}
+            placeholder={placeholder?.[language]}
           />
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -71,14 +85,31 @@ const Form: FC<FormProps> = ({
         options,
         variable,
         label,
+        show_on,
+        required,
       } = formSchema as CredentialFormSchemaRadio
+
+      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+        return null
 
       return (
         <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>{label[language]}</div>
+          <div className='py-2 text-sm text-gray-900'>
+            {label[language]}
+            {
+              required && (
+                <span className='ml-1 text-red-500'>*</span>
+              )
+            }
+          </div>
           <div className={`grid grid-cols-${options?.length} gap-3`}>
             {
-              options?.map(option => (
+              options.filter((option) => {
+                if (option.show_on.length)
+                  return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+
+                return true
+              }).map(option => (
                 <div
                   className={`
                     flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
@@ -106,14 +137,31 @@ const Form: FC<FormProps> = ({
         options,
         variable,
         label,
+        show_on,
+        required,
       } = formSchema as CredentialFormSchemaSelect
+
+      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+        return null
 
       return (
         <div key={variable} className='py-3'>
-          <div className='py-2 text-sm text-gray-900'>{label[language]}</div>
+          <div className='py-2 text-sm text-gray-900'>
+            {label[language]}
+            {
+              required && (
+                <span className='ml-1 text-red-500'>*</span>
+              )
+            }
+          </div>
           <SimpleSelect
             defaultValue={value[variable] as string}
-            items={options.map(option => ({ value: option.value, name: option.label[language] }))}
+            items={options.filter((option) => {
+              if (option.show_on.length)
+                return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
+
+              return true
+            }).map(option => ({ value: option.value, name: option.label[language] }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
           />
           {validating && changeKey === variable && <ValidatingTip />}

@@ -29,11 +29,15 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     rerankModelList,
     speech2textDefaultModel,
     speech2textModelList,
+    moderationModelList,
+    moderationDefaultModel,
+    updateModelList,
   } = useProviderContext()
   const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
   const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useDefaultModelAndModelList(embeddingsDefaultModel, embeddingsModelList)
   const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
   const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
+  const [currentModerationDefaultModel, changeCurrentModerationDefaultModel] = useDefaultModelAndModelList(moderationDefaultModel, moderationModelList)
   const [open, setOpen] = useState(false)
   const handleChangeDefaultModel = async () => {
 
@@ -144,6 +148,27 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentSpeech2textDefaultModel}
                 modelList={speech2textModelList}
                 onSelect={changeCurrentSpeech2textDefaultModel}
+                popupClassName='z-[60]'
+              />
+            </div>
+          </div>
+          <div className='px-6 py-1'>
+            <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
+              {t('common.modelProvider.moderationModel.key')}
+              <Tooltip
+                selector='model-page-system-moderation-model-tip'
+                htmlContent={
+                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.moderationModel.tip')}</div>
+                }
+              >
+                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+              </Tooltip>
+            </div>
+            <div>
+              <ModelSelector
+                defaultModel={currentModerationDefaultModel}
+                modelList={moderationModelList}
+                onSelect={changeCurrentModerationDefaultModel}
                 popupClassName='z-[60]'
               />
             </div>

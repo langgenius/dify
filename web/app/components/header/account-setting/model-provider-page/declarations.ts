@@ -1,4 +1,4 @@
-export type FormValue = Record<string, string | boolean | undefined>
+export type FormValue = Record<string, any>
 
 export type TypeWithI18N<T = string> = {
   'en_US': T
@@ -15,6 +15,7 @@ export enum FormTypeEnum {
 export type FormOption = {
   label: TypeWithI18N
   value: string
+  show_on: FormShowOnObject[]
 }
 
 export enum ModelTypeEnum {
@@ -60,14 +61,14 @@ export type CredentialFormSchemaBase = {
   label: TypeWithI18N
   type: FormTypeEnum
   required: boolean
-  default: string
+  default?: string
   show_on: FormShowOnObject[]
 }
 
-export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length: number; placeholder: TypeWithI18N }
+export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
-export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder: TypeWithI18N }
+export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
 
 export type ModelItem = {
@@ -78,7 +79,7 @@ export type ModelItem = {
   fetch_from: ConfigurateMethodEnum
   status: ModelStatusEnum
   model_properties: Record<string, string | number>
-  deprecated: boolean
+  deprecated?: boolean
 }
 
 export enum PreferredProviderTypeEnum {

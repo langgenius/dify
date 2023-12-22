@@ -1,6 +1,13 @@
 import { ValidatedStatus } from '../key-validator/declarations'
-import type { FormValue } from './declarations'
-import { ModelTypeEnum } from './declarations'
+import type {
+  CredentialFormSchemaRadio,
+  CredentialFormSchemaTextInput,
+  FormValue,
+} from './declarations'
+import {
+  FormTypeEnum,
+  ModelTypeEnum,
+} from './declarations'
 import {
   deleteModelProvider,
   setModelProvider,
@@ -17,26 +24,20 @@ export const languageMaps = {
 
 export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
 
-type validateModelProviderBody = {
-  model?: string
-  model_type?: ModelTypeEnum
-  credentials: FormValue
-}
-export const validateCredentials = async (predefined: boolean, provider: string, v: validateModelProviderBody) => {
+export const validateCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let body, url
 
   if (predefined) {
-    const { credentials } = v
     body = {
-      credentials,
+      credentials: v,
     }
     url = `/workspaces/current/model-providers/${provider}/credentials/validate`
   }
   else {
-    const { model, model_type, credentials } = v
+    const { __model_name, __model_type, ...credentials } = v
     body = {
-      model,
-      model_type,
+      model: __model_name,
+      model_type: __model_type,
       credentials,
     }
     url = `/workspaces/current/model-providers/${provider}/models/credentials/validate`
@@ -46,28 +47,27 @@ export const validateCredentials = async (predefined: boolean, provider: string,
     if (res.result === 'success')
       return Promise.resolve({ status: ValidatedStatus.Success })
     else
-      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error })
+      return Promise.resolve({ status: ValidatedStatus.Error, message: res.error || 'error' })
   }
   catch (e: any) {
     return Promise.resolve({ status: ValidatedStatus.Error, message: e.message })
   }
 }
 
-export const saveCredentials = async (predefined: boolean, provider: string, v: validateModelProviderBody) => {
+export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let body, url
 
   if (predefined) {
-    const { credentials } = v
     body = {
-      credentials,
+      credentials: v,
     }
     url = `/workspaces/current/model-providers/${provider}`
   }
   else {
-    const { model, model_type, credentials } = v
+    const { __model_name, __model_type, credentials } = v
     body = {
-      model,
-      model_type,
+      model: __model_name,
+      model_type: __model_type,
       credentials,
     }
     url = `/workspaces/current/model-providers/${provider}/models`
@@ -76,7 +76,7 @@ export const saveCredentials = async (predefined: boolean, provider: string, v: 
   return setModelProvider({ url, body })
 }
 
-export const removeCredentials = async (predefined: boolean, provider: string, v?: Pick<validateModelProviderBody, 'model' | 'model_type'>) => {
+export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let url = ''
   let body
 
@@ -85,10 +85,10 @@ export const removeCredentials = async (predefined: boolean, provider: string, v
   }
   else {
     if (v) {
-      const { model, model_type } = v
+      const { __model_name, __model_type } = v
       body = {
-        model,
-        model_type,
+        model: __model_name,
+        model_type: __model_type,
       }
       url = `/workspaces/current/model-providers/${provider}/models`
     }
@@ -110,4 +110,43 @@ export const modelTypeFormat = (modelType: ModelTypeEnum) => {
     return 'TEXT EMBEDDING'
 
   return modelType.toLocaleUpperCase()
+}
+
+export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
+  return {
+    type: FormTypeEnum.radio,
+    label: {
+      zh_Hans: '模型类型',
+      en_US: 'Model Type',
+    },
+    variable: '__model_type',
+    default: modelTypes[0],
+    required: true,
+    show_on: [],
+    options: modelTypes.map(modelType => ({
+      value: modelType,
+      label: {
+        zh_Hans: modelType,
+        en_US: modelType,
+      },
+      show_on: [],
+    })),
+  } as CredentialFormSchemaRadio
+}
+
+export const genModelNameFormSchema = () => {
+  return {
+    type: FormTypeEnum.textInput,
+    label: {
+      zh_Hans: '模型名称',
+      en_US: 'Model Name',
+    },
+    variable: '__model_name',
+    required: true,
+    show_on: [],
+    placeholder: {
+      zh_Hans: '请输入模型名称',
+      en_US: 'Please enter model name',
+    },
+  } as CredentialFormSchemaTextInput
 }
