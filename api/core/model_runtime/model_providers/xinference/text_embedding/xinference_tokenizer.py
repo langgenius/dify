@@ -4,19 +4,19 @@ from typing import Any
 
 tokenizer = None
 
-class LocalAITokenizer:
+class XinferenceTokenizer:
     @staticmethod
     def _get_num_tokens_by_gpt2(text: str) -> int:
         """
             use gpt2 tokenizer to get num tokens
         """
-        tokenizer = LocalAITokenizer.get_encoder()
+        tokenizer = XinferenceTokenizer.get_encoder()
         tokens = tokenizer.encode(text)
         return len(tokens)
     
     @staticmethod
     def get_num_tokens(text: str) -> int:
-        return LocalAITokenizer._get_num_tokens_by_gpt2(text)
+        return XinferenceTokenizer._get_num_tokens_by_gpt2(text)
     
     @staticmethod
     def get_encoder() -> Any:
