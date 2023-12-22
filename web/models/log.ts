@@ -58,6 +58,7 @@ export type LogAnnotation = {
     name: string
     email: string
   }
+  created_at: number
 }
 
 export type Annotation = {
