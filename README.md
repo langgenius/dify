@@ -59,7 +59,7 @@ Dify is model-agnostic and boasts a comprehensive tech stack compared to hardcod
 
 ## Before You Start
 
-Star us, and you'll get instant notifications for all new releases on GitHub!
+**Star us, and you'll get instant notifications for all new releases on GitHub!**
 
 ![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
 
