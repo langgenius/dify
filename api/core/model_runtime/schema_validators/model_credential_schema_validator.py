@@ -19,6 +19,6 @@ class ModelCredentialSchemaValidator(CommonValidator):
         # get the credential_form_schemas in provider_credential_schema
         credential_form_schemas = self.model_credential_schema.credential_form_schemas
 
-        credentials["__model_type"] = self.model_type
+        credentials["__model_type"] = self.model_type.value
 
         return self._validate_and_filter_credential_form_schemas(credential_form_schemas, credentials)

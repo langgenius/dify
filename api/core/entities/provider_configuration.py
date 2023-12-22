@@ -288,7 +288,7 @@ class ProviderConfiguration(BaseModel):
                 tenant_id=self.tenant_id,
                 provider_name=self.provider.provider,
                 model_name=model,
-                model_type=model_type,
+                model_type=model_type.to_origin_model_type(),
                 encrypted_config=json.dumps(credentials),
                 is_valid=True
             )
