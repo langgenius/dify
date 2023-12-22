@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -11,9 +10,8 @@ import type {
   FormValue,
 } from '../declarations'
 import { FormTypeEnum } from '../declarations'
-import { languageMaps } from '../utils'
+import { useLanguage } from '../hooks'
 import Input from './Input'
-import I18n from '@/context/i18n'
 import { SimpleSelect } from '@/app/components/base/select'
 
 type FormProps = {
@@ -31,8 +29,7 @@ const Form: FC<FormProps> = ({
   validating,
   validatedSuccess,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
 
   const handleFormChange = (key: string, val: string) => {

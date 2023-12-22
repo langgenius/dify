@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import type {
+  DefaultModel,
   Model,
   ModelItem,
 } from '../declarations'
@@ -14,10 +15,10 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 
 type ModelSelectorProps = {
-  defaultModel?: ModelItem
+  defaultModel?: DefaultModel
   modelList: Model[]
   popupClassName?: string
-  onSelect: (model: ModelItem) => void
+  onSelect: (model: DefaultModel) => void
 }
 const ModelSelector: FC<ModelSelectorProps> = ({
   defaultModel,
@@ -26,10 +27,12 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   onSelect,
 }) => {
   const [open, setOpen] = useState(false)
+  const currentProvider = modelList.find(model => model.provider === defaultModel?.provider)
+  const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
 
-  const handleSelect = (model: ModelItem) => {
+  const handleSelect = (provider: string, model: ModelItem) => {
     setOpen(false)
-    onSelect(model)
+    onSelect({ provider, model: model.model })
   }
 
   return (
@@ -45,15 +48,16 @@ const ModelSelector: FC<ModelSelectorProps> = ({
           className='block'
         >
           {
-            defaultModel && (
+            currentModel && currentProvider && (
               <ModelTrigger
                 open={open}
-                model={defaultModel}
+                provider={currentProvider?.provider}
+                model={currentModel}
               />
             )
           }
           {
-            !defaultModel && (
+            !currentModel && (
               <EmptyTrigger
                 open={open}
               />

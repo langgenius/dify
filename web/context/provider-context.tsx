@@ -10,7 +10,7 @@ import {
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
-  DefaultModel,
+  DefaultModelResponse,
   Model,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -26,14 +26,14 @@ const ProviderContext = createContext<{
   rerankModelList: Model[]
   agentThoughtModelList: Model[]
   updateModelList: (type: ModelType) => void
-  textGenerationDefaultModel?: DefaultModel
+  textGenerationDefaultModel?: DefaultModelResponse
   mutateTextGenerationDefaultModel: () => void
-  embeddingsDefaultModel?: DefaultModel
+  embeddingsDefaultModel?: DefaultModelResponse
   isEmbeddingsDefaultModelValid: boolean
   mutateEmbeddingsDefaultModel: () => void
-  speech2textDefaultModel?: DefaultModel
+  speech2textDefaultModel?: DefaultModelResponse
   mutateSpeech2textDefaultModel: () => void
-  rerankDefaultModel?: DefaultModel
+  rerankDefaultModel?: DefaultModelResponse
   isRerankDefaultModelVaild: boolean
   mutateRerankDefaultModel: () => void
   supportRetrievalMethods: RETRIEVE_METHOD[]

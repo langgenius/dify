@@ -1,23 +1,18 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import type { ModelItem, ModelProvider } from '../declarations'
 import {
   ConfigurateMethodEnum,
   ModelStatusEnum,
 } from '../declarations'
-import {
-  languageMaps,
-  modelTypeFormat,
-  sizeFormat,
-} from '../utils'
-import ModelBadge from '../model-badge'
+import { useLanguage } from '../hooks'
+import ModelIcon from '../model-icon'
+import ModelName from '../model-name'
 import Tab from './tab'
 import AddModelButton from './add-model-button'
 import Indicator from '@/app/components/header/indicator'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import Button from '@/app/components/base/button'
-import I18n from '@/context/i18n'
 
 type ModelListProps = {
   provider: ModelProvider
@@ -29,8 +24,7 @@ const ModelList: FC<ModelListProps> = ({
   models,
   onCollapse,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
   const canCustomConfig = configurateMethods.includes(ConfigurateMethodEnum.customizableModel)
   const canSystemConfig = configurateMethods.includes(ConfigurateMethodEnum.predefinedModel)
@@ -77,31 +71,18 @@ const ModelList: FC<ModelListProps> = ({
               `}
             >
               <div className='shrink-0 mr-2' style={{ background: provider.icon_small[language] }} />
-              <span
-                className='shrink-0 mr-1 text-sm text-gray-900 truncate'
-                title={model.label[language]}
-              >
-                {model.label[language]}
-              </span>
-              <div className='grow flex items-center gap-1'>
-                <ModelBadge>
-                  {modelTypeFormat(model.model_type)}
-                </ModelBadge>
-                {
-                  model.model_properties.mode && (
-                    <ModelBadge>
-                      {(model.model_properties.mode as string).toLocaleUpperCase()}
-                    </ModelBadge>
-                  )
-                }
-                {
-                  model.model_properties.context_size && (
-                    <ModelBadge>
-                      {sizeFormat(model.model_properties.context_size as number)}
-                    </ModelBadge>
-                  )
-                }
-              </div>
+              <ModelIcon
+                className='shrink-0 mr-2'
+                providerName={provider.provider}
+                modelType={model.model_type}
+              />
+              <ModelName
+                className='grow text-sm font-normal text-gray-900'
+                modelItem={model}
+                showModelType
+                showMode
+                showContextSize
+              />
               <div className='shrink-0 flex items-center'>
                 {
                   canCustomConfig && (

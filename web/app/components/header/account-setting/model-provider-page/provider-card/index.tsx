@@ -1,16 +1,14 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import type { ModelProvider } from '../declarations'
 import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
-  languageMaps,
   modelTypeFormat,
 } from '../utils'
+import { useLanguage } from '../hooks'
 import ModelBadge from '../model-badge'
 import ProviderIcon from '../provider-icon'
-import I18n from '@/context/i18n'
 import { Plus, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 // import { CoinsStacked01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Button from '@/app/components/base/button'
@@ -24,8 +22,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
   onOpenModal,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
 
   return (

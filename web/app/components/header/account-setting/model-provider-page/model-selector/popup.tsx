@@ -1,28 +1,26 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import { useState } from 'react'
 import type {
+  DefaultModel,
   Model,
   ModelItem,
 } from '../declarations'
-import { languageMaps } from '../utils'
+import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
-import I18n from '@/context/i18n'
 import { SearchLg } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type PopupProps = {
-  defaultModel?: ModelItem
+  defaultModel?: DefaultModel
   modelList: Model[]
-  onSelect: (model: ModelItem) => void
+  onSelect: (provider: string, model: ModelItem) => void
 }
 const Popup: FC<PopupProps> = ({
   defaultModel,
   modelList,
   onSelect,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
   const [searchText, setSearchText] = useState('')
 
   const filteredModelList = modelList.filter(model => model.models.filter(modelItem => modelItem.label[language].includes(searchText)).length)

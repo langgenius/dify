@@ -1,8 +1,6 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import type { ModelProvider } from '../declarations'
-import { languageMaps } from '../utils'
-import I18n from '@/context/i18n'
+import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
   provider: ModelProvider
@@ -12,8 +10,7 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   provider,
   className,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
 
   if (provider.icon_large) {
     return (

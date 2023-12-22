@@ -26,7 +26,7 @@ import type {
   ValidateOpenAIKeyResponse,
 } from '@/models/app'
 import type {
-  DefaultModel,
+  DefaultModelResponse,
   Model,
   ModelItem,
   ModelProvider,
@@ -195,8 +195,8 @@ export const getPayUrl: Fetcher<{ url: string }, string> = (url) => {
   return get<{ url: string }>(url)
 }
 
-export const fetchDefaultModal: Fetcher<{ data: DefaultModel }, string> = (url) => {
-  return get<{ data: DefaultModel }>(url)
+export const fetchDefaultModal: Fetcher<{ data: DefaultModelResponse }, string> = (url) => {
+  return get<{ data: DefaultModelResponse }>(url)
 }
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {

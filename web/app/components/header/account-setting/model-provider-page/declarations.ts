@@ -149,10 +149,17 @@ export type Model = {
   status: ModelStatusEnum
 }
 
-export type DefaultModel = {
+export type DefaultModelResponse = {
   model: string
   model_type: ModelTypeEnum
   provider: {
     provider: string
+    icon_large: TypeWithI18N
+    icon_small: TypeWithI18N
   }
+}
+
+export type DefaultModel = {
+  provider: string
+  model: string
 }

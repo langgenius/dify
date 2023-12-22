@@ -15,7 +15,7 @@ import { Check, LinkExternal01, SearchLg } from '@/app/components/base/icons/src
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
-import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'

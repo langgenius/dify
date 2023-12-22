@@ -4,27 +4,35 @@ import {
   useMemo,
   useState,
 } from 'react'
+import { useContext } from 'use-context-selector'
 import type {
   DefaultModel,
+  DefaultModelResponse,
   Model,
-  ModelItem,
 } from './declarations'
+import { languageMaps } from './utils'
+import I18n from '@/context/i18n'
 
 type UseDefaultModelAndModelList = (
-  defaultModel: DefaultModel | undefined,
+  defaultModel: DefaultModelResponse | undefined,
   modelList: Model[],
-) => [ModelItem | undefined, (model: ModelItem) => void]
+) => [DefaultModel | undefined, (model: DefaultModel) => void]
 export const useDefaultModelAndModelList: UseDefaultModelAndModelList = (
   defaultModel,
   modelList,
 ) => {
   const currentDefaultModel = useMemo(() => {
-    const currentDefaultModel: ModelItem | undefined = modelList.find(provider => provider.provider === defaultModel?.provider.provider)?.models.find(model => model.model === defaultModel?.model)
+    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider)
+    const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+    const currentDefaultModel = currentProvider && currentModel && {
+      model: currentModel.model,
+      provider: currentProvider.provider,
+    }
 
     return currentDefaultModel
   }, [defaultModel, modelList])
-  const [defaultModelState, setDefaultModelState] = useState(currentDefaultModel)
-  const handleDefaultModelChange = useCallback((model: ModelItem) => {
+  const [defaultModelState, setDefaultModelState] = useState<DefaultModel | undefined>(currentDefaultModel)
+  const handleDefaultModelChange = useCallback((model: DefaultModel) => {
     setDefaultModelState(model)
   }, [])
   useEffect(() => {
@@ -32,4 +40,10 @@ export const useDefaultModelAndModelList: UseDefaultModelAndModelList = (
   }, [currentDefaultModel])
 
   return [defaultModelState, handleDefaultModelChange]
+}
+
+export const useLanguage = () => {
+  const { locale } = useContext(I18n)
+
+  return languageMaps[locale]
 }

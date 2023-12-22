@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useState } from 'react'
-import { useContext } from 'use-context-selector'
 import type {
   ModelItem,
   ModelProvider,
@@ -8,7 +7,6 @@ import type {
 import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
-  languageMaps,
   modelTypeFormat,
 } from '../utils'
 import ProviderIcon from '../provider-icon'
@@ -17,7 +15,6 @@ import CredentialPanel from './credential-panel'
 import QuotaPanel from './quota-panel'
 import ModelList from './model-list'
 import AddModelButton from './add-model-button'
-import I18n from '@/context/i18n'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { fetchModelProviderModelList } from '@/service/common'
@@ -30,8 +27,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   onOpenModal,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
   const [fetched, setFetched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)

@@ -30,7 +30,8 @@ import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
-import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -226,7 +227,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         >
           <ModelIcon
             className='!w-5 !h-5'
-            modelId={modelName}
+            modelType={ModelTypeEnum.textGeneration}
             providerName={provideName}
           />
           <div className='text-[13px] text-gray-900 font-medium'>

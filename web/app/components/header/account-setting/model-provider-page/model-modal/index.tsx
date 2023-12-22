@@ -2,7 +2,6 @@ import type { FC } from 'react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import type {
   CredentialFormSchema,
   FormValue,
@@ -13,16 +12,15 @@ import {
   FormTypeEnum,
 } from '../declarations'
 import {
-  languageMaps,
   removeCredentials,
   saveCredentials,
   validateCredentials,
 } from '../utils'
+import { useLanguage } from '../hooks'
 import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
 import Form from './Form'
-import I18n from '@/context/i18n'
 import Button from '@/app/components/base/button'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -51,8 +49,7 @@ const ModelModal: FC<ModelModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
+  const language = useLanguage()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const { data: formSchemasValue, isLoading } = useSWR(`/workspaces/current/model-providers/${provider.provider}/credentials`, fetchModelProviderCredentials)

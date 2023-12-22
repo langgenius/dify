@@ -1,26 +1,20 @@
 import type { FC } from 'react'
-import { useContext } from 'use-context-selector'
 import type { ModelItem } from '../declarations'
-import {
-  languageMaps,
-} from '../utils'
-import ModelBadge from '../model-badge'
-import FeatureIcon from './feature-icon'
-import I18n from '@/context/i18n'
+import ModelIcon from '../model-icon'
+import ModelName from '../model-name'
 // import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type ModelTriggerProps = {
   open: boolean
+  provider: string
   model: ModelItem
 }
 const ModelTrigger: FC<ModelTriggerProps> = ({
   open,
+  provider,
   model,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = languageMaps[locale]
-
   return (
     <div
       className={`
@@ -28,36 +22,17 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         ${open && '!bg-gray-200'}
       `}
     >
-      <div className='grow flex items-center'>
-        <div className='mr-1.5 w-4 h-4'></div>
-        <div
-          className='mr-2 text-[13px] font-medium text-gray-800 truncate'
-          title={model.label[language]}
-        >
-          {model.label[language]}
-        </div>
-        <div
-          className={`
-            hidden shrink-0 group-hover:flex items-center
-          `}
-        >
-          {
-            model.model_properties.mode && (
-              <ModelBadge className='mr-0.5'>
-                {(model.model_properties.mode as string).toLocaleUpperCase()}
-              </ModelBadge>
-            )
-          }
-          {
-            model.features?.map(feature => (
-              <FeatureIcon
-                key={feature}
-                feature={feature}
-              />
-            ))
-          }
-        </div>
-      </div>
+      <ModelIcon
+        className='shrink-0 mr-1.5'
+        modelType={model.model_type}
+        providerName={provider}
+      />
+      <ModelName
+        className='grow'
+        modelItem={model}
+        showMode
+        showFeatures
+      />
       <div className='shrink-0 flex items-center justify-center w-4 h-4'>
         <ChevronDown
           className='w-3.5 h-3.5 text-gray-500'
