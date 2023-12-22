@@ -15,20 +15,18 @@ def test_hosted_inference_api_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='HuggingFaceH4/zephyr-7b-beta',
             credentials={
                 'huggingfacehub_api_type': 'hosted_inference_api',
-                'huggingfacehub_api_token': 'invalid_key',
-                'model': 'HuggingFaceH4/zephyr-7b-beta'
+                'huggingfacehub_api_token': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'hosted_inference_api',
-            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'HuggingFaceH4/zephyr-7b-beta'
+            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY')
         }
     )
 
@@ -37,11 +35,10 @@ def test_hosted_inference_api_invoke_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'hosted_inference_api',
-            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'HuggingFaceH4/zephyr-7b-beta'
+            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -66,11 +63,10 @@ def test_hosted_inference_api_invoke_stream_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'hosted_inference_api',
-            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'HuggingFaceH4/zephyr-7b-beta'
+            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -101,7 +97,7 @@ def test_inference_endpoints_text_generation_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='HuggingFaceH4/zephyr-7b-beta',
             credentials={
                 'huggingfacehub_api_type': 'inference_endpoints',
                 'huggingfacehub_api_token': 'invalid_key',
@@ -112,7 +108,7 @@ def test_inference_endpoints_text_generation_validate_credentials():
         )
 
     model.validate_credentials(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
@@ -127,7 +123,7 @@ def test_inference_endpoints_text_generation_invoke_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
@@ -158,7 +154,7 @@ def test_inference_endpoints_text_generation_invoke_stream_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
@@ -195,7 +191,7 @@ def test_inference_endpoints_text2text_generation_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='HuggingFaceH4/zephyr-7b-beta',
             credentials={
                 'huggingfacehub_api_type': 'inference_endpoints',
                 'huggingfacehub_api_token': 'invalid_key',
@@ -206,7 +202,7 @@ def test_inference_endpoints_text2text_generation_validate_credentials():
         )
 
     model.validate_credentials(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
@@ -221,7 +217,7 @@ def test_inference_endpoints_text2text_generation_invoke_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
@@ -252,7 +248,7 @@ def test_inference_endpoints_text2text_generation_invoke_stream_model():
     model = HuggingfaceHubLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='HuggingFaceH4/zephyr-7b-beta',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),

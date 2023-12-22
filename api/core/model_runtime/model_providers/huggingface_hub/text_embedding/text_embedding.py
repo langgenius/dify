@@ -6,9 +6,7 @@ from huggingface_hub import InferenceClient, HfApi
 from huggingface_hub.utils import HfHubHTTPError
 
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import InvokeError, InvokeConnectionError, InvokeServerUnavailableError, \
-    InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError
+from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 
@@ -19,11 +17,10 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
                 user: Optional[str] = None) -> TextEmbeddingResult:
         client = InferenceClient(token=credentials['huggingfacehub_api_token'])
 
-        model_name = credentials['model']
-        target_model = credentials['model']
+        execute_model = model
 
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            target_model = credentials['huggingfacehub_endpoint_url']
+            execute_model = credentials['huggingfacehub_endpoint_url']
 
         output = client.post(
             json={
@@ -33,7 +30,7 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
                     "use_cache": False
                 }
             },
-            model=target_model)
+            model=execute_model)
 
         embeddings = json.loads(output.decode())
 
@@ -50,7 +47,7 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
         return TextEmbeddingResult(
             embeddings=self._mean_pooling(embeddings),
             usage=usage,
-            model=model_name
+            model=model
         )
 
     def get_num_tokens(self, model: str, texts: list[str]) -> int:
@@ -62,11 +59,6 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
 
         if 'huggingfacehub_api_token' not in credentials:
             raise CredentialsValidateFailedError('Huggingface Hub Access Token must be provided.')
-
-        if 'model' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Model Name must be provided.')
-
-        model = credentials['model']
 
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             if 'huggingface_namespace' not in credentials:
@@ -84,7 +76,7 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
             model = credentials['huggingfacehub_endpoint_url']
         elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
             self._check_hosted_model_task_type(credentials['huggingfacehub_api_token'],
-                                               credentials['model'])
+                                               model)
         else:
             raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
 
@@ -97,18 +89,6 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-
-            ],
-            InvokeServerUnavailableError: [
-
-            ],
-            InvokeRateLimitError: [
-
-            ],
-            InvokeAuthorizationError: [
-
-            ],
             InvokeBadRequestError: [
                 HfHubHTTPError
             ]

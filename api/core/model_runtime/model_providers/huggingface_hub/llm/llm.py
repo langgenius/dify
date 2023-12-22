@@ -10,9 +10,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMRes
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage
 from core.model_runtime.entities.model_entities import ParameterRule, DefaultParameterName, AIModelEntity, ModelType, \
     FetchFrom
-from core.model_runtime.errors.invoke import InvokeError, InvokeConnectionError, InvokeServerUnavailableError, \
-    InvokeRateLimitError, \
-    InvokeAuthorizationError, InvokeBadRequestError
+from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
@@ -36,9 +34,9 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             **model_parameters)
 
         if stream:
-            return self._handle_generate_stream_response(credentials['model'], prompt_messages, response)
+            return self._handle_generate_stream_response(model, prompt_messages, response)
 
-        return self._handle_generate_response(credentials['model'], prompt_messages, response)
+        return self._handle_generate_response(model, prompt_messages, response)
 
     @staticmethod
     def _get_llm_usage():
@@ -66,11 +64,11 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
         if 'huggingfacehub_api_type' not in credentials:
             raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type must be provided.')
 
+        if credentials['huggingfacehub_api_type'] not in ('inference_endpoints', 'hosted_inference_api'):
+            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
+
         if 'huggingfacehub_api_token' not in credentials:
             raise CredentialsValidateFailedError('Huggingface Hub Access Token must be provided.')
-
-        if 'model' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Model Name must be provided.')
 
         if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             if 'huggingfacehub_endpoint_url' not in credentials:
@@ -80,7 +78,7 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
                 raise CredentialsValidateFailedError('Huggingface Hub Task Type must be provided.')
         elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
             credentials['task_type'] = self._get_hosted_model_task_type(credentials['huggingfacehub_api_token'],
-                                                                        credentials['model'])
+                                                                        model)
 
         if credentials['task_type'] not in ("text2text-generation", "text-generation"):
             raise CredentialsValidateFailedError('Huggingface Hub Task Type must be one of text2text-generation, '
@@ -88,12 +86,8 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
 
         client = InferenceClient(token=credentials['huggingfacehub_api_token'])
 
-        if credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
-            model = credentials['model']
-        elif credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+        if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
             model = credentials['huggingfacehub_endpoint_url']
-        else:
-            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
 
         try:
             client.text_generation(
@@ -106,18 +100,6 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-
-            ],
-            InvokeServerUnavailableError: [
-
-            ],
-            InvokeRateLimitError: [
-
-            ],
-            InvokeAuthorizationError: [
-
-            ],
             InvokeBadRequestError: [
                 HfHubHTTPError
             ]

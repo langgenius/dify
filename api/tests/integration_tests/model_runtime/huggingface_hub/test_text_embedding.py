@@ -13,20 +13,18 @@ def test_hosted_inference_api_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='facebook/bart-base',
             credentials={
                 'huggingfacehub_api_type': 'hosted_inference_api',
                 'huggingfacehub_api_token': 'invalid_key',
-                'model': 'facebook/bart-base'
             }
         )
 
     model.validate_credentials(
-        model='',
+        model='facebook/bart-base',
         credentials={
             'huggingfacehub_api_type': 'hosted_inference_api',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'facebook/bart-base'
         }
     )
 
@@ -35,11 +33,10 @@ def test_hosted_inference_api_invoke_model():
     model = HuggingfaceHubTextEmbeddingModel()
 
     result = model.invoke(
-        model='',
+        model='facebook/bart-base',
         credentials={
             'huggingfacehub_api_type': 'hosted_inference_api',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
-            'model': 'facebook/bart-base'
         },
         texts=[
             "hello",
@@ -57,24 +54,22 @@ def test_inference_endpoints_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='all-MiniLM-L6-v2',
             credentials={
                 'huggingfacehub_api_type': 'inference_endpoints',
                 'huggingfacehub_api_token': 'invalid_key',
                 'huggingface_namespace': 'Dify-AI',
-                'model': 'fake_model/all-MiniLM-L6-v2',
                 'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL'),
                 'task_type': 'feature-extraction'
             }
         )
 
     model.validate_credentials(
-        model='',
+        model='all-MiniLM-L6-v2',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
             'huggingface_namespace': 'Dify-AI',
-            'model': 'fake_model/all-MiniLM-L6-v2',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL'),
             'task_type': 'feature-extraction'
         }
@@ -85,12 +80,11 @@ def test_inference_endpoints_invoke_model():
     model = HuggingfaceHubTextEmbeddingModel()
 
     result = model.invoke(
-        model='',
+        model='all-MiniLM-L6-v2',
         credentials={
             'huggingfacehub_api_type': 'inference_endpoints',
             'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
             'huggingface_namespace': 'Dify-AI',
-            'model': 'fake_model/all-MiniLM-L6-v2',
             'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL'),
             'task_type': 'feature-extraction'
         },
@@ -109,7 +103,7 @@ def test_get_num_tokens():
     model = HuggingfaceHubTextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='',
+        model='all-MiniLM-L6-v2',
         texts=[
             "hello",
             "world"

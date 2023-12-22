@@ -20,11 +20,10 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
                 tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None, stream: bool = True,
                 user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        model_name = credentials['model']
         version = credentials['model_version']
 
         client = ReplicateClient(api_token=credentials['replicate_api_token'])
-        model_info = client.models.get(model_name)
+        model_info = client.models.get(model)
         model_info_version = model_info.versions.get(version)
 
         inputs = {**model_parameters}
@@ -41,8 +40,8 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_generate_stream_response(model, prediction, stop)
-        return self._handle_generate_response(model, prediction, stop)
+            return self._handle_generate_stream_response(model, prediction, stop, prompt_messages)
+        return self._handle_generate_response(model, prediction, stop, prompt_messages)
 
     @staticmethod
     def _get_llm_usage():
@@ -70,28 +69,24 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
         if 'replicate_api_token' not in credentials:
             raise CredentialsValidateFailedError('Replicate Access Token must be provided.')
 
-        if 'model' not in credentials:
-            raise CredentialsValidateFailedError('Replicate Model must be provided.')
-
         if 'model_version' not in credentials:
             raise CredentialsValidateFailedError('Replicate Model Version must be provided.')
 
-        if credentials['model'].count("/") != 1:
+        if model.count("/") != 1:
             raise CredentialsValidateFailedError('Replicate Model Name must be provided, '
                                                  'format: {user_name}/{model_name}')
 
-        model_name = credentials['model']
         version = credentials['model_version']
 
         try:
             client = ReplicateClient(api_token=credentials['replicate_api_token'])
-            model_info = client.models.get(model_name)
+            model_info = client.models.get(model)
             model_info_version = model_info.versions.get(version)
 
-            self._check_text_generation_model(model_info_version, model_name, version)
+            self._check_text_generation_model(model_info_version, model, version)
         except ReplicateError as e:
             raise CredentialsValidateFailedError(
-                f"Model {model_name}:{version} not exists, cause: {e.__class__.__name__}:{str(e)}")
+                f"Model {model}:{version} not exists, cause: {e.__class__.__name__}:{str(e)}")
         except Exception as e:
             raise CredentialsValidateFailedError(str(e))
 
@@ -103,31 +98,29 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Text Generation model.")
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        model_name = credentials['model']
-        model_type = LLMMode.CHAT if model_name.endswith('-chat') else LLMMode.COMPLETION
+        model_type = LLMMode.CHAT if model.endswith('-chat') else LLMMode.COMPLETION
 
         entity = AIModelEntity(
-            model=model_name,
+            model=model,
             label=I18nObject(
-                en_US=model_name
+                en_US=model
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             model_properties={
                 'mode': model_type
             },
-            parameter_rules=self._get_customizable_model_parameter_rules(credentials)
+            parameter_rules=self._get_customizable_model_parameter_rules(model, credentials)
         )
 
         return entity
 
     @classmethod
-    def _get_customizable_model_parameter_rules(cls, credentials: dict) -> list[ParameterRule]:
-        model_name = credentials['model']
+    def _get_customizable_model_parameter_rules(cls, model: str, credentials: dict) -> list[ParameterRule]:
         version = credentials['model_version']
 
         client = ReplicateClient(api_token=credentials['replicate_api_token'])
-        model_info = client.models.get(model_name)
+        model_info = client.models.get(model)
         model_info_version = model_info.versions.get(version)
 
         parameter_rules = []
@@ -164,7 +157,9 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
         }
 
     def _handle_generate_stream_response(self, model: str,
-                                         prediction: Prediction, stop: list[str]) -> Generator:
+                                         prediction: Prediction,
+                                         stop: list[str],
+                                         prompt_messages: list[PromptMessage]) -> Generator:
         index = 0
         current_completion: str = ""
         stop_condition_reached = False
@@ -185,6 +180,7 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
 
             yield LLMResultChunk(
                 model=model,
+                prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
                     index=index,
                     message=AssistantPromptMessage(content=output),
@@ -193,7 +189,8 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
             )
             index += 1
 
-    def _handle_generate_response(self, model: str, prediction: Prediction, stop: list[str]) -> LLMResult:
+    def _handle_generate_response(self, model: str, prediction: Prediction, stop: list[str],
+                                  prompt_messages: list[PromptMessage]) -> LLMResult:
         current_completion: str = ""
         stop_condition_reached = False
         for output in prediction.output_iterator():
@@ -214,6 +211,7 @@ class ReplicateLargeLanguageModel(LargeLanguageModel):
         usage = self._get_llm_usage()
         result = LLMResult(
             model=model,
+            prompt_messages=prompt_messages,
             message=AssistantPromptMessage(content=current_completion),
             usage=usage,
         )

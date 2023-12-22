@@ -15,19 +15,17 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='',
+            model='meta/llama-2-13b-chat',
             credentials={
                 'replicate_api_token': 'invalid_key',
-                'model': 'meta/llama-2-13b-chat',
                 'model_version': 'f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d'
             }
         )
 
     model.validate_credentials(
-        model='',
+        model='meta/llama-2-13b-chat',
         credentials={
             'replicate_api_token': os.environ.get('REPLICATE_API_KEY'),
-            'model': 'meta/llama-2-13b-chat',
             'model_version': 'f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d'
         }
     )
@@ -37,10 +35,9 @@ def test_invoke_model():
     model = ReplicateLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='meta/llama-2-13b-chat',
         credentials={
             'replicate_api_token': os.environ.get('REPLICATE_API_KEY'),
-            'model': 'meta/llama-2-13b-chat',
             'model_version': 'f4e2de70d66816a838a89eeeb621910adffb0dd0baba3976c96980970978018d'
         },
         prompt_messages=[
@@ -69,10 +66,9 @@ def test_invoke_stream_model():
     model = ReplicateLargeLanguageModel()
 
     response = model.invoke(
-        model='',
+        model='mistralai/mixtral-8x7b-instruct-v0.1',
         credentials={
             'replicate_api_token': os.environ.get('REPLICATE_API_KEY'),
-            'model': 'mistralai/mixtral-8x7b-instruct-v0.1',
             'model_version': '2b56576fcfbe32fa0526897d8385dd3fb3d36ba6fd0dbe033c72886b81ade93e'
         },
         prompt_messages=[

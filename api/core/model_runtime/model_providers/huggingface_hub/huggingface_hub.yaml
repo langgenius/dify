@@ -13,19 +13,6 @@ configurate_methods:
 - customizable-model
 provider_credential_schema:
   credential_form_schemas:
-  - variable: model_type
-    label:
-      en_US: Model Type
-    type: radio
-    required: true
-    default: llm
-    options:
-    - value: llm
-      label:
-        en_US: Text Generation
-    - value: text-embedding
-      label:
-        en_US: Embeddings
   - variable: huggingfacehub_api_type
     label:
       en_US: HuggingFace Hub API Type
@@ -54,16 +41,10 @@ provider_credential_schema:
     placeholder:
       en_US: Enter your HuggingFace Namespace
     show_on:
-    - variable: model_type
+    - variable: __model_type
       value: text-embedding
     - variable: huggingfacehub_api_type
       value: inference_endpoints
-  - variable: model
-    label:
-      en_US: Model Name
-    type: text-input
-    placeholder:
-      en_US: Enter your model name
   - variable: huggingfacehub_endpoint_url
     label:
       en_US: HuggingFace Hub Endpoint URL
@@ -83,19 +64,19 @@ provider_credential_schema:
       label:
         en_US: Text-to-Text Generation
       show_on:
-      - variable: model_type
+      - variable: __model_type
         value: llm
     - value: text-generation
       label:
         en_US: Text Generation
       show_on:
-      - variable: model_type
+      - variable: __model_type
         value: llm
     - value: feature-extraction
       label:
         en_US: Feature Extraction
       show_on:
-      - variable: model_type
+      - variable: __model_type
         value: text-embedding
     show_on:
     - variable: huggingfacehub_api_type
