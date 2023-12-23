@@ -1,7 +1,5 @@
 # 配置规则
 
-
-
 - 供应商规则基于 [Provider](#Provider) 实体。
 
 - 模型规则基于 [AIModelEntity](#AIModelEntity) 实体。
