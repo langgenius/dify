@@ -14,7 +14,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 
 
-class DatasetRetrieval:
+class DatasetRetrievalReply:
     def retrieve(self, tenant_id: str,
                  model_config: ModelConfigEntity,
                  config: DatasetEntity,

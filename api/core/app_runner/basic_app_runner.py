@@ -1,37 +1,28 @@
-import concurrent
-import json
 import logging
 import time
-from concurrent.futures import ThreadPoolExecutor
-from decimal import Decimal
 from typing import cast, Optional, Tuple, List, Union, Generator
 
-from flask import current_app, Flask
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.embedding.cached_embedding import CacheEmbedding
 from core.entities.application_entities import ApplicationGenerateEntity, PromptTemplateEntity, ModelConfigEntity, \
     AppOrchestrationConfigEntity, InvokeFrom, ExternalDataVariableEntity, DatasetEntity
 from core.application_queue_manager import ApplicationQueueManager
-from core.external_data_tool.factory import ExternalDataToolFactory
-from core.features.dataset_retrieval import DatasetRetrieval
+from core.features.annotation_reply import AnnotationReplyFeature
+from core.features.dataset_retrieval import DatasetRetrievalReply
+from core.features.external_data_fetch import ExternalDataFetchFeature
+from core.features.hosting_moderation import HostingModerationFeature
+from core.features.moderation import ModerationFeature
 from core.file.file_obj import FileObj
-from core.helper import moderation
-from core.index.vector_index.vector_index import VectorIndex
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.moderation.base import ModerationAction, ModerationException
-from core.moderation.factory import ModerationFactory
+from core.moderation.base import ModerationException
 from core.prompt.prompt_transform import PromptTransform
 from extensions.ext_database import db
-from models.dataset import Dataset
-from models.model import Conversation, Message, App, AppAnnotationSetting
-from services.annotation_service import AppAnnotationService
-from services.dataset_service import DatasetCollectionBindingService
+from models.model import Conversation, Message, App
 
 logger = logging.getLogger(__name__)
 
@@ -402,31 +393,14 @@ class BasicApplicationRunner:
         :param query: query
         :return:
         """
-        if not app_orchestration_config_entity.sensitive_word_avoidance:
-            return False, inputs, query
-
-        sensitive_word_avoidance_config = app_orchestration_config_entity.sensitive_word_avoidance
-        type = sensitive_word_avoidance_config.type
-
-        moderation = ModerationFactory(
-            name=type,
+        moderation_feature = ModerationFeature()
+        return moderation_feature.check(
             app_id=app_id,
             tenant_id=tenant_id,
-            config=sensitive_word_avoidance_config.config
+            app_orchestration_config_entity=app_orchestration_config_entity,
+            inputs=inputs,
+            query=query,
         )
-
-        moderation_result = moderation.moderation_for_inputs(inputs, query)
-
-        if not moderation_result.flagged:
-            return False, inputs, query
-
-        if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
-            raise ModerationException(moderation_result.preset_response)
-        elif moderation_result.action == ModerationAction.OVERRIDED:
-            inputs = moderation_result.inputs
-            query = moderation_result.query
-
-        return True, inputs, query
 
     def query_app_annotations_to_reply(self, queue_manager: ApplicationQueueManager,
                                        model_config: ModelConfigEntity,
@@ -446,86 +420,16 @@ class BasicApplicationRunner:
         :param invoke_from: invoke from
         :return:
         """
-        annotation_setting = db.session.query(AppAnnotationSetting).filter(
-            AppAnnotationSetting.app_id == app_record.id).first()
-
-        if not annotation_setting:
-            return False
-
-        collection_binding_detail = annotation_setting.collection_binding_detail
-
-        try:
-            score_threshold = annotation_setting.score_threshold or 1
-            embedding_provider_name = collection_binding_detail.provider_name
-            embedding_model_name = collection_binding_detail.model_name
-
-            # get embedding model
-            embeddings = CacheEmbedding(model_config)
-
-            dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_provider_name,
-                embedding_model_name,
-                'annotation'
-            )
-
-            dataset = Dataset(
-                id=app_record.id,
-                tenant_id=app_record.tenant_id,
-                indexing_technique='high_quality',
-                embedding_model_provider=embedding_provider_name,
-                embedding_model=embedding_model_name,
-                collection_binding_id=dataset_collection_binding.id
-            )
-
-            vector_index = VectorIndex(
-                dataset=dataset,
-                config=current_app.config,
-                embeddings=embeddings,
-                attributes=['doc_id', 'annotation_id', 'app_id']
-            )
-
-            documents = vector_index.search(
-                query=query,
-                search_type='similarity_score_threshold',
-                search_kwargs={
-                    'k': 1,
-                    'score_threshold': score_threshold,
-                    'filter': {
-                        'group_id': [dataset.id]
-                    }
-                }
-            )
-
-            if documents:
-                annotation_id = documents[0].metadata['annotation_id']
-                score = documents[0].metadata['score']
-                annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
-                if annotation:
-                    if invoke_from in [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP]:
-                        from_source = 'api'
-                    else:
-                        from_source = 'console'
-
-                    # insert annotation history
-                    AppAnnotationService.add_annotation_history(annotation.id,
-                                                                app_record.id,
-                                                                annotation.question,
-                                                                annotation.content,
-                                                                query,
-                                                                user_id,
-                                                                message.id,
-                                                                from_source,
-                                                                score)
-
-                    queue_manager.publish_annotation_reply(
-                        message_annotation_id=annotation.id
-                    )
-                    return True
-        except Exception as e:
-            logger.warning(f'Query annotation failed, exception: {str(e)}.')
-            return False
-
-        return False
+        annotation_reply_feature = AnnotationReplyFeature()
+        return annotation_reply_feature.query(
+            queue_manager=queue_manager,
+            model_config=model_config,
+            app_record=app_record,
+            message=message,
+            query=query,
+            user_id=user_id,
+            invoke_from=invoke_from
+        )
 
     def fill_in_inputs_from_external_data_tools(self, tenant_id: str,
                                                 app_id: str,
@@ -542,61 +446,14 @@ class BasicApplicationRunner:
         :param query: the query
         :return: the filled inputs
         """
-        # Group tools by type and config
-        grouped_tools = {}
-        for tool in external_data_tools:
-            tool_key = (tool.type, json.dumps(tool.config, sort_keys=True))
-            grouped_tools.setdefault(tool_key, []).append(tool)
-
-        results = {}
-        with ThreadPoolExecutor() as executor:
-            futures = {}
-            for tool in external_data_tools:
-                future = executor.submit(
-                    self.query_external_data_tool,
-                    current_app._get_current_object(),
-                    tenant_id,
-                    app_id,
-                    tool,
-                    inputs,
-                    query
-                )
-
-                futures[future] = tool
-
-            for future in concurrent.futures.as_completed(futures):
-                tool_variable, result = future.result()
-                results[tool_variable] = result
-
-        inputs.update(results)
-        return inputs
-
-    def query_external_data_tool(self, flask_app: Flask,
-                                 tenant_id: str,
-                                 app_id: str,
-                                 external_data_tool: ExternalDataVariableEntity,
-                                 inputs: dict,
-                                 query: str) -> Tuple[Optional[str], Optional[str]]:
-        with flask_app.app_context():
-            tool_variable = external_data_tool.variable
-            tool_type = external_data_tool.type
-            tool_config = external_data_tool.config
-
-            external_data_tool_factory = ExternalDataToolFactory(
-                name=tool_type,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                variable=tool_variable,
-                config=tool_config
-            )
-
-            # query external data tool
-            result = external_data_tool_factory.query(
-                inputs=inputs,
-                query=query
-            )
-
-            return tool_variable, result
+        external_data_fetch_feature = ExternalDataFetchFeature()
+        return external_data_fetch_feature.fetch(
+            tenant_id=tenant_id,
+            app_id=app_id,
+            external_data_tools=external_data_tools,
+            inputs=inputs,
+            query=query
+        )
 
     def retrieve_dataset_context(self, tenant_id: str,
                                  queue_manager: ApplicationQueueManager,
@@ -625,7 +482,7 @@ class BasicApplicationRunner:
         if model_config.mode == 'completion':
             query = inputs.get(dataset_config.retrieve_config, "")
 
-        dataset_retrieval = DatasetRetrieval()
+        dataset_retrieval = DatasetRetrievalReply()
         return dataset_retrieval.retrieve(
             tenant_id=tenant_id,
             model_config=model_config,
@@ -679,23 +536,16 @@ class BasicApplicationRunner:
         :param prompt_messages: prompt messages
         :return:
         """
-        app_orchestration_config = application_generate_entity.app_orchestration_config_entity
-        model_config = app_orchestration_config.model_config
-
-        text = ""
-        for prompt_message in prompt_messages:
-            if isinstance(prompt_message.content, str):
-                text += prompt_message.content + "\n"
-
-        moderation_result = moderation.check_moderation(
-            model_config,
-            text
+        hosting_moderation_feature = HostingModerationFeature()
+        moderation_result = hosting_moderation_feature.check(
+            application_generate_entity=application_generate_entity,
+            prompt_messages=prompt_messages
         )
 
         if moderation_result:
             self.direct_output(
                 queue_manager=queue_manager,
-                app_orchestration_config=app_orchestration_config,
+                app_orchestration_config=application_generate_entity.app_orchestration_config_entity,
                 prompt_messages=prompt_messages,
                 text="I apologize for any confusion, " \
                      "but I'm an AI assistant to be helpful, harmless, and honest.",
