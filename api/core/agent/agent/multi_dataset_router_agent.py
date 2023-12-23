@@ -10,9 +10,9 @@ from langchain.tools import BaseTool
 from pydantic import root_validator
 
 from core.entities.application_entities import ModelConfigEntity
+from core.model_manager import ModelInstance
 from core.model_providers.models.entity.message import to_prompt_messages
 from core.model_runtime.entities.message_entities import PromptMessageTool
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
@@ -107,8 +107,10 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         messages = prompt.to_messages()
         prompt_messages = to_prompt_messages(messages)
 
-        model_instance = self.model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_instance = ModelInstance(
+            provider_model_bundle=self.model_config.provider_model_bundle,
+            model=self.model_config.model,
+        )
 
         tools = []
         for function in self.functions:
@@ -118,9 +120,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
 
             tools.append(tool)
 
-        result = model_instance.invoke(
-            model=self.model_config.model,
-            credentials=self.model_config.credentials,
+        result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             tools=tools,
             stream=False,

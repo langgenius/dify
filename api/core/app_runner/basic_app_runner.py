@@ -13,6 +13,7 @@ from core.features.external_data_fetch import ExternalDataFetchFeature
 from core.features.hosting_moderation import HostingModerationFeature
 from core.features.moderation import ModerationFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -109,7 +110,6 @@ class BasicApplicationRunner(AppRunner):
             # annotation reply
             annotation_reply = self.query_app_annotations_to_reply(
                 queue_manager=queue_manager,
-                model_config=app_orchestration_config.model_config,
                 app_record=app_record,
                 message=message,
                 query=query,
@@ -179,12 +179,12 @@ class BasicApplicationRunner(AppRunner):
         )
 
         # Invoke model
-        model_instance = app_orchestration_config.model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_instance = ModelInstance(
+            provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
+            model=app_orchestration_config.model_config.model
+        )
 
-        invoke_result = model_instance.invoke(
-            model=app_orchestration_config.model_config.model,
-            credentials=app_orchestration_config.model_config.credentials,
+        invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=app_orchestration_config.model_config.parameters,
             stop=stop,
@@ -223,7 +223,6 @@ class BasicApplicationRunner(AppRunner):
         )
 
     def query_app_annotations_to_reply(self, queue_manager: ApplicationQueueManager,
-                                       model_config: ModelConfigEntity,
                                        app_record: App,
                                        message: Message,
                                        query: str,
@@ -232,7 +231,6 @@ class BasicApplicationRunner(AppRunner):
         """
         Query app annotations to reply
         :param queue_manager: queue manager
-        :param model_config: model config entity
         :param app_record: app record
         :param message: message
         :param query: query
@@ -243,7 +241,6 @@ class BasicApplicationRunner(AppRunner):
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
             queue_manager=queue_manager,
-            model_config=model_config,
             app_record=app_record,
             message=message,
             query=query,

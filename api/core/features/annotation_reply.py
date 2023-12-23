@@ -1,4 +1,5 @@
 import logging
+from typing import cast
 
 from flask import current_app
 
@@ -6,6 +7,10 @@ from core.application_queue_manager import ApplicationQueueManager
 from core.embedding.cached_embedding import CacheEmbedding
 from core.entities.application_entities import ModelConfigEntity, InvokeFrom
 from core.index.vector_index.vector_index import VectorIndex
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from models.dataset import Dataset
 from models.model import App, Message, AppAnnotationSetting
@@ -17,7 +22,6 @@ logger = logging.getLogger(__name__)
 
 class AnnotationReplyFeature:
     def query(self, queue_manager: ApplicationQueueManager,
-              model_config: ModelConfigEntity,
               app_record: App,
               message: Message,
               query: str,
@@ -26,7 +30,6 @@ class AnnotationReplyFeature:
         """
         Query app annotations to reply
         :param queue_manager: queue manager
-        :param model_config: model config entity
         :param app_record: app record
         :param message: message
         :param query: query
@@ -47,8 +50,16 @@ class AnnotationReplyFeature:
             embedding_provider_name = collection_binding_detail.provider_name
             embedding_model_name = collection_binding_detail.model_name
 
+            model_manager = ModelManager()
+            model_instance = model_manager.get_model_instance(
+                tenant_id=app_record.tenant_id,
+                provider=embedding_provider_name,
+                model_type=ModelType.TEXT_EMBEDDING,
+                model=embedding_model_name
+            )
+
             # get embedding model
-            embeddings = CacheEmbedding(model_config)
+            embeddings = CacheEmbedding(model_instance)
 
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
                 embedding_provider_name,

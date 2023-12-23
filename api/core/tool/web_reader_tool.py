@@ -119,12 +119,12 @@ class WebReaderTool(BaseTool):
 
     def get_summary_chain(self) -> RefineDocumentsChain:
         initial_chain = LLMChain(
-            model_instance=self.model_config,
+            model_config=self.model_config,
             prompt=refine_prompts.PROMPT,
             parameters=self.model_parameters
         )
         refine_chain = LLMChain(
-            model_instance=self.model_config,
+            model_config=self.model_config,
             prompt=refine_prompts.REFINE_PROMPT,
             parameters=self.model_parameters
         )

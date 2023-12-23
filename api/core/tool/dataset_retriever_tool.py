@@ -8,6 +8,9 @@ from pydantic import Field, BaseModel
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService
@@ -80,16 +83,16 @@ class DatasetRetrieverTool(BaseTool):
             documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
             return str("\n".join([document.page_content for document in documents]))
         else:
-            # TODO get embedding model instance
+            # get embedding model instance
             try:
-                embedding_model = ModelFactory.get_embedding_model(
+                model_manager = ModelManager()
+                embedding_model = model_manager.get_model_instance(
                     tenant_id=dataset.tenant_id,
-                    model_provider_name=dataset.embedding_model_provider,
-                    model_name=dataset.embedding_model
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model
                 )
-            except LLMBadRequestError:
-                return ''
-            except ProviderTokenNotInitError:
+            except InvokeAuthorizationError:
                 return ''
 
             embeddings = CacheEmbedding(embedding_model)
@@ -135,17 +138,28 @@ class DatasetRetrieverTool(BaseTool):
 
                 for thread in threads:
                     thread.join()
+
                 # hybrid search: rerank after all documents have been searched
                 if retrieval_model['search_method'] == 'hybrid_search':
-                    # TODO get rerank model instance
-                    hybrid_rerank = ModelFactory.get_reranking_model(
-                        tenant_id=dataset.tenant_id,
-                        model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
-                        model_name=retrieval_model['reranking_model']['reranking_model_name']
+                    # get rerank model instance
+                    try:
+                        model_manager = ModelManager()
+                        rerank_model_instance = model_manager.get_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            provider=retrieval_model['reranking_model']['reranking_provider_name'],
+                            model_type=ModelType.RERANK,
+                            model=retrieval_model['reranking_model']['reranking_model_name']
+                        )
+                    except InvokeAuthorizationError:
+                        return ''
+
+                    # TODO documents resort
+                    documents = rerank_model_instance.invoke_rerank(
+                        query=query,
+                        docs=documents,
+                        score_threshold=retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
+                        top_n=self.top_k
                     )
-                    documents = hybrid_rerank.rerank(query, documents,
-                                                     retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
-                                                     self.top_k)
             else:
                 documents = []
 

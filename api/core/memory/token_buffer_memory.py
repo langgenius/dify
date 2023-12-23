@@ -57,10 +57,10 @@ class TokenBufferMemory:
             return []
 
         # prune the chat message if it exceeds the max token limit
-        model_instance = self.model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = self.model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
-        curr_message_tokens = model_instance.get_num_tokens(
+        curr_message_tokens = model_type_instance.get_num_tokens(
             self.model_config.model,
             prompt_messages
         )
@@ -69,7 +69,7 @@ class TokenBufferMemory:
             pruned_memory = []
             while curr_message_tokens > max_token_limit and prompt_messages:
                 pruned_memory.append(prompt_messages.pop(0))
-                curr_message_tokens = model_instance.get_num_tokens(
+                curr_message_tokens = model_type_instance.get_num_tokens(
                     self.model_config.model,
                     prompt_messages
                 )

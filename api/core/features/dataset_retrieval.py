@@ -39,11 +39,11 @@ class DatasetRetrievalFeature:
         retrieve_config = config.retrieve_config
 
         # check model is support tool calling
-        model_instance = model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         # get model schema
-        model_schema = model_instance.get_model_schema(
+        model_schema = model_type_instance.get_model_schema(
             model=model_config.model,
             credentials=model_config.credentials
         )

@@ -14,7 +14,7 @@ class ModerationModel(AIModel):
                text: str, user: Optional[str] = None) \
             -> bool:
         """
-        Invoke large language model
+        Invoke moderation model
 
         :param model: model name
         :param credentials: model credentials

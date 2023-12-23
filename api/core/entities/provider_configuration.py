@@ -323,9 +323,9 @@ class ProviderConfiguration(BaseModel):
         """
         return model_provider_factory.get_provider_instance(self.provider.provider)
 
-    def get_model_instance(self, model_type: ModelType) -> AIModel:
+    def get_model_type_instance(self, model_type: ModelType) -> AIModel:
         """
-        Get current model instance.
+        Get current model type instance.
 
         :param model_type: model type
         :return:
@@ -637,7 +637,7 @@ class ProviderModelBundle(BaseModel):
     """
     configuration: ProviderConfiguration
     provider_instance: ModelProvider
-    model_instance: AIModel
+    model_type_instance: AIModel
 
     class Config:
         """Configuration for this pydantic object."""

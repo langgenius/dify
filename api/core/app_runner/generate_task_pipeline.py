@@ -106,17 +106,17 @@ class GenerateTaskPipeline:
                 else:
                     model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
                     model = model_config.model
-                    model_instance = model_config.provider_model_bundle.model_instance
-                    model_instance = cast(LargeLanguageModel, model_instance)
+                    model_type_instance = model_config.provider_model_bundle.model_type_instance
+                    model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
                     # calculate num tokens
                     prompt_tokens = 0
                     if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_instance.get_num_tokens(model, self._task_state.llm_result.prompt_messages)
+                        prompt_tokens = model_type_instance.get_num_tokens(model, self._task_state.llm_result.prompt_messages)
 
                     completion_tokens = 0
                     if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
-                        completion_tokens = model_instance.get_num_tokens(
+                        completion_tokens = model_type_instance.get_num_tokens(
                             model,
                             [self._task_state.llm_result.message]
                         )
@@ -124,7 +124,7 @@ class GenerateTaskPipeline:
                     credentials = model_config.credentials
 
                     # transform usage
-                    self._task_state.llm_result.usage = model_instance._calc_response_usage(
+                    self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
                         model,
                         credentials,
                         prompt_tokens,
@@ -179,18 +179,18 @@ class GenerateTaskPipeline:
                 else:
                     model_config = self._application_generate_entity.app_orchestration_config_entity.model_config
                     model = model_config.model
-                    model_instance = model_config.provider_model_bundle.model_instance
-                    model_instance = cast(LargeLanguageModel, model_instance)
+                    model_type_instance = model_config.provider_model_bundle.model_type_instance
+                    model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
                     # calculate num tokens
                     prompt_tokens = 0
                     if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_instance.get_num_tokens(model,
+                        prompt_tokens = model_type_instance.get_num_tokens(model,
                                                                       self._task_state.llm_result.prompt_messages)
 
                     completion_tokens = 0
                     if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
-                        completion_tokens = model_instance.get_num_tokens(
+                        completion_tokens = model_type_instance.get_num_tokens(
                             model,
                             [self._task_state.llm_result.message]
                         )
@@ -198,7 +198,7 @@ class GenerateTaskPipeline:
                     credentials = model_config.credentials
 
                     # transform usage
-                    self._task_state.llm_result.usage = model_instance._calc_response_usage(
+                    self._task_state.llm_result.usage = model_type_instance._calc_response_usage(
                         model,
                         credentials,
                         prompt_tokens,

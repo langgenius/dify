@@ -333,8 +333,8 @@ class ModelProviderService:
             raise ValueError(f"Provider {provider} does not exist.")
 
         # Get model instance of LLM
-        model_instance = provider_configuration.get_model_instance(ModelType.LLM)
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = provider_configuration.get_model_type_instance(ModelType.LLM)
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(
@@ -346,7 +346,7 @@ class ModelProviderService:
             return []
 
         # Call get_parameter_rules method of model instance to get model parameter rules
-        return model_instance.get_parameter_rules(
+        return model_type_instance.get_parameter_rules(
             model=model,
             credentials=credentials
         )

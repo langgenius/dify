@@ -30,8 +30,8 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         self.queue_manager = queue_manager
         self.message = message
         self.message_chain = message_chain
-        model_instance = self.model_config.provider_model_bundle.model_instance
-        self.model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = self.model_config.provider_model_bundle.model_type_instance
+        self.model_type_instance = cast(LargeLanguageModel, model_type_instance)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
@@ -94,7 +94,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             if response.llm_output:
                 self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
             else:
-                self._current_loop.prompt_tokens = self.model_instance.get_num_tokens(
+                self._current_loop.prompt_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
                     prompt_messages=[UserPromptMessage(content=self._current_loop.prompt)]
                 )
@@ -112,7 +112,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             if response.llm_output:
                 self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
             else:
-                self._current_loop.completion_tokens = self.model_instance.get_num_tokens(
+                self._current_loop.completion_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
                     prompt_messages=[AssistantPromptMessage(content=self._current_loop.completion)]
                 )
@@ -247,7 +247,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         loop_answer_tokens = self._current_loop.completion_tokens
 
         # transform usage
-        llm_usage = self.model_instance._calc_response_usage(
+        llm_usage = self.model_type_instance._calc_response_usage(
             self.model_config.model,
             self.model_config.credentials,
             loop_message_tokens,

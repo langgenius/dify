@@ -233,8 +233,8 @@ class ApplicationManager:
         provider_name = provider_model_bundle.configuration.provider.provider
         model_name = copy_app_model_config_dict['model']['name']
 
-        model_instance = provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         # check model credentials
         model_credentials = provider_model_bundle.configuration.get_current_credentials(
@@ -272,14 +272,14 @@ class ApplicationManager:
         # get model mode
         model_mode = copy_app_model_config_dict['model'].get('mode')
         if not model_mode:
-            mode_enum = model_instance.get_model_mode(
+            mode_enum = model_type_instance.get_model_mode(
                 model=copy_app_model_config_dict['model']['name'],
                 credentials=model_credentials
             )
 
             model_mode = mode_enum.value
 
-        model_schema = model_instance.get_model_schema(
+        model_schema = model_type_instance.get_model_schema(
             copy_app_model_config_dict['model']['name'],
             model_credentials
         )
@@ -495,9 +495,9 @@ class ApplicationManager:
         """
         app_orchestration_config_entity = application_generate_entity.app_orchestration_config_entity
 
-        model_instance = app_orchestration_config_entity.model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
-        model_schema = model_instance.get_model_schema(
+        model_type_instance = app_orchestration_config_entity.model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        model_schema = model_type_instance.get_model_schema(
             model=app_orchestration_config_entity.model_config.model,
             credentials=app_orchestration_config_entity.model_config.credentials
         )

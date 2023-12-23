@@ -31,8 +31,8 @@ class AppRunner:
         :param query: query
         :return:
         """
-        model_instance = model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -59,7 +59,7 @@ class AppRunner:
             query=query
         )
 
-        prompt_tokens = model_instance.get_num_tokens(
+        prompt_tokens = model_type_instance.get_num_tokens(
             model_config.model,
             prompt_messages
         )
@@ -74,8 +74,8 @@ class AppRunner:
     def recale_llm_max_tokens(self, model_config: ModelConfigEntity,
                               prompt_messages: List[PromptMessage]):
         # recalc max_tokens if sum(prompt_token +  max_tokens) over model token limit
-        model_instance = model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         model_context_tokens = model_config.model_schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE)
 
@@ -92,7 +92,7 @@ class AppRunner:
         if max_tokens is None:
             max_tokens = 0
 
-        prompt_tokens = model_instance.get_num_tokens(
+        prompt_tokens = model_type_instance.get_num_tokens(
             model_config.model,
             prompt_messages
         )

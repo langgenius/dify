@@ -179,12 +179,12 @@ class ProviderManager:
             raise ValueError(f"Provider {provider} does not exist.")
 
         provider_instance = provider_configuration.get_provider_instance()
-        model_instance = provider_instance.get_model_instance(model_type)
+        model_type_instance = provider_instance.get_model_type_instance(model_type)
 
         return ProviderModelBundle(
             configuration=provider_configuration,
             provider_instance=provider_instance,
-            model_instance=model_instance
+            model_type_instance=model_type_instance
         )
 
     def get_default_model(self, tenant_id: str, model_type: ModelType) -> Optional[DefaultModelEntity]:

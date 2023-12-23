@@ -8,6 +8,7 @@ from core.entities.application_entities import ApplicationGenerateEntity, Prompt
 from core.application_queue_manager import ApplicationQueueManager
 from core.features.agent_runner import AgentRunnerFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
@@ -158,12 +159,12 @@ class AgentApplicationRunner(AppRunner):
             )
 
             # Invoke model
-            model_instance = app_orchestration_config.model_config.provider_model_bundle.model_instance
-            model_instance = cast(LargeLanguageModel, model_instance)
+            model_instance = ModelInstance(
+                provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
+                model=app_orchestration_config.model_config.model
+            )
 
-            invoke_result = model_instance.invoke(
-                model=app_orchestration_config.model_config.model,
-                credentials=app_orchestration_config.model_config.credentials,
+            invoke_result = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_orchestration_config.model_config.parameters,
                 stop=stop,
@@ -227,10 +228,10 @@ class AgentApplicationRunner(AppRunner):
             all_message_tokens += agent_thought.message_tokens
             all_answer_tokens += agent_thought.answer_tokens
 
-        model_instance = model_config.provider_model_bundle.model_instance
-        model_instance = cast(LargeLanguageModel, model_instance)
+        model_type_instance = model_config.provider_model_bundle.model_type_instance
+        model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
-        return model_instance._calc_response_usage(
+        return model_type_instance._calc_response_usage(
             model_config.model,
             model_config.credentials,
             all_message_tokens,

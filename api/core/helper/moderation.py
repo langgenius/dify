@@ -32,8 +32,8 @@ def check_moderation(model_config: ModelConfigEntity, text: str) -> bool:
             text_chunk = random.choice(text_chunks)
 
             try:
-                model_instance = OpenAIModerationModel()
-                moderation_result = model_instance.invoke(
+                model_type_instance = OpenAIModerationModel()
+                moderation_result = model_type_instance.invoke(
                     model='text-moderation-stable',
                     credentials=hosting_openai_config.credentials,
                     text=text_chunk
