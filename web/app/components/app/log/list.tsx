@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
-// import type { Log } from '@/models/log'
 import useSWR from 'swr'
 import {
   HandThumbDownIcon,
@@ -20,7 +19,7 @@ import VarPanel from './var-panel'
 import { randomString } from '@/utils'
 import { EditIconSolid } from '@/app/components/app/chat/icon-component'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/app/chat/type'
-import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse } from '@/models/log'
+import type { ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -43,7 +42,6 @@ type IConversationList = {
 }
 
 const defaultValue = 'N/A'
-const emptyText = '[Empty]'
 
 type IDrawerContext = {
   onClose: () => void
@@ -130,7 +128,7 @@ type IDetailPanel<T> = {
   onSubmitAnnotation: SubmitAnnotationFunc
 }
 
-function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback, onSubmitAnnotation }: IDetailPanel<T>) {
+function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
   const { onClose, appDetail } = useContext(DrawerContext)
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
@@ -176,7 +174,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   useEffect(() => {
     if (appDetail?.id && detail.id && appDetail?.mode === 'chat')
       fetchData()
-  }, [appDetail?.id, detail.id])
+  }, [appDetail?.id, detail.id, appDetail?.mode])
 
   const isChatMode = appDetail?.mode === 'chat'
 
@@ -454,12 +452,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const isChatMode = appDetail?.mode === 'chat' // Whether the app is a chat app
 
   // Annotated data needs to be highlighted
-  const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: Annotation) => {
+  const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
       <Tooltip
         htmlContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
-            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.logAnnotation?.account?.name })} ${dayjs.unix(annotation?.created_at || dayjs().unix()).format('MM-DD hh:mm A')}`}
+            <EditIconSolid className='mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${dayjs.unix(annotation?.created_at || dayjs().unix()).format('MM-DD hh:mm A')}`}
           </span>
         }
         className={(isHighlight && !isChatMode) ? '' : '!hidden'}
