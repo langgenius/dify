@@ -58,6 +58,9 @@ Dify présente une neutralité de modèle et est une pile technologique complèt
 
 ## Avant de commencer
 
+**Étoilez-nous, et vous recevrez des notifications instantanées pour toutes les nouvelles sorties sur GitHub !**
+![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
+
 - [Site web](https://dify.ai)  
 - [Documentation](https://docs.dify.ai)  
 - [Documentation de déploiement](https://docs.dify.ai/getting-started/install-self-hosted)   
