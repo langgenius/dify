@@ -133,7 +133,6 @@ class DatasetEntity(BaseModel):
     """
     dataset_ids: list[str]
     retrieve_config: DatasetRetrieveConfigEntity
-    show_retrieve_source: bool = False
 
 
 class SensitiveWordAvoidanceEntity(BaseModel):
@@ -190,6 +189,7 @@ class AppOrchestrationConfigEntity(BaseModel):
     file_upload: Optional[FileUploadEntity] = None
     opening_statement: Optional[str] = None
     suggested_questions_after_answer: bool = False
+    show_retrieve_source: bool = False
     more_like_this: bool = False
     speech_to_text: bool = False
     sensitive_word_avoidance: Optional[SensitiveWordAvoidanceEntity] = None

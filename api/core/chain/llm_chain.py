@@ -15,6 +15,7 @@ class LLMChain(LCLLMChain):
     model_config: ModelConfigEntity
     """The language model instance to use."""
     llm: BaseLanguageModel = FakeLLM(response="")
+    parameters: Dict[str, Any] = {}
 
     def generate(
         self,
@@ -34,7 +35,8 @@ class LLMChain(LCLLMChain):
             credentials=self.model_config.credentials,
             prompt_messages=prompt_messages,
             stream=False,
-            stop=stop
+            stop=stop,
+            **self.parameters
         )
 
         generations = [

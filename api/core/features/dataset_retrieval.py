@@ -14,12 +14,13 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 
 
-class DatasetRetrievalReply:
+class DatasetRetrievalFeature:
     def retrieve(self, tenant_id: str,
                  model_config: ModelConfigEntity,
                  config: DatasetEntity,
                  query: str,
                  invoke_from: InvokeFrom,
+                 show_retrieve_source: bool,
                  hit_callback: DatasetIndexToolCallbackHandler,
                  memory: Optional[TokenBufferMemory] = None) -> Optional[str]:
         """
@@ -29,13 +30,13 @@ class DatasetRetrievalReply:
         :param config: dataset config
         :param query: query
         :param invoke_from: invoke from
+        :param show_retrieve_source: show retrieve source
         :param hit_callback: hit callback
         :param memory: memory
         :return:
         """
         dataset_ids = config.dataset_ids
         retrieve_config = config.retrieve_config
-        return_resource = config.show_retrieve_source
 
         # check model is support tool calling
         model_instance = model_config.provider_model_bundle.model_instance
@@ -61,7 +62,7 @@ class DatasetRetrievalReply:
             tenant_id=tenant_id,
             dataset_ids=dataset_ids,
             retrieve_config=retrieve_config,
-            return_resource=return_resource,
+            return_resource=show_retrieve_source,
             invoke_from=invoke_from,
             hit_callback=hit_callback
         )
@@ -80,6 +81,11 @@ class DatasetRetrievalReply:
         )
 
         agent_executor = AgentExecutor(agent_configuration)
+
+        should_use_agent = agent_executor.should_use_agent(query)
+        if not should_use_agent:
+            return None
+
         result = agent_executor.run(query)
 
         return result.output

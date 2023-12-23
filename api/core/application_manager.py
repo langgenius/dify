@@ -352,6 +352,15 @@ class ApplicationManager:
                 )
             )
 
+        # show retrieve source
+        show_retrieve_source = False
+        retriever_resource_dict = copy_app_model_config_dict.get('retriever_resource')
+        if retriever_resource_dict:
+            if 'enabled' in retriever_resource_dict and retriever_resource_dict['enabled']:
+                show_retrieve_source = True
+
+        properties['show_retrieve_source'] = show_retrieve_source
+
         if 'agent_mode' in copy_app_model_config_dict and copy_app_model_config_dict['agent_mode'] \
                 and 'enabled' in copy_app_model_config_dict['agent_mode'] and copy_app_model_config_dict['agent_mode'][
             'enabled']:
@@ -360,13 +369,6 @@ class ApplicationManager:
                 query_variable = None
                 if model_mode == 'completion':
                     query_variable = copy_app_model_config_dict.get('dataset_query_variable')
-
-                # show retrieve source
-                show_retrieve_source = False
-                retriever_resource_dict = copy_app_model_config_dict.get('retriever_resource')
-                if retriever_resource_dict:
-                    if 'enabled' in retriever_resource_dict and retriever_resource_dict['enabled']:
-                        show_retrieve_source = True
 
                 dataset_ids = []
                 for tool in agent_dict.get('tools', []):
@@ -394,8 +396,7 @@ class ApplicationManager:
                                 dataset_configs['retrieve_strategy']
                             ),
                             single_strategy=agent_dict['strategy']
-                        ),
-                        show_retrieve_source=show_retrieve_source
+                        )
                     )
                 else:
                     properties['dataset'] = DatasetEntity(
@@ -408,8 +409,7 @@ class ApplicationManager:
                             top_k=dataset_configs.get('top_k'),
                             score_threshold=dataset_configs.get('score_threshold'),
                             reranking_model=dataset_configs.get('reranking_model')
-                        ),
-                        show_retrieve_source=show_retrieve_source
+                        )
                     )
             else:
                 if agent_dict['strategy'] == 'react':

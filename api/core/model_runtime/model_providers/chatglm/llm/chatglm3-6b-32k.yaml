@@ -3,6 +3,7 @@ label:
   en_US: ChatGLM3-6B-32K
 model_type: llm
 features:
+- tool-call
 - agent-thought
 model_properties:
   mode: chat

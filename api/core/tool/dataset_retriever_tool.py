@@ -1,4 +1,3 @@
-import json
 import threading
 from typing import Type, Optional, List
 
@@ -7,12 +6,8 @@ from langchain.tools import BaseTool
 from pydantic import Field, BaseModel
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.conversation_message_task import ConversationMessageTask
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
-from core.index.vector_index.vector_index import VectorIndex
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService
@@ -85,7 +80,7 @@ class DatasetRetrieverTool(BaseTool):
             documents = kw_table_index.search(query, search_kwargs={'k': self.top_k})
             return str("\n".join([document.page_content for document in documents]))
         else:
-
+            # TODO get embedding model instance
             try:
                 embedding_model = ModelFactory.get_embedding_model(
                     tenant_id=dataset.tenant_id,
@@ -142,6 +137,7 @@ class DatasetRetrieverTool(BaseTool):
                     thread.join()
                 # hybrid search: rerank after all documents have been searched
                 if retrieval_model['search_method'] == 'hybrid_search':
+                    # TODO get rerank model instance
                     hybrid_rerank = ModelFactory.get_reranking_model(
                         tenant_id=dataset.tenant_id,
                         model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],

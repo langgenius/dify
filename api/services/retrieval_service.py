@@ -50,6 +50,7 @@ class RetrievalService:
 
             if documents:
                 if reranking_model and search_method == 'semantic_search':
+                    # TODO get rerank model instance
                     rerank = ModelFactory.get_reranking_model(
                         tenant_id=dataset.tenant_id,
                         model_provider_name=reranking_model['reranking_provider_name'],
@@ -81,6 +82,7 @@ class RetrievalService:
             )
             if documents:
                 if reranking_model and search_method == 'full_text_search':
+                    # TODO get rerank model instance
                     rerank = ModelFactory.get_reranking_model(
                         tenant_id=dataset.tenant_id,
                         model_provider_name=reranking_model['reranking_provider_name'],

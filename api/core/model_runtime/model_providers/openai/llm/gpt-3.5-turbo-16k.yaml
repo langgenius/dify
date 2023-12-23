@@ -4,6 +4,7 @@ label:
   en_US: gpt-3.5-turbo-16k
 model_type: llm
 features:
+- multi-tool-call
 - agent-thought
 model_properties:
   mode: chat
