@@ -16,6 +16,7 @@ from core.application_queue_manager import ApplicationQueueManager
 from core.external_data_tool.factory import ExternalDataToolFactory
 from core.features.dataset_retrieval import DatasetRetrieval
 from core.file.file_obj import FileObj
+from core.helper import moderation
 from core.index.vector_index.vector_index import VectorIndex
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
@@ -172,6 +173,16 @@ class BasicApplicationRunner:
             memory=memory
         )
 
+        # check hosting moderation
+        hosting_moderation_result = self.check_hosting_moderation(
+            application_generate_entity=application_generate_entity,
+            queue_manager=queue_manager,
+            prompt_messages=prompt_messages
+        )
+
+        if hosting_moderation_result:
+            return
+
         # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
         self.recale_llm_max_tokens(
             model_config=app_orchestration_config.model_config,
@@ -212,7 +223,7 @@ class BasicApplicationRunner:
         :return:
         """
         if not stream:
-            self._handle_invoke_result(
+            self._handle_invoke_result_direct(
                 invoke_result=invoke_result,
                 queue_manager=queue_manager
             )
@@ -222,10 +233,10 @@ class BasicApplicationRunner:
                 queue_manager=queue_manager
             )
 
-    def _handle_invoke_result(self, invoke_result: LLMResult,
-                              queue_manager: ApplicationQueueManager) -> None:
+    def _handle_invoke_result_direct(self, invoke_result: LLMResult,
+                                     queue_manager: ApplicationQueueManager) -> None:
         """
-        Handle invoke result
+        Handle invoke result direct
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
         :return:
@@ -658,6 +669,41 @@ class BasicApplicationRunner:
                         or (parameter_rule.use_template and parameter_rule.use_template == 'max_tokens')):
                     model_config.parameters[parameter_rule.name] = max_tokens
 
+    def check_hosting_moderation(self, application_generate_entity: ApplicationGenerateEntity,
+                                 queue_manager: ApplicationQueueManager,
+                                 prompt_messages: list[PromptMessage]) -> bool:
+        """
+        Check hosting moderation
+        :param application_generate_entity: application generate entity
+        :param queue_manager: queue manager
+        :param prompt_messages: prompt messages
+        :return:
+        """
+        app_orchestration_config = application_generate_entity.app_orchestration_config_entity
+        model_config = app_orchestration_config.model_config
+
+        text = ""
+        for prompt_message in prompt_messages:
+            if isinstance(prompt_message.content, str):
+                text += prompt_message.content + "\n"
+
+        moderation_result = moderation.check_moderation(
+            model_config,
+            text
+        )
+
+        if moderation_result:
+            self.direct_output(
+                queue_manager=queue_manager,
+                app_orchestration_config=app_orchestration_config,
+                prompt_messages=prompt_messages,
+                text="I apologize for any confusion, " \
+                     "but I'm an AI assistant to be helpful, harmless, and honest.",
+                stream=application_generate_entity.stream
+            )
+
+        return moderation_result
+
     def direct_output(self, queue_manager: ApplicationQueueManager,
                       app_orchestration_config: AppOrchestrationConfigEntity,
                       prompt_messages: list,
@@ -691,19 +737,6 @@ class BasicApplicationRunner:
                 model=app_orchestration_config.model_config.model,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(content=text),
-                usage=LLMUsage(
-                    prompt_tokens=0,
-                    prompt_unit_price=Decimal('0.0'),
-                    prompt_price_unit=Decimal('0.0'),
-                    prompt_price=Decimal('0.0'),
-                    completion_tokens=0,
-                    completion_unit_price=Decimal('0.0'),
-                    completion_price_unit=Decimal('0.0'),
-                    completion_price=Decimal('0.0'),
-                    total_tokens=0,
-                    total_price=Decimal('0.0'),
-                    currency="",
-                    latency=.0
-                )
+                usage=LLMUsage.empty_usage()
             )
         )

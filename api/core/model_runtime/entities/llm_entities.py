@@ -46,6 +46,23 @@ class LLMUsage(ModelUsage):
     currency: str
     latency: float
 
+    @classmethod
+    def empty_usage(cls):
+        return cls(
+            prompt_tokens=0,
+            prompt_unit_price=Decimal('0.0'),
+            prompt_price_unit=Decimal('0.0'),
+            prompt_price=Decimal('0.0'),
+            completion_tokens=0,
+            completion_unit_price=Decimal('0.0'),
+            completion_price_unit=Decimal('0.0'),
+            completion_price=Decimal('0.0'),
+            total_tokens=0,
+            total_price=Decimal('0.0'),
+            currency='USD',
+            latency=0.0
+        )
+
 
 class LLMResult(BaseModel):
     """

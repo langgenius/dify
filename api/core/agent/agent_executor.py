@@ -110,11 +110,11 @@ class AgentExecutor:
 
     def run(self, query: str) -> AgentExecuteResult:
         moderation_result = moderation.check_moderation(
-            self.configuration.model_instance.model_provider,
+            self.configuration.model_config,
             query
         )
 
-        if not moderation_result:
+        if moderation_result:
             return AgentExecuteResult(
                 output="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
                 strategy=self.configuration.strategy,
