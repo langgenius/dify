@@ -146,6 +146,20 @@ const config: ProviderConfig = {
                 },
               },
               {
+                key: 'gpt-4-1106-preview',
+                label: {
+                  'en': 'gpt-4-1106-preview',
+                  'zh-Hans': 'gpt-4-1106-preview',
+                },
+              },
+              {
+                key: 'gpt-4-vision-preview',
+                label: {
+                  'en': 'gpt-4-vision-preview',
+                  'zh-Hans': 'gpt-4-vision-preview',
+                },
+              },
+              {
                 key: 'text-davinci-003',
                 label: {
                   'en': 'text-davinci-003',

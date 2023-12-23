@@ -58,6 +58,10 @@ Dify se caracteriza por su neutralidad de modelo y es un conjunto tecnológico c
 
 ## Antes de Empezar
 
+**¡Danos una estrella, y recibirás notificaciones instantáneas de todos los nuevos lanzamientos en GitHub!**
+
+![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
+
 - [Sitio web](https://dify.ai)
 - [Documentación](https://docs.dify.ai)
 - [Documentación de Implementación](https://docs.dify.ai/getting-started/install-self-hosted)
@@ -111,4 +115,4 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 
 ## Licencia
 
-Este repositorio está disponible bajo la [Licencia de código abierto de Dify](LICENSE).
+Este repositorio está disponible bajo la [Licencia de Código Abierto Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.

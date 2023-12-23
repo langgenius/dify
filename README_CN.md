@@ -25,6 +25,10 @@ Dify 是一个 LLM 应用开发平台，已经有超过 10 万个应用基于 Di
 
 ![](./images/demo.png)
 
+## 使用云端服务
+
+使用 [Dify.AI Cloud](https://dify.ai) 提供开源版本的所有功能,并包含 200 次 GPT 试用额度。
+
 ## 为什么选择 Dify
 
 Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一个完整的、工程化的技术栈，而相较于 OpenAI 的 Assistants API 你可以完全将服务部署在本地。
@@ -54,6 +58,10 @@ Dify 具有模型中立性，相较 LangChain 等硬编码开发库 Dify 是一�
 **5. 持续运营**：监控和分析应用日志和性能，使用生产数据持续改进 Prompt、数据集或模型。
 
 ## 在开始之前
+
+**关注我们，您将立即收到 GitHub 上所有新发布版本的通知！**
+
+![star-us](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
 
 - [网站](https://dify.ai)
 - [文档](https://docs.dify.ai)
@@ -112,4 +120,4 @@ docker compose up -d
 
 ## License
 
-本仓库遵循 [Dify Open Source License](LICENSE) 开源协议。
+本仓库遵循 [Dify Open Source License](LICENSE) 开源协议，该许可证本质上是 Apache 2.0，但有一些额外的限制。
