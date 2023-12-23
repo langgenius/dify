@@ -60,20 +60,7 @@ class GenerateTaskPipeline:
                 model=self._application_generate_entity.app_orchestration_config_entity.model_config.model,
                 prompt_messages=[],
                 message=AssistantPromptMessage(content=""),
-                usage=LLMUsage(
-                    prompt_tokens=0,
-                    prompt_unit_price=Decimal('0.0'),
-                    prompt_price_unit=Decimal('0.0'),
-                    prompt_price=Decimal('0.0'),
-                    completion_tokens=0,
-                    completion_unit_price=Decimal('0.0'),
-                    completion_price_unit=Decimal('0.0'),
-                    completion_price=Decimal('0.0'),
-                    total_tokens=0,
-                    total_price=Decimal('0.0'),
-                    currency="",
-                    latency=.0
-                )
+                usage=LLMUsage.empty_usage()
             )
         )
         self._start_at = time.perf_counter()
