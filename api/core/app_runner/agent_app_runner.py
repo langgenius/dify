@@ -1,7 +1,10 @@
-from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
+import logging
+
 from core.entities.application_entities import ApplicationGenerateEntity
 from core.application_queue_manager import ApplicationQueueManager
 from models.model import Conversation, Message
+
+logger = logging.getLogger(__name__)
 
 
 class AgentApplicationRunner:
@@ -13,4 +16,11 @@ class AgentApplicationRunner:
             queue_manager: ApplicationQueueManager,
             conversation: Conversation,
             message: Message) -> None:
-        pass
+        """
+        Run agent application
+        :param application_generate_entity: application generate entity
+        :param queue_manager: application queue manager
+        :param conversation: conversation
+        :param message: message
+        :return:
+        """
