@@ -6,7 +6,6 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.errors.invoke import InvokeError, InvokeConnectionError, InvokeServerUnavailableError, \
     InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError
-from core.model_runtime.model_providers.localai.text_embedding.localai_tokenizer import LocalAITokenizer
 
 from requests import post
 from json import dumps, JSONDecodeError
@@ -104,8 +103,8 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         """
         num_tokens = 0
         for text in texts:
-            # use JinaTokenizer to get num tokens
-            num_tokens += LocalAITokenizer.get_num_tokens(text)
+            # use GPT2Tokenizer to get num tokens
+            num_tokens += self._get_num_tokens_by_gpt2(text)
         return num_tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:

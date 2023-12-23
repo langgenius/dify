@@ -6,7 +6,6 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.errors.invoke import InvokeError, InvokeConnectionError, InvokeServerUnavailableError, \
     InvokeRateLimitError, InvokeAuthorizationError, InvokeBadRequestError
-from core.model_runtime.model_providers.xinference.text_embedding.xinference_tokenizer import XinferenceTokenizer
 
 from xinference_client.client.restful.restful_client import RESTfulEmbeddingModelHandle, RESTfulModelHandle, Client
 
@@ -95,8 +94,8 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         """
         num_tokens = 0
         for text in texts:
-            # use JinaTokenizer to get num tokens
-            num_tokens += XinferenceTokenizer.get_num_tokens(text)
+            # use GPT2Tokenizer to get num tokens
+            num_tokens += self._get_num_tokens_by_gpt2(text)
         return num_tokens
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
