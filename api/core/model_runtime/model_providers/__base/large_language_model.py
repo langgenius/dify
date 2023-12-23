@@ -4,8 +4,6 @@ import time
 from abc import abstractmethod
 from typing import Optional, Generator, Union, List
 
-from transformers import GPT2Tokenizer
-
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool, AssistantPromptMessage
@@ -13,7 +11,6 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey, PriceTy
 from core.model_runtime.entities.llm_entities import LLMResult, LLMMode, LLMUsage, \
     LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.model_providers.__base.ai_model import AIModel
-
 
 logger = logging.getLogger(__name__)
 
@@ -212,22 +209,6 @@ class LargeLanguageModel(AIModel):
         :return:
         """
         raise NotImplementedError
-
-    def _get_num_tokens_by_gpt2(self, text: str) -> int:
-        """
-        Get number of tokens for given prompt messages by gpt2
-        Some provider models do not provide an interface for obtaining the number of tokens.
-        Here, the gpt2 tokenizer is used to calculate the number of tokens.
-        This method can be executed offline, and the gpt2 tokenizer has been cached in the project.
-
-        :param text: plain text of prompt. You need to convert the original message to plain text
-        :return: number of tokens
-        """
-        base_path = os.path.abspath(__file__)
-        gpt2_tokenizer_path = os.path.join(os.path.join(os.path.dirname(base_path), 'tokenizers'), 'gpt2')
-        tokenizer = GPT2Tokenizer.from_pretrained(gpt2_tokenizer_path)
-        tokens = tokenizer.encode(text)
-        return len(tokens)
 
     def _llm_result_to_stream(self, result: LLMResult) -> Generator:
         """
