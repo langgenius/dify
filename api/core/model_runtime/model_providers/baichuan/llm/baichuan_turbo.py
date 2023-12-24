@@ -79,9 +79,12 @@ class BaichuanModel(object):
             # save stop reason temporarily
             stop_reason = ''
             for choice in choices:
-                yield BaichuanMessage(**choice['delta'])
                 if 'finish_reason' in choice and choice['finish_reason']:
                     stop_reason = choice['finish_reason']
+
+                if len(choice['delta']['content']) == 0:
+                    continue
+                yield BaichuanMessage(**choice['delta'])
 
             # if there is usage, the response is the last one, yield it and return
             if 'usage' in data:
