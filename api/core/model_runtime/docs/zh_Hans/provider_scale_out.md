@@ -86,8 +86,15 @@ provider_credential_schema:  # 供应商凭据规则，由于 Anthropic 仅支�
 
 #### 实现供应商代码
 
+我们需要在`model_providers`下创建一个同名的python文件，如`anthropic.py`，并实现一个`class`，继承`__base.provider.Provider`基类，如`AnthropicProvider`。
+
+##### 自定义模型供应商
+
+当供应商为Xinference等自定义模型供应商时，可跳过该步骤，仅创建一个空的`XinferenceProvider`类即可。
+
+##### 预定义模型供应商
+
 供应商需要继承 `__base.model_provider.ModelProvider` 基类，实现 `validate_provider_credentials` 供应商统一凭据校验方法即可，可参考 [AnthropicProvider](https://github.com/langgenius/dify-runtime/blob/main/lib/model_providers/anthropic/anthropic.py)。
-> 如果供应商是 `customizable-model` 类型，不需要实现 `validate_provider_credentials` 方法。
 
 ```python
 def validate_provider_credentials(self, credentials: dict) -> None:
