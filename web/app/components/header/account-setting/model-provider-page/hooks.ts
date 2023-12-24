@@ -4,14 +4,18 @@ import {
   useMemo,
   useState,
 } from 'react'
+import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import type {
+  CustomConfigrationModelFixedFields,
   DefaultModel,
   DefaultModelResponse,
   Model,
 } from './declarations'
+import { ConfigurateMethodEnum } from './declarations'
 import { languageMaps } from './utils'
 import I18n from '@/context/i18n'
+import { fetchModelProviderCredentials } from '@/service/common'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -46,4 +50,33 @@ export const useLanguage = () => {
   const { locale } = useContext(I18n)
 
   return languageMaps[locale]
+}
+
+export const useProviderCrenditialsFormSchemasValue = (
+  provider: string,
+  configurateMethod: ConfigurateMethodEnum,
+  configured?: boolean,
+  currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
+) => {
+  const { data: predefinedFormSchemasValue } = useSWR(
+    (configurateMethod === ConfigurateMethodEnum.predefinedModel && configured)
+      ? `/workspaces/current/model-providers/${provider}/credentials`
+      : null,
+    fetchModelProviderCredentials,
+  )
+  const { data: customFormSchemasValue } = useSWR(
+    (configurateMethod === ConfigurateMethodEnum.customizableModel && currentCustomConfigrationModelFixedFields)
+      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigrationModelFixedFields?.__model_name}&model_type=${currentCustomConfigrationModelFixedFields?.__model_type}`
+      : null,
+    fetchModelProviderCredentials,
+  )
+
+  return configurateMethod === ConfigurateMethodEnum.predefinedModel
+    ? predefinedFormSchemasValue?.credentials
+    : customFormSchemasValue?.credentials
+      ? {
+        ...customFormSchemasValue?.credentials,
+        ...currentCustomConfigrationModelFixedFields,
+      }
+      : undefined
 }

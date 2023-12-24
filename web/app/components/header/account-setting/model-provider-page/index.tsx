@@ -7,6 +7,7 @@ import ProviderCard from './provider-card'
 import ModelModal from './model-modal'
 import type {
   ConfigurateMethodEnum,
+  CustomConfigrationModelFixedFields,
   ModelProvider,
 } from './declarations'
 import { CustomConfigurationStatusEnum } from './declarations'
@@ -25,6 +26,7 @@ const ModelProviderPage = () => {
   } = useProviderContext()
   const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
   const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
+  const [currentCustomConfigrationModelFixedFields, setCurrentCustomConfigrationModelFixedFields] = useState<CustomConfigrationModelFixedFields | undefined>(undefined)
   const { data: providersData, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
   const providers = useMemo(() => {
@@ -44,14 +46,20 @@ const ModelProviderPage = () => {
     return [configedProviders, notConfigedProviders]
   }, [providers])
 
-  const handleOpenModal = (provider: ModelProvider, configurateMethod: ConfigurateMethodEnum) => {
+  const handleOpenModal = (
+    provider: ModelProvider,
+    configurateMethod: ConfigurateMethodEnum,
+    customConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
+  ) => {
     setCurrentProvider(provider)
     setCurrentConfigurateMethod(configurateMethod)
+    setCurrentCustomConfigrationModelFixedFields(customConfigrationModelFixedFields)
   }
 
   const handleCancelModelModal = () => {
     setCurrentProvider(null)
     setCurrentConfigurateMethod(null)
+    setCurrentCustomConfigrationModelFixedFields(undefined)
   }
 
   const handleSaveCrendentials = () => {
@@ -84,7 +92,7 @@ const ModelProviderPage = () => {
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
-                  onOpenModal={(configurateMethod: ConfigurateMethodEnum) => handleOpenModal(provider, configurateMethod)}
+                  onOpenModal={(configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigrationModelFixedFields)}
                 />
               ))
             }
@@ -117,6 +125,7 @@ const ModelProviderPage = () => {
           <ModelModal
             provider={currentProvider}
             configurateMethod={currentConfigurateMethod}
+            currentCustomConfigrationModelFixedFields={currentCustomConfigrationModelFixedFields}
             onCancel={handleCancelModelModal}
             onSave={handleSaveCrendentials}
           />

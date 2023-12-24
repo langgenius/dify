@@ -134,17 +134,17 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
   } as CredentialFormSchemaRadio
 }
 
-export const genModelNameFormSchema = (model: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>) => {
+export const genModelNameFormSchema = (model?: Pick<CredentialFormSchemaTextInput, 'label' | 'placeholder'>) => {
   return {
     type: FormTypeEnum.textInput,
-    label: model.label || {
+    label: model?.label || {
       zh_Hans: '模型名称',
       en_US: 'Model Name',
     },
     variable: '__model_name',
     required: true,
     show_on: [],
-    placeholder: model.placeholder || {
+    placeholder: model?.placeholder || {
       zh_Hans: '请输入模型名称',
       en_US: 'Please enter model name',
     },

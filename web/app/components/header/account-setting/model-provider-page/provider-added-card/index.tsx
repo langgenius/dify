@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import type {
+  CustomConfigrationModelFixedFields,
   ModelItem,
   ModelProvider,
 } from '../declarations'
@@ -21,7 +22,7 @@ import { fetchModelProviderModelList } from '@/service/common'
 
 type ProviderAddedCardProps = {
   provider: ModelProvider
-  onOpenModal: (configurateMethod: ConfigurateMethodEnum) => void
+  onOpenModal: (configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => void
 }
 const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
@@ -119,7 +120,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {
               configurateMethods.includes(ConfigurateMethodEnum.customizableModel) && (
                 <AddModelButton
-                  onClick={() => {}}
+                  onClick={() => onOpenModal(ConfigurateMethodEnum.customizableModel)}
                   className='hidden group-hover:flex group-hover:text-primary-600'
                 />
               )
@@ -133,6 +134,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             provider={provider}
             models={modelList}
             onCollapse={() => setCollapsed(true)}
+            onConfig={currentCustomConfigrationModelFixedFields => onOpenModal(ConfigurateMethodEnum.customizableModel, currentCustomConfigrationModelFixedFields)}
           />
         )
       }

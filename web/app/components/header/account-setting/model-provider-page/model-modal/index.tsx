@@ -1,16 +1,17 @@
 import type { FC } from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaRadio,
   CredentialFormSchemaSelect,
+  CustomConfigrationModelFixedFields,
   FormValue,
   ModelProvider,
 } from '../declarations'
 import {
   ConfigurateMethodEnum,
+  CustomConfigurationStatusEnum,
   FormTypeEnum,
 } from '../declarations'
 import {
@@ -20,7 +21,10 @@ import {
   saveCredentials,
   validateCredentials,
 } from '../utils'
-import { useLanguage } from '../hooks'
+import {
+  useLanguage,
+  useProviderCrenditialsFormSchemasValue,
+} from '../hooks'
 import ProviderIcon from '../provider-icon'
 import { useValidate } from '../../key-validator/hooks'
 import { ValidatedStatus } from '../../key-validator/declarations'
@@ -33,13 +37,13 @@ import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { fetchModelProviderCredentials } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 import ConfirmCommon from '@/app/components/base/confirm/common'
 
 type ModelModalProps = {
   provider: ModelProvider
   configurateMethod: ConfigurateMethodEnum
+  currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
   onCancel: () => void
   onSave: () => void
 }
@@ -47,25 +51,29 @@ type ModelModalProps = {
 const ModelModal: FC<ModelModalProps> = ({
   provider,
   configurateMethod,
+  currentCustomConfigrationModelFixedFields,
   onCancel,
   onSave,
 }) => {
-  const { data: formSchemasValue } = useSWR(
-    `/workspaces/current/model-providers/${provider.provider}/credentials`,
-    fetchModelProviderCredentials,
+  const providerFormSchemaPredefined = configurateMethod === ConfigurateMethodEnum.predefinedModel
+  const formSchemasValue = useProviderCrenditialsFormSchemasValue(
+    provider.provider,
+    configurateMethod,
+    providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
+    currentCustomConfigrationModelFixedFields,
   )
+  const isEditMode = !!formSchemasValue
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const language = useLanguage()
   const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const providerFormSchemaPredefined = configurateMethod === ConfigurateMethodEnum.predefinedModel
   const formSchemas = useMemo(() => {
     return providerFormSchemaPredefined
       ? provider.provider_credential_schema.credential_form_schemas
       : [
         genModelTypeFormSchema(provider.supported_model_types),
-        genModelNameFormSchema(provider.model_credential_schema.model),
+        genModelNameFormSchema(provider.model_credential_schema?.model),
         ...provider.model_credential_schema.credential_form_schemas,
       ]
   }, [
@@ -131,7 +139,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const initialFormSchemasValue = useMemo(() => {
     return {
       ...defaultFormSchemaValue,
-      ...formSchemasValue?.credentials,
+      ...formSchemasValue,
     }
   }, [formSchemasValue, defaultFormSchemaValue])
   const [value, setValue] = useState(initialFormSchemasValue)
@@ -139,7 +147,6 @@ const ModelModal: FC<ModelModalProps> = ({
     setValue(initialFormSchemasValue)
   }, [initialFormSchemasValue])
   const [validate, validating, validatedStatusState] = useValidate(value)
-  const isEditMode = !!formSchemasValue?.credentials
   const filteredRequiredFormSchemas = requiredFormSchemas.filter((requiredFormSchema) => {
     if (requiredFormSchema.show_on.length && requiredFormSchema.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
       return true

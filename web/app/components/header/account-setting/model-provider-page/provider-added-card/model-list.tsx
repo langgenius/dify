@@ -1,5 +1,9 @@
 import type { FC } from 'react'
-import type { ModelItem, ModelProvider } from '../declarations'
+import type {
+  CustomConfigrationModelFixedFields,
+  ModelItem,
+  ModelProvider,
+} from '../declarations'
 import {
   ConfigurateMethodEnum,
   ModelStatusEnum,
@@ -18,11 +22,13 @@ type ModelListProps = {
   provider: ModelProvider
   models: ModelItem[]
   onCollapse: () => void
+  onConfig: (currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => void
 }
 const ModelList: FC<ModelListProps> = ({
   provider,
   models,
   onCollapse,
+  onConfig,
 }) => {
   const language = useLanguage()
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
@@ -50,14 +56,16 @@ const ModelList: FC<ModelListProps> = ({
           </span>
           {
             canCustomConfig && canSystemConfig && (
-              <span className='grow flex items-center'>
+              <span className='flex items-center'>
                 <Tab active='all' onSelect={() => {}} />
               </span>
             )
           }
           {
             canCustomConfig && (
-              <AddModelButton onClick={() => {}} />
+              <div className='grow flex justify-end'>
+                <AddModelButton onClick={onConfig} />
+              </div>
             )
           }
         </div>
@@ -86,7 +94,10 @@ const ModelList: FC<ModelListProps> = ({
               <div className='shrink-0 flex items-center'>
                 {
                   canCustomConfig && (
-                    <Button className='hidden group-hover:flex py-0 h-7 text-xs font-medium text-gray-700'>
+                    <Button
+                      className='hidden group-hover:flex py-0 h-7 text-xs font-medium text-gray-700'
+                      onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
+                    >
                       <Settings01 className='mr-[5px] w-3.5 h-3.5' />
                       Config
                     </Button>

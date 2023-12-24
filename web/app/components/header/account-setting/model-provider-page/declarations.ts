@@ -164,3 +164,8 @@ export type DefaultModel = {
   provider: string
   model: string
 }
+
+export type CustomConfigrationModelFixedFields = {
+  __model_name: string
+  __model_type: ModelTypeEnum
+}
