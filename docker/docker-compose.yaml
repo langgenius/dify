@@ -228,8 +228,9 @@ services:
       PGDATA: /var/lib/postgresql/data/pgdata
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
+    # uncomment to expose db(postgresql) port to host
+    # ports:
+    #   - "5432:5432"
     healthcheck:
       test: ["CMD", "pg_isready"]
       interval: 1s
