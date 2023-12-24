@@ -58,3 +58,4 @@ pyyaml~=6.0.1
 numpy~=1.25.2
 unstructured~=0.10.27
 unstructured[docx,pptx]~=0.10.27
+google-generativeai~=0.3.2
