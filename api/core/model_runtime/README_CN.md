@@ -57,7 +57,7 @@ Model Runtime 分三层：
 
   对于供应商/模型凭据，有两种情况
   - 如OpenAI这类中心化供应商，需要定义如**api_key**这类的鉴权凭据
-  - 如[**Xinference**](https://github.com/xorbitsai/inference)这类本地部署的供应商，需要定义如**server_url**这类的地址凭据，有时候还需要定义**model_uid**之类的模型类型凭据（如Xinference），就像下面这样，当在供应商层定义了这些凭据后，就可以在前端页面上直接展示，无需修改前端逻辑。
+  - 如[**Xinference**](https://github.com/xorbitsai/inference)这类本地部署的供应商，需要定义如**server_url**这类的地址凭据，有时候还需要定义**model_uid**之类的模型类型凭据，就像下面这样，当在供应商层定义了这些凭据后，就可以在前端页面上直接展示，无需修改前端逻辑。
   ![Alt text](docs/zh_Hans/images/index/image.png)
 
   当配置好凭据后，就可以通过DifyRuntime的外部接口直接获取到对应供应商所需要的**Schema**（凭据表单规则），从而在可以在不修改前端逻辑的情况下，提供新的供应商/模型的支持。
