@@ -19,9 +19,7 @@ def test_validate_credentials_for_chat_model():
             model='chinese-llama-2-7b',
             credentials={
                 'server_url': 'hahahaha',
-                'model_type': 'text-generation',
                 'completion_type': 'completion',
-                'model_name': 'chinese-llama-2-7b'
             }
         )
 
@@ -29,9 +27,7 @@ def test_validate_credentials_for_chat_model():
         model='chinese-llama-2-7b',
         credentials={
             'server_url': os.environ.get('LOCALAI_SERVER_URL'),
-            'model_type': 'text-generation',
             'completion_type': 'completion',
-            'model_name': 'chinese-llama-2-7b'
         }
     )
 
@@ -42,9 +38,7 @@ def test_invoke_completion_model():
         model='chinese-llama-2-7b',
         credentials={
             'server_url': os.environ.get('LOCALAI_SERVER_URL'),
-            'model_type': 'text-generation',
             'completion_type': 'completion',
-            'model_name': 'chinese-llama-2-7b'
         },
         prompt_messages=[
             UserPromptMessage(
@@ -72,9 +66,7 @@ def test_invoke_chat_model():
         model='chinese-llama-2-7b',
         credentials={
             'server_url': os.environ.get('LOCALAI_SERVER_URL'),
-            'model_type': 'text-generation',
             'completion_type': 'chat_completion',
-            'model_name': 'chinese-llama-2-7b'
         },
         prompt_messages=[
             UserPromptMessage(
@@ -102,9 +94,7 @@ def test_invoke_stream_completion_model():
         model='chinese-llama-2-7b',
         credentials={
             'server_url': os.environ.get('LOCALAI_SERVER_URL'),
-            'model_type': 'text-generation',
             'completion_type': 'completion',
-            'model_name': 'chinese-llama-2-7b'
         },
         prompt_messages=[
             UserPromptMessage(
@@ -135,9 +125,7 @@ def test_invoke_stream_chat_model():
         model='chinese-llama-2-7b',
         credentials={
             'server_url': os.environ.get('LOCALAI_SERVER_URL'),
-            'model_type': 'text-generation',
             'completion_type': 'chat_completion',
-            'model_name': 'chinese-llama-2-7b'
         },
         prompt_messages=[
             UserPromptMessage(

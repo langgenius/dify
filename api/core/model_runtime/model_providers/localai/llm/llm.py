@@ -155,51 +155,44 @@ class LocalAILarguageModel(LargeLanguageModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         completion_model = None
-        model_type = None
-        if credentials['model_type'] == 'text-generation':
-            model_type = ModelType.LLM
-            if credentials['completion_type'] == 'chat_completion':
-                completion_model = LLMMode.CHAT
-            elif credentials['completion_type'] == 'completion':
-                completion_model = LLMMode.COMPLETION
-            else:
-                raise ValueError(f"Unknown completion type {credentials['completion_type']}")
+        if credentials['completion_type'] == 'chat_completion':
+            completion_model = LLMMode.CHAT
+        elif credentials['completion_type'] == 'completion':
+            completion_model = LLMMode.COMPLETION
         else:
-            model_type = ModelType.TEXT_EMBEDDING
+            raise ValueError(f"Unknown completion type {credentials['completion_type']}")
             
-        rules = []
-        if credentials['model_type'] == 'text-generation':
-            rules = [
-                ParameterRule(
-                    name='temperature',
-                    type=ParameterType.FLOAT,
-                    use_template='temperature',
-                    label=I18nObject(
-                        zh_Hans='温度',
-                        en_US='Temperature'
-                    )
-                ),
-                ParameterRule(
-                    name='top_p',
-                    type=ParameterType.FLOAT,
-                    use_template='top_p',
-                    label=I18nObject(
-                        zh_Hans='Top P',
-                        en_US='Top P'
-                    )
-                ),
-                ParameterRule(
-                    name='max_tokens',
-                    type=ParameterType.INT,
-                    use_template='max_tokens',
-                    min=1,
-                    default=512,
-                    label=I18nObject(
-                        zh_Hans='最大生成长度',
-                        en_US='Max Tokens'
-                    )
+        rules = [
+            ParameterRule(
+                name='temperature',
+                type=ParameterType.FLOAT,
+                use_template='temperature',
+                label=I18nObject(
+                    zh_Hans='温度',
+                    en_US='Temperature'
                 )
-            ]
+            ),
+            ParameterRule(
+                name='top_p',
+                type=ParameterType.FLOAT,
+                use_template='top_p',
+                label=I18nObject(
+                    zh_Hans='Top P',
+                    en_US='Top P'
+                )
+            ),
+            ParameterRule(
+                name='max_tokens',
+                type=ParameterType.INT,
+                use_template='max_tokens',
+                min=1,
+                default=512,
+                label=I18nObject(
+                    zh_Hans='最大生成长度',
+                    en_US='Max Tokens'
+                )
+            )
+        ]
 
         entity = AIModelEntity(
             model=model,
@@ -207,7 +200,7 @@ class LocalAILarguageModel(LargeLanguageModel):
                 en_US=model
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=model_type,
+            model_type=ModelType.LLM,
             model_properties={ 'mode': completion_model } if completion_model else {},
             parameter_rules=rules
         )
@@ -223,7 +216,7 @@ class LocalAILarguageModel(LargeLanguageModel):
         # init model client
         client = OpenAI(**kwargs)
 
-        model_name = credentials['model_name']
+        model_name = model
         completion_type = credentials['completion_type']
 
         extra_model_kwargs = {

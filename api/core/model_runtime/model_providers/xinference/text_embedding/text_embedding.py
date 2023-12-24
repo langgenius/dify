@@ -23,8 +23,6 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
 
         credentials should be like:
         {
-            'model_type': 'text-generation',
-            'model_name': 'model name',
             'server_url': 'server url',
             'model_uid': 'model uid',
         }
@@ -37,10 +35,6 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         """
         server_url = credentials['server_url']
         model_uid = credentials['model_uid']
-        model_type = credentials['model_type']
-
-        if model_type != 'embeddings':
-            raise InvokeBadRequestError('Invalid model type')
         
         client = Client(base_url=server_url)
         

@@ -14,8 +14,6 @@ def test_validate_credentials():
             model='bge-reranker-base',
             credentials={
                 'server_url': 'awdawdaw',
-                'model_type': 'embeddings',
-                'model_name': 'NOT IMPORTANT',
                 'model_uid': os.environ.get('XINFERENCE_RERANK_MODEL_UID')
             }
         )
@@ -24,8 +22,6 @@ def test_validate_credentials():
         model='bge-reranker-base',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
             'model_uid': os.environ.get('XINFERENCE_RERANK_MODEL_UID')
         }
     )
@@ -38,8 +34,6 @@ def test_invoke_model():
         model='bge-reranker-base',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
             'model_uid': os.environ.get('XINFERENCE_RERANK_MODEL_UID')
         },
         query="Who is Kasumi?",

@@ -19,32 +19,6 @@ configurate_methods:
 - customizable-model
 provider_credential_schema:
   credential_form_schemas:
-  - variable: model_type
-    type: select
-    label:
-      en_US: Model type
-      zh_Hans: 模型类型
-    required: true
-    options:
-    - value: text-generation
-      label:
-        en_US: Language Model
-        zh_Hans: 语言模型
-    - value: embeddings
-      label:
-        en_US: Text Embedding
-    - value: reranking
-      label:
-        en_US: Rerank
-  - variable: model_name
-    type: text-input
-    label:
-      en_US: Model name
-      zh_Hans: 模型名称
-    required: true
-    placeholder:
-      zh_Hans: 填写模型名称
-      en_US: Input model name
   - variable: server_url
     label:
       zh_Hans: 服务器URL

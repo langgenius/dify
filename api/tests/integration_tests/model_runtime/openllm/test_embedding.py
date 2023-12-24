@@ -14,8 +14,6 @@ def test_validate_credentials():
             model='NOT IMPORTANT',
             credentials={
                 'server_url': 'ww' + os.environ.get('OPENLLM_SERVER_URL'),
-                'model_type': 'embeddings',
-                'model_name': 'NOT IMPORTANT',
             }
         )
 
@@ -23,8 +21,6 @@ def test_validate_credentials():
         model='NOT IMPORTANT',
         credentials={
             'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
         }
     )
 
@@ -36,8 +32,6 @@ def test_invoke_model():
         model='NOT IMPORTANT',
         credentials={
             'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
         },
         texts=[
             "hello",

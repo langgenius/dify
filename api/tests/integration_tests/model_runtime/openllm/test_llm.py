@@ -17,8 +17,6 @@ def test_validate_credentials_for_chat_model():
             model='NOT IMPORTANT',
             credentials={
                 'server_url': 'invalid_key',
-                'model_type': 'invalid_key',
-                'model_name': 'NOT IMPORTANT'
             }
         )
 
@@ -26,8 +24,6 @@ def test_validate_credentials_for_chat_model():
         model='NOT IMPORTANT',
         credentials={
             'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'NOT IMPORTANT'
         }
     )
 
@@ -35,11 +31,9 @@ def test_invoke_model():
     model = OpenLLMLargeLanguageModel()
 
     response = model.invoke(
-        model='abab5-chat',
+        model='NOT IMPORTANT',
         credentials={
             'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'NOT IMPORTANT'
         },
         prompt_messages=[
             UserPromptMessage(
@@ -67,8 +61,6 @@ def test_invoke_stream_model():
         model='NOT IMPORTANT',
         credentials={
             'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'NOT IMPORTANT'
         },
         prompt_messages=[
             UserPromptMessage(

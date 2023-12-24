@@ -19,8 +19,6 @@ def test_validate_credentials_for_chat_model():
             model='ChatGLM3',
             credentials={
                 'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-                'model_type': 'text-generation',
-                'model_name': 'NOT IMPORTANT',
                 'model_uid': 'www ' + os.environ.get('XINFERENCE_CHAT_MODEL_UID')
             }
         )
@@ -30,8 +28,6 @@ def test_validate_credentials_for_chat_model():
             model='aaaaa',
             credentials={
                 'server_url': '',
-                'model_type': 'text-generation',
-                'model_name': 'wwww',
                 'model_uid': ''
             }
         )
@@ -40,8 +36,6 @@ def test_validate_credentials_for_chat_model():
         model='ChatGLM3',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'ChatGLM3',
             'model_uid': os.environ.get('XINFERENCE_CHAT_MODEL_UID')
         }
     )
@@ -53,8 +47,6 @@ def test_invoke_chat_model():
         model='ChatGLM3',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'ChatGLM3',
             'model_uid': os.environ.get('XINFERENCE_CHAT_MODEL_UID')
         },
         prompt_messages=[
@@ -85,8 +77,6 @@ def test_invoke_stream_chat_model():
         model='ChatGLM3',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'ChatGLM3',
             'model_uid': os.environ.get('XINFERENCE_CHAT_MODEL_UID')
         },
         prompt_messages=[
@@ -247,8 +237,6 @@ def test_validate_credentials_for_generation_model():
             model='alapaca',
             credentials={
                 'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-                'model_type': 'text-generation',
-                'model_name': 'NOT IMPORTANT',
                 'model_uid': 'www ' + os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
             }
         )
@@ -258,8 +246,6 @@ def test_validate_credentials_for_generation_model():
             model='alapaca',
             credentials={
                 'server_url': '',
-                'model_type': 'text-generation',
-                'model_name': 'wwww',
                 'model_uid': ''
             }
         )
@@ -268,8 +254,6 @@ def test_validate_credentials_for_generation_model():
         model='alapaca',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'alapaca',
             'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
         }
     )
@@ -281,8 +265,6 @@ def test_invoke_generation_model():
         model='alapaca',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'alapaca',
             'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
         },
         prompt_messages=[
@@ -310,8 +292,6 @@ def test_invoke_generation_model_with_max_tokens():
         model='alapaca',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'alapaca',
             'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
         },
         prompt_messages=[
@@ -340,8 +320,6 @@ def test_invoke_stream_generation_model():
         model='alapaca',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'text-generation',
-            'model_name': 'alapaca',
             'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
         },
         prompt_messages=[

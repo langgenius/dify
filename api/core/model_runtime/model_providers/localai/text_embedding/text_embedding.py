@@ -33,7 +33,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
             raise InvokeBadRequestError('Only one text is supported')
 
         server_url = credentials['server_url']
-        model_name = credentials['model_name']
+        model_name = model
         if not server_url:
             raise CredentialsValidateFailedError('server_url is required')
         if not model_name:

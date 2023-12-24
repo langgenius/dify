@@ -51,7 +51,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             credentials should be like:
             {
                 'model_type': 'text-generation',
-                'model_name': 'model name',
                 'server_url': 'server url',
                 'model_uid': 'model uid',
             }
@@ -223,12 +222,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
             used to define customizable model schema
         """
-        model_type = None
-        if credentials['model_type'] == 'text-generation':
-            model_type = ModelType.LLM
-        else:
-            raise Exception(f'Large Language Model {credentials["model_type"]} is not supported')
-
         rules = [
             ParameterRule(
                 name='temperature',
@@ -282,7 +275,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 en_US=model
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=model_type,
+            model_type=ModelType.LLM,
             model_properties={ 
                 'mode':  completion_type,
             },
@@ -339,9 +332,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 **generate_config,
             )
             if stream:
-                return self._handle_chat_stream_response(credentials=credentials, prompt_messages=prompt_messages,
+                return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
-            return self._handle_chat_generate_response(credentials=credentials, prompt_messages=prompt_messages,
+            return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
         elif isinstance(xinference_model, RESTfulGenerateModelHandle):
             resp = client.completions.create(
@@ -352,9 +345,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 **generate_config,
             )
             if stream:
-                return self._handle_completion_stream_response(credentials=credentials, prompt_messages=prompt_messages,
+                return self._handle_completion_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
-            return self._handle_completion_generate_response(credentials=credentials, prompt_messages=prompt_messages,
+            return self._handle_completion_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
         else:
             raise NotImplementedError(f'xinference model handle type {type(xinference_model)} is not supported')
@@ -408,10 +401,9 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return tool_call
 
-    def _handle_chat_generate_response(self, credentials: dict, prompt_messages: list[PromptMessage],
+    def _handle_chat_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: ChatCompletion) -> LLMResult:
-        model = credentials['model_name']
         """
             handle normal chat generate response
         """
@@ -448,13 +440,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_chat_stream_response(self, credentials: dict, prompt_messages: list[PromptMessage],
+    def _handle_chat_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Iterator[ChatCompletionChunk]) -> Generator:
         """
             handle stream chat generate response
         """
-        model = credentials['model_name']
         full_response = ''
 
         for chunk in resp:
@@ -521,7 +512,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
                 full_response += delta.delta.content
 
-    def _handle_completion_generate_response(self, credentials: dict, prompt_messages: list[PromptMessage],
+    def _handle_completion_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Completion) -> LLMResult:
         """
@@ -529,8 +520,6 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         if len(resp.choices) == 0:
             raise InvokeServerUnavailableError("Empty response")
-        
-        model = credentials['model_name']
         
         assistant_message = resp.choices[0].text
 
@@ -560,14 +549,13 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_completion_stream_response(self, credentials: dict, prompt_messages: list[PromptMessage],
+    def _handle_completion_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                                         tools: list[PromptMessageTool],
                                         resp: Iterator[Completion]) -> Generator:
         """
             handle stream completion generate response
         """
         full_response = ''
-        model = credentials['model_name']
 
         for chunk in resp:
             if len(chunk.choices) == 0:
