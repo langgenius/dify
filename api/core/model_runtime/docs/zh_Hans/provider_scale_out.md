@@ -6,10 +6,6 @@
 
   表示用户只需要配置统一的供应商凭据即可使用供应商下的预定义模型。
   
-  主要体现为这里展示出来的模型。
-
-  ![Alt text](docs/zh_Hans/images/index/image.png)
-
 - `customizable-model` 自定义模型
 
   用户需要新增每个模型的凭据配置，如Xinference，它同时支持 LLM 和 Text Embedding，但是每个模型都有唯一的**model_uid**，如果想要将两者同时接入，就需要为每个模型配置一个**model_uid**。
