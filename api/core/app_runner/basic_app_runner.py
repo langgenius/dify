@@ -1,6 +1,5 @@
 import logging
-import time
-from typing import cast, Tuple, Optional
+from typing import Tuple, Optional
 
 from core.app_runner.app_runner import AppRunner
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
@@ -14,9 +13,7 @@ from core.features.hosting_moderation import HostingModerationFeature
 from core.features.moderation import ModerationFeature
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.entities.message_entities import PromptMessage
 from core.moderation.base import ModerationException
 from extensions.ext_database import db
 from models.model import Conversation, Message, App
@@ -70,7 +67,8 @@ class BasicApplicationRunner(AppRunner):
             # get memory of conversation (read-only)
             memory = TokenBufferMemory(
                 conversation=conversation,
-                model_config=app_orchestration_config.model_config
+                provider=app_orchestration_config.model_config.provider,
+                model=app_orchestration_config.model_config.model
             )
 
         # organize all inputs and template to prompt messages

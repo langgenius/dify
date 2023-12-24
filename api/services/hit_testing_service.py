@@ -1,4 +1,3 @@
-import json
 import logging
 import threading
 import time
@@ -11,7 +10,9 @@ from langchain.schema import Document
 from sklearn.manifold import TSNE
 
 from core.embedding.cached_embedding import CacheEmbedding
+from core.model_manager import ModelManager
 from core.model_providers.model_factory import ModelFactory
+from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
@@ -47,11 +48,14 @@ class HitTestingService:
             retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
         # get embedding model
-        embedding_model = ModelFactory.get_embedding_model(
+        model_manager = ModelManager()
+        embedding_model = model_manager.get_model_instance(
             tenant_id=dataset.tenant_id,
-            model_provider_name=dataset.embedding_model_provider,
-            model_name=dataset.embedding_model
+            model_type=ModelType.TEXT_EMBEDDING,
+            provider=dataset.embedding_model_provider,
+            model=dataset.embedding_model
         )
+
         embeddings = CacheEmbedding(embedding_model)
 
         all_documents = []

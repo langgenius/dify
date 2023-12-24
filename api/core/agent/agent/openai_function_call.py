@@ -15,8 +15,8 @@ from pydantic import root_validator
 
 from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError, CalcTokenMixin
 from core.chain.llm_chain import LLMChain
+from core.entities.application_entities import ModelConfigEntity
 from core.model_providers.models.entity.message import to_prompt_messages
-from core.model_providers.models.llm.base import BaseLLM
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
@@ -24,7 +24,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
     moving_summary_buffer: str = ""
     moving_summary_index: int = 0
     summary_model_instance: BaseLLM = None
-    model_instance: BaseLLM
+    model_config: ModelConfigEntity
 
     class Config:
         """Configuration for this pydantic object."""
@@ -38,7 +38,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
     @classmethod
     def from_llm_and_tools(
             cls,
-            model_instance: BaseLLM,
+            model_config: ModelConfigEntity,
             tools: Sequence[BaseTool],
             callback_manager: Optional[BaseCallbackManager] = None,
             extra_prompt_messages: Optional[List[BaseMessagePromptTemplate]] = None,
@@ -52,7 +52,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             system_message=system_message,
         )
         return cls(
-            model_instance=model_instance,
+            model_config=model_config,
             llm=FakeLLM(response=''),
             prompt=prompt,
             tools=tools,

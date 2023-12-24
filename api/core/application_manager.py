@@ -12,7 +12,7 @@ from core.app_runner.generate_task_pipeline import GenerateTaskPipeline
 from core.entities.application_entities import ApplicationGenerateEntity, AppOrchestrationConfigEntity, \
     ModelConfigEntity, PromptTemplateEntity, AdvancedChatPromptTemplateEntity, \
     AdvancedCompletionPromptTemplateEntity, ExternalDataVariableEntity, DatasetEntity, DatasetRetrieveConfigEntity, \
-    AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom, ApplicationGenerateResponse
+    AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom
 from core.entities.model_entities import ModelStatus
 from core.file.file_obj import FileObj
 from core.model_providers.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
@@ -48,7 +48,7 @@ class ApplicationManager:
                  conversation: Optional[Conversation] = None,
                  stream: bool = False,
                  extras: Optional[dict[str, Any]] = None) \
-            -> Union[ApplicationGenerateResponse, Generator]:
+            -> Union[dict, Generator]:
         """
         Generate App response.
 

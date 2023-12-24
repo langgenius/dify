@@ -17,7 +17,7 @@ from langchain.agents import AgentExecutor as LCAgentExecutor
 from core.entities.application_entities import ModelConfigEntity
 from core.helper import moderation
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_providers.error import LLMError
+from core.model_runtime.errors.invoke import InvokeError
 from core.tool.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
 from core.tool.dataset_retriever_tool import DatasetRetrieverTool
 
@@ -133,7 +133,7 @@ class AgentExecutor:
 
         try:
             output = agent_executor.run(query)
-        except LLMError as ex:
+        except InvokeError as ex:
             raise ex
         except Exception as ex:
             logging.exception("agent_executor run failed")

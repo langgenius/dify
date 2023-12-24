@@ -4,6 +4,9 @@ import logging
 from datetime import datetime
 
 from flask_login import current_user
+
+from core.model_runtime.entities.model_entities import ModelType
+from core.provider_manager import ProviderManager
 from libs.login import login_required
 from flask_restful import Resource, reqparse, marshal_with, abort, inputs
 from werkzeug.exceptions import Forbidden
@@ -14,7 +17,6 @@ from controllers.console.app.error import AppNotFoundError, ProviderNotInitializ
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
-from core.model_providers.model_factory import ModelFactory
 from core.model_providers.model_provider_factory import ModelProviderFactory
 from events.app_event import app_was_created, app_was_deleted
 from fields.app_fields import app_pagination_fields, app_detail_fields, template_list_fields, \
@@ -73,14 +75,16 @@ class AppListApi(Resource):
             raise Forbidden()
 
         try:
-            default_model = ModelFactory.get_text_generation_model(
-                tenant_id=current_user.current_tenant_id
+            provider_manager = ProviderManager()
+            default_model_entity = provider_manager.get_default_model(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.LLM
             )
         except (ProviderTokenNotInitError, LLMBadRequestError):
-            default_model = None
+            default_model_entity = None
         except Exception as e:
             logging.exception(e)
-            default_model = None
+            default_model_entity = None
 
         if args['model_config'] is not None:
             # validate config
@@ -93,13 +97,13 @@ class AppListApi(Resource):
             )
 
             if not model_provider:
-                if not default_model:
+                if not default_model_entity:
                     raise ProviderNotInitializeError(
                         f"No Default System Reasoning Model available. Please configure "
                         f"in the Settings -> Model Provider.")
                 else:
-                    model_config_dict["model"]["provider"] = default_model.model_provider.provider_name
-                    model_config_dict["model"]["name"] = default_model.name
+                    model_config_dict["model"]["provider"] = default_model_entity.provider.provider
+                    model_config_dict["model"]["name"] = default_model_entity.model
 
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
@@ -135,14 +139,14 @@ class AppListApi(Resource):
             )
 
             if not model_provider:
-                if not default_model:
+                if not default_model_entity:
                     raise ProviderNotInitializeError(
                         f"No Default System Reasoning Model available. Please configure "
                         f"in the Settings -> Model Provider.")
                 else:
                     model_dict = app_model_config.model_dict
-                    model_dict['provider'] = default_model.model_provider.provider_name
-                    model_dict['name'] = default_model.name
+                    model_dict['provider'] = default_model_entity.provider.provider
+                    model_dict['name'] = default_model_entity.model
                     app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']

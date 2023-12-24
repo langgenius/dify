@@ -63,7 +63,8 @@ class AgentApplicationRunner(AppRunner):
             # get memory of conversation (read-only)
             memory = TokenBufferMemory(
                 conversation=conversation,
-                model_config=app_orchestration_config.model_config
+                provider=app_orchestration_config.model_config.provider,
+                model=app_orchestration_config.model_config.model
             )
 
         # reorganize all inputs and template to prompt messages

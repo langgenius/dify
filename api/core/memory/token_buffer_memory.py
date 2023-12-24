@@ -1,18 +1,17 @@
-from typing import cast
-
-from core.entities.application_entities import ModelConfigEntity
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.entities.message_entities import PromptMessage, TextPromptMessageContent, UserPromptMessage, \
     AssistantPromptMessage, PromptMessageRole
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.model_providers import model_provider_factory
 from extensions.ext_database import db
 from models.model import Conversation, Message
 
 
 class TokenBufferMemory:
-    def __init__(self, conversation: Conversation, model_config: ModelConfigEntity) -> None:
+    def __init__(self, conversation: Conversation, provider: str, model: str) -> None:
         self.conversation = conversation
-        self.model_config = model_config
+        self.provider = provider
+        self.model = model
 
     def get_history_prompt_messages(self, max_token_limit: int = 2000,
                                     message_limit: int = 10) -> list[PromptMessage]:
@@ -57,11 +56,11 @@ class TokenBufferMemory:
             return []
 
         # prune the chat message if it exceeds the max token limit
-        model_type_instance = self.model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
+        provider_instance = model_provider_factory.get_provider_instance(self.provider)
+        model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
 
         curr_message_tokens = model_type_instance.get_num_tokens(
-            self.model_config.model,
+            self.model,
             prompt_messages
         )
 
@@ -70,7 +69,7 @@ class TokenBufferMemory:
             while curr_message_tokens > max_token_limit and prompt_messages:
                 pruned_memory.append(prompt_messages.pop(0))
                 curr_message_tokens = model_type_instance.get_num_tokens(
-                    self.model_config.model,
+                    self.model,
                     prompt_messages
                 )
 

@@ -6,11 +6,11 @@ from typing import Any, Optional, Dict
 from flask import current_app, Flask
 from pydantic import BaseModel
 
-from core.callback_handler.llm_callback_handler import ModerationRule
 from core.moderation.base import ModerationAction, ModerationOutputsResult
 from core.moderation.factory import ModerationFactory
 
 logger = logging.getLogger(__name__)
+
 
 class ModerationRule(BaseModel):
     type: str

@@ -3,7 +3,6 @@ from typing import Type
 from sqlalchemy.exc import IntegrityError
 
 from core.model_providers.models.entity.model_params import ModelType
-from core.model_providers.providers.base import BaseModelProvider
 from core.model_providers.rules import provider_rules
 from extensions.ext_database import db
 from models.provider import TenantPreferredModelProvider, ProviderType, Provider, ProviderQuotaType
@@ -26,60 +25,8 @@ DEFAULT_MODELS = {
 
 class ModelProviderFactory:
     @classmethod
-    def get_model_provider_class(cls, provider_name: str) -> Type[BaseModelProvider]:
-        if provider_name == 'openai':
-            from core.model_providers.providers.openai_provider import OpenAIProvider
-            return OpenAIProvider
-        elif provider_name == 'anthropic':
-            from core.model_providers.providers.anthropic_provider import AnthropicProvider
-            return AnthropicProvider
-        elif provider_name == 'minimax':
-            from core.model_providers.providers.minimax_provider import MinimaxProvider
-            return MinimaxProvider
-        elif provider_name == 'spark':
-            from core.model_providers.providers.spark_provider import SparkProvider
-            return SparkProvider
-        elif provider_name == 'tongyi':
-            from core.model_providers.providers.tongyi_provider import TongyiProvider
-            return TongyiProvider
-        elif provider_name == 'wenxin':
-            from core.model_providers.providers.wenxin_provider import WenxinProvider
-            return WenxinProvider
-        elif provider_name == 'zhipuai':
-            from core.model_providers.providers.zhipuai_provider import ZhipuAIProvider
-            return ZhipuAIProvider
-        elif provider_name == 'chatglm':
-            from core.model_providers.providers.chatglm_provider import ChatGLMProvider
-            return ChatGLMProvider
-        elif provider_name == 'baichuan':
-            from core.model_providers.providers.baichuan_provider import BaichuanProvider
-            return BaichuanProvider
-        elif provider_name == 'azure_openai':
-            from core.model_providers.providers.azure_openai_provider import AzureOpenAIProvider
-            return AzureOpenAIProvider
-        elif provider_name == 'replicate':
-            from core.model_providers.providers.replicate_provider import ReplicateProvider
-            return ReplicateProvider
-        elif provider_name == 'huggingface_hub':
-            from core.model_providers.providers.huggingface_hub_provider import HuggingfaceHubProvider
-            return HuggingfaceHubProvider
-        elif provider_name == 'xinference':
-            from core.model_providers.providers.xinference_provider import XinferenceProvider
-            return XinferenceProvider
-        elif provider_name == 'openllm':
-            from core.model_providers.providers.openllm_provider import OpenLLMProvider
-            return OpenLLMProvider
-        elif provider_name == 'localai':
-            from core.model_providers.providers.localai_provider import LocalAIProvider
-            return LocalAIProvider
-        elif provider_name == 'cohere':
-            from core.model_providers.providers.cohere_provider import CohereProvider
-            return CohereProvider
-        elif provider_name == 'jina':
-            from core.model_providers.providers.jina_provider import JinaProvider
-            return JinaProvider
-        else:
-            raise NotImplementedError
+    def get_model_provider_class(cls, provider_name: str):
+        raise NotImplementedError
 
     @classmethod
     def get_provider_names(cls):

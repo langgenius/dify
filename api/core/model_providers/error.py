@@ -14,26 +14,6 @@ class LLMBadRequestError(LLMError):
     description = "Bad Request"
 
 
-class LLMAPIConnectionError(LLMError):
-    """Raised when the LLM returns API connection error."""
-    description = "API Connection Error"
-
-
-class LLMAPIUnavailableError(LLMError):
-    """Raised when the LLM returns API unavailable error."""
-    description = "API Unavailable Error"
-
-
-class LLMRateLimitError(LLMError):
-    """Raised when the LLM returns rate limit error."""
-    description = "Rate Limit Error"
-
-
-class LLMAuthorizationError(LLMError):
-    """Raised when the LLM returns authorization error."""
-    description = "Authorization Error"
-
-
 class ProviderTokenNotInitError(Exception):
     """
     Custom exception raised when the provider token is not initialized.

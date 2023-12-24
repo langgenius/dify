@@ -1,7 +1,6 @@
 import enum
 from typing import Optional, TypeVar, Generic
 
-from langchain.load.serializable import Serializable
 from pydantic import BaseModel
 
 
@@ -32,12 +31,6 @@ class ModelKwargs(BaseModel):
     top_p: Optional[float]
     presence_penalty: Optional[float]
     frequency_penalty: Optional[float]
-
-
-class KwargRuleType(enum.Enum):
-    STRING = 'string'
-    INTEGER = 'integer'
-    FLOAT = 'float'
 
 
 T = TypeVar('T')

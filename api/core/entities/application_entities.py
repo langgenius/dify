@@ -263,16 +263,3 @@ class ApplicationGenerateEntity(BaseModel):
 
     # extra parameters, like: auto_generate_conversation_name
     extras: dict[str, Any] = {}
-
-
-class ApplicationGenerateResponse(BaseModel):
-    """
-    Application Generate Response.
-    """
-    event: str = 'message'
-    task_id: str
-    id: str
-    answer: str
-    metadata: dict[str, Any] = {}
-    created_at: int
-    conversation_id: Optional[str] = None

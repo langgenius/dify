@@ -1,19 +1,11 @@
 import enum
-from typing import Any, cast, Union, List, Dict
+from typing import Any, cast
 
 from langchain.schema import HumanMessage, AIMessage, SystemMessage, BaseMessage, FunctionMessage
 from pydantic import BaseModel
 
 from core.model_runtime.entities.message_entities import PromptMessage, UserPromptMessage, TextPromptMessageContent, \
     ImagePromptMessageContent, AssistantPromptMessage, SystemPromptMessage, ToolPromptMessage
-
-
-class LLMRunResult(BaseModel):
-    content: str
-    prompt_tokens: int
-    completion_tokens: int
-    source: list = None
-    function_call: dict = None
 
 
 class MessageType(enum.Enum):
@@ -31,7 +23,6 @@ class PromptMessageFileType(enum.Enum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
-
 
 
 class PromptMessageFile(BaseModel):
@@ -52,25 +43,6 @@ class LCHumanMessageWithFiles(HumanMessage):
     # content: Union[str, List[Union[str, Dict]]]
     content: str
     files: list[PromptMessageFile]
-
-
-def to_lc_messages(messages: list[PromptMessage]):
-    lc_messages = []
-    for message in messages:
-        if message.type == MessageType.USER:
-            if not message.files:
-                lc_messages.append(HumanMessage(content=message.content))
-            else:
-                lc_messages.append(LCHumanMessageWithFiles(content=message.content, files=message.files))
-        elif message.type == MessageType.ASSISTANT:
-            additional_kwargs = {}
-            if message.function_call:
-                additional_kwargs['function_call'] = message.function_call
-            lc_messages.append(AIMessage(content=message.content, additional_kwargs=additional_kwargs))
-        elif message.type == MessageType.SYSTEM:
-            lc_messages.append(SystemMessage(content=message.content))
-
-    return lc_messages
 
 
 def to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
