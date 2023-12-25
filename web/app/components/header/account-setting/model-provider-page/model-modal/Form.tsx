@@ -139,6 +139,7 @@ const Form: FC<FormProps> = ({
         label,
         show_on,
         required,
+        placeholder,
       } = formSchema as CredentialFormSchemaSelect
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -163,6 +164,7 @@ const Form: FC<FormProps> = ({
               return true
             }).map(option => ({ value: option.value, name: option.label[language] }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
+            placeholder={placeholder?.[language]}
           />
           {validating && changeKey === variable && <ValidatingTip />}
         </div>

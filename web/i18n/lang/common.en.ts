@@ -289,6 +289,13 @@ const translation = {
     freeQuota: {
       howToEarn: 'How to earn',
     },
+    addMoreModelProvider: 'ADD MORE MODEL PROVIDER',
+    addModel: 'Add Model',
+    modelsNum: '{{num}} Models',
+    showModels: 'Show Models',
+    showModelsNum: 'Show {{num}} Models',
+    collapse: 'Collapse',
+    config: 'Config',
   },
   dataSource: {
     add: 'Add a data source',

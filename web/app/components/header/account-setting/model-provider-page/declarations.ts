@@ -66,7 +66,7 @@ export type CredentialFormSchemaBase = {
 }
 
 export type CredentialFormSchemaTextInput = CredentialFormSchemaBase & { max_length?: number; placeholder?: TypeWithI18N }
-export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[] }
+export type CredentialFormSchemaSelect = CredentialFormSchemaBase & { options: FormOption[]; placeholder?: TypeWithI18N }
 export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: FormOption[] }
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput

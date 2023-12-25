@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PlusCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type AddModelButtonProps = {
@@ -9,6 +10,8 @@ const AddModelButton: FC<AddModelButtonProps> = ({
   className,
   onClick,
 }) => {
+  const { t } = useTranslation()
+
   return (
     <span
       className={`
@@ -18,7 +21,7 @@ const AddModelButton: FC<AddModelButtonProps> = ({
       onClick={onClick}
     >
       <PlusCircle className='mr-1 w-3 h-3' />
-      Add Model
+      {t('common.modelProvider.addModel')}
     </span>
   )
 }

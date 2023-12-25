@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   CustomConfigrationModelFixedFields,
   ModelItem,
@@ -28,6 +29,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   provider,
   onOpenModal,
 }) => {
+  const { t } = useTranslation()
   const [fetched, setFetched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
@@ -97,8 +99,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             <div className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6'>
               {
                 hasModelList
-                  ? `${modelList.length} Models`
-                  : 'Show Models'
+                  ? t('common.modelProvider.modelsNum', { num: modelList.length })
+                  : t('common.modelProvider.showModels')
               }
             </div>
             <div
@@ -108,8 +110,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               <ChevronDownDouble className='mr-0.5 w-3 h-3' />
               {
                 hasModelList
-                  ? `Show ${modelList.length} Models`
-                  : 'Show Models'
+                  ? t('common.modelProvider.showModelsNum', { num: modelList.length })
+                  : t('common.modelProvider.showModels')
               }
               {
                 loading && (

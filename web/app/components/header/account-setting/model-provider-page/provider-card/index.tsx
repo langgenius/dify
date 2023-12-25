@@ -72,7 +72,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
                   onClick={() => onOpenModal(method)}
                 >
                   <Plus className='mr-[5px] w-3.5 h-3.5' />
-                  Add Model
+                  {t('common.modelProvider.addModel')}
                 </Button>
               )
             })

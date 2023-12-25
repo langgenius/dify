@@ -1,4 +1,5 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   Model,
@@ -20,6 +21,7 @@ const PopupItem: FC<PopupItemProps> = ({
   model,
   onSelect,
 }) => {
+  const { t } = useTranslation()
   const language = useLanguage()
   const handleSelect = (provider: string, modelItem: ModelItem) => {
     if (modelItem.status !== ModelStatusEnum.active)
@@ -68,7 +70,7 @@ const PopupItem: FC<PopupItemProps> = ({
             {
               modelItem.status === ModelStatusEnum.noConfigure && (
                 <div className='hidden group-hover:block text-xs font-medium text-primary-600 cursor-pointer'>
-                  ADD
+                  {t('common.operation.add').toLocaleUpperCase()}
                 </div>
               )
             }

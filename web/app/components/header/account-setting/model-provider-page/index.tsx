@@ -103,7 +103,7 @@ const ModelProviderPage = () => {
         !!notConfigedProviders?.length && (
           <>
             <div className='flex items-center mb-2 text-xs font-semibold text-gray-500'>
-              + ADD MORE MODEL PROVIDER
+              + {t('common.modelProvider.addMoreModelProvider')}
               <span className='grow ml-3 h-[1px] bg-gradient-to-r from-[#f3f4f6]' />
             </div>
             <div className='grid grid-cols-3 gap-2'>
