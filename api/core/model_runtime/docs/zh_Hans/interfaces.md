@@ -25,9 +25,19 @@ def validate_provider_credentials(self, credentials: dict) -> None:
 
 验证失败请抛出 `errors.validate.CredentialsValidateFailedError` 错误。
 
+**注：预定义模型需完整实现该接口，自定义模型供应商只需要如下简单实现即可**
+
+```python
+class XinferenceProvider(Provider):
+    def validate_provider_credentials(self, credentials: dict) -> None:
+        pass
+```
+
 ## 模型
 
 模型分为 5 种不同的模型类型，不同模型类型继承的基类不同，需要实现的方法也不同。
+
+### 通用接口
 
 所有模型均需要统一实现下面 2 个方法：
 
@@ -81,21 +91,31 @@ def validate_provider_credentials(self, credentials: dict) -> None:
       """
   ```
 
-​	可参考 OpenAI `_invoke_error_mapping`。  
-
-- 获取远程模型列表 [可选]
-
-  ```python
-  def remote_models(self, credentials: dict) -> list[AIModelEntity]:
-      """
-      Return remote models if credentials are provided.
+  也可以直接抛出对应Erros，并做如下定义，这样在之后的调用中可以直接抛出`InvokeConnectionError`等异常。
   
-      :param credentials: provider credentials
-      :return:
-      """
-  ```
+    ```python
+    @property
+    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
+        return {
+            InvokeConnectionError: [
+              InvokeConnectionError
+            ],
+            InvokeServerUnavailableError: [
+              InvokeServerUnavailableError
+            ],
+            InvokeRateLimitError: [
+              InvokeRateLimitError
+            ],
+            InvokeAuthorizationError: [
+              InvokeAuthorizationError
+            ],
+            InvokeBadRequestError: [
+              InvokeBadRequestError
+            ],
+        }
+    ```
 
-  若供应商支持从远程获取模型列表，如：OpenAI 的微调模型，获取到远程模型之后需要组织成 [AIModelEntity](schema.md#AIModelEntity) 的列表。
+​	可参考 OpenAI `_invoke_error_mapping`。  
 
 ### LLM
 
@@ -182,7 +202,9 @@ def validate_provider_credentials(self, credentials: dict) -> None:
   ```
 
   参数说明见上述 `LLM 调用`。
-  
+
+  该接口需要根据对应`model`选择合适的`tokenizer`进行计算，如果对应模型没有提供`tokenizer`，可以使用`AIModel`基类中的`_get_num_tokens_by_gpt2(text: str)`方法进行计算。
+
 - 获取自定义模型规则 [可选]
 
   ```python
@@ -196,7 +218,10 @@ def validate_provider_credentials(self, credentials: dict) -> None:
       """
   ```
 
-​	当供应商支持增加自定义 LLM 时，可实现此方法让自定义模型可获取模型规则，默认返回 None。
+​当供应商支持增加自定义 LLM 时，可实现此方法让自定义模型可获取模型规则，默认返回 None。
+
+对于`OpenAI`供应商下的大部分微调模型，可以通过其微调模型名称获取到其基类模型，如`gpt-3.5-turbo-1106`，然后返回基类模型的预定义参数规则，参考[openai](https://github.com/langgenius/dify/blob/feat/model-runtime/api/core/model_runtime/model_providers/openai/llm/llm.py#L801)
+的具体实现
 
 ### TextEmbedding
 
@@ -251,6 +276,8 @@ def validate_provider_credentials(self, credentials: dict) -> None:
   ```
 
   参数说明见上述 `Embedding 调用`。
+
+  同上述`LargeLanguageModel`，该接口需要根据对应`model`选择合适的`tokenizer`进行计算，如果对应模型没有提供`tokenizer`，可以使用`AIModel`基类中的`_get_num_tokens_by_gpt2(text: str)`方法进行计算。
 
 ### Rerank
 
