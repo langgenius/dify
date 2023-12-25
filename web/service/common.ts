@@ -29,6 +29,7 @@ import type {
   DefaultModelResponse,
   Model,
   ModelItem,
+  ModelParameterRule,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -201,6 +202,10 @@ export const fetchDefaultModal: Fetcher<{ data: DefaultModelResponse }, string> 
 
 export const updateDefaultModel: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })
+}
+
+export const fetchModelParameterRules: Fetcher<{ data: ModelParameterRule[] }, string> = (url) => {
+  return get<{ data: ModelParameterRule[] }>(url)
 }
 
 export const submitFreeQuota: Fetcher<{ type: string; redirect_url?: string; result?: string }, string> = (url) => {

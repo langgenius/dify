@@ -12,9 +12,9 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import RadioCard from '@/app/components/base/radio-card/simple'
 import { RETRIEVE_TYPE } from '@/types/app'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+// import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+// import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import Toast from '@/app/components/base/toast'
 import { DATASET_DEFAULT } from '@/config'
 import {
@@ -53,8 +53,8 @@ const ParamsConfig: FC = () => {
     }
     else if (rerankDefaultModel) {
       return {
-        provider_name: rerankDefaultModel.model_provider.provider_name,
-        model_name: rerankDefaultModel.model_name,
+        provider_name: rerankDefaultModel.provider,
+        model_name: rerankDefaultModel.model,
       }
     }
   })()
@@ -104,8 +104,8 @@ const ParamsConfig: FC = () => {
     const config = { ...tempDataSetConfigs }
     if (config.retrieval_model === RETRIEVE_TYPE.multiWay && !config.reranking_model) {
       config.reranking_model = {
-        reranking_provider_name: rerankDefaultModel?.model_provider.provider_name,
-        reranking_model_name: rerankDefaultModel?.model_name,
+        reranking_provider_name: rerankDefaultModel?.provider,
+        reranking_model_name: rerankDefaultModel?.model,
       } as any
     }
     setDatasetConfigs(config)
@@ -162,7 +162,7 @@ const ParamsConfig: FC = () => {
                 <div className='mt-6'>
                   <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
                   <div>
-                    <ModelSelector
+                    {/* <ModelSelector
                       popClassName='!max-w-[100%] !w-full'
                       value={rerankModel && { providerName: rerankModel.provider_name, modelName: rerankModel.model_name } as any}
                       modelType={ModelType.reranking}
@@ -175,7 +175,7 @@ const ParamsConfig: FC = () => {
                           },
                         })
                       }}
-                    />
+                    /> */}
                   </div>
                 </div>
                 <div className='mt-4 space-y-4'>

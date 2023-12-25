@@ -296,6 +296,8 @@ const translation = {
     showModelsNum: '显示 {{num}} 个模型',
     collapse: '收起',
     config: '配置',
+    modelAndParameters: '模型及参数',
+    model: '模型',
   },
   dataSource: {
     add: '添加数据源',

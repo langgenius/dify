@@ -6,9 +6,9 @@ import cn from 'classnames'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
+// import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector'
+// import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+// import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
 import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -202,7 +202,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             </div>
             <div className='grow'>
               <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-                <ModelSelector
+                {/* <ModelSelector
                   readonly
                   value={{
                     providerName: localeCurrentDataset.embedding_model_provider as ProviderEnum,
@@ -210,7 +210,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   }}
                   modelType={ModelType.embeddings}
                   onChange={() => {}}
-                />
+                /> */}
               </div>
               <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
                 {t('datasetSettings.form.embeddingModelTip')}

@@ -6,8 +6,7 @@ import ScoreSlider from '../score-slider'
 import { Item } from './config-param'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { ModelType } from '@/app/components/header/account-setting/model-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
+// import ModelSelector from '@/app/components/header/account-setting/model-page/model-selector/portal-select'
 import { useProviderContext } from '@/context/provider-context'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReplyConfig } from '@/models/debug'
@@ -105,7 +104,7 @@ const ConfigParamModal: FC<Props> = ({
           tooltip={t('appAnnotation.embeddingModelSwitchTip')}
         >
           <div className='pt-1'>
-            <ModelSelector
+            {/* <ModelSelector
               widthSameToTrigger
               value={embeddingModel as any}
               modelType={ModelType.embeddings}
@@ -115,7 +114,7 @@ const ConfigParamModal: FC<Props> = ({
                   modelName: val.model_name,
                 })
               }}
-            />
+            /> */}
           </div>
         </Item>
       </div>

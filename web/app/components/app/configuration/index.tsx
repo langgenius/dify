@@ -16,7 +16,6 @@ import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
 import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
 import type {
   AnnotationReplyConfig,
-  CompletionParams,
   DatasetConfigs,
   Inputs,
   ModelConfig,
@@ -29,7 +28,7 @@ import type { ExternalDataTool } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { ModelConfig as BackendModelConfig, VisionSettings } from '@/types/app'
 import ConfigContext from '@/context/debug-configuration'
-import ConfigModel from '@/app/components/app/configuration/config-model'
+// import ConfigModel from '@/app/components/app/configuration/config-model'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
@@ -48,10 +47,12 @@ import I18n from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type PublichConfig = {
   modelConfig: ModelConfig
-  completionParams: CompletionParams
+  completionParams: FormValue
 }
 
 const Configuration: FC = () => {
@@ -112,7 +113,7 @@ const Configuration: FC = () => {
   const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
-  const [completionParams, doSetCompletionParams] = useState<CompletionParams>({
+  const [completionParams, doSetCompletionParams] = useState<FormValue>({
     max_tokens: 16,
     temperature: 1, // 0-2
     top_p: 1,
@@ -121,7 +122,7 @@ const Configuration: FC = () => {
     stop: [],
   })
   const [tempStop, setTempStop, getTempStop] = useGetState<string[]>([])
-  const setCompletionParams = (value: CompletionParams) => {
+  const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
@@ -281,11 +282,11 @@ const Configuration: FC = () => {
   })
 
   const setModel = async ({
-    id: modelId,
+    model: modelId,
     provider,
     mode: modeMode,
     features,
-  }: { id: string; provider: string; mode: ModelModeType; features: string[] }) => {
+  }: { model: string; provider: string; mode: string; features: string[] }) => {
     if (isAdvancedMode) {
       const appMode = mode
 
@@ -646,14 +647,14 @@ const Configuration: FC = () => {
 
             <div className='flex items-center flex-wrap gap-y-2 gap-x-2'>
               {/* Model and Parameters */}
-              <ConfigModel
+              <ModelParameterModal
                 isAdvancedMode={isAdvancedMode}
                 mode={mode}
                 provider={modelConfig.provider}
                 completionParams={completionParams}
                 modelId={modelConfig.model_id}
                 setModel={setModel}
-                onCompletionParamsChange={(newParams: CompletionParams) => {
+                onCompletionParamsChange={(newParams: FormValue) => {
                   setCompletionParams(newParams)
                 }}
                 disabled={!hasSettedApiKey}

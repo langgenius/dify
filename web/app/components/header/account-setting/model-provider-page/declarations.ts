@@ -169,3 +169,16 @@ export type CustomConfigrationModelFixedFields = {
   __model_name: string
   __model_type: ModelTypeEnum
 }
+
+export type ModelParameterRule = {
+  default: number
+  help: TypeWithI18N
+  label: TypeWithI18N
+  min: number
+  max: number
+  name: string
+  precision: number
+  required: false
+  type: string
+  use_template: string
+}

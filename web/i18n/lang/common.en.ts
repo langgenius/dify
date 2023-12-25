@@ -296,6 +296,8 @@ const translation = {
     showModelsNum: 'Show {{num}} Models',
     collapse: 'Collapse',
     config: 'Config',
+    modelAndParameters: 'Model and Parameters',
+    model: 'Model',
   },
   dataSource: {
     add: 'Add a data source',

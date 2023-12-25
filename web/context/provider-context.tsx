@@ -69,7 +69,7 @@ const ProviderContext = createContext<{
       moderationDefaultModel: undefined,
       mutateModerationDefaultModel: () => {},
       supportRetrievalMethods: [],
-      hasSettedApiKey: false,
+      hasSettedApiKey: true,
       plan: {
         type: Plan.sandbox,
         usage: {
