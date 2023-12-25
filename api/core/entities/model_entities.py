@@ -1,4 +1,5 @@
 from enum import Enum
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -23,8 +24,8 @@ class SimpleModelProviderEntity(BaseModel):
     """
     provider: str
     label: I18nObject
-    icon_small: I18nObject
-    icon_large: I18nObject
+    icon_small: Optional[I18nObject] = None
+    icon_large: Optional[I18nObject] = None
     supported_model_types: list[ModelType]
 
 
