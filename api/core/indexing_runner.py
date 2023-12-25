@@ -296,6 +296,7 @@ class IndexingRunner:
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
                 }
+        embedding_model_instance = cast(TextEmbeddingModel, embedding_model_instance)
         embedding_price_info = embedding_model_instance.get_price(
             model=embedding_model_instance.model,
             credentials=embedding_model_instance.credentials,
