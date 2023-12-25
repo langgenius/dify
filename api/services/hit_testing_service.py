@@ -12,6 +12,7 @@ from sklearn.manifold import TSNE
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DocumentSegment, DatasetQuery
@@ -104,10 +105,14 @@ class HitTestingService:
                 model=retrieval_model['reranking_model']['reranking_model_name']
             )
 
-            # TODO
-            all_documents = rerank_model_instance.invoke_rerank(query, all_documents,
-                                                 retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
-                                                 retrieval_model['top_k'])
+            rerank_runner = RerankRunner(rerank_model_instance)
+            all_documents = rerank_runner.run(
+                query=query,
+                documents=all_documents,
+                score_threshold=retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
+                top_n=retrieval_model['top_k'],
+                user=f"account-{account.id}"
+            )
 
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")

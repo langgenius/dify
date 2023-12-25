@@ -11,6 +11,7 @@ from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService
@@ -153,11 +154,12 @@ class DatasetRetrieverTool(BaseTool):
                     except InvokeAuthorizationError:
                         return ''
 
-                    # TODO documents resort
-                    documents = rerank_model_instance.invoke_rerank(
+                    rerank_runner = RerankRunner(rerank_model_instance)
+                    documents = rerank_runner.run(
                         query=query,
-                        docs=documents,
-                        score_threshold=retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
+                        documents=documents,
+                        score_threshold=retrieval_model['score_threshold'] if retrieval_model[
+                            'score_threshold_enabled'] else None,
                         top_n=self.top_k
                     )
             else:

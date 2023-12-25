@@ -1,4 +1,3 @@
-
 from typing import Optional
 from flask import current_app, Flask
 from langchain.embeddings.base import Embeddings
@@ -6,6 +5,7 @@ from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
+from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.dataset import Dataset
 
@@ -63,8 +63,13 @@ class RetrievalService:
                     except InvokeAuthorizationError:
                         return
 
-                    # TODO documents resort
-                    all_documents.extend(rerank_model_instance.invoke_rerank(query, documents, score_threshold, len(documents)))
+                    rerank_runner = RerankRunner(rerank_model_instance)
+                    all_documents.extend(rerank_runner.run(
+                        query=query,
+                        documents=documents,
+                        score_threshold=score_threshold,
+                        top_n=len(documents)
+                    ))
                 else:
                     all_documents.extend(documents)
 
@@ -101,11 +106,12 @@ class RetrievalService:
                     except InvokeAuthorizationError:
                         return
 
-                    # TODO documents resort
-                    all_documents.extend(rerank_model_instance.invoke_rerank(query, documents, score_threshold, len(documents)))
+                    rerank_runner = RerankRunner(rerank_model_instance)
+                    all_documents.extend(rerank_runner.run(
+                        query=query,
+                        documents=documents,
+                        score_threshold=score_threshold,
+                        top_n=len(documents)
+                    ))
                 else:
                     all_documents.extend(documents)
-
-
-
-
