@@ -513,10 +513,7 @@ class ProviderConfiguration(BaseModel):
             if model_type not in self.provider.supported_model_types:
                 continue
 
-            if credentials:
-                models = provider_instance.models(model_type, credentials)
-            else:
-                models = provider_instance.models(model_type)
+            models = provider_instance.models(model_type)
 
             provider_models.extend(
                 ModelWithProviderEntity(
@@ -586,9 +583,9 @@ class ProviderConfigurations(BaseModel):
 
         If real mode is `system`, use system credentials to get models,
           paid quotas > provider free quotas > system free quotas
-          include pre-defined models (exclude GPT-4, status marked as `no_permission`), remote models.
+          include pre-defined models (exclude GPT-4, status marked as `no_permission`).
         If real mode is `custom`, use workspace custom credentials to get models,
-          include pre-defined models, remote models and custom models(manual append).
+          include pre-defined models, custom models(manual append).
         If real mode is `no_configure`, only return pre-defined models from `model runtime`.
           (model status marked as `no_configure` if preferred provider type is `custom` otherwise `quota_exceeded`)
         model status marked as `active` is available.

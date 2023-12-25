@@ -12,7 +12,7 @@ from core.model_runtime.entities.message_entities import PromptMessageTool, Prom
     PromptMessageFunction, UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
     TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity, I18nObject, ModelType, FetchFrom, \
-    PriceConfig
+    PriceConfig, AIModelEntity, FetchFrom
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
     LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -90,17 +90,19 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         """
         # handle fine tune remote models
         if model.startswith('ft:'):
-            model = model.split(':')[1]
+            base_model = model.split(':')[1]
+        else:
+            base_model = model
 
         # get model mode
         model_mode = self.get_model_mode(model)
 
         if model_mode == LLMMode.CHAT:
             # chat model
-            return self._num_tokens_from_messages(model, prompt_messages, tools)
+            return self._num_tokens_from_messages(base_model, prompt_messages, tools)
         else:
             # text completion model, do not support tool calling
-            return self._num_tokens_from_string(model, prompt_messages[0].content)
+            return self._num_tokens_from_string(base_model, prompt_messages[0].content)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -117,8 +119,15 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
             # handle fine tune remote models
             base_model = model
+            # fine-tuned model name likes ft:gpt-3.5-turbo-0613:personal::xxxxx
             if model.startswith('ft:'):
                 base_model = model.split(':')[1]
+
+                # check if model exists
+                remote_models = self.remote_models()
+                remote_model_map = {model.model: model for model in remote_models}
+                if model not in remote_model_map:
+                    raise CredentialsValidateFailedError(f'Fine-tuned model {model} not found')
 
             # get model mode
             model_mode = self.get_model_mode(base_model, credentials)
@@ -184,7 +193,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 ),
                 model_type=ModelType.LLM,
                 features=base_model_schema.features,
-                fetch_from=FetchFrom.REMOTE,
+                fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
                 model_properties=base_model_schema.model_properties,
                 parameter_rules=base_model_schema.parameter_rules,
                 pricing=PriceConfig(
@@ -788,3 +797,49 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     num_tokens += len(encoding.encode(required_field))
 
         return num_tokens
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
+        """
+            OpenAI supports fine-tuning of their models. This method returns the schema of the base model
+            but renamed to the fine-tuned model name.
+
+            :param model: model name
+            :param credentials: credentials
+
+            :return: model schema
+        """
+        if not model.startswith('ft:'):
+            base_model = model
+        else:
+            # get base_model
+            base_model = model.split(':')[1]
+
+        # get model schema
+        models = self.predefined_models()
+        model_map = {model.model: model for model in models}
+        if base_model not in model_map:
+            raise ValueError(f'Base model {base_model} not found')
+        
+        base_model_schema = model_map[base_model]
+
+        base_model_schema_features = base_model_schema.features or []
+        base_model_schema_model_properties = base_model_schema.model_properties or {}
+        base_model_schema_parameters_rules = base_model_schema.parameter_rules or []
+
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(
+                zh_Hans=model,
+                en_US=model
+            ),
+            model_type=ModelType.LLM,
+            features=[feature for feature in base_model_schema_features],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                key: property for key, property in base_model_schema_model_properties.items()
+            },
+            parameter_rules=[rule for rule in base_model_schema_parameters_rules],
+            pricing=base_model_schema.pricing    
+        )
+
+        return entity

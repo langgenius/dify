@@ -21,7 +21,7 @@ supported_model_types:
 - moderation
 configurate_methods:
 - predefined-model
-- fetch-from-remote
+- customizable-model
 provider_credential_schema:
   credential_form_schemas:
   - variable: openai_api_key

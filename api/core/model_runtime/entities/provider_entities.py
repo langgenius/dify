@@ -13,7 +13,6 @@ class ConfigurateMethod(Enum):
     """
     PREDEFINED_MODEL = "predefined-model"
     CUSTOMIZABLE_MODEL = "customizable-model"
-    FETCH_FROM_REMOTE = "fetch-from-remote"
 
 
 class FormType(Enum):

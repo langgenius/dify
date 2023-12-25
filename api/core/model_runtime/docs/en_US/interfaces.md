@@ -84,20 +84,6 @@ All models need to uniformly implement the following 2 methods:
 
 ​	You can refer to OpenAI's `_invoke_error_mapping` for an example.
 
-- Fetch Remote Model List [Optional]
-
-  ```python
-  def remote_models(self, credentials: dict) -> list[AIModelEntity]:
-      """
-      Return remote models if credentials are provided.
-  
-      :param credentials: provider credentials
-      :return:
-      """
-  ```
-
-  If the provider supports fetching the model list remotely, such as OpenAI's fine-tuned models, the retrieved remote models need to be organized into a list of [AIModelEntity](schema.md#AIModelEntity).
-
 ### LLM
 
 Inherit the `__base.large_language_model.LargeLanguageModel` base class and implement the following interfaces:

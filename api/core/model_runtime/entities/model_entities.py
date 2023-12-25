@@ -64,7 +64,6 @@ class FetchFrom(Enum):
     Enum class for fetch from.
     """
     PREDEFINED_MODEL = "predefined-model"
-    REMOTE = "fetch-from-remote"
     CUSTOMIZABLE_MODEL = "customizable-model"
 
 

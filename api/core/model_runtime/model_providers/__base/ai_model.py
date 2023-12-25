@@ -103,15 +103,6 @@ class AIModel(ABC):
             currency=price_config.currency,
         )
 
-    def remote_models(self, credentials: dict) -> list[AIModelEntity]:
-        """
-        Return remote models if credentials are provided.
-
-        :param credentials: provider credentials
-        :return:
-        """
-        return []
-
     def predefined_models(self) -> list[AIModelEntity]:
         """
         Get all predefined models for given provider.
@@ -219,16 +210,6 @@ class AIModel(ABC):
         """
         # get predefined models (predefined_models)
         models = self.predefined_models()
-
-        # get remote models from remote api
-        if credentials:
-            remote_models = self.remote_models(credentials)
-            if remote_models:
-                # merge predefined_models and remote_models
-                predefined_model_ids = [model.model for model in models]
-                for remote_model in remote_models:
-                    if remote_model.model not in predefined_model_ids:
-                        models.append(remote_model)
 
         model_map = {model.model: model for model in models}
         if model in model_map:

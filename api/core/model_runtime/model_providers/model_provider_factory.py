@@ -161,7 +161,6 @@ class ModelProviderFactory:
                 # get predefined models for given model type
                 models = model_provider_instance.models(
                     model_type=model_type,
-                    remote_model_fetch_credentials=provider_credentials_dict.get(name)
                 )
 
                 all_model_type_models.extend(models)

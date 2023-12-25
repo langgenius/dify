@@ -5,7 +5,8 @@ import pytest
 
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, UserPromptMessage, \
     SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool
-from core.model_runtime.entities.model_entities import AIModelEntity
+from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
     LLMResultChunk
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -324,7 +325,7 @@ def test_get_num_tokens():
     assert num_tokens == 21
 
 
-def test_remote_models():
+def test_fine_tuned_models():
     model = OpenAILargeLanguageModel()
 
     remote_models = model.remote_models(credentials={
@@ -336,6 +337,35 @@ def test_remote_models():
     else:
         assert isinstance(remote_models[0], AIModelEntity)
 
+    for llm_model in remote_models:
+        if llm_model.model_type == ModelType.LLM:
+            break
+
+    assert isinstance(llm_model, AIModelEntity)
+
+    # test invoke
+    result = model.invoke(
+        model=llm_model.model,
+        credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='You are a helpful AI assistant.',
+            ),
+            UserPromptMessage(
+                content='Hello World!'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.0,
+            'max_tokens': 100
+        },
+        stream=False,
+        user="abc-123"
+    )
+
+    assert isinstance(result, LLMResult)
 
 def test__get_num_tokens_by_gpt2():
     model = OpenAILargeLanguageModel()

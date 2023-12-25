@@ -61,12 +61,11 @@ class ModelProvider(ABC):
 
         return provider_schema
 
-    def models(self, model_type: ModelType, remote_model_fetch_credentials: Optional[dict] = None) -> list[AIModelEntity]:
+    def models(self, model_type: ModelType) -> list[AIModelEntity]:
         """
         Get all models for given model type
 
         :param model_type: model type defined in `ModelType`
-        :param remote_model_fetch_credentials: credentials for fetching remote models if you want to fetch remote models
         :return: list of models
         """
         provider_schema = self.get_provider_schema()
@@ -78,18 +77,6 @@ class ModelProvider(ABC):
 
         # get predefined models (predefined_models)
         models = model_instance.predefined_models()
-
-        # continue to get remote models if remote_model_fetch_credentials is provided
-        if remote_model_fetch_credentials:
-            # get remote models from remote api
-            remote_models = model_instance.remote_models(remote_model_fetch_credentials)
-
-            if remote_models:
-                # merge predefined_models and remote_models
-                predefined_model_ids = [model.model for model in models]
-                for remote_model in remote_models:
-                    if remote_model.model not in predefined_model_ids:
-                        models.append(remote_model)
 
         # return models
         return models
