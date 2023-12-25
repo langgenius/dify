@@ -75,7 +75,46 @@ provider_credential_schema:  # 供应商凭据规则，由于 Anthropic 仅支�
     placeholder:
       zh_Hans: 在此输入您的 API URL
       en_US: Enter your API URL
+```
 
+如果接入的供应商提供自定义模型，比如`OpenAI`提供微调模型，那么我们就需要添加[`model_credential_schema`](./schema.md#modelcredentialschema)，以`OpenAI`为例：
+
+```yaml
+model_credential_schema:
+  model: # 微调模型名称
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+  - variable: openai_api_key
+    label:
+      en_US: API Key
+    type: secret-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入您的 API Key
+      en_US: Enter your API Key
+  - variable: openai_organization
+    label:
+        zh_Hans: 组织 ID
+        en_US: Organization
+    type: text-input
+    required: false
+    placeholder:
+      zh_Hans: 在此输入您的组织 ID
+      en_US: Enter your Organization ID
+  - variable: openai_api_base
+    label:
+      zh_Hans: API Base
+      en_US: API Base
+    type: text-input
+    required: false
+    placeholder:
+      zh_Hans: 在此输入您的 API Base
+      en_US: Enter your API Base
 ```
 
 也可以参考  `model_providers` 目录下其他供应商目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#Provider)。
@@ -86,7 +125,13 @@ provider_credential_schema:  # 供应商凭据规则，由于 Anthropic 仅支�
 
 ##### 自定义模型供应商
 
-当供应商为Xinference等自定义模型供应商时，可跳过该步骤，仅创建一个空的`XinferenceProvider`类即可。
+当供应商为Xinference等自定义模型供应商时，可跳过该步骤，仅创建一个空的`XinferenceProvider`类即可，并实现一个空的`validate_provider_credentials`方法，该方法并不会被实际使用，仅用作避免抽象类无法实例化。
+
+```python
+class XinferenceProvider(Provider):
+    def validate_provider_credentials(self, credentials: dict) -> None:
+        pass
+```
 
 ##### 预定义模型供应商
 
