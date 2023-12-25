@@ -1,4 +1,5 @@
 from core.file.message_file_parser import MessageFileParser
+from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage, TextPromptMessageContent, UserPromptMessage, \
     AssistantPromptMessage, PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelType
@@ -8,10 +9,9 @@ from models.model import Conversation, Message
 
 
 class TokenBufferMemory:
-    def __init__(self, conversation: Conversation, provider: str, model: str) -> None:
+    def __init__(self, conversation: Conversation, model_instance: ModelInstance) -> None:
         self.conversation = conversation
-        self.provider = provider
-        self.model = model
+        self.model_instance = model_instance
 
     def get_history_prompt_messages(self, max_token_limit: int = 2000,
                                     message_limit: int = 10) -> list[PromptMessage]:
@@ -56,11 +56,12 @@ class TokenBufferMemory:
             return []
 
         # prune the chat message if it exceeds the max token limit
-        provider_instance = model_provider_factory.get_provider_instance(self.provider)
+        provider_instance = model_provider_factory.get_provider_instance(self.model_instance.provider)
         model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
 
         curr_message_tokens = model_type_instance.get_num_tokens(
-            self.model,
+            self.model_instance.model,
+            self.model_instance.credentials,
             prompt_messages
         )
 
@@ -69,7 +70,8 @@ class TokenBufferMemory:
             while curr_message_tokens > max_token_limit and prompt_messages:
                 pruned_memory.append(prompt_messages.pop(0))
                 curr_message_tokens = model_type_instance.get_num_tokens(
-                    self.model,
+                    self.model_instance.model,
+                    self.model_instance.credentials,
                     prompt_messages
                 )
 

@@ -68,6 +68,7 @@ def batch_create_segment_to_index_task(job_id: str, content: List, dataset_id: s
             # calc embedding use tokens
             tokens = model_type_instance.get_num_tokens(
                 model=embedding_model.model,
+                credentials=embedding_model.credentials,
                 texts=[content]
             ) if embedding_model else 0
             max_position = db.session.query(func.max(DocumentSegment.position)).filter(

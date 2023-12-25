@@ -51,6 +51,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='embo-01',
+        credentials={
+            'minimax_api_key': os.environ.get('MINIMAX_API_KEY'),
+            'minimax_group_id': os.environ.get('MINIMAX_GROUP_ID')
+        },
         texts=[
             "hello",
             "world"

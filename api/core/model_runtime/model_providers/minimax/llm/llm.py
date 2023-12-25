@@ -54,7 +54,7 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
         except InvalidAuthenticationError as e:
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage], 
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
         return self._num_tokens_from_messages(prompt_messages, tools)
 

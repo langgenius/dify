@@ -220,6 +220,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='chatglm2-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',
@@ -260,6 +263,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='chatglm2-6b',
+        credentials={
+            'api_base': os.environ.get('CHATGLM_API_BASE')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

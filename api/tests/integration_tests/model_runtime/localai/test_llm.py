@@ -154,6 +154,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='????',
+        credentials={
+            'server_url': os.environ.get('LOCALAI_SERVER_URL'),
+            'completion_type': 'chat_completion',
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',
@@ -194,6 +198,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='????',
+        credentials={
+            'server_url': os.environ.get('LOCALAI_SERVER_URL'),
+            'completion_type': 'chat_completion',
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'

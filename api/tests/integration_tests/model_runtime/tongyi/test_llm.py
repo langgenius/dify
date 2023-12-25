@@ -91,6 +91,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='qwen-turbo',
+        credentials={
+            'tongyi_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

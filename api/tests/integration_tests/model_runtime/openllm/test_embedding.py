@@ -49,6 +49,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='NOT IMPORTANT',
+        credentials={
+            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
+        },
         texts=[
             "hello",
             "world"

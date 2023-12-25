@@ -348,6 +348,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='ChatGLM3',
+        credentials={
+            'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
+            'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',
@@ -388,6 +392,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='ChatGLM3',
+        credentials={
+            'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
+            'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

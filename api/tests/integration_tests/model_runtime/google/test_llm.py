@@ -158,6 +158,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='gemini-pro',
+        credentials={
+            'google_api_key': os.environ.get('GOOGLE_API_KEY')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

@@ -394,6 +394,7 @@ class PromptTransform:
 
             curr_message_tokens = model_type_instance.get_num_tokens(
                 model_config.model,
+                model_config.credentials,
                 prompt_messages
             )
 

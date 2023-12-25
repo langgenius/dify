@@ -142,6 +142,10 @@ def test_get_num_tokens():
 
     response = model.get_num_tokens(
         model='abab5.5-chat',
+        credentials={
+            'minimax_api_key': os.environ.get('MINIMAX_API_KEY'),
+            'minimax_group_id': os.environ.get('MINIMAX_GROUP_ID')
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'

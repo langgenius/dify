@@ -89,6 +89,9 @@ def test_get_num_tokens():
 
     response = model.get_num_tokens(
         model='NOT IMPORTANT',
+        credentials={
+            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'

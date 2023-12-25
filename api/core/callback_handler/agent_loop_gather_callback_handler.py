@@ -96,6 +96,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             else:
                 self._current_loop.prompt_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
+                    credentials=self.model_config.credentials,
                     prompt_messages=[UserPromptMessage(content=self._current_loop.prompt)]
                 )
             completion_generation = response.generations[0][0]
@@ -114,6 +115,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             else:
                 self._current_loop.completion_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
+                    credentials=self.model_config.credentials,
                     prompt_messages=[AssistantPromptMessage(content=self._current_loop.completion)]
                 )
 

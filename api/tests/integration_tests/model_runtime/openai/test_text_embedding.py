@@ -52,6 +52,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='text-embedding-ada-002',
+        credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY'),
+            'openai_api_base': 'https://api.openai.com'
+        },
         texts=[
             "hello",
             "world"

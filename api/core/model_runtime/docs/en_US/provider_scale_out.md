@@ -183,16 +183,17 @@ In `llm.py`, create an Anthropic LLM class, which we name `AnthropicLargeLanguag
   If the model does not provide a pre-calculated tokens interface, you can directly return 0.
 
   ```python
-  def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
-                     tools: Optional[list[PromptMessageTool]] = None) -> int:
-      """
-      Get number of tokens for given prompt messages
-  
-      :param model:
-      :param prompt_messages:
-      :param tools: tools for tool calling
-      :return:
-      """
+  def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                   tools: Optional[list[PromptMessageTool]] = None) -> int:
+    """
+    Get number of tokens for given prompt messages
+
+    :param model: model name
+    :param credentials: model credentials
+    :param prompt_messages: prompt messages
+    :param tools: tools for tool calling
+    :return:
+    """
   ```
 
 - Model Credential Verification

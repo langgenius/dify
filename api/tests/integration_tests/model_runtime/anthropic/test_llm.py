@@ -98,6 +98,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='claude-instant-1',
+        credentials={
+            'anthropic_api_key': os.environ.get('ANTHROPIC_API_KEY')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

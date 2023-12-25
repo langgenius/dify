@@ -49,6 +49,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='baichuang-text-embedding',
+        credentials={
+            'api_key': os.environ.get('BAICHUAN_API_KEY'),
+        },
         texts=[
             "hello",
             "world"

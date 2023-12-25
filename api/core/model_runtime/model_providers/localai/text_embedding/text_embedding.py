@@ -93,11 +93,12 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
 
         return result
 
-    def get_num_tokens(self, model: str, texts: list[str]) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
         Get number of tokens for given prompt messages
 
         :param model: model name
+        :param credentials: model credentials
         :param texts: texts to embed
         :return:
         """

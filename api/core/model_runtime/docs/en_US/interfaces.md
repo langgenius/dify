@@ -157,13 +157,14 @@ Inherit the `__base.large_language_model.LargeLanguageModel` base class and impl
   If the model does not provide a pre-calculated tokens interface, you can directly return 0.
 
   ```python
-  def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+  def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                      tools: Optional[list[PromptMessageTool]] = None) -> int:
       """
       Get number of tokens for given prompt messages
-  
-      :param model:
-      :param prompt_messages:
+
+      :param model: model name
+      :param credentials: model credentials
+      :param prompt_messages: prompt messages
       :param tools: tools for tool calling
       :return:
       """
@@ -229,11 +230,12 @@ Inherit the `__base.text_embedding_model.TextEmbeddingModel` base class and impl
 - Pre-calculating Tokens
 
   ```python
-  def get_num_tokens(self, model: str, texts: list[str]) -> int:
+  def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
       """
       Get number of tokens for given prompt messages
-  
+
       :param model: model name
+      :param credentials: model credentials
       :param texts: texts to embed
       :return:
       """

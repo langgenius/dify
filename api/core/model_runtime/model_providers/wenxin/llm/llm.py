@@ -18,7 +18,7 @@ class ErnieBotLarguageModel(LargeLanguageModel):
         return self._generate(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                 model_parameters=model_parameters, tools=tools, stop=stop, stream=stream, user=user)
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
         # tools is not supported yet
         return self._num_tokens_from_messages(prompt_messages)

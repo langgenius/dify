@@ -58,6 +58,12 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='bge-base-en',
+        credentials={
+            'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
+            'model_type': 'embeddings',
+            'model_name': 'NOT IMPORTANT',
+            'model_uid': os.environ.get('XINFERENCE_EMBEDDINGS_MODEL_UID')
+        },
         texts=[
             "hello",
             "world"

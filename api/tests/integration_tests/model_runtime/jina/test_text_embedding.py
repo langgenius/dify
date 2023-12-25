@@ -51,6 +51,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='jina-embeddings-v2-base-en',
+        credentials={
+            'api_key': os.environ.get('JINA_API_KEY'),
+        },
         texts=[
             "hello",
             "world"

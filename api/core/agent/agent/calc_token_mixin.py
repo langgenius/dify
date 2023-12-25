@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, cast
 
 from langchain.schema import BaseMessage
 
@@ -10,12 +10,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 
 class CalcTokenMixin:
-
-    def get_num_tokens_from_messages(self, model: str, model_type_instance: LargeLanguageModel, messages: List[BaseMessage], **kwargs) -> int:
-        return model_type_instance.get_num_tokens(
-            model,
-            lc_messages_to_prompt_messages(messages)
-        )
 
     def get_message_rest_tokens(self, model_config: ModelConfigEntity, messages: List[PromptMessage], **kwargs) -> int:
         """
@@ -45,6 +39,7 @@ class CalcTokenMixin:
 
         prompt_tokens = model_type_instance.get_num_tokens(
             model_config.model,
+            model_config.credentials,
             messages
         )
 
