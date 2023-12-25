@@ -13,7 +13,6 @@ from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
 from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
-from core.model_providers.models.entity.model_params import ModelMode
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -219,7 +218,7 @@ Thought: {agent_scratchpad}
     ) -> Agent:
         """Construct an agent from an LLM and tools."""
         cls._validate_tools(tools)
-        if model_config.mode == ModelMode.CHAT.value:
+        if model_config.mode == "chat":
             prompt = cls.create_prompt(
                 tools,
                 prefix=prefix,

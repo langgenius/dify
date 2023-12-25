@@ -11,7 +11,7 @@ from pydantic import root_validator
 
 from core.entities.application_entities import ModelConfigEntity
 from core.model_manager import ModelInstance
-from core.model_providers.models.entity.message import lc_messages_to_prompt_messages
+from core.entities.message_entities import lc_messages_to_prompt_messages
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.third_party.langchain.llms.fake import FakeLLM
 

@@ -4,7 +4,6 @@ from flask import current_app, Flask
 from langchain.embeddings.base import Embeddings
 from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
-from core.model_providers.model_factory import ModelFactory
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from extensions.ext_database import db

@@ -11,7 +11,6 @@ from sklearn.manifold import TSNE
 
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
-from core.model_providers.model_factory import ModelFactory
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from models.account import Account
@@ -97,12 +96,16 @@ class HitTestingService:
             thread.join()
 
         if retrieval_model['search_method'] == 'hybrid_search':
-            hybrid_rerank = ModelFactory.get_reranking_model(
+            model_manager = ModelManager()
+            rerank_model_instance = model_manager.get_model_instance(
                 tenant_id=dataset.tenant_id,
-                model_provider_name=retrieval_model['reranking_model']['reranking_provider_name'],
-                model_name=retrieval_model['reranking_model']['reranking_model_name']
+                provider=retrieval_model['reranking_model']['reranking_provider_name'],
+                model_type=ModelType.RERANK,
+                model=retrieval_model['reranking_model']['reranking_model_name']
             )
-            all_documents = hybrid_rerank.rerank(query, all_documents,
+
+            # TODO
+            all_documents = rerank_model_instance.invoke_rerank(query, all_documents,
                                                  retrieval_model['score_threshold'] if retrieval_model['score_threshold_enabled'] else None,
                                                  retrieval_model['top_k'])
 

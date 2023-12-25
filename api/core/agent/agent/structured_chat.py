@@ -16,8 +16,7 @@ from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
 from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
-from core.model_providers.models.entity.message import lc_messages_to_prompt_messages
-from core.model_providers.models.entity.model_params import ModelMode
+from core.entities.message_entities import lc_messages_to_prompt_messages
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
