@@ -249,6 +249,10 @@ const translation = {
       key: 'Rerank 模型',
       tip: '重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果',
     },
+    moderationModel: {
+      key: 'Moderation 模型',
+      tip: '重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果',
+    },
     quota: '额度',
     searchModel: '搜索模型',
     noModelFound: '找不到模型 {{model}}',
@@ -285,6 +289,15 @@ const translation = {
     freeQuota: {
       howToEarn: '如何获取',
     },
+    addMoreModelProvider: '添加更多模型提供商',
+    addModel: '添加模型',
+    modelsNum: '{{num}} 个模型',
+    showModels: '显示模型',
+    showModelsNum: '显示 {{num}} 个模型',
+    collapse: '收起',
+    config: '配置',
+    modelAndParameters: '模型及参数',
+    model: '模型',
   },
   dataSource: {
     add: '添加数据源',

@@ -1,3 +1,7 @@
+export { default as MagicBox } from './MagicBox'
+export { default as MagicEyes } from './MagicEyes'
+export { default as MagicWand } from './MagicWand'
 export { default as Microphone01 } from './Microphone01'
+export { default as Robot } from './Robot'
 export { default as Sliders02 } from './Sliders02'
 export { default as StopCircle } from './StopCircle'

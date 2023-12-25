@@ -14,7 +14,8 @@ import { Check, LinkExternal01, SearchLg } from '@/app/components/base/icons/src
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
-import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelName from '@/app/components/app/configuration/config-model/model-name'
 import ProviderName from '@/app/components/app/configuration/config-model/provider-name'
 import { useProviderContext } from '@/context/provider-context'
@@ -196,8 +197,8 @@ const ModelSelector: FC<Props> = ({
                     <>
                       <ModelIcon
                         className={cn('mr-1.5', !triggerIconSmall && 'w-5 h-5')}
-                        modelId={value.modelName}
                         providerName={value.providerName}
+                        modelType={ModelTypeEnum.textGeneration}
                       />
                       <div className='mr-1.5 grow flex items-center text-left text-sm text-gray-900 truncate'>
                         <ModelName modelId={value.modelName} modelDisplayName={currModel?.model_display_name || value.modelName} />

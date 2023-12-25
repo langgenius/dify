@@ -249,6 +249,10 @@ const translation = {
       key: 'Rerank Model',
       tip: 'Rerank model will reorder the candidate document list based on the semantic match with  user query, improving the results of semantic ranking',
     },
+    moderationModel: {
+      key: 'Moderation Model',
+      tip: '重排序模型将根据候选文档列表与用户问题语义匹配度进行重新排序，从而改进语义排序的结果',
+    },
     quota: 'Quota',
     searchModel: 'Search model',
     noModelFound: 'No model found for {{model}}',
@@ -285,6 +289,15 @@ const translation = {
     freeQuota: {
       howToEarn: 'How to earn',
     },
+    addMoreModelProvider: 'ADD MORE MODEL PROVIDER',
+    addModel: 'Add Model',
+    modelsNum: '{{num}} Models',
+    showModels: 'Show Models',
+    showModelsNum: 'Show {{num}} Models',
+    collapse: 'Collapse',
+    config: 'Config',
+    modelAndParameters: 'Model and Parameters',
+    model: 'Model',
   },
   dataSource: {
     add: 'Add a data source',

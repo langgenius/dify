@@ -4,7 +4,8 @@ import React from 'react'
 import cn from 'classnames'
 import { useBoolean, useClickAway } from 'ahooks'
 import s from './style.module.css'
-import ModelIcon from '@/app/components/app/configuration/config-model/model-icon'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Google, WebReader, Wikipedia } from '@/app/components/base/icons/src/public/plugins'
 import ConfigDetail from '@/app/components/explore/universal-chat/config-view/detail'
 import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
@@ -63,7 +64,7 @@ const Summary: FC<ISummaryProps> = ({
   return (
     <div ref={configContentRef} className='relative'>
       <div onClick={toggleShowConfig} className={cn(getColorInfo(modelId), 'flex items-center px-1 h-8 rounded-lg border cursor-pointer')}>
-        <ModelIcon providerName={providerName} modelId={modelId} className='!w-6 !h-6' />
+        <ModelIcon providerName={providerName} modelType={ModelTypeEnum.textGeneration} className='!w-6 !h-6' />
         <div className='ml-2 text-[13px] font-medium text-gray-900'><ModelName modelId={modelId} modelDisplayName={currModel?.model_display_name} /></div>
         {
           pluginIds.length > 0 && (
