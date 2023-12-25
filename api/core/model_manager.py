@@ -1,13 +1,13 @@
 from typing import Optional, Union, Generator, cast, List, IO
 
 from core.entities.provider_configuration import ProviderModelBundle
+from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
-from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
@@ -41,7 +41,7 @@ class ModelInstance:
         )
 
         if credentials is None:
-            raise InvokeAuthorizationError(f"Model {model} credentials is not initialized.")
+            raise ProviderTokenNotInitError(f"Model {model} credentials is not initialized.")
 
         return credentials
 
@@ -62,7 +62,7 @@ class ModelInstance:
         :return: full response or stream response chunk generator result
         """
         if not isinstance(self.model_type_instance, LargeLanguageModel):
-            raise ValueError(f"Model type instance is not LargeLanguageModel")
+            raise Exception(f"Model type instance is not LargeLanguageModel")
 
         self.model_type_instance = cast(LargeLanguageModel, self.model_type_instance)
         return self.model_type_instance.invoke(
@@ -87,7 +87,7 @@ class ModelInstance:
         :return: embeddings result
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
-            raise ValueError(f"Model type instance is not TextEmbeddingModel")
+            raise Exception(f"Model type instance is not TextEmbeddingModel")
 
         self.model_type_instance = cast(TextEmbeddingModel, self.model_type_instance)
         return self.model_type_instance.invoke(
@@ -111,7 +111,7 @@ class ModelInstance:
         :return: rerank result
         """
         if not isinstance(self.model_type_instance, RerankModel):
-            raise ValueError(f"Model type instance is not RerankModel")
+            raise Exception(f"Model type instance is not RerankModel")
 
         self.model_type_instance = cast(RerankModel, self.model_type_instance)
         return self.model_type_instance.invoke(
@@ -134,7 +134,7 @@ class ModelInstance:
         :return: false if text is safe, true otherwise
         """
         if not isinstance(self.model_type_instance, ModerationModel):
-            raise ValueError(f"Model type instance is not ModerationModel")
+            raise Exception(f"Model type instance is not ModerationModel")
 
         self.model_type_instance = cast(ModerationModel, self.model_type_instance)
         return self.model_type_instance.invoke(
@@ -154,7 +154,7 @@ class ModelInstance:
         :return: text for given audio file
         """
         if not isinstance(self.model_type_instance, Speech2TextModel):
-            raise ValueError(f"Model type instance is not Speech2TextModel")
+            raise Exception(f"Model type instance is not Speech2TextModel")
 
         self.model_type_instance = cast(Speech2TextModel, self.model_type_instance)
         return self.model_type_instance.invoke(
@@ -199,7 +199,7 @@ class ModelManager:
         )
 
         if not default_model_entity:
-            raise InvokeAuthorizationError(f"Default model not found for {model_type}")
+            raise ProviderTokenNotInitError(f"Default model not found for {model_type}")
 
         return self.get_model_instance(
             tenant_id=tenant_id,

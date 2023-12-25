@@ -14,7 +14,7 @@ from controllers.service_api.app.error import AppUnavailableError, ProviderNotIn
     ProviderModelCurrentlyNotSupportError
 from controllers.service_api.wraps import AppApiResource
 from core.entities.application_entities import InvokeFrom
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService

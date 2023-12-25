@@ -24,7 +24,6 @@ from core.chain.llm_chain import LLMChain
 from core.data_loader import file_extractor
 from core.data_loader.file_extractor import FileExtractor
 from core.entities.application_entities import ModelConfigEntity
-from core.model_providers.models.llm.base import BaseLLM
 
 FULL_TEMPLATE = """
 TITLE: {title}

@@ -2,7 +2,7 @@ from typing import Optional
 
 from langchain.callbacks.base import Callbacks
 
-from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
+from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
 from core.model_providers.model_provider_factory import ModelProviderFactory, DEFAULT_MODELS
 from core.model_providers.models.entity.model_params import ModelKwargs, ModelType
 from extensions.ext_database import db

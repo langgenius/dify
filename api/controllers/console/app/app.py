@@ -16,8 +16,7 @@ from controllers.console import api
 from controllers.console.app.error import AppNotFoundError, ProviderNotInitializeError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
-from core.model_providers.model_provider_factory import ModelProviderFactory
+from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
 from events.app_event import app_was_created, app_was_deleted
 from fields.app_fields import app_pagination_fields, app_detail_fields, template_list_fields, \
     app_detail_fields_with_site

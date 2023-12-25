@@ -15,7 +15,7 @@ from core.entities.application_entities import ApplicationGenerateEntity, AppOrc
     AgentEntity, AgentToolEntity, FileUploadEntity, SensitiveWordAvoidanceEntity, InvokeFrom
 from core.entities.model_entities import ModelStatus
 from core.file.file_obj import FileObj
-from core.model_providers.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
+from core.errors.error import QuotaExceededError, ProviderTokenNotInitError, ModelCurrentlyNotSupportError
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError

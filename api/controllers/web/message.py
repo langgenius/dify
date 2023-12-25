@@ -15,7 +15,7 @@ from controllers.web.error import NotChatAppError, CompletionRequestError, Provi
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError
 from controllers.web.wraps import WebApiResource
 from core.entities.application_entities import InvokeFrom
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value, TimestampField
 from services.completion_service import CompletionService

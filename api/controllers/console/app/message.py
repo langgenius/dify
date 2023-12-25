@@ -15,7 +15,7 @@ from controllers.console.app.error import CompletionRequestError, ProviderNotIni
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from core.entities.application_entities import InvokeFrom
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
 from fields.conversation_fields import message_detail_fields, annotation_fields

@@ -10,7 +10,7 @@ from controllers.console.app.error import ProviderNotInitializeError, ProviderQu
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.generator.llm_generator import LLMGenerator
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 
 
 class RuleGenerateApi(Resource):

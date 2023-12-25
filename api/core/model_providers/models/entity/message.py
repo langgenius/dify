@@ -8,12 +8,6 @@ from core.model_runtime.entities.message_entities import PromptMessage, UserProm
     ImagePromptMessageContent, AssistantPromptMessage, SystemPromptMessage, ToolPromptMessage
 
 
-class MessageType(enum.Enum):
-    USER = 'user'
-    ASSISTANT = 'assistant'
-    SYSTEM = 'system'
-
-
 class PromptMessageFileType(enum.Enum):
     IMAGE = 'image'
 
@@ -45,7 +39,7 @@ class LCHumanMessageWithFiles(HumanMessage):
     files: list[PromptMessageFile]
 
 
-def to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
+def lc_messages_to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
     prompt_messages = []
     for message in messages:
         if isinstance(message, HumanMessage):
@@ -80,11 +74,4 @@ def to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMessage]:
         elif isinstance(message, FunctionMessage):
             prompt_messages.append(ToolPromptMessage(content=message.content, tool_call_id=message.name))
 
-    return prompt_messages
-
-
-def str_to_prompt_messages(texts: list[str]):
-    prompt_messages = []
-    for text in texts:
-        prompt_messages.append(PromptMessage(content=text))
     return prompt_messages

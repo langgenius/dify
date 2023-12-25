@@ -191,7 +191,7 @@ Thought: {agent_scratchpad}
             raise ValueError("agent_scratchpad should be of type string.")
         if agent_scratchpad:
             llm_chain = cast(LLMChain, self.llm_chain)
-            if llm_chain.model_instance.model_mode == ModelMode.CHAT:
+            if llm_chain.model_config.mode == "chat":
                 return (
                     f"This was your previous work "
                     f"(but I haven't seen any of it! I only see what "

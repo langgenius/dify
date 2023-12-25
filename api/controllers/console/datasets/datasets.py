@@ -14,8 +14,7 @@ from controllers.console.datasets.error import DatasetNameDuplicateError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.indexing_runner import IndexingRunner
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.models.entity.model_params import ModelType
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields

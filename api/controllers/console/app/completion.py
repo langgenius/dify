@@ -19,8 +19,7 @@ from controllers.console.app.error import ConversationCompletedError, AppUnavail
     ProviderModelCurrentlyNotSupportError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
-from core.conversation_message_task import PubHandler
-from core.model_providers.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from libs.helper import uuid_value
 from flask_restful import Resource, reqparse
 

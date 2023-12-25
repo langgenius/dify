@@ -9,8 +9,7 @@ from pydantic import Field, BaseModel
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService

@@ -11,7 +11,7 @@ from pydantic import root_validator
 
 from core.entities.application_entities import ModelConfigEntity
 from core.model_manager import ModelInstance
-from core.model_providers.models.entity.message import to_prompt_messages
+from core.model_providers.models.entity.message import lc_messages_to_prompt_messages
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.third_party.langchain.llms.fake import FakeLLM
 
@@ -105,7 +105,7 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         full_inputs = dict(**selected_inputs, agent_scratchpad=agent_scratchpad)
         prompt = self.prompt.format_prompt(**full_inputs)
         messages = prompt.to_messages()
-        prompt_messages = to_prompt_messages(messages)
+        prompt_messages = lc_messages_to_prompt_messages(messages)
 
         model_instance = ModelInstance(
             provider_model_bundle=self.model_config.provider_model_bundle,

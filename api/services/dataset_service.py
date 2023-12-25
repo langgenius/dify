@@ -10,8 +10,7 @@ from flask import current_app
 from sqlalchemy import func
 
 from core.index.index import IndexBuilder
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from extensions.ext_redis import redis_client
 from flask_login import current_user
 

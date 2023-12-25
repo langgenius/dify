@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Optional, cast
+from typing import List, Dict, Any, Optional
 
 from langchain import LLMChain as LCLLMChain
 from langchain.callbacks.manager import CallbackManagerForChainRun
@@ -7,8 +7,7 @@ from langchain.schema.language_model import BaseLanguageModel
 
 from core.entities.application_entities import ModelConfigEntity
 from core.model_manager import ModelInstance
-from core.model_providers.models.entity.message import to_prompt_messages
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_providers.models.entity.message import lc_messages_to_prompt_messages
 from core.third_party.langchain.llms.fake import FakeLLM
 
 
@@ -26,7 +25,7 @@ class LLMChain(LCLLMChain):
         """Generate LLM result from inputs."""
         prompts, stop = self.prep_prompts(input_list, run_manager=run_manager)
         messages = prompts[0].to_messages()
-        prompt_messages = to_prompt_messages(messages)
+        prompt_messages = lc_messages_to_prompt_messages(messages)
 
         model_instance = ModelInstance(
             provider_model_bundle=self.model_config.provider_model_bundle,
