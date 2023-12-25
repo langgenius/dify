@@ -294,6 +294,13 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='',
+        credentials={
+            'huggingfacehub_api_type': 'inference_endpoints',
+            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
+            'model': 'google/mt5-base',
+            'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_TEXT2TEXT_GEN_ENDPOINT_URL'),
+            'task_type': 'text2text-generation'
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'

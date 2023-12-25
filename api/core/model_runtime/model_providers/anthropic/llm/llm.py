@@ -38,13 +38,14 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Get number of tokens for given prompt messages
 
-        :param model:
-        :param prompt_messages:
+        :param model: model name
+        :param credentials: model credentials
+        :param prompt_messages: prompt messages
         :param tools: tools for tool calling
         :return:
         """
@@ -135,8 +136,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         )
 
         # calculate num tokens
-        prompt_tokens = self.get_num_tokens(model, prompt_messages)
-        completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
+        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -177,8 +178,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
             if chunk.stop_reason is not None:
                 # calculate num tokens
-                prompt_tokens = self.get_num_tokens(model, prompt_messages)
-                completion_tokens = self.get_num_tokens(model, [assistant_prompt_message])
+                prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+                completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

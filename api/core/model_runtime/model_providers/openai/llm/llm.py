@@ -78,13 +78,14 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 user=user
             )
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Get number of tokens for given prompt messages
 
-        :param model:
-        :param prompt_messages:
+        :param model: model name
+        :param credentials: model credentials
+        :param prompt_messages: prompt messages
         :param tools: tools for tool calling
         :return:
         """

@@ -96,6 +96,11 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='spark-1.5',
+        credentials={
+            'spark_app_id': os.environ.get('SPARK_APP_ID'),
+            'spark_api_secret': os.environ.get('SPARK_API_SECRET'),
+            'spark_api_key': os.environ.get('SPARK_API_KEY')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

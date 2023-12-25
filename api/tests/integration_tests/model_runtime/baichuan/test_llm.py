@@ -142,6 +142,10 @@ def test_get_num_tokens():
 
     response = model.get_num_tokens(
         model='baichuan2-turbo',
+        credentials={
+            'api_key': os.environ.get('BAICHUAN_API_KEY'),
+            'secret_key': os.environ.get('BAICHUAN_SECRET_KEY')
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'

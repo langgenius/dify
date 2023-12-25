@@ -67,7 +67,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         except Exception as e:
             raise e
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage], tools: list[PromptMessageTool] | None = None) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                       tools: list[PromptMessageTool] | None = None) -> int:
         """
             get number of tokens
 

@@ -104,6 +104,13 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='all-MiniLM-L6-v2',
+        credentials={
+            'huggingfacehub_api_type': 'inference_endpoints',
+            'huggingfacehub_api_token': os.environ.get('HUGGINGFACE_API_KEY'),
+            'huggingface_namespace': 'Dify-AI',
+            'huggingfacehub_endpoint_url': os.environ.get('HUGGINGFACE_EMBEDDINGS_ENDPOINT_URL'),
+            'task_type': 'feature-extraction'
+        },
         texts=[
             "hello",
             "world"

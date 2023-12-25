@@ -138,6 +138,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='nateraw/jina-embeddings-v2-base-en',
+        credentials={
+            'replicate_api_token': os.environ.get('REPLICATE_API_KEY'),
+            'model_version': 'f8367a1c072ba2bc28af549d1faeacfe9b88b3f0e475add7a75091dac507f79e'
+        },
         texts=[
             "hello",
             "world"

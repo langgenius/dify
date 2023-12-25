@@ -3,6 +3,8 @@ from typing import Optional, Union, List
 
 from core.generator.llm_generator import LLMGenerator
 from core.memory.token_buffer_memory import TokenBufferMemory
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from extensions.ext_database import db
 from models.account import Account
@@ -216,10 +218,17 @@ class MessageService:
             raise SuggestedQuestionsAfterAnswerDisabledError()
 
         # get memory of conversation (read-only)
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=app_model.tenant_id,
+            provider=app_model_config.model_dict['provider'],
+            model_type=ModelType.LLM,
+            model=app_model_config.model_dict['name']
+        )
+
         memory = TokenBufferMemory(
             conversation=conversation,
-            provider=app_model_config.model_dict['provider'],
-            model=app_model_config.model_dict['name']
+            model_instance=model_instance
         )
 
         histories = memory.get_history_prompt_text(

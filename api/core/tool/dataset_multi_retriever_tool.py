@@ -10,6 +10,9 @@ from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCa
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from core.model_manager import ModelManager
+from core.model_runtime.entities.model_entities import ModelType
+from core.rerank.rerank import RerankRunner
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService
@@ -69,12 +72,16 @@ class DatasetMultiRetrieverTool(BaseTool):
         for thread in threads:
             thread.join()
         # do rerank for searched documents
-        rerank = ModelFactory.get_reranking_model(
+        model_manager = ModelManager()
+        rerank_model_instance = model_manager.get_model_instance(
             tenant_id=self.tenant_id,
-            model_provider_name=self.reranking_provider_name,
-            model_name=self.reranking_model_name
+            provider=self.reranking_provider_name,
+            model_type=ModelType.RERANK,
+            model=self.reranking_model_name
         )
-        all_documents = rerank.rerank(query, all_documents, self.score_threshold, self.top_k)
+
+        rerank_runner = RerankRunner(rerank_model_instance)
+        all_documents = rerank_runner.run(query, all_documents, self.score_threshold, self.top_k)
 
         for hit_callback in self.hit_callbacks:
             hit_callback.on_tool_end(all_documents)
@@ -174,10 +181,12 @@ class DatasetMultiRetrieverTool(BaseTool):
             else:
 
                 try:
-                    embedding_model = ModelFactory.get_embedding_model(
-                        tenant_id=dataset.tenant_id,
-                        model_provider_name=dataset.embedding_model_provider,
-                        model_name=dataset.embedding_model
+                    model_manager = ModelManager()
+                    embedding_model = model_manager.get_model_instance(
+                        tenant_id=dataset.current_tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model
                     )
                 except LLMBadRequestError:
                     return []

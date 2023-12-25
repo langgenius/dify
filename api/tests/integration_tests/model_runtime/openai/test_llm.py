@@ -301,6 +301,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='gpt-3.5-turbo-instruct',
+        credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'
@@ -312,6 +315,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='gpt-3.5-turbo',
+        credentials={
+            'openai_api_key': os.environ.get('OPENAI_API_KEY')
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

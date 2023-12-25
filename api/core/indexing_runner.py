@@ -265,6 +265,7 @@ class IndexingRunner:
                     embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_type_instance)
                     tokens += embedding_model_type_instance.get_num_tokens(
                         model=embedding_model_instance.model,
+                        credentials=embedding_model_instance.credentials,
                         texts=[self.filter_string(document.page_content)]
                     )
 
@@ -388,6 +389,7 @@ class IndexingRunner:
                     if indexing_technique == 'high_quality' or embedding_model_instance:
                         tokens += embedding_model_type_instance.get_num_tokens(
                             model=embedding_model_instance.model,
+                            credentials=embedding_model_instance.credentials,
                             texts=[document.page_content]
                         )
 
@@ -736,6 +738,7 @@ class IndexingRunner:
                 tokens += sum(
                     embedding_model_type_instance.get_num_tokens(
                         embedding_model_instance.model,
+                        embedding_model_instance.credentials,
                         [document.page_content]
                     )
                     for document in chunk_documents

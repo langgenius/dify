@@ -112,12 +112,17 @@ class GenerateTaskPipeline:
                     # calculate num tokens
                     prompt_tokens = 0
                     if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_type_instance.get_num_tokens(model, self._task_state.llm_result.prompt_messages)
+                        prompt_tokens = model_type_instance.get_num_tokens(
+                            model,
+                            model_config.credentials,
+                            self._task_state.llm_result.prompt_messages
+                        )
 
                     completion_tokens = 0
                     if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
                         completion_tokens = model_type_instance.get_num_tokens(
                             model,
+                            model_config.credentials,
                             [self._task_state.llm_result.message]
                         )
 
@@ -185,13 +190,17 @@ class GenerateTaskPipeline:
                     # calculate num tokens
                     prompt_tokens = 0
                     if event.stopped_by != QueueStopEvent.StopBy.ANNOTATION_REPLY:
-                        prompt_tokens = model_type_instance.get_num_tokens(model,
-                                                                      self._task_state.llm_result.prompt_messages)
+                        prompt_tokens = model_type_instance.get_num_tokens(
+                            model,
+                            model_config.credentials,
+                            self._task_state.llm_result.prompt_messages
+                        )
 
                     completion_tokens = 0
                     if event.stopped_by == QueueStopEvent.StopBy.USER_MANUAL:
                         completion_tokens = model_type_instance.get_num_tokens(
                             model,
+                            model_config.credentials,
                             [self._task_state.llm_result.message]
                         )
 

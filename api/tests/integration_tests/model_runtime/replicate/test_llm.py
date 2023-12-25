@@ -102,6 +102,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='',
+        credentials={
+            'replicate_api_token': os.environ.get('REPLICATE_API_KEY'),
+            'model_version': '2b56576fcfbe32fa0526897d8385dd3fb3d36ba6fd0dbe033c72886b81ade93e'
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

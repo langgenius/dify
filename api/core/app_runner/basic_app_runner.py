@@ -65,10 +65,14 @@ class BasicApplicationRunner(AppRunner):
         memory = None
         if application_generate_entity.conversation_id:
             # get memory of conversation (read-only)
+            model_instance = ModelInstance(
+                provider_model_bundle=app_orchestration_config.model_config.provider_model_bundle,
+                model=app_orchestration_config.model_config.model
+            )
+
             memory = TokenBufferMemory(
                 conversation=conversation,
-                provider=app_orchestration_config.model_config.provider,
-                model=app_orchestration_config.model_config.model
+                model_instance=model_instance
             )
 
         # organize all inputs and template to prompt messages

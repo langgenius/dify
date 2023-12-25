@@ -165,16 +165,17 @@ provider_credential_schema:
   若模型未提供预计算 tokens 接口，可直接返回 0。
 
   ```python
-  def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
-                     tools: Optional[list[PromptMessageTool]] = None) -> int:
-      """
-      Get number of tokens for given prompt messages
-  
-      :param model:
-      :param prompt_messages:
-      :param tools: tools for tool calling
-      :return:
-      """
+  def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                   tools: Optional[list[PromptMessageTool]] = None) -> int:
+    """
+    Get number of tokens for given prompt messages
+
+    :param model: model name
+    :param credentials: model credentials
+    :param prompt_messages: prompt messages
+    :param tools: tools for tool calling
+    :return:
+    """
   ```
 
   有时候，也许你不需要直接返回0，所以你可以使用`self._get_num_tokens_by_gpt2(text: str)`来获取预计算的tokens，这个方法位于`AIModel`基类中，它会使用GPT2的Tokenizer进行计算，但是只能作为替代方法，并不完全准确。

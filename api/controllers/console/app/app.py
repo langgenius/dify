@@ -5,6 +5,7 @@ from datetime import datetime
 
 from flask_login import current_user
 
+from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from libs.login import login_required
@@ -90,19 +91,19 @@ class AppListApi(Resource):
             model_config_dict = args['model_config']
 
             # get model provider
-            model_provider = ModelProviderFactory.get_preferred_model_provider(
-                current_user.current_tenant_id,
-                model_config_dict["model"]["provider"]
+            model_manager = ModelManager()
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.LLM
             )
 
-            if not model_provider:
-                if not default_model_entity:
-                    raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
-                else:
-                    model_config_dict["model"]["provider"] = default_model_entity.provider.provider
-                    model_config_dict["model"]["name"] = default_model_entity.model
+            if not model_instance:
+                raise ProviderNotInitializeError(
+                    f"No Default System Reasoning Model available. Please configure "
+                    f"in the Settings -> Model Provider.")
+            else:
+                model_config_dict["model"]["provider"] = model_instance.provider
+                model_config_dict["model"]["name"] = model_instance.model
 
             model_configuration = AppModelConfigService.validate_configuration(
                 tenant_id=current_user.current_tenant_id,
@@ -132,21 +133,21 @@ class AppListApi(Resource):
             app_model_config = AppModelConfig(**model_config_template['model_config'])
 
             # get model provider
-            model_provider = ModelProviderFactory.get_preferred_model_provider(
-                current_user.current_tenant_id,
-                app_model_config.model_dict["provider"]
+            model_manager = ModelManager()
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=current_user.current_tenant_id,
+                model_type=ModelType.LLM
             )
 
-            if not model_provider:
-                if not default_model_entity:
-                    raise ProviderNotInitializeError(
-                        f"No Default System Reasoning Model available. Please configure "
-                        f"in the Settings -> Model Provider.")
-                else:
-                    model_dict = app_model_config.model_dict
-                    model_dict['provider'] = default_model_entity.provider.provider
-                    model_dict['name'] = default_model_entity.model
-                    app_model_config.model = json.dumps(model_dict)
+            if not model_instance:
+                raise ProviderNotInitializeError(
+                    f"No Default System Reasoning Model available. Please configure "
+                    f"in the Settings -> Model Provider.")
+            else:
+                model_dict = app_model_config.model_dict
+                model_dict['provider'] = model_instance.provider
+                model_dict['name'] = model_instance.model
+                app_model_config.model = json.dumps(model_dict)
 
         app.name = args['name']
         app.mode = args['mode']
