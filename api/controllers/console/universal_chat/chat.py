@@ -12,6 +12,7 @@ from controllers.console import api
 from controllers.console.app.error import ConversationCompletedError, AppUnavailableError, ProviderNotInitializeError, \
     ProviderQuotaExceededError, ProviderModelCurrentlyNotSupportError, CompletionRequestError
 from controllers.console.universal_chat.wraps import UniversalChatResource
+from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.errors.invoke import InvokeError
@@ -98,7 +99,7 @@ class UniversalChatApi(UniversalChatResource):
 
 class UniversalChatStopApi(UniversalChatResource):
     def post(self, universal_app, task_id):
-        PubHandler.stop(current_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
         return {'result': 'success'}, 200
 

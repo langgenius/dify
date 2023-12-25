@@ -30,7 +30,7 @@ class ApplicationQueueManager:
         self._message_id = str(message_id)
 
         user_prefix = 'account' if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end-user'
-        redis_client.setex(self._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}")
+        redis_client.setex(ApplicationQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}")
 
         q = queue.Queue()
 
@@ -158,20 +158,21 @@ class ApplicationQueueManager:
         if isinstance(event, QueueStopEvent):
             raise ConversationTaskStoppedException()
 
-    def set_stop_flag(self) -> None:
+    @classmethod
+    def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
         """
         Set task stop flag
         :return:
         """
-        result = redis_client.get(self._generate_task_belong_cache_key(self._task_id))
+        result = redis_client.get(cls._generate_task_belong_cache_key(task_id))
         if result is None:
             return
 
-        user_prefix = 'account' if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end-user'
-        if result != f"{user_prefix}-{self._user_id}":
+        user_prefix = 'account' if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end-user'
+        if result != f"{user_prefix}-{user_id}":
             return
 
-        stopped_cache_key = self._generate_stopped_cache_key(self._task_id)
+        stopped_cache_key = cls._generate_stopped_cache_key(task_id)
         redis_client.setex(stopped_cache_key, 600, 1)
 
     def _is_stopped(self) -> bool:
@@ -179,7 +180,7 @@ class ApplicationQueueManager:
         Check if task is stopped
         :return:
         """
-        stopped_cache_key = self._generate_stopped_cache_key(self._task_id)
+        stopped_cache_key = ApplicationQueueManager._generate_stopped_cache_key(self._task_id)
         result = redis_client.get(stopped_cache_key)
         if result is not None:
             redis_client.delete(stopped_cache_key)
@@ -187,7 +188,8 @@ class ApplicationQueueManager:
 
         return False
 
-    def _generate_task_belong_cache_key(self, task_id: str) -> str:
+    @classmethod
+    def _generate_task_belong_cache_key(cls, task_id: str) -> str:
         """
         Generate task belong cache key
         :param task_id: task id
@@ -195,7 +197,8 @@ class ApplicationQueueManager:
         """
         return f"generate_task_belong:{task_id}"
 
-    def _generate_stopped_cache_key(self, task_id: str) -> str:
+    @classmethod
+    def _generate_stopped_cache_key(cls, task_id: str) -> str:
         """
         Generate stopped cache key
         :param task_id: task id

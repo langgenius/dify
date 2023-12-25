@@ -6,6 +6,7 @@ from typing import Generator, Union
 import flask_login
 from flask import Response, stream_with_context
 
+from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
@@ -97,7 +98,7 @@ class CompletionMessageStopApi(Resource):
 
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 
@@ -205,7 +206,7 @@ class ChatMessageStopApi(Resource):
 
         account = flask_login.current_user
 
-        PubHandler.stop(account, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.DEBUGGER, account.id)
 
         return {'result': 'success'}, 200
 

@@ -13,6 +13,7 @@ from controllers.service_api.app.error import AppUnavailableError, ProviderNotIn
     ConversationCompletedError, CompletionRequestError, ProviderQuotaExceededError, \
     ProviderModelCurrentlyNotSupportError
 from controllers.service_api.wraps import AppApiResource
+from core.application_queue_manager import ApplicationQueueManager
 from core.entities.application_entities import InvokeFrom
 from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
 from core.model_runtime.errors.invoke import InvokeError
@@ -79,7 +80,7 @@ class CompletionStopApi(AppApiResource):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        # PubHandler.stop(end_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -143,7 +144,7 @@ class ChatStopApi(AppApiResource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        # PubHandler.stop(end_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
