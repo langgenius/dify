@@ -150,7 +150,7 @@ class GenerateTaskPipeline:
                     'mode': self._conversation.mode,
                     'answer': event.llm_result.message.content,
                     'metadata': {},
-                    'created_at': int(self._message.created_at)
+                    'created_at': int(self._message.created_at.timestamp())
                 }
 
                 if self._conversation.mode == 'chat':
@@ -263,7 +263,7 @@ class GenerateTaskPipeline:
                         'thought': agent_thought.thought,
                         'tool': agent_thought.tool,
                         'tool_input': agent_thought.tool_input,
-                        'created_at': int(self._message.created_at)
+                        'created_at': int(self._message.created_at.timestamp())
                     }
 
                     if self._conversation.mode == 'chat':
@@ -297,7 +297,7 @@ class GenerateTaskPipeline:
                     'task_id': self._application_generate_entity.task_id,
                     'message_id': self._message.id,
                     'answer': event.text,
-                    'created_at': int(self._message.created_at)
+                    'created_at': int(self._message.created_at.timestamp())
                 }
 
                 if self._conversation.mode == 'chat':
@@ -350,7 +350,7 @@ class GenerateTaskPipeline:
             'task_id': self._application_generate_entity.task_id,
             'message_id': self._message.id,
             'answer': text,
-            'created_at': int(self._message.created_at)
+            'created_at': int(self._message.created_at.timestamp())
         }
 
         if self._conversation.mode == 'chat':
@@ -374,13 +374,13 @@ class GenerateTaskPipeline:
         else:
             return Exception(e.description if getattr(e, 'description', None) is not None else str(e))
 
-    def _yield_response(self, response: dict) -> Generator:
+    def _yield_response(self, response: dict) -> str:
         """
         Yield response.
         :param response: response
         :return:
         """
-        yield "data: " + json.dumps(response) + "\n\n"
+        return "data: " + json.dumps(response) + "\n\n"
 
     def _prompt_messages_to_prompt_for_saving(self, prompt_messages: list[PromptMessage]) -> list[dict]:
         """

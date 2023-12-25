@@ -179,7 +179,7 @@ class ProviderManager:
             raise ValueError(f"Provider {provider} does not exist.")
 
         provider_instance = provider_configuration.get_provider_instance()
-        model_type_instance = provider_instance.get_model_type_instance(model_type)
+        model_type_instance = provider_instance.get_model_instance(model_type)
 
         return ProviderModelBundle(
             configuration=provider_configuration,

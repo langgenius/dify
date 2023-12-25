@@ -242,7 +242,7 @@ class AppRunner:
         for result in invoke_result:
             queue_manager.publish_chunk_message(result)
 
-            text += result.message.content
+            text += result.delta.message.content
 
             if not model:
                 model = result.model

@@ -393,7 +393,7 @@ class ApplicationManager:
                         retrieve_config=DatasetRetrieveConfigEntity(
                             query_variable=query_variable,
                             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieve_strategy']
+                                dataset_configs['retrieval_model']
                             ),
                             single_strategy=agent_dict['strategy']
                         )
