@@ -1,5 +1,6 @@
 import queue
-from typing import Generator
+import time
+from typing import Generator, Any
 
 from sqlalchemy.orm import DeclarativeMeta
 
@@ -43,6 +44,8 @@ class ApplicationQueueManager:
         """
         # wait for 10 minutes to stop listen
         listen_timeout = 600
+        start_time = time.time()
+        last_ping_time = 0
 
         while True:
             try:
@@ -54,15 +57,16 @@ class ApplicationQueueManager:
             except queue.Empty:
                 continue
             finally:
-                listen_timeout -= 1
-                if listen_timeout <= 0 or self._is_stopped():
+                elapsed_time = time.time() - start_time
+                if elapsed_time >= listen_timeout or self._is_stopped():
                     # publish two messages to make sure the client can receive the stop signal
                     # and stop listening after the stop signal processed
                     self.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.USER_MANUAL))
                     self.stop_listen()
 
-                if listen_timeout > 0 and listen_timeout % 10 == 0:
+                if elapsed_time // 10 > last_ping_time:
                     self.publish(QueuePingEvent())
+                    last_ping_time = elapsed_time // 10
 
     def stop_listen(self) -> None:
         """
@@ -143,7 +147,7 @@ class ApplicationQueueManager:
         :param event:
         :return:
         """
-        self._check_for_sqlalchemy_models(event)
+        self._check_for_sqlalchemy_models(event.dict())
 
         message = QueueMessage(
             task_id=self._task_id,
@@ -206,9 +210,8 @@ class ApplicationQueueManager:
         """
         return f"generate_task_stopped:{task_id}"
 
-    def _check_for_sqlalchemy_models(self, event: AppQueueEvent):
+    def _check_for_sqlalchemy_models(self, data: Any):
         # from entity to dict or list
-        data = event.dict()
         if isinstance(data, dict):
             for key, value in data.items():
                 self._check_for_sqlalchemy_models(value)
