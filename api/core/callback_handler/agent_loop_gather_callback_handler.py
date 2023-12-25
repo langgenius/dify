@@ -2,30 +2,39 @@ import json
 import logging
 import time
 
-from typing import Any, Dict, List, Union, Optional
+from typing import Any, Dict, List, Union, Optional, cast
 
 from langchain.agents import openai_functions_agent, openai_functions_multi_agent
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration, BaseMessage
 
+from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.entity.agent_loop import AgentLoop
-from core.conversation_message_task import ConversationMessageTask
-from core.model_providers.models.entity.message import PromptMessage
-from core.model_providers.models.llm.base import BaseLLM
+from core.entities.application_entities import ModelConfigEntity
+from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from extensions.ext_database import db
+from models.model import MessageChain, MessageAgentThought, Message
 
 
 class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
     """Callback Handler that prints to std out."""
     raise_error: bool = True
 
-    def __init__(self, model_instance: BaseLLM, conversation_message_task: ConversationMessageTask) -> None:
+    def __init__(self, model_config: ModelConfigEntity,
+                 queue_manager: ApplicationQueueManager,
+                 message: Message,
+                 message_chain: MessageChain) -> None:
         """Initialize callback handler."""
-        self.model_instance = model_instance
-        self.conversation_message_task = conversation_message_task
+        self.model_config = model_config
+        self.queue_manager = queue_manager
+        self.message = message
+        self.message_chain = message_chain
+        model_type_instance = self.model_config.provider_model_bundle.model_type_instance
+        self.model_type_instance = cast(LargeLanguageModel, model_type_instance)
         self._agent_loops = []
         self._current_loop = None
         self._message_agent_thought = None
-        self.current_chain = None
 
     @property
     def agent_loops(self) -> List[AgentLoop]:
@@ -85,8 +94,9 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             if response.llm_output:
                 self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
             else:
-                self._current_loop.prompt_tokens = self.model_instance.get_num_tokens(
-                    [PromptMessage(content=self._current_loop.prompt)]
+                self._current_loop.prompt_tokens = self.model_type_instance.get_num_tokens(
+                    model=self.model_config.model,
+                    prompt_messages=[UserPromptMessage(content=self._current_loop.prompt)]
                 )
             completion_generation = response.generations[0][0]
             if isinstance(completion_generation, ChatGeneration):
@@ -102,8 +112,9 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             if response.llm_output:
                 self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
             else:
-                self._current_loop.completion_tokens = self.model_instance.get_num_tokens(
-                    [PromptMessage(content=self._current_loop.completion)]
+                self._current_loop.completion_tokens = self.model_type_instance.get_num_tokens(
+                    model=self.model_config.model,
+                    prompt_messages=[AssistantPromptMessage(content=self._current_loop.completion)]
                 )
 
     def on_llm_error(
@@ -150,10 +161,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             if completion is not None:
                 self._current_loop.completion = completion
 
-            self._message_agent_thought = self.conversation_message_task.on_agent_start(
-                self.current_chain,
-                self._current_loop
-            )
+            self._message_agent_thought = self._init_agent_thought()
 
     def on_tool_end(
         self,
@@ -176,9 +184,7 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             self._current_loop.completed_at = time.perf_counter()
             self._current_loop.latency = self._current_loop.completed_at - self._current_loop.started_at
 
-            self.conversation_message_task.on_agent_end(
-                self._message_agent_thought, self.model_instance, self._current_loop
-            )
+            self._complete_agent_thought(self._message_agent_thought)
 
             self._agent_loops.append(self._current_loop)
             self._current_loop = None
@@ -202,17 +208,62 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
             self._current_loop.completed_at = time.perf_counter()
             self._current_loop.latency = self._current_loop.completed_at - self._current_loop.started_at
             self._current_loop.thought = '[DONE]'
-            self._message_agent_thought = self.conversation_message_task.on_agent_start(
-                self.current_chain,
-                self._current_loop
-            )
+            self._message_agent_thought = self._init_agent_thought()
 
-            self.conversation_message_task.on_agent_end(
-                self._message_agent_thought, self.model_instance, self._current_loop
-            )
+            self._complete_agent_thought(self._message_agent_thought)
 
             self._agent_loops.append(self._current_loop)
             self._current_loop = None
             self._message_agent_thought = None
         elif not self._current_loop and self._agent_loops:
             self._agent_loops[-1].status = 'agent_finish'
+
+    def _init_agent_thought(self) -> MessageAgentThought:
+        message_agent_thought = MessageAgentThought(
+            message_id=self.message.id,
+            message_chain_id=self.message_chain.id,
+            position=self._current_loop.position,
+            thought=self._current_loop.thought,
+            tool=self._current_loop.tool_name,
+            tool_input=self._current_loop.tool_input,
+            message=self._current_loop.prompt,
+            message_price_unit=0,
+            answer=self._current_loop.completion,
+            answer_price_unit=0,
+            created_by_role=('account' if self.message.from_source == 'console' else 'end_user'),
+            created_by=(self.message.from_account_id
+                        if self.message.from_source == 'console' else self.message.from_end_user_id)
+        )
+
+        db.session.add(message_agent_thought)
+        db.session.commit()
+
+        self.queue_manager.publish_agent_thought(message_agent_thought)
+
+        return message_agent_thought
+
+    def _complete_agent_thought(self, message_agent_thought: MessageAgentThought) -> None:
+        loop_message_tokens = self._current_loop.prompt_tokens
+        loop_answer_tokens = self._current_loop.completion_tokens
+
+        # transform usage
+        llm_usage = self.model_type_instance._calc_response_usage(
+            self.model_config.model,
+            self.model_config.credentials,
+            loop_message_tokens,
+            loop_answer_tokens
+        )
+
+        message_agent_thought.observation = self._current_loop.tool_output
+        message_agent_thought.tool_process_data = ''  # currently not support
+        message_agent_thought.message_token = loop_message_tokens
+        message_agent_thought.message_unit_price = llm_usage.prompt_unit_price
+        message_agent_thought.message_price_unit = llm_usage.prompt_price_unit
+        message_agent_thought.answer_token = loop_answer_tokens
+        message_agent_thought.answer_unit_price = llm_usage.completion_unit_price
+        message_agent_thought.answer_price_unit = llm_usage.completion_price_unit
+        message_agent_thought.latency = self._current_loop.latency
+        message_agent_thought.tokens = self._current_loop.prompt_tokens + self._current_loop.completion_tokens
+        message_agent_thought.total_price = llm_usage.total_price
+        message_agent_thought.currency = llm_usage.currency
+        db.session.commit()

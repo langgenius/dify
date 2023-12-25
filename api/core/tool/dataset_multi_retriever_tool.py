@@ -7,11 +7,9 @@ from langchain.tools import BaseTool
 from pydantic import Field, BaseModel
 
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.conversation_message_task import ConversationMessageTask
 from core.embedding.cached_embedding import CacheEmbedding
 from core.index.keyword_table_index.keyword_table_index import KeywordTableIndex, KeywordTableConfig
-from core.model_providers.error import LLMBadRequestError, ProviderTokenNotInitError
-from core.model_providers.model_factory import ModelFactory
+from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from extensions.ext_database import db
 from models.dataset import Dataset, DocumentSegment, Document
 from services.retrieval_service import RetrievalService
@@ -43,9 +41,9 @@ class DatasetMultiRetrieverTool(BaseTool):
     score_threshold: Optional[float] = None
     reranking_provider_name: str
     reranking_model_name: str
-    conversation_message_task: ConversationMessageTask
     return_resource: bool
     retriever_from: str
+    hit_callbacks: List[DatasetIndexToolCallbackHandler] = []
 
     @classmethod
     def from_dataset(cls, dataset_ids: List[str], tenant_id: str, **kwargs):
@@ -78,8 +76,9 @@ class DatasetMultiRetrieverTool(BaseTool):
         )
         all_documents = rerank.rerank(query, all_documents, self.score_threshold, self.top_k)
 
-        hit_callback = DatasetIndexToolCallbackHandler(self.conversation_message_task)
-        hit_callback.on_tool_end(all_documents)
+        for hit_callback in self.hit_callbacks:
+            hit_callback.on_tool_end(all_documents)
+
         document_score_list = {}
         for item in all_documents:
             if 'score' in item.metadata and item.metadata['score']:
@@ -139,7 +138,9 @@ class DatasetMultiRetrieverTool(BaseTool):
                             source['content'] = segment.content
                         context_list.append(source)
                     resource_number += 1
-                hit_callback.return_retriever_resource_info(context_list)
+
+                for hit_callback in self.hit_callbacks:
+                    hit_callback.return_retriever_resource_info(context_list)
 
             return str("\n".join(document_context_list))
 

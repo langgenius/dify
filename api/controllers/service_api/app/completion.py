@@ -13,9 +13,10 @@ from controllers.service_api.app.error import AppUnavailableError, ProviderNotIn
     ConversationCompletedError, CompletionRequestError, ProviderQuotaExceededError, \
     ProviderModelCurrentlyNotSupportError
 from controllers.service_api.wraps import AppApiResource
-from core.conversation_message_task import PubHandler
-from core.model_providers.error import LLMBadRequestError, LLMAuthorizationError, LLMAPIUnavailableError, LLMAPIConnectionError, \
-    LLMRateLimitError, ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.application_queue_manager import ApplicationQueueManager
+from core.entities.application_entities import InvokeFrom
+from core.errors.error import ProviderTokenNotInitError, QuotaExceededError, ModelCurrentlyNotSupportError
+from core.model_runtime.errors.invoke import InvokeError
 from libs.helper import uuid_value
 from services.completion_service import CompletionService
 
@@ -47,7 +48,7 @@ class CompletionApi(AppApiResource):
                 app_model=app_model,
                 user=end_user,
                 args=args,
-                from_source='api',
+                invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming,
             )
 
@@ -65,8 +66,7 @@ class CompletionApi(AppApiResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
+        except InvokeError as e:
             raise CompletionRequestError(str(e))
         except ValueError as e:
             raise e
@@ -80,7 +80,7 @@ class CompletionStopApi(AppApiResource):
         if app_model.mode != 'completion':
             raise AppUnavailableError()
 
-        PubHandler.stop(end_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -112,7 +112,7 @@ class ChatApi(AppApiResource):
                 app_model=app_model,
                 user=end_user,
                 args=args,
-                from_source='api',
+                invoke_from=InvokeFrom.SERVICE_API,
                 streaming=streaming
             )
 
@@ -130,8 +130,7 @@ class ChatApi(AppApiResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
-        except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                LLMRateLimitError, LLMAuthorizationError) as e:
+        except InvokeError as e:
             raise CompletionRequestError(str(e))
         except ValueError as e:
             raise e
@@ -145,7 +144,7 @@ class ChatStopApi(AppApiResource):
         if app_model.mode != 'chat':
             raise NotChatAppError()
 
-        PubHandler.stop(end_user, task_id)
+        ApplicationQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
         return {'result': 'success'}, 200
 
@@ -171,8 +170,7 @@ def compact_response(response: Union[dict, Generator]) -> Response:
                 yield "data: " + json.dumps(api.handle_error(ProviderQuotaExceededError()).get_json()) + "\n\n"
             except ModelCurrentlyNotSupportError:
                 yield "data: " + json.dumps(api.handle_error(ProviderModelCurrentlyNotSupportError()).get_json()) + "\n\n"
-            except (LLMBadRequestError, LLMAPIConnectionError, LLMAPIUnavailableError,
-                    LLMRateLimitError, LLMAuthorizationError) as e:
+            except InvokeError as e:
                 yield "data: " + json.dumps(api.handle_error(CompletionRequestError(str(e))).get_json()) + "\n\n"
             except ValueError as e:
                 yield "data: " + json.dumps(api.handle_error(e).get_json()) + "\n\n"

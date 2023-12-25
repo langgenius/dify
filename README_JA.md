@@ -60,6 +60,10 @@ Difyはモデルニュートラルであり、LangChainのようなハードコ�
 
 ## 開始する前に
 
+**私たちをスターして、GitHub上でのすべての新しいリリースに対する即時通知を受け取ります！**
+
+![私たちをスターして](https://github.com/langgenius/dify/assets/100913391/95f37259-7370-4456-a9f0-0bc01ef8642f)
+
 - [Website](https://dify.ai)
 - [Docs](https://docs.dify.ai)
 - [Deployment Docs](https://docs.dify.ai/getting-started/install-self-hosted)

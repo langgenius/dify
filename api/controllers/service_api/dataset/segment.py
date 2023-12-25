@@ -4,8 +4,7 @@ from werkzeug.exceptions import NotFound
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.wraps import DatasetApiResource, cloud_edition_billing_resource_check
-from core.model_providers.error import ProviderTokenNotInitError, LLMBadRequestError
-from core.model_providers.model_factory import ModelFactory
+from core.errors.error import ProviderTokenNotInitError, LLMBadRequestError
 from extensions.ext_database import db
 from fields.segment_fields import segment_fields
 from models.dataset import Dataset, DocumentSegment
