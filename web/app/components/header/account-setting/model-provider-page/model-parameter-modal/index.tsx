@@ -20,6 +20,7 @@ import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alert
 import { useProviderContext } from '@/context/provider-context'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { fetchModelParameterRules } from '@/service/common'
+import Loading from '@/app/components/base/loading'
 
 type ModelParameterModalProps = {
   isAdvancedMode: boolean
@@ -43,7 +44,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData } = useSWR(`/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`, fetchModelParameterRules)
+  const { data: parameterRulesData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`, fetchModelParameterRules)
   const { textGenerationModelList } = useProviderContext()
   const currentProvider = textGenerationModelList.find(model => model.provider === provider)
   const currentModel = currentProvider?.models.find(modelItem => modelItem.model === modelId)
@@ -141,6 +142,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 />
               </div>
               <div className='my-5 h-[1px] bg-gray-100' />
+              {
+                isLoading && (
+                  <Loading />
+                )
+              }
               {
                 parameterRulesData?.data && (
                   parameterRulesData.data.map(parameter => (
