@@ -87,8 +87,8 @@ class ProviderWithModelsResponse(BaseModel):
     """
     provider: str
     label: I18nObject
-    icon_small: I18nObject
-    icon_large: I18nObject
+    icon_small: Optional[I18nObject] = None
+    icon_large: Optional[I18nObject] = None
     status: CustomConfigurationStatus
     models: list[ModelResponse]
 
