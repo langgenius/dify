@@ -195,9 +195,6 @@ class ProviderManager:
         :param model_type: model type
         :return:
         """
-        # Get provider configurations
-        provider_configurations = self.get_configurations(tenant_id)
-
         # Get the corresponding TenantDefaultModel record
         default_model = db.session.query(TenantDefaultModel) \
             .filter(
@@ -208,6 +205,9 @@ class ProviderManager:
         # If it does not exist, get the first available provider model from get_configurations
         # and update the TenantDefaultModel record
         if not default_model:
+            # Get provider configurations
+            provider_configurations = self.get_configurations(tenant_id)
+
             # get available models from provider_configurations
             available_models = provider_configurations.get_models(
                 model_type=model_type,
@@ -228,11 +228,7 @@ class ProviderManager:
         if not default_model:
             return None
 
-        provider_configuration = provider_configurations.get(default_model.provider_name)
-        if not provider_configuration:
-            raise ValueError(f"Provider {default_model.provider_name} does not exist.")
-
-        provider_instance = provider_configuration.get_provider_instance()
+        provider_instance = model_provider_factory.get_provider_instance(default_model.provider_name)
 
         return DefaultModelEntity(
             model=default_model.model_name,
