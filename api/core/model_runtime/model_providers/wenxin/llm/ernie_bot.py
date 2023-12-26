@@ -225,13 +225,14 @@ class ErnieBotModel(object):
 
         if tools is not None and len(tools) > 0:
             raise BadRequestError(f'function calling is not supported yet.')
-        
-        if stop is not None and len(stop) > 4:
-            raise BadRequestError(f'stop list should not exceed 4 items.')
-        
-        for s in stop:
-            if len(s) > 20:
-                raise BadRequestError(f'stop item should not exceed 20 characters.')
+
+        if stop is not None:
+            if len(stop) > 4:
+                raise BadRequestError(f'stop list should not exceed 4 items.')
+
+            for s in stop:
+                if len(s) > 20:
+                    raise BadRequestError(f'stop item should not exceed 20 characters.')
         
     def _build_request_body(self, model: str, messages: List[ErnieMessage], stream: bool, parameters: Dict[str, Any],
                             tools: List[PromptMessageTool], stop: List[str], user: str) -> Dict[str, Any]:

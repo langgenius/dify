@@ -1,6 +1,7 @@
 import importlib
 import logging
 import os
+import time
 from collections import OrderedDict
 from typing import Optional
 
@@ -40,6 +41,7 @@ class ModelProviderFactory:
         model_provider_extensions = self._get_model_provider_map()
 
         # traverse all model_provider_extensions
+        start = time.perf_counter()
         providers = []
         for name, model_provider_extension in model_provider_extensions.items():
             # get model_provider instance
@@ -56,6 +58,8 @@ class ModelProviderFactory:
                     provider_schema.models.extend(models)
 
             providers.append(provider_schema)
+
+        print(f"get_providers took {time.perf_counter() - start} seconds")
 
         # return providers
         return providers

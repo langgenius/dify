@@ -1,4 +1,5 @@
 import decimal
+import json
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
@@ -216,11 +217,25 @@ class AIModel(ABC):
             return model_map[model]
 
         if credentials:
-            model_schema = self.get_customizable_model_schema(model, credentials)
+            model_schema = self.get_customizable_model_schema_from_credentials(model, credentials)
             if model_schema:
                 return model_schema
 
         return None
+
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        """
+        Get customizable model schema from credentials
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: model schema
+        """
+        if 'schema' in credentials:
+            schema_dict = json.loads(credentials['schema'])
+            return AIModelEntity(**schema_dict)
+
+        return self.get_customizable_model_schema(model, credentials)
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """

@@ -1,3 +1,4 @@
+import logging
 import sys
 from typing import Optional, List
 
@@ -6,6 +7,7 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk, LLMResult
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
+logger = logging.getLogger(__name__)
 
 class LoggingCallback(Callback):
     def on_before_invoke(self, llm_instance: AIModel, model: str, credentials: dict,
@@ -125,4 +127,4 @@ class LoggingCallback(Callback):
         :param user: unique user id
         """
         self.print_text("\n[on_llm_invoke_error]\n", color='red')
-        self.print_text(f"Exception: {ex}\n", color='red')
+        logger.exception(ex)
