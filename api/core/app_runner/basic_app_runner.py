@@ -16,7 +16,7 @@ from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.moderation.base import ModerationException
 from extensions.ext_database import db
-from models.model import Conversation, Message, App
+from models.model import Conversation, Message, App, MessageAnnotation
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,6 @@ class BasicApplicationRunner(AppRunner):
         if query:
             # annotation reply
             annotation_reply = self.query_app_annotations_to_reply(
-                queue_manager=queue_manager,
                 app_record=app_record,
                 message=message,
                 query=query,
@@ -120,6 +119,16 @@ class BasicApplicationRunner(AppRunner):
             )
 
             if annotation_reply:
+                queue_manager.publish_annotation_reply(
+                    message_annotation_id=annotation_reply.id
+                )
+                self.direct_output(
+                    queue_manager=queue_manager,
+                    app_orchestration_config=app_orchestration_config,
+                    prompt_messages=prompt_messages,
+                    text=annotation_reply.content,
+                    stream=application_generate_entity.stream
+                )
                 return
 
             # fill in variable inputs from external data tools if exists
@@ -224,15 +233,13 @@ class BasicApplicationRunner(AppRunner):
             query=query,
         )
 
-    def query_app_annotations_to_reply(self, queue_manager: ApplicationQueueManager,
-                                       app_record: App,
+    def query_app_annotations_to_reply(self, app_record: App,
                                        message: Message,
                                        query: str,
                                        user_id: str,
-                                       invoke_from: InvokeFrom) -> bool:
+                                       invoke_from: InvokeFrom) -> Optional[MessageAnnotation]:
         """
         Query app annotations to reply
-        :param queue_manager: queue manager
         :param app_record: app record
         :param message: message
         :param query: query
@@ -242,7 +249,6 @@ class BasicApplicationRunner(AppRunner):
         """
         annotation_reply_feature = AnnotationReplyFeature()
         return annotation_reply_feature.query(
-            queue_manager=queue_manager,
             app_record=app_record,
             message=message,
             query=query,

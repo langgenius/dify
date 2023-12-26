@@ -1,19 +1,16 @@
 import logging
-from typing import cast
+from typing import Optional
 
 from flask import current_app
 
-from core.application_queue_manager import ApplicationQueueManager
 from core.embedding.cached_embedding import CacheEmbedding
-from core.entities.application_entities import ModelConfigEntity, InvokeFrom
+from core.entities.application_entities import InvokeFrom
 from core.index.vector_index.vector_index import VectorIndex
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers import model_provider_factory
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from extensions.ext_database import db
 from models.dataset import Dataset
-from models.model import App, Message, AppAnnotationSetting
+from models.model import App, Message, AppAnnotationSetting, MessageAnnotation
 from services.annotation_service import AppAnnotationService
 from services.dataset_service import DatasetCollectionBindingService
 
@@ -21,15 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 class AnnotationReplyFeature:
-    def query(self, queue_manager: ApplicationQueueManager,
-              app_record: App,
+    def query(self, app_record: App,
               message: Message,
               query: str,
               user_id: str,
-              invoke_from: InvokeFrom) -> bool:
+              invoke_from: InvokeFrom) -> Optional[MessageAnnotation]:
         """
         Query app annotations to reply
-        :param queue_manager: queue manager
         :param app_record: app record
         :param message: message
         :param query: query
@@ -41,7 +36,7 @@ class AnnotationReplyFeature:
             AppAnnotationSetting.app_id == app_record.id).first()
 
         if not annotation_setting:
-            return False
+            return None
 
         collection_binding_detail = annotation_setting.collection_binding_detail
 
@@ -116,12 +111,9 @@ class AnnotationReplyFeature:
                                                                 from_source,
                                                                 score)
 
-                    queue_manager.publish_annotation_reply(
-                        message_annotation_id=annotation.id
-                    )
-                    return True
+                    return annotation
         except Exception as e:
             logger.warning(f'Query annotation failed, exception: {str(e)}.')
-            return False
+            return None
 
-        return False
+        return None
