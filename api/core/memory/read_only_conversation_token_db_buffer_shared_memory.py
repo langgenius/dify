@@ -27,7 +27,7 @@ class ReadOnlyConversationTokenDBBufferSharedMemory(BaseChatMemory):
         # fetch limited messages desc, and return reversed
         messages = db.session.query(Message).filter(
             Message.conversation_id == self.conversation.id,
-            Message.answer_tokens > 0
+            Message.answer != ''
         ).order_by(Message.created_at.desc()).limit(self.message_limit).all()
 
         messages = list(reversed(messages))
