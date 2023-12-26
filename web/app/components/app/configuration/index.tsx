@@ -223,11 +223,11 @@ const Configuration: FC = () => {
     textGenerationModelList,
   } = useProviderContext()
   const { currentModel: currModel } = useCurrentProviderAndModel(
+    textGenerationModelList,
     {
       provider: modelConfig.provider,
       model: modelConfig.model_id,
     },
-    textGenerationModelList,
   )
 
   // Fill old app data missing model mode.

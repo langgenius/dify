@@ -4,7 +4,7 @@ import {
   useMemo,
   useState,
 } from 'react'
-import useSWR from 'swr'
+import useSWR, { useSWRConfig } from 'swr'
 import { useContext } from 'use-context-selector'
 import type {
   CustomConfigrationModelFixedFields,
@@ -28,7 +28,7 @@ type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
   modelList: Model[],
 ) => [DefaultModel | undefined, (model: DefaultModel) => void]
-export const useDefaultModelAndModelList: UseDefaultModelAndModelList = (
+export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   defaultModel,
   modelList,
 ) => {
@@ -116,7 +116,7 @@ export const useDefaultModel = (type: ModelTypeIndex) => {
   }
 }
 
-export const useCurrentProviderAndModel = (defaultModel: DefaultModel, modelList: Model[]) => {
+export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: DefaultModel) => {
   const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider)
   const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
 
@@ -139,8 +139,8 @@ export const useModelListAndDefaultModel = (type: ModelTypeIndex) => {
 export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: ModelTypeIndex) => {
   const { modelList, defaultModel } = useModelListAndDefaultModel(type)
   const { currentProvider, currentModel } = useCurrentProviderAndModel(
-    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
     modelList,
+    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
   )
 
   return {
@@ -149,4 +149,15 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
     currentProvider,
     currentModel,
   }
+}
+
+export const useUpdateModelList = () => {
+  const { mutate } = useSWRConfig()
+
+  const updateModelList = useCallback((type: ModelTypeIndex | ModelTypeEnum) => {
+    const modelType = typeof type === 'number' ? MODEL_TYPE_MAPS[type] : type
+    mutate(`/workspaces/current/models/model-types/${modelType}`)
+  }, [mutate])
+
+  return updateModelList
 }

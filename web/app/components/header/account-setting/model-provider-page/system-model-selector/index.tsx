@@ -2,8 +2,15 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelSelector from '../model-selector'
-import { useDefaultModelAndModelList } from '../hooks'
-import type { DefaultModel } from '../declarations'
+import {
+  useModelList,
+  useSystemDefaultModelAndModelList,
+  useUpdateModelList,
+} from '../hooks'
+import type {
+  DefaultModel,
+  DefaultModelResponse,
+} from '../declarations'
 import { ModelTypeEnum } from '../declarations'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
@@ -18,29 +25,31 @@ import { updateDefaultModel } from '@/service/common'
 import { useToastContext } from '@/app/components/base/toast'
 
 type SystemModelSelectorProps = {
+  textGenerationDefaultModel: DefaultModelResponse | undefined
+  embeddingsDefaultModel: DefaultModelResponse | undefined
+  rerankDefaultModel: DefaultModelResponse | undefined
+  speech2textDefaultModel: DefaultModelResponse | undefined
   onUpdate: () => void
 }
 const SystemModel: FC<SystemModelSelectorProps> = ({
+  textGenerationDefaultModel,
+  embeddingsDefaultModel,
+  rerankDefaultModel,
+  speech2textDefaultModel,
   onUpdate,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
-  const {
-    textGenerationDefaultModel,
-    textGenerationModelList,
-    embeddingsDefaultModel,
-    embeddingsModelList,
-    rerankDefaultModel,
-    rerankModelList,
-    speech2textDefaultModel,
-    speech2textModelList,
-    updateModelList,
-  } = useProviderContext()
+  const { textGenerationModelList } = useProviderContext()
+  const updateModelList = useUpdateModelList()
+  const { data: embeddingModelList } = useModelList(2)
+  const { data: rerankModelList } = useModelList(3)
+  const { data: speech2textModelList } = useModelList(4)
   const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
-  const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
-  const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useDefaultModelAndModelList(embeddingsDefaultModel, embeddingsModelList)
-  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
-  const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
+  const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useSystemDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
+  const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useSystemDefaultModelAndModelList(embeddingsDefaultModel, embeddingModelList)
+  const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useSystemDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
+  const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useSystemDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
   const [open, setOpen] = useState(false)
 
   const getCurrentDefaultModelByModelType = (modelType: ModelTypeEnum) => {
@@ -156,7 +165,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div>
               <ModelSelector
                 defaultModel={currentEmbeddingsDefaultModel}
-                modelList={embeddingsModelList}
+                modelList={embeddingModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
               />
             </div>

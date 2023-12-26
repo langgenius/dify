@@ -5,10 +5,10 @@ import { useTranslation } from 'react-i18next'
 import type {
   FormValue,
 } from '../declarations'
-import { ModelTypeEnum } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import ModelSelector from '../model-selector'
+import { useCurrentProviderAndModel } from '../hooks'
 import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
 import {
@@ -47,8 +47,13 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`, fetchModelParameterRules)
   const { textGenerationModelList } = useProviderContext()
-  const currentProvider = textGenerationModelList.find(model => model.provider === provider)
-  const currentModel = currentProvider?.models.find(modelItem => modelItem.model === modelId)
+  const {
+    currentProvider,
+    currentModel,
+  } = useCurrentProviderAndModel(
+    textGenerationModelList,
+    { provider, model: modelId },
+  )
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -94,8 +99,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               currentProvider && (
                 <ModelIcon
                   className='mr-1.5 !w-5 !h-5'
-                  providerName={provider}
-                  modelType={ModelTypeEnum.textGeneration}
+                  provider={currentProvider}
                 />
               )
             }
