@@ -29,20 +29,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     rerankModelList,
     speech2textDefaultModel,
     speech2textModelList,
-    moderationModelList,
-    moderationDefaultModel,
-    updateModelList,
   } = useProviderContext()
   const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
   const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useDefaultModelAndModelList(embeddingsDefaultModel, embeddingsModelList)
   const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
   const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
-  const [currentModerationDefaultModel, changeCurrentModerationDefaultModel] = useDefaultModelAndModelList(moderationDefaultModel, moderationModelList)
   const [open, setOpen] = useState(false)
-  const handleChangeDefaultModel = async () => {
 
-  }
-  const handleSave = async () => {
+  const handleSave = () => {
 
   }
 
@@ -163,14 +157,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               >
                 <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
               </Tooltip>
-            </div>
-            <div>
-              <ModelSelector
-                defaultModel={currentModerationDefaultModel}
-                modelList={moderationModelList}
-                onSelect={changeCurrentModerationDefaultModel}
-                popupClassName='z-[60]'
-              />
             </div>
           </div>
           <div className='flex items-center justify-end px-6 py-4'>
