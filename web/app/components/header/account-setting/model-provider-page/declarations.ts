@@ -171,7 +171,7 @@ export type CustomConfigrationModelFixedFields = {
 }
 
 export type ModelParameterRule = {
-  default: number
+  default: number | string | boolean
   help: TypeWithI18N
   label: TypeWithI18N
   min: number
@@ -181,4 +181,5 @@ export type ModelParameterRule = {
   required: false
   type: string
   use_template: string
+  options?: string[]
 }

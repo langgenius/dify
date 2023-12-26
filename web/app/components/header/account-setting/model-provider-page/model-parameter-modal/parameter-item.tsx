@@ -1,26 +1,40 @@
 import type { FC } from 'react'
+import { useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
+import Radio from '@/app/components/base/radio'
+import { SimpleSelect } from '@/app/components/base/select'
 
+export type ParameterValue = number | string | boolean | undefined
 type ParameterItemProps = {
   parameterRule: ModelParameterRule
-  value: number
-  onChange: (value: number) => void
+  value?: ParameterValue
+  onChange?: (value: ParameterValue) => void
   className?: string
+  onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
 }
 const ParameterItem: FC<ParameterItemProps> = ({
   parameterRule,
   value,
   onChange,
   className,
+  onSwitch,
 }) => {
   const language = useLanguage()
+  const [localValue, setLocalValue] = useState(value)
+  const mergedValue = value === undefined ? localValue : value
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (v: number | string | boolean) => {
+    setLocalValue(v)
+    if (value !== undefined && onChange)
+      onChange(v)
+  }
+
+  const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let num = +e.target.value
 
     if (num > parameterRule.max)
@@ -29,7 +43,45 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (num < parameterRule.min)
       num = parameterRule.min
 
-    onChange(num)
+    handleChange(num)
+  }
+
+  const handleSlideChange = (num: number) => {
+    handleChange(num)
+  }
+
+  const handleRadioChange = (v: number) => {
+    handleChange(v === 1)
+  }
+
+  const handleStringInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    handleChange(e.target.value)
+  }
+
+  const handleSelect = (option: { value: string | number; name: string }) => {
+    handleChange(option.value)
+  }
+
+  const handleSwitch = (checked: boolean) => {
+    if (onSwitch) {
+      let assignValue: ParameterValue = localValue
+
+      if (localValue === undefined) {
+        if (parameterRule.type === 'int' || parameterRule.type === 'float')
+          assignValue = 0
+
+        if (parameterRule.type === 'string' && !parameterRule.options?.length)
+          assignValue = ''
+
+        if (parameterRule.type === 'string' && parameterRule.options?.length)
+          assignValue = parameterRule.options[0]
+
+        if (parameterRule.type === 'boolean')
+          assignValue = false
+      }
+
+      onSwitch(checked, assignValue)
+    }
   }
 
   return (
@@ -52,8 +104,8 @@ const ParameterItem: FC<ParameterItemProps> = ({
         {
           !parameterRule.required && (
             <Switch
-              defaultValue={parameterRule.required}
-              onChange={() => {}}
+              defaultValue={!!value}
+              onChange={handleSwitch}
               size='md'
             />
           )
@@ -64,11 +116,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
           <div className='flex items-center'>
             <Slider
               className='w-[120px]'
-              value={value}
+              value={(mergedValue || parameterRule.default) as number}
               min={parameterRule.min}
               max={parameterRule.max}
               step={+`0.${parameterRule.precision}`}
-              onChange={onChange}
+              onChange={handleSlideChange}
             />
             <input
               className='shrink-0 block ml-4 pl-3 w-16 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
@@ -76,10 +128,42 @@ const ParameterItem: FC<ParameterItemProps> = ({
               max={parameterRule.max}
               min={parameterRule.min}
               step={+`0.${parameterRule.precision}`}
-              value={value}
-              onChange={handleChange}
+              value={(mergedValue || parameterRule.default || '') as string}
+              onChange={handleNumberInputChange}
             />
           </div>
+        )
+      }
+      {
+        parameterRule.type === 'boolean' && (
+          <Radio.Group
+            className='w-[200px] flex items-center'
+            value={(mergedValue || parameterRule.default) ? 1 : 0}
+            onChange={handleRadioChange}
+          >
+            <Radio value={1} className='!mr-1 w-[94px]'>True</Radio>
+            <Radio value={0} className='w-[94px]'>False</Radio>
+          </Radio.Group>
+        )
+      }
+      {
+        parameterRule.type === 'string' && !parameterRule.options?.length && (
+          <input
+            className='flex items-center px-3 w-[200px] h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+            value={(mergedValue || parameterRule.default || '') as string}
+            onChange={handleStringInputChange}
+          />
+        )
+      }
+      {
+        parameterRule.type === 'string' && parameterRule?.options?.length && (
+          <SimpleSelect
+            className='!py-0'
+            wrapperClassName='!w-[200px] !h-8'
+            defaultValue={(mergedValue || parameterRule.default) as string}
+            onSelect={handleSelect}
+            items={parameterRule.options.map(option => ({ value: option, name: option }))}
+          />
         )
       }
     </div>

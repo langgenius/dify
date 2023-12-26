@@ -10,6 +10,7 @@ import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import ModelSelector from '../model-selector'
 import ParameterItem from './parameter-item'
+import type { ParameterValue } from './parameter-item'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -27,7 +28,7 @@ type ModelParameterModalProps = {
   mode: string
   modelId: string
   provider: string
-  setModel: (model: { model: string; provider: string; mode?: string; features: string[] }) => void
+  setModel: (model: { modelId: string; provider: string; mode?: string; features: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   disabled: boolean
@@ -49,20 +50,24 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const currentProvider = textGenerationModelList.find(model => model.provider === provider)
   const currentModel = currentProvider?.models.find(modelItem => modelItem.model === modelId)
 
-  const handleParamChange = (key: string, value: number | string[]) => {
-    if (value === undefined)
-      return
+  const handleParamChange = (key: string, value: ParameterValue) => {
+    onCompletionParamsChange({
+      ...completionParams,
+      [key]: value,
+    })
+  }
 
-    if (key === 'stop') {
-      onCompletionParamsChange({
-        ...completionParams,
-        [key]: value as string[],
-      })
+  const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
+    if (!value) {
+      const newCompletionParams = { ...completionParams }
+      delete newCompletionParams[key]
+
+      onCompletionParamsChange(newCompletionParams)
     }
-    else {
+    if (value) {
       onCompletionParamsChange({
         ...completionParams,
-        [key]: value,
+        [key]: assignValue,
       })
     }
   }
@@ -133,7 +138,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                     const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
                     const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
                     setModel({
-                      model,
+                      modelId: model,
                       provider,
                       mode: targetModelItem?.model_properties.mode as string,
                       features: targetModelItem?.features || [],
@@ -156,6 +161,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                       parameterRule={parameter}
                       value={completionParams[parameter.name]}
                       onChange={v => handleParamChange(parameter.name, v)}
+                      onSwitch={(checked, assignValue) => handleSwitch(parameter.name, checked, assignValue)}
                     />
                   ))
                 )

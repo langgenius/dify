@@ -113,14 +113,7 @@ const Configuration: FC = () => {
   const [externalDataToolsConfig, setExternalDataToolsConfig] = useState<ExternalDataTool[]>([])
   const [inputs, setInputs] = useState<Inputs>({})
   const [query, setQuery] = useState('')
-  const [completionParams, doSetCompletionParams] = useState<FormValue>({
-    max_tokens: 16,
-    temperature: 1, // 0-2
-    top_p: 1,
-    presence_penalty: 1, // -2-2
-    frequency_penalty: 1, // -2-2
-    stop: [],
-  })
+  const [completionParams, doSetCompletionParams] = useState<FormValue>({})
   const [tempStop, setTempStop, getTempStop] = useGetState<string[]>([])
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
@@ -282,11 +275,11 @@ const Configuration: FC = () => {
   })
 
   const setModel = async ({
-    model: modelId,
+    modelId,
     provider,
     mode: modeMode,
     features,
-  }: { model: string; provider: string; mode: string; features: string[] }) => {
+  }: { modelId: string; provider: string; mode: string; features: string[] }) => {
     if (isAdvancedMode) {
       const appMode = mode
 
@@ -308,7 +301,7 @@ const Configuration: FC = () => {
     const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
       draft.provider = provider
       draft.model_id = modelId
-      draft.mode = modeMode
+      draft.mode = modeMode as ModelModeType
     })
 
     setModelConfig(newModelConfig)
@@ -321,7 +314,7 @@ const Configuration: FC = () => {
     }, true)
   }
 
-  const isShowVisionConfig = !!currModel?.features.includes(ModelFeatureEnum.vision)
+  const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   const [visionConfig, doSetVisionConfig] = useState({
     enabled: false,
     number_limits: 2,
@@ -653,7 +646,7 @@ const Configuration: FC = () => {
                 provider={modelConfig.provider}
                 completionParams={completionParams}
                 modelId={modelConfig.model_id}
-                setModel={setModel}
+                setModel={setModel as any}
                 onCompletionParamsChange={(newParams: FormValue) => {
                   setCompletionParams(newParams)
                 }}
