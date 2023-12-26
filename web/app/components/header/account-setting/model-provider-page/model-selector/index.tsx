@@ -18,7 +18,8 @@ type ModelSelectorProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
   popupClassName?: string
-  onSelect: (model: DefaultModel) => void
+  onSelect?: (model: DefaultModel) => void
+  readonly?: boolean
 }
 const ModelSelector: FC<ModelSelectorProps> = ({
   defaultModel,
@@ -32,7 +33,9 @@ const ModelSelector: FC<ModelSelectorProps> = ({
 
   const handleSelect = (provider: string, model: ModelItem) => {
     setOpen(false)
-    onSelect({ provider, model: model.model })
+
+    if (onSelect)
+      onSelect({ provider, model: model.model })
   }
 
   return (
@@ -64,7 +67,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className={popupClassName}>
+        <PortalToFollowElemContent className={`z-[60] ${popupClassName}`}>
           <Popup
             defaultModel={defaultModel}
             modelList={modelList}

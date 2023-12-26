@@ -49,6 +49,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -221,7 +222,13 @@ const Configuration: FC = () => {
     hasSettedApiKey,
     textGenerationModelList,
   } = useProviderContext()
-  const currModel = textGenerationModelList.find(item => item.provider === modelConfig.provider)?.models.find(model => model.model === modelConfig.model_id)
+  const { currentModel: currModel } = useCurrentProviderAndModel(
+    {
+      provider: modelConfig.provider,
+      model: modelConfig.model_id,
+    },
+    textGenerationModelList,
+  )
 
   // Fill old app data missing model mode.
   useEffect(() => {

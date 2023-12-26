@@ -24,10 +24,11 @@ import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
-import { useProviderContext } from '@/context/provider-context'
 import type { Inputs } from '@/models/debug'
 import { fetchFileUploadConfig } from '@/service/common'
 import type { Annotation as AnnotationType } from '@/models/log'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+
 type IDebug = {
   hasSetAPIKEY: boolean
   onSetting: () => void
@@ -69,7 +70,7 @@ const Debug: FC<IDebug> = ({
     visionConfig,
     annotationConfig,
   } = useContext(ConfigContext)
-  const { speech2textDefaultModel } = useProviderContext()
+  const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [chatList, setChatList, getChatList] = useGetState<IChatItem[]>([])
   const chatListDomRef = useRef<HTMLDivElement>(null)
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)

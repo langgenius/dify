@@ -138,7 +138,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentTextGenerationDefaultModel}
                 modelList={textGenerationModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
-                popupClassName='z-[60]'
               />
             </div>
           </div>
@@ -159,7 +158,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentEmbeddingsDefaultModel}
                 modelList={embeddingsModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
-                popupClassName='z-[60]'
               />
             </div>
           </div>
@@ -180,7 +178,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentRerankDefaultModel}
                 modelList={rerankModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
-                popupClassName='z-[60]'
               />
             </div>
           </div>
@@ -201,7 +198,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                 defaultModel={currentSpeech2textDefaultModel}
                 modelList={speech2textModelList}
                 onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
-                popupClassName='z-[60]'
               />
             </div>
           </div>

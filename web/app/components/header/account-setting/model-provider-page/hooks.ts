@@ -12,10 +12,17 @@ import type {
   DefaultModelResponse,
   Model,
 } from './declarations'
-import { ConfigurateMethodEnum } from './declarations'
+import {
+  ConfigurateMethodEnum,
+  ModelTypeEnum,
+} from './declarations'
 import { languageMaps } from './utils'
 import I18n from '@/context/i18n'
-import { fetchModelProviderCredentials } from '@/service/common'
+import {
+  fetchDefaultModal,
+  fetchModelList,
+  fetchModelProviderCredentials,
+} from '@/service/common'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -79,4 +86,67 @@ export const useProviderCrenditialsFormSchemasValue = (
         ...currentCustomConfigrationModelFixedFields,
       }
       : undefined
+}
+
+export type ModelTypeIndex = 1 | 2 | 3 | 4
+export const MODEL_TYPE_MAPS = {
+  1: ModelTypeEnum.textGeneration,
+  2: ModelTypeEnum.textEmbedding,
+  3: ModelTypeEnum.rerank,
+  4: ModelTypeEnum.speech2text,
+}
+
+export const useModelList = (type: ModelTypeIndex) => {
+  const { data, mutate, isLoading } = useSWR(`/workspaces/current/models/model-types/${MODEL_TYPE_MAPS[type]}`, fetchModelList)
+
+  return {
+    data: data?.data || [],
+    mutate,
+    isLoading,
+  }
+}
+
+export const useDefaultModel = (type: ModelTypeIndex) => {
+  const { data, mutate, isLoading } = useSWR(`/workspaces/current/default-model?model_type=${MODEL_TYPE_MAPS[type]}`, fetchDefaultModal)
+
+  return {
+    data: data?.data,
+    mutate,
+    isLoading,
+  }
+}
+
+export const useCurrentProviderAndModel = (defaultModel: DefaultModel, modelList: Model[]) => {
+  const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider)
+  const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+
+  return {
+    currentProvider,
+    currentModel,
+  }
+}
+
+export const useModelListAndDefaultModel = (type: ModelTypeIndex) => {
+  const { data: modelList } = useModelList(type)
+  const { data: defaultModel } = useDefaultModel(type)
+
+  return {
+    modelList,
+    defaultModel,
+  }
+}
+
+export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: ModelTypeIndex) => {
+  const { modelList, defaultModel } = useModelListAndDefaultModel(type)
+  const { currentProvider, currentModel } = useCurrentProviderAndModel(
+    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
+    modelList,
+  )
+
+  return {
+    modelList,
+    defaultModel,
+    currentProvider,
+    currentModel,
+  }
 }
