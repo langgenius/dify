@@ -53,7 +53,7 @@ class AzureOpenAITextEmbeddingModel(TextEmbeddingModel):
             return 0
 
         try:
-            enc = tiktoken.encoding_for_model(model)
+            enc = tiktoken.encoding_for_model(credentials['base_model_name'])
         except KeyError:
             enc = tiktoken.get_encoding("cl100k_base")
 

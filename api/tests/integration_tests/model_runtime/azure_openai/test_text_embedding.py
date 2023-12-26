@@ -57,6 +57,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='text-embedding-ada-002',
+        credentials={
+            'base_model_name': 'text-embedding-ada-002'
+        },
         texts=[
             "hello",
             "world"

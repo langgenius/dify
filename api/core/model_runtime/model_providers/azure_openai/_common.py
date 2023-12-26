@@ -1,11 +1,13 @@
 import openai
 from httpx import Timeout
 
+from core.model_runtime.model_providers.azure_openai._constant import AZURE_OPENAI_API_VERSION
+
 from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
     InvokeAuthorizationError, InvokeBadRequestError, InvokeError
 
 
-class _CommonOpenAI:
+class _CommonAzureOpenAI:
     def _to_credential_kwargs(self, credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
@@ -15,16 +17,11 @@ class _CommonOpenAI:
         """
         credentials_kwargs = {
             "api_key": credentials['openai_api_key'],
+            "azure_endpoint": credentials['openai_api_base'],
+            "api_version": AZURE_OPENAI_API_VERSION,
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
         }
-
-        if 'openai_api_base' in credentials and credentials['openai_api_base']:
-            credentials['openai_api_base'] = credentials['openai_api_base'].rstrip('/')
-            credentials_kwargs['base_url'] = credentials['openai_api_base'] + '/v1'
-
-        if 'openai_organization' in credentials:
-            credentials_kwargs['organization'] = credentials['openai_organization']
 
         return credentials_kwargs
 
