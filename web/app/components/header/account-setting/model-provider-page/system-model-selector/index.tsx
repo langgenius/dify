@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelSelector from '../model-selector'
 import { useDefaultModelAndModelList } from '../hooks'
+import type { DefaultModel } from '../declarations'
+import { ModelTypeEnum } from '../declarations'
 import Tooltip from '@/app/components/base/tooltip'
 import { HelpCircle, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import {
@@ -12,6 +14,8 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import { useProviderContext } from '@/context/provider-context'
+import { updateDefaultModel } from '@/service/common'
+import { useToastContext } from '@/app/components/base/toast'
 
 type SystemModelSelectorProps = {
   onUpdate: () => void
@@ -20,6 +24,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
   onUpdate,
 }) => {
   const { t } = useTranslation()
+  const { notify } = useToastContext()
   const {
     textGenerationDefaultModel,
     textGenerationModelList,
@@ -29,15 +34,69 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     rerankModelList,
     speech2textDefaultModel,
     speech2textModelList,
+    updateModelList,
   } = useProviderContext()
+  const [changedModelTypes, setChangedModelTypes] = useState<ModelTypeEnum[]>([])
   const [currentTextGenerationDefaultModel, changeCurrentTextGenerationDefaultModel] = useDefaultModelAndModelList(textGenerationDefaultModel, textGenerationModelList)
   const [currentEmbeddingsDefaultModel, changeCurrentEmbeddingsDefaultModel] = useDefaultModelAndModelList(embeddingsDefaultModel, embeddingsModelList)
   const [currentRerankDefaultModel, changeCurrentRerankDefaultModel] = useDefaultModelAndModelList(rerankDefaultModel, rerankModelList)
   const [currentSpeech2textDefaultModel, changeCurrentSpeech2textDefaultModel] = useDefaultModelAndModelList(speech2textDefaultModel, speech2textModelList)
   const [open, setOpen] = useState(false)
 
-  const handleSave = () => {
+  const getCurrentDefaultModelByModelType = (modelType: ModelTypeEnum) => {
+    if (modelType === ModelTypeEnum.textGeneration)
+      return currentTextGenerationDefaultModel
+    else if (modelType === ModelTypeEnum.textEmbedding)
+      return currentEmbeddingsDefaultModel
+    else if (modelType === ModelTypeEnum.rerank)
+      return currentRerankDefaultModel
+    else if (modelType === ModelTypeEnum.speech2text)
+      return currentSpeech2textDefaultModel
 
+    return undefined
+  }
+  const handleChangeDefaultModel = (modelType: ModelTypeEnum, model: DefaultModel) => {
+    if (modelType === ModelTypeEnum.textGeneration)
+      changeCurrentTextGenerationDefaultModel(model)
+    else if (modelType === ModelTypeEnum.textEmbedding)
+      changeCurrentEmbeddingsDefaultModel(model)
+    else if (modelType === ModelTypeEnum.rerank)
+      changeCurrentRerankDefaultModel(model)
+    else if (modelType === ModelTypeEnum.speech2text)
+      changeCurrentSpeech2textDefaultModel(model)
+
+    if (!changedModelTypes.includes(modelType))
+      setChangedModelTypes([...changedModelTypes, modelType])
+  }
+  const handleSave = async () => {
+    const res = await updateDefaultModel({
+      url: '/workspaces/current/default-model',
+      body: {
+        model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text].map((modelType) => {
+          return {
+            model_type: modelType,
+            provider_name: getCurrentDefaultModelByModelType(modelType)?.provider,
+            model_name: getCurrentDefaultModelByModelType(modelType)?.model,
+          }
+        }),
+      },
+    })
+    if (res.result === 'success') {
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      setOpen(false)
+      onUpdate()
+
+      changedModelTypes.forEach((modelType) => {
+        if (modelType === ModelTypeEnum.textGeneration)
+          updateModelList(modelType)
+        else if (modelType === ModelTypeEnum.textEmbedding)
+          updateModelList(modelType)
+        else if (modelType === ModelTypeEnum.rerank)
+          updateModelList(modelType)
+        else if (modelType === ModelTypeEnum.speech2text)
+          updateModelList(modelType)
+      })
+    }
   }
 
   return (
@@ -78,7 +137,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               <ModelSelector
                 defaultModel={currentTextGenerationDefaultModel}
                 modelList={textGenerationModelList}
-                onSelect={changeCurrentTextGenerationDefaultModel}
+                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textGeneration, model)}
                 popupClassName='z-[60]'
               />
             </div>
@@ -99,7 +158,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               <ModelSelector
                 defaultModel={currentEmbeddingsDefaultModel}
                 modelList={embeddingsModelList}
-                onSelect={changeCurrentEmbeddingsDefaultModel}
+                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.textEmbedding, model)}
                 popupClassName='z-[60]'
               />
             </div>
@@ -120,7 +179,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               <ModelSelector
                 defaultModel={currentRerankDefaultModel}
                 modelList={rerankModelList}
-                onSelect={changeCurrentRerankDefaultModel}
+                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.rerank, model)}
                 popupClassName='z-[60]'
               />
             </div>
@@ -141,22 +200,9 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               <ModelSelector
                 defaultModel={currentSpeech2textDefaultModel}
                 modelList={speech2textModelList}
-                onSelect={changeCurrentSpeech2textDefaultModel}
+                onSelect={model => handleChangeDefaultModel(ModelTypeEnum.speech2text, model)}
                 popupClassName='z-[60]'
               />
-            </div>
-          </div>
-          <div className='px-6 py-1'>
-            <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
-              {t('common.modelProvider.moderationModel.key')}
-              <Tooltip
-                selector='model-page-system-moderation-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.moderationModel.tip')}</div>
-                }
-              >
-                <HelpCircle className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
             </div>
           </div>
           <div className='flex items-center justify-end px-6 py-4'>
