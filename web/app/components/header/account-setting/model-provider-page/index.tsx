@@ -14,6 +14,7 @@ import { CustomConfigurationStatusEnum } from './declarations'
 import { fetchModelProviders } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import Loading from '@/app/components/base/loading'
 
 const ModelProviderPage = () => {
   const { t } = useTranslation()
@@ -27,7 +28,7 @@ const ModelProviderPage = () => {
   const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
   const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
   const [currentCustomConfigrationModelFixedFields, setCurrentCustomConfigrationModelFixedFields] = useState<CustomConfigrationModelFixedFields | undefined>(undefined)
-  const { data: providersData, mutate: mutateProviders } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { data: providersData, mutate: mutateProviders, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
   const providers = useMemo(() => {
     return providersData ? providersData.data : []
@@ -84,6 +85,13 @@ const ModelProviderPage = () => {
         }
         <SystemModelSelector onUpdate={() => mutateProviders()} />
       </div>
+      {
+        isLoading && (
+          <div className='mt-[240px]'>
+            <Loading />
+          </div>
+        )
+      }
       {
         !!configedProviders?.length && (
           <div className='pb-3'>
