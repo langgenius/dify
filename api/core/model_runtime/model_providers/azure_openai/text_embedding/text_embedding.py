@@ -48,7 +48,7 @@ class AzureOpenAITextEmbeddingModel(TextEmbeddingModel):
             model=credentials['base_model_name']
         )
 
-    def get_num_tokens(self, model: str, texts: list[str]) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         if len(texts) == 0:
             return 0
 
