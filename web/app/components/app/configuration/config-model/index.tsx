@@ -26,8 +26,8 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { ModelModeType } from '@/types/app'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type IConfigModelProps = {
   isAdvancedMode: boolean
@@ -54,8 +54,13 @@ const ConfigModel: FC<IConfigModelProps> = ({
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
-  const currentProvider = textGenerationModelList.find(model => model.provider === provider)
-  const currModel = currentProvider?.models.find(modelItem => modelItem.model === modelId)
+  const {
+    currentProvider,
+    currentModel: currModel,
+  } = useCurrentProviderAndModel(
+    textGenerationModelList,
+    { provider, model: modelId },
+  )
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -285,8 +290,7 @@ const ConfigModel: FC<IConfigModelProps> = ({
           currentProvider && (
             <ModelIcon
               className='!w-5 !h-5'
-              providerName={provider}
-              modelType={ModelTypeEnum.textGeneration}
+              provider={currentProvider}
             />
           )
         }

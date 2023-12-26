@@ -1,5 +1,8 @@
 import type { FC } from 'react'
-import type { ModelItem } from '../declarations'
+import type {
+  Model,
+  ModelItem,
+} from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 // import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -7,7 +10,7 @@ import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type ModelTriggerProps = {
   open: boolean
-  provider: string
+  provider: Model
   model: ModelItem
 }
 const ModelTrigger: FC<ModelTriggerProps> = ({
@@ -24,8 +27,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
     >
       <ModelIcon
         className='shrink-0 mr-1.5'
-        modelType={model.model_type}
-        providerName={provider}
+        provider={provider}
       />
       <ModelName
         className='grow'

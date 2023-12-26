@@ -50,8 +50,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 shrink-0 mr-2 w-4 h-4
                 ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
               `}
-              providerName={model.provider}
-              modelType={modelItem.model_type}
+              provider={model}
             />
             <ModelName
               className={`

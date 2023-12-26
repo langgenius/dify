@@ -11,20 +11,21 @@ import type {
   ModelProvider,
 } from './declarations'
 import { CustomConfigurationStatusEnum } from './declarations'
+import {
+  useDefaultModel,
+  useUpdateModelList,
+} from './hooks'
 import { fetchModelProviders } from '@/service/common'
-import { useProviderContext } from '@/context/provider-context'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Loading from '@/app/components/base/loading'
 
 const ModelProviderPage = () => {
   const { t } = useTranslation()
-  const {
-    textGenerationDefaultModel,
-    embeddingsDefaultModel,
-    speech2textDefaultModel,
-    rerankDefaultModel,
-    updateModelList,
-  } = useProviderContext()
+  const updateModelList = useUpdateModelList()
+  const { data: textGenerationDefaultModel } = useDefaultModel(1)
+  const { data: embeddingsDefaultModel } = useDefaultModel(2)
+  const { data: rerankDefaultModel } = useDefaultModel(3)
+  const { data: speech2textDefaultModel } = useDefaultModel(4)
   const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
   const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
   const [currentCustomConfigrationModelFixedFields, setCurrentCustomConfigrationModelFixedFields] = useState<CustomConfigrationModelFixedFields | undefined>(undefined)
@@ -83,7 +84,13 @@ const ModelProviderPage = () => {
             )
             : <div className='text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
         }
-        <SystemModelSelector onUpdate={() => mutateProviders()} />
+        <SystemModelSelector
+          textGenerationDefaultModel={textGenerationDefaultModel}
+          embeddingsDefaultModel={embeddingsDefaultModel}
+          rerankDefaultModel={rerankDefaultModel}
+          speech2textDefaultModel={speech2textDefaultModel}
+          onUpdate={() => mutateProviders()}
+        />
       </div>
       {
         isLoading && (

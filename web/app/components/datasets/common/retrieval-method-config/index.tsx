@@ -9,6 +9,7 @@ import RadioCard from '@/app/components/base/radio-card'
 import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
 import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 import { useProviderContext } from '@/context/provider-context'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type Props = {
   value: RetrievalConfig
@@ -20,14 +21,15 @@ const RetrievalMethodConfig: FC<Props> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { supportRetrievalMethods, rerankDefaultModel } = useProviderContext()
+  const { supportRetrievalMethods } = useProviderContext()
+  const { data: rerankDefaultModel } = useDefaultModel(3)
   const value = (() => {
     if (!passValue.reranking_model.reranking_model_name) {
       return {
         ...passValue,
         reranking_model: {
-          reranking_provider_name: rerankDefaultModel?.model_provider.provider_name || '',
-          reranking_model_name: rerankDefaultModel?.model_name || '',
+          reranking_provider_name: rerankDefaultModel?.provider.provider || '',
+          reranking_model_name: rerankDefaultModel?.model || '',
         },
       }
     }

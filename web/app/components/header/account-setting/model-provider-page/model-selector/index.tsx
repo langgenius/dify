@@ -5,6 +5,7 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
+import { useCurrentProviderAndModel } from '../hooks'
 import ModelTrigger from './model-trigger'
 import EmptyTrigger from './empty-trigger'
 import Popup from './popup'
@@ -28,8 +29,13 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   onSelect,
 }) => {
   const [open, setOpen] = useState(false)
-  const currentProvider = modelList.find(model => model.provider === defaultModel?.provider)
-  const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
+  const {
+    currentProvider,
+    currentModel,
+  } = useCurrentProviderAndModel(
+    modelList,
+    defaultModel,
+  )
 
   const handleSelect = (provider: string, model: ModelItem) => {
     setOpen(false)
@@ -54,7 +60,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             currentModel && currentProvider && (
               <ModelTrigger
                 open={open}
-                provider={currentProvider?.provider}
+                provider={currentProvider}
                 model={currentModel}
               />
             )

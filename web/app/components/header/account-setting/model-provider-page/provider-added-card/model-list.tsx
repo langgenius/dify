@@ -83,8 +83,7 @@ const ModelList: FC<ModelListProps> = ({
               <div className='shrink-0 mr-2' style={{ background: provider.icon_small[language] }} />
               <ModelIcon
                 className='shrink-0 mr-2'
-                providerName={provider.provider}
-                modelType={model.model_type}
+                provider={provider}
               />
               <ModelName
                 className='grow text-sm font-normal text-gray-900'
