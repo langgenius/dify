@@ -108,7 +108,7 @@ class ProviderManager:
             # Convert to system configuration
             system_configuration = self._to_system_configuration(
                 provider_entity,
-                provider_name_to_provider_records_dict.get(provider_entity.provider)
+                provider_records
             )
 
             # Get preferred provider type
