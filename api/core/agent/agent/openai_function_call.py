@@ -18,7 +18,7 @@ from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
 from core.model_manager import ModelInstance
 from core.entities.message_entities import lc_messages_to_prompt_messages
-from core.model_runtime.entities.message_entities import PromptMessageTool
+from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.third_party.langchain.llms.fake import FakeLLM
 
@@ -132,13 +132,13 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         prompt = self.prompt.format_prompt(**full_inputs)
         messages = prompt.to_messages()
 
+        prompt_messages = lc_messages_to_prompt_messages(messages)
+
         # summarize messages if rest_tokens < 0
         try:
-            messages = self.summarize_messages_if_needed(messages, functions=self.functions)
+            prompt_messages = self.summarize_messages_if_needed(prompt_messages, functions=self.functions)
         except ExceededLLMTokensLimitError as e:
             return AgentFinish(return_values={"output": str(e)}, log=str(e))
-
-        prompt_messages = lc_messages_to_prompt_messages(messages)
 
         model_instance = ModelInstance(
             provider_model_bundle=self.model_config.provider_model_bundle,
@@ -192,13 +192,10 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
         except ValueError:
             return AgentFinish({"output": "I'm sorry, I don't know how to respond to that."}, "")
 
-    def summarize_messages_if_needed(self, messages: List[BaseMessage], **kwargs) -> List[BaseMessage]:
+    def summarize_messages_if_needed(self, messages: List[PromptMessage], **kwargs) -> List[PromptMessage]:
         # calculate rest tokens and summarize previous function observation messages if rest_tokens < 0
-        model_type_instance = self.model_config.provider_model_bundle.model_type_instance
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
         rest_tokens = self.get_message_rest_tokens(
-            self.model_config.model,
-            model_type_instance,
+            self.model_config,
             messages,
             **kwargs
         )
