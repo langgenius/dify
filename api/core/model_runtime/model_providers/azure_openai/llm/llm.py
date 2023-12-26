@@ -15,17 +15,14 @@ from core.model_runtime.entities.message_entities import PromptMessageTool, Prom
     TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.azure_openai._common import _CommonOpenAI
-from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS, AZURE_OPENAI_API_VERSION
+from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
+from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS
 from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
 
 
-class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
-    """
-    Model class for OpenAI large language model.
-    """
+class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -33,12 +30,13 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
 
-        model_mode = self._get_model_config(credentials['base_model_name'])['mode']
+        model_config = self._get_model_config(credentials['base_model_name'])
 
-        if model_mode == LLMMode.CHAT:
+        if model_config['mode'] == LLMMode.CHAT:
             # chat model
             return self._chat_generate(
-                model=model,
+                model=model_config['name'],
+                deployment_name=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -50,7 +48,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         else:
             # text completion model
             return self._generate(
-                model=model,
+                model=model_config['name'],
+                deployment_name=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -82,11 +81,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             raise CredentialsValidateFailedError('Base Model Name is required')
 
         try:
-            client = AzureOpenAI(
-                api_version=AZURE_OPENAI_API_VERSION,
-                azure_endpoint=credentials['openai_api_base'],
-                api_key=credentials['openai_api_key'],
-            )
+            client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
             model_mode = self._get_model_config(credentials['base_model_name'])['mode']
 
@@ -111,15 +106,11 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _generate(self, model: str, credentials: dict,
+    def _generate(self, model: str, deployment_name: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        client = AzureOpenAI(
-            api_version=AZURE_OPENAI_API_VERSION,
-            azure_endpoint=credentials['openai_api_base'],
-            api_key=credentials['openai_api_key'],
-        )
+        client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
         extra_model_kwargs = {}
 
@@ -132,7 +123,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # text completion model
         response = client.completions.create(
             prompt=prompt_messages[0].content,
-            model=model,
+            model=deployment_name,
             stream=stream,
             **model_parameters,
             **extra_model_kwargs
@@ -145,15 +136,6 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     def _handle_generate_response(self, model: str, credentials: dict, response: Completion,
                                   prompt_messages: list[PromptMessage]) -> LLMResult:
-        """
-        Handle llm completion response
-
-        :param model: model name
-        :param credentials: model credentials
-        :param response: response
-        :param prompt_messages: prompt messages
-        :return: llm result
-        """
         assistant_text = response.choices[0].text
 
         # transform assistant message to prompt message
@@ -187,15 +169,6 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     def _handle_generate_stream_response(self, model: str, credentials: dict, response: Stream[Completion],
                                          prompt_messages: list[PromptMessage]) -> Generator:
-        """
-        Handle llm completion stream response
-
-        :param model: model name
-        :param credentials: model credentials
-        :param response: response
-        :param prompt_messages: prompt messages
-        :return: llm response chunk generator result
-        """
         full_text = ''
         for chunk in response:
             if len(chunk.choices) == 0:
@@ -250,16 +223,12 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     )
                 )
 
-    def _chat_generate(self, model: str, credentials: dict,
+    def _chat_generate(self, model: str, deployment_name: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
-        client = AzureOpenAI(
-            api_version=AZURE_OPENAI_API_VERSION,
-            azure_endpoint=credentials['openai_api_base'],
-            api_key=credentials['openai_api_key'],
-        )
+        client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
         response_format = model_parameters.get("response_format")
         if response_format:
@@ -289,7 +258,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # chat model
         response = client.chat.completions.create(
             messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
-            model=model,
+            model=deployment_name,
             stream=stream,
             **model_parameters,
             **extra_model_kwargs,
@@ -303,16 +272,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
     def _handle_chat_generate_response(self, model: str, credentials: dict, response: ChatCompletion,
                                        prompt_messages: list[PromptMessage],
                                        tools: Optional[list[PromptMessageTool]] = None) -> LLMResult:
-        """
-        Handle llm chat response
 
-        :param model: model name
-        :param credentials: credentials
-        :param response: response
-        :param prompt_messages: prompt messages
-        :param tools: tools for tool calling
-        :return: llm response
-        """
         assistant_message = response.choices[0].message
         assistant_message_tool_calls = assistant_message.tool_calls
         # assistant_message_function_call = assistant_message.function_call
@@ -356,15 +316,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                                               response: Stream[ChatCompletionChunk],
                                               prompt_messages: list[PromptMessage],
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
-        """
-        Handle llm chat stream response
 
-        :param model: model name
-        :param response: response
-        :param prompt_messages: prompt messages
-        :param tools: tools for tool calling
-        :return: llm response chunk generator
-        """
         full_assistant_content = ''
         for chunk in response:
             if len(chunk.choices) == 0:
@@ -429,12 +381,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
     @staticmethod
     def _extract_response_tool_calls(response_tool_calls: list[ChatCompletionMessageToolCall | ChoiceDeltaToolCall]) \
             -> list[AssistantPromptMessage.ToolCall]:
-        """
-        Extract tool calls from response
 
-        :param response_tool_calls: response tool calls
-        :return: list of tool calls
-        """
         tool_calls = []
         if response_tool_calls:
             for response_tool_call in response_tool_calls:
@@ -455,12 +402,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
     @staticmethod
     def _extract_response_function_call(response_function_call: FunctionCall | ChoiceDeltaFunctionCall) \
             -> AssistantPromptMessage.ToolCall:
-        """
-        Extract function call from response
 
-        :param response_function_call: response function call
-        :return: tool call
-        """
         tool_call = None
         if response_function_call:
             function = AssistantPromptMessage.ToolCall.ToolCallFunction(
@@ -478,9 +420,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     @staticmethod
     def _convert_prompt_message_to_dict(message: PromptMessage) -> dict:
-        """
-        Convert PromptMessage to dict for OpenAI API
-        """
+
         if isinstance(message, UserPromptMessage):
             message = cast(UserPromptMessage, message)
             if isinstance(message.content, str):
@@ -629,13 +569,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
     @staticmethod
     def _num_tokens_for_tools(encoding: tiktoken.Encoding, tools: list[PromptMessageTool]) -> int:
-        """
-        Calculate num tokens for tool calling with tiktoken package.
 
-        :param encoding: encoding
-        :param tools: tools for tool calling
-        :return: number of tokens
-        """
         num_tokens = 0
         for tool in tools:
             num_tokens += len(encoding.encode('type'))

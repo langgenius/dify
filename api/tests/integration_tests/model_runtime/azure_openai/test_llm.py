@@ -198,7 +198,7 @@ def test_invoke_chat_model_with_vision():
     model = AzureOpenAILargeLanguageModel()
 
     result = model.invoke(
-        model='gpt-4-vision-preview',
+        model='gpt-4v',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),

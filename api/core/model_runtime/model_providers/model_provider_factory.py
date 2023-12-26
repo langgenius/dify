@@ -1,7 +1,6 @@
 import importlib
 import logging
 import os
-import time
 from collections import OrderedDict
 from typing import Optional
 
@@ -18,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class ModelProviderExtension(BaseModel):
-    provider_class: type[ModelProvider]
+    provider_instance: ModelProvider
     name: str
     position: Optional[int] = None
 
@@ -36,17 +35,14 @@ class ModelProviderFactory:
         Get all providers
         :return: list of providers
         """
-
         # scan all providers
         model_provider_extensions = self._get_model_provider_map()
 
         # traverse all model_provider_extensions
-        start = time.perf_counter()
         providers = []
         for name, model_provider_extension in model_provider_extensions.items():
             # get model_provider instance
-            provider_class = model_provider_extension.provider_class
-            model_provider_instance = provider_class()
+            model_provider_instance = model_provider_extension.provider_instance
 
             # get provider schema
             provider_schema = model_provider_instance.get_provider_schema()
@@ -58,8 +54,6 @@ class ModelProviderFactory:
                     provider_schema.models.extend(models)
 
             providers.append(provider_schema)
-
-        print(f"get_providers took {time.perf_counter() - start} seconds")
 
         # return providers
         return providers
@@ -147,8 +141,7 @@ class ModelProviderFactory:
                 continue
 
             # get model_provider instance
-            provider_class = model_provider_extension.provider_class
-            model_provider_instance = provider_class()
+            model_provider_instance = model_provider_extension.provider_instance
 
             # get provider schema
             provider_schema = model_provider_instance.get_provider_schema()
@@ -191,8 +184,7 @@ class ModelProviderFactory:
             raise Exception(f'Invalid provider: {provider}')
 
         # get the provider instance
-        model_provider_class = model_provider_extension.provider_class
-        model_provider_instance = model_provider_class()
+        model_provider_instance = model_provider_extension.provider_instance
 
         return model_provider_instance
 
@@ -256,7 +248,7 @@ class ModelProviderFactory:
 
             model_providers[model_provider_name] = ModelProviderExtension(
                 name=model_provider_name,
-                provider_class=model_provider_class,
+                provider_instance=model_provider_class(),
                 position=position_map.get(model_provider_name)
             )
 

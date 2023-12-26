@@ -76,7 +76,7 @@ def test__get_model_provider_map():
 
     for name, model_provider in model_providers.items():
         logger.debug(name)
-        logger.debug(model_provider.provider_class)
+        logger.debug(model_provider.provider_instance)
 
     assert len(model_providers) >= 1
     assert isinstance(model_providers['openai'], ModelProviderExtension)

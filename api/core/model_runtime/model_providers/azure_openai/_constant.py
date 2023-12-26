@@ -1,7 +1,7 @@
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature
 
-AZURE_OPENAI_API_VERSION = '2023-09-01-preview'
+AZURE_OPENAI_API_VERSION = '2023-12-01-preview'
 
 LLM_BASE_MODELS = [
     {
@@ -53,7 +53,7 @@ LLM_BASE_MODELS = [
         ]
     },
     {
-        'name': 'gpt-35-turbo-instruct',
+        'name': 'gpt-3.5-turbo-instruct',
         'base_model_name': 'gpt-35-turbo-instruct',
         'mode': LLMMode.COMPLETION,
 

@@ -12,7 +12,7 @@ from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 class ModelProvider(ABC):
     provider_schema: ProviderEntity = None
-    model_class_map: Dict[str, type[AIModel]] = {}
+    model_instance_map: Dict[str, AIModel] = {}
 
     @abstractmethod
     def validate_provider_credentials(self, credentials: dict) -> None:
@@ -91,8 +91,8 @@ class ModelProvider(ABC):
         # get dirname of the current path
         provider_name = self.__class__.__module__.split('.')[-1]
 
-        if f"{provider_name}.{model_type.value}" in self.model_class_map:
-            return self.model_class_map[f"{provider_name}.{model_type.value}"]()
+        if f"{provider_name}.{model_type.value}" in self.model_instance_map:
+            return self.model_instance_map[f"{provider_name}.{model_type.value}"]
 
         # get the path of the model type classes
         base_path = os.path.abspath(__file__)
@@ -119,6 +119,7 @@ class ModelProvider(ABC):
         if not model_class:
             raise Exception(f'Missing AIModel Class for model type {model_type} in {model_type_py_path}')
 
-        self.model_class_map[f"{provider_name}.{model_type.value}"] = model_class
+        model_instance_map = model_class()
+        self.model_instance_map[f"{provider_name}.{model_type.value}"] = model_instance_map
 
-        return model_class()
+        return model_instance_map
