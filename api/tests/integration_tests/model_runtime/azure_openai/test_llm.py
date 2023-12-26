@@ -3,8 +3,8 @@ from typing import Generator
 
 import pytest
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, UserPromptMessage, \
-    SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, \
+    SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool, UserPromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
     LLMResultChunk
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -308,6 +308,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='gpt-35-turbo-instruct',
+        credentials={
+            'base_model_name': 'gpt-35-turbo-instruct'
+        },
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'
@@ -319,6 +322,9 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='gpt-35-turbo',
+        credentials={
+            'base_model_name': 'gpt-35-turbo'
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',

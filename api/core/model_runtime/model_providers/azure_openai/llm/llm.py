@@ -16,8 +16,8 @@ from core.model_runtime.entities.message_entities import PromptMessageTool, Prom
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonOpenAI
-from core.model_runtime.utils import helper
 from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS, AZURE_OPENAI_API_VERSION
+from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
 
@@ -33,7 +33,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
 
-        model_mode = self._get_model_mode(credentials['base_model_name'])
+        model_mode = self._get_model_config(credentials['base_model_name'])['mode']
 
         if model_mode == LLMMode.CHAT:
             # chat model
@@ -59,25 +59,17 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 user=user
             )
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
-        """
-        Get number of tokens for given prompt messages
 
-        :param model:
-        :param prompt_messages:
-        :param tools: tools for tool calling
-        :return:
-        """
-        # get model mode
-        model_mode = self._get_model_mode(model)
+        model_mode = self._get_model_config(credentials['base_model_name'])['mode']
 
         if model_mode == LLMMode.CHAT:
             # chat model
-            return self._num_tokens_from_messages(model, prompt_messages, tools)
+            return self._num_tokens_from_messages(credentials, prompt_messages, tools)
         else:
             # text completion model, do not support tool calling
-            return self._num_tokens_from_string(model, prompt_messages[0].content)
+            return self._num_tokens_from_string(credentials, prompt_messages[0].content)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         if 'openai_api_base' not in credentials:
@@ -96,7 +88,7 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 api_key=credentials['openai_api_key'],
             )
 
-            model_mode = self._get_model_mode(credentials['base_model_name'])
+            model_mode = self._get_model_config(credentials['base_model_name'])['mode']
 
             if model_mode == LLMMode.CHAT:
                 # chat model
@@ -176,8 +168,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             completion_tokens = response.usage.completion_tokens
         else:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, assistant_text)
+            prompt_tokens = self._num_tokens_from_string(credentials, prompt_messages[0].content)
+            completion_tokens = self._num_tokens_from_string(credentials, assistant_text)
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -230,8 +222,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     completion_tokens = chunk.usage.completion_tokens
                 else:
                     # calculate num tokens
-                    prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-                    completion_tokens = self._num_tokens_from_string(model, full_text)
+                    prompt_tokens = self._num_tokens_from_string(credentials, prompt_messages[0].content)
+                    completion_tokens = self._num_tokens_from_string(credentials, full_text)
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -343,8 +335,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             completion_tokens = response.usage.completion_tokens
         else:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, tools)
-            completion_tokens = self._num_tokens_from_messages(model, [assistant_prompt_message])
+            prompt_tokens = self._num_tokens_from_messages(credentials, prompt_messages, tools)
+            completion_tokens = self._num_tokens_from_messages(credentials, [assistant_prompt_message])
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -360,7 +352,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return response
 
-    def _handle_chat_generate_stream_response(self, model: str, credentials: dict, response: Stream[ChatCompletionChunk],
+    def _handle_chat_generate_stream_response(self, model: str, credentials: dict,
+                                              response: Stream[ChatCompletionChunk],
                                               prompt_messages: list[PromptMessage],
                                               tools: Optional[list[PromptMessageTool]] = None) -> Generator:
         """
@@ -400,13 +393,13 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
             if delta.finish_reason is not None:
                 # calculate num tokens
-                prompt_tokens = self._num_tokens_from_messages(model, prompt_messages, tools)
+                prompt_tokens = self._num_tokens_from_messages(credentials, prompt_messages, tools)
 
                 full_assistant_prompt_message = AssistantPromptMessage(
                     content=full_assistant_content,
                     tool_calls=tool_calls
                 )
-                completion_tokens = self._num_tokens_from_messages(model, [full_assistant_prompt_message])
+                completion_tokens = self._num_tokens_from_messages(credentials, [full_assistant_prompt_message])
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -433,8 +426,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                     )
                 )
 
-    def _extract_response_tool_calls(self,
-                                     response_tool_calls: list[ChatCompletionMessageToolCall | ChoiceDeltaToolCall]) \
+    @staticmethod
+    def _extract_response_tool_calls(response_tool_calls: list[ChatCompletionMessageToolCall | ChoiceDeltaToolCall]) \
             -> list[AssistantPromptMessage.ToolCall]:
         """
         Extract tool calls from response
@@ -459,7 +452,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return tool_calls
 
-    def _extract_response_function_call(self, response_function_call: FunctionCall | ChoiceDeltaFunctionCall) \
+    @staticmethod
+    def _extract_response_function_call(response_function_call: FunctionCall | ChoiceDeltaFunctionCall) \
             -> AssistantPromptMessage.ToolCall:
         """
         Extract function call from response
@@ -482,7 +476,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return tool_call
 
-    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
+    @staticmethod
+    def _convert_prompt_message_to_dict(message: PromptMessage) -> dict:
         """
         Convert PromptMessage to dict for OpenAI API
         """
@@ -546,18 +541,10 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return message_dict
 
-    def _num_tokens_from_string(self, model: str, text: str,
+    def _num_tokens_from_string(self, credentials: dict, text: str,
                                 tools: Optional[list[PromptMessageTool]] = None) -> int:
-        """
-        Calculate num tokens for text completion model with tiktoken package.
-
-        :param model: model name
-        :param text: prompt text
-        :param tools: tools for tool calling
-        :return: number of tokens
-        """
         try:
-            encoding = tiktoken.encoding_for_model(model)
+            encoding = tiktoken.encoding_for_model(credentials['base_model_name'])
         except KeyError:
             encoding = tiktoken.get_encoding("cl100k_base")
 
@@ -568,12 +555,13 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return num_tokens
 
-    def _num_tokens_from_messages(self, model: str, messages: List[PromptMessage],
+    def _num_tokens_from_messages(self, credentials: dict, messages: List[PromptMessage],
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
         main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        model = credentials['base_model_name']
         try:
             encoding = tiktoken.encoding_for_model(model)
         except KeyError:
@@ -639,7 +627,8 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         return num_tokens
 
-    def _num_tokens_for_tools(self, encoding: tiktoken.Encoding, tools: list[PromptMessageTool]) -> int:
+    @staticmethod
+    def _num_tokens_for_tools(encoding: tiktoken.Encoding, tools: list[PromptMessageTool]) -> int:
         """
         Calculate num tokens for tool calling with tiktoken package.
 
@@ -687,9 +676,9 @@ class AzureOpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         return num_tokens
 
     @staticmethod
-    def _get_model_mode(base_model_name: str) -> LLMMode:
+    def _get_model_config(base_model_name: str) -> dict:
         for model_config in LLM_BASE_MODELS:
             if model_config['base_model_name'] == base_model_name:
-                return model_config['mode']
+                return model_config
 
         raise CredentialsValidateFailedError(f'Base Model Name {base_model_name} is invalid')
