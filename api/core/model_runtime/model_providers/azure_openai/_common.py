@@ -8,7 +8,8 @@ from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServer
 
 
 class _CommonAzureOpenAI:
-    def _to_credential_kwargs(self, credentials: dict) -> dict:
+    @staticmethod
+    def _to_credential_kwargs(credentials: dict) -> dict:
         """
         Transform credentials to kwargs for model instance
 

@@ -80,12 +80,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
+        model_config = self._get_model_config(credentials['base_model_name'])
+
+        if not model_config:
+            raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
+
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            model_mode = self._get_model_config(credentials['base_model_name'])['mode']
-
-            if model_mode == LLMMode.CHAT:
+            if model_config['mode'] == LLMMode.CHAT:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": 'ping'}],
@@ -615,4 +618,4 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             if model_config['base_model_name'] == base_model_name:
                 return model_config
 
-        raise CredentialsValidateFailedError(f'Base Model Name {base_model_name} is invalid')
+        return None

@@ -56,11 +56,13 @@ LLM_BASE_MODELS = [
         'name': 'gpt-3.5-turbo-instruct',
         'base_model_name': 'gpt-35-turbo-instruct',
         'mode': LLMMode.COMPLETION,
-
         'features': []
     }
 ]
 
-EMBEDDING_BASE_MODELS = [
-    'text-embedding-ada-002',
-]
+EMBEDDING_BASE_MODELS = [{
+    'name': 'text-embedding-ada-002',
+    'base_model_name': 'text-embedding-ada-002',
+    'context_size': 8097,
+    'max_chunks': 32,
+}]

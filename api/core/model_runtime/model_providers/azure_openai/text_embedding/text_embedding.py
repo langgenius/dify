@@ -1,51 +1,107 @@
-import logging
-from typing import Optional
+import base64
+import time
+from typing import Optional, Tuple
 
-import openai
+import numpy as np
 import tiktoken
 from openai import AzureOpenAI
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import PriceType, AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
-from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, \
-    InvokeAuthorizationError, InvokeBadRequestError, InvokeError, InvokeRateLimitError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS, AZURE_OPENAI_API_VERSION
+from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
+from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS
 
-logger = logging.getLogger(__name__)
 
+class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
-class AzureOpenAITextEmbeddingModel(TextEmbeddingModel):
-    def _invoke(self, model: str, credentials: dict, texts: list[str],
-                user: Optional[str] = None) -> TextEmbeddingResult:
+    def _invoke(self, model: str, credentials: dict,
+                texts: list[str], user: Optional[str] = None) \
+            -> TextEmbeddingResult:
+        model_config = self._get_model_config(credentials['base_model_name'])
+        model_true_name = model_config['name']
+        deployment_name = model
 
-        client = AzureOpenAI(
-            api_version=AZURE_OPENAI_API_VERSION,
-            azure_endpoint=credentials['openai_api_base'],
-            api_key=credentials['openai_api_key'],
+        credentials_kwargs = self._to_credential_kwargs(credentials)
+
+        client = AzureOpenAI(**credentials_kwargs)
+
+        extra_model_kwargs = {}
+        if user:
+            extra_model_kwargs['user'] = user
+
+        extra_model_kwargs['encoding_format'] = 'base64'
+
+        context_size = self._get_context_size(model_true_name, credentials)
+        max_chunks = self._get_max_chunks(model_true_name, credentials)
+
+        embeddings: list[list[float]] = [[] for _ in range(len(texts))]
+        tokens = []
+        indices = []
+        used_tokens = 0
+
+        try:
+            enc = tiktoken.encoding_for_model(model_true_name)
+        except KeyError:
+            enc = tiktoken.get_encoding("cl100k_base")
+
+        for i, text in enumerate(texts):
+            token = enc.encode(
+                text
+            )
+            for j in range(0, len(token), context_size):
+                tokens += [token[j: j + context_size]]
+                indices += [i]
+
+        batched_embeddings = []
+        _iter = range(0, len(tokens), max_chunks)
+
+        for i in _iter:
+            embeddings, embedding_used_tokens = self._embedding_invoke(
+                deployment_name=deployment_name,
+                client=client,
+                texts=tokens[i: i + max_chunks],
+                extra_model_kwargs=extra_model_kwargs
+            )
+
+            used_tokens += embedding_used_tokens
+            batched_embeddings += [data for data in embeddings]
+
+        results: list[list[list[float]]] = [[] for _ in range(len(texts))]
+        num_tokens_in_batch: list[list[int]] = [[] for _ in range(len(texts))]
+        for i in range(len(indices)):
+            results[indices[i]].append(batched_embeddings[i])
+            num_tokens_in_batch[indices[i]].append(len(tokens[i]))
+
+        for i in range(len(texts)):
+            _result = results[i]
+            if len(_result) == 0:
+                embeddings, embedding_used_tokens = self._embedding_invoke(
+                    deployment_name=deployment_name,
+                    client=client,
+                    texts=[""],
+                    extra_model_kwargs=extra_model_kwargs
+                )
+
+                used_tokens += embedding_used_tokens
+                average = embeddings[0]
+            else:
+                average = np.average(_result, axis=0, weights=num_tokens_in_batch[i])
+            embeddings[i] = (average / np.linalg.norm(average)).tolist()
+
+        # calc usage
+        usage = self._calc_response_usage(
+            model=model_true_name,
+            credentials=credentials,
+            tokens=used_tokens
         )
-
-        response = client.embeddings.create(
-            model=model,
-            input=texts
-        )
-
-        usage = EmbeddingUsage(
-            tokens=0,
-            total_tokens=response.usage.total_tokens,
-            unit_price=0.0,
-            price_unit=0.0,
-            total_price=0.0,
-            currency='USD',
-            latency=0.0
-        )
-
-        embeddings = [item.embedding for item in response.data]
 
         return TextEmbeddingResult(
             embeddings=embeddings,
             usage=usage,
-            model=credentials['base_model_name']
+            model=model_true_name
         )
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
@@ -75,44 +131,80 @@ class AzureOpenAITextEmbeddingModel(TextEmbeddingModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        if credentials['base_model_name'] not in EMBEDDING_BASE_MODELS:
-            raise CredentialsValidateFailedError('Base Model Name is invalid')
+        if not self._get_model_config(credentials['base_model_name']):
+            raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
 
         try:
-            client = AzureOpenAI(
-                api_version=AZURE_OPENAI_API_VERSION,
-                azure_endpoint=credentials['openai_api_base'],
-                api_key=credentials['openai_api_key'],
-            )
+            credentials_kwargs = self._to_credential_kwargs(credentials)
+            client = AzureOpenAI(**credentials_kwargs)
 
-            client.embeddings.create(
-                model=model,
-                input=['ping']
+            self._embedding_invoke(
+                deployment_name=model,
+                client=client,
+                texts=['ping'],
+                extra_model_kwargs={}
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    @property
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-        return {
-            InvokeConnectionError: [
-                openai.APIConnectionError,
-                openai.APITimeoutError
-            ],
-            InvokeServerUnavailableError: [
-                openai.InternalServerError
-            ],
-            InvokeRateLimitError: [
-                openai.RateLimitError
-            ],
-            InvokeAuthorizationError: [
-                openai.AuthenticationError,
-                openai.PermissionDeniedError
-            ],
-            InvokeBadRequestError: [
-                openai.BadRequestError,
-                openai.NotFoundError,
-                openai.UnprocessableEntityError,
-                openai.APIError
-            ]
-        }
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        model_config = self._get_model_config(credentials['base_model_name'])
+
+        entity = AIModelEntity(
+            model=model_config['name'],
+            label=I18nObject(
+                en_US=model_config['name']
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                'context_size': model_config['context_size'],
+                'max_chunks': model_config['max_chunks'],
+            }
+        )
+
+        return entity
+
+    @staticmethod
+    def _embedding_invoke(deployment_name: str, client: AzureOpenAI, texts: list[str],
+                          extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
+        response = client.embeddings.create(
+            input=texts,
+            model=deployment_name,
+            **extra_model_kwargs,
+        )
+
+        if 'encoding_format' in extra_model_kwargs and extra_model_kwargs['encoding_format'] == 'base64':
+            # decode base64 embedding
+            return [list(base64.b64decode(data.embedding)) for data in response.data], response.usage.total_tokens
+
+        return [data.embedding for data in response.data], response.usage.total_tokens
+
+    def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
+        input_price_info = self.get_price(
+            model=model,
+            credentials=credentials,
+            price_type=PriceType.INPUT,
+            tokens=tokens
+        )
+
+        # transform usage
+        usage = EmbeddingUsage(
+            tokens=tokens,
+            total_tokens=tokens,
+            unit_price=input_price_info.unit_price,
+            price_unit=input_price_info.unit,
+            total_price=input_price_info.total_amount,
+            currency=input_price_info.currency,
+            latency=time.perf_counter() - self.started_at
+        )
+
+        return usage
+
+    @staticmethod
+    def _get_model_config(base_model_name: str) -> dict:
+        for model_config in EMBEDDING_BASE_MODELS:
+            if model_config['base_model_name'] == base_model_name:
+                return model_config
+
+        return None
