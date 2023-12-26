@@ -7,11 +7,11 @@ from pydantic import BaseModel
 
 from core.app_runner.moderation_handler import OutputModerationHandler, ModerationRule
 from core.entities.application_entities import ApplicationGenerateEntity
-from core.application_queue_manager import ApplicationQueueManager, ConversationTaskStoppedException
-from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, QueueMessage, \
+from core.application_queue_manager import ApplicationQueueManager
+from core.entities.queue_entities import QueueErrorEvent, QueueStopEvent, QueueMessageEndEvent, \
     QueueRetrieverResourcesEvent, QueueAgentThoughtEvent, QueuePingEvent, QueueMessageEvent, QueueMessageReplaceEvent, \
     AnnotationReplyEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, \
     TextPromptMessageContent, PromptMessageContentType, ImagePromptMessageContent, PromptMessage
 from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
@@ -99,7 +99,6 @@ class GenerateTaskPipeline:
                     }
 
                     self._task_state.llm_result.message.content = annotation.content
-                    self._queue_manager.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.ANNOTATION_REPLY))
             elif isinstance(event, (QueueStopEvent, QueueMessageEndEvent)):
                 if isinstance(event, QueueMessageEndEvent):
                     self._task_state.llm_result = event.llm_result
@@ -254,7 +253,6 @@ class GenerateTaskPipeline:
                     }
 
                     self._task_state.llm_result.message.content = annotation.content
-                    self._queue_manager.publish(QueueStopEvent(stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY))
             elif isinstance(event, QueueAgentThoughtEvent):
                 agent_thought = (
                     db.session.query(MessageAgentThought)
@@ -292,8 +290,16 @@ class GenerateTaskPipeline:
                     if self._output_moderation_handler.should_direct_output():
                         # stop subscribe new token when output moderation should direct output
                         self._task_state.llm_result.message.content = self._output_moderation_handler.get_final_output()
+                        self._queue_manager.publish_chunk_message(LLMResultChunk(
+                            model=self._task_state.llm_result.model,
+                            prompt_messages=self._task_state.llm_result.prompt_messages,
+                            delta=LLMResultChunkDelta(
+                                index=0,
+                                message=AssistantPromptMessage(content=self._task_state.llm_result.message.content)
+                            )
+                        ))
                         self._queue_manager.publish(QueueStopEvent(stop_by=QueueStopEvent.StopBy.OUTPUT_MODERATION))
-                        raise ConversationTaskStoppedException()
+                        continue
                     else:
                         self._output_moderation_handler.append_new_token(delta_text)
 

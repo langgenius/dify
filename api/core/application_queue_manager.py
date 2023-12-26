@@ -160,7 +160,7 @@ class ApplicationQueueManager:
         self._q.put(message)
 
         if isinstance(event, QueueStopEvent):
-            raise ConversationTaskStoppedException()
+            self.stop_listen()
 
     @classmethod
     def set_stop_flag(cls, task_id: str, invoke_from: InvokeFrom, user_id: str) -> None:
