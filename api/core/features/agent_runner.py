@@ -75,7 +75,7 @@ class AgentRunnerFeature:
 
         # check model is support tool calling
         provider_instance = model_provider_factory.get_provider_instance(provider=provider)
-        model_type_instance = provider_instance.get_model_type_instance(ModelType.LLM)
+        model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         # get model schema
