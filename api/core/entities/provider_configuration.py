@@ -262,6 +262,17 @@ class ProviderConfiguration(BaseModel):
             if key in provider_credential_secret_variables:
                 credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
+        model_schema = (
+            model_provider_factory.get_provider_instance(self.provider.provider)
+            .get_model_instance(model_type).get_customizable_model_schema(
+                model=model,
+                credentials=credentials
+            )
+        )
+
+        if model_schema:
+            credentials['schema'] = json.dumps(model_schema.dict())
+
         return provider_model_record, credentials
 
     def add_or_update_custom_model_credentials(self, model_type: ModelType, model: str, credentials: dict) -> None:
@@ -531,7 +542,7 @@ class ProviderConfiguration(BaseModel):
 
             custom_model_schema = (
                 provider_instance.get_model_instance(model_configuration.model_type)
-                .get_customizable_model_schema(
+                .get_customizable_model_schema_from_credentials(
                     model_configuration.model,
                     model_configuration.credentials
                 )

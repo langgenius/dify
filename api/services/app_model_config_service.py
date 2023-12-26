@@ -35,26 +35,6 @@ class AppModelConfigService:
         if not isinstance(cp, dict):
             raise ValueError("model.completion_params must be of object type")
 
-        # max_tokens
-        if 'max_tokens' not in cp:
-            cp["max_tokens"] = 512
-
-        # temperature
-        if 'temperature' not in cp:
-            cp["temperature"] = 1
-
-        # top_p
-        if 'top_p' not in cp:
-            cp["top_p"] = 1
-
-        # presence_penalty
-        if 'presence_penalty' not in cp:
-            cp["presence_penalty"] = 0
-
-        # presence_penalty
-        if 'frequency_penalty' not in cp:
-            cp["frequency_penalty"] = 0
-
         # stop
         if 'stop' not in cp:
             cp["stop"] = []
@@ -64,17 +44,7 @@ class AppModelConfigService:
         if len(cp["stop"]) > 4:
             raise ValueError("stop sequences must be less than 4")
 
-        # Filter out extra parameters
-        filtered_cp = {
-            "max_tokens": cp["max_tokens"],
-            "temperature": cp["temperature"],
-            "top_p": cp["top_p"],
-            "presence_penalty": cp["presence_penalty"],
-            "frequency_penalty": cp["frequency_penalty"],
-            "stop": cp["stop"]
-        }
-
-        return filtered_cp
+        return cp
 
     @classmethod
     def validate_configuration(cls, tenant_id: str, account: Account, config: dict, mode: str) -> dict:

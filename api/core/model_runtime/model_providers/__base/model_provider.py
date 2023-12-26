@@ -91,7 +91,7 @@ class ModelProvider(ABC):
         # get dirname of the current path
         provider_name = self.__class__.__module__.split('.')[-1]
 
-        if model_type in self.model_class_map:
+        if f"{provider_name}.{model_type.value}" in self.model_class_map:
             return self.model_class_map[f"{provider_name}.{model_type.value}"]()
 
         # get the path of the model type classes
