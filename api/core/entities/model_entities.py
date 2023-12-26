@@ -37,10 +37,21 @@ class ModelWithProviderEntity(ProviderModel):
     status: ModelStatus
 
 
+class DefaultModelProviderEntity(BaseModel):
+    """
+    Default model provider entity.
+    """
+    provider: str
+    label: I18nObject
+    icon_small: Optional[I18nObject] = None
+    icon_large: Optional[I18nObject] = None
+    supported_model_types: list[ModelType]
+
+
 class DefaultModelEntity(BaseModel):
     """
     Default model entity.
     """
     model: str
     model_type: ModelType
-    provider: SimpleProviderEntity
+    provider: DefaultModelProviderEntity

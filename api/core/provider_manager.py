@@ -3,7 +3,7 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
-from core.entities.model_entities import DefaultModelEntity
+from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfigurations, ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, CustomModelConfiguration, \
     SystemConfiguration, QuotaConfiguration
@@ -233,7 +233,7 @@ class ProviderManager:
         return DefaultModelEntity(
             model=default_model.model_name,
             model_type=model_type,
-            provider=provider_instance.get_provider_schema().to_simple_provider(),
+            provider=DefaultModelProviderEntity(**provider_instance.get_provider_schema().to_simple_provider().dict())
         )
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
