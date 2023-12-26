@@ -73,6 +73,15 @@ export type IChatItem = {
 export type MessageEnd = {
   id: string
   retriever_resources?: CitationItem[]
+  metadata: {
+    annotation_reply: {
+      id: string
+      account: {
+        id: string
+        name: string
+      }
+    }
+  }
 }
 
 export type MessageReplace = {
