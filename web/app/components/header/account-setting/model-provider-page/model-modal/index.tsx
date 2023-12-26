@@ -181,10 +181,7 @@ const ModelModal: FC<ModelModalProps> = ({
           return validateCredentials(
             providerFormSchemaPredefined,
             provider.provider,
-            {
-              ...v,
-              ...getSecretValues(v),
-            },
+            v,
           )
         },
       })
