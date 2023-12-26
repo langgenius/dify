@@ -1,5 +1,6 @@
 import datetime
 import json
+import time
 from json import JSONDecodeError
 from typing import Optional, List, Dict, Tuple, Iterator
 
@@ -480,7 +481,7 @@ class ProviderConfiguration(BaseModel):
                 [
                     ModelWithProviderEntity(
                         **m.dict(),
-                        provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
+                        provider=SimpleModelProviderEntity(self.provider),
                         status=ModelStatus.ACTIVE
                     )
                     for m in provider_instance.models(model_type)
@@ -525,15 +526,14 @@ class ProviderConfiguration(BaseModel):
                 continue
 
             models = provider_instance.models(model_type)
-
-            provider_models.extend(
-                ModelWithProviderEntity(
-                    **m.dict(),
-                    provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
-                    status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+            for m in models:
+                provider_models.append(
+                    ModelWithProviderEntity(
+                        **m.dict(),
+                        provider=SimpleModelProviderEntity(self.provider),
+                        status=ModelStatus.ACTIVE if credentials else ModelStatus.NO_CONFIGURE
+                    )
                 )
-                for m in models
-            )
 
         # custom models
         for model_configuration in self.custom_configuration.models:
@@ -554,7 +554,7 @@ class ProviderConfiguration(BaseModel):
             provider_models.append(
                 ModelWithProviderEntity(
                     **custom_model_schema.dict(),
-                    provider=SimpleModelProviderEntity(**self.provider.to_simple_provider().dict()),
+                    provider=SimpleModelProviderEntity(self.provider),
                     status=ModelStatus.ACTIVE
                 )
             )

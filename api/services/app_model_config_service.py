@@ -2,7 +2,7 @@ import re
 import uuid
 
 from core.external_data_tool.factory import ExternalDataToolFactory
-from core.model_runtime.entities.model_entities import ModelPropertyKey
+from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.model_providers import model_provider_factory
 from core.moderation.factory import ModerationFactory
 from core.prompt.prompt_transform import AppMode
@@ -145,7 +145,8 @@ class AppModelConfigService:
 
         provider_manager = ProviderManager()
         models = provider_manager.get_configurations(tenant_id).get_models(
-            provider=config["model"]["provider"]
+            provider=config["model"]["provider"],
+            model_type=ModelType.LLM
         )
         if not models:
             raise ValueError("model.name must be in the specified model list")
