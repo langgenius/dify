@@ -1,5 +1,8 @@
-import type { BackendModel } from '../../header/account-setting/model-page/declarations'
 import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
+import type {
+  DefaultModelResponse,
+  Model,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export const isReRankModelSelected = ({
   rerankDefaultModel,
@@ -8,15 +11,18 @@ export const isReRankModelSelected = ({
   rerankModelList,
   indexMethod,
 }: {
-  rerankDefaultModel?: BackendModel
+  rerankDefaultModel?: DefaultModelResponse
   isRerankDefaultModelVaild: boolean
   retrievalConfig: RetrievalConfig
-  rerankModelList: BackendModel[]
+  rerankModelList: Model[]
   indexMethod?: string
 }) => {
   const rerankModelSelected = (() => {
-    if (retrievalConfig.reranking_model?.reranking_model_name)
-      return !!rerankModelList.find(({ model_name }) => model_name === retrievalConfig.reranking_model?.reranking_model_name)
+    if (retrievalConfig.reranking_model?.reranking_model_name) {
+      const provider = rerankModelList.find(({ provider }) => provider === retrievalConfig.reranking_model?.reranking_provider_name)
+
+      return provider?.models.find(({ model }) => model === retrievalConfig.reranking_model?.reranking_model_name)
+    }
 
     if (isRerankDefaultModelVaild)
       return !!rerankDefaultModel
@@ -39,7 +45,7 @@ export const ensureRerankModelSelected = ({
   indexMethod,
   retrievalConfig,
 }: {
-  rerankDefaultModel: BackendModel
+  rerankDefaultModel: DefaultModelResponse
   retrievalConfig: RetrievalConfig
   indexMethod?: string
 }) => {
@@ -52,8 +58,8 @@ export const ensureRerankModelSelected = ({
     return {
       ...retrievalConfig,
       reranking_model: {
-        reranking_provider_name: rerankDefaultModel.model_provider.provider_name,
-        reranking_model_name: rerankDefaultModel.model_name,
+        reranking_provider_name: rerankDefaultModel.provider.provider,
+        reranking_model_name: rerankDefaultModel.model,
       },
     }
   }

@@ -334,7 +334,6 @@ const ConfigModel: FC<IConfigModelProps> = ({
                     features: targetModelItem?.features || [],
                   })()
                 }}
-                popupClassName='z-[60]'
               />
             </div>
             {hasEnableParams && (
