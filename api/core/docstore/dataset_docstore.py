@@ -93,13 +93,16 @@ class DatasetDocumentStore:
                 )
 
             # calc embedding use tokens
-            model_type_instance = embedding_model.model_type_instance
-            model_type_instance = cast(TextEmbeddingModel, model_type_instance)
-            tokens = model_type_instance.get_num_tokens(
-                model=embedding_model.model,
-                credentials=embedding_model.credentials,
-                texts=[doc.page_content]
-            ) if embedding_model else 0
+            if embedding_model:
+                model_type_instance = embedding_model.model_type_instance
+                model_type_instance = cast(TextEmbeddingModel, model_type_instance)
+                tokens = model_type_instance.get_num_tokens(
+                    model=embedding_model.model,
+                    credentials=embedding_model.credentials,
+                    texts=[doc.page_content]
+                )
+            else:
+                tokens = 0
 
             if not segment_document:
                 max_position += 1
