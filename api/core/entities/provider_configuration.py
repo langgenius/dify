@@ -14,6 +14,7 @@ from core.model_runtime.entities.provider_entities import ProviderEntity, Creden
 from core.model_runtime.model_providers import model_provider_factory
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
+from core.model_runtime.utils import encoders
 from extensions.ext_database import db
 from models.provider import ProviderType, Provider, ProviderModel, TenantPreferredModelProvider
 
@@ -272,7 +273,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         if model_schema:
-            credentials['schema'] = json.dumps(model_schema.dict())
+            credentials['schema'] = json.dumps(encoders.jsonable_encoder(model_schema))
 
         return provider_model_record, credentials
 
