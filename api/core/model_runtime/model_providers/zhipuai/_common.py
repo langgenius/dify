@@ -1,4 +1,4 @@
-from lib.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
+from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
     InvokeAuthorizationError, InvokeBadRequestError, InvokeError
 
 
