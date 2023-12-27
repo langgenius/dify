@@ -1,3 +1,5 @@
+from pydantic import BaseModel
+
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType, FetchFrom, ParameterRule, \
     DefaultParameterName, PriceConfig
@@ -18,13 +20,18 @@ def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     return rule
 
 
+class AzureBaseModel(BaseModel):
+    base_model_name: str
+    entity: AIModelEntity
+
+
 LLM_BASE_MODELS = [
-    {
-        'base_model_name': 'gpt-35-turbo',
-        'entity': AIModelEntity(
-            model='gpt-3.5-turbo',
+    AzureBaseModel(
+        base_model_name='gpt-35-turbo',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-3.5-turbo',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -55,20 +62,20 @@ LLM_BASE_MODELS = [
                 ),
                 _get_max_tokens(default=512, min_val=1, max_val=4096)
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.001,
                 output=0.002,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-35-turbo-16k',
-        'entity': AIModelEntity(
-            model='gpt-3.5-turbo-16k',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-35-turbo-16k',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-3.5-turbo-16k',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -99,20 +106,20 @@ LLM_BASE_MODELS = [
                 ),
                 _get_max_tokens(default=512, min_val=1, max_val=16385)
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.003,
                 output=0.004,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-4',
-        'entity': AIModelEntity(
-            model='gpt-4',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-4',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-4',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -173,20 +180,20 @@ LLM_BASE_MODELS = [
                     options=['text', 'json_object']
                 ),
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.03,
                 output=0.06,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-4-32k',
-        'entity': AIModelEntity(
-            model='gpt-4-32k',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-4-32k',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-4-32k',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -247,20 +254,20 @@ LLM_BASE_MODELS = [
                     options=['text', 'json_object']
                 ),
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.06,
                 output=0.12,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-4-1106-preview',
-        'entity': AIModelEntity(
-            model='gpt-4-1106-preview',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-4-1106-preview',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-4-1106-preview',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -321,20 +328,20 @@ LLM_BASE_MODELS = [
                     options=['text', 'json_object']
                 ),
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.01,
                 output=0.03,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-4-vision-preview',
-        'entity': AIModelEntity(
-            model='gpt-4-vision-preview',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-4-vision-preview',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-4-vision-preview',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             features=[
@@ -394,20 +401,20 @@ LLM_BASE_MODELS = [
                     options=['text', 'json_object']
                 ),
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.01,
                 output=0.03,
                 unit=0.001,
                 currency='USD',
             )
         )
-    },
-    {
-        'base_model_name': 'gpt-35-turbo-instruct',
-        'entity': AIModelEntity(
-            model='gpt-35-turbo-instruct',
+    ),
+    AzureBaseModel(
+        base_model_name='gpt-35-turbo-instruct',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='gpt-35-turbo-instruct',
+                en_US='fake-deployment-name-label',
             ),
             model_type=ModelType.LLM,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
@@ -434,14 +441,14 @@ LLM_BASE_MODELS = [
                 ),
                 _get_max_tokens(default=512, min_val=1, max_val=4096),
             ],
-            price=PriceConfig(
+            pricing=PriceConfig(
                 input=0.0015,
                 output=0.002,
                 unit=0.001,
                 currency='USD',
             )
         )
-    }
+    )
 ]
 
 EMBEDDING_BASE_MODELS = [
