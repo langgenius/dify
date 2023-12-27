@@ -123,13 +123,16 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             tools=tools,
-            stream=False,
+            stream=False
         )
 
         ai_message = AIMessage(
-            content=result.message.content,
+            content=result.message.content or "",
             additional_kwargs={
-                'function_call': result.message.tool_calls[0].dict() if result.message.tool_calls else None
+                'function_call': {
+                    'id': result.message.tool_calls[0].id,
+                    **result.message.tool_calls[0].function.dict()
+                } if result.message.tool_calls else None
             }
         )
 

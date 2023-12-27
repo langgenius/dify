@@ -7,6 +7,7 @@ from langchain.callbacks.manager import Callbacks
 from langchain.tools import BaseTool
 from pydantic import BaseModel, Extra
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.multi_dataset_router_agent import MultiDatasetRouterAgent
 from core.agent.agent.openai_function_call import AutoSummarizingOpenAIFunctionCallAgent
 from core.agent.agent.output_parser.structured_chat import StructuredChatOutputParser
@@ -39,6 +40,7 @@ class AgentConfiguration(BaseModel):
     max_iterations: int = 6
     max_execution_time: Optional[float] = None
     early_stopping_method: str = "generate"
+    agent_llm_callback: Optional[AgentLLMCallback] = None
     # `generate` will continue to complete the last inference after reaching the iteration limit or request time limit
 
     class Config:
@@ -67,6 +69,7 @@ class AgentExecutor:
                 output_parser=StructuredChatOutputParser(),
                 summary_model_config=self.configuration.summary_model_config
                 if self.configuration.summary_model_config else None,
+                agent_llm_callback=self.configuration.agent_llm_callback,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.FUNCTION_CALL:
@@ -77,6 +80,7 @@ class AgentExecutor:
                 if self.configuration.memory else None,  # used for read chat histories memory
                 summary_model_config=self.configuration.summary_model_config
                 if self.configuration.summary_model_config else None,
+                agent_llm_callback=self.configuration.agent_llm_callback,
                 verbose=True
             )
         elif self.configuration.strategy == PlanningStrategy.ROUTER:

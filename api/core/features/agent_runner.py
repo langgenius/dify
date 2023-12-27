@@ -6,6 +6,7 @@ from langchain.callbacks.base import BaseCallbackHandler
 from langchain.tools import BaseTool, WikipediaQueryRun, Tool
 from pydantic import BaseModel, Field
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent_executor import PlanningStrategy, AgentConfiguration, AgentExecutor
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
@@ -37,6 +38,7 @@ class AgentRunnerFeature:
                  queue_manager: ApplicationQueueManager,
                  message: Message,
                  user_id: str,
+                 agent_llm_callback: AgentLLMCallback,
                  callback: AgentLoopGatherCallbackHandler,
                  memory: Optional[TokenBufferMemory] = None,) -> None:
         """
@@ -48,6 +50,7 @@ class AgentRunnerFeature:
         :param queue_manager: queue manager
         :param message: message
         :param user_id: user id
+        :param agent_llm_callback: agent llm callback
         :param callback: callback
         :param memory: memory
         """
@@ -58,6 +61,7 @@ class AgentRunnerFeature:
         self.queue_manager = queue_manager
         self.message = message
         self.user_id = user_id
+        self.agent_llm_callback = agent_llm_callback
         self.callback = callback
         self.memory = memory
 
@@ -111,6 +115,7 @@ class AgentRunnerFeature:
             max_iterations=10,
             max_execution_time=400.0,
             early_stopping_method="generate",
+            agent_llm_callback=self.agent_llm_callback,
             callbacks=[self.callback, DifyStdOutCallbackHandler()]
         )
 

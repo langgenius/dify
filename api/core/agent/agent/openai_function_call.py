@@ -13,6 +13,7 @@ from langchain.schema import AgentAction, AgentFinish, SystemMessage, AIMessage,
 from langchain.tools import BaseTool
 from pydantic import root_validator
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import ExceededLLMTokensLimitError, CalcTokenMixin
 from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
@@ -28,6 +29,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
     moving_summary_index: int = 0
     summary_model_config: ModelConfigEntity = None
     model_config: ModelConfigEntity
+    agent_llm_callback: Optional[AgentLLMCallback] = None
 
     class Config:
         """Configuration for this pydantic object."""
@@ -48,6 +50,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             system_message: Optional[SystemMessage] = SystemMessage(
                 content="You are a helpful AI assistant."
             ),
+            agent_llm_callback: Optional[AgentLLMCallback] = None,
             **kwargs: Any,
     ) -> BaseSingleActionAgent:
         prompt = cls.create_prompt(
@@ -60,6 +63,7 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             prompt=prompt,
             tools=tools,
             callback_manager=callback_manager,
+            agent_llm_callback=agent_llm_callback,
             **kwargs,
         )
 
@@ -157,12 +161,16 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             prompt_messages=prompt_messages,
             tools=tools,
             stream=False,
+            callbacks=[self.agent_llm_callback] if self.agent_llm_callback else [],
         )
 
         ai_message = AIMessage(
-            content=result.message.content,
+            content=result.message.content or "",
             additional_kwargs={
-                'function_call': result.message.tool_calls[0].dict() if result.message.tool_calls else None
+                'function_call': {
+                    'id': result.message.tool_calls[0].id,
+                    **result.message.tool_calls[0].function.dict()
+                } if result.message.tool_calls else None
             }
         )
         agent_decision = _parse_ai_message(ai_message)

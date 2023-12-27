@@ -66,7 +66,16 @@ def lc_messages_to_prompt_messages(messages: list[BaseMessage]) -> list[PromptMe
             }
 
             if 'function_call' in message.additional_kwargs:
-                message_kwargs['tool_calls'] = [message.additional_kwargs['function_call']]
+                message_kwargs['tool_calls'] = [
+                    AssistantPromptMessage.ToolCall(
+                        id=message.additional_kwargs['function_call']['id'],
+                        type='function',
+                        function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                            name=message.additional_kwargs['function_call']['name'],
+                            arguments=message.additional_kwargs['function_call']['arguments']
+                        )
+                    )
+                ]
 
             prompt_messages.append(AssistantPromptMessage(**message_kwargs))
         elif isinstance(message, SystemMessage):

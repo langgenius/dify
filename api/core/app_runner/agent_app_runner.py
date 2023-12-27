@@ -2,6 +2,7 @@ import json
 import logging
 from typing import cast
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.app_runner.app_runner import AppRunner
 from core.callback_handler.agent_loop_gather_callback_handler import AgentLoopGatherCallbackHandler
 from core.entities.application_entities import ApplicationGenerateEntity, PromptTemplateEntity, ModelConfigEntity
@@ -99,6 +100,11 @@ class AgentApplicationRunner(AppRunner):
             message_chain=message_chain
         )
 
+        # init LLM Callback
+        agent_llm_callback = AgentLLMCallback(
+            agent_callback=agent_callback
+        )
+
         agent_runner = AgentRunnerFeature(
             tenant_id=application_generate_entity.tenant_id,
             app_orchestration_config=app_orchestration_config,
@@ -107,6 +113,7 @@ class AgentApplicationRunner(AppRunner):
             queue_manager=queue_manager,
             message=message,
             user_id=application_generate_entity.user_id,
+            agent_llm_callback=agent_llm_callback,
             callback=agent_callback,
             memory=memory
         )

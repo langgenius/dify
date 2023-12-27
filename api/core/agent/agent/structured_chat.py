@@ -13,6 +13,7 @@ from langchain.schema import AgentAction, AgentFinish, AIMessage, HumanMessage, 
 from langchain.tools import BaseTool
 from langchain.agents.structured_chat.prompt import PREFIX, SUFFIX
 
+from core.agent.agent.agent_llm_callback import AgentLLMCallback
 from core.agent.agent.calc_token_mixin import CalcTokenMixin, ExceededLLMTokensLimitError
 from core.chain.llm_chain import LLMChain
 from core.entities.application_entities import ModelConfigEntity
@@ -254,6 +255,7 @@ Thought: {agent_scratchpad}
             format_instructions: str = FORMAT_INSTRUCTIONS,
             input_variables: Optional[List[str]] = None,
             memory_prompts: Optional[List[BasePromptTemplate]] = None,
+            agent_llm_callback: Optional[AgentLLMCallback] = None,
             **kwargs: Any,
     ) -> Agent:
         """Construct an agent from an LLM and tools."""
@@ -279,6 +281,7 @@ Thought: {agent_scratchpad}
             model_config=model_config,
             prompt=prompt,
             callback_manager=callback_manager,
+            agent_llm_callback=agent_llm_callback,
         )
         tool_names = [tool.name for tool in tools]
         _output_parser = output_parser
