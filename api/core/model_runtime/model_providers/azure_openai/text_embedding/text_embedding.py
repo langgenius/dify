@@ -20,8 +20,8 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
     def _invoke(self, model: str, credentials: dict,
                 texts: list[str], user: Optional[str] = None) \
             -> TextEmbeddingResult:
-        model_config = self._get_model_config(credentials['base_model_name'])
-        model_true_name = model_config['model']
+        model_config = self._get_ai_model_entity(credentials['base_model_name'])
+        model_true_name = model_config.model
         deployment_name = model
 
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -131,7 +131,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        if not self._get_model_config(credentials['base_model_name']):
+        if not self._get_ai_model_entity(credentials['base_model_name']):
             raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
 
         try:
@@ -148,22 +148,8 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        model_config = self._get_model_config(credentials['base_model_name'])
-
-        entity = AIModelEntity(
-            model=model_config['model'],
-            label=I18nObject(
-                en_US=model_config['model']
-            ),
-            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=ModelType.TEXT_EMBEDDING,
-            model_properties={
-                'context_size': model_config['model_properties']['context_size'],
-                'max_chunks': model_config['model_properties']['max_chunks'],
-            }
-        )
-
-        return entity
+        model_config = self._get_ai_model_entity(credentials['base_model_name'])
+        return model_config
 
     @staticmethod
     def _embedding_invoke(deployment_name: str, client: AzureOpenAI, texts: list[str],
@@ -202,9 +188,9 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         return usage
 
     @staticmethod
-    def _get_model_config(base_model_name: str) -> dict:
+    def _get_ai_model_entity(base_model_name: str) -> AIModelEntity:
         for model_config in EMBEDDING_BASE_MODELS:
             if model_config['base_model_name'] == base_model_name:
-                return model_config
+                return model_config['entity']
 
         return None
