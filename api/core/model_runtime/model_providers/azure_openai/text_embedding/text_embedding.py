@@ -6,13 +6,12 @@ import numpy as np
 import tiktoken
 from openai import AzureOpenAI
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import PriceType, AIModelEntity, FetchFrom, ModelType
+from core.model_runtime.entities.model_entities import PriceType, AIModelEntity
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
-from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS
+from core.model_runtime.model_providers.azure_openai._constant import EMBEDDING_BASE_MODELS, AzureBaseModel
 
 
 class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
@@ -20,12 +19,8 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
     def _invoke(self, model: str, credentials: dict,
                 texts: list[str], user: Optional[str] = None) \
             -> TextEmbeddingResult:
-        model_config = self._get_ai_model_entity(credentials['base_model_name'])
-        model_true_name = model_config.model
-        deployment_name = model
-
+        base_model_name = credentials['base_model_name']
         credentials_kwargs = self._to_credential_kwargs(credentials)
-
         client = AzureOpenAI(**credentials_kwargs)
 
         extra_model_kwargs = {}
@@ -34,8 +29,8 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
         extra_model_kwargs['encoding_format'] = 'base64'
 
-        context_size = self._get_context_size(model_true_name, credentials)
-        max_chunks = self._get_max_chunks(model_true_name, credentials)
+        context_size = self._get_context_size(model, credentials)
+        max_chunks = self._get_max_chunks(model, credentials)
 
         embeddings: list[list[float]] = [[] for _ in range(len(texts))]
         tokens = []
@@ -43,7 +38,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         used_tokens = 0
 
         try:
-            enc = tiktoken.encoding_for_model(model_true_name)
+            enc = tiktoken.encoding_for_model(base_model_name)
         except KeyError:
             enc = tiktoken.get_encoding("cl100k_base")
 
@@ -60,7 +55,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
         for i in _iter:
             embeddings, embedding_used_tokens = self._embedding_invoke(
-                deployment_name=deployment_name,
+                model=model,
                 client=client,
                 texts=tokens[i: i + max_chunks],
                 extra_model_kwargs=extra_model_kwargs
@@ -79,7 +74,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             _result = results[i]
             if len(_result) == 0:
                 embeddings, embedding_used_tokens = self._embedding_invoke(
-                    deployment_name=deployment_name,
+                    model=model,
                     client=client,
                     texts=[""],
                     extra_model_kwargs=extra_model_kwargs
@@ -93,7 +88,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
 
         # calc usage
         usage = self._calc_response_usage(
-            model=model_true_name,
+            model=model,
             credentials=credentials,
             tokens=used_tokens
         )
@@ -101,7 +96,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         return TextEmbeddingResult(
             embeddings=embeddings,
             usage=usage,
-            model=model_true_name
+            model=base_model_name
         )
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
@@ -131,7 +126,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        if not self._get_ai_model_entity(credentials['base_model_name']):
+        if not self._get_ai_model_entity(credentials['base_model_name'], model):
             raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
 
         try:
@@ -139,7 +134,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             client = AzureOpenAI(**credentials_kwargs)
 
             self._embedding_invoke(
-                deployment_name=model,
+                model=model,
                 client=client,
                 texts=['ping'],
                 extra_model_kwargs={}
@@ -148,15 +143,15 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        model_config = self._get_ai_model_entity(credentials['base_model_name'])
-        return model_config
+        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        return ai_model_entity.entity
 
     @staticmethod
-    def _embedding_invoke(deployment_name: str, client: AzureOpenAI, texts: list[str],
+    def _embedding_invoke(model: str, client: AzureOpenAI, texts: list[str],
                           extra_model_kwargs: dict) -> Tuple[list[list[float]], int]:
         response = client.embeddings.create(
             input=texts,
-            model=deployment_name,
+            model=model,
             **extra_model_kwargs,
         )
 
@@ -189,9 +184,12 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         return usage
 
     @staticmethod
-    def _get_ai_model_entity(base_model_name: str) -> AIModelEntity:
-        for model_config in EMBEDDING_BASE_MODELS:
-            if model_config['base_model_name'] == base_model_name:
-                return model_config['entity']
+    def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
+        for ai_model_entity in EMBEDDING_BASE_MODELS:
+            if ai_model_entity.base_model_name == base_model_name:
+                ai_model_entity.entity.model = model
+                ai_model_entity.entity.label.en_US = model
+                ai_model_entity.entity.label.zh_Hans = model
+                return ai_model_entity
 
         return None

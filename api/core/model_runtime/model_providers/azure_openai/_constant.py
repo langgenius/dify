@@ -452,19 +452,24 @@ LLM_BASE_MODELS = [
 ]
 
 EMBEDDING_BASE_MODELS = [
-    {
-        'base_model_name': 'text-embedding-ada-002',
-        'entity': AIModelEntity(
-            model='text-embedding-ada-002',
+    AzureBaseModel(
+        base_model_name='text-embedding-ada-002',
+        entity=AIModelEntity(
+            model='fake-deployment-name',
             label=I18nObject(
-                en_US='text-embedding-ada-002'
+                en_US='fake-deployment-name-label'
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.TEXT_EMBEDDING,
             model_properties={
                 'context_size': 8097,
                 'max_chunks': 32,
-            }
+            },
+            pricing=PriceConfig(
+                input=0.0001,
+                unit=0.001,
+                currency='USD',
+            )
         )
-    }
+    )
 ]
