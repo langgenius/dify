@@ -1,10 +1,12 @@
 import decimal
 import json
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Optional
 
 import yaml
+from pydantic import ValidationError
 
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import PriceInfo, AIModelEntity, PriceType, PriceConfig, \
@@ -233,7 +235,13 @@ class AIModel(ABC):
         """
         if 'schema' in credentials:
             schema_dict = json.loads(credentials['schema'])
-            return AIModelEntity(**schema_dict)
+
+            try:
+                model_instance = AIModelEntity.parse_obj(schema_dict)
+                return model_instance
+            except ValidationError as e:
+                logging.exception(f"Invalid model schema for {model}")
+                return self.get_customizable_model_schema(model, credentials)
 
         return self.get_customizable_model_schema(model, credentials)
 
