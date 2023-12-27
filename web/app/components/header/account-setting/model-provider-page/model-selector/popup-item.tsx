@@ -51,6 +51,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 ${modelItem.status !== ModelStatusEnum.active && 'opacity-60'}
               `}
               provider={model}
+              modelName={modelItem.model}
             />
             <ModelName
               className={`

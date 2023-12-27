@@ -22,6 +22,8 @@ import {
   fetchDefaultModal,
   fetchModelList,
   fetchModelProviderCredentials,
+  getPayUrl,
+  submitFreeQuota,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -189,4 +191,49 @@ export const useUpdateModelList = () => {
   }, [mutate])
 
   return updateModelList
+}
+
+export const useAnthropicBuyQuota = () => {
+  const [loading, setLoading] = useState(false)
+
+  const handleGetPayUrl = async () => {
+    if (loading)
+      return
+
+    setLoading(true)
+    try {
+      const res = await getPayUrl('/workspaces/current/model-providers/anthropic/checkout-url')
+
+      window.location.href = res.url
+    }
+    finally {
+      setLoading(false)
+    }
+  }
+
+  return handleGetPayUrl
+}
+
+export const useFreeQuota = (onSuccess: () => void) => {
+  const [loading, setLoading] = useState(false)
+
+  const handleClick = async (type: string) => {
+    if (loading)
+      return
+
+    try {
+      setLoading(true)
+      const res = await submitFreeQuota(`/workspaces/current/model-providers/${type}/free-quota-submit`)
+
+      if (res.type === 'redirect' && res.redirect_url)
+        window.location.href = res.redirect_url
+      else if (res.type === 'submit' && res.result === 'success')
+        onSuccess()
+    }
+    finally {
+      setLoading(false)
+    }
+  }
+
+  return handleClick
 }

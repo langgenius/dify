@@ -38,7 +38,7 @@ const ModelName: FC<ModelNameProps> = ({
   return (
     <div
       className={`
-        flex items-center text-[13px] font-medium text-gray-800
+        flex items-center truncate text-[13px] font-medium text-gray-800
         ${className}
       `}
     >

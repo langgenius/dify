@@ -28,6 +28,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
       <ModelIcon
         className='shrink-0 mr-1.5'
         provider={provider}
+        modelName={model.model}
       />
       <ModelName
         className='grow'

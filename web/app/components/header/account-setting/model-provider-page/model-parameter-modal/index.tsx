@@ -118,6 +118,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 <ModelIcon
                   className='mr-1.5 !w-5 !h-5'
                   provider={currentProvider}
+                  modelName={currentModel?.model}
                 />
               )
             }
