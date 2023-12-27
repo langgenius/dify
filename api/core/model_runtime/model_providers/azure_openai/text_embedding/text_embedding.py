@@ -21,7 +21,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
                 texts: list[str], user: Optional[str] = None) \
             -> TextEmbeddingResult:
         model_config = self._get_model_config(credentials['base_model_name'])
-        model_true_name = model_config['name']
+        model_true_name = model_config['model']
         deployment_name = model
 
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -151,15 +151,15 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         model_config = self._get_model_config(credentials['base_model_name'])
 
         entity = AIModelEntity(
-            model=model_config['name'],
+            model=model_config['model'],
             label=I18nObject(
-                en_US=model_config['name']
+                en_US=model_config['model']
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.TEXT_EMBEDDING,
             model_properties={
-                'context_size': model_config['context_size'],
-                'max_chunks': model_config['max_chunks'],
+                'context_size': model_config['model_properties']['context_size'],
+                'max_chunks': model_config['model_properties']['max_chunks'],
             }
         )
 

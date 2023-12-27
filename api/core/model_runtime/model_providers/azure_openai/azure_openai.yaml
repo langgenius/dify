@@ -51,10 +51,10 @@ model_credential_schema:
     required: true
     options:
     - label:
-        en_US: gpt-3.5-turbo
+        en_US: gpt-35-turbo
       value: gpt-35-turbo
     - label:
-        en_US: gpt-3.5-turbo-16k
+        en_US: gpt-35-turbo-16k
       value: gpt-35-turbo-16k
     - label:
         en_US: gpt-4
@@ -64,12 +64,12 @@ model_credential_schema:
       value: gpt-4-32k
     - label:
         en_US: gpt-4-1106-preview
-      value: gpt-4-1106-preview'
+      value: gpt-4-1106-preview
     - label:
         en_US: gpt-4-vision-preview
       value: gpt-4-vision-preview
     - label:
-        en_US: gpt-3.5-turbo-instruct
+        en_US: gpt-35-turbo-instruct
       value: gpt-35-turbo-instruct
     - label:
         en_US: text-embedding-ada-002
