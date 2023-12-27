@@ -249,12 +249,12 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         extra_model_kwargs = {}
 
         if tools:
-            extra_model_kwargs['tools'] = [helper.dump_model(PromptMessageFunction(function=tool)) for tool in tools]
-            # extra_model_kwargs['functions'] = [{
-            #     "name": tool.name,
-            #     "description": tool.description,
-            #     "parameters": tool.parameters
-            # } for tool in tools]
+            # extra_model_kwargs['tools'] = [helper.dump_model(PromptMessageFunction(function=tool)) for tool in tools]
+            extra_model_kwargs['functions'] = [{
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters
+            } for tool in tools]
 
         if stop:
             extra_model_kwargs['stop'] = stop
@@ -281,13 +281,13 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                        tools: Optional[list[PromptMessageTool]] = None) -> LLMResult:
 
         assistant_message = response.choices[0].message
-        assistant_message_tool_calls = assistant_message.tool_calls
-        # assistant_message_function_call = assistant_message.function_call
+        # assistant_message_tool_calls = assistant_message.tool_calls
+        assistant_message_function_call = assistant_message.function_call
 
         # extract tool calls from response
-        tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
-        # function_call = self._extract_response_function_call(assistant_message_function_call)
-        # tool_calls = [function_call] if function_call else []
+        # tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
+        function_call = self._extract_response_function_call(assistant_message_function_call)
+        tool_calls = [function_call] if function_call else []
 
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
@@ -334,13 +334,13 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             if delta.finish_reason is None and (delta.delta.content is None or delta.delta.content == ''):
                 continue
 
-            assistant_message_tool_calls = delta.delta.tool_calls
-            # assistant_message_function_call = delta.delta.function_call
+            # assistant_message_tool_calls = delta.delta.tool_calls
+            assistant_message_function_call = delta.delta.function_call
 
             # extract tool calls from response
-            tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
-            # function_call = self._extract_response_function_call(assistant_message_function_call)
-            # tool_calls = [function_call] if function_call else []
+            # tool_calls = self._extract_response_tool_calls(assistant_message_tool_calls)
+            function_call = self._extract_response_function_call(assistant_message_function_call)
+            tool_calls = [function_call] if function_call else []
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
@@ -458,28 +458,28 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
-                message_dict["tool_calls"] = [PromptMessageFunction(function=tool_call).model_dump() for tool_call in
-                                              message.tool_calls]
-                # function_call = message.tool_calls[0]
-                # message_dict["function_call"] = {
-                #     "name": function_call.function.name,
-                #     "arguments": function_call.function.arguments,
-                # }
+                # message_dict["tool_calls"] = [helper.dump_model(tool_call) for tool_call in
+                #                               message.tool_calls]
+                function_call = message.tool_calls[0]
+                message_dict["function_call"] = {
+                    "name": function_call.function.name,
+                    "arguments": function_call.function.arguments,
+                }
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {
-                "role": "tool",
-                "content": message.content,
-                "tool_call_id": message.tool_call_id
-            }
             # message_dict = {
-            #     "role": "function",
+            #     "role": "tool",
             #     "content": message.content,
-            #     "name": message.tool_call_id
+            #     "tool_call_id": message.tool_call_id
             # }
+            message_dict = {
+                "role": "function",
+                "content": message.content,
+                "name": message.tool_call_id
+            }
         else:
             raise ValueError(f"Got unknown type {message}")
 
