@@ -11,7 +11,8 @@ from langchain.schema import AgentAction, AgentFinish, LLMResult, ChatGeneration
 from core.application_queue_manager import ApplicationQueueManager
 from core.callback_handler.entity.agent_loop import AgentLoop
 from core.entities.application_entities import ModelConfigEntity
-from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage
+from core.model_runtime.entities.llm_entities import LLMResult as RuntimeLLMResult
+from core.model_runtime.entities.message_entities import UserPromptMessage, AssistantPromptMessage, PromptMessage
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from extensions.ext_database import db
 from models.model import MessageChain, MessageAgentThought, Message
@@ -55,69 +56,60 @@ class AgentLoopGatherCallbackHandler(BaseCallbackHandler):
         """Whether to ignore chain callbacks."""
         return True
 
-    def on_chat_model_start(
-            self,
-            serialized: Dict[str, Any],
-            messages: List[List[BaseMessage]],
-            **kwargs: Any
-    ) -> Any:
+    def on_llm_before_invoke(self, prompt_messages: list[PromptMessage]) -> None:
         if not self._current_loop:
             # Agent start with a LLM query
             self._current_loop = AgentLoop(
                 position=len(self._agent_loops) + 1,
-                prompt="\n".join([message.content for message in messages[0]]),
+                prompt="\n".join([prompt_message.content for prompt_message in prompt_messages]),
                 status='llm_started',
                 started_at=time.perf_counter()
             )
 
-    def on_llm_start(
-        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
-    ) -> None:
-        """Print out the prompts."""
-        # serialized={'name': 'OpenAI'}
-        # prompts=['Answer the following questions...\nThought:']
-        # kwargs={}
-        if not self._current_loop:
-            # Agent start with a LLM query
-            self._current_loop = AgentLoop(
-                position=len(self._agent_loops) + 1,
-                prompt=prompts[0],
-                status='llm_started',
-                started_at=time.perf_counter()
-            )
-
-    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
-        """Do nothing."""
-        # kwargs={}
+    def on_llm_after_invoke(self, result: RuntimeLLMResult) -> None:
         if self._current_loop and self._current_loop.status == 'llm_started':
             self._current_loop.status = 'llm_end'
-            if response.llm_output:
-                self._current_loop.prompt_tokens = response.llm_output['token_usage']['prompt_tokens']
+            if result.usage:
+                self._current_loop.prompt_tokens = result.usage.prompt_tokens
             else:
                 self._current_loop.prompt_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
                     credentials=self.model_config.credentials,
                     prompt_messages=[UserPromptMessage(content=self._current_loop.prompt)]
                 )
-            completion_generation = response.generations[0][0]
-            if isinstance(completion_generation, ChatGeneration):
-                completion_message = completion_generation.message
-                if 'function_call' in completion_message.additional_kwargs:
-                    self._current_loop.completion \
-                        = json.dumps({'function_call': completion_message.additional_kwargs['function_call']})
-                else:
-                    self._current_loop.completion = response.generations[0][0].text
-            else:
-                self._current_loop.completion = completion_generation.text
 
-            if response.llm_output:
-                self._current_loop.completion_tokens = response.llm_output['token_usage']['completion_tokens']
+            completion_message = result.message
+            if completion_message.tool_calls:
+                self._current_loop.completion \
+                    = json.dumps({'function_call': completion_message.tool_calls})
+            else:
+                self._current_loop.completion = completion_message.content
+
+            if result.usage:
+                self._current_loop.completion_tokens = result.usage.completion_tokens
             else:
                 self._current_loop.completion_tokens = self.model_type_instance.get_num_tokens(
                     model=self.model_config.model,
                     credentials=self.model_config.credentials,
                     prompt_messages=[AssistantPromptMessage(content=self._current_loop.completion)]
                 )
+
+    def on_chat_model_start(
+            self,
+            serialized: Dict[str, Any],
+            messages: List[List[BaseMessage]],
+            **kwargs: Any
+    ) -> Any:
+        pass
+
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> None:
+        pass
+
+    def on_llm_end(self, response: LLMResult, **kwargs: Any) -> None:
+        """Do nothing."""
+        pass
 
     def on_llm_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
