@@ -47,7 +47,6 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
         context_size = self._get_context_size(model, credentials)
         max_chunks = self._get_max_chunks(model, credentials)
 
-        embeddings: list[list[float]] = [[] for _ in range(len(texts))]
         inputs = []
         indices = []
         used_tokens = 0
@@ -84,6 +83,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
                 data=json.dumps(payload),
                 timeout=(10, 300)
             )
+
             response.raise_for_status()  # Raise an exception for HTTP errors
             response_data = response.json()
 

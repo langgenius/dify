@@ -54,14 +54,14 @@ class _CommonOAI_API_Compat:
             model_properties={
                 ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
                 ModelPropertyKey.MAX_CHUNKS: credentials.get('max_chunks'),
-                ModelPropertyKey.MODE: LLMMode.CHAT
+                ModelPropertyKey.MODE: credentials.get('__model_type')
             },
             parameter_rules=[
                 ParameterRule(
                     name=DefaultParameterName.TEMPERATURE.value,
                     label=I18nObject(en_US="Temperature"),
                     type=ParameterType.FLOAT,
-                    default=credentials.get('temperature'),
+                    default=float(credentials.get('temperature', 0.7)),
                     min=0,
                     max=2
                 ),
@@ -69,7 +69,7 @@ class _CommonOAI_API_Compat:
                     name=DefaultParameterName.TOP_P.value,
                     label=I18nObject(en_US="Top P"),
                     type=ParameterType.FLOAT,
-                    default=credentials.get('top_p'),
+                    default=float(credentials.get('top_p', 1)),
                     min=0,
                     max=1
                 ),
@@ -77,13 +77,13 @@ class _CommonOAI_API_Compat:
                     name="top_k",
                     label=I18nObject(en_US="Top K"),
                     type=ParameterType.INT,
-                    default=credentials.get('top_k'),
+                    default=int(credentials.get('top_k', 1)),
                 ),
                 ParameterRule(
                     name=DefaultParameterName.FREQUENCY_PENALTY.value,
                     label=I18nObject(en_US="Frequency Penalty"),
                     type=ParameterType.FLOAT,
-                    default=credentials.get('frequency_penalty'),
+                    default=float(credentials.get('frequency_penalty', 0)),
                     min=-2,
                     max=2
                 ),
@@ -91,7 +91,7 @@ class _CommonOAI_API_Compat:
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
                     label=I18nObject(en_US="PRESENCE Penalty"),
                     type=ParameterType.FLOAT,
-                    default=credentials.get('PRESENCE_penalty'),
+                    default=float(credentials.get('PRESENCE_penalty', 0)),
                     min=-2,
                     max=2
                 ),
@@ -99,7 +99,7 @@ class _CommonOAI_API_Compat:
                     name=DefaultParameterName.MAX_TOKENS.value,
                     label=I18nObject(en_US="Max Tokens"),
                     type=ParameterType.INT,
-                    default=credentials.get('max_tokens_to_sample'),
+                    default=int(credentials.get('max_tokens_to_sample', 1024)),
                     min=1,
                     max=4096
                 )

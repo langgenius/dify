@@ -8,7 +8,7 @@ icon_large:
 help:
   title:
     en_US: Get your API Key from Minimax
-    zh_Hans: 从Minimax获取您的 API Key
+    zh_Hans: 从 Minimax 获取您的 API Key
   url:
     en_US: https://api.minimax.chat/user-center/basic-information/interface-key
 supported_model_types:
