@@ -32,7 +32,6 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
         """
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
-
         # init model client
         client = OpenAI(**credentials_kwargs)
 
@@ -182,7 +181,8 @@ class OpenAITextEmbeddingModel(_CommonOpenAI, TextEmbeddingModel):
 
         if 'encoding_format' in extra_model_kwargs and extra_model_kwargs['encoding_format'] == 'base64':
             # decode base64 embedding
-            return [list(base64.b64decode(data.embedding)) for data in response.data], response.usage.total_tokens
+            return ([list(np.frombuffer(base64.b64decode(data.embedding), dtype="float32")) for data in response.data],
+                    response.usage.total_tokens)
 
         return [data.embedding for data in response.data], response.usage.total_tokens
 
