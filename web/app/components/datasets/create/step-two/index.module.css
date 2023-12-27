@@ -262,6 +262,7 @@
   font-size: 13px;
   line-height: 18px;
 }
+
 .input {
   @apply inline-flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal;
   @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
@@ -316,9 +317,11 @@
 .fileIcon.json {
   background-image: url(../assets/json.svg);
 }
+
 .sourceContent {
   flex: 1 1 auto;
 }
+
 .sourceCount {
   @apply shrink-0 ml-1;
   font-weight: 500;
@@ -326,6 +329,7 @@
   line-height: 18px;
   color: #667085;
 }
+
 .segmentCount {
   flex: 1 1 30%;
   max-width: 120px;
@@ -382,6 +386,10 @@
 
 .previewWrap {
   flex-shrink: 0;
+  width: 524px;
+}
+
+.previewWrap.isMobile {
   max-width: 524px;
 }
 
@@ -410,12 +418,14 @@
   backdrop-filter: blur(4px);
   animation: fix 0.5s;
 }
+
 @keyframes fix {
   from {
     padding-top: 42px;
     font-size: 18px;
     line-height: 28px;
   }
+
   to {
     padding-top: 12px;
     font-size: 12px;
