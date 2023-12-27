@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 from celery import Task, Celery
 from flask import Flask
 
@@ -35,4 +37,20 @@ def init_app(app: Flask) -> Celery:
         
     celery_app.set_default()
     app.extensions["celery"] = celery_app
+
+    imports = [
+        "schedule.clean_embedding_cache_task",
+    ]
+
+    beat_schedule = {
+        'my_periodic_task': {
+            'task': 'schedule.clean_embedding_cache_task.my_periodic_task',
+            'schedule': timedelta(seconds=10),
+        }
+    }
+    celery_app.conf.update(
+        beat_schedule=beat_schedule,
+        imports=imports
+    )
+
     return celery_app
