@@ -32,6 +32,9 @@ const ModelName: FC<ModelNameProps> = ({
 }) => {
   const language = useLanguage()
 
+  if (!modelItem)
+    return null
+
   return (
     <div
       className={`

@@ -67,7 +67,7 @@ export const ProviderContextProvider = ({
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
 
   const agentThoughtModelList = useMemo(() => {
-    const result = []
+    const result: Model[] = []
     if (textGenerationModelList?.data) {
       textGenerationModelList?.data.forEach((item) => {
         const agentThoughtModels = item.models.filter(model => model.features?.includes(ModelFeatureEnum.agentThought))
@@ -79,6 +79,8 @@ export const ProviderContextProvider = ({
           })
         }
       })
+
+      return result
     }
 
     return []
