@@ -72,7 +72,7 @@ export const ProviderContextProvider = ({
       textGenerationModelList?.data.forEach((item) => {
         const agentThoughtModels = item.models.filter(model => model.features?.includes(ModelFeatureEnum.agentThought))
 
-        if (agentThoughtModelList.length) {
+        if (agentThoughtModels.length) {
           result.push({
             ...item,
             models: agentThoughtModels,
