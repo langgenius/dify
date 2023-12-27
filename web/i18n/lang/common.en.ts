@@ -298,6 +298,7 @@ const translation = {
     callTimes: 'Call times',
     buyQuota: 'Buy Quota',
     getFreeTokens: 'Get free Tokens',
+    priorityUsing: 'Prioritize using',
   },
   dataSource: {
     add: 'Add a data source',

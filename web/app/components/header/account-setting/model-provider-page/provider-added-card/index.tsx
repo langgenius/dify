@@ -37,6 +37,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
+  const showQuota = systemConfig.enabled || ['minimax', 'spark', 'zhipuai', 'anthropic'].includes(provider.provider)
 
   const handleOpenModelList = async () => {
     if (fetched) {
@@ -78,7 +79,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           </div>
         </div>
         {
-          systemConfig.enabled && (
+          showQuota && (
             <QuotaPanel
               provider={provider}
             />
