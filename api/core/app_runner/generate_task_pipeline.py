@@ -332,6 +332,8 @@ class GenerateTaskPipeline:
         """
         usage = llm_result.usage
 
+        self._message = db.session.query(Message).filter(Message.id == self._message.id).first()
+
         self._message.message = self._prompt_messages_to_prompt_for_saving(self._task_state.llm_result.prompt_messages)
         self._message.message_tokens = usage.prompt_tokens
         self._message.message_unit_price = usage.prompt_unit_price
