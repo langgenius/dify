@@ -187,6 +187,7 @@
   - `en_US`(string) 英文
   - `zh_Hans`(string) [optional] 中文
 - `value` (string) 下拉选项值
+- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) 当其他表单项值符合条件时显示，为空则始终显示。
 
 ### FormShowOnObject
 

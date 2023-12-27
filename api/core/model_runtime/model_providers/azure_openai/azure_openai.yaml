@@ -54,27 +54,51 @@ model_credential_schema:
     - label:
         en_US: gpt-35-turbo
       value: gpt-35-turbo
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-35-turbo-16k
       value: gpt-35-turbo-16k
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-4
       value: gpt-4
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-4-32k
       value: gpt-4-32k
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-4-1106-preview
       value: gpt-4-1106-preview
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-4-vision-preview
       value: gpt-4-vision-preview
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: gpt-35-turbo-instruct
       value: gpt-35-turbo-instruct
+      show_on:
+      - variable: __model_type
+        value: llm
     - label:
         en_US: text-embedding-ada-002
       value: text-embedding-ada-002
+      show_on:
+        - variable: __model_type
+          value: text-embedding
     placeholder:
       zh_Hans: 在此输入您的模型版本
       en_US: Enter your model version

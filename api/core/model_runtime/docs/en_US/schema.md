@@ -185,6 +185,7 @@
   - `en_US`(string) English
   - `zh_Hans`(string) [optional] Chinese
 - `value` (string) Dropdown option value
+- `show_on` (array[[FormShowOnObject](#FormShowOnObject)]) Displayed when other form item values meet certain conditions, displayed always if empty.
 
 ### FormShowOnObject
 
