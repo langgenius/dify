@@ -54,6 +54,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
   }
   const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
+  const canGetFreeQuota = ['mininmax', 'spark', 'zhipuai'].includes(provider.provider)
 
   return (
     <div
@@ -71,7 +72,7 @@ const ProviderCard: FC<ProviderCardProps> = ({
         }
       </div>
       <div>
-        <div className='flex flex-wrap group-hover:hidden gap-0.5'>
+        <div className={`flex flex-wrap group-hover:hidden gap-0.5 ${canGetFreeQuota && 'pb-[18px]'}`}>
           {
             provider.supported_model_types.map(modelType => (
               <ModelBadge key={modelType}>
@@ -80,16 +81,21 @@ const ProviderCard: FC<ProviderCardProps> = ({
             ))
           }
           {
-            ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && (
-              <div className='flex items-center h-[26px] px-4 bg-white/50 rounded-b-xl'>
-                📣
-                <div className={`${s.vender} text-xs font-medium text-transparent`}>{TIP_MAP[provider.provider][language]}</div>
+            canGetFreeQuota && (
+              <div className='absolute left-0 right-0 bottom-0 flex items-center h-[26px] px-4 bg-white/50 rounded-b-xl'>
+                📣&nbsp;
+                <div
+                  className={`${s.vender} text-xs font-medium text-transparent truncate`}
+                  title={TIP_MAP[provider.provider][language]}
+                >
+                  {TIP_MAP[provider.provider][language]}
+                </div>
               </div>
             )
           }
         </div>
         {
-          ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && (
+          canGetFreeQuota && (
             <div className='hidden group-hover:block'>
               <Button
                 className='mb-1 w-full h-7 text-xs'

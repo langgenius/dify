@@ -27,6 +27,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
   modelList,
   popupClassName,
   onSelect,
+  readonly,
 }) => {
   const [open, setOpen] = useState(false)
   const {
@@ -55,6 +56,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
         <PortalToFollowElemTrigger
           onClick={() => setOpen(v => !v)}
           className='block'
+          disabled={readonly}
         >
           {
             currentModel && currentProvider && (

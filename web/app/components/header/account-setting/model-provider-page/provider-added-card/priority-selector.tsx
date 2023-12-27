@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 
 type SelectorProps = {
   value?: string
-  onSelect: (v: Record<string, string>) => void
+  onSelect: (key: PreferredProviderTypeEnum) => void
 }
 const Selector: FC<SelectorProps> = ({
   value,
@@ -54,7 +54,7 @@ const Selector: FC<SelectorProps> = ({
                 <Popover.Button as={Fragment} key={option.key}>
                   <div
                     className='flex items-center justify-between px-3 h-9 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-                    onClick={() => onSelect({ type: 'priority', value: option.key })}
+                    onClick={() => onSelect(option.key)}
                   >
                     <div className='grow'>{option.text}</div>
                     {value === option.key && <Check className='w-4 h-4 text-primary-600' />}
