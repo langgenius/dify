@@ -164,7 +164,8 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
             # decode base64 embedding
             return [list(base64.b64decode(data.embedding)) for data in response.data], response.usage.total_tokens
 
-        return [data.embedding for data in response.data], response.usage.total_tokens
+        return ([list(np.frombuffer(base64.b64decode(data.embedding), dtype="float32")) for data in response.data],
+                response.usage.total_tokens)
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         input_price_info = self.get_price(
