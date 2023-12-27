@@ -119,7 +119,7 @@ class ProviderConfiguration(BaseModel):
 
         if provider_record:
             try:
-                original_credentials = json.loads(provider_record.encrypted_config)
+                original_credentials = json.loads(provider_record.encrypted_config) if provider_record.encrypted_config else {}
             except JSONDecodeError:
                 original_credentials = {}
 
@@ -243,7 +243,7 @@ class ProviderConfiguration(BaseModel):
 
         if provider_model_record:
             try:
-                original_credentials = json.loads(provider_model_record.encrypted_config)
+                original_credentials = json.loads(provider_model_record.encrypted_config) if provider_model_record.encrypted_config else {}
             except JSONDecodeError:
                 original_credentials = {}
 

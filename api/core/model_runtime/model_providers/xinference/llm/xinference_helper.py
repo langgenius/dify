@@ -4,14 +4,17 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import MissingSchema, ConnectionError, Timeout
 from time import time
 from threading import Lock
+from typing import List
 
 class XinferenceModelExtraParameter(object):
     model_format: str
     model_handle_type: str
+    model_ability: List[str]
 
-    def __init__(self, model_format: str, model_handle_type: str):
+    def __init__(self, model_format: str, model_handle_type: str, model_ability: List[str]) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
+        self.model_ability = model_ability
 
 cache = {}
 cache_lock = Lock()
@@ -72,5 +75,6 @@ class XinferenceHelper:
         
         return XinferenceModelExtraParameter(
             model_format=model_format,
-            model_handle_type=model_handle_type
+            model_handle_type=model_handle_type,
+            model_ability=model_ability
         )

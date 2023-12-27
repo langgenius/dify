@@ -103,7 +103,7 @@ def test_invoke_stream_chat_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 """
-    Funtion calling of xinference needs cli command, is not supported yet in WEBGUI
+    Funtion calling of xinference does not support stream mode currently
 """
 # def test_invoke_stream_chat_model_with_functions():
 #     model = XinferenceAILargeLanguageModel()
@@ -118,7 +118,7 @@ def test_invoke_stream_chat_model():
 #         },
 #         prompt_messages=[
 #             SystemPromptMessage(
-#                 content='你是一个天气机器人，你不知道今天的天气怎么样，你需要通过调用一个函数来获取天气信息。'
+#                 content='你是一个天气机器人，可以通过调用函数来获取天气信息',
 #             ),
 #             UserPromptMessage(
 #                 content='波士顿天气如何？'

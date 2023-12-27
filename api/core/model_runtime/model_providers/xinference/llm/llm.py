@@ -261,14 +261,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             model_uid=credentials['model_uid']
         )
 
-        if extra_args.model_handle_type == 'chatglm':
+        if 'chat' in extra_args.model_ability:
             completion_type = LLMMode.CHAT
-        elif extra_args.model_handle_type == 'generate':
+        elif 'generate' in extra_args.model_ability:
             completion_type = LLMMode.COMPLETION
-        elif extra_args.model_handle_type == 'chat':
-            completion_type = LLMMode.CHAT
         else:
-            raise NotImplementedError(f'xinference model handle type {extra_args.model_handle_type} is not supported')
+            raise NotImplementedError(f'xinference model ability {extra_args.model_ability} is not supported')
 
         entity = AIModelEntity(
             model=model,
@@ -320,8 +318,11 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             generate_config['stop'] = stop
 
         if tools and len(tools) > 0:
-            generate_config['functions'] = [
-                helper.dump_model(tool) for tool in tools
+            generate_config['tools'] = [
+                {
+                    'type': 'function',
+                    'function': helper.dump_model(tool)
+                } for tool in tools
             ]
 
         if isinstance(xinference_model, (RESTfulChatModelHandle, RESTfulChatglmCppChatModelHandle)):
@@ -333,6 +334,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 **generate_config,
             )
             if stream:
+                if tools and len(tools) > 0:
+                    raise InvokeBadRequestError('xinference tool calls does not support stream mode')
                 return self._handle_chat_stream_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
                                                         tools=tools, resp=resp)
             return self._handle_chat_generate_response(model=model, credentials=credentials, prompt_messages=prompt_messages,
