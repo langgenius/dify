@@ -8,11 +8,13 @@ from openai.types.chat import ChatCompletionChunk, ChatCompletion, ChatCompletio
 from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall, ChoiceDeltaFunctionCall
 from openai.types.chat.chat_completion_message import FunctionCall
 
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
     LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, AssistantPromptMessage, \
     PromptMessageFunction, UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
     TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
@@ -32,10 +34,10 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         model_config = self._get_model_config(credentials['base_model_name'])
 
-        if model_config['mode'] == LLMMode.CHAT:
+        if model_config['model_properties']['mode'] == LLMMode.CHAT:
             # chat model
             return self._chat_generate(
-                model=model_config['name'],
+                model=model_config['model'],
                 deployment_name=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
@@ -48,7 +50,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         else:
             # text completion model
             return self._generate(
-                model=model_config['name'],
+                model=model_config['model'],
                 deployment_name=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
@@ -88,7 +90,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if model_config['mode'] == LLMMode.CHAT:
+            if model_config['model_properties']['mode'] == LLMMode.CHAT:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": 'ping'}],
@@ -108,6 +110,26 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        model_config = self._get_model_config(credentials['base_model_name'])
+
+        entity = AIModelEntity(
+            model=model_config['model'],
+            label=I18nObject(
+                en_US=model_config['model']
+            ),
+            model_type=ModelType.LLM,
+            features=model_config['features'],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                'mode': model_config['model_properties']['mode'],
+                'context_size': model_config['model_properties']['context_size'],
+            },
+            parameter_rules=[]
+        )
+
+        return entity
 
     def _generate(self, model: str, deployment_name: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,

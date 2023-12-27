@@ -5,64 +5,94 @@ AZURE_OPENAI_API_VERSION = '2023-12-01-preview'
 
 LLM_BASE_MODELS = [
     {
-        'name': 'gpt-3.5-turbo',
+        'model': 'gpt-3.5-turbo',
         'base_model_name': 'gpt-35-turbo',
-        'mode': LLMMode.CHAT,
         'features': [
-            ModelFeature.AGENT_THOUGHT
-        ]
+            ModelFeature.AGENT_THOUGHT,
+            ModelFeature.MULTI_TOOL_CALL,
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 4096
+        }
     },
     {
-        'name': 'gpt-3.5-turbo-16k',
+        'model': 'gpt-3.5-turbo-16k',
         'base_model_name': 'gpt-35-turbo-16k',
-        'mode': LLMMode.CHAT,
         'features': [
-            ModelFeature.AGENT_THOUGHT
-        ]
+            ModelFeature.AGENT_THOUGHT,
+            ModelFeature.MULTI_TOOL_CALL,
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 16385
+        }
     },
     {
-        'name': 'gpt-4',
+        'model': 'gpt-4',
         'base_model_name': 'gpt-4',
-        'mode': LLMMode.CHAT,
         'features': [
-            ModelFeature.AGENT_THOUGHT
-        ]
+            ModelFeature.AGENT_THOUGHT,
+            ModelFeature.MULTI_TOOL_CALL,
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 8192
+        }
     },
     {
-        'name': 'gpt-4-32k',
+        'model': 'gpt-4-32k',
         'base_model_name': 'gpt-4-32k',
-        'mode': LLMMode.CHAT,
         'features': [
-            ModelFeature.AGENT_THOUGHT
-        ]
+            ModelFeature.AGENT_THOUGHT,
+            ModelFeature.MULTI_TOOL_CALL,
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 32768
+        }
     },
     {
-        'name': 'gpt-4-1106-preview',
+        'model': 'gpt-4-1106-preview',
         'base_model_name': 'gpt-4-1106-preview',
-        'mode': LLMMode.CHAT,
         'features': [
-            ModelFeature.AGENT_THOUGHT
-        ]
+            ModelFeature.AGENT_THOUGHT,
+            ModelFeature.MULTI_TOOL_CALL,
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 128000
+        }
     },
     {
-        'name': 'gpt-4-vision-preview',
+        'model': 'gpt-4-vision-preview',
         'base_model_name': 'gpt-4-vision-preview',
-        'mode': LLMMode.CHAT,
         'features': [
             ModelFeature.VISION
-        ]
+        ],
+        'model_properties': {
+            'mode': LLMMode.CHAT,
+            'context_size': 128000
+        }
     },
     {
-        'name': 'gpt-3.5-turbo-instruct',
+        'model': 'gpt-3.5-turbo-instruct',
         'base_model_name': 'gpt-35-turbo-instruct',
-        'mode': LLMMode.COMPLETION,
-        'features': []
+        'features': [],
+        'model_properties': {
+            'mode': LLMMode.COMPLETION,
+            'context_size': 4097
+        }
     }
 ]
 
-EMBEDDING_BASE_MODELS = [{
-    'name': 'text-embedding-ada-002',
-    'base_model_name': 'text-embedding-ada-002',
-    'context_size': 8097,
-    'max_chunks': 32,
-}]
+EMBEDDING_BASE_MODELS = [
+    {
+        'model': 'text-embedding-ada-002',
+        'base_model_name': 'text-embedding-ada-002',
+        'model_properties': {
+            'context_size': 8097,
+            'max_chunks': 32,
+        }
+    }
+]
