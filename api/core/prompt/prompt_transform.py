@@ -333,7 +333,7 @@ class PromptTransform:
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
 
-        return [PromptMessage(content=prompt)]
+        return [UserPromptMessage(content=prompt)]
 
     def _set_context_variable(self, context: str, prompt_template: PromptTemplateParser, prompt_inputs: dict) -> None:
         if '#context#' in prompt_template.variable_keys:

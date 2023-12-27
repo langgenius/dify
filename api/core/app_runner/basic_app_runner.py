@@ -308,8 +308,9 @@ class BasicApplicationRunner(AppRunner):
         """
         hit_callback = DatasetIndexToolCallbackHandler(queue_manager, message.id, user_id)
 
-        if model_config.mode == 'completion':
-            query = inputs.get(dataset_config.retrieve_config, "")
+        if (model_config.mode == 'completion' and dataset_config
+                and dataset_config.retrieve_config.query_variable):
+            query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 
         dataset_retrieval = DatasetRetrievalFeature()
         return dataset_retrieval.retrieve(
