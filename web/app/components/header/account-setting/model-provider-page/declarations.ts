@@ -35,8 +35,15 @@ export enum ConfigurateMethodEnum {
 export enum ModelFeatureEnum {
   toolCall = 'tool-call',
   multiToolCall = 'multi-tool-call',
-  agentThought = 'agent_thought',
+  agentThought = 'agent-thought',
   vision = 'vision',
+}
+
+export enum ModelFeatureTextEnum {
+  toolCall = 'Tool Call',
+  multiToolCall = 'Multi Tool Call',
+  agentThought = 'Agent Thought',
+  vision = 'Vision',
 }
 
 export enum ModelStatusEnum {
@@ -75,7 +82,7 @@ export type ModelItem = {
   model: string
   label: TypeWithI18N
   model_type: ModelTypeEnum
-  features: ModelFeatureEnum[]
+  features?: ModelFeatureEnum[]
   fetch_from: ConfigurateMethodEnum
   status: ModelStatusEnum
   model_properties: Record<string, string | number>
@@ -171,15 +178,16 @@ export type CustomConfigrationModelFixedFields = {
 }
 
 export type ModelParameterRule = {
-  default: number | string | boolean
-  help: TypeWithI18N
+  default?: number | string | boolean | string[]
+  help?: TypeWithI18N
   label: TypeWithI18N
-  min: number
-  max: number
+  min?: number
+  max?: number
   name: string
-  precision: number
+  precision?: number
   required: false
   type: string
-  use_template: string
+  use_template?: string
   options?: string[]
+  tagPlaceholder?: TypeWithI18N
 }

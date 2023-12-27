@@ -4,15 +4,14 @@ import React from 'react'
 import ModelConfig from './model-config'
 import DataConfig from './data-config'
 import PluginConfig from './plugins-config'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
 import type { DataSet } from '@/models/datasets'
 
 export type IConfigProps = {
   className?: string
   readonly?: boolean
   modelId: string
-  providerName: ProviderEnum
-  onModelChange?: (modelId: string, providerName: ProviderEnum) => void
+  providerName: string
+  onModelChange?: (modelId: string, providerName: string) => void
   plugins: Record<string, boolean>
   onPluginChange?: (key: string, value: boolean) => void
   dataSets: DataSet[]

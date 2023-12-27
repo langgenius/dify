@@ -2,7 +2,7 @@
 /* eslint-disable @typescript-eslint/no-use-before-define */
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -39,8 +39,7 @@ import type { DataSet } from '@/models/datasets'
 import ConfigSummary from '@/app/components/explore/universal-chat/config-view/summary'
 import { fetchDatasets } from '@/service/datasets'
 import ItemOperation from '@/app/components/explore/item-operation'
-import { useProviderContext } from '@/context/provider-context'
-import type { ProviderEnum } from '@/app/components/header/account-setting/model-page/declarations'
+import { useAgentThoughtCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 const APP_ID = 'universal-chat'
 const DEFAULT_PLUGIN = {
@@ -72,12 +71,19 @@ const Main: FC<IMainProps> = () => {
   const { t } = useTranslation()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { agentThoughtModelList } = useProviderContext()
+  const modelConfig = useMemo(() => {
+    if (prevConfig?.providerName && prevConfig.modelId)
+      return { provider: prevConfig.providerName, model: prevConfig.modelId }
+  }, [prevConfig])
+  const {
+    currentProvider,
+    currentModel,
+  } = useAgentThoughtCurrentProviderAndModelAndModelList(modelConfig)
   const getInitConfig = (type: 'model' | 'plugin') => {
     if (type === 'model') {
       return {
-        providerName: prevConfig?.providerName || agentThoughtModelList?.[0]?.model_provider.provider_name,
-        modelId: prevConfig?.modelId || agentThoughtModelList?.[0]?.model_name,
+        providerName: prevConfig?.providerName || currentProvider?.provider,
+        modelId: prevConfig?.modelId || currentModel?.model,
       }
     }
 
@@ -454,7 +460,7 @@ const Main: FC<IMainProps> = () => {
   const [isResponsingConIsCurrCon, setIsResponsingConCurrCon, getIsResponsingConIsCurrCon] = useGetState(true)
   const handleSend = async (message: string) => {
     if (isNewConversation) {
-      const isModelSelected = modelId && !!agentThoughtModelList.find(item => item.model_name === modelId)
+      const isModelSelected = modelId && !!currentModel
       if (!isModelSelected) {
         notify({ type: 'error', message: t('appDebug.errorMessage.notSelectModel') })
         return
@@ -693,7 +699,7 @@ const Main: FC<IMainProps> = () => {
   }
   const initConfig = getInitConfig('model')
   const [modelId, setModeId] = useState<string>((initConfig as any)?.modelId as string)
-  const [providerName, setProviderName] = useState<ProviderEnum>((initConfig as any)?.providerName as ProviderEnum)
+  const [providerName, setProviderName] = useState<string>((initConfig as any)?.providerName)
   // const currModel = MODEL_LIST.find(item => item.id === modelId)
 
   const [plugins, setPlugins] = useState<Record<string, boolean>>(getInitConfig('plugin') as Record<string, boolean>)
@@ -707,7 +713,7 @@ const Main: FC<IMainProps> = () => {
   const configSetDefaultValue = () => {
     const initConfig = getInitConfig('model')
     setModeId((initConfig as any)?.modelId as string)
-    setProviderName((initConfig as any)?.providerName as ProviderEnum)
+    setProviderName((initConfig as any)?.providerName)
     setPlugins(getInitConfig('plugin') as any)
     setDateSets([])
   }

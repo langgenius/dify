@@ -4,11 +4,12 @@ import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
   FormValue,
+  ModelParameterRule,
 } from '../declarations'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
 import ModelSelector from '../model-selector'
-import { useCurrentProviderAndModel } from '../hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '../hooks'
 import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
 import {
@@ -18,7 +19,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { useProviderContext } from '@/context/provider-context'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { fetchModelParameterRules } from '@/service/common'
 import Loading from '@/app/components/base/loading'
@@ -33,9 +33,26 @@ type ModelParameterModalProps = {
   onCompletionParamsChange: (newParams: FormValue) => void
   disabled: boolean
 }
+const stopParameerRule: ModelParameterRule = {
+  default: [],
+  help: {
+    en_US: 'Up to four sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence.',
+    zh_Hans: '最多四个序列，API 将停止生成更多的 token。返回的文本将不包含停止序列。',
+  },
+  label: {
+    en_US: 'Stop sequences',
+    zh_Hans: '停止序列 stop_sequences',
+  },
+  name: 'stop',
+  required: false,
+  type: 'tag',
+  tagPlaceholder: {
+    en_US: 'Enter sequence and press Tab',
+    zh_Hans: '输入序列并按 Tab 键',
+  },
+}
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   isAdvancedMode,
-  mode,
   modelId,
   provider,
   setModel,
@@ -46,14 +63,15 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { data: parameterRulesData, isLoading } = useSWR(`/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`, fetchModelParameterRules)
-  const { textGenerationModelList } = useProviderContext()
   const {
     currentProvider,
     currentModel,
-  } = useCurrentProviderAndModel(
     textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
+
+  const parameterRules = parameterRulesData?.data || []
 
   const handleParamChange = (key: string, value: ParameterValue) => {
     onCompletionParamsChange({
@@ -109,7 +127,9 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   className='mr-1.5 text-gray-900'
                   modelItem={currentModel}
                   showMode={isAdvancedMode}
+                  modeClassName='!text-[#444CE7] !border-[#A4BCFD]'
                   showFeatures={isAdvancedMode}
+                  featuresClassName='!text-[#444CE7] !border-[#A4BCFD]'
                 />
               )
             }
@@ -157,8 +177,11 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 )
               }
               {
-                parameterRulesData?.data && (
-                  parameterRulesData.data.map(parameter => (
+                !isLoading && (
+                  [
+                    ...parameterRules,
+                    ...(isAdvancedMode ? [stopParameerRule] : []),
+                  ].map(parameter => (
                     <ParameterItem
                       key={parameter.name}
                       className='mb-4'

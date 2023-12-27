@@ -294,6 +294,7 @@ const translation = {
     config: 'Config',
     modelAndParameters: 'Model and Parameters',
     model: 'Model',
+    featureSupported: '{{feature}} supported',
   },
   dataSource: {
     add: 'Add a data source',

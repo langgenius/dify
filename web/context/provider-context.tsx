@@ -2,9 +2,10 @@
 
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
 import {
+  ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -65,9 +66,23 @@ export const ProviderContextProvider = ({
   const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
 
-  // const agentThoughtModelList = textGenerationModelList?.data?.filter((item) => {
-  //   return item.features?.includes(ModelFeature.agentThought)
-  // })
+  const agentThoughtModelList = useMemo(() => {
+    const result = []
+    if (textGenerationModelList?.data) {
+      textGenerationModelList?.data.forEach((item) => {
+        const agentThoughtModels = item.models.filter(model => model.features?.includes(ModelFeatureEnum.agentThought))
+
+        if (agentThoughtModelList.length) {
+          result.push({
+            ...item,
+            models: agentThoughtModels,
+          })
+        }
+      })
+    }
+
+    return []
+  }, [textGenerationModelList])
 
   const [plan, setPlan] = useState(defaultPlan)
   const [isFetchedPlan, setIsFetchedPlan] = useState(false)
@@ -96,7 +111,7 @@ export const ProviderContextProvider = ({
   return (
     <ProviderContext.Provider value={{
       textGenerationModelList: textGenerationModelList?.data || [],
-      agentThoughtModelList: [],
+      agentThoughtModelList,
       hasSettedApiKey: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),
       supportRetrievalMethods: supportRetrievalMethods?.retrieval_method || [],
       plan,
