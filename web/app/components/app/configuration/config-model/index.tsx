@@ -21,13 +21,12 @@ import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { Sliders02 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { fetchModelParams } from '@/service/debug'
 import Loading from '@/app/components/base/loading'
-import { useProviderContext } from '@/context/provider-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { ModelModeType } from '@/types/app'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type IConfigModelProps = {
   isAdvancedMode: boolean
@@ -50,15 +49,14 @@ const ConfigModel: FC<IConfigModelProps> = ({
   disabled,
 }) => {
   const { t } = useTranslation()
-  const { textGenerationModelList } = useProviderContext()
   const [isShowConfig, { setFalse: hideConfig, toggle: toogleShowConfig }] = useBoolean(false)
   const [maxTokenSettingTipVisible, setMaxTokenSettingTipVisible] = useState(false)
   const configContentRef = React.useRef(null)
   const {
     currentProvider,
     currentModel: currModel,
-  } = useCurrentProviderAndModel(
     textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
     { provider, model: modelId },
   )
 

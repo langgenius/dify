@@ -8,8 +8,9 @@ import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
+import TagInput from '@/app/components/base/tag-input'
 
-export type ParameterValue = number | string | boolean | undefined
+export type ParameterValue = number | string | string[] | boolean | undefined
 type ParameterItemProps = {
   parameterRule: ModelParameterRule
   value?: ParameterValue
@@ -27,8 +28,9 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
   const mergedValue = value === undefined ? localValue : value
+  const renderValue = mergedValue === undefined ? parameterRule.default : mergedValue
 
-  const handleChange = (v: number | string | boolean) => {
+  const handleChange = (v: ParameterValue) => {
     setLocalValue(v)
     if (value !== undefined && onChange)
       onChange(v)
@@ -37,10 +39,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let num = +e.target.value
 
-    if (num > parameterRule.max)
+    if (parameterRule.max !== undefined && num > parameterRule.max)
       num = parameterRule.max
 
-    if (num < parameterRule.min)
+    if (parameterRule.min !== undefined && num < parameterRule.min)
       num = parameterRule.min
 
     handleChange(num)
@@ -62,22 +64,29 @@ const ParameterItem: FC<ParameterItemProps> = ({
     handleChange(option.value)
   }
 
+  const handleTagChange = (newSequences: string[]) => {
+    handleChange(newSequences)
+  }
+
   const handleSwitch = (checked: boolean) => {
     if (onSwitch) {
       let assignValue: ParameterValue = localValue
 
       if (localValue === undefined) {
         if (parameterRule.type === 'int' || parameterRule.type === 'float')
-          assignValue = 0
+          assignValue = parameterRule.default !== undefined ? parameterRule.default : 0
 
         if (parameterRule.type === 'string' && !parameterRule.options?.length)
-          assignValue = ''
+          assignValue = parameterRule.default || ''
 
         if (parameterRule.type === 'string' && parameterRule.options?.length)
           assignValue = parameterRule.options[0]
 
         if (parameterRule.type === 'boolean')
-          assignValue = false
+          assignValue = parameterRule.default !== undefined ? parameterRule.default : false
+
+        if (parameterRule.type === 'tag')
+          assignValue = parameterRule.default !== undefined ? parameterRule.default : []
       }
 
       onSwitch(checked, assignValue)
@@ -85,29 +94,42 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   return (
-    <div className={`flex items-center justify-between h-8 ${className}`}>
-      <div className='shrink-0   flex items-center w-[200px]'>
-        <div
-          className='mr-0.5 text-[13px] font-medium text-gray-700 truncate'
-          title={parameterRule.label[language]}
-        >
-          {parameterRule.label[language]}
+    <div className={`flex items-center justify-between ${className}`}>
+      <div>
+        <div className='shrink-0 flex items-center w-[200px]'>
+          <div
+            className='mr-0.5 text-[13px] font-medium text-gray-700 truncate'
+            title={parameterRule.label[language]}
+          >
+            {parameterRule.label[language]}
+          </div>
+          {
+            parameterRule.help && (
+              <Tooltip
+                selector={`model-parameter-rule-${parameterRule.name}`}
+                htmlContent={(
+                  <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language]}</div>
+                )}
+              >
+                <HelpCircle className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
+              </Tooltip>
+            )
+          }
+          {
+            !parameterRule.required && (
+              <Switch
+                defaultValue={value !== undefined}
+                onChange={handleSwitch}
+                size='md'
+              />
+            )
+          }
         </div>
-        <Tooltip
-          selector={`model-parameter-rule-${parameterRule.name}`}
-          htmlContent={(
-            <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language]}</div>
-          )}
-        >
-          <HelpCircle className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
-        </Tooltip>
         {
-          !parameterRule.required && (
-            <Switch
-              defaultValue={!!value}
-              onChange={handleSwitch}
-              size='md'
-            />
+          parameterRule.type === 'tag' && (
+            <div className='w-[200px] text-gray-400 text-xs font-normal'>
+              {parameterRule?.tagPlaceholder?.[language]}
+            </div>
           )
         }
       </div>
@@ -116,10 +138,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
           <div className='flex items-center'>
             <Slider
               className='w-[120px]'
-              value={(mergedValue || parameterRule.default) as number}
+              value={renderValue === undefined ? 0 : +renderValue}
               min={parameterRule.min}
               max={parameterRule.max}
-              step={+`0.${parameterRule.precision}`}
+              step={+`0.${parameterRule.precision || 0}`}
               onChange={handleSlideChange}
             />
             <input
@@ -127,8 +149,8 @@ const ParameterItem: FC<ParameterItemProps> = ({
               type='number'
               max={parameterRule.max}
               min={parameterRule.min}
-              step={+`0.${parameterRule.precision}`}
-              value={(mergedValue || parameterRule.default || '') as string}
+              step={+`0.${parameterRule.precision || 0}`}
+              value={renderValue === undefined ? 0 : +renderValue}
               onChange={handleNumberInputChange}
             />
           </div>
@@ -138,7 +160,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'boolean' && (
           <Radio.Group
             className='w-[200px] flex items-center'
-            value={(mergedValue || parameterRule.default) ? 1 : 0}
+            value={renderValue === undefined ? 1 : 0}
             onChange={handleRadioChange}
           >
             <Radio value={1} className='!mr-1 w-[94px]'>True</Radio>
@@ -150,7 +172,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'string' && !parameterRule.options?.length && (
           <input
             className='flex items-center px-3 w-[200px] h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-            value={(mergedValue || parameterRule.default || '') as string}
+            value={(renderValue === undefined ? '' : renderValue) as string}
             onChange={handleStringInputChange}
           />
         )
@@ -160,10 +182,21 @@ const ParameterItem: FC<ParameterItemProps> = ({
           <SimpleSelect
             className='!py-0'
             wrapperClassName='!w-[200px] !h-8'
-            defaultValue={(mergedValue || parameterRule.default) as string}
+            defaultValue={renderValue as string}
             onSelect={handleSelect}
             items={parameterRule.options.map(option => ({ value: option, name: option }))}
           />
+        )
+      }
+      {
+        parameterRule.type === 'tag' && (
+          <div className='w-[200px]'>
+            <TagInput
+              items={renderValue === undefined ? [] : (renderValue as string[])}
+              onChange={handleTagChange}
+              customizedConfirmKey='Tab'
+            />
+          </div>
         )
       }
     </div>

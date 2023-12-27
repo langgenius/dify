@@ -84,8 +84,8 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text].map((modelType) => {
           return {
             model_type: modelType,
-            provider_name: getCurrentDefaultModelByModelType(modelType)?.provider,
-            model_name: getCurrentDefaultModelByModelType(modelType)?.model,
+            provider: getCurrentDefaultModelByModelType(modelType)?.provider,
+            model: getCurrentDefaultModelByModelType(modelType)?.model,
           }
         }),
       },

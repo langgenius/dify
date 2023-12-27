@@ -30,9 +30,8 @@ import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ModelName from '@/app/components/app/configuration/config-model/model-name'
-import ModelModeTypeLabel from '@/app/components/app/configuration/config-model/model-mode-type-label'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 
@@ -189,6 +188,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
 
   const modelName = (detail.model_config as any).model.name
   const provideName = (detail.model_config as any).model.provider as any
+  const {
+    currentModel,
+    currentProvider,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
+    { provider: provideName, model: modelName },
+  )
   const varList = (detail.model_config as any).user_input_form.map((item: any) => {
     const itemContent = item[Object.keys(item)[0]]
     return {
@@ -225,13 +230,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         >
           <ModelIcon
             className='!w-5 !h-5'
-            modelType={ModelTypeEnum.textGeneration}
-            providerName={provideName}
+            provider={currentProvider}
           />
-          <div className='text-[13px] text-gray-900 font-medium'>
-            <ModelName modelId={modelName} modelDisplayName={modelName} />
-          </div>
-          <ModelModeTypeLabel type={detail?.model_config.model.mode as any} isHighlight />
+          <ModelName
+            modelItem={currentModel!}
+            showMode
+          />
         </div>
         <Popover
           position='br'

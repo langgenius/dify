@@ -1,48 +1,73 @@
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import ModelBadge from '../model-badge'
-import { ModelFeatureEnum } from '../declarations'
+import {
+  ModelFeatureEnum,
+  ModelFeatureTextEnum,
+} from '../declarations'
 import {
   MagicBox,
   MagicEyes,
   MagicWand,
   Robot,
 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type FeatureIconProps = {
   feature: ModelFeatureEnum
+  className?: string
 }
 const FeatureIcon: FC<FeatureIconProps> = ({
+  className,
   feature,
 }) => {
+  const { t } = useTranslation()
+
   if (feature === ModelFeatureEnum.agentThought) {
     return (
-      <ModelBadge className='mr-0.5 !px-0 w-[18px] justify-center'>
-        <Robot className='w-3 h-3 text-gray-500' />
-      </ModelBadge>
+      <TooltipPlus
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.agentThought })}
+      >
+        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+          <Robot className='w-3 h-3' />
+        </ModelBadge>
+      </TooltipPlus>
     )
   }
 
   if (feature === ModelFeatureEnum.toolCall) {
     return (
-      <ModelBadge className='mr-0.5 !px-0 w-[18px] justify-center'>
-        <MagicWand className='w-3 h-3 text-gray-500' />
-      </ModelBadge>
+      <TooltipPlus
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.toolCall })}
+      >
+        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+          <MagicWand className='w-3 h-3' />
+        </ModelBadge>
+      </TooltipPlus>
     )
   }
 
   if (feature === ModelFeatureEnum.multiToolCall) {
     return (
-      <ModelBadge className='mr-0.5 !px-0 w-[18px] justify-center'>
-        <MagicBox className='w-3 h-3 text-gray-500' />
-      </ModelBadge>
+      <TooltipPlus
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.multiToolCall })}
+      >
+        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+          <MagicBox className='w-3 h-3' />
+        </ModelBadge>
+      </TooltipPlus>
     )
   }
 
   if (feature === ModelFeatureEnum.vision) {
     return (
-      <ModelBadge className='mr-0.5 !px-0 w-[18px] justify-center'>
-        <MagicEyes className='w-3 h-3 text-gray-500' />
-      </ModelBadge>
+      <TooltipPlus
+        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
+      >
+        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+          <MagicEyes className='w-3 h-3' />
+        </ModelBadge>
+      </TooltipPlus>
     )
   }
 

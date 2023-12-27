@@ -49,7 +49,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type PublichConfig = {
   modelConfig: ModelConfig
@@ -218,12 +218,11 @@ const Configuration: FC = () => {
     })
   }
 
+  const { hasSettedApiKey } = useProviderContext()
   const {
-    hasSettedApiKey,
+    currentModel: currModel,
     textGenerationModelList,
-  } = useProviderContext()
-  const { currentModel: currModel } = useCurrentProviderAndModel(
-    textGenerationModelList,
+  } = useTextGenerationCurrentProviderAndModelAndModelList(
     {
       provider: modelConfig.provider,
       model: modelConfig.model_id,

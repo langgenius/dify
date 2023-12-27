@@ -23,6 +23,7 @@ import {
   fetchModelList,
   fetchModelProviderCredentials,
 } from '@/service/common'
+import { useProviderContext } from '@/context/provider-context'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -123,6 +124,34 @@ export const useCurrentProviderAndModel = (modelList: Model[], defaultModel?: De
   return {
     currentProvider,
     currentModel,
+  }
+}
+
+export const useTextGenerationCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
+  const { textGenerationModelList } = useProviderContext()
+  const {
+    currentProvider,
+    currentModel,
+  } = useCurrentProviderAndModel(textGenerationModelList, defaultModel)
+
+  return {
+    currentProvider,
+    currentModel,
+    textGenerationModelList,
+  }
+}
+
+export const useAgentThoughtCurrentProviderAndModelAndModelList = (defaultModel?: DefaultModel) => {
+  const { agentThoughtModelList } = useProviderContext()
+  const {
+    currentProvider,
+    currentModel,
+  } = useCurrentProviderAndModel(agentThoughtModelList, defaultModel)
+
+  return {
+    currentProvider,
+    currentModel,
+    agentThoughtModelList,
   }
 }
 

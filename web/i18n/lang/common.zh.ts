@@ -294,6 +294,7 @@ const translation = {
     config: '配置',
     modelAndParameters: '模型及参数',
     model: '模型',
+    featureSupported: '支持 {{feature}} 功能',
   },
   dataSource: {
     add: '添加数据源',

@@ -12,16 +12,22 @@ type ModelNameProps = {
   modelItem: ModelItem
   className?: string
   showModelType?: boolean
+  modelTypeClassName?: string
   showMode?: boolean
+  modeClassName?: string
   showFeatures?: boolean
+  featuresClassName?: string
   showContextSize?: boolean
 }
 const ModelName: FC<ModelNameProps> = ({
   modelItem,
   className,
   showModelType,
+  modelTypeClassName,
   showMode,
+  modeClassName,
   showFeatures,
+  featuresClassName,
   showContextSize,
 }) => {
   const language = useLanguage()
@@ -34,21 +40,21 @@ const ModelName: FC<ModelNameProps> = ({
       `}
     >
       <div
-        className='mr-2  truncate'
+        className='mr-2 truncate'
         title={modelItem.label[language]}
       >
         {modelItem.label[language]}
       </div>
       {
         showModelType && (
-          <ModelBadge className='mr-0.5'>
+          <ModelBadge className={`mr-0.5 ${modelTypeClassName}`}>
             {modelTypeFormat(modelItem.model_type)}
           </ModelBadge>
         )
       }
       {
         modelItem.model_properties.mode && showMode && (
-          <ModelBadge className='mr-0.5'>
+          <ModelBadge className={`mr-0.5 ${modeClassName}`}>
             {(modelItem.model_properties.mode as string).toLocaleUpperCase()}
           </ModelBadge>
         )
@@ -58,6 +64,7 @@ const ModelName: FC<ModelNameProps> = ({
           <FeatureIcon
             key={feature}
             feature={feature}
+            className={featuresClassName}
           />
         ))
       }
