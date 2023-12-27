@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import { useLanguage } from '../hooks'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 
 type ProviderIconProps = {
   provider: ModelProvider
@@ -23,10 +24,12 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   }
 
   return (
-    <div className={`inline-flex items-center pl-[1px] pr-0.5 h-6 bg-[#D92D201F]/[0.12] ${className}`}>
-      <div className='mr-1 w-[22px] h-[22px] rounded-full bg-black/[0.24]' />
-      <div className='pl-[7px] pr-[18px] h-[14px] leading-[14px] bg-black/[0.24] text-xs font-medium text-black/[0.16]'>
-        Model Provider Image
+    <div className={`inline-flex items-center ${className}`}>
+      <div className='flex items-center justify-center mr-2 w-6 h-6 rounded border-[0.5px] border-black/5 bg-gray-50'>
+        <CubeOutline className='w-4 h-4 text-gray-400' />
+      </div>
+      <div className='text-xs font-semibold text-black'>
+        {provider.label[language]}
       </div>
     </div>
   )
