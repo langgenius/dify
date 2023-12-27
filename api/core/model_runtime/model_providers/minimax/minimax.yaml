@@ -5,6 +5,7 @@ icon_small:
   en_US: icon_s_en.png
 icon_large:
   en_US: icon_l_en.png
+background: "#FFEFEF"
 help:
   title:
     en_US: Get your API Key from Minimax

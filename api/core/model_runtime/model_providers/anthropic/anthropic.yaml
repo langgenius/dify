@@ -8,6 +8,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
+background: "#F0F0EB"
 help:
   title:
     en_US: Get your API Key from Anthropic

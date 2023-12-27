@@ -7,6 +7,7 @@ icon_small:
 icon_large:
   zh_Hans: icon_l_zh.png
   en_US: icon_l_en.png
+background: "#EFF1FE"
 supported_model_types:
 - llm
 configurate_methods:

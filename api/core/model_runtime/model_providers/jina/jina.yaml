@@ -7,6 +7,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
+background: "#EFFDFD"
 help:
   title:
     en_US: Get your API key from Jina AI

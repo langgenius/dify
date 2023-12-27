@@ -5,6 +5,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
+background: "#F4F7FF"
 help:
   title:
     en_US: Deploy ChatGLM to your local
