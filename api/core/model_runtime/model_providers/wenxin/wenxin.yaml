@@ -8,6 +8,7 @@ icon_small:
 icon_large:
   en_US: icon_l_en.png
   zh_Hans: icon_l_zh.png
+background: "#E8F5FE"
 help:
   title:
     en_US: Get your API Key from WenXin

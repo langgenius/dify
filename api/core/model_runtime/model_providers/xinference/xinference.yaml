@@ -5,6 +5,7 @@ icon_small:
   en_US: icon_s_en.svg
 icon_large:
   en_US: icon_l_en.svg
+background: "#FAF5FF"
 help:
   title:
     en_US: How to deploy Xinference
