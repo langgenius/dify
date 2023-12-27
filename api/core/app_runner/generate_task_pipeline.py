@@ -161,7 +161,7 @@ class GenerateTaskPipeline:
                     response['conversation_id'] = self._conversation.id
 
                 if self._task_state.metadata:
-                    response['data']['metadata'] = self._task_state.metadata
+                    response['metadata'] = self._task_state.metadata
 
                 return response
             else:
