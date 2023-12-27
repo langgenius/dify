@@ -295,6 +295,9 @@ const translation = {
     modelAndParameters: 'Model and Parameters',
     model: 'Model',
     featureSupported: '{{feature}} supported',
+    callTimes: 'Call times',
+    buyQuota: 'Buy Quota',
+    getFreeTokens: 'Get free Tokens',
   },
   dataSource: {
     add: 'Add a data source',

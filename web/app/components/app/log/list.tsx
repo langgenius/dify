@@ -231,6 +231,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <ModelIcon
             className='!w-5 !h-5'
             provider={currentProvider}
+            modelName={currentModel?.model}
           />
           <ModelName
             modelItem={currentModel!}

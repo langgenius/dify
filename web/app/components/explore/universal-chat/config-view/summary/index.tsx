@@ -67,6 +67,7 @@ const Summary: FC<ISummaryProps> = ({
       <div onClick={toggleShowConfig} className={cn(getColorInfo(modelId), 'flex items-center px-1 h-8 rounded-lg border cursor-pointer')}>
         <ModelIcon
           provider={currentProvider}
+          modelName={currModel?.model}
           className='!w-6 !h-6'
         />
         <div className='ml-2 text-[13px] font-medium text-gray-900'>

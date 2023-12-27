@@ -1,21 +1,45 @@
 import type { FC } from 'react'
+import { useSWRConfig } from 'swr'
 import { useTranslation } from 'react-i18next'
-import type { ModelProvider } from '../declarations'
+import type {
+  ModelProvider,
+  TypeWithI18N,
+} from '../declarations'
 import { ConfigurateMethodEnum } from '../declarations'
 import {
   DEFAULT_BACKGROUND_COLOR,
   modelTypeFormat,
 } from '../utils'
-import { useLanguage } from '../hooks'
+import {
+  useAnthropicBuyQuota,
+  useFreeQuota,
+  useLanguage,
+} from '../hooks'
 import ModelBadge from '../model-badge'
 import ProviderIcon from '../provider-icon'
+import s from './index.module.css'
 import { Plus, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-// import { CoinsStacked01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { CoinsStacked01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Button from '@/app/components/base/button'
 
 type ProviderCardProps = {
   provider: ModelProvider
   onOpenModal: (configurateMethod: ConfigurateMethodEnum) => void
+}
+
+const TIP_MAP: { [k: string]: TypeWithI18N } = {
+  minimax: {
+    en_US: 'Earn 1 million tokens for free',
+    zh_Hans: '免费获取 100 万个 token',
+  },
+  spark: {
+    en_US: 'Earn 3 million tokens (v3.0) for free',
+    zh_Hans: '免费获取 300 万个 token (v3.0)',
+  },
+  zhipuai: {
+    en_US: 'Earn 10 million tokens for free',
+    zh_Hans: '免费获取 1000 万个 token',
+  },
 }
 const ProviderCard: FC<ProviderCardProps> = ({
   provider,
@@ -23,6 +47,12 @@ const ProviderCard: FC<ProviderCardProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const { mutate } = useSWRConfig()
+  const handlePay = useAnthropicBuyQuota()
+  const handleFreeQuotaSuccess = () => {
+    mutate('/workspaces/current/model-providers')
+  }
+  const handleFreeQuota = useFreeQuota(handleFreeQuotaSuccess)
   const configurateMethods = provider.configurate_methods.filter(method => method !== ConfigurateMethodEnum.fetchFromRemote)
 
   return (
@@ -49,7 +79,28 @@ const ProviderCard: FC<ProviderCardProps> = ({
               </ModelBadge>
             ))
           }
+          {
+            ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && (
+              <div className='flex items-center h-[26px] px-4 bg-white/50 rounded-b-xl'>
+                📣
+                <div className={`${s.vender} text-xs font-medium text-transparent`}>{TIP_MAP[provider.provider][language]}</div>
+              </div>
+            )
+          }
         </div>
+        {
+          ['mininmax', 'spark', 'zhipuai'].includes(provider.provider) && (
+            <div className='hidden group-hover:block'>
+              <Button
+                className='mb-1 w-full h-7 text-xs'
+                type='primary'
+                onClick={() => handleFreeQuota(provider.provider)}
+              >
+                {t('common.modelProvider.getFreeTokens')}
+              </Button>
+            </div>
+          )
+        }
         <div className={`hidden group-hover:grid grid-cols-${configurateMethods.length} gap-1`}>
           {
             configurateMethods.map((method) => {
@@ -77,10 +128,17 @@ const ProviderCard: FC<ProviderCardProps> = ({
               )
             })
           }
-          {/* <Button className='h-7 text-xs text-gray-700'>
-            <CoinsStacked01 className='mr-[5px] w-3.5 h-3.5' />
-            Buy Quota
-          </Button> */}
+          {
+            provider.provider === 'anthropic' && (
+              <Button
+                className='h-7 text-xs text-gray-700'
+                onClick={handlePay}
+              >
+                <CoinsStacked01 className='mr-[5px] w-3.5 h-3.5' />
+                {t('common.modelProvider.buyQuota')}
+              </Button>
+            )
+          }
         </div>
       </div>
     </div>

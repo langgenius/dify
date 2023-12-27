@@ -295,6 +295,9 @@ const translation = {
     modelAndParameters: '模型及参数',
     model: '模型',
     featureSupported: '支持 {{feature}} 功能',
+    callTimes: '调用次数',
+    buyQuota: '购买额度',
+    getFreeTokens: '获得免费 Tokens',
   },
   dataSource: {
     add: '添加数据源',
