@@ -1,0 +1,123 @@
+provider: openai_api_compatible
+label:
+  en_US: OpenAI-API-compatible
+description:
+    en_US: All model providers compatible with OpenAI's API standard, such as Together.ai.
+    zh_Hans: 兼容 OpenAI API 的模型供应商，例如 Together.ai。
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+supported_model_types:
+- llm
+- text-embedding
+- speech2text
+- moderation
+configurate_methods:
+- customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter full model name   
+      zh_Hans: 输入模型全称
+  credential_form_schemas:
+  - variable: api_key
+    label:
+      en_US: API Key
+    type: secret-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入您的 API Key
+      en_US: Enter your API Key
+  - variable: endpoint_url
+    label:
+      zh_Hans: API endpoint URL
+      en_US: API endpoint URL
+    type: text-input
+    required: true
+    placeholder:
+      zh_Hans: 在此输入您的 API endpoint URL
+      en_US: Enter your API endpoint URL  
+  - variable: context_size
+    required: true
+    type: int
+    default: 16000
+  - variable: max_chunks
+    show_on:
+    - variable: __model_type
+      value: text-embedding
+    type: int
+    default: 2048
+  - variable: temperature
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 0.7
+    min: 0
+    max: 2
+  - variable: top_p
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 1
+    min: 0
+    max: 1
+    type: float
+  - variable: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 0.1
+  - variable: frequency_penalty
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 0
+    min: -2
+    max: 2
+    type: float
+  - variable: presence_penalty
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 0
+    min: -2
+    max: 2
+    type: float
+  - variable: max_tokens_to_sample
+    show_on:
+    - variable: __model_type
+      value: llm
+    default: 4096
+    min: 1
+    max: 4096
+  - variable: input_price
+    default: '0.001'
+    help:
+      zh_Hans: token 输入的单位价格。
+      en_US: Unit price for input tokens.
+  - variable: output_price
+    default: '0.002'
+    show_on:
+    - variable: __model_type
+      value: llm
+    help:
+      zh_Hans: token 输出的单位价格。
+      en_US: Unit price for output tokens.
+  - variable: unit
+    default: '0.001'
+    help:
+      zh_Hans: 价格计算单位。
+      en_US: Price unit.
+  - variable: currency
+    default: USD
