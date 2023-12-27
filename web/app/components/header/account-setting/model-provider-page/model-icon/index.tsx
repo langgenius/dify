@@ -4,6 +4,7 @@ import type {
   ModelProvider,
 } from '../declarations'
 import { useLanguage } from '../hooks'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 
 type ModelIconProps = {
   provider?: Model | ModelProvider
@@ -26,8 +27,11 @@ const ModelIcon: FC<ModelIconProps> = ({
   }
 
   return (
-    <div className={`inline-flex items-center justify-center p-[1px] w-4 h-4 bg-[#D92D201F]/[0.12] rounded-[5px] ${className}`}>
-      <div className='w-full h-full rounded-full bg-black/[0.24]' />
+    <div className={`
+      flex items-center justify-center w-6 h-6 rounded border-[0.5px] border-black/5 bg-gray-50
+      ${className}
+    `}>
+      <CubeOutline className='w-4 h-4 text-gray-400' />
     </div>
   )
 }
