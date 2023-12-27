@@ -618,11 +618,11 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
     @staticmethod
     def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
-        for model_config in LLM_BASE_MODELS:
-            if model_config.base_model_name == base_model_name:
-                model_config.entity.model = model
-                model_config.entity.label.en_US = model
-                model_config.entity.label.zh_Hans = model
-                return model_config
+        for ai_model_entity in LLM_BASE_MODELS:
+            if ai_model_entity.base_model_name == base_model_name:
+                ai_model_entity.entity.model = model
+                ai_model_entity.entity.label.en_US = model
+                ai_model_entity.entity.label.zh_Hans = model
+                return ai_model_entity
 
         return None

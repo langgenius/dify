@@ -12,7 +12,7 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='text-embedding-ada-002',
+            model='embedding',
             credentials={
                 'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
                 'openai_api_key': 'invalid_key',
@@ -21,7 +21,7 @@ def test_validate_credentials():
         )
 
     model.validate_credentials(
-        model='text-embedding-ada-002',
+        model='embedding',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),
@@ -34,7 +34,7 @@ def test_invoke_model():
     model = AzureOpenAITextEmbeddingModel()
 
     result = model.invoke(
-        model='text-embedding-ada-002',
+        model='embedding',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),
@@ -56,7 +56,7 @@ def test_get_num_tokens():
     model = AzureOpenAITextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='text-embedding-ada-002',
+        model='embedding',
         credentials={
             'base_model_name': 'text-embedding-ada-002'
         },
