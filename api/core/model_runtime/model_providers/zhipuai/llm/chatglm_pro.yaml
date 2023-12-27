@@ -1,4 +1,4 @@
-model: chatglm_turbo
+model: chatglm_pro
 label:
   en_US: chatglm_turbo
 model_type: llm

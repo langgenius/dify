@@ -5,6 +5,7 @@ import uuid
 from typing import cast, Optional, Any, Union, Generator, Tuple
 
 from flask import Flask, current_app
+from pydantic import ValidationError
 
 from core.app_runner.agent_app_runner import AgentApplicationRunner
 from core.app_runner.basic_app_runner import BasicApplicationRunner
@@ -169,10 +170,13 @@ class ApplicationManager:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(InvokeAuthorizationError('Incorrect API key provided'))
+            except ValidationError as e:
+                logger.exception("Validation Error when generating")
+                queue_manager.publish_error(e)
             except (ValueError, InvokeError) as e:
                 queue_manager.publish_error(e)
             except Exception as e:
-                logger.exception("Unknown Error in generate worker")
+                logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e)
             finally:
                 db.session.remove()
