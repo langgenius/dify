@@ -17,7 +17,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity, ModelPrope
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
-from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS
+from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS, AzureBaseModel
 from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
@@ -31,13 +31,12 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
 
-        model_config = self._get_ai_model_entity(credentials['base_model_name'])
+        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
 
-        if model_config.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
+        if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
             # chat model
             return self._chat_generate(
-                model=model_config.model,
-                deployment_name=model,
+                model=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -49,8 +48,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         else:
             # text completion model
             return self._generate(
-                model=model_config.model,
-                deployment_name=model,
+                model=model,
                 credentials=credentials,
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
@@ -62,7 +60,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
 
-        model_mode = self._get_ai_model_entity(credentials['base_model_name']).model_properties.get(
+        model_mode = self._get_ai_model_entity(credentials['base_model_name'], model).entity.model_properties.get(
             ModelPropertyKey.MODE)
 
         if model_mode == LLMMode.CHAT:
@@ -82,15 +80,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if 'base_model_name' not in credentials:
             raise CredentialsValidateFailedError('Base Model Name is required')
 
-        model_config = self._get_ai_model_entity(credentials['base_model_name'])
+        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
 
-        if not model_config:
+        if not ai_model_entity:
             raise CredentialsValidateFailedError(f'Base Model Name {credentials["base_model_name"]} is invalid')
 
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if model_config.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
+            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": 'ping'}],
@@ -112,10 +110,10 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        model_config = self._get_ai_model_entity(credentials['base_model_name'])
-        return model_config
+        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        return ai_model_entity.entity
 
-    def _generate(self, model: str, deployment_name: str, credentials: dict,
+    def _generate(self, model: str, credentials: dict,
                   prompt_messages: list[PromptMessage], model_parameters: dict, stop: Optional[List[str]] = None,
                   stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
 
@@ -132,7 +130,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         # text completion model
         response = client.completions.create(
             prompt=prompt_messages[0].content,
-            model=deployment_name,
+            model=model,
             stream=stream,
             **model_parameters,
             **extra_model_kwargs
@@ -232,7 +230,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     )
                 )
 
-    def _chat_generate(self, model: str, deployment_name: str, credentials: dict,
+    def _chat_generate(self, model: str, credentials: dict,
                        prompt_messages: list[PromptMessage], model_parameters: dict,
                        tools: Optional[list[PromptMessageTool]] = None, stop: Optional[List[str]] = None,
                        stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
@@ -267,7 +265,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         # chat model
         response = client.chat.completions.create(
             messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
-            model=deployment_name,
+            model=model,
             stream=stream,
             **model_parameters,
             **extra_model_kwargs,
@@ -619,9 +617,12 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         return num_tokens
 
     @staticmethod
-    def _get_ai_model_entity(base_model_name: str) -> AIModelEntity:
+    def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:
         for model_config in LLM_BASE_MODELS:
-            if model_config['base_model_name'] == base_model_name:
-                return model_config['entity']
+            if model_config.base_model_name == base_model_name:
+                model_config.entity.model = model
+                model_config.entity.label.en_US = model
+                model_config.entity.label.zh_Hans = model
+                return model_config
 
         return None

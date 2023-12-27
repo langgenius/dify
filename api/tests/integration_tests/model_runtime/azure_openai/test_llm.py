@@ -3,10 +3,10 @@ from typing import Generator
 
 import pytest
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, \
-    SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool, UserPromptMessage
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
     LLMResultChunk
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, TextPromptMessageContent, \
+    SystemPromptMessage, ImagePromptMessageContent, PromptMessageTool, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.azure_openai.llm.llm import AzureOpenAILargeLanguageModel
 
@@ -16,7 +16,7 @@ def test_validate_credentials_for_chat_model():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='gpt-35-turbo',
+            model='gpt35',
             credentials={
                 'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
                 'openai_api_key': 'invalid_key',
@@ -25,7 +25,7 @@ def test_validate_credentials_for_chat_model():
         )
 
     model.validate_credentials(
-        model='gpt-35-turbo',
+        model='gpt35',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),
@@ -120,7 +120,7 @@ def test_invoke_chat_model():
     model = AzureOpenAILargeLanguageModel()
 
     result = model.invoke(
-        model='gpt-35-turbo',
+        model='gpt35',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),
@@ -160,7 +160,7 @@ def test_invoke_stream_chat_model():
     model = AzureOpenAILargeLanguageModel()
 
     result = model.invoke(
-        model='gpt-35-turbo',
+        model='gpt35',
         credentials={
             'openai_api_base': os.environ.get('AZURE_OPENAI_API_BASE'),
             'openai_api_key': os.environ.get('AZURE_OPENAI_API_KEY'),
@@ -260,22 +260,22 @@ def test_invoke_chat_model_with_tools():
                 parameters={
                     "type": "object",
                     "properties": {
-                      "location": {
-                        "type": "string",
-                        "description": "The city and state e.g. San Francisco, CA"
-                      },
-                      "unit": {
-                        "type": "string",
-                        "enum": [
-                          "c",
-                          "f"
-                        ]
-                      }
+                        "location": {
+                            "type": "string",
+                            "description": "The city and state e.g. San Francisco, CA"
+                        },
+                        "unit": {
+                            "type": "string",
+                            "enum": [
+                                "c",
+                                "f"
+                            ]
+                        }
                     },
                     "required": [
-                      "location"
+                        "location"
                     ]
-                  }
+                }
             ),
             PromptMessageTool(
                 name='get_stock_price',
@@ -283,15 +283,15 @@ def test_invoke_chat_model_with_tools():
                 parameters={
                     "type": "object",
                     "properties": {
-                      "symbol": {
-                        "type": "string",
-                        "description": "The stock symbol"
-                      }
+                        "symbol": {
+                            "type": "string",
+                            "description": "The stock symbol"
+                        }
                     },
                     "required": [
-                      "symbol"
+                        "symbol"
                     ]
-                  }
+                }
             )
         ],
         stream=False,
@@ -321,7 +321,7 @@ def test_get_num_tokens():
     assert num_tokens == 3
 
     num_tokens = model.get_num_tokens(
-        model='gpt-35-turbo',
+        model='gpt35',
         credentials={
             'base_model_name': 'gpt-35-turbo'
         },
