@@ -136,7 +136,7 @@ class AgentExecutor:
         )
 
         try:
-            output = agent_executor.run(query)
+            output = agent_executor.run(input=query)
         except InvokeError as ex:
             raise ex
         except Exception as ex:

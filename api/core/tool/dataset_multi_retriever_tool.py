@@ -183,7 +183,7 @@ class DatasetMultiRetrieverTool(BaseTool):
                 try:
                     model_manager = ModelManager()
                     embedding_model = model_manager.get_model_instance(
-                        tenant_id=dataset.current_tenant_id,
+                        tenant_id=dataset.tenant_id,
                         provider=dataset.embedding_model_provider,
                         model_type=ModelType.TEXT_EMBEDDING,
                         model=dataset.embedding_model

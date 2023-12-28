@@ -15,6 +15,7 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.message_entities import PromptMessage
 from core.moderation.base import ModerationException
+from core.prompt.prompt_transform import AppMode
 from extensions.ext_database import db
 from models.model import Conversation, Message, App, MessageAnnotation
 
@@ -147,6 +148,7 @@ class BasicApplicationRunner(AppRunner):
         if app_orchestration_config.dataset:
             context = self.retrieve_dataset_context(
                 tenant_id=app_record.tenant_id,
+                app_mode=app_record.mode,
                 queue_manager=queue_manager,
                 model_config=app_orchestration_config.model_config,
                 show_retrieve_source=app_orchestration_config.show_retrieve_source,
@@ -281,6 +283,7 @@ class BasicApplicationRunner(AppRunner):
         )
 
     def retrieve_dataset_context(self, tenant_id: str,
+                                 app_mode: str,
                                  queue_manager: ApplicationQueueManager,
                                  model_config: ModelConfigEntity,
                                  dataset_config: DatasetEntity,
@@ -294,6 +297,7 @@ class BasicApplicationRunner(AppRunner):
         """
         Retrieve dataset context
         :param tenant_id: tenant id
+        :param app_mode: app mode
         :param queue_manager: queue manager
         :param model_config: model config
         :param dataset_config: dataset config
@@ -308,7 +312,7 @@ class BasicApplicationRunner(AppRunner):
         """
         hit_callback = DatasetIndexToolCallbackHandler(queue_manager, message.id, user_id)
 
-        if (model_config.mode == 'completion' and dataset_config
+        if (app_mode == AppMode.COMPLETION.value and dataset_config
                 and dataset_config.retrieve_config.query_variable):
             query = inputs.get(dataset_config.retrieve_config.query_variable, "")
 

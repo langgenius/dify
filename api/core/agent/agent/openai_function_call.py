@@ -105,6 +105,11 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
                 prompt_messages=prompt_messages,
                 tools=tools,
                 stream=False,
+                model_parameters={
+                    'temperature': 0.2,
+                    'top_p': 0.3,
+                    'max_tokens': 1500
+                }
             )
         except Exception as e:
             raise e
@@ -162,6 +167,11 @@ class AutoSummarizingOpenAIFunctionCallAgent(OpenAIFunctionsAgent, CalcTokenMixi
             tools=tools,
             stream=False,
             callbacks=[self.agent_llm_callback] if self.agent_llm_callback else [],
+            model_parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
 
         ai_message = AIMessage(

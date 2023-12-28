@@ -40,7 +40,7 @@ class LoggingCallback(Callback):
         if tools:
             self.print_text(f"\tTools:\n", color='blue')
             for tool in tools:
-                self.print_text(f"\ttool: {tool.name}\n", color='blue')
+                self.print_text(f"\t\t{tool.name}\n", color='blue')
 
         self.print_text(f"Stream: {stream}\n", color='blue')
 

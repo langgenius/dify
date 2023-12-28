@@ -370,10 +370,6 @@ class ApplicationManager:
             'enabled']:
             agent_dict = copy_app_model_config_dict.get('agent_mode')
             if agent_dict['strategy'] in ['router', 'react_router']:
-                query_variable = None
-                if model_mode == 'completion':
-                    query_variable = copy_app_model_config_dict.get('dataset_query_variable')
-
                 dataset_ids = []
                 for tool in agent_dict.get('tools', []):
                     key = list(tool.keys())[0]
@@ -391,6 +387,7 @@ class ApplicationManager:
                     dataset_ids.append(dataset_id)
 
                 dataset_configs = copy_app_model_config_dict.get('dataset_configs', {'retrieval_model': 'single'})
+                query_variable = copy_app_model_config_dict.get('dataset_query_variable')
                 if dataset_configs['retrieval_model'] == 'single':
                     properties['dataset'] = DatasetEntity(
                         dataset_ids=dataset_ids,
@@ -408,7 +405,7 @@ class ApplicationManager:
                         retrieve_config=DatasetRetrieveConfigEntity(
                             query_variable=query_variable,
                             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                                dataset_configs['retrieve_strategy']
+                                dataset_configs['retrieval_model']
                             ),
                             top_k=dataset_configs.get('top_k'),
                             score_threshold=dataset_configs.get('score_threshold'),

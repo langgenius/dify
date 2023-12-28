@@ -67,10 +67,10 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
         return True
 
     def plan(
-        self,
-        intermediate_steps: List[Tuple[AgentAction, str]],
-        callbacks: Callbacks = None,
-        **kwargs: Any,
+            self,
+            intermediate_steps: List[Tuple[AgentAction, str]],
+            callbacks: Callbacks = None,
+            **kwargs: Any,
     ) -> Union[AgentAction, AgentFinish]:
         """Given input, decided what to do.
 
@@ -116,6 +116,7 @@ class StructuredMultiDatasetRouterAgent(StructuredChatAgent):
         except OutputParserException:
             return AgentFinish({"output": "I'm sorry, the answer of model is invalid, "
                                           "I don't know how to respond to that."}, "")
+
     @classmethod
     def create_prompt(
             cls,
@@ -179,7 +180,7 @@ Thought: {agent_scratchpad}
         return PromptTemplate(template=template, input_variables=input_variables)
 
     def _construct_scratchpad(
-        self, intermediate_steps: List[Tuple[AgentAction, str]]
+            self, intermediate_steps: List[Tuple[AgentAction, str]]
     ) -> str:
         agent_scratchpad = ""
         for action, observation in intermediate_steps:
@@ -240,6 +241,11 @@ Thought: {agent_scratchpad}
             model_config=model_config,
             prompt=prompt,
             callback_manager=callback_manager,
+            parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
         tool_names = [tool.name for tool in tools]
         _output_parser = output_parser
