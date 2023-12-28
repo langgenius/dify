@@ -69,9 +69,12 @@ class DatasetRetrieverTool(BaseTool):
 
         if not dataset:
             return ''
+
+        for hit_callback in self.hit_callbacks:
+            hit_callback.on_query(query, dataset.id)
+
         # get retrieval model , if the model is not setting , using default
         retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
-
         if dataset.indexing_technique == "economy":
             # use keyword table query
             kw_table_index = KeywordTableIndex(

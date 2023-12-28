@@ -65,7 +65,8 @@ class DatasetMultiRetrieverTool(BaseTool):
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset_id,
                 'query': query,
-                'all_documents': all_documents
+                'all_documents': all_documents,
+                'hit_callbacks': self.hit_callbacks
             })
             threads.append(retrieval_thread)
             retrieval_thread.start()
@@ -154,7 +155,8 @@ class DatasetMultiRetrieverTool(BaseTool):
     async def _arun(self, tool_input: str) -> str:
         raise NotImplementedError()
 
-    def _retriever(self, flask_app: Flask, dataset_id: str, query: str, all_documents: List):
+    def _retriever(self, flask_app: Flask, dataset_id: str, query: str, all_documents: List,
+                   hit_callbacks: List[DatasetIndexToolCallbackHandler]):
         with flask_app.app_context():
             dataset = db.session.query(Dataset).filter(
                 Dataset.tenant_id == self.tenant_id,
@@ -163,6 +165,10 @@ class DatasetMultiRetrieverTool(BaseTool):
 
             if not dataset:
                 return []
+
+            for hit_callback in hit_callbacks:
+                hit_callback.on_query(query, dataset.id)
+
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
