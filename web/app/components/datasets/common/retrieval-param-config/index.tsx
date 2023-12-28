@@ -71,22 +71,21 @@ const RetrievalParamConfig: FC<Props> = ({
               </Tooltip>
             </div>
           </div>
-          <div>
-            <ModelSelector
-              defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-              modelList={rerankModelList}
-              readonly={!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid}
-              onSelect={(v) => {
-                onChange({
-                  ...value,
-                  reranking_model: {
-                    reranking_provider_name: v.provider,
-                    reranking_model_name: v.model,
-                  },
-                })
-              }}
-            />
-          </div>
+          <ModelSelector
+            triggerClassName={`${!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid && '!opacity-60 !cursor-not-allowed'}`}
+            defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+            modelList={rerankModelList}
+            readonly={!value.reranking_enable && type !== RETRIEVE_METHOD.hybrid}
+            onSelect={(v) => {
+              onChange({
+                ...value,
+                reranking_model: {
+                  reranking_provider_name: v.provider,
+                  reranking_model_name: v.model,
+                },
+              })
+            }}
+          />
         </div>
       )}
 
