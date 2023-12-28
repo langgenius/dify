@@ -28,8 +28,8 @@ model_credential_schema:
   credential_form_schemas:
   - variable: completion_type
     show_on:
-      - variable: model_type
-        value: text-generation
+      - variable: __model_type
+        value: llm
     label:
       en_US: Completion type
     type: select
