@@ -141,7 +141,6 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
 
-        print(f"resp: {response.text}")
         return self._handle_generate_response(model, credentials, response, prompt_messages)
 
     def _handle_generate_response(self, model: str, credentials: dict, response: GenerateContentResponse,
