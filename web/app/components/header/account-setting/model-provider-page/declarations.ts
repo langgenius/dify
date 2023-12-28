@@ -26,6 +26,14 @@ export enum ModelTypeEnum {
   moderation = 'moderation',
 }
 
+export const MODEL_TYPE_TEXT = {
+  [ModelTypeEnum.textGeneration]: 'LLM',
+  [ModelTypeEnum.textEmbedding]: 'Text Embedding',
+  [ModelTypeEnum.rerank]: 'Rerank',
+  [ModelTypeEnum.speech2text]: 'Speech2text',
+  [ModelTypeEnum.moderation]: 'Moderation',
+}
+
 export enum ConfigurateMethodEnum {
   predefinedModel = 'predefined-model',
   customizableModel = 'customizable-model',

@@ -55,10 +55,9 @@ const ModelProviderPage = () => {
         currentCustomConfigrationModelFixedFields: customConfigrationModelFixedFields,
       },
       onSaveCallback: () => {
-        updateModelProvidersAndModelList(provider)
+        updateModelProvidersAndModelList()
 
         if (customConfigrationModelFixedFields && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
-          console.log('1')
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,

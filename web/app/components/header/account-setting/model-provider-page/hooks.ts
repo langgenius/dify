@@ -11,7 +11,6 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
-  ModelProvider,
 } from './declarations'
 import {
   ConfigurateMethodEnum,
@@ -263,11 +262,9 @@ export const useUpdateModelProvidersAndModelList = () => {
   const { mutate } = useSWRConfig()
   const updateModelList = useUpdateModelList()
 
-  const updateModelProvidersAndModelList = useCallback((provider: ModelProvider) => {
+  const updateModelProvidersAndModelList = useCallback(() => {
     mutate('/workspaces/current/model-providers')
-    provider?.supported_model_types.forEach((modelType) => {
-      updateModelList(modelType)
-    })
+    updateModelList(1)
   }, [mutate, updateModelList])
 
   return updateModelProvidersAndModelList
