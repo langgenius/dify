@@ -8,7 +8,7 @@ icon_large:
 background: "#E3F0FF"
 help:
   title:
-    en_US: Get your API Key from Azure
+    en_US: Get your API key from Azure
     zh_Hans: 从 Azure 获取 API Key
   url:
     en_US: https://azure.microsoft.com/en-us/products/ai-services/openai-service

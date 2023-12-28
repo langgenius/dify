@@ -6,6 +6,12 @@ icon_small:
 icon_large:
     en_US: icon_l_en.svg
 background: "#FFF8DC"
+help:
+  title:
+    en_US: Get your API key from Hugging Face Hub
+    zh_Hans: 从 Hugging Face Hub 获取 API Key
+  url:
+    en_US: https://huggingface.co/settings/tokens
 supported_model_types:
 - llm
 - text-embedding

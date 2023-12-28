@@ -7,6 +7,12 @@ icon_small:
 icon_large:
   en_US: icon_l_en.svg
 background: "#ECE9E3"
+help:
+  title:
+    en_US: Get your API key from cohere
+    zh_Hans: 从 cohere 获取 API Key
+  url:
+    en_US: https://dashboard.cohere.com/api-keys
 supported_model_types:
 - rerank
 configurate_methods:
