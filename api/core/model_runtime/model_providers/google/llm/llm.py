@@ -115,12 +115,19 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         )
 
         history = []
-        for msg in prompt_messages:     # makes message roles strictly alternating
-            content = self._format_message_to_glm_content(msg)
-            if history and history[-1]["role"] == content["role"]:
-                history[-1]["parts"].extend(content["parts"])
-            else:
-                history.append(content)
+
+        # hack for gemini-pro-vision, which currently does not support multi-turn chat
+        if model == "gemini-pro-vision":
+            last_msg = prompt_messages[-1]
+            content = self._format_message_to_glm_content(last_msg)
+            history.append(content)
+        else:    
+            for msg in prompt_messages:     # makes message roles strictly alternating
+                content = self._format_message_to_glm_content(msg)
+                if history and history[-1]["role"] == content["role"]:
+                    history[-1]["parts"].extend(content["parts"])
+                else:
+                    history.append(content)
 
 
         # Create a new ClientManager with tenant's API key
