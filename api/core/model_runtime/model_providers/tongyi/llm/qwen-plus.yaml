@@ -1,6 +1,6 @@
 model: qwen-plus
 label:
-  en_US: qwen-turbo
+  en_US: qwen-plus
 model_type: llm
 model_properties:
   mode: completion
