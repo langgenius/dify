@@ -10,14 +10,16 @@ from pydantic import ValidationError
 
 from core.model_runtime.entities.defaults import PARAMETER_RULE_TEMPLATE
 from core.model_runtime.entities.model_entities import PriceInfo, AIModelEntity, PriceType, PriceConfig, \
-    DefaultParameterName, FetchFrom
+    DefaultParameterName, FetchFrom, ModelType
 from core.model_runtime.errors.invoke import InvokeError, InvokeAuthorizationError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+
 
 class AIModel(ABC):
     """
     Base class for all models.
     """
+    model_type: ModelType
     model_schemas: list[AIModelEntity] = None
     started_at: float = 0
 
