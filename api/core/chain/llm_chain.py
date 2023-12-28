@@ -39,7 +39,7 @@ class LLMChain(LCLLMChain):
             stream=False,
             stop=stop,
             callbacks=[self.agent_llm_callback] if self.agent_llm_callback else None,
-            **self.parameters
+            model_parameters=self.parameters
         )
 
         generations = [

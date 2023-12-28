@@ -282,6 +282,11 @@ Thought: {agent_scratchpad}
             prompt=prompt,
             callback_manager=callback_manager,
             agent_llm_callback=agent_llm_callback,
+            parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
         tool_names = [tool.name for tool in tools]
         _output_parser = output_parser

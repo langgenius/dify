@@ -123,7 +123,12 @@ class MultiDatasetRouterAgent(OpenAIFunctionsAgent):
         result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             tools=tools,
-            stream=False
+            stream=False,
+            model_parameters={
+                'temperature': 0.2,
+                'top_p': 0.3,
+                'max_tokens': 1500
+            }
         )
 
         ai_message = AIMessage(
