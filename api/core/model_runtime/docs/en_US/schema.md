@@ -178,6 +178,7 @@
 - `secret-input` Password input component
 - `select` Single-choice dropdown
 - `radio` Radio component
+- `switch` Switch component, only supports `true` and `false` values
 
 ### FormOption
 
