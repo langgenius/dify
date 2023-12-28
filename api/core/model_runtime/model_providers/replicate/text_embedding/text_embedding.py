@@ -4,6 +4,8 @@ from typing import Optional
 from replicate import Client as ReplicateClient
 from replicate.exceptions import ReplicateError, ModelError
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -65,6 +67,21 @@ class ReplicateEmbeddingModel(TextEmbeddingModel):
                                                         ['Hello worlds!'])
         except Exception as e:
             raise CredentialsValidateFailedError(str(e))
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(
+                en_US=model
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                'context_size': 4096,
+                'max_chunks': 1
+            }
+        )
+        return entity
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:

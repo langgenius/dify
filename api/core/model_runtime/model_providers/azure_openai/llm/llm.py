@@ -11,14 +11,13 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, \
     LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import PromptMessageTool, PromptMessage, AssistantPromptMessage, \
-    PromptMessageFunction, UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
+    UserPromptMessage, PromptMessageContentType, ImagePromptMessageContent, \
     TextPromptMessageContent, SystemPromptMessage, ToolPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelPropertyKey
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
 from core.model_runtime.model_providers.azure_openai._constant import LLM_BASE_MODELS, AzureBaseModel
-from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
 
