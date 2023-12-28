@@ -2,6 +2,7 @@ from typing import Optional, Generator, Union, List
 
 import google.generativeai as genai
 import google.api_core.exceptions as exceptions
+import google.generativeai.client as client
 
 from google.generativeai.types import GenerateContentResponse, ContentType
 from google.generativeai.types.content_types import to_part
@@ -13,6 +14,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeServerUnavailableError, InvokeRateLimitError, \
     InvokeAuthorizationError, InvokeBadRequestError, InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from core.model_runtime.model_providers import google
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 class GoogleLargeLanguageModel(LargeLanguageModel):
@@ -79,12 +81,8 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         """
         
         try:
-            genai.configure(api_key=credentials['google_api_key'])
-            
-            models = genai.list_models()    # verifies key by listing models
-            for model in models:
-                if 'generateContent' in model.supported_generation_methods:
-                    _ = model.name
+            ping_message = PromptMessage(content="ping", role="system")
+            self._generate(model, credentials, [ping_message], {"max_tokens_to_sample": 5})
             
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -112,7 +110,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         if stop:
             config_kwargs["stop_sequences"] = stop
 
-        glm_model = genai.GenerativeModel(
+        google_model = genai.GenerativeModel(
             model_name=model
         )
 
@@ -124,7 +122,15 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             else:
                 history.append(content)
 
-        response = glm_model.generate_content(
+
+        # Create a new ClientManager with tenant's API key
+        new_client_manager = client._ClientManager()
+        new_client_manager.configure(api_key=credentials["google_api_key"])
+        new_custom_client = new_client_manager.make_client("generative")
+
+        google_model._client = new_custom_client
+        
+        response = google_model.generate_content(
             contents=history,
             generation_config=genai.types.GenerationConfig(
                 **config_kwargs
@@ -152,6 +158,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         assistant_prompt_message = AssistantPromptMessage(
             content=response.text
         )
+
 
         # calculate num tokens
         prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
