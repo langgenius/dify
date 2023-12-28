@@ -36,4 +36,4 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        return model_instance.invoke_speech2text(buffer)
+        return {"text": model_instance.invoke_speech2text(buffer)}

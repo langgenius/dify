@@ -168,6 +168,8 @@ class ProviderConfiguration(BaseModel):
             db.session.add(provider_record)
             db.session.commit()
 
+        self.switch_preferred_provider_type(ProviderType.CUSTOM)
+
     def delete_custom_credentials(self) -> None:
         """
         Delete custom provider credentials.
