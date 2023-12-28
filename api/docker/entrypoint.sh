@@ -10,7 +10,7 @@ fi
 if [[ "${MODE}" == "worker" ]]; then
   celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} -c ${CELERY_WORKER_AMOUNT:-1} --loglevel INFO \
     -Q ${CELERY_QUEUES:-dataset,generation,mail}
-if [[ "${MODE}" == "beat" ]]; then
+elif [[ "${MODE}" == "beat" ]]; then
   celery -A app.celery beat -P ${CELERY_WORKER_CLASS:-gevent} --loglevel INFO
 else
   if [[ "${DEBUG}" == "true" ]]; then
