@@ -43,7 +43,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showQuota = systemConfig.enabled || ['minimax', 'spark', 'zhipuai', 'anthropic'].includes(provider.provider)
 
   const getModelList = async (providerName: string) => {
-    console.log('3')
     if (loading)
       return
     try {
@@ -67,9 +66,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   }
 
   eventEmitter?.useSubscription((v: any) => {
-    console.log('2')
-    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST)
-      getModelList(v.payload as string)
+    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST && v.payload === provider.provider)
+      getModelList(v.payload)
   })
 
   return (

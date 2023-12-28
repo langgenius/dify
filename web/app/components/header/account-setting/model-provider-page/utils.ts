@@ -6,6 +6,7 @@ import type {
 } from './declarations'
 import {
   FormTypeEnum,
+  MODEL_TYPE_TEXT,
   ModelTypeEnum,
 } from './declarations'
 import {
@@ -123,15 +124,12 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
     default: modelTypes[0],
     required: true,
     show_on: [],
-    options: modelTypes.map((modelType) => {
-      const text = modelType.replace(/\b(\w)(\w*)\b/g, (match, first, second) => {
-        return `${first.toUpperCase()}${second.toLowerCase()}`
-      }).replace(/-/g, ' ')
+    options: modelTypes.map((modelType: ModelTypeEnum) => {
       return {
         value: modelType,
         label: {
-          zh_Hans: text,
-          en_US: text,
+          zh_Hans: MODEL_TYPE_TEXT[modelType],
+          en_US: MODEL_TYPE_TEXT[modelType],
         },
         show_on: [],
       }

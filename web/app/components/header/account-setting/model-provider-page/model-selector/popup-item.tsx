@@ -7,6 +7,7 @@ import type {
 } from '../declarations'
 import {
   useLanguage,
+  useUpdateModelList,
   useUpdateModelProvidersAndModelList,
 } from '../hooks'
 import ModelIcon from '../model-icon'
@@ -14,6 +15,7 @@ import ModelName from '../model-name'
 import {
   ConfigurateMethodEnum,
   ModelStatusEnum,
+  ModelTypeEnum,
 } from '../declarations'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
@@ -33,6 +35,7 @@ const PopupItem: FC<PopupItemProps> = ({
   const language = useLanguage()
   const { setShowModelModal } = useModalContext()
   const { modelProviders } = useProviderContext()
+  const updateModelList = useUpdateModelList()
   const updateModelProvidersAndModelList = useUpdateModelProvidersAndModelList()
   const currentProvider = modelProviders.find(provider => provider.provider === model.provider)!
   const handleSelect = (provider: string, modelItem: ModelItem) => {
@@ -48,7 +51,12 @@ const PopupItem: FC<PopupItemProps> = ({
         currentConfigurateMethod: ConfigurateMethodEnum.predefinedModel,
       },
       onSaveCallback: () => {
-        updateModelProvidersAndModelList(currentProvider)
+        updateModelProvidersAndModelList()
+
+        const modelType = model.models[0].model_type
+
+        if (modelType !== ModelTypeEnum.textGeneration)
+          updateModelList(modelType)
       },
     })
   }
