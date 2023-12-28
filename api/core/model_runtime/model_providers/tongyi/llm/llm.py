@@ -220,7 +220,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['tongyi_api_key'],
+            "api_key": credentials['dashscope_api_key'],
         }
 
         return credentials_kwargs

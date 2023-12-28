@@ -20,7 +20,7 @@ configurate_methods:
 - predefined-model
 provider_credential_schema:
   credential_form_schemas:
-  - variable: tongyi_api_key
+  - variable: dashscope_api_key
     label:
       en_US: APIKey
     type: secret-input
