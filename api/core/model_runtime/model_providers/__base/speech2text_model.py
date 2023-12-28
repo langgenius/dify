@@ -2,6 +2,7 @@ import os
 from abc import abstractmethod
 from typing import Optional, IO
 
+from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
 
@@ -9,6 +10,7 @@ class Speech2TextModel(AIModel):
     """
     Model class for speech2text model.
     """
+    model_type: ModelType = ModelType.SPEECH2TEXT
 
     def invoke(self, model: str, credentials: dict,
                file: IO[bytes], user: Optional[str] = None) \

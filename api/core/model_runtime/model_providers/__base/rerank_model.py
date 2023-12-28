@@ -2,6 +2,7 @@ import time
 from abc import abstractmethod
 from typing import Optional
 
+from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
@@ -10,6 +11,7 @@ class RerankModel(AIModel):
     """
     Base Model class for rerank model.
     """
+    model_type: ModelType = ModelType.RERANK
 
     def invoke(self, model: str, credentials: dict,
                query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
