@@ -4,7 +4,7 @@ import pytest
 from typing import Generator
 from time import sleep
 
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
+from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage, SystemPromptMessage
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDelta, \
     LLMResultChunk
@@ -51,6 +51,38 @@ def test_invoke_model():
         prompt_messages=[
             UserPromptMessage(
                 content='Hello World!'
+            )
+        ],
+        model_parameters={
+            'temperature': 0.7,
+            'top_p': 1.0,
+            'top_k': 1,
+        },
+        stop=['you'],
+        user="abc-123",
+        stream=False
+    )
+
+    assert isinstance(response, LLMResult)
+    assert len(response.message.content) > 0
+    assert response.usage.total_tokens > 0
+
+def test_invoke_model_with_system_message():
+    sleep(3)
+    model = BaichuanLarguageModel()
+
+    response = model.invoke(
+        model='baichuan2-turbo',
+        credentials={
+            'api_key': os.environ.get('BAICHUAN_API_KEY'),
+            'secret_key': os.environ.get('BAICHUAN_SECRET_KEY')
+        },
+        prompt_messages=[
+            SystemPromptMessage(
+                content='请记住你是Kasumi。'
+            ),
+            UserPromptMessage(
+                content='现在告诉我你是谁？'
             )
         ],
         model_parameters={

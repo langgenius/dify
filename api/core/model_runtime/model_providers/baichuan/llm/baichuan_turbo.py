@@ -12,6 +12,8 @@ class BaichuanMessage:
     class Role(Enum):
         USER = 'user'
         ASSISTANT = 'assistant'
+        # Baichuan does not have system message
+        _SYSTEM = 'system'
 
     role: str = Role.USER.value
     content: str
@@ -101,11 +103,27 @@ class BaichuanModel(object):
                                parameters: Dict[str, Any]) \
         -> Dict[str, Any]:
         if model == 'baichuan2-turbo' or model == 'baichuan2-turbo-192k' or model == 'baichuan2-53b':
+            prompt_messages = []
+            for message in messages:
+                if message.role == BaichuanMessage.Role.USER.value or message.role == BaichuanMessage.Role._SYSTEM.value:
+                    # check if the latest message is a user message
+                    if len(prompt_messages) > 0 and prompt_messages[-1]['role'] == BaichuanMessage.Role.USER.value:
+                        prompt_messages[-1]['content'] += message.content
+                    else:
+                        prompt_messages.append({
+                            'content': message.content,
+                            'role': BaichuanMessage.Role.USER.value,
+                        })
+                elif message.role == BaichuanMessage.Role.ASSISTANT.value:
+                    prompt_messages.append({
+                        'content': message.content,
+                        'role': message.role,
+                    })
             # turbo api accepts flat parameters
             return {
                 'model': self._model_mapping(model),
                 'stream': stream,
-                'messages': [message.to_dict() for message in messages],
+                'messages': prompt_messages,
                 **parameters,
             }
         else:
