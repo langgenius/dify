@@ -10,12 +10,15 @@ model_properties:
 parameter_rules:
 - name: temperature
   use_template: temperature
+  min: 0.1
+  max: 1.0
+  default: 0.8 
 - name: top_p
   use_template: top_p
 - name: max_tokens
   use_template: max_tokens
   required: true
-  default: 4800
+  default: 256
   min: 1
   max: 4800
 - name: presence_penalty
