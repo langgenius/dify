@@ -19,32 +19,31 @@ class CommonValidator:
                 show_on_relations[variable].append(credential_form_schema)
 
         # If the variable does not exist in credentials, it is considered that the cascading form item is not displayed
-        need_validate_credential_form_schemas = []
+        need_validate_credential_form_schema_map = {}
         for variable, sub_credential_form_schemas in show_on_relations.items():
             if variable in credentials and credentials[variable] is not None:
                 for sub_credential_form_schema in sub_credential_form_schemas:
                     show_on = sub_credential_form_schema.show_on
                     for show_on_object in show_on:
                         if show_on_object.variable == variable and show_on_object.value == credentials[variable]:
-                            need_validate_credential_form_schemas.append(sub_credential_form_schema)
-                            break
-
-        # remove duplicate
-        need_validate_credential_form_schemas = list(set(need_validate_credential_form_schemas))
+                            if sub_credential_form_schema.variable not in need_validate_credential_form_schema_map:
+                                need_validate_credential_form_schema_map[sub_credential_form_schema.variable] \
+                                    = sub_credential_form_schema
+                                break
 
         # get all credential_form_schemas where show_on is empty
         for credential_form_schema in credential_form_schemas:
-            if credential_form_schema in need_validate_credential_form_schemas:
+            if credential_form_schema.variable in need_validate_credential_form_schema_map:
                 continue
 
             if credential_form_schema.show_on:
                 continue
 
-            need_validate_credential_form_schemas.append(credential_form_schema)
+            need_validate_credential_form_schema_map[credential_form_schema.variable] = credential_form_schema
 
         # Iterate over the remaining credential_form_schemas, verify each credential_form_schema
         validated_credentials = {}
-        for credential_form_schema in need_validate_credential_form_schemas:
+        for credential_form_schema in need_validate_credential_form_schema_map.values():
             # add the value of the credential_form_schema corresponding to it to validated_credentials
             result = self._validate_credential_form_schema(credential_form_schema, credentials)
             if result:
