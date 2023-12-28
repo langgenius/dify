@@ -1,8 +1,9 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import type {
+  DefaultModel,
   FormValue,
   ModelParameterRule,
 } from '../declarations'
@@ -79,6 +80,32 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       [key]: value,
     })
   }
+
+  const handleChangeModel = ({ provider, model }: DefaultModel) => {
+    const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
+    const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
+    setModel({
+      modelId: model,
+      provider,
+      mode: targetModelItem?.model_properties.mode as string,
+      features: targetModelItem?.features || [],
+    })
+  }
+
+  const handleChangeParams = () => {
+    const newCompletionParams = parameterRules.reduce((acc, parameter) => {
+      if (parameter.default !== undefined)
+        acc[parameter.name] = parameter.default
+
+      return acc
+    }, {} as Record<string, any>)
+
+    onCompletionParamsChange(newCompletionParams)
+  }
+
+  useEffect(() => {
+    handleChangeParams()
+  }, [parameterRules])
 
   const handleSwitch = (key: string, value: boolean, assignValue: ParameterValue) => {
     if (!value) {
@@ -159,16 +186,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 <ModelSelector
                   defaultModel={{ provider, model: modelId }}
                   modelList={textGenerationModelList}
-                  onSelect={({ provider, model }) => {
-                    const targetProvider = textGenerationModelList.find(modelItem => modelItem.provider === provider)
-                    const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
-                    setModel({
-                      modelId: model,
-                      provider,
-                      mode: targetModelItem?.model_properties.mode as string,
-                      features: targetModelItem?.features || [],
-                    })
-                  }}
+                  onSelect={handleChangeModel}
                 />
               </div>
               <div className='my-5 h-[1px] bg-gray-100' />

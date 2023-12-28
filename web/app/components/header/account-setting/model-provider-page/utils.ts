@@ -25,6 +25,10 @@ export const languageMaps = {
 
 export const DEFAULT_BACKGROUND_COLOR = '#F3F4F6'
 
+export const isNullOrUndefined = (value: any) => {
+  return value === undefined || value === null
+}
+
 export const validateCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let body, url
 
