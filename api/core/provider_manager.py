@@ -108,7 +108,9 @@ class ProviderManager:
             # Convert to system configuration
             system_configuration = self._to_system_configuration(
                 provider_entity,
-                provider_records
+                provider_records,
+                decoding_rsa_key,
+                decoding_cipher_rsa
             )
 
             # Get preferred provider type
@@ -487,12 +489,16 @@ class ProviderManager:
 
     def _to_system_configuration(self,
                                  provider_entity: ProviderEntity,
-                                 provider_records: list[Provider]) -> SystemConfiguration:
+                                 provider_records: list[Provider],
+                                 decoding_rsa_key,
+                                 decoding_cipher_rsa) -> SystemConfiguration:
         """
         Convert to system configuration.
 
-        :param provider_entity:
-        :param provider_records:
+        :param provider_entity: provider entity
+        :param provider_records: provider records
+        :param decoding_rsa_key: decoding rsa key
+        :param decoding_cipher_rsa: decoding cipher rsa
         :return:
         """
         # Get hosting configuration
@@ -538,11 +544,38 @@ class ProviderManager:
                 enabled=False
             )
 
+        current_quota_type = self._choice_current_using_quota_type(quota_configurations)
+
+        current_using_credentials = provider_hosting_configuration.credentials
+        if current_quota_type == ProviderQuotaType.FREE:
+            provider_record = quota_type_to_provider_records_dict[current_quota_type]
+
+            try:
+                provider_credentials = json.loads(provider_record.encrypted_config)
+            except JSONDecodeError:
+                provider_credentials = {}
+
+            # Get provider credential secret variables
+            provider_credential_secret_variables = self._extract_secret_variables(
+                provider_entity.provider_credential_schema.credential_form_schemas
+                if provider_entity.provider_credential_schema else []
+            )
+
+            for variable in provider_credential_secret_variables:
+                if variable in provider_credentials:
+                    provider_credentials[variable] = encrypter.decrypt_token_with_decoding(
+                        provider_credentials.get(variable),
+                        decoding_rsa_key,
+                        decoding_cipher_rsa
+                    )
+
+            current_using_credentials = provider_credentials
+
         return SystemConfiguration(
             enabled=True,
-            current_quota_type=self._choice_current_using_quota_type(quota_configurations),
+            current_quota_type=current_quota_type,
             quota_configurations=quota_configurations,
-            credentials=provider_hosting_configuration.credentials,
+            credentials=current_using_credentials
         )
 
     def _choice_current_using_quota_type(self, quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
