@@ -150,8 +150,8 @@ class LocalAILarguageModel(LargeLanguageModel):
             ], model_parameters={
                 'max_tokens': 10,
             }, stop=[])
-        except APIConnectionError:
-            raise CredentialsValidateFailedError('Invalid credentials {credentials}')
+        except Exception as ex:
+            raise CredentialsValidateFailedError(f'Invalid credentials {str(ex)}')
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         completion_model = None

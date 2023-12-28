@@ -335,7 +335,7 @@ class ErnieBotModel(object):
 
             if is_end:
                 usage = data['usage']
-                finish_reason = data['finish_reason']
+                finish_reason = data.get('finish_reason', None)
                 message = ErnieMessage(content=result, role='assistant')
                 message.usage = {
                     'prompt_tokens': usage['prompt_tokens'],

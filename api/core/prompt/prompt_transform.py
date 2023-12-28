@@ -9,7 +9,7 @@ from core.entities.application_entities import ModelConfigEntity, PromptTemplate
 from core.file.file_obj import FileObj
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage, \
-    TextPromptMessageContent, PromptMessageRole
+    TextPromptMessageContent, PromptMessageRole, AssistantPromptMessage
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.prompt.prompt_builder import PromptBuilder
@@ -244,7 +244,8 @@ class PromptTransform:
 
         prompt = re.sub(r'<\|.*?\|>', '', prompt)
 
-        prompt_messages.append(SystemPromptMessage(content=prompt))
+        if prompt:
+            prompt_messages.append(SystemPromptMessage(content=prompt))
 
         self._append_chat_histories(
             memory=memory,
@@ -477,10 +478,10 @@ class PromptTransform:
 
             if prompt_item.role == PromptMessageRole.USER:
                 prompt_messages.append(UserPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.SYSTEM:
+            elif prompt_item.role == PromptMessageRole.SYSTEM and prompt:
                 prompt_messages.append(SystemPromptMessage(content=prompt))
             elif prompt_item.role == PromptMessageRole.ASSISTANT:
-                prompt_messages.append(SystemPromptMessage(content=prompt))
+                prompt_messages.append(AssistantPromptMessage(content=prompt))
 
         self._append_chat_histories(memory, prompt_messages, model_config)
 
@@ -535,10 +536,10 @@ class PromptTransform:
 
             if prompt_item.role == PromptMessageRole.USER:
                 prompt_messages.append(UserPromptMessage(content=prompt))
-            elif prompt_item.role == PromptMessageRole.SYSTEM:
+            elif prompt_item.role == PromptMessageRole.SYSTEM and prompt:
                 prompt_messages.append(SystemPromptMessage(content=prompt))
             elif prompt_item.role == PromptMessageRole.ASSISTANT:
-                prompt_messages.append(SystemPromptMessage(content=prompt))
+                prompt_messages.append(AssistantPromptMessage(content=prompt))
 
         for prompt_message in prompt_messages[::-1]:
             if prompt_message.role == PromptMessageRole.USER:
