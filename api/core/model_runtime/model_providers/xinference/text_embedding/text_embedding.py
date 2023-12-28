@@ -1,6 +1,7 @@
 from typing import Optional
 
-from core.model_runtime.entities.model_entities import PriceType
+from core.model_runtime.entities.model_entities import PriceType, FetchFrom, ModelType, AIModelEntity
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
@@ -155,3 +156,20 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         )
 
         return usage
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+        """
+            used to define customizable model schema
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(
+                en_US=model
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={},
+            parameter_rules=[]
+        )
+
+        return entity

@@ -5,8 +5,10 @@ from core.model_runtime.errors.invoke import InvokeConnectionError, InvokeError,
     InvokeAuthorizationError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
+from core.model_runtime.entities.model_entities import FetchFrom, ModelType, AIModelEntity
+from core.model_runtime.entities.common_entities import I18nObject
 
-from xinference_client.client.restful.restful_client import RESTfulRerankModelHandle, RESTfulModelHandle, Client
+from xinference_client.client.restful.restful_client import RESTfulRerankModelHandle, Client
 
 class XinferenceRerankModel(RerankModel):
     """
@@ -126,3 +128,20 @@ class XinferenceRerankModel(RerankModel):
                 ValueError
             ]
         }
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+        """
+            used to define customizable model schema
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(
+                en_US=model
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.RERANK,
+            model_properties={ },
+            parameter_rules=[]
+        )
+
+        return entity
