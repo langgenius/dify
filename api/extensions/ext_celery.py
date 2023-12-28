@@ -2,7 +2,6 @@ from datetime import timedelta
 
 from celery import Task, Celery
 from flask import Flask
-from sympy.physics.units import days
 
 
 def init_app(app: Flask) -> Celery:
@@ -47,11 +46,11 @@ def init_app(app: Flask) -> Celery:
     beat_schedule = {
         'clean_embedding_cache_task': {
             'task': 'schedule.clean_embedding_cache_task.clean_embedding_cache_task',
-            'schedule': days(seconds=7),
+            'schedule': timedelta(days=10),
         },
         'clean_unused_datasets_task': {
             'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
-            'schedule': days(seconds=7),
+            'schedule': timedelta(days=10),
         }
     }
     celery_app.conf.update(
