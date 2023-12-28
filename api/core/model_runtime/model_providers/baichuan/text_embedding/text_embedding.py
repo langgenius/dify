@@ -34,7 +34,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
         :return: embeddings result
         """
         api_key = credentials['api_key']
-        if model != 'baichuang-text-embedding':
+        if model != 'baichuan-text-embedding':
             raise ValueError('Invalid model name')
         if not api_key:
             raise CredentialsValidateFailedError('api_key is required')

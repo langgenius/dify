@@ -11,14 +11,14 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='baichuang-text-embedding',
+            model='baichuan-text-embedding',
             credentials={
                 'api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='baichuang-text-embedding',
+        model='baichuan-text-embedding',
         credentials={
             'api_key': os.environ.get('BAICHUAN_API_KEY')
         }
@@ -29,7 +29,7 @@ def test_invoke_model():
     model = BaichuanTextEmbeddingModel()
 
     result = model.invoke(
-        model='baichuang-text-embedding',
+        model='baichuan-text-embedding',
         credentials={
             'api_key': os.environ.get('BAICHUAN_API_KEY'),
         },
@@ -48,7 +48,7 @@ def test_get_num_tokens():
     model = BaichuanTextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='baichuang-text-embedding',
+        model='baichuan-text-embedding',
         credentials={
             'api_key': os.environ.get('BAICHUAN_API_KEY'),
         },
