@@ -93,4 +93,11 @@ class CommonValidator:
                 if value not in [option.value for option in credential_form_schema.options]:
                     raise ValueError(f'Variable {credential_form_schema.variable} is not in options')
 
+        if credential_form_schema.type == FormType.SWITCH:
+            # If the value is not in ['true', 'false'], an exception is thrown
+            if value.lower() not in ['true', 'false']:
+                raise ValueError(f'Variable {credential_form_schema.variable} should be true or false')
+
+            value = True if value.lower() == 'true' else False
+
         return value

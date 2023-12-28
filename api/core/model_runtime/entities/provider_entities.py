@@ -23,6 +23,7 @@ class FormType(Enum):
     SECRET_INPUT = "secret-input"
     SELECT = "select"
     RADIO = "radio"
+    SWITCH = "switch"
 
 
 class FormShowOnObject(BaseModel):
