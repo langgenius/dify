@@ -280,6 +280,9 @@ class ModelProviderService:
             if model.provider.provider not in provider_models:
                 provider_models[model.provider.provider] = []
 
+            if model.deprecated:
+                continue
+
             provider_models[model.provider.provider].append(model)
 
         # convert to ProviderWithModelsResponse list
