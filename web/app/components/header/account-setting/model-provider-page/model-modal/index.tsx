@@ -25,7 +25,6 @@ import {
   genModelTypeFormSchema,
   removeCredentials,
   saveCredentials,
-  validateCredentials,
 } from '../utils'
 import {
   useLanguage,
@@ -173,25 +172,6 @@ const ModelModal: FC<ModelModalProps> = ({
 
   const handleValueChange = (v: FormValue) => {
     setValue(v)
-
-    if (filteredRequiredFormSchemas.length) {
-      validate({
-        before: () => {
-          for (let i = 0; i < filteredRequiredFormSchemas.length; i++) {
-            if (!v[filteredRequiredFormSchemas[i].variable])
-              return false
-          }
-          return true
-        },
-        run: () => {
-          return validateCredentials(
-            providerFormSchemaPredefined,
-            provider.provider,
-            v,
-          )
-        },
-      })
-    }
   }
   const handleSave = async () => {
     try {
@@ -297,7 +277,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     className='h-9 text-sm font-medium'
                     type='primary'
                     onClick={handleSave}
-                    disabled={loading || validatedStatusState.status !== ValidatedStatus.Success}
+                    disabled={loading || filteredRequiredFormSchemas.some(item => value[item.variable] === undefined)}
                   >
                     {t('common.operation.save')}
                   </Button>

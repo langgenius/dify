@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
+import { isNullOrUndefined } from '../utils'
 import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
@@ -27,23 +28,23 @@ const ParameterItem: FC<ParameterItemProps> = ({
 }) => {
   const language = useLanguage()
   const [localValue, setLocalValue] = useState(value)
-  const mergedValue = value === undefined ? localValue : value
+  const mergedValue = isNullOrUndefined(value) ? localValue : value
   const renderValue = mergedValue === undefined ? parameterRule.default : mergedValue
 
   const handleChange = (v: ParameterValue) => {
     setLocalValue(v)
-    if (value !== undefined && onChange)
+    if (!isNullOrUndefined(value) && onChange)
       onChange(v)
   }
 
   const handleNumberInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let num = +e.target.value
 
-    if (parameterRule.max !== undefined && num > parameterRule.max)
-      num = parameterRule.max
+    if (!isNullOrUndefined(parameterRule.max) && num > parameterRule.max!)
+      num = parameterRule.max as number
 
-    if (parameterRule.min !== undefined && num < parameterRule.min)
-      num = parameterRule.min
+    if (!isNullOrUndefined(parameterRule.min) && num < parameterRule.min!)
+      num = parameterRule.min as number
 
     handleChange(num)
   }
@@ -72,9 +73,9 @@ const ParameterItem: FC<ParameterItemProps> = ({
     if (onSwitch) {
       let assignValue: ParameterValue = localValue
 
-      if (localValue === undefined) {
+      if (isNullOrUndefined(localValue)) {
         if (parameterRule.type === 'int' || parameterRule.type === 'float')
-          assignValue = parameterRule.default !== undefined ? parameterRule.default : 0
+          assignValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : 0
 
         if (parameterRule.type === 'string' && !parameterRule.options?.length)
           assignValue = parameterRule.default || ''
@@ -83,10 +84,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
           assignValue = parameterRule.options[0]
 
         if (parameterRule.type === 'boolean')
-          assignValue = parameterRule.default !== undefined ? parameterRule.default : false
+          assignValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : false
 
         if (parameterRule.type === 'tag')
-          assignValue = parameterRule.default !== undefined ? parameterRule.default : []
+          assignValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : []
       }
 
       onSwitch(checked, assignValue)
@@ -94,10 +95,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
-    && parameterRule.min !== undefined
-    && parameterRule.max !== undefined
+    && !isNullOrUndefined(parameterRule.min)
+    && !isNullOrUndefined(parameterRule.max)
   const numberInput = (parameterRule.type === 'int' || parameterRule.type === 'float')
-    && (parameterRule.min === undefined || parameterRule.max === undefined)
+    && (isNullOrUndefined(parameterRule.min) || isNullOrUndefined(parameterRule.max))
 
   return (
     <div className={`flex items-center justify-between ${className}`}>
@@ -122,9 +123,9 @@ const ParameterItem: FC<ParameterItemProps> = ({
             )
           }
           {
-            !parameterRule.required && (
+            !parameterRule.required && parameterRule.name !== 'stop' && (
               <Switch
-                defaultValue={value !== undefined}
+                defaultValue={!isNullOrUndefined(value)}
                 onChange={handleSwitch}
                 size='md'
               />
@@ -144,7 +145,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
           <div className='flex items-center'>
             <Slider
               className='w-[120px]'
-              value={renderValue === undefined ? 0 : +renderValue}
+              value={isNullOrUndefined(renderValue) ? 0 : +renderValue!}
               min={parameterRule.min}
               max={parameterRule.max}
               step={+`0.${parameterRule.precision || 0}`}
@@ -156,7 +157,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
               max={parameterRule.max}
               min={parameterRule.min}
               step={+`0.${parameterRule.precision || 0}`}
-              value={renderValue === undefined ? 0 : +renderValue}
+              value={isNullOrUndefined(renderValue) ? 0 : +renderValue!}
               onChange={handleNumberInputChange}
             />
           </div>
@@ -166,7 +167,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'boolean' && (
           <Radio.Group
             className='w-[200px] flex items-center'
-            value={renderValue === undefined ? 1 : 0}
+            value={isNullOrUndefined(renderValue) ? 1 : 0}
             onChange={handleRadioChange}
           >
             <Radio value={1} className='!mr-1 w-[94px]'>True</Radio>
@@ -177,8 +178,9 @@ const ParameterItem: FC<ParameterItemProps> = ({
       {
         numberInput && (
           <input
+            type='number'
             className='flex items-center px-3 w-[200px] h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-            value={(renderValue === undefined ? '' : renderValue) as string}
+            value={(isNullOrUndefined(renderValue) ? '' : renderValue) as string}
             onChange={handleNumberInputChange}
           />
         )
@@ -187,7 +189,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'string' && !parameterRule.options?.length && (
           <input
             className='flex items-center px-3 w-[200px] h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-            value={(renderValue === undefined ? '' : renderValue) as string}
+            value={(isNullOrUndefined(renderValue) ? '' : renderValue) as string}
             onChange={handleStringInputChange}
           />
         )
@@ -207,7 +209,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         parameterRule.type === 'tag' && (
           <div className='w-[200px]'>
             <TagInput
-              items={renderValue === undefined ? [] : (renderValue as string[])}
+              items={isNullOrUndefined(renderValue) ? [] : (renderValue as string[])}
               onChange={handleTagChange}
               customizedConfirmKey='Tab'
             />
