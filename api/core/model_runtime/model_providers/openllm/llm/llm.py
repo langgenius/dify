@@ -147,12 +147,6 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
         """
             used to define customizable model schema
         """
-        model_type = None
-        if credentials['model_type'] == 'text-generation':
-            model_type = ModelType.LLM
-        else:
-            raise Exception(f'Large Language Model {credentials["model_type"]} is not supported')
-
         rules = [
             ParameterRule(
                 name='temperature',
@@ -200,7 +194,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                 en_US=model
             ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_type=model_type,
+            model_type=ModelType.LLM,
             model_properties={ 
                 'mode':  LLMMode.COMPLETION,
             },
