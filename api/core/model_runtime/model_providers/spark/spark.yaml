@@ -8,6 +8,12 @@ icon_large:
   zh_Hans: icon_l_zh.svg
   en_US: icon_l_en.svg
 background: "#EBF8FF"
+help:
+  title:
+    en_US: Get your API key from iFLYTEK SPARK
+    zh_Hans: 从讯飞星火获取 API Keys
+  url:
+    en_US: https://www.xfyun.cn/solutions/xinghuoAPI
 supported_model_types:
 - llm
 configurate_methods:

@@ -33,9 +33,6 @@ parameter_rules:
     zh_Hans: 取样数量
     en_US: Top k
   type: int
-  default: 0
-  min: 1
-  max: 6
   help:
     zh_Hans: 生成时，采样候选集的大小。例如，取值为50时，仅将单次生成中得分最高的50个token组成随机采样的候选集。取值越大，生成的随机性越高；取值越小，生成的确定性越高。默认不传递该参数，取值为None或当top_k大于100时，表示不启用top_k策略，此时，仅有top_p策略生效。
     en_US: The size of the sample candidate set when generated. For example, when the value is 50, only the 50 highest-scoring tokens in a single generation form a randomly sampled candidate set. The larger the value, the higher the randomness generated; the smaller the value, the higher the certainty generated. This parameter is not passed by default. The value is None or when top_k is greater than 100, it means that the top_k policy is not enabled. At this time, only the top_p policy takes effect.

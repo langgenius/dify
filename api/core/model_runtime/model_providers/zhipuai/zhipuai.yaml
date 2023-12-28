@@ -8,6 +8,12 @@ icon_large:
   zh_Hans: icon_l_zh.svg
   en_US: icon_l_en.svg
 background: "#EFF1FE"
+help:
+  title:
+    en_US: Get your API key from ZHIPU AI
+    zh_Hans: 从智谱 AI 获取 API Key
+  url:
+    en_US: https://open.bigmodel.cn/usercenter/apikeys
 supported_model_types:
 - llm
 - text-embedding

@@ -1,6 +1,6 @@
 model: chatglm_lite_32k
 label:
-  en_US: chatglm_turbo
+  en_US: chatglm_lite_32k
 model_type: llm
 model_properties:
   mode: chat

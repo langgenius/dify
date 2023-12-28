@@ -8,6 +8,12 @@ icon_large:
   zh_Hans: icon_l_zh.png
   en_US: icon_l_en.png
 background: "#EFF1FE"
+help:
+  title:
+    en_US: Get your API key from AliCloud
+    zh_Hans: 从阿里云获取 API Key
+  url:
+    en_US: https://dashscope.console.aliyun.com/api-key_management
 supported_model_types:
 - llm
 configurate_methods:

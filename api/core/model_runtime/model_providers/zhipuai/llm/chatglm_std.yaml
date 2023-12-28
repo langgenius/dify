@@ -1,6 +1,6 @@
 model: chatglm_std
 label:
-  en_US: chatglm_turbo
+  en_US: chatglm_std
 model_type: llm
 model_properties:
   mode: chat
