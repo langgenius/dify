@@ -26,6 +26,7 @@ weaviate-client~=3.21.0
 mailchimp-transactional~=1.0.50
 scikit-learn==1.2.2
 sentry-sdk[flask]~=1.21.1
+sympy==1.12
 jieba==0.42.1
 celery==5.2.7
 redis~=4.5.4
