@@ -54,7 +54,7 @@ class DefaultModelApi(Resource):
                 raise ValueError('invalid model type')
 
             if 'provider' not in model_setting:
-                raise ValueError('invalid provider')
+                continue
 
             if 'model' not in model_setting:
                 raise ValueError('invalid model')
