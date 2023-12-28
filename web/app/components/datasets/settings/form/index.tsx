@@ -187,16 +187,15 @@ const Form = () => {
             <div>{t('datasetSettings.form.embeddingModel')}</div>
           </div>
           <div className='w-[480px]'>
-            <div className='w-full h-9 rounded-lg bg-gray-100 opacity-60'>
-              <ModelSelector
-                readonly
-                defaultModel={{
-                  provider: currentDataset.embedding_model_provider,
-                  model: currentDataset.embedding_model,
-                }}
-                modelList={embeddingModelList}
-              />
-            </div>
+            <ModelSelector
+              readonly
+              triggerClassName='!h-9 !cursor-not-allowed opacity-60'
+              defaultModel={{
+                provider: currentDataset.embedding_model_provider,
+                model: currentDataset.embedding_model,
+              }}
+              modelList={embeddingModelList}
+            />
             <div className='mt-2 w-full text-xs leading-6 text-gray-500'>
               {t('datasetSettings.form.embeddingModelTip')}
               <span className='text-[#155eef] cursor-pointer' onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>

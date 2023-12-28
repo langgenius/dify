@@ -12,16 +12,19 @@ type ModelTriggerProps = {
   open: boolean
   provider: Model
   model: ModelItem
+  className?: string
 }
 const ModelTrigger: FC<ModelTriggerProps> = ({
   open,
   provider,
   model,
+  className,
 }) => {
   return (
     <div
       className={`
-        group flex items-center px-2 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer
+        group flex items-center px-2 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 cursopr-pointer
+        ${className}
         ${open && '!bg-gray-200'}
       `}
     >
