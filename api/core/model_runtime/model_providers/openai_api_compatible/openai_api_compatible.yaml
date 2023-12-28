@@ -1,3 +1,4 @@
+provider: openai_api_compatible
 label:
   en_US: OpenAI-API-compatible
 description:
