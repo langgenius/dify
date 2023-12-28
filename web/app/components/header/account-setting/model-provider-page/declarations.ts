@@ -61,6 +61,21 @@ export enum ModelStatusEnum {
   noPermission = 'no-permission',
 }
 
+export const MODEL_STATUS_TEXT = {
+  [ModelStatusEnum.noConfigure]: {
+    en_US: 'No Configure',
+    zh_Hans: '未配置凭据',
+  },
+  [ModelStatusEnum.quotaExceeded]: {
+    en_US: 'Quota Exceeded',
+    zh_Hans: '额度不足',
+  },
+  [ModelStatusEnum.noPermission]: {
+    en_US: 'No Permission',
+    zh_Hans: '无使用权限',
+  },
+}
+
 export enum CustomConfigurationStatusEnum {
   active = 'active',
   noConfigure = 'no-configure',
