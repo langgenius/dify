@@ -260,10 +260,6 @@ class ProviderConfiguration(BaseModel):
             credentials=credentials
         )
 
-        for key, value in credentials.items():
-            if key in provider_credential_secret_variables:
-                credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
-
         model_schema = (
             model_provider_factory.get_provider_instance(self.provider.provider)
             .get_model_instance(model_type).get_customizable_model_schema(
@@ -274,6 +270,10 @@ class ProviderConfiguration(BaseModel):
 
         if model_schema:
             credentials['schema'] = json.dumps(encoders.jsonable_encoder(model_schema))
+
+        for key, value in credentials.items():
+            if key in provider_credential_secret_variables:
+                credentials[key] = encrypter.encrypt_token(self.tenant_id, value)
 
         return provider_model_record, credentials
 

@@ -364,6 +364,7 @@ class GenerateTaskPipeline:
         """
         response = {
             'event': 'message',
+            'id': self._message.id,
             'task_id': self._application_generate_entity.task_id,
             'message_id': self._message.id,
             'answer': text,

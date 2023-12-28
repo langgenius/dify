@@ -2,7 +2,7 @@ provider: google
 label:
   en_US: Google
 description:
-  en_US: Google's Gemini mode.
+  en_US: Google's Gemini model.
   zh_Hans: 谷歌提供的 Gemini 模型.
 icon_small:
   en_US: icon_s_en.svg
