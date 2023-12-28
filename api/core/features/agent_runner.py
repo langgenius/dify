@@ -194,8 +194,10 @@ class AgentRunnerFeature:
 
         hit_callback = DatasetIndexToolCallbackHandler(
             queue_manager=self.queue_manager,
+            app_id=self.message.app_id,
             message_id=self.message.id,
-            user_id=self.user_id
+            user_id=self.user_id,
+            invoke_from=invoke_from
         )
 
         # get dataset from dataset id

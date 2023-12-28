@@ -3,8 +3,9 @@ from typing import List, Union
 from langchain.schema import Document
 
 from core.application_queue_manager import ApplicationQueueManager
+from core.entities.application_entities import InvokeFrom
 from extensions.ext_database import db
-from models.dataset import DocumentSegment
+from models.dataset import DocumentSegment, DatasetQuery
 from models.model import DatasetRetrieverResource
 
 
@@ -12,11 +13,32 @@ class DatasetIndexToolCallbackHandler:
     """Callback handler for dataset tool."""
 
     def __init__(self, queue_manager: ApplicationQueueManager,
+                 app_id: str,
                  message_id: str,
-                 user_id: str) -> None:
+                 user_id: str,
+                 invoke_from: InvokeFrom) -> None:
         self._queue_manager = queue_manager
+        self._app_id = app_id
         self._message_id = message_id
         self._user_id = user_id
+        self._invoke_from = invoke_from
+
+    def on_query(self, query: str, dataset_id: str) -> None:
+        """
+        Handle query.
+        """
+        dataset_query = DatasetQuery(
+            dataset_id=dataset_id,
+            content=query,
+            source='app',
+            source_app_id=self._app_id,
+            created_by_role=('account'
+                             if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end_user'),
+            created_by=self._user_id
+        )
+
+        db.session.add(dataset_query)
+        db.session.commit()
 
     def on_tool_end(self, documents: List[Document]) -> None:
         """Handle tool end."""
