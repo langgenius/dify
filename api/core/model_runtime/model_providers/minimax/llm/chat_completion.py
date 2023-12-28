@@ -47,7 +47,8 @@ class MinimaxChatCompletion(object):
             raise BadRequestError('At least one message is required')
         
         if prompt_messages[0].role == MinimaxMessage.Role.SYSTEM.value:
-            prompt = prompt_messages[0].content
+            if prompt_messages[0].content:
+                prompt = prompt_messages[0].content
             prompt_messages = prompt_messages[1:]
 
         # check if there is a user message
