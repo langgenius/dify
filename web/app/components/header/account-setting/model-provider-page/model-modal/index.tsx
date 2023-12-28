@@ -1,5 +1,11 @@
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   CredentialFormSchema,
@@ -341,4 +347,4 @@ const ModelModal: FC<ModelModalProps> = ({
   )
 }
 
-export default ModelModal
+export default memo(ModelModal)

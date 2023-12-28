@@ -64,7 +64,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       <div className='relative'>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
-          className='block cursor-not-allowed'
+          className='block'
         >
           {
             currentModel && currentProvider && (

@@ -29,14 +29,12 @@ type SystemModelSelectorProps = {
   embeddingsDefaultModel: DefaultModelResponse | undefined
   rerankDefaultModel: DefaultModelResponse | undefined
   speech2textDefaultModel: DefaultModelResponse | undefined
-  onUpdate: () => void
 }
 const SystemModel: FC<SystemModelSelectorProps> = ({
   textGenerationDefaultModel,
   embeddingsDefaultModel,
   rerankDefaultModel,
   speech2textDefaultModel,
-  onUpdate,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -93,7 +91,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     if (res.result === 'success') {
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setOpen(false)
-      onUpdate()
 
       changedModelTypes.forEach((modelType) => {
         if (modelType === ModelTypeEnum.textGeneration)

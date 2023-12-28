@@ -1,7 +1,7 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { createContext, useContext } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
@@ -9,6 +9,12 @@ import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
+import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
+import type {
+  ConfigurateMethodEnum,
+  CustomConfigrationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 import Pricing from '@/app/components/billing/pricing'
 import type { ModerationConfig } from '@/models/debug'
@@ -24,6 +30,11 @@ export type ModalState<T> = {
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
 }
 
+export type ModelModalType = {
+  currentProvider: ModelProvider
+  currentConfigurateMethod: ConfigurateMethodEnum
+  currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields
+}
 const ModalContext = createContext<{
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
@@ -31,6 +42,7 @@ const ModalContext = createContext<{
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
   setShowPricingModal: Dispatch<SetStateAction<any>>
   setShowAnnotationFullModal: () => void
+  setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
 }>({
       setShowAccountSettingModal: () => { },
       setShowApiBasedExtensionModal: () => { },
@@ -38,6 +50,7 @@ const ModalContext = createContext<{
       setShowExternalDataToolModal: () => { },
       setShowPricingModal: () => { },
       setShowAnnotationFullModal: () => { },
+      setShowModelModal: () => {},
     })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -52,6 +65,7 @@ export const ModalContextProvider = ({
   const [showApiBasedExtensionModal, setShowApiBasedExtensionModal] = useState<ModalState<ApiBasedExtension> | null>(null)
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
+  const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -69,6 +83,20 @@ export const ModalContextProvider = ({
     if (showModerationSettingModal?.onCancelCallback)
       showModerationSettingModal.onCancelCallback()
   }
+
+  const handleCancelModelModal = useCallback(() => {
+    setShowModelModal(null)
+
+    if (showModelModal?.onCancelCallback)
+      showModelModal.onCancelCallback()
+  }, [showModelModal])
+
+  const handleSaveModelModal = useCallback(() => {
+    if (showModelModal?.onSaveCallback)
+      showModelModal.onSaveCallback(showModelModal.payload)
+
+    setShowModelModal(null)
+  }, [showModelModal])
 
   const handleSaveApiBasedExtension = (newApiBasedExtension: ApiBasedExtension) => {
     if (showApiBasedExtensionModal?.onSaveCallback)
@@ -106,6 +134,7 @@ export const ModalContextProvider = ({
       setShowExternalDataToolModal,
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
+      setShowModelModal,
     }}>
       <>
         {children}
@@ -163,6 +192,17 @@ export const ModalContextProvider = ({
             <AnnotationFullModal
               show={showAnnotationFullModal}
               onHide={() => setShowAnnotationFullModal(false)} />
+          )
+        }
+        {
+          !!showModelModal && (
+            <ModelModal
+              provider={showModelModal.payload.currentProvider}
+              configurateMethod={showModelModal.payload.currentConfigurateMethod}
+              currentCustomConfigrationModelFixedFields={showModelModal.payload.currentCustomConfigrationModelFixedFields}
+              onCancel={handleCancelModelModal}
+              onSave={handleSaveModelModal}
+            />
           )
         }
       </>

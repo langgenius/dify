@@ -1,10 +1,8 @@
-import { useMemo, useState } from 'react'
-import useSWR from 'swr'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import SystemModelSelector from './system-model-selector'
-import ProviderAddedCard from './provider-added-card'
+import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
-import ModelModal from './model-modal'
 import type {
   ConfigurateMethodEnum,
   CustomConfigrationModelFixedFields,
@@ -13,27 +11,24 @@ import type {
 import { CustomConfigurationStatusEnum } from './declarations'
 import {
   useDefaultModel,
-  useUpdateModelList,
+  useUpdateModelProvidersAndModelList,
 } from './hooks'
-import { fetchModelProviders } from '@/service/common'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Loading from '@/app/components/base/loading'
+import { useProviderContext } from '@/context/provider-context'
+import { useModalContext } from '@/context/modal-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 const ModelProviderPage = () => {
   const { t } = useTranslation()
-  const updateModelList = useUpdateModelList()
+  const { eventEmitter } = useEventEmitterContextContext()
+  const updateModelProvidersAndModelList = useUpdateModelProvidersAndModelList()
   const { data: textGenerationDefaultModel } = useDefaultModel(1)
   const { data: embeddingsDefaultModel } = useDefaultModel(2)
   const { data: rerankDefaultModel } = useDefaultModel(3)
   const { data: speech2textDefaultModel } = useDefaultModel(4)
-  const [currentProvider, setCurrentProvider] = useState<ModelProvider | null>(null)
-  const [currentConfigurateMethod, setCurrentConfigurateMethod] = useState<ConfigurateMethodEnum | null>(null)
-  const [currentCustomConfigrationModelFixedFields, setCurrentCustomConfigrationModelFixedFields] = useState<CustomConfigrationModelFixedFields | undefined>(undefined)
-  const { data: providersData, mutate: mutateProviders, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+  const { modelProviders: providers } = useProviderContext()
+  const { setShowModelModal } = useModalContext()
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel
-  const providers = useMemo(() => {
-    return providersData ? providersData.data : []
-  }, [providersData])
   const [configedProviders, notConfigedProviders] = useMemo(() => {
     const configedProviders: ModelProvider[] = []
     const notConfigedProviders: ModelProvider[] = []
@@ -53,21 +48,23 @@ const ModelProviderPage = () => {
     configurateMethod: ConfigurateMethodEnum,
     customConfigrationModelFixedFields?: CustomConfigrationModelFixedFields,
   ) => {
-    setCurrentProvider(provider)
-    setCurrentConfigurateMethod(configurateMethod)
-    setCurrentCustomConfigrationModelFixedFields(customConfigrationModelFixedFields)
-  }
+    setShowModelModal({
+      payload: {
+        currentProvider: provider,
+        currentConfigurateMethod: configurateMethod,
+        currentCustomConfigrationModelFixedFields: customConfigrationModelFixedFields,
+      },
+      onSaveCallback: () => {
+        updateModelProvidersAndModelList(provider)
 
-  const handleCancelModelModal = () => {
-    setCurrentProvider(null)
-    setCurrentConfigurateMethod(null)
-    setCurrentCustomConfigrationModelFixedFields(undefined)
-  }
-
-  const handleSaveCrendentials = () => {
-    mutateProviders()
-    currentProvider?.supported_model_types.forEach((modelType) => {
-      updateModelList(modelType)
+        if (customConfigrationModelFixedFields && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+          console.log('1')
+          eventEmitter?.emit({
+            type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
+            payload: provider.provider,
+          } as any)
+        }
+      },
     })
   }
 
@@ -89,16 +86,8 @@ const ModelProviderPage = () => {
           embeddingsDefaultModel={embeddingsDefaultModel}
           rerankDefaultModel={rerankDefaultModel}
           speech2textDefaultModel={speech2textDefaultModel}
-          onUpdate={() => mutateProviders()}
         />
       </div>
-      {
-        isLoading && (
-          <div className='mt-[240px]'>
-            <Loading />
-          </div>
-        )
-      }
       {
         !!configedProviders?.length && (
           <div className='pb-3'>
@@ -133,17 +122,6 @@ const ModelProviderPage = () => {
               }
             </div>
           </>
-        )
-      }
-      {
-        !!currentProvider && !!currentConfigurateMethod && (
-          <ModelModal
-            provider={currentProvider}
-            configurateMethod={currentConfigurateMethod}
-            currentCustomConfigrationModelFixedFields={currentCustomConfigrationModelFixedFields}
-            onCancel={handleCancelModelModal}
-            onSave={handleSaveCrendentials}
-          />
         )
       }
     </div>

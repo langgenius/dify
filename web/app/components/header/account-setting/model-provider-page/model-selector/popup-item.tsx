@@ -5,11 +5,19 @@ import type {
   Model,
   ModelItem,
 } from '../declarations'
-import { useLanguage } from '../hooks'
+import {
+  useLanguage,
+  useUpdateModelProvidersAndModelList,
+} from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { ModelStatusEnum } from '../declarations'
+import {
+  ConfigurateMethodEnum,
+  ModelStatusEnum,
+} from '../declarations'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 
 type PopupItemProps = {
   defaultModel?: DefaultModel
@@ -23,11 +31,26 @@ const PopupItem: FC<PopupItemProps> = ({
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
+  const { setShowModelModal } = useModalContext()
+  const { modelProviders } = useProviderContext()
+  const updateModelProvidersAndModelList = useUpdateModelProvidersAndModelList()
+  const currentProvider = modelProviders.find(provider => provider.provider === model.provider)!
   const handleSelect = (provider: string, modelItem: ModelItem) => {
     if (modelItem.status !== ModelStatusEnum.active)
       return
 
     onSelect(provider, modelItem)
+  }
+  const handleOpenModelModal = () => {
+    setShowModelModal({
+      payload: {
+        currentProvider,
+        currentConfigurateMethod: ConfigurateMethodEnum.predefinedModel,
+      },
+      onSaveCallback: () => {
+        updateModelProvidersAndModelList(currentProvider)
+      },
+    })
   }
 
   return (
@@ -69,7 +92,10 @@ const PopupItem: FC<PopupItemProps> = ({
             }
             {
               modelItem.status === ModelStatusEnum.noConfigure && (
-                <div className='hidden group-hover:block text-xs font-medium text-primary-600 cursor-pointer'>
+                <div
+                  className='hidden group-hover:block text-xs font-medium text-primary-600 cursor-pointer'
+                  onClick={handleOpenModelModal}
+                >
                   {t('common.operation.add').toLocaleUpperCase()}
                 </div>
               )
