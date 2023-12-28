@@ -78,6 +78,8 @@ class _CommonOAI_API_Compat:
                     label=I18nObject(en_US="Top K"),
                     type=ParameterType.INT,
                     default=int(credentials.get('top_k', 1)),
+                    min=1,
+                    max=100
                 ),
                 ParameterRule(
                     name=DefaultParameterName.FREQUENCY_PENALTY.value,
@@ -99,9 +101,9 @@ class _CommonOAI_API_Compat:
                     name=DefaultParameterName.MAX_TOKENS.value,
                     label=I18nObject(en_US="Max Tokens"),
                     type=ParameterType.INT,
-                    default=int(credentials.get('max_tokens_to_sample', 1024)),
+                    default=1024,
                     min=1,
-                    max=4096
+                    max=int(credentials.get('max_tokens_to_sample', 1024)),
                 )
             ],
             pricing=PriceConfig(

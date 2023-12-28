@@ -236,7 +236,12 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         """
         human_prompt = "\n\nuser:"
         ai_prompt = "\n\nmodel:"
+
         content = message.content
+        if isinstance(content, list):
+            content = "".join(
+                c.data for c in content if c.type != PromptMessageContentType.IMAGE
+            )
 
         if isinstance(message, UserPromptMessage):
             message_text = f"{human_prompt} {content}"
