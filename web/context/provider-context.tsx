@@ -3,13 +3,17 @@
 import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useMemo, useState } from 'react'
-import { fetchModelList, fetchSupportRetrievalMethods } from '@/service/common'
+import {
+  fetchModelList,
+  fetchModelProviders,
+  fetchSupportRetrievalMethods,
+} from '@/service/common'
 import {
   ModelFeatureEnum,
   ModelStatusEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Model } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
@@ -17,6 +21,7 @@ import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
 
 const ProviderContext = createContext<{
+  modelProviders: ModelProvider[]
   textGenerationModelList: Model[]
   agentThoughtModelList: Model[]
   supportRetrievalMethods: RETRIEVE_METHOD[]
@@ -30,6 +35,7 @@ const ProviderContext = createContext<{
   enableBilling: boolean
   enableReplaceWebAppLogo: boolean
 }>({
+  modelProviders: [],
   textGenerationModelList: [],
   agentThoughtModelList: [],
   supportRetrievalMethods: [],
@@ -62,6 +68,7 @@ type ProviderContextProviderProps = {
 export const ProviderContextProvider = ({
   children,
 }: ProviderContextProviderProps) => {
+  const { data: providersData } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
   const fetchModelListUrlPrefix = '/workspaces/current/models/model-types/'
   const { data: textGenerationModelList } = useSWR(`${fetchModelListUrlPrefix}${ModelTypeEnum.textGeneration}`, fetchModelList)
   const { data: supportRetrievalMethods } = useSWR('/datasets/retrieval-setting', fetchSupportRetrievalMethods)
@@ -112,6 +119,7 @@ export const ProviderContextProvider = ({
 
   return (
     <ProviderContext.Provider value={{
+      modelProviders: providersData?.data || [],
       textGenerationModelList: textGenerationModelList?.data || [],
       agentThoughtModelList,
       hasSettedApiKey: !!textGenerationModelList?.data.some(model => model.status === ModelStatusEnum.active),

@@ -20,7 +20,9 @@ import AddModelButton from './add-model-button'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { fetchModelProviderModelList } from '@/service/common'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
+export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
   provider: ModelProvider
   onOpenModal: (configurateMethod: ConfigurateMethodEnum, currentCustomConfigrationModelFixedFields?: CustomConfigrationModelFixedFields) => void
@@ -30,6 +32,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   onOpenModal,
 }) => {
   const { t } = useTranslation()
+  const { eventEmitter } = useEventEmitterContextContext()
   const [fetched, setFetched] = useState(false)
   const [loading, setLoading] = useState(false)
   const [collapsed, setCollapsed] = useState(true)
@@ -39,15 +42,13 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const hasModelList = fetched && !!modelList.length
   const showQuota = systemConfig.enabled || ['minimax', 'spark', 'zhipuai', 'anthropic'].includes(provider.provider)
 
-  const handleOpenModelList = async () => {
-    if (fetched) {
-      setCollapsed(false)
+  const getModelList = async (providerName: string) => {
+    console.log('3')
+    if (loading)
       return
-    }
-
     try {
       setLoading(true)
-      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider.provider}/models`)
+      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
       setModelList(modelsData.data)
       setCollapsed(false)
       setFetched(true)
@@ -56,6 +57,20 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       setLoading(false)
     }
   }
+  const handleOpenModelList = () => {
+    if (fetched) {
+      setCollapsed(false)
+      return
+    }
+
+    getModelList(provider.provider)
+  }
+
+  eventEmitter?.useSubscription((v: any) => {
+    console.log('2')
+    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST)
+      getModelList(v.payload as string)
+  })
 
   return (
     <div

@@ -42,7 +42,6 @@ const Form: FC<FormProps> = ({
         shouldClearVariable[clearVariable] = undefined
       })
     }
-    console.log(key, val, shouldClearVariable)
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 

@@ -11,6 +11,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
+  ModelProvider,
 } from './declarations'
 import {
   ConfigurateMethodEnum,
@@ -22,6 +23,7 @@ import {
   fetchDefaultModal,
   fetchModelList,
   fetchModelProviderCredentials,
+  fetchModelProviders,
   getPayUrl,
   submitFreeQuota,
 } from '@/service/common'
@@ -81,14 +83,23 @@ export const useProviderCrenditialsFormSchemasValue = (
     fetchModelProviderCredentials,
   )
 
-  return configurateMethod === ConfigurateMethodEnum.predefinedModel
-    ? predefinedFormSchemasValue?.credentials
-    : customFormSchemasValue?.credentials
-      ? {
-        ...customFormSchemasValue?.credentials,
-        ...currentCustomConfigrationModelFixedFields,
-      }
-      : undefined
+  const value = useMemo(() => {
+    return configurateMethod === ConfigurateMethodEnum.predefinedModel
+      ? predefinedFormSchemasValue?.credentials
+      : customFormSchemasValue?.credentials
+        ? {
+          ...customFormSchemasValue?.credentials,
+          ...currentCustomConfigrationModelFixedFields,
+        }
+        : undefined
+  }, [
+    configurateMethod,
+    currentCustomConfigrationModelFixedFields,
+    customFormSchemasValue?.credentials,
+    predefinedFormSchemasValue?.credentials,
+  ])
+
+  return value
 }
 
 export type ModelTypeIndex = 1 | 2 | 3 | 4
@@ -236,4 +247,28 @@ export const useFreeQuota = (onSuccess: () => void) => {
   }
 
   return handleClick
+}
+
+export const useModelProviders = () => {
+  const { data: providersData, mutate, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
+
+  return {
+    data: providersData?.data || [],
+    mutate,
+    isLoading,
+  }
+}
+
+export const useUpdateModelProvidersAndModelList = () => {
+  const { mutate } = useSWRConfig()
+  const updateModelList = useUpdateModelList()
+
+  const updateModelProvidersAndModelList = useCallback((provider: ModelProvider) => {
+    mutate('/workspaces/current/model-providers')
+    provider?.supported_model_types.forEach((modelType) => {
+      updateModelList(modelType)
+    })
+  }, [mutate, updateModelList])
+
+  return updateModelProvidersAndModelList
 }
