@@ -36,7 +36,7 @@ class ModelInstance:
         :return:
         """
         credentials = provider_model_bundle.configuration.get_current_credentials(
-            model_type=ModelType.LLM,
+            model_type=provider_model_bundle.model_type_instance.model_type,
             model=model
         )
 
