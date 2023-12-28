@@ -123,14 +123,19 @@ export const genModelTypeFormSchema = (modelTypes: ModelTypeEnum[]) => {
     default: modelTypes[0],
     required: true,
     show_on: [],
-    options: modelTypes.map(modelType => ({
-      value: modelType,
-      label: {
-        zh_Hans: modelType,
-        en_US: modelType,
-      },
-      show_on: [],
-    })),
+    options: modelTypes.map((modelType) => {
+      const text = modelType.replace(/\b(\w)(\w*)\b/g, (match, first, second) => {
+        return `${first.toUpperCase()}${second.toLowerCase()}`
+      }).replace(/-/g, ' ')
+      return {
+        value: modelType,
+        label: {
+          zh_Hans: text,
+          en_US: text,
+        },
+        show_on: [],
+      }
+    }),
   } as CredentialFormSchemaRadio
 }
 

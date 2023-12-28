@@ -93,6 +93,12 @@ const ParameterItem: FC<ParameterItemProps> = ({
     }
   }
 
+  const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
+    && parameterRule.min !== undefined
+    && parameterRule.max !== undefined
+  const numberInput = (parameterRule.type === 'int' || parameterRule.type === 'float')
+    && (parameterRule.min === undefined || parameterRule.max === undefined)
+
   return (
     <div className={`flex items-center justify-between ${className}`}>
       <div>
@@ -134,7 +140,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
         }
       </div>
       {
-        (parameterRule.type === 'int' || parameterRule.type === 'float') && (
+        numberInputWithSlide && (
           <div className='flex items-center'>
             <Slider
               className='w-[120px]'
@@ -166,6 +172,15 @@ const ParameterItem: FC<ParameterItemProps> = ({
             <Radio value={1} className='!mr-1 w-[94px]'>True</Radio>
             <Radio value={0} className='w-[94px]'>False</Radio>
           </Radio.Group>
+        )
+      }
+      {
+        numberInput && (
+          <input
+            className='flex items-center px-3 w-[200px] h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+            value={(renderValue === undefined ? '' : renderValue) as string}
+            onChange={handleNumberInputChange}
+          />
         )
       }
       {

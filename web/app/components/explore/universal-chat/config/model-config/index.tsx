@@ -25,6 +25,7 @@ const ModelConfig: FC<IModelConfigProps> = ({
     <div className='flex items-center justify-between h-[52px] px-3 rounded-xl bg-gray-50'>
       <div className='text-sm font-semibold text-gray-800'>{t('explore.universalChat.model')}</div>
       <ModelSelector
+        triggerClassName={`${readonly && '!cursor-not-allowed !opacity-60'}`}
         defaultModel={{ provider: providerName, model: modelId }}
         modelList={agentThoughtModelList}
         onSelect={(model) => {

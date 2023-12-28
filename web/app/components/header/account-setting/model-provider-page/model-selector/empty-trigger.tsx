@@ -4,14 +4,17 @@ import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 
 type ModelTriggerProps = {
   open: boolean
+  className?: string
 }
 const ModelTrigger: FC<ModelTriggerProps> = ({
   open,
+  className,
 }) => {
   return (
     <div
       className={`
         flex items-center px-2 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 cursor-pointer
+        ${className}
         ${open && '!bg-gray-200'}
       `}
     >

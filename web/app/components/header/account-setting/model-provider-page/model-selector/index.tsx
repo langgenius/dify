@@ -18,6 +18,7 @@ import {
 type ModelSelectorProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
+  triggerClassName?: string
   popupClassName?: string
   onSelect?: (model: DefaultModel) => void
   readonly?: boolean
@@ -25,6 +26,7 @@ type ModelSelectorProps = {
 const ModelSelector: FC<ModelSelectorProps> = ({
   defaultModel,
   modelList,
+  triggerClassName,
   popupClassName,
   onSelect,
   readonly,
@@ -45,6 +47,13 @@ const ModelSelector: FC<ModelSelectorProps> = ({
       onSelect({ provider, model: model.model })
   }
 
+  const handleToggle = () => {
+    if (readonly)
+      return
+
+    setOpen(v => !v)
+  }
+
   return (
     <PortalToFollowElem
       open={open}
@@ -54,9 +63,8 @@ const ModelSelector: FC<ModelSelectorProps> = ({
     >
       <div className='relative'>
         <PortalToFollowElemTrigger
-          onClick={() => setOpen(v => !v)}
-          className='block'
-          disabled={readonly}
+          onClick={handleToggle}
+          className='block cursor-not-allowed'
         >
           {
             currentModel && currentProvider && (
@@ -64,6 +72,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
                 open={open}
                 provider={currentProvider}
                 model={currentModel}
+                className={triggerClassName}
               />
             )
           }
@@ -71,6 +80,7 @@ const ModelSelector: FC<ModelSelectorProps> = ({
             !currentModel && (
               <EmptyTrigger
                 open={open}
+                className={triggerClassName}
               />
             )
           }
