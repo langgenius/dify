@@ -22,7 +22,7 @@ provider_credential_schema:
     label:
       en_US: API URL
     type: text-input
-    required: false
+    required: true
     placeholder:
       zh_Hans: 在此输入您的 API URL
       en_US: Enter your API URL
