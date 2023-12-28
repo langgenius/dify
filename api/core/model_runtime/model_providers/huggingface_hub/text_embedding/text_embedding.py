@@ -5,6 +5,8 @@ import numpy as np
 from huggingface_hub import InferenceClient, HfApi
 from huggingface_hub.utils import HfHubHTTPError
 
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.invoke import InvokeError, InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -62,37 +64,52 @@ class HuggingfaceHubTextEmbeddingModel(TextEmbeddingModel):
         return 0
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
-        if 'huggingfacehub_api_type' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type must be provided.')
-
-        if 'huggingfacehub_api_token' not in credentials:
-            raise CredentialsValidateFailedError('Huggingface Hub Access Token must be provided.')
-
-        if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
-            if 'huggingface_namespace' not in credentials:
-                raise CredentialsValidateFailedError('Huggingface Hub Namespace must be provided.')
-
-            if 'huggingfacehub_endpoint_url' not in credentials:
-                raise CredentialsValidateFailedError('Huggingface Hub Endpoint URL must be provided.')
-
-            if 'task_type' not in credentials:
-                raise CredentialsValidateFailedError('Huggingface Hub Task Type must be provided.')
-
-            if credentials['task_type'] != 'feature-extraction':
-                raise CredentialsValidateFailedError('Huggingface Hub Task Type is invalid.')
-
-            model = credentials['huggingfacehub_endpoint_url']
-        elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
-            self._check_hosted_model_task_type(credentials['huggingfacehub_api_token'],
-                                               model)
-        else:
-            raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
-
-        client = InferenceClient(token=credentials['huggingfacehub_api_token'])
         try:
+            if 'huggingfacehub_api_type' not in credentials:
+                raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type must be provided.')
+
+            if 'huggingfacehub_api_token' not in credentials:
+                raise CredentialsValidateFailedError('Huggingface Hub API Token must be provided.')
+
+            if credentials['huggingfacehub_api_type'] == 'inference_endpoints':
+                if 'huggingface_namespace' not in credentials:
+                    raise CredentialsValidateFailedError('Huggingface Hub User Name / Organization Name must be provided.')
+
+                if 'huggingfacehub_endpoint_url' not in credentials:
+                    raise CredentialsValidateFailedError('Huggingface Hub Endpoint URL must be provided.')
+
+                if 'task_type' not in credentials:
+                    raise CredentialsValidateFailedError('Huggingface Hub Task Type must be provided.')
+
+                if credentials['task_type'] != 'feature-extraction':
+                    raise CredentialsValidateFailedError('Huggingface Hub Task Type is invalid.')
+
+                model = credentials['huggingfacehub_endpoint_url']
+            elif credentials['huggingfacehub_api_type'] == 'hosted_inference_api':
+                self._check_hosted_model_task_type(credentials['huggingfacehub_api_token'],
+                                                   model)
+            else:
+                raise CredentialsValidateFailedError('Huggingface Hub Endpoint Type is invalid.')
+
+            client = InferenceClient(token=credentials['huggingfacehub_api_token'])
             client.feature_extraction(text='hello world', model=model)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(
+                en_US=model
+            ),
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_type=ModelType.TEXT_EMBEDDING,
+            model_properties={
+                'context_size': 10000,
+                'max_chunks': 1
+            }
+        )
+        return entity
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:

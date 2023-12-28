@@ -136,10 +136,12 @@ class HuggingfaceHubLargeLanguageModel(LargeLanguageModel):
             DefaultParameterName.TEMPERATURE).copy()
         temperature_rule_dict['name'] = 'temperature'
         temperature_rule = ParameterRule(**temperature_rule_dict)
+        temperature_rule.default = 0.5
 
         top_p_rule_dict = PARAMETER_RULE_TEMPLATE.get(DefaultParameterName.TOP_P).copy()
         top_p_rule_dict['name'] = 'top_p'
         top_p_rule = ParameterRule(**top_p_rule_dict)
+        top_p_rule.default = 0.5
 
         top_k_rule = ParameterRule(
             name='top_k',
