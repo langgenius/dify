@@ -12,6 +12,9 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDe
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
+from tests.integration_tests.model_runtime.__mock.openai import mock_openai
+
+MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
 
 def test_predefined_models():
     model = OpenAILargeLanguageModel()
@@ -40,7 +43,10 @@ def test_validate_credentials_for_chat_model():
     )
 
 
-def test_validate_credentials_for_completion_model():
+def test_validate_credentials_for_completion_model(monkeypatch):
+    if MOCK:
+        unpatch = mock_openai(monkeypatch, methods="completion")
+
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -57,6 +63,9 @@ def test_validate_credentials_for_completion_model():
             'openai_api_key': os.environ.get('OPENAI_API_KEY')
         }
     )
+
+    if MOCK:
+        unpatch()
 
 
 def test_invoke_completion_model():
