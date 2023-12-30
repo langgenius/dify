@@ -1104,9 +1104,9 @@ class SegmentService:
             if segment.content == content:
                 if document.doc_form == 'qa_model':
                     segment.answer = args['answer']
-                if args['keywords']:
+                if 'keywords' in args and args['keywords']:
                     segment.keywords = args['keywords']
-                if args['enabled'] is not None:
+                if'enabled' in args and args['enabled'] is not None:
                     segment.enabled = args['enabled']
                 db.session.add(segment)
                 db.session.commit()
