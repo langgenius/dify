@@ -76,6 +76,13 @@ class AzureOpenAIProvider(BaseModelProvider):
                     model_dict['features'] = [
                         ModelFeature.AGENT_THOUGHT.value
                     ]
+                
+                if credentials['base_model_name'] in [
+                    'gpt-4-vision-preview',
+                ]:
+                    model_dict['features'] = [
+                        ModelFeature.VISION.value
+                    ]
 
                 model_list.append(model_dict)
         else:
