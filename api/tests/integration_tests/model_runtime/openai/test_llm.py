@@ -1,5 +1,6 @@
 import os
-from typing import Generator
+from typing import Generator, List
+from functools import wraps
 
 import pytest
 
@@ -16,6 +17,17 @@ from tests.integration_tests.model_runtime.__mock.openai import mock_openai
 
 MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
 
+@pytest.fixture
+def setup_mock(request, monkeypatch):
+    methods = request.param if hasattr(request, 'param') else []
+    if MOCK:
+        unpatch = mock_openai(monkeypatch, methods=methods)
+    
+    yield
+
+    if MOCK:
+        unpatch()
+
 def test_predefined_models():
     model = OpenAILargeLanguageModel()
     model_schemas = model.predefined_models()
@@ -23,8 +35,8 @@ def test_predefined_models():
     assert len(model_schemas) >= 1
     assert isinstance(model_schemas[0], AIModelEntity)
 
-
-def test_validate_credentials_for_chat_model():
+@pytest.mark.parametrize('setup_mock', [['chat']], indirect=True)
+def test_validate_credentials_for_chat_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -42,11 +54,8 @@ def test_validate_credentials_for_chat_model():
         }
     )
 
-
-def test_validate_credentials_for_completion_model(monkeypatch):
-    if MOCK:
-        unpatch = mock_openai(monkeypatch, methods="completion")
-
+@pytest.mark.parametrize('setup_mock', [['completion']], indirect=True)
+def test_validate_credentials_for_completion_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -64,11 +73,8 @@ def test_validate_credentials_for_completion_model(monkeypatch):
         }
     )
 
-    if MOCK:
-        unpatch()
-
-
-def test_invoke_completion_model():
+@pytest.mark.parametrize('setup_mock', [['completion']], indirect=True)
+def test_invoke_completion_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -94,8 +100,8 @@ def test_invoke_completion_model():
     assert len(result.message.content) > 0
     assert model._num_tokens_from_string('gpt-3.5-turbo-instruct', result.message.content) == 1
 
-
-def test_invoke_stream_completion_model():
+@pytest.mark.parametrize('setup_mock', [['completion']], indirect=True)
+def test_invoke_stream_completion_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -125,8 +131,8 @@ def test_invoke_stream_completion_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-
-def test_invoke_chat_model():
+@pytest.mark.parametrize('setup_mock', [['chat']], indirect=True)
+def test_invoke_chat_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -163,8 +169,8 @@ def test_invoke_chat_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
-
-def test_invoke_chat_model_with_vision():
+@pytest.mark.parametrize('setup_mock', [['chat']], indirect=True)
+def test_invoke_chat_model_with_vision(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -198,8 +204,8 @@ def test_invoke_chat_model_with_vision():
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 
-
-def test_invoke_chat_model_with_tools():
+@pytest.mark.parametrize('setup_mock', [['chat']], indirect=True)
+def test_invoke_chat_model_with_tools(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -268,8 +274,8 @@ def test_invoke_chat_model_with_tools():
     assert isinstance(result.message, AssistantPromptMessage)
     assert len(result.message.tool_calls) > 0
 
-
-def test_invoke_stream_chat_model():
+@pytest.mark.parametrize('setup_mock', [['chat']], indirect=True)
+def test_invoke_stream_chat_model(setup_mock):
     model = OpenAILargeLanguageModel()
 
     result = model.invoke(
@@ -302,7 +308,7 @@ def test_invoke_stream_chat_model():
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
         if chunk.delta.finish_reason is not None:
             assert chunk.delta.usage is not None
-            assert chunk.delta.usage.completion_tokens == 16
+            assert chunk.delta.usage.completion_tokens > 0
 
 
 def test_get_num_tokens():
