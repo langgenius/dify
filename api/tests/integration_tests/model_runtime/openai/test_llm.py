@@ -51,14 +51,14 @@ def test_validate_credentials_for_completion_model(monkeypatch):
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='gpt-3.5-turbo',
+            model='text-davinci-003',
             credentials={
                 'openai_api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='gpt-3.5-turbo',
+        model='text-davinci-003',
         credentials={
             'openai_api_key': os.environ.get('OPENAI_API_KEY')
         }
