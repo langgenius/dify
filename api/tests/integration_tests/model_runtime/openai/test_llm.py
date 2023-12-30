@@ -39,7 +39,7 @@ def test_validate_credentials_for_chat_model():
     )
 
 
-def test_validate_credentials_for_completion_model(monkeypatch):
+def test_validate_credentials_for_completion_model():
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
