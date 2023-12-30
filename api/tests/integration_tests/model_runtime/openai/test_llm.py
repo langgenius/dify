@@ -12,7 +12,6 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDe
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguageModel
 
-
 def test_predefined_models():
     model = OpenAILargeLanguageModel()
     model_schemas = model.predefined_models()
@@ -40,24 +39,23 @@ def test_validate_credentials_for_chat_model():
     )
 
 
-def test_validate_credentials_for_completion_model():
+def test_validate_credentials_for_completion_model(monkeypatch):
     model = OpenAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='gpt-3.5-turbo',
+            model='text-davinci-003',
             credentials={
                 'openai_api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
-        model='gpt-3.5-turbo',
+        model='text-davinci-003',
         credentials={
             'openai_api_key': os.environ.get('OPENAI_API_KEY')
         }
     )
-
 
 def test_invoke_completion_model():
     model = OpenAILargeLanguageModel()
