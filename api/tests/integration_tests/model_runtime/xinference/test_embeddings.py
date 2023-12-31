@@ -6,7 +6,10 @@ from core.model_runtime.entities.text_embedding_entities import TextEmbeddingRes
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.text_embedding.text_embedding import XinferenceTextEmbeddingModel
 
-def test_validate_credentials():
+from tests.integration_tests.model_runtime.__mock.xinference import setup_xinference_mock, MOCK
+
+@pytest.mark.parametrize('setup_xinference_mock', [['none']], indirect=True)
+def test_validate_credentials(setup_xinference_mock):
     model = XinferenceTextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -14,8 +17,6 @@ def test_validate_credentials():
             model='bge-base-en',
             credentials={
                 'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-                'model_type': 'embeddings',
-                'model_name': 'NOT IMPORTANT',
                 'model_uid': 'www ' + os.environ.get('XINFERENCE_EMBEDDINGS_MODEL_UID')
             }
         )
@@ -24,22 +25,18 @@ def test_validate_credentials():
         model='bge-base-en',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
             'model_uid': os.environ.get('XINFERENCE_EMBEDDINGS_MODEL_UID')
         }
     )
 
-
-def test_invoke_model():
+@pytest.mark.parametrize('setup_xinference_mock', [['none']], indirect=True)
+def test_invoke_model(setup_xinference_mock):
     model = XinferenceTextEmbeddingModel()
 
     result = model.invoke(
         model='bge-base-en',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
             'model_uid': os.environ.get('XINFERENCE_EMBEDDINGS_MODEL_UID')
         },
         texts=[
@@ -60,8 +57,6 @@ def test_get_num_tokens():
         model='bge-base-en',
         credentials={
             'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_type': 'embeddings',
-            'model_name': 'NOT IMPORTANT',
             'model_uid': os.environ.get('XINFERENCE_EMBEDDINGS_MODEL_UID')
         },
         texts=[

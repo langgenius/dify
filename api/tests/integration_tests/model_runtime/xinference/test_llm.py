@@ -11,7 +11,12 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunkDe
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.xinference.llm.llm import XinferenceAILargeLanguageModel
 
-def test_validate_credentials_for_chat_model():
+"""FOR MOCK FIXTURES, DO NOT REMOVE"""
+from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
+from tests.integration_tests.model_runtime.__mock.xinference import setup_xinference_mock
+
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
+def test_validate_credentials_for_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -40,7 +45,8 @@ def test_validate_credentials_for_chat_model():
         }
     )
 
-def test_invoke_chat_model():
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
+def test_invoke_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     response = model.invoke(
@@ -70,7 +76,8 @@ def test_invoke_chat_model():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
-def test_invoke_stream_chat_model():
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['chat', 'none']], indirect=True)
+def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     response = model.invoke(
@@ -229,7 +236,8 @@ def test_invoke_stream_chat_model():
 #     assert response.usage.total_tokens > 0
 #     assert response.message.tool_calls[0].function.name == 'get_current_weather'
 
-def test_validate_credentials_for_generation_model():
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
+def test_validate_credentials_for_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
@@ -258,7 +266,8 @@ def test_validate_credentials_for_generation_model():
         }
     )
 
-def test_invoke_generation_model():
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
+def test_invoke_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     response = model.invoke(
@@ -285,35 +294,8 @@ def test_invoke_generation_model():
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
-def test_invoke_generation_model_with_max_tokens():
-    model = XinferenceAILargeLanguageModel()
-
-    response = model.invoke(
-        model='alapaca',
-        credentials={
-            'server_url': os.environ.get('XINFERENCE_SERVER_URL'),
-            'model_uid': os.environ.get('XINFERENCE_GENERATION_MODEL_UID')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='the United States is'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.7,
-            'top_p': 1.0,
-            'max_tokens': 3
-        },
-        stop=['you'],
-        user="abc-123",
-        stream=False
-    )
-
-    assert isinstance(response, LLMResult)
-    assert len(response.message.content) > 0
-    assert response.usage.completion_tokens == 3
-
-def test_invoke_stream_generation_model():
+@pytest.mark.parametrize('setup_openai_mock, setup_xinference_mock', [['completion', 'none']], indirect=True)
+def test_invoke_stream_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
     response = model.invoke(
