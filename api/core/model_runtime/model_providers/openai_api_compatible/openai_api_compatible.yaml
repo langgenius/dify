@@ -41,7 +41,7 @@ model_credential_schema:
       en_US: Model context size
     required: true
     type: text-input
-    default: '16000'
+    default: '4096'
     placeholder:
       zh_Hans: 在此输入您的模型上下文长度
       en_US: Enter your Model context size

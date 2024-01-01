@@ -1,15 +1,19 @@
 import time
+from decimal import Decimal
 from typing import Optional
 import requests
 import json
 
 import numpy as np
 
-from core.model_runtime.entities.model_entities import PriceType
+from core.model_runtime.entities.common_entities import I18nObject
+from core.model_runtime.entities.model_entities import PriceType, ModelPropertyKey, ModelType, AIModelEntity, FetchFrom, \
+    PriceConfig
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult, EmbeddingUsage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOAI_API_Compat
+
 
 class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
     """
@@ -107,11 +111,12 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             model=model
         )
 
-    def get_num_tokens(self, model: str, texts: list[str]) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
         Approximate number of tokens for given messages using GPT2 tokenizer
 
         :param model: model name
+        :param credentials: model credentials
         :param texts: texts to embed
         :return:
         """
@@ -150,6 +155,30 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
 
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
+        """
+            generate custom model entities from credentials
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(en_US=model),
+            model_type=ModelType.TEXT_EMBEDDING,
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
+                ModelPropertyKey.MAX_CHUNKS: 1,
+            },
+            parameter_rules=[],
+            pricing=PriceConfig(
+                input=Decimal(credentials.get('input_price', 0)),
+                unit=Decimal(credentials.get('unit', 0)),
+                currency=credentials.get('currency', "USD")
+            )
+        )
+
+        return entity
+
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """

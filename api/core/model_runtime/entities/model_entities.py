@@ -130,7 +130,7 @@ class ProviderModel(BaseModel):
     model: str
     label: I18nObject
     model_type: ModelType
-    features: Optional[list[ModelFeature]] = None
+    features: list[ModelFeature] = []
     fetch_from: FetchFrom
     model_properties: dict[ModelPropertyKey, Any]
     deprecated: bool = False

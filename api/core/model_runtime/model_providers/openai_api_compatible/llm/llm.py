@@ -1,13 +1,18 @@
 import logging
+from decimal import Decimal
+
 import requests
 import json
 
 from typing import Optional, Generator, Union, List, cast
+
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.utils import helper
 
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent, PromptMessage, AssistantPromptMessage, PromptMessageContent, \
     PromptMessageContentType, PromptMessageFunction, PromptMessageTool, UserPromptMessage, SystemPromptMessage, ToolPromptMessage
-from core.model_runtime.entities.model_entities import ModelType
+from core.model_runtime.entities.model_entities import ModelType, PriceConfig, ParameterRule, DefaultParameterName, \
+    ParameterType, ModelPropertyKey, FetchFrom, AIModelEntity
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -15,6 +20,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOAI_API_Compat
 
 logger = logging.getLogger(__name__)
+
 
 class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
     """
@@ -52,12 +58,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             user=user
         )
 
-    def get_num_tokens(self, model: str, prompt_messages: list[PromptMessage],
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Get number of tokens for given prompt messages
 
         :param model:
+        :param credentials:
         :param prompt_messages:
         :param tools: tools for tool calling
         :return:
@@ -99,6 +106,80 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         except Exception as ex:
             raise CredentialsValidateFailedError(f'An error occurred during credentials validation: {str(ex)}')
+
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
+        """
+            generate custom model entities from credentials
+        """
+        entity = AIModelEntity(
+            model=model,
+            label=I18nObject(en_US=model),
+            model_type=ModelType.LLM,
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: credentials.get('context_size'),
+                ModelPropertyKey.MODE: 'chat'
+            },
+            parameter_rules=[
+                ParameterRule(
+                    name=DefaultParameterName.TEMPERATURE.value,
+                    label=I18nObject(en_US="Temperature"),
+                    type=ParameterType.FLOAT,
+                    default=float(credentials.get('temperature', 0.7)),
+                    min=0,
+                    max=2
+                ),
+                ParameterRule(
+                    name=DefaultParameterName.TOP_P.value,
+                    label=I18nObject(en_US="Top P"),
+                    type=ParameterType.FLOAT,
+                    default=float(credentials.get('top_p', 1)),
+                    min=0,
+                    max=1
+                ),
+                ParameterRule(
+                    name="top_k",
+                    label=I18nObject(en_US="Top K"),
+                    type=ParameterType.INT,
+                    default=int(credentials.get('top_k', 1)),
+                    min=1,
+                    max=100
+                ),
+                ParameterRule(
+                    name=DefaultParameterName.FREQUENCY_PENALTY.value,
+                    label=I18nObject(en_US="Frequency Penalty"),
+                    type=ParameterType.FLOAT,
+                    default=float(credentials.get('frequency_penalty', 0)),
+                    min=-2,
+                    max=2
+                ),
+                ParameterRule(
+                    name=DefaultParameterName.PRESENCE_PENALTY.value,
+                    label=I18nObject(en_US="PRESENCE Penalty"),
+                    type=ParameterType.FLOAT,
+                    default=float(credentials.get('PRESENCE_penalty', 0)),
+                    min=-2,
+                    max=2
+                ),
+                ParameterRule(
+                    name=DefaultParameterName.MAX_TOKENS.value,
+                    label=I18nObject(en_US="Max Tokens"),
+                    type=ParameterType.INT,
+                    default=512,
+                    min=1,
+                    max=int(credentials.get('max_tokens_to_sample', 4096)),
+                )
+            ],
+            pricing=PriceConfig(
+                input=Decimal(credentials.get('input_price', 0)),
+                output=Decimal(credentials.get('output_price', 0)),
+                unit=Decimal(credentials.get('unit', 0)),
+                currency=credentials.get('currency', "USD")
+            )
+        )
+
+        return entity
+
 
     # validate_credentials method has been rewritten to use the requests library for compatibility with all providers following OpenAI's API standard.
     def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict, 
@@ -196,7 +277,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         full_assistant_content = ''
         chunk_index = 0
 
-        def create_final_llm_result_chunk(index: int, message: str, finish_reason: str) -> LLMResultChunk:
+        def create_final_llm_result_chunk(index: int, message: AssistantPromptMessage, finish_reason: str) \
+                -> LLMResultChunk:
             # calculate num tokens
             prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
             completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
@@ -298,7 +380,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         else:
             # calculate num tokens
             prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, assistant_message)
+            completion_tokens = self._num_tokens_from_string(model, assistant_message.content)
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -347,7 +429,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
-                message_dict["tool_calls"] = [PromptMessageFunction(function=tool_call).model_dump() for tool_call in
+                message_dict["tool_calls"] = [helper.dump_model(PromptMessageFunction(function=tool_call)) for tool_call in
                                               message.tool_calls]
                 # function_call = message.tool_calls[0]
                 # message_dict["function_call"] = {
@@ -455,40 +537,40 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         """
         num_tokens = 0
         for tool in tools:
-            num_tokens += len(self._get_num_tokens_by_gpt2('type'))
-            num_tokens += len(self._get_num_tokens_by_gpt2(tool.get("type")))
-            num_tokens += len(self._get_num_tokens_by_gpt2('function'))
+            num_tokens += self._get_num_tokens_by_gpt2('type')
+            num_tokens += self._get_num_tokens_by_gpt2('function')
+            num_tokens += self._get_num_tokens_by_gpt2('function')
 
             # calculate num tokens for function object
-            num_tokens += len(self._get_num_tokens_by_gpt2('name'))
-            num_tokens += len(self._get_num_tokens_by_gpt2(tool.name))
-            num_tokens += len(self._get_num_tokens_by_gpt2('description'))
-            num_tokens += len(self._get_num_tokens_by_gpt2(tool.description))
+            num_tokens += self._get_num_tokens_by_gpt2('name')
+            num_tokens += self._get_num_tokens_by_gpt2(tool.name)
+            num_tokens += self._get_num_tokens_by_gpt2('description')
+            num_tokens += self._get_num_tokens_by_gpt2(tool.description)
             parameters = tool.parameters
-            num_tokens += len(self._get_num_tokens_by_gpt2('parameters'))
+            num_tokens += self._get_num_tokens_by_gpt2('parameters')
             if 'title' in parameters:
-                num_tokens += len(self._get_num_tokens_by_gpt2('title'))
-                num_tokens += len(self._get_num_tokens_by_gpt2(parameters.get("title")))
-            num_tokens += len(self._get_num_tokens_by_gpt2('type'))
-            num_tokens += len(self._get_num_tokens_by_gpt2(parameters.get("type")))
+                num_tokens += self._get_num_tokens_by_gpt2('title')
+                num_tokens += self._get_num_tokens_by_gpt2(parameters.get("title"))
+            num_tokens += self._get_num_tokens_by_gpt2('type')
+            num_tokens += self._get_num_tokens_by_gpt2(parameters.get("type"))
             if 'properties' in parameters:
-                num_tokens += len(self._get_num_tokens_by_gpt2('properties'))
+                num_tokens += self._get_num_tokens_by_gpt2('properties')
                 for key, value in parameters.get('properties').items():
-                    num_tokens += len(self._get_num_tokens_by_gpt2(key))
+                    num_tokens += self._get_num_tokens_by_gpt2(key)
                     for field_key, field_value in value.items():
-                        num_tokens += len(self._get_num_tokens_by_gpt2(field_key))
+                        num_tokens += self._get_num_tokens_by_gpt2(field_key)
                         if field_key == 'enum':
                             for enum_field in field_value:
                                 num_tokens += 3
-                                num_tokens += len(self._get_num_tokens_by_gpt2(enum_field))
+                                num_tokens += self._get_num_tokens_by_gpt2(enum_field)
                         else:
-                            num_tokens += len(self._get_num_tokens_by_gpt2(field_key))
-                            num_tokens += len(self._get_num_tokens_by_gpt2(str(field_value)))
+                            num_tokens += self._get_num_tokens_by_gpt2(field_key)
+                            num_tokens += self._get_num_tokens_by_gpt2(str(field_value))
             if 'required' in parameters:
-                num_tokens += len(self._get_num_tokens_by_gpt2('required'))
+                num_tokens += self._get_num_tokens_by_gpt2('required')
                 for required_field in parameters['required']:
                     num_tokens += 3
-                    num_tokens += len(self._get_num_tokens_by_gpt2(required_field))
+                    num_tokens += self._get_num_tokens_by_gpt2(required_field)
 
         return num_tokens
     
