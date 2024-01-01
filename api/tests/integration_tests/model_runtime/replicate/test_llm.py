@@ -116,4 +116,4 @@ def test_get_num_tokens():
         ]
     )
 
-    assert num_tokens == 0
+    assert num_tokens == 14
