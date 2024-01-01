@@ -158,6 +158,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model='mistralai/Mixtral-8x7B-Instruct-v0.1',
+        credentials={
+            'api_key': os.environ.get('OPENAI_API_KEY'),
+            'endpoint_url': 'https://api.openai.com/v1/chat/completions'
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content='You are a helpful AI assistant.',
