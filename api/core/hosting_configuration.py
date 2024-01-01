@@ -57,7 +57,7 @@ class HostingConfiguration:
 
     def init_openai(self) -> HostingProvider:
         quota_unit = QuotaUnit.TIMES
-        if bool(os.environ.get("HOSTED_OPENAI_ENABLED")):
+        if os.environ.get("HOSTED_OPENAI_ENABLED") and os.environ.get("HOSTED_OPENAI_ENABLED").lower() == 'true':
             credentials = {
                 "openai_api_key": os.environ.get("HOSTED_OPENAI_API_KEY"),
             }
@@ -83,7 +83,8 @@ class HostingConfiguration:
                 )
                 quotas.append(trial_quota)
 
-            if bool(os.environ.get("HOSTED_OPENAI_PAID_ENABLED")):
+            if os.environ.get("HOSTED_OPENAI_PAID_ENABLED") and os.environ.get(
+                    "HOSTED_OPENAI_PAID_ENABLED").lower() == 'true':
                 paid_quota = PaidHostingQuota(
                     stripe_price_id=os.environ.get("HOSTED_OPENAI_PAID_STRIPE_PRICE_ID"),
                     increase_quota=int(os.environ.get("HOSTED_OPENAI_PAID_INCREASE_QUOTA", "1")),
@@ -106,7 +107,7 @@ class HostingConfiguration:
 
     def init_anthropic(self) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
-        if bool(os.environ.get("HOSTED_ANTHROPIC_ENABLED")):
+        if os.environ.get("HOSTED_ANTHROPIC_ENABLED") and os.environ.get("HOSTED_ANTHROPIC_ENABLED").lower() == 'true':
             credentials = {
                 "anthropic_api_key": os.environ.get("HOSTED_ANTHROPIC_API_KEY"),
             }
@@ -122,7 +123,8 @@ class HostingConfiguration:
                 )
                 quotas.append(trial_quota)
 
-            if bool(os.environ.get("HOSTED_ANTHROPIC_PAID_ENABLED")):
+            if os.environ.get("HOSTED_ANTHROPIC_PAID_ENABLED") and os.environ.get(
+                    "HOSTED_ANTHROPIC_PAID_ENABLED").lower() == 'true':
                 paid_quota = PaidHostingQuota(
                     stripe_price_id=os.environ.get("HOSTED_ANTHROPIC_PAID_STRIPE_PRICE_ID"),
                     increase_quota=int(os.environ.get("HOSTED_ANTHROPIC_PAID_INCREASE_QUOTA", "1000000")),
@@ -145,7 +147,7 @@ class HostingConfiguration:
 
     def init_minimax(self) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
-        if os.environ.get("HOSTED_MINIMAX_ENABLED"):
+        if os.environ.get("HOSTED_MINIMAX_ENABLED") and os.environ.get("HOSTED_MINIMAX_ENABLED").lower() == 'true':
             quotas = [FreeHostingQuota()]
 
             return HostingProvider(
@@ -162,7 +164,7 @@ class HostingConfiguration:
 
     def init_spark(self) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
-        if os.environ.get("HOSTED_SPARK_ENABLED"):
+        if os.environ.get("HOSTED_SPARK_ENABLED") and os.environ.get("HOSTED_SPARK_ENABLED").lower() == 'true':
             quotas = [FreeHostingQuota()]
 
             return HostingProvider(
@@ -179,7 +181,7 @@ class HostingConfiguration:
 
     def init_zhipuai(self) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
-        if os.environ.get("HOSTED_ZHIPUAI_ENABLED"):
+        if os.environ.get("HOSTED_ZHIPUAI_ENABLED") and os.environ.get("HOSTED_ZHIPUAI_ENABLED").lower() == 'true':
             quotas = [FreeHostingQuota()]
 
             return HostingProvider(
@@ -195,9 +197,10 @@ class HostingConfiguration:
         )
 
     def init_moderation_config(self) -> HostedModerationConfig:
-        if os.environ.get("HOSTED_MODERATION_ENABLED") and os.environ.get("HOSTED_MODERATION_PROVIDERS"):
+        if os.environ.get("HOSTED_MODERATION_ENABLED") and os.environ.get("HOSTED_MODERATION_ENABLED").lower() == 'true' \
+                and os.environ.get("HOSTED_MODERATION_PROVIDERS"):
             return HostedModerationConfig(
-                enabled=os.environ.get("HOSTED_MODERATION_ENABLED"),
+                enabled=True,
                 providers=os.environ.get("HOSTED_MODERATION_PROVIDERS").split(',')
             )
 
